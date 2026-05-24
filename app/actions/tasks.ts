@@ -4,14 +4,11 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { sendWhatsAppNotification } from "@/lib/notifications"; // استدعاء محرك الإشعارات
 
-/**
- * جلب جميع المهام المجدولة للشركة العقارية الحالية مع بيانات العميل والموظف
- */
 export async function getTasksAction() {
   try {
     const tenant = await getActiveTenant();
-    
     return await prisma.task.findMany({
       where: { tenantId: tenant.id },
       include: {
@@ -28,7 +25,7 @@ export async function getTasksAction() {
           }
         }
       },
-      orderBy: { dueDate: "asc" }, // الترتيب حسب الأقرب للاستحقاق
+      orderBy: { dueDate: "asc" },
     });
   } catch (error) {
     console.error("فشل جلب المهام والخطوات المجدولة:", error);
@@ -36,9 +33,6 @@ export async function getTasksAction() {
   }
 }
 
-/**
- * جلب قائمة العملاء المحتملين لتعبئة قائمة اختيار العميل عند إنشاء مهمة جديدة
- */
 export async function getLeadsListAction() {
   try {
     const tenant = await getActiveTenant();
@@ -56,9 +50,6 @@ export async function getLeadsListAction() {
   }
 }
 
-/**
- * تبديل حالة المهمة بين معلقة ومكتملة بشكل فوري في قاعدة البيانات
- */
 export async function toggleTaskStatusAction(taskId: string, currentStatus: string) {
   try {
     const tenant = await getActiveTenant();
@@ -67,7 +58,7 @@ export async function toggleTaskStatusAction(taskId: string, currentStatus: stri
     await prisma.task.update({
       where: {
         id: taskId,
-        tenantId: tenant.id, // فحص أمان SaaS للتأكد من انتماء المهمة للشركة الحالية
+        tenantId: tenant.id,
       },
       data: {
         status: newStatus,
@@ -82,7 +73,7 @@ export async function toggleTaskStatusAction(taskId: string, currentStatus: stri
 }
 
 /**
- * إنشاء مهمة ومتابعة جديدة للعميل وتكليف الموظف المسؤول عنه آلياً
+ * إنشاء مهمة جديدة وإرسال تنبيه واتساب فوري لمستشار المبيعات المكلف [1.2.1]
  */
 export async function createTaskAction(formData: FormData) {
   try {
@@ -92,23 +83,25 @@ export async function createTaskAction(formData: FormData) {
     const description = formData.get("description") as string;
     const leadId = formData.get("leadId") as string;
     const dueDateVal = formData.get("dueDate") as string;
-    const priority = formData.get("priority") as any; // LOW, MEDIUM, HIGH
+    const priority = formData.get("priority") as any;
 
     if (!title || !leadId || !dueDateVal || !priority) {
       throw new Error("جميع الحقول التي تحتوى على (*) هي حقول إلزامية.");
     }
 
-    // جلب الموظف المسند إليه هذا العميل محلياً لتكليفه بالمهمة تلقائياً
     const lead = await prisma.lead.findUnique({
       where: { id: leadId, tenantId: tenant.id },
-      select: { assignedTo: true },
+      select: { 
+        firstName: true, 
+        assignedTo: true 
+      },
     });
 
     if (!lead || !lead.assignedTo) {
       throw new Error("العميل المختار غير مسند لمستشار مبيعات ليتم تكليفه بهذه المهمة.");
     }
 
-    await prisma.task.create({
+    const task = await prisma.task.create({
       data: {
         tenantId: tenant.id,
         leadId,
@@ -120,6 +113,13 @@ export async function createTaskAction(formData: FormData) {
         status: "PENDING",
       },
     });
+
+    // 🚀 الإجراء: إرسال تنبيه واتساب فوري للمستشار ببيانات المهمة وتفاصيل العميل [1.2.1]
+    const salesPhone = "+966505123456"; // رقم تجريبي
+    const templateName = "new_task_assignment";
+    const formattedDate = new Date(dueDateVal).toLocaleString('ar-SA');
+    const variables = [title, lead.firstName, formattedDate];
+    await sendWhatsAppNotification(salesPhone, templateName, variables);
 
     revalidatePath("/operations/tasks");
     return { success: true };

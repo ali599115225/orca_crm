@@ -4,24 +4,20 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications"; // استدعاء المحرك
 
-/**
- * جلب جميع العملاء المحتمين وتحويل قيم الأسعار العشرية للمشروع المرتبط لمنع تعارض Next.js
- */
 export async function getLeadsAction() {
   try {
     const tenant = await getActiveTenant();
-    
     const leads = await prisma.lead.findMany({
       where: { tenantId: tenant.id },
       include: {
-        project: true, // جلب بيانات المشروع المرتبط
+        project: true,
         assignedUser: true,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // تحويل الأسعار العشرية داخل بيانات المشروع المرتبط بالعميل تلقائياً لمنع خطأ الـ Decimal
     return leads.map((lead) => ({
       ...lead,
       project: lead.project
@@ -33,14 +29,11 @@ export async function getLeadsAction() {
         : null,
     }));
   } catch (error) {
-    console.error("فشل جلب العملاء وتحويل بيانات المشروع:", error);
+    console.error("فشل جلب العملاء:", error);
     return [];
   }
 }
 
-/**
- * جلب المشاريع لقائمة الاختيار مع تحويل الـ Decimal لمنع خطأ الـ Serialization
- */
 export async function getProjectsAction() {
   try {
     const tenant = await getActiveTenant();
@@ -48,20 +41,19 @@ export async function getProjectsAction() {
       where: { tenantId: tenant.id },
     });
 
-    // تحويل حقول الـ Decimal إلى أرقام عادية لمتطلبات Next.js
     return projects.map((p) => ({
       ...p,
       minPrice: p.minPrice ? Number(p.minPrice) : null,
       maxPrice: p.maxPrice ? Number(p.maxPrice) : null,
     }));
   } catch (error) {
-    console.error("فشل جلب المشاريع لقائمة الاختيار:", error);
+    console.error("فشل جلب المشاريع:", error);
     return [];
   }
 }
 
 /**
- * تسجيل عميل جديد مع التحقق من عدم تكراره
+ * تسجيل عميل جديد مع تفعيل إشعارات الواتساب والـ SMS الفورية
  */
 export async function createLeadAction(formData: FormData) {
   try {
@@ -89,7 +81,12 @@ export async function createLeadAction(formData: FormData) {
       throw new Error(`الرقم ${phone} مسجل مسبقاً بالنظام باسم العميل (${isDuplicate.firstName} ${isDuplicate.lastName || ""}) لمنع تضارب المبيعات.`);
     }
 
-    await prisma.lead.create({
+    // جلب مستخدم تلقائي من المبيعات لإسناد العميل له
+    const randomSalesUser = await prisma.user.findFirst({
+      where: { tenantId: tenant.id, role: "SALES_EMPLOYEE" },
+    });
+
+    const lead = await prisma.lead.create({
       data: {
         tenantId: tenant.id,
         firstName,
@@ -99,8 +96,21 @@ export async function createLeadAction(formData: FormData) {
         source,
         status: "NEW",
         projectId: projectId ? projectId : null,
+        assignedTo: randomSalesUser ? randomSalesUser.id : null,
       },
     });
+
+    // 🚀 الإجراء 1: إرسال رسالة SMS ترحيبية فورية للعميل الجديد [1.2.1]
+    const welcomeSMS = `مرحباً بك أ. ${firstName} في شركة دار الأعمار العقارية. سعدنا باهتمامك بمشاريعنا السكنية المميزة، سيتواصل معك مستشارك العقاري خلال دقائق لخدمتك.`;
+    await sendSMSNotification(phone, welcomeSMS);
+
+    // 🚀 الإجراء 2: إرسال تنبيه واتساب فوري لمستشار المبيعات لإعلامه بالعميل الجديد [1.2.1]
+    if (randomSalesUser) {
+      const salesPhone = "+966505123456"; // رقم تجريبي لمستشار المبيعات
+      const templateName = "new_lead_assignment";
+      const variables = [randomSalesUser.name, firstName, source];
+      await sendWhatsAppNotification(salesPhone, templateName, variables);
+    }
 
     revalidatePath("/operations/leads");
     return { success: true };
