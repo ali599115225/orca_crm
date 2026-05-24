@@ -1,0 +1,19 @@
+# .gitignore
+
+# تجاهل الحزم المثبتة
+node_modules/
+
+# تجاهل مجلد بناء Next.js والذاكرة المؤقتة للـ Turbopack
+.next/
+out/
+
+# تجاهل ملفات البيئة السرية وقواعد البيانات المحلية
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ملفات النظام الأخرى
+.DS_Store
+thumbs.db

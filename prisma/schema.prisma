@@ -1,0 +1,158 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  
+}
+generator client {
+  provider = "prisma-client-js"
+}
+  
+
+enum Role {
+  ADMIN
+  SALES_MANAGER
+  SALES_EMPLOYEE
+  MARKETING
+  READ_ONLY
+}
+
+enum ProjectStatus {
+  PLANNING
+  UNDER_CONSTRUCTION
+  COMPLETED
+  SOLD_OUT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  VISIT_SCHEDULED
+  VISITED
+  OFFER_MADE
+  RESERVED
+  CONTRACT_SIGNED
+  WON
+  LOST
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+}
+
+model Tenant {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyName       String         @map("company_name")
+  subdomain         String         @unique
+  subscriptionPlan  String         @default("basic") @map("subscription_plan")
+  isActive          Boolean        @default(true) @map("is_active")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  users             User[]
+  projects          Project[]
+  leads             Lead[]
+  leadActivities    LeadActivity[]
+  tasks             Task[]
+
+  @@map("tenants")
+}
+
+model User {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  email          String         @unique
+  passwordHash   String         @map("password_hash")
+  role           Role
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  leads          Lead[]         @relation("AssignedLeads")
+  leadActivities LeadActivity[]
+  tasks          Task[]
+
+  @@map("users")
+}
+
+model Project {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  city           String
+  status         ProjectStatus
+  unitsTotal     Int           @default(0) @map("units_total")
+  unitsSold      Int           @default(0) @map("units_sold")
+  unitsBooked    Int           @default(0) @map("units_booked")
+  minPrice       Decimal?      @map("min_price") @db.Decimal(12, 2)
+  maxPrice       Decimal?      @map("max_price") @db.Decimal(12, 2)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  leads          Lead[]
+
+  @@map("projects")
+}
+
+model Lead {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectId      String?        @map("project_id") @db.Uuid
+  project        Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo     String?        @map("assigned_to") @db.Uuid
+  assignedUser   User?          @relation("AssignedLeads", fields: [assignedTo], references: [id], onDelete: SetNull)
+  firstName      String         @map("first_name")
+  lastName       String?        @map("last_name")
+  phone          String
+  email          String?
+  city           String
+  source         String
+  status         LeadStatus
+  lostReason     String?        @map("lost_reason")
+  leadScore      Int            @default(50) @map("lead_score")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  leadActivities LeadActivity[]
+  tasks          Task[]
+
+  @@map("leads")
+}
+
+model LeadActivity {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId       String   @map("lead_id") @db.Uuid
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId       String?  @map("user_id") @db.Uuid
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activityType String   @map("activity_type")
+  description  String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("lead_activities")
+}
+
+model Task {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String     @map("tenant_id") @db.Uuid
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId      String     @map("lead_id") @db.Uuid
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo  String     @map("assigned_to") @db.Uuid
+  assignedUser User       @relation(fields: [assignedTo], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime   @map("due_date") @db.Timestamptz
+  priority    Priority
+  status      TaskStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("tasks")
+}
