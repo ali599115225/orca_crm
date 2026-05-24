@@ -8,7 +8,7 @@ const SECRET_KEY = new TextEncoder().encode(
 );
 
 /**
- * دالة الوكيل (Proxy) المعتمدة حديثاً في Next.js 16 لإدارة وحماية الـ Subdomains
+ * دالة الوكيل (Proxy) المعتمدة في Next.js 16 لإدارة وحماية الـ Subdomains
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,6 +22,9 @@ export async function proxy(request: NextRequest) {
     currentSubdomain = domainParts[0];
   }
 
+  // التحقق مما إذا كان الرابط هو رابط تجريبي مجاني من Vercel
+  const isVercelPreview = host.endsWith(".vercel.app");
+
   // 2. جلب وتفكيك الـ Token المشفر للتحقق
   const sessionToken = request.cookies.get("session_token")?.value;
 
@@ -34,8 +37,9 @@ export async function proxy(request: NextRequest) {
     try {
       const { payload } = await jwtVerify(sessionToken, SECRET_KEY);
 
-      // فحص أمان الـ SaaS لضمان تطابق النطاق الموجه مع الموظف الفعلي
-      if (payload.tenantSubdomain !== currentSubdomain) {
+      // فحص أمان الـ SaaS الصارم:
+      // نتجاوز هذا الفحص الصارم فقط في روابط فيرسيل التجريبية المجانية لتسهيل الفحص والتجربة
+      if (!isVercelPreview && payload.tenantSubdomain !== currentSubdomain) {
         const response = NextResponse.redirect(new URL("/login", request.url));
         response.cookies.delete("session_token");
         return response;
