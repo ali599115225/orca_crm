@@ -39,14 +39,14 @@ export default async function OperationsLayout({
   const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased selection:bg-amber-500/20 selection:text-amber-600">
+    // قمنا بحذف كلاس font-sans هنا ليورث النظام بأكمله خط Cairo الفاخر تلقائياً
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased selection:bg-amber-500/20 selection:text-amber-600">
       
       {/* شريط التنقل الجانبي (Sidebar) الفخم على اليسار */}
       <aside 
         className="w-full md:w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
         dir="rtl"
       >
-        {/* تم إعادة اسم أوركا بالإنجليزية هنا بناءً على طلبك */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <span className="text-xl font-black tracking-wider text-amber-500">ORCA CRM</span>
           <span className="bg-slate-800/80 text-[10px] px-2.5 py-1 rounded-md text-amber-300 font-extrabold tracking-wide border border-amber-500/10">

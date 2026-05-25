@@ -1,9 +1,10 @@
 /* app/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 body {
-  /* تعميم خط Calibri القياسي والناعم على كامل النظام */
-  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* تعميم خط Cairo النبيل على كامل النظام */
+  font-family: 'Cairo', system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -4,13 +4,13 @@
 import React, { useState, useEffect } from 'react';
 import { getLeadsAction, getProjectsAction, createLeadAction, updateLeadStatusAction } from '@/app/actions/leads';
 
-// تعريف تسلسل قمع المبيعات لغرض الانتقال السلس للعميل
-const STATUS_PIPELINE: { key: string; label: string; next: string | null; style: string }[] = [
-  { key: 'NEW', label: 'جديد بانتظار الرد', next: 'CONTACTED', style: 'border-sky-500 bg-sky-500/5 text-sky-500' },
-  { key: 'CONTACTED', label: 'تم التواصل الأولي', next: 'VISIT_SCHEDULED', style: 'border-indigo-500 bg-indigo-500/5 text-indigo-500' },
-  { key: 'VISIT_SCHEDULED', label: 'مجدول للزيارة والشهود', next: 'RESERVED', style: 'border-amber-500 bg-amber-500/5 text-amber-500' },
-  { key: 'RESERVED', label: 'حجز وعربون مسجل', next: 'CONTRACT_SIGNED', style: 'border-emerald-500 bg-emerald-500/5 text-emerald-500' },
-  { key: 'CONTRACT_SIGNED', label: 'عقد نهائي مغلق', next: null, style: 'border-teal-500 bg-teal-500/5 text-teal-500' },
+// تفصيل تسلسل قمع ومسار المبيعات العقارية مع الحالات المترجمة للعربية
+const STATUS_PIPELINE = [
+  { key: 'NEW', label: 'عملاء جدد', next: 'CONTACTED', style: 'border-sky-500 bg-sky-500/5 text-sky-600' },
+  { key: 'CONTACTED', label: 'تم التواصل', next: 'VISIT_SCHEDULED', style: 'border-indigo-500 bg-indigo-500/5 text-indigo-600' },
+  { key: 'VISIT_SCHEDULED', label: 'مجدول للزيارة', next: 'RESERVED', style: 'border-amber-500 bg-amber-500/5 text-amber-600' },
+  { key: 'RESERVED', label: 'حجز مبدئي', next: 'CONTRACT_SIGNED', style: 'border-emerald-500 bg-emerald-500/5 text-emerald-600' },
+  { key: 'CONTRACT_SIGNED', label: 'توقيع العقد', next: null, style: 'border-teal-500 bg-teal-500/5 text-teal-600' },
 ];
 
 export default function LeadsPage() {
@@ -72,7 +72,7 @@ export default function LeadsPage() {
           <p className="text-gray-500 text-sm mt-1">تتبع مستويات اهتمام العملاء، ومنع التكرار، ومراقبة حركة التدفق ببطاقات مبيعات تفاعلية [1, 2]</p>
         </div>
 
-        {/* أزرار التبديل الدائرية الناعمة بتأثير Calibri */}
+        {/* أزرار التبديل الدائرية الناعمة بتأثير الـ Cairo */}
         <div className="flex bg-slate-200/60 p-1 rounded-xl self-start md:self-auto border border-slate-300/30">
           <button 
             onClick={() => setViewMode('kanban')}
@@ -132,17 +132,19 @@ export default function LeadsPage() {
         </form>
       </div>
 
-      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية (Kanban Board View) */}
+      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية المنسقة والمانعة للتداخل */}
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4">
           {STATUS_PIPELINE.map((column) => {
             const columnLeads = leads.filter((l) => l.status === column.key && l.phone.includes(searchPhone));
             return (
               <div key={column.key} className="bg-slate-100/60 border border-slate-200/50 rounded-2xl p-4 flex flex-col space-y-3 min-w-[220px]">
-                {/* هيدر العمود */}
-                <div className={`p-2.5 rounded-xl border-r-4 border shadow-sm flex items-center justify-between text-xs font-black ${column.style}`}>
+                {/* هيدر العمود المطور بدقة والمانع لأي تداخل أو تغطية للنصوص */}
+                <div className={`p-3 rounded-xl border-r-4 border shadow-sm flex items-center justify-between text-xs font-black ${column.style}`}>
                   <span>{column.label}</span>
-                  <span className="bg-slate-900/10 px-2 py-0.5 rounded-md">{columnLeads.length}</span>
+                  <span className="bg-slate-900/10 px-2 py-0.5 rounded-md text-[10px] font-extrabold text-slate-800 shrink-0">
+                    {columnLeads.length} عملاء
+                  </span>
                 </div>
 
                 {/* بطاقات المبيعات بداخل العمود */}
@@ -170,7 +172,7 @@ export default function LeadsPage() {
                           <span>{lead.city}</span>
                         </div>
 
-                        {/* زر التنقل للخطوة التالية التفاعلي الحركي السيرفري */}
+                        {/* زر التنقل للخطوة التالية */}
                         {column.next && (
                           <button 
                             disabled={updatingId === lead.id}
