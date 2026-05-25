@@ -4,28 +4,26 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { getActiveTenant } from '@/lib/tenant';
+import { PrintButton } from './PrintButton'; // 1. استدعاء الزر التفاعلي الجديد بـ Vercel [1.1.2]
 
 export const metadata = {
   title: "عقد الحجز العقاري المبدئي - أوركا",
 };
 
 export default async function ContractPage({ params }: { params: Promise<{ leadId: string }> }) {
-  // 1. فحص الجلسة والأمان للتأكد من تسجيل الدخول
   const session = await getSession();
   if (!session) {
     redirect("/login");
   }
 
-  // 2. فحص أمان الـ SaaS لضمان عزل وجلب بيانات المنشأة العقارية النشطة
   const tenant = await getActiveTenant();
   const resolvedParams = await params;
   const leadId = resolvedParams.leadId;
 
-  // 3. جلب بيانات العميل والمشروع المرتبط بدقة
   const lead = await prisma.lead.findFirst({
     where: {
       id: leadId,
-      tenantId: tenant.id, // عزل أمني صارم
+      tenantId: tenant.id,
     },
     include: {
       project: true,
@@ -43,19 +41,15 @@ export default async function ContractPage({ params }: { params: Promise<{ leadI
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 md:px-0 print:bg-white print:py-0 text-right font-sans" dir="rtl">
       
-      {/* هيدر التحكم العلوي - يظهر في المتصفح ويختفي تلقائياً أثناء الطباعة أو الحفظ كـ PDF */}
+      {/* هيدر التحكم العلوي - يظهر في المتصفح ويختفي تلقائياً أثناء الطباعة */}
       <div className="max-w-3xl mx-auto mb-6 bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between shadow-lg print:hidden">
         <div>
           <h3 className="text-xs font-black text-amber-500">منظومة الحجوزات العقارية الموحدة</h3>
           <p className="text-[10px] text-slate-300 mt-1">توليد عقود الحجوزات السكنية والتجارية آلياً من قاعدة البيانات</p>
         </div>
         
-        <button 
-          onClick={() => window.print()}
-          className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-4 py-2 rounded-lg transition-all cursor-pointer"
-        >
-          🖨️ طباعة وتنزيل كـ PDF
-        </button>
+        {/* 2. استبدال الزر القديم بزر الطباعة التفاعلي والمستقر سحابياً */}
+        <PrintButton />
       </div>
 
       {/* نموذج وثيقة عقد الحجز الموحد بالمملكة (A4 Layout) */}
