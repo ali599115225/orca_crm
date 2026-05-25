@@ -76,7 +76,7 @@ export default function TasksPage() {
           <h2 className="text-sm font-bold text-slate-800 mb-4 border-b pb-2">جدولة متابعة جديدة</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">اسم المهمة / الإجراء المطلوب *</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">اسم المهمة / الإجراء المطلوب *</label>
               <input 
                 type="text" 
                 name="title"
@@ -87,7 +87,7 @@ export default function TasksPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">العميل المرتبط بالمهمة *</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1">العميل المرتبط بالمهمة *</label>
               <select name="leadId" required className="w-full border rounded-lg p-2 text-xs text-slate-800">
                 <option value="">-- اختر عميلاً محتملاً --</option>
                 {leads.map((l) => (
@@ -96,16 +96,16 @@ export default function TasksPage() {
               </select>
             </div>
 
+            {/* تم فصل التاريخ عن الوقت هنا بدقة وتزيينهما بأيقونات مانعة لأي تداخل أو تشويه */}
             <div className="grid grid-cols-2 gap-2">
-              {/* حقل إدخال التاريخ والوقت الجديد والمطور بصرياً لمنع أي تداخل */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">تاريخ ووقت الاستحقاق *</label>
+                <label className="block text-xs font-bold text-gray-600 mb-1">تاريخ الاستحقاق *</label>
                 <div className="relative">
                   <input 
-                    type="datetime-local" 
-                    name="dueDate"
+                    type="date" 
+                    name="dueDateOnly"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2.5 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
                   />
                   <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,15 +114,32 @@ export default function TasksPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">مستوى الأهمية *</label>
-                <select name="priority" className="w-full border rounded-lg p-2 text-xs">
-                  <option value="LOW">منخفضة</option>
-                  <option value="MEDIUM">متوسطة</option>
-                  <option value="HIGH">عالية جداً</option>
-                </select>
+                <label className="block text-xs font-bold text-gray-600 mb-1">وقت الاستحقاق *</label>
+                <div className="relative">
+                  <input 
+                    type="time" 
+                    name="dueTimeOnly"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2.5 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">مستوى الأهمية *</label>
+              <select name="priority" className="w-full border rounded-lg p-2 text-xs">
+                <option value="LOW">منخفضة</option>
+                <option value="MEDIUM">متوسطة</option>
+                <option value="HIGH">عالية جداً</option>
+              </select>
             </div>
 
             <div>

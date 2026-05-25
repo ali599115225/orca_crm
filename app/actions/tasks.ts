@@ -4,11 +4,12 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
-import { sendWhatsAppNotification } from "@/lib/notifications"; // استدعاء محرك الإشعارات
+import { sendWhatsAppNotification } from "@/lib/notifications";
 
 export async function getTasksAction() {
   try {
     const tenant = await getActiveTenant();
+    
     return await prisma.task.findMany({
       where: { tenantId: tenant.id },
       include: {
@@ -28,7 +29,7 @@ export async function getTasksAction() {
       orderBy: { dueDate: "asc" },
     });
   } catch (error) {
-    console.error("فشل جلب المهام والخطوات المجدولة:", error);
+    console.error("فشل جلب المهام:", error);
     return [];
   }
 }
@@ -45,7 +46,7 @@ export async function getLeadsListAction() {
       },
     });
   } catch (error) {
-    console.error("فشل جلب قائمة العملاء للمهام:", error);
+    console.error("فشل جلب قائمة العملاء:", error);
     return [];
   }
 }
@@ -73,7 +74,7 @@ export async function toggleTaskStatusAction(taskId: string, currentStatus: stri
 }
 
 /**
- * إنشاء مهمة جديدة وإرسال تنبيه واتساب فوري لمستشار المبيعات المكلف [1.2.1]
+ * إنشاء مهمة جديدة ودمج التاريخ والوقت المفرّقين تلقائياً [1, 1.1.2]
  */
 export async function createTaskAction(formData: FormData) {
   try {
@@ -82,12 +83,16 @@ export async function createTaskAction(formData: FormData) {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const leadId = formData.get("leadId") as string;
-    const dueDateVal = formData.get("dueDate") as string;
-    const priority = formData.get("priority") as any;
+    
+    // استقبال حقل التاريخ المنفصل وحقل الوقت المنفصل
+    const dueDateOnly = formData.get("dueDateOnly") as string; // مثل: 2026-05-26
+    const dueTimeOnly = formData.get("dueTimeOnly") as string; // مثل: 14:30
 
-    if (!title || !leadId || !dueDateVal || !priority) {
+    if (!title || !leadId || !dueDateOnly || !dueTimeOnly || !priority) {
       throw new Error("جميع الحقول التي تحتوى على (*) هي حقول إلزامية.");
     }
+
+    const priority = formData.get("priority") as any;
 
     const lead = await prisma.lead.findUnique({
       where: { id: leadId, tenantId: tenant.id },
@@ -101,23 +106,26 @@ export async function createTaskAction(formData: FormData) {
       throw new Error("العميل المختار غير مسند لمستشار مبيعات ليتم تكليفه بهذه المهمة.");
     }
 
-    const task = await prisma.task.create({
+    // دمج التاريخ والوقت في صيغة ISO صالحة ومقبولة للـ PostgreSQL [1.1.2]
+    const combinedDueDate = new Date(`${dueDateOnly}T${dueTimeOnly}`);
+
+    await prisma.task.create({
       data: {
         tenantId: tenant.id,
         leadId,
         assignedTo: lead.assignedTo,
         title,
         description: description || null,
-        dueDate: new Date(dueDateVal),
+        dueDate: combinedDueDate, // حفظ الموعد المدمج بنجاح
         priority,
         status: "PENDING",
       },
     });
 
-    // 🚀 الإجراء: إرسال تنبيه واتساب فوري للمستشار ببيانات المهمة وتفاصيل العميل [1.2.1]
-    const salesPhone = "+966505123456"; // رقم تجريبي
+    // إرسال الإشعار
+    const salesPhone = "+966505123456";
     const templateName = "new_task_assignment";
-    const formattedDate = new Date(dueDateVal).toLocaleString('ar-SA');
+    const formattedDate = combinedDueDate.toLocaleString('ar-SA');
     const variables = [title, lead.firstName, formattedDate];
     await sendWhatsAppNotification(salesPhone, templateName, variables);
 
