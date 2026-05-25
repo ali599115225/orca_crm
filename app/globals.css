@@ -1,6 +1,9 @@
 /* app/globals.css */
-@import "tailwindcss";
+/* 1. يجب أن يكون استيراد خط جوجل في السطر الأول تماماً لنجاح البناء السحابي */
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+
+/* 2. استدعاء Tailwind في السطر الثاني */
+@import "tailwindcss";
 
 body {
   font-family: 'Cairo', system-ui, -apple-system, sans-serif;
