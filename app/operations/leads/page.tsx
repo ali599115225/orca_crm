@@ -132,7 +132,7 @@ export default function LeadsPage() {
         </form>
       </div>
 
-      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية المنسقة والمانعة للتداخل */}
+      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية المنسقة والمانعة للتداخل بدقة فائقة */}
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4">
           {STATUS_PIPELINE.map((column) => {
@@ -147,11 +147,15 @@ export default function LeadsPage() {
                   </span>
                 </div>
 
-                {/* بطاقات المبيعات بداخل العمود */}
-                <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[450px] min-h-[200px]">
+                {/* بطاقات المبيعات بداخل العمود - مع تنسيق احترافي رائع وفخم لحالات الفراغ بحدود منقطة */}
+                <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[450px] min-h-[200px] pr-1">
                   {columnLeads.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-[10px] text-gray-400 font-medium py-12 text-center">
-                      لا يوجد عملاء في هذه المرحلة حالياً.
+                    <div className="h-full flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-slate-300/40 rounded-2xl bg-white/40">
+                      <svg width="24" height="24" className="text-slate-400 mb-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      <span className="text-[10px] font-bold text-slate-500">بانتظار عملاء جدد ✨</span>
+                      <span className="text-[8px] text-slate-400 mt-0.5 leading-relaxed">المسار جاهز للاستقبال</span>
                     </div>
                   ) : (
                     columnLeads.map((lead) => (

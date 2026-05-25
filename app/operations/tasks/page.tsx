@@ -10,7 +10,6 @@ export default function TasksPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // تحميل البيانات الحية عند فتح الصفحة
   useEffect(() => {
     async function loadData() {
       const dbTasks = await getTasksAction();
@@ -43,7 +42,7 @@ export default function TasksPage() {
       const updatedTasks = await getTasksAction();
       setTasks(updatedTasks);
     } else {
-      setErrorMessage(result.error || "حدث خطأ غير متوقع أثناء الحفظ.");
+      setErrorMessage(result.error || "حدث خطأ غير متوقع.");
     }
   };
 
@@ -59,7 +58,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* التنبيهات والرسائل الإرشادية */}
       {errorMessage && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-4 rounded-xl font-bold">
           {errorMessage}
@@ -74,11 +72,11 @@ export default function TasksPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* نموذج جدولة مهمة جديدة للعميل */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-fit">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">جدولة متابعة جديدة</h2>
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit">
+          <h2 className="text-sm font-bold text-slate-800 mb-4 border-b pb-2">جدولة متابعة جديدة</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">اسم المهمة / الإجراء المطلوب *</label>
+              <label className="block text-xs font-bold text-gray-600 mb-1">اسم المهمة / الإجراء المطلوب *</label>
               <input 
                 type="text" 
                 name="title"
@@ -89,8 +87,8 @@ export default function TasksPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">العميل المرتبط بالمهمة *</label>
-              <select name="leadId" required className="w-full border rounded-lg p-2 text-xs">
+              <label className="block text-xs font-bold text-gray-600 mb-1">العميل المرتبط بالمهمة *</label>
+              <select name="leadId" required className="w-full border rounded-lg p-2 text-xs text-slate-800">
                 <option value="">-- اختر عميلاً محتملاً --</option>
                 {leads.map((l) => (
                   <option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}</option>
@@ -99,17 +97,26 @@ export default function TasksPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
+              {/* حقل إدخال التاريخ والوقت الجديد والمطور بصرياً لمنع أي تداخل */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">تاريخ ووقت الاستحقاق *</label>
-                <input 
-                  type="datetime-local" 
-                  name="dueDate"
-                  required
-                  className="w-full border rounded-lg p-2 text-xs focus:outline-none"
-                />
+                <label className="block text-xs font-bold text-gray-600 mb-1">تاريخ ووقت الاستحقاق *</label>
+                <div className="relative">
+                  <input 
+                    type="datetime-local" 
+                    name="dueDate"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
+              
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">مستوى الأهمية *</label>
+                <label className="block text-xs font-bold text-gray-600 mb-1">مستوى الأهمية *</label>
                 <select name="priority" className="w-full border rounded-lg p-2 text-xs">
                   <option value="LOW">منخفضة</option>
                   <option value="MEDIUM">متوسطة</option>
@@ -119,7 +126,7 @@ export default function TasksPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">ملاحظات وتفاصيل إضافية</label>
+              <label className="block text-xs font-bold text-gray-600 mb-1">ملاحظات وتفاصيل إضافية</label>
               <textarea 
                 name="description"
                 rows={3}
@@ -130,7 +137,7 @@ export default function TasksPage() {
 
             <button 
               type="submit"
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors p-2.5 rounded-lg text-xs font-semibold"
+              className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors p-2.5 rounded-lg text-xs font-bold cursor-pointer"
             >
               جدولة المتابعة فوراً
             </button>
@@ -151,7 +158,7 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
             {tasks.length === 0 ? (
               <div className="p-12 text-center text-gray-400 font-medium">
                 لا يوجد مهام أو متابعات مجدولة حالياً.
