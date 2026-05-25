@@ -3,10 +3,11 @@ import React from 'react';
 import { getSession } from '@/lib/session';
 import { logoutAction } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
 
 export const metadata = {
-  title: 'لوحة التحكم - ORCA',
-  description: 'نظام إدارة العمليات العقارية',
+  title: 'لوحة التحكم - أوركا',
+  description: 'نظام إدارة العمليات العقارية السحابية',
 };
 
 const ROLE_TRANSLATIONS: Record<string, string> = {
@@ -28,66 +29,76 @@ export default async function OperationsLayout({
     redirect("/login");
   }
 
+  // جلب المنشأة العقارية النشطة للتحقق من الاسم
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: session.tenantId as string }
+  });
+
+  const rawCompanyName = tenant?.companyName || "";
+  // التحقق هل المنشأة جديدة وببيانات فارغة لإجبارها على إكمال الملف؟
+  const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased selection:bg-amber-500/20 selection:text-amber-500">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased selection:bg-amber-500/20 selection:text-amber-600">
       
       {/* شريط التنقل الجانبي (Sidebar) الفخم على اليسار */}
       <aside 
-        className="w-full md:w-64 bg-[#0B132B] text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
+        className="w-full md:w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
         dir="rtl"
       >
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-xl font-black tracking-wider text-amber-500 bg-clip-text">ORCA CRM</span>
+          <span className="text-xl font-black tracking-wider text-amber-500">أوركا العقاري</span>
           <span className="bg-slate-800/80 text-[10px] px-2.5 py-1 rounded-md text-amber-300 font-extrabold tracking-wide border border-amber-500/10">
             تطوير عقاري
           </span>
         </div>
         
-        {/* معلومات المستأجر النشط */}
+        {/* معلومات المستأجر الأنيقة */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/30">
           <p className="text-[10px] text-slate-400 font-bold">الشركة الحالية:</p>
-          <p className="font-extrabold text-sm text-slate-100 truncate mt-0.5">شركة دار الأعمار العقارية</p>
+          <p className="font-extrabold text-sm text-slate-100 truncate mt-0.5">
+            {isNewTenant ? "منشأة جديدة قيد التأسيس" : rawCompanyName}
+          </p>
           <span className="inline-block mt-2 text-[9px] bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 px-2.5 py-1 rounded-full font-bold">
-            باقة برو (نشط)
+            الباقة الاحترافية (نشط)
           </span>
         </div>
 
-        {/* روابط التنقل المحدثة بالكامل مع حاسبة التمويل المضافة حديثاً */}
+        {/* روابط التنقل العربية بالكامل */}
         <nav className="flex-1 p-4 space-y-1.5 text-xs font-bold">
-          <a href="/operations/analytics" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+          <a href="/operations/analytics" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
             </svg>
             <span>لوحة التحليلات والتقارير</span>
           </a>
 
-          <a href="/operations/leads" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+          <a href="/operations/leads" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <span>العملاء المحتملين (Leads)</span>
+            <span>العملاء المحتملين</span>
           </a>
 
-          <a href="/operations/projects" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+          <a href="/operations/projects" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011-1v5m-4 0h4" />
             </svg>
             <span>إدارة المشاريع العقارية</span>
           </a>
 
-          {/* 🎁 رابط حاسبة التمويل العقاري الجديد والمزود بأيقونة فخمة */}
-          <a href="/operations/calculator" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+          <a href="/operations/calculator" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             <span>حاسبة التمويل السكني</span>
           </a>
 
-          <a href="/operations/sales" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+          <a href="/operations/sales" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
-            <span>أداء المبيعات والـ KPIs</span>
+            <span>أداء المبيعات والمؤشرات</span>
           </a>
 
           <a href="/operations/tasks" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
@@ -120,13 +131,23 @@ export default async function OperationsLayout({
         </nav>
 
         <div className="p-4 border-t border-slate-800/80 text-[9px] text-slate-500">
-          <p>جميع الحقوق محفوظة لوكالة ORCA</p>
-          <p className="mt-1">رقم الإصدار MVP 1.0</p>
+          <p>جميع الحقوق محفوظة لوكالة أوركا</p>
+          <p className="mt-1">رقم الإصدار 1.0</p>
         </div>
       </aside>
 
       {/* محتوى الشاشة الرئيسي */}
       <main className="flex-1 flex flex-col min-w-0 text-right" dir="rtl">
+        {/* شريط التنبيه المالي والتشغيلي الذكي للمستأجرين الجدد في الأعلى */}
+        {isNewTenant && (
+          <div className="bg-amber-500 text-slate-950 text-[10px] font-black py-2.5 px-6 text-center animate-pulse flex items-center justify-center gap-1.5 border-b border-amber-600/30">
+            <span>⚠️ تنبيه إداري: بيانات ملف منشأتك غير مكتملة حالياً!</span>
+            <a href="/operations/onboarding" className="underline hover:text-white transition-colors font-bold">
+              [ اضغط هنا لتعبئة وتنشيط ملف منشأتك العقارية الآن ]
+            </a>
+          </div>
+        )}
+
         <header className="bg-white border-b border-gray-200/80 h-16 flex items-center justify-between px-6 shrink-0 shadow-sm relative z-20">
           <div className="flex items-center space-x-reverse space-x-4">
             <div className="relative">

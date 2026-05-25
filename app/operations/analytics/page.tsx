@@ -28,16 +28,16 @@ export default function AnalyticsDashboard() {
   return (
     <div className="space-y-6">
       
-      {/* العناوين والتحكم الفوري */}
+      {/* العناوين والتحكم الفوري المحدث بالعربية */}
       <div className="bg-white p-5 rounded-xl border border-gray-200">
-        <h1 className="text-2xl font-bold text-slate-800">لوحة تحليلات ومؤشرات الأداء (Real-Time Analytics)</h1>
+        <h1 className="text-2xl font-bold text-slate-800">تحليلات الأداء اللحظية والتقارير العقارية</h1>
         <p className="text-gray-500 text-sm mt-1">تقارير تجميعية حية لقنوات التسويق، جغرافيا المبيعات، ومعدلات التدفق العقاري لشركتكم</p>
       </div>
 
       {/* بطاقات قياس الأداء الكلية (KPI Cards) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-[11px] text-slate-500 font-bold">إجمالي الـ Leads</p>
+          <p className="text-[11px] text-slate-500 font-bold">إجمالي العملاء المتابعين</p>
           <p className="text-3xl font-black text-slate-800 mt-2">{analytics.totalLeads}</p>
           <span className="text-[9px] text-slate-400">عميل مسجل بالكامل</span>
         </div>
@@ -45,7 +45,7 @@ export default function AnalyticsDashboard() {
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-[11px] text-slate-500 font-bold">حجوزات نشطة (عربونات)</p>
           <p className="text-3xl font-black text-amber-600 mt-2">{analytics.activeBookings}</p>
-          <span className="text-[9px] text-amber-500 font-semibold">بإنتظار استكمال التمويل</span>
+          <span className="text-[9px] text-amber-500 font-semibold">بانتظار استكمال التمويل</span>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
@@ -67,12 +67,12 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* الرسوم والتحليلات البصرية الجغرافية والتسويقية وقمع المبيعات */}
+      {/* الرسوم والتحليلات البصرية */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* مخطط حركة العملاء في قمع المبيعات (Sales Pipeline) */}
+        {/* مخطط حركة العملاء في قمع المبيعات */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
-          <h3 className="font-bold text-slate-800 text-sm pb-2 border-b">مراحل قمع المبيعات (Sales Pipeline Stages)</h3>
+          <h3 className="font-bold text-slate-800 text-sm pb-2 border-b">مراحل قمع ومسار المبيعات العقارية</h3>
           
           <div className="space-y-4">
             {analytics.pipelineStages.map((stage) => (
@@ -81,9 +81,9 @@ export default function AnalyticsDashboard() {
                   <span className="text-slate-700">{stage.status}</span>
                   <span className="text-slate-500">{stage.count} عميل ({stage.percentage}%)</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className="bg-amber-500 h-2 rounded-full transition-all duration-500" 
+                    className="bg-amber-500 h-2.5 rounded-full transition-all duration-500" 
                     style={{ width: `${stage.percentage}%` }}
                   />
                 </div>
@@ -92,7 +92,7 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        {/* كفاءة الحملات الإعلانية ومصادر توليد العملاء والمدن */}
+        {/* كفاءة الحملات الإعلانية وجغرافيا المبيعات بالمدن */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
           
           {/* قسم مصادر الإعلانات */}
@@ -104,7 +104,7 @@ export default function AnalyticsDashboard() {
               <div className="space-y-2">
                 {analytics.sourcesBreakdown.map((src) => (
                   <div key={src.source} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
-                    <span className="text-xs font-bold text-slate-700">{src.source}</span>
+                    <span className="text-xs font-bold text-slate-700">{src.source === "Snapchat Ads" ? "إعلانات سناب شات" : src.source === "Meta Ads" ? "حملة ميتا الإعلانية" : src.source}</span>
                     <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">
                       {src.count} عملاء
                     </span>

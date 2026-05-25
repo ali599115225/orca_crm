@@ -1,18 +1,15 @@
 /* app/globals.css */
-/* 1. يجب أن يكون استيراد خط جوجل في السطر الأول تماماً لنجاح البناء السحابي */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
-
-/* 2. استدعاء Tailwind في السطر الثاني */
 @import "tailwindcss";
 
 body {
-  font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  /* تعميم خط Calibri القياسي والناعم على كامل النظام */
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 💎 كلاس مخصص ليعطي البطاقات تأثير طفو ناعم جداً عند تمرير الماوس */
+/* كلاس مخصص ليعطي البطاقات تأثير طفو ناعم جداً عند تمرير الماوس */
 .premium-card {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -21,7 +18,7 @@ body {
   box-shadow: 0 20px 25px -5px rgb(15 23 42 / 0.05), 0 8px 10px -6px rgb(15 23 42 / 0.05);
 }
 
-/* 🧼 تخصيص شريط التمرير (Scrollbar) ليكون ناعماً وشبه شفاف لراحة العين */
+/* تخصيص شريط التمرير (Scrollbar) ليكون ناعماً وشبه شفاف لراحة العين */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
