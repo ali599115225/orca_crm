@@ -147,7 +147,7 @@ export default function LeadsPage() {
                   </span>
                 </div>
 
-                {/* بطاقات المبيعات بداخل العمود - مع تنسيق احترافي رائع وفخم لحالات الفراغ بحدود منقطة */}
+                {/* بطاقات المبيعات بداخل العمود */}
                 <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[450px] min-h-[200px] pr-1">
                   {columnLeads.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-slate-300/40 rounded-2xl bg-white/40">
@@ -176,16 +176,26 @@ export default function LeadsPage() {
                           <span>{lead.city}</span>
                         </div>
 
-                        {/* زر التنقل للخطوة التالية */}
-                        {column.next && (
-                          <button 
-                            disabled={updatingId === lead.id}
-                            onClick={() => handleMoveToNextStep(lead.id, column.key, column.next!)}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-bold p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        {/* زر توليد العقد السحابي الموحد والمفتوح في تبويب خارجي مستقل */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          <a 
+                            href={`/operations/contract/${lead.id}`}
+                            target="_blank"
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[9px] font-black p-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            {updatingId === lead.id ? 'جاري النقل...' : 'الخطوة التالية ➔'}
-                          </button>
-                        )}
+                            📄 عقد الحجز
+                          </a>
+
+                          {column.next && (
+                            <button 
+                              disabled={updatingId === lead.id}
+                              onClick={() => handleMoveToNextStep(lead.id, column.key, column.next!)}
+                              className="bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-bold p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            >
+                              {updatingId === lead.id ? 'جاري...' : 'التالي ➔'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
@@ -216,7 +226,7 @@ export default function LeadsPage() {
                   <th className="px-4 py-3">المشروع المستهدف</th>
                   <th className="px-4 py-3">قناة الإعلان والمدينة</th>
                   <th className="px-4 py-3">حالة العميل الحالية</th>
-                  <th className="px-5 py-3">مستوى الجدية</th>
+                  <th className="px-5 py-3">عقد الحجز المبدئي</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -254,7 +264,13 @@ export default function LeadsPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 font-bold text-slate-700">
-                          {lead.leadScore}%
+                          <a 
+                            href={`/operations/contract/${lead.id}`}
+                            target="_blank"
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-lg transition-colors inline-block"
+                          >
+                            📄 عرض عقد الحجز المبدئي
+                          </a>
                         </td>
                       </tr>
                   ))
