@@ -53,9 +53,6 @@ export async function getProjectsAction() {
   }
 }
 
-/**
- * تحديث حالة العميل ونقله للعمود التالي بداخل الـ Kanban Board [1, 2]
- */
 export async function updateLeadStatusAction(leadId: string, newStatus: any) {
   try {
     const tenant = await getActiveTenant();
@@ -75,6 +72,9 @@ export async function updateLeadStatusAction(leadId: string, newStatus: any) {
   }
 }
 
+/**
+ * تسجيل عميل جديد مع تفعيل الربط العلائقي الصارم والإشعارات [1]
+ */
 export async function createLeadAction(formData: FormData) {
   try {
     const tenant = await getActiveTenant();
@@ -101,21 +101,31 @@ export async function createLeadAction(formData: FormData) {
       throw new Error(`الرقم ${phone} مسجل مسبقاً بالنظام باسم العميل (${isDuplicate.firstName} ${isDuplicate.lastName || ""}) لمنع تضارب المبيعات.`);
     }
 
+    // جلب مستخدم تلقائي من المبيعات لإسناد العميل له
     const randomSalesUser = await prisma.user.findFirst({
       where: { tenantId: tenant.id, role: "SALES_EMPLOYEE" },
     });
 
+    // استخدام صيغة الـ connect المعتمدة في Prisma 7 للربط العلائقي الآمن بين الجداول [1]
     const lead = await prisma.lead.create({
       data: {
-        tenantId: tenant.id,
+        tenant: {
+          connect: { id: tenant.id } // ربط علائقي آمن بالشركة العقارية [1]
+        },
         firstName,
         lastName: lastName || null,
         phone,
-        city,
-        source,
+        city: city || "الرياض",
+        source: source || "إعلانات سناب شات",
         status: "NEW",
-        projectId: projectId ? projectId : null,
-        assignedTo: randomSalesUser ? randomSalesUser.id : null,
+        // ربط علائقي آمن بالمشروع في حال اختياره [1]
+        project: projectId ? {
+          connect: { id: projectId }
+        } : undefined,
+        // ربط علائقي آمن بمستشار المبيعات المكلف [1]
+        assignedUser: randomSalesUser ? {
+          connect: { id: randomSalesUser.id }
+        } : undefined,
       },
     });
 
