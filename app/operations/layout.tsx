@@ -29,9 +29,9 @@ export default async function OperationsLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased selection:bg-amber-500/20 selection:text-amber-600">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased selection:bg-amber-500/20 selection:text-amber-500">
       
-      {/* شريط التنقل الجانبي (Sidebar) الفخم على اليسار بدرجات كحلية ملوكية مذهلة */}
+      {/* شريط التنقل الجانبي (Sidebar) الفخم على اليسار */}
       <aside 
         className="w-full md:w-64 bg-[#0B132B] text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
         dir="rtl"
@@ -43,7 +43,7 @@ export default async function OperationsLayout({
           </span>
         </div>
         
-        {/* بطاقة المستأجر الأنيقة بتأثير زجاجي خفيف */}
+        {/* معلومات المستأجر النشط */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/30">
           <p className="text-[10px] text-slate-400 font-bold">الشركة الحالية:</p>
           <p className="font-extrabold text-sm text-slate-100 truncate mt-0.5">شركة دار الأعمار العقارية</p>
@@ -52,7 +52,7 @@ export default async function OperationsLayout({
           </span>
         </div>
 
-        {/* روابط التنقل المحدثة بالكامل مع تأثيرات حركية فاخرة عند الوقوف بالماوس */}
+        {/* روابط التنقل المحدثة بالكامل مع حاسبة التمويل المضافة حديثاً */}
         <nav className="flex-1 p-4 space-y-1.5 text-xs font-bold">
           <a href="/operations/analytics" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,6 +73,14 @@ export default async function OperationsLayout({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011-1v5m-4 0h4" />
             </svg>
             <span>إدارة المشاريع العقارية</span>
+          </a>
+
+          {/* 🎁 رابط حاسبة التمويل العقاري الجديد والمزود بأيقونة فخمة */}
+          <a href="/operations/calculator" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+            <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span>حاسبة التمويل السكني</span>
           </a>
 
           <a href="/operations/sales" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-xl hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
@@ -97,7 +105,7 @@ export default async function OperationsLayout({
             <span>إعدادات النظام</span>
           </a>
 
-          {/* زر تسجيل الخروج السحابي الفوري */}
+          {/* زر تسجيل الخروج */}
           <form action={logoutAction} className="pt-4 border-t border-slate-800/80">
             <button 
               type="submit" 
@@ -129,7 +137,7 @@ export default async function OperationsLayout({
             </div>
             <div>
               <p className="text-sm font-extrabold text-gray-800">{session?.name as string || "أحمد الغامدي"}</p>
-              <p className="text-[10px] text-gray-400 font-extrabold mt-0.5">
+              <p className="text-[10px] text-gray-500 font-extrabold mt-0.5">
                 {session?.role ? ROLE_TRANSLATIONS[session.role as string] : "مدير المبيعات"}
               </p>
             </div>
