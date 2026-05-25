@@ -1,10 +1,35 @@
 /* app/globals.css */
-@import "tailwindcss"; /* طريقة الاستيراد الرسمية لـ Tailwind v4 */
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
 
-/* إعدادات إضافية لتحسين الخطوط والقوائم في المتصفح */
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Cairo', system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 💎 كلاس مخصص ليعطي البطاقات تأثير طفو ناعم جداً عند تمرير الماوس */
+.premium-card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.premium-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgb(15 23 42 / 0.05), 0 8px 10px -6px rgb(15 23 42 / 0.05);
+}
+
+/* 🧼 تخصيص شريط التمرير (Scrollbar) ليكون ناعماً وشبه شفاف لراحة العين */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
