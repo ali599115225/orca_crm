@@ -46,8 +46,9 @@ export default async function OperationsLayout({
         className="w-full md:w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
         dir="rtl"
       >
+        {/* تم إعادة اسم أوركا بالإنجليزية هنا بناءً على طلبك */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-xl font-black tracking-wider text-amber-500">أوركا العقاري</span>
+          <span className="text-xl font-black tracking-wider text-amber-500">ORCA CRM</span>
           <span className="bg-slate-800/80 text-[10px] px-2.5 py-1 rounded-md text-amber-300 font-extrabold tracking-wide border border-amber-500/10">
             تطوير عقاري
           </span>
