@@ -1,24 +1,34 @@
 // lib/tenant.ts
 import { headers } from "next/headers";
 import { prisma } from "./prisma";
+import { getSession } from "./session"; // استدعاء الجلسة
 
 /**
  * وظيفة برمجية تجلب بيانات الشركة النشطة (Tenant) تلقائياً
- * بناءً على النطاق الفرعي (Subdomain) المستدعى في المتصفح.
+ * مع إعطاء الأولوية المطلقة لجلسة المستخدم المسجل دخوله حالياً لضمان دقة البيانات
  */
 export async function getActiveTenant() {
+  // 1. أولاً: التحقق مما إذا كان هناك مستخدم مسجل دخوله حالياً ونستخرج شركته مباشرة
+  const session = await getSession();
+  if (session && session.tenantId) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: session.tenantId as string },
+    });
+    if (tenant && tenant.isActive) {
+      return tenant; // إرجاع شركة الموظف المسجل دخوله فوراً
+    }
+  }
+
+  // 2. ثانياً (في حال عدم وجود جلسة - مثل صفحة الدخول العامة): نعتمد على نطاق المتصفح الفرعي
   const headersList = await headers();
-  const host = headersList.get("host") || ""; // مثل: dar-al-amar.localhost:3000
-  
-  // تقسيم النطاق للحصول على الـ Subdomain
+  const host = headersList.get("host") || "";
   const domainParts = host.split(".");
-  let subdomain = "dar-al-amar"; // قيمة افتراضية للبيئة التجريبية المحلية (Fallback)
+  let subdomain = "dar-al-amar";
 
   if (domainParts.length > 2) {
     subdomain = domainParts[0];
   }
 
-  // 1. البحث عن الشركة بمطابقة النطاق الفرعي المباشر
   let tenant = await prisma.tenant.findFirst({
     where: { 
       subdomain: subdomain,
@@ -26,10 +36,8 @@ export async function getActiveTenant() {
     },
   });
 
-  // 2. صمام أمان سحابي لتجاوز تعقيدات نطاقات Vercel المجانية المؤقتة أثناء التجربة والتطوير
+  // 3. صمام الأمان السحابي للتجربة المحلية
   if (!tenant) {
-    // إذا لم نجد نطاقاً مطابقاً (بسبب روابط فيرسيل الطويلة العشوائية)،
-    // نجلب أول شركة عقارية نشطة مسجلة في قاعدة بيانات شركتكم لكي لا يتعطل المطور أو الموظف.
     tenant = await prisma.tenant.findFirst({
       where: { isActive: true },
     });
