@@ -4,11 +4,12 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
-import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications"; // استدعاء المحرك
+import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
 
 export async function getLeadsAction() {
   try {
     const tenant = await getActiveTenant();
+    
     const leads = await prisma.lead.findMany({
       where: { tenantId: tenant.id },
       include: {
@@ -47,14 +48,33 @@ export async function getProjectsAction() {
       maxPrice: p.maxPrice ? Number(p.maxPrice) : null,
     }));
   } catch (error) {
-    console.error("فشل جلب المشاريع:", error);
+    console.error("فشل جلب المشاريع لقائمة الاختيار:", error);
     return [];
   }
 }
 
 /**
- * تسجيل عميل جديد مع تفعيل إشعارات الواتساب والـ SMS الفورية
+ * تحديث حالة العميل ونقله للعمود التالي بداخل الـ Kanban Board [1, 2]
  */
+export async function updateLeadStatusAction(leadId: string, newStatus: any) {
+  try {
+    const tenant = await getActiveTenant();
+
+    await prisma.lead.update({
+      where: { id: leadId, tenantId: tenant.id },
+      data: {
+        status: newStatus,
+      }
+    });
+
+    revalidatePath("/operations/leads");
+    revalidatePath("/operations/analytics");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function createLeadAction(formData: FormData) {
   try {
     const tenant = await getActiveTenant();
@@ -81,7 +101,6 @@ export async function createLeadAction(formData: FormData) {
       throw new Error(`الرقم ${phone} مسجل مسبقاً بالنظام باسم العميل (${isDuplicate.firstName} ${isDuplicate.lastName || ""}) لمنع تضارب المبيعات.`);
     }
 
-    // جلب مستخدم تلقائي من المبيعات لإسناد العميل له
     const randomSalesUser = await prisma.user.findFirst({
       where: { tenantId: tenant.id, role: "SALES_EMPLOYEE" },
     });
@@ -100,13 +119,11 @@ export async function createLeadAction(formData: FormData) {
       },
     });
 
-    // 🚀 الإجراء 1: إرسال رسالة SMS ترحيبية فورية للعميل الجديد [1.2.1]
-    const welcomeSMS = `مرحباً بك أ. ${firstName} في شركة دار الأعمار العقارية. سعدنا باهتمامك بمشاريعنا السكنية المميزة، سيتواصل معك مستشارك العقاري خلال دقائق لخدمتك.`;
+    const welcomeSMS = `مرحباً بك أ. ${firstName} في شركة صرح الوطن العقارية. سعدنا باهتمامك بمشاريعنا السكنية المميزة، سيتواصل معك مستشارك العقاري خلال دقائق لخدمتك.`;
     await sendSMSNotification(phone, welcomeSMS);
 
-    // 🚀 الإجراء 2: إرسال تنبيه واتساب فوري لمستشار المبيعات لإعلامه بالعميل الجديد [1.2.1]
     if (randomSalesUser) {
-      const salesPhone = "+966505123456"; // رقم تجريبي لمستشار المبيعات
+      const salesPhone = "+966505123456";
       const templateName = "new_lead_assignment";
       const variables = [randomSalesUser.name, firstName, source];
       await sendWhatsAppNotification(salesPhone, templateName, variables);

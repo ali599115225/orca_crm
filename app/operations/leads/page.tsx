@@ -2,7 +2,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getLeadsAction, getProjectsAction, createLeadAction } from '@/app/actions/leads';
+import { getLeadsAction, getProjectsAction, createLeadAction, updateLeadStatusAction } from '@/app/actions/leads';
+
+// تعريف تسلسل قمع المبيعات لغرض الانتقال السلس للعميل
+const STATUS_PIPELINE: { key: string; label: string; next: string | null; style: string }[] = [
+  { key: 'NEW', label: 'جديد بانتظار الرد', next: 'CONTACTED', style: 'border-sky-500 bg-sky-500/5 text-sky-500' },
+  { key: 'CONTACTED', label: 'تم التواصل الأولي', next: 'VISIT_SCHEDULED', style: 'border-indigo-500 bg-indigo-500/5 text-indigo-500' },
+  { key: 'VISIT_SCHEDULED', label: 'مجدول للزيارة والشهود', next: 'RESERVED', style: 'border-amber-500 bg-amber-500/5 text-amber-500' },
+  { key: 'RESERVED', label: 'حجز وعربون مسجل', next: 'CONTRACT_SIGNED', style: 'border-emerald-500 bg-emerald-500/5 text-emerald-500' },
+  { key: 'CONTRACT_SIGNED', label: 'عقد نهائي مغلق', next: null, style: 'border-teal-500 bg-teal-500/5 text-teal-500' },
+];
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -10,8 +19,10 @@ export default function LeadsPage() {
   const [searchPhone, setSearchPhone] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('kanban'); // اللوحة هي الوضع الافتراضي لجمال العرض
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // تحميل البيانات الحية من قاعدة البيانات عند فتح الصفحة
+  // جلب البيانات الحية عند فتح الصفحة
   useEffect(() => {
     async function loadData() {
       const dbLeads = await getLeadsAction();
@@ -31,32 +42,54 @@ export default function LeadsPage() {
     const result = await createLeadAction(formData);
 
     if (result.success) {
-      setSuccessMessage("تم تسجيل العميل المحتمل الجديد بنجاح في قاعدة بيانات شركتكم!");
+      setSuccessMessage("تم تسجيل العميل المحتعل الجديد بنجاح وحقن الإشعارات الفورية له وللمبيعات!");
       e.currentTarget.reset();
-      // تحديث القائمة الحية للعملاء
       const updatedLeads = await getLeadsAction();
       setLeads(updatedLeads);
     } else {
-      setErrorMessage(result.error || "حدث خطأ غير متوقع أثناء الحفظ.");
+      setErrorMessage(result.error || "حدث خطأ غير متوقع.");
+    }
+  };
+
+  // حركة نقل العميل للعمود التالي تفاعلياً حياً على السيرفر
+  const handleMoveToNextStep = async (leadId: string, currentStatus: string, nextStatus: string) => {
+    setUpdatingId(leadId);
+    const result = await updateLeadStatusAction(leadId, nextStatus);
+    setUpdatingId(null);
+    if (result.success) {
+      const updatedLeads = await getLeadsAction();
+      setLeads(updatedLeads);
     }
   };
 
   return (
     <div className="space-y-6">
+      
+      {/* الهيدر وزري التبديل الفخمين بين الجدول واللوحة */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">إدارة العملاء المحتملين (Leads CRM)</h1>
-          <p className="text-gray-500 text-sm mt-1">تتبع رحلة العملاء، وتجنب التكرار لضمان كفاءة أداء فريق المبيعات</p>
+          <h1 className="text-2xl font-bold text-slate-800">أتمتة وإدارة العملاء المحتملين</h1>
+          <p className="text-gray-500 text-sm mt-1">تتبع مستويات اهتمام العملاء، ومنع التكرار، ومراقبة حركة التدفق ببطاقات مبيعات تفاعلية [1, 2]</p>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium px-4 py-2 rounded-lg text-sm transition-colors border">
-            استيراد Excel / CSV
+
+        {/* أزرار التبديل الدائرية الناعمة بتأثير Calibri */}
+        <div className="flex bg-slate-200/60 p-1 rounded-xl self-start md:self-auto border border-slate-300/30">
+          <button 
+            onClick={() => setViewMode('kanban')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${viewMode === 'kanban' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            🗂️ عرض لوحة البطاقات (Kanban)
+          </button>
+          <button 
+            onClick={() => setViewMode('table')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            📋 عرض جدول البيانات
           </button>
         </div>
       </div>
 
-      {/* التنبيهات والرسائل الإرشادية */}
+      {/* التنبيهات ورسائل النجاح والخطأ */}
       {errorMessage && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-4 rounded-xl font-bold">
           {errorMessage}
@@ -68,89 +101,98 @@ export default function LeadsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* نموذج إضافة عميل يدويًا مرتبط بقاعدة البيانات ومشاريعك الفعالة */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-fit">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">تسجيل عميل محتمل</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم الأول *</label>
-                <input 
-                  type="text" 
-                  name="firstName"
-                  required
-                  className="w-full border rounded-lg p-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="محمد"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">العائلة</label>
-                <input 
-                  type="text" 
-                  name="lastName"
-                  className="w-full border rounded-lg p-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="الغامدي"
-                />
-              </div>
-            </div>
+      {/* نموذج الإضافة السريع للعميل المعتمد بقاعدة البيانات */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+        <h2 className="text-sm font-bold text-slate-800 mb-4 border-b pb-2">تسجيل عميل محتمل جديد وتفعيل التحقق الفوري</h2>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1">الاسم الأول *</label>
+            <input type="text" name="firstName" required className="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="مثال: عبد العزيز" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1">العائلة</label>
+            <input type="text" name="lastName" className="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="الشمري" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1">رقم الجوال *</label>
+            <input type="tel" name="phone" required className="w-full border rounded-lg p-2 text-xs text-left focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="05xxxxxxxx" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1">المشروع العقاري المستهدف</label>
+            <select name="projectId" className="w-full border rounded-lg p-2 text-xs text-slate-800">
+              <option value="">-- اختر مشروعاً عقارياً --</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black p-2.5 rounded-lg transition-colors cursor-pointer">
+            تسجيل وتحقق التكرار ➔
+          </button>
+        </form>
+      </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">رقم الجوال *</label>
-              <input 
-                type="tel" 
-                name="phone"
-                required
-                className="w-full border rounded-lg p-2 text-xs text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="05xxxxxxxx"
-              />
-            </div>
+      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية (Kanban Board View) */}
+      {viewMode === 'kanban' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4">
+          {STATUS_PIPELINE.map((column) => {
+            const columnLeads = leads.filter((l) => l.status === column.key && l.phone.includes(searchPhone));
+            return (
+              <div key={column.key} className="bg-slate-100/60 border border-slate-200/50 rounded-2xl p-4 flex flex-col space-y-3 min-w-[220px]">
+                {/* هيدر العمود */}
+                <div className={`p-2.5 rounded-xl border-r-4 border shadow-sm flex items-center justify-between text-xs font-black ${column.style}`}>
+                  <span>{column.label}</span>
+                  <span className="bg-slate-900/10 px-2 py-0.5 rounded-md">{columnLeads.length}</span>
+                </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">المدينة</label>
-                <select name="city" className="w-full border rounded-lg p-2 text-xs focus:ring-amber-500">
-                  <option>الرياض</option>
-                  <option>جدة</option>
-                  <option>الدمام</option>
-                  <option>مكة المكرمة</option>
-                </select>
+                {/* بطاقات المبيعات بداخل العمود */}
+                <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[450px] min-h-[200px]">
+                  {columnLeads.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-[10px] text-gray-400 font-medium py-12 text-center">
+                      لا يوجد عملاء في هذه المرحلة حالياً.
+                    </div>
+                  ) : (
+                    columnLeads.map((lead) => (
+                      <div key={lead.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:border-amber-400 transition-all duration-300 hover:scale-[1.02] space-y-3">
+                        <div>
+                          <h4 className="font-extrabold text-xs text-slate-800">{lead.firstName} {lead.lastName || ""}</h4>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-0.5" dir="ltr">{lead.phone}</p>
+                        </div>
+
+                        {lead.project && (
+                          <div className="text-[9px] bg-slate-50 border border-slate-100 p-1.5 rounded-md font-bold text-slate-600 truncate">
+                            🎯 {lead.project.name}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold border-t pt-2.5">
+                          <span>الاهتمام: {lead.leadScore}%</span>
+                          <span>{lead.city}</span>
+                        </div>
+
+                        {/* زر التنقل للخطوة التالية التفاعلي الحركي السيرفري */}
+                        {column.next && (
+                          <button 
+                            disabled={updatingId === lead.id}
+                            onClick={() => handleMoveToNextStep(lead.id, column.key, column.next!)}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-[9px] font-bold p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            {updatingId === lead.id ? 'جاري النقل...' : 'الخطوة التالية ➔'}
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">مصدر العميل</label>
-                <select name="source" className="w-full border rounded-lg p-2 text-xs">
-                  <option>إعلانات سناب شات</option>
-                  <option>حملة ميتا إعلانية</option>
-                  <option>زيارة مباشرة المقر</option>
-                  <option>موقع الشركة الإلكتروني</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">المشروع المستهدف</label>
-              <select name="projectId" className="w-full border rounded-lg p-2.5 text-xs">
-                <option value="">-- اختر مشروعاً عقارياً --</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              type="submit"
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors p-2.5 rounded-lg text-xs font-semibold"
-            >
-              تسجيل العميل في النظام وتحقق التكرار
-            </button>
-          </form>
+            );
+          })}
         </div>
-
-        {/* عرض جدول العملاء الحقيقيين من قاعدة البيانات */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      ) : (
+        /* طريقة العرض 2: عرض جدول البيانات الكلاسيكي المنسق بالكامل بالعربية */
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex flex-wrap gap-2 items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-xs">العملاء النشطين ومستويات الاهتمام</h3>
+            <h3 className="font-bold text-slate-800 text-xs">جدول تتبع بيانات العملاء والصفقات</h3>
             <input 
               type="text" 
               placeholder="البحث برقم الهاتف..." 
@@ -164,11 +206,11 @@ export default function LeadsPage() {
             <table className="w-full text-xs text-right">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="px-4 py-3">الاسم والبيانات</th>
-                  <th className="px-4 py-3">المشروع العقاري</th>
-                  <th className="px-4 py-3">المصدر والمدينة</th>
-                  <th className="px-4 py-3">الحالة والرحلة</th>
-                  <th className="px-4 py-3">مستوى الجدية</th>
+                  <th className="px-5 py-3">الاسم والبيانات</th>
+                  <th className="px-4 py-3">المشروع المستهدف</th>
+                  <th className="px-4 py-3">قناة الإعلان والمدينة</th>
+                  <th className="px-4 py-3">حالة العميل الحالية</th>
+                  <th className="px-5 py-3">مستوى الجدية</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -183,9 +225,9 @@ export default function LeadsPage() {
                     .filter(l => l.phone.includes(searchPhone))
                     .map((lead) => (
                       <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3.5">
+                        <td className="px-5 py-3.5">
                           <p className="font-bold text-slate-800">{lead.firstName} {lead.lastName || ""}</p>
-                          <p className="text-[10px] text-slate-500">{lead.phone}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5" dir="ltr">{lead.phone}</p>
                         </td>
                         <td className="px-4 py-3.5">
                           {lead.project ? (
@@ -198,14 +240,14 @@ export default function LeadsPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <p className="font-medium text-slate-700">{lead.source}</p>
-                          <p className="text-[10px] text-gray-500">{lead.city}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{lead.city}</p>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-600 border border-sky-100">
                             {lead.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 font-bold text-slate-700">
+                        <td className="px-5 py-3.5 font-bold text-slate-700">
                           {lead.leadScore}%
                         </td>
                       </tr>
@@ -215,8 +257,7 @@ export default function LeadsPage() {
             </table>
           </div>
         </div>
-        
-      </div>
+      )}
     </div>
   );
 }
