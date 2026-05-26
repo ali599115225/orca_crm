@@ -265,7 +265,7 @@ export default function LeadsPage() {
                         </td>
                         <td className="px-5 py-3.5 font-bold text-slate-700">
                           <a 
-                            href={`/operations/contract/${lead.id}`}
+                            href={`/contract/${lead.id}`}
                             target="_blank"
                             className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-lg transition-colors inline-block"
                           >
