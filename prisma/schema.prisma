@@ -48,22 +48,6 @@ enum TaskStatus {
   OVERDUE
 }
 
-model Tenant {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyName       String         @map("company_name")
-  subdomain         String         @unique
-  subscriptionPlan  String         @default("basic") @map("subscription_plan")
-  isActive          Boolean        @default(true) @map("is_active")
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  users             User[]
-  projects          Project[]
-  leads             Lead[]
-  leadActivities    LeadActivity[]
-  tasks             Task[]
-
-  @@map("tenants")
-}
-
 model User {
   id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId       String         @map("tenant_id") @db.Uuid
