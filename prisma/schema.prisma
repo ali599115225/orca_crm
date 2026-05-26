@@ -2,7 +2,6 @@
 
 datasource db {
   provider = "postgresql"
-  
 }
 generator client {
   provider = "prisma-client-js"
@@ -161,6 +160,21 @@ model Tenant {
   leads               Lead[]
   leadActivities      LeadActivity[]
   tasks               Task[]
+  tickets             Ticket[]
 
   @@map("tenants")
+}
+
+model Ticket {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String   @db.Text
+  status      String   @default("OPEN") // OPEN, CLOSED
+  aiResponse  String?  @map("ai_response") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("tickets")
 }

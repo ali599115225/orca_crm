@@ -117,6 +117,13 @@ export default async function OperationsLayout({
             <span>إعدادات النظام</span>
           </a>
 
+          <a href="/operations/helpdesk" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
+            <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>مركز الدعم والوكيل مساعد</span>
+          </a>
+
           {/* زر تسجيل الخروج */}
           <form action={logoutAction} className="pt-4 border-t border-slate-800/80">
             <button 
@@ -139,6 +146,12 @@ export default async function OperationsLayout({
 
       {/* محتوى الشاشة الرئيسي */}
       <main className="flex-1 flex flex-col min-w-0 text-right" dir="rtl">
+        {/* شريط تنبيه الصيانة المجدولة من وكيل صيانة الموقع */}
+        <div className="bg-slate-900 text-slate-200 text-[10px] font-bold py-2.5 px-6 text-center flex items-center justify-center gap-1.5 border-b border-slate-800 shrink-0">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+          <span>🛠️ تنبيه وكيل الصيانة: صيانة وقائية مجدولة يوم الجمعة القادم الساعة 2:00 صباحاً (بتوقيت الرياض) لمدة 30 دقيقة.</span>
+        </div>
+
         {/* شريط التنبيه المالي والتشغيلي الذكي للمستأجرين الجدد في الأعلى */}
         {isNewTenant && (
           <div className="bg-amber-500 text-slate-950 text-[10px] font-black py-2.5 px-6 text-center animate-pulse flex items-center justify-center gap-1.5 border-b border-amber-600/30">
