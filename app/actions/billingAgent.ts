@@ -55,7 +55,7 @@ export async function handleSuccessfulPaymentAction(tenantId: string, plan: stri
       throw new Error("لم يتم العثور على حساب المدير العام للمنشأة العقارية.");
     }
 
-    // 3. توليد وتشفيير وإرسال بيانات الدخول الآمنة للمطور [1.1.2, 1.2.1, 1.2.2]
+    // 3. توليد وتشفير وإرسال بيانات الدخول الآمنة للمطور [1.1.2, 1.2.1, 1.2.2]
     const plainPassword = generateSecureRandomPassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
@@ -105,7 +105,6 @@ export async function handleSuccessfulPaymentAction(tenantId: string, plan: stri
 
 /**
  * 🤖 الوكيل الذكي (سند) - الفحص والتعطيل التلقائي للاشتراكات المنتهية (SaaS Expiry Engine) [1.1, 1.1.2, 1.2.1]
- * (يمكن جدولة تشغيل هذه الدالة كـ Cron Job يومي أو تفعيلها عند كل عملية دخول لتتحقق آلياً)
  */
 export async function checkAndSuspendExpiredTenantsAction() {
   try {
