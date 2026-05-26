@@ -36,13 +36,23 @@ export async function proxy(request: NextRequest) {
 
     try {
       const { payload } = await jwtVerify(sessionToken, SECRET_KEY);
+      const isSuperAdmin = payload.email === "ali.orca@outlook.sa" || payload.email === "elite.orca@outlook.sa";
 
-      // فحص أمان الـ SaaS الصارم:
-      // نتجاوز هذا الفحص الصارم فقط في روابط فيرسيل التجريبية المجانية لتسهيل الفحص والتجربة
-      if (!isVercelPreview && payload.tenantSubdomain !== currentSubdomain) {
-        const response = NextResponse.redirect(new URL("/login", request.url));
-        response.cookies.delete("session_token");
-        return response;
+      // فحص أمان الـ SaaS الصارم وتوجيه المستخدم لنطاقه الفرعي الصحيح (لغير المشرفين فقط)
+      if (!isSuperAdmin) {
+        const isProductionDomain = host.includes("orca.az-ez.pro");
+
+        if (isProductionDomain && payload.tenantSubdomain !== currentSubdomain) {
+          if (payload.tenantSubdomain) {
+            return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro${pathname}`, request.url));
+          }
+        }
+
+        if (!isProductionDomain && !isVercelPreview && payload.tenantSubdomain !== currentSubdomain) {
+          const response = NextResponse.redirect(new URL("/login", request.url));
+          response.cookies.delete("session_token");
+          return response;
+        }
       }
     } catch (e) {
       const response = NextResponse.redirect(new URL("/login", request.url));
@@ -55,8 +65,20 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/login" && sessionToken) {
     try {
       const { payload } = await jwtVerify(sessionToken, SECRET_KEY);
-      if (payload.tenantSubdomain === currentSubdomain) {
+      const isSuperAdmin = payload.email === "ali.orca@outlook.sa" || payload.email === "elite.orca@outlook.sa";
+      
+      if (isSuperAdmin) {
+        // للمشرف العام: نقله للتحليلات بنفس النطاق الفرعي الحالي مباشرة
         return NextResponse.redirect(new URL("/operations/analytics", request.url));
+      } else {
+        const isProductionDomain = host.includes("orca.az-ez.pro");
+        if (isProductionDomain && payload.tenantSubdomain !== currentSubdomain) {
+          if (payload.tenantSubdomain) {
+            return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro/operations/analytics`, request.url));
+          }
+        } else if (payload.tenantSubdomain === currentSubdomain) {
+          return NextResponse.redirect(new URL("/operations/analytics", request.url));
+        }
       }
     } catch (e) {
       // تجاهل الخطأ

@@ -9,18 +9,21 @@ import { cache } from "react";
  * تم تغليفها بـ cache لتفادي تكرار الاستعلامات في الطلب الواحد
  */
 export const getActiveTenant = cache(async function getActiveTenantInternal() {
-  // 1. أولاً: التحقق مما إذا كان هناك مستخدم مسجل دخوله حالياً ونستخرج شركته مباشرة
+  // 1. أولاً: التحقق من الجلسة والصلاحيات الفوقية للمشرف العام
   const session = await getSession();
-  if (session && session.tenantId) {
+  const isSuperAdmin = session && (session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa");
+
+  // إذا لم يكن مشرفاً عاماً، نلتزم تماماً بشركته المحددة بالجلسة (العزل الصارم والحماية من التطفل)
+  if (session && session.tenantId && !isSuperAdmin) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId as string },
     });
     if (tenant && tenant.isActive) {
-      return tenant; // إرجاع شركة الموظف المسجل دخوله فوراً
+      return tenant; // إرجاع شركة الموظف المسجل دخوله فوراً لمنع التداخل
     }
   }
 
-  // 2. ثانياً (في حال عدم وجود جلسة - مثل صفحة الدخول العامة): نعتمد على نطاق المتصفح الفرعي
+  // 2. إذا كان مشرفاً عاماً أو لا توجد جلسة نشطة: نعتمد على نطاق المتصفح الفرعي لتمكينه من رؤية بيانات الشركة النشطة بالرابط
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const domainParts = host.split(".");

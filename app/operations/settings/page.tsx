@@ -16,6 +16,7 @@ export default async function SettingsPage() {
         companyName: tenant.companyName,
         subdomain: tenant.subdomain,
         subscriptionPlan: tenant.subscriptionPlan,
+        extraAgents: tenant.extraAgents || 0,
       }} 
     />
   );

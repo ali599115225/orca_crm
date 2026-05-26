@@ -16,14 +16,30 @@ export function LoginForm() {
     setError(null);
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const result = await loginAction(formData);
-    setLoading(false);
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.append("clientHost", window.location.host);
+      formData.append("clientProto", window.location.protocol.replace(":", ""));
+      const result = await loginAction(formData);
+      setLoading(false);
 
-    if (result.success) {
-      router.push("/operations/analytics");
-    } else {
-      setError(result.error || "فشل تسجيل الدخول.");
+      if (!result) {
+        setError("لم يتم تلقي أي استجابة من خادم النظام. يرجى تحديث الصفحة والمحاولة مجدداً.");
+        return;
+      }
+
+      if (result.success) {
+        if (result.redirectUrl && result.redirectUrl.startsWith("http")) {
+          window.location.href = result.redirectUrl;
+        } else {
+          router.push(result.redirectUrl || "/operations/analytics");
+        }
+      } else {
+        setError(result.error || "فشل تسجيل الدخول. يرجى التحقق من البيانات.");
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || "حدث خطأ غير متوقع أثناء تسجيل الدخول.");
     }
   };
 

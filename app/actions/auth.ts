@@ -20,17 +20,18 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
     }
 
-    const tenant = await getActiveTenant();
-
+    // 🔍 البحث عن المستخدم عالمياً بالبريد الإلكتروني لأن البريد فريد ومميز على مستوى النظام
     const user = await prisma.user.findFirst({
       where: {
         email: email.trim().toLowerCase(),
-        tenantId: tenant.id,
         isActive: true,
       },
+      include: {
+        tenant: true,
+      }
     });
 
-    if (!user) {
+    if (!user || !user.tenant || !user.tenant.isActive) {
       throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");
     }
 
@@ -41,26 +42,94 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
     }
 
+    const host = formData.get("clientHost") as string || "orca.az-ez.pro";
+    const proto = formData.get("clientProto") as string || "https";
+    const isSecureConnection = proto === "https";
+    
+    const isSuperAdmin = user.email === "ali.orca@outlook.sa" || user.email === "elite.orca@outlook.sa";
+    
+    const cookieStore = await cookies();
+
+    // 🛡️ حماية الأجهزة والأمن السحابي ضد الدخول المتقاطع للشركات (حتى لو تم تسريب الإيميل والباسورد)
+    if (!isSuperAdmin) {
+      const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
+      if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
+        throw new Error(
+          `عذراً، هذا المتصفح/الجهاز مسجل ومرتبط بشركة أخرى (${deviceTenant}). يُمنع الدخول المتقاطع لحماية سرية البيانات.`
+        );
+      }
+    }
+    
+    // 🛡️ فحص النطاق العقاري ومطابقة الشركة للوقاية من التطفل وتسجيل الدخول المتقاطع
+    const domainParts = host.split(".");
+    let currentSubdomain = "orca";
+    if (domainParts.length > 2) {
+      currentSubdomain = domainParts[0];
+    }
+
+    const isTenantSubdomain = currentSubdomain !== "orca" && currentSubdomain !== "dar-al-amar";
+
+    if (!isSuperAdmin && isTenantSubdomain && user.tenant.subdomain !== currentSubdomain) {
+      throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
+    }
+
     const sessionPayload = {
       userId: user.id,
-      tenantId: tenant.id,
-      tenantSubdomain: tenant.subdomain,
+      tenantId: user.tenant.id,
+      tenantSubdomain: user.tenant.subdomain,
       role: user.role,
       name: user.name,
+      email: user.email, // إدراج البريد لتسهيل التحقق الإشرافي بالوسيط
     };
 
     const sessionToken = await encrypt(sessionPayload);
-    const cookieStore = await cookies();
     
-    cookieStore.set("session_token", sessionToken, {
+    // التحقق مما إذا كان النطاق الحالي مخصصاً للإنتاج
+    const isCustomDomain = host.includes("orca.az-ez.pro");
+
+    const cookieOptions: any = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecureConnection,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24, // 24 ساعة صلاحية الجلسة
-    });
+    };
 
-    return { success: true };
+    // مشاركة الكوكيز عبر جميع النطاقات الفرعية للنطاق المخصص
+    if (isCustomDomain) {
+      cookieOptions.domain = "orca.az-ez.pro";
+    }
+
+    cookieStore.set("session_token", sessionToken, cookieOptions);
+
+    // تعيين النطاق العقاري الدائم للجهاز لمنع التطفل المتقاطع مستقبلاً
+    if (!isSuperAdmin) {
+      cookieStore.set("device_tenant_subdomain", user.tenant.subdomain, {
+        httpOnly: true,
+        secure: isSecureConnection,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365, // سنة كاملة
+        domain: isCustomDomain ? "orca.az-ez.pro" : undefined,
+      });
+    }
+
+    // تحديد رابط التوجيه المناسب للمستأجر
+    let redirectUrl = "/operations/analytics";
+    if (isCustomDomain) {
+      if (isSuperAdmin) {
+        // للمشرف العام: إبقاؤه على النطاق الحالي (الرئيسي أو الفرعي الذي يسجل الدخول منه) لمنع مشاكل النطاقات الفرعية
+        if (isTenantSubdomain) {
+          redirectUrl = `https://${currentSubdomain}.orca.az-ez.pro/operations/analytics`;
+        } else {
+          redirectUrl = "/operations/analytics";
+        }
+      } else {
+        redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations/analytics`;
+      }
+    }
+
+    return { success: true, redirectUrl };
 
   } catch (error: any) {
     return { success: false, error: error.message };

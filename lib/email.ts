@@ -12,17 +12,18 @@ const resend = new Resend(RESEND_API_KEY || 're_dummy_key_for_testing');
  */
 export async function sendAdminEmailAlert(subject: string, htmlContent: string) {
   try {
-    const adminEmail = process.env.ADMIN_ALERT_EMAIL || "ali599115225@gmail.com"; // بريدك الشخصي لتلقي التنبيهات
+    const adminEmail = process.env.ADMIN_ALERT_EMAIL || "elite.orca@outlook.sa"; // بريدك الشخصي لتلقي التنبيهات
+    const recipients = [adminEmail, "ali.orca@outlook.sa"];
 
     if (RESEND_API_KEY) {
       // إرسال حقيقي سحابي عبر خوادم Resend
       await resend.emails.send({
         from: 'ORCA CRM <onboarding@resend.dev>', // نطاق الإرسال الافتراضي المجاني للتجربة
-        to: adminEmail,
+        to: recipients,
         subject: subject,
         html: htmlContent,
       });
-      console.log(`✉️ [سيرفر البريد السحابي] ➔ تم إرسال بريد تنبيهي بنجاح إلى: ${adminEmail}`);
+      console.log(`✉️ [سيرفر البريد السحابي] ➔ تم إرسال بريد تنبيهي بنجاح إلى: ${recipients.join(", ")}`);
     } else {
       // محاكاة الإرسال محلياً في السجلات للتجربة بدون مفتاح
       console.log(`✉️ [سجل البريد السحابي - تجريبي] ➔ الموضوع: "${subject}" | التنبيه: ${htmlContent}`);

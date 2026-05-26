@@ -6,56 +6,115 @@ import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 
 /**
- * فحص أمان أولي للتأكد من أن المستخدم الحالي هو المسؤول العام للمنصة (Super Admin)
+ * دالة التحقق الأمني الفوقي لمنع أي وصول غير مصرح به للعمليات الإدارية
  */
 async function verifySuperAdmin() {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") {
-    throw new Error("عذراً، غير مصرح لك بالوصول إلى لوحة التحكم الإدارية الكبرى.");
+  if (!session) {
+    throw new Error("يجب تسجيل الدخول أولاً.");
   }
-  return session;
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId as string }
+  });
+
+  const userEmail = user?.email || "";
+  const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
+
+  if (!isSuperAdmin) {
+    throw new Error("عذراً، غير مصرح لك بتنفيذ هذه العملية الإدارية.");
+  }
+
+  return { session, user };
 }
 
 /**
- * جلب جميع المنشآت العقارية المسجلة في النظام مع إحصائيات بياناتها
+ * تحديث تذكرة الدعم الفني يدوياً من قبل الإدارة الفوقية
  */
-export async function getTenantsListAction() {
+export async function adminUpdateTicketAction(ticketId: string, status: "OPEN" | "CLOSED", responseText: string) {
   try {
-    await verifySuperAdmin(); // فحص الأمان
-    
-    return await prisma.tenant.findMany({
-      include: {
-        _count: {
-          select: {
-            users: true,    // عدد الموظفين
-            leads: true,    // عدد العملاء
-            projects: true, // عدد المشاريع
-          }
-        }
-      },
-      orderBy: { createdAt: "desc" },
+    await verifySuperAdmin();
+
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        status: status,
+        aiResponse: responseText.trim(),
+        updatedAt: new Date()
+      }
     });
-  } catch (error) {
-    console.error("فشل جلب قائمة المنشآت:", error);
-    return [];
+
+    revalidatePath("/operations/support-monitor");
+    revalidatePath("/operations/helpdesk");
+    return { success: true };
+  } catch (error: any) {
+    console.error("خطأ إدارة التذاكر الفوقي:", error);
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * تعطيل أو تفعيل حساب منشأة عقارية بالكامل
+ * تعديل حالة مستأجر النظام أو الباقة يدوياً من قبل الإدارة
  */
-export async function toggleTenantStatusAction(tenantId: string, currentStatus: boolean) {
+export async function adminUpdateTenantPlanAction(tenantId: string, plan: string, isActive: boolean) {
   try {
     await verifySuperAdmin();
 
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        isActive: !currentStatus,
+        subscriptionPlan: plan,
+        isActive: isActive
       }
     });
 
+    revalidatePath("/operations/support-monitor");
+    revalidatePath("/operations/settings");
+    return { success: true };
+  } catch (error: any) {
+    console.error("خطأ إدارة باقات المستأجرين الفوقي:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * جلب جميع الشركات من أجل لوحة الإدارة العامة الأصلية
+ */
+export async function getTenantsListAction() {
+  try {
+    await verifySuperAdmin();
+    return await prisma.tenant.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: {
+            users: true,
+            projects: true,
+            leads: true,
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("خطأ جلب الشركات:", error);
+    return [];
+  }
+}
+
+/**
+ * تعديل حالة تفعيل الشركة (نشط / معطل)
+ */
+export async function toggleTenantStatusAction(tenantId: string, currentStatus: boolean) {
+  try {
+    await verifySuperAdmin();
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        isActive: !currentStatus
+      }
+    });
     revalidatePath("/admin");
+    revalidatePath("/operations/support-monitor");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -63,20 +122,20 @@ export async function toggleTenantStatusAction(tenantId: string, currentStatus: 
 }
 
 /**
- * تحديث يدوي لباقة اشتراك المنشأة العقارية
+ * تحديث باقة اشتراك الشركة
  */
-export async function updateTenantPlanAction(tenantId: string, newPlan: string) {
+export async function updateTenantPlanAction(tenantId: string, plan: string) {
   try {
     await verifySuperAdmin();
-
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        subscriptionPlan: newPlan,
+        subscriptionPlan: plan
       }
     });
-
     revalidatePath("/admin");
+    revalidatePath("/operations/support-monitor");
+    revalidatePath("/operations/settings");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

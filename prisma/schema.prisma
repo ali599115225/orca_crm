@@ -153,6 +153,8 @@ model Tenant {
   subscriptionExpiresAt DateTime?      @map("subscription_expires_at") @db.Timestamptz
   paymentStatus       String         @default("UNPAID") @map("payment_status")
   billingCycle        String         @default("MONTHLY") @map("billing_cycle")
+  extraAgents         Int            @default(0) @map("extra_agents")
+  whatsappConnected   Boolean        @default(false) @map("whatsapp_connected")
 
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   users               User[]

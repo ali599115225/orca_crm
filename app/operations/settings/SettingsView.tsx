@@ -3,13 +3,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { initiateSubscriptionPaymentAction } from '@/app/actions/payment';
+import { initiateSubscriptionPaymentAction, initiateAddonPaymentAction } from '@/app/actions/payment';
 
 interface SettingsViewProps {
   tenant: {
     companyName: string;
     subdomain: string;
     subscriptionPlan: string;
+    extraAgents: number;
   };
 }
 
@@ -18,6 +19,10 @@ export default function SettingsView({ tenant }: SettingsViewProps) {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // حالات شراء الوكلاء الإضافيين
+  const [agentCount, setAgentCount] = useState(1);
+  const [loadingAgent, setLoadingAgent] = useState(false);
 
   useEffect(() => {
     // قراءة رسائل النجاح أو الفشل من رابط الـ Redirect للبوابة
@@ -40,6 +45,21 @@ export default function SettingsView({ tenant }: SettingsViewProps) {
       window.location.href = result.paymentUrl;
     } else {
       setError(result.error || "عذراً، فشل بدء عملية الدفع والاتصال بالبوابة.");
+    }
+  };
+
+  const handleBuyAgents = async () => {
+    setSuccess(null);
+    setError(null);
+    setLoadingAgent(true);
+
+    const result = await initiateAddonPaymentAction(agentCount);
+    setLoadingAgent(false);
+
+    if (result.success && result.paymentUrl) {
+      window.location.href = result.paymentUrl;
+    } else {
+      setError(result.error || "عذراً، فشل بدء عملية الدفع لشراء الوكلاء.");
     }
   };
 
@@ -183,6 +203,77 @@ export default function SettingsView({ tenant }: SettingsViewProps) {
                 {loadingPlan === 'enterprise' ? 'جاري التحضير للترقية...' : tenant.subscriptionPlan === 'enterprise' ? 'باقتك الحالية' : 'ترقية الآن (مدى / فيزا)'}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* قسم شراء وكلاء إضافيين */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+        <div className="border-b pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">شراء وكلاء ذكاء اصطناعي إضافيين (AI Sales Agents)</h2>
+            <p className="text-gray-500 text-[10px] mt-1">توسيع سعة فريق المبيعات الآلي لديك عبر زيادة عدد وكلاء الذكاء الاصطناعي النشطين</p>
+          </div>
+          <div className="bg-slate-900 text-amber-500 border border-slate-800 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2">
+            <span>الوكلاء الإضافيون المشتراة:</span>
+            <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-lg text-xs font-black">{tenant.extraAgents}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 border rounded-xl space-y-2">
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>سعر الوكيل الإضافي للباقة الحالية:</span>
+                <span className="font-bold text-slate-900">{tenant.subscriptionPlan === "basic" ? "75 ر.س" : "60 ر.س"} / شهرياً</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>الحد الأقصى للزيادة في الطلب الواحد:</span>
+                <span className="font-bold text-slate-900">10 وكلاء</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-bold text-slate-700">تحديد عدد الوكلاء:</span>
+              <div className="flex items-center border rounded-xl overflow-hidden bg-white">
+                <button 
+                  onClick={() => setAgentCount(prev => Math.max(1, prev - 1))}
+                  className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border-l cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="px-5 py-2 text-xs font-bold text-slate-800 w-12 text-center select-none">
+                  {agentCount}
+                </span>
+                <button 
+                  onClick={() => setAgentCount(prev => Math.min(10, prev + 1))}
+                  className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border-r cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 bg-slate-900 text-white rounded-2xl flex flex-col justify-between h-full border border-slate-850">
+            <div className="space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold tracking-wider">تفاصيل الدفع لزيادة السعة</span>
+              <div className="flex justify-between items-baseline mt-2">
+                <span className="text-2xl font-black text-amber-500">
+                  {agentCount * (tenant.subscriptionPlan === "basic" ? 75 : 60)}
+                </span>
+                <span className="text-[10px] text-slate-300"> ر.س إجمالي القيمة</span>
+              </div>
+              <p className="text-[9px] text-slate-400">سيتم إضافة الوكلاء فوراً لحسابك وتفعيل صلاحيات الرد المباشر بمجرد الدفع.</p>
+            </div>
+
+            <button
+              onClick={handleBuyAgents}
+              disabled={loadingAgent}
+              className="w-full mt-4 bg-amber-500 hover:bg-amber-600 text-slate-950 p-2.5 rounded-xl text-xs font-black transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {loadingAgent ? "جاري تحضير الفاتورة..." : "شراء وكلاء الآن (مدى / فيزا)"}
+            </button>
           </div>
         </div>
       </div>
