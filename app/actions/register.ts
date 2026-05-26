@@ -5,10 +5,9 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { sendSMSNotification } from "@/lib/notifications"; // استدعاء إشعارات الجوال
+import { sendAdminEmailAlert } from "@/lib/email"; // استدعاء إشعارات البريد
 
-/**
- * تسجيل منشأة عقارية جديدة وحقن بيانات تجريبية نموذجية لتهيئة لوحة التحكم فورياً للعمل [1.2.1, 1.2.2]
- */
 export async function registerTenantAction(formData: FormData) {
   try {
     const companyName = formData.get("companyName") as string;
@@ -51,19 +50,17 @@ export async function registerTenantAction(formData: FormData) {
     // 3. تشفير كلمة المرور بنظام Bcrypt الآمن [1.1.2]
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    // 4. معالجة إنشاء الشركة والبيانات التجريبية النموذجية في عملية برمجية تبادلية واحدة (Database Transaction) [1.1.2]
+    // 4. معالجة إنشاء الشركة والبيانات التجريبية النموذجية
     const result = await prisma.$transaction(async (tx) => {
       
-      // أ. إنشاء المنشأة بقيمة فارغة للملف (لتنشيط لافتة التفعيل والـ Onboarding) [1.2.1, 1.2.2]
       const newTenant = await tx.tenant.create({
         data: {
-          companyName: "منشأة جديدة قيد التأسيس", // نترك الاسم التجاري فارغاً لتعميره لاحقاً
+          companyName: "منشأة جديدة قيد التأسيس", 
           subdomain: cleanSubdomain,
           subscriptionPlan: "basic",
         },
       });
 
-      // ب. إنشاء حساب المدير العام (Admin) وربطه بالمنشأة [1.1.2, 1.2.1]
       const newAdmin = await tx.user.create({
         data: {
           tenantId: newTenant.id,
@@ -74,7 +71,7 @@ export async function registerTenantAction(formData: FormData) {
         },
       });
 
-      // ج. حقن مشروع عقاري تجريبي ذكي للعميل الجديد [1.2.2]
+      // حقن البيانات التجريبية تلقائياً للعميل الجديد [1.2.2]
       const demoProject = await tx.project.create({
         data: {
           tenantId: newTenant.id,
@@ -89,7 +86,6 @@ export async function registerTenantAction(formData: FormData) {
         }
       });
 
-      // د. حقن 3 عملاء محتملين سعوديين ديمو لتعبئة الرسوم والتقارير حياً [1.2.2]
       const lead1 = await tx.lead.create({
         data: {
           tenantId: newTenant.id,
@@ -138,7 +134,6 @@ export async function registerTenantAction(formData: FormData) {
         }
       });
 
-      // هـ. حقن مهمتين معلقتين بجدول المتابعات لربط الأقسام والعمليات [1.2.2]
       await tx.task.create({
         data: {
           tenantId: newTenant.id,
@@ -146,7 +141,7 @@ export async function registerTenantAction(formData: FormData) {
           assignedTo: newAdmin.id,
           title: "الاتصال بسليمان لتنسيق موعد زيارة المعاينة لفيلا العرض",
           description: "تحديد وقت مناسب للعميل لمعاينة النماذج السكنية وحالتها الهندسية.",
-          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // غداً
+          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), 
           priority: "HIGH",
           status: "PENDING",
         }
@@ -159,7 +154,7 @@ export async function registerTenantAction(formData: FormData) {
           assignedTo: newAdmin.id,
           title: "تجهيز الحسبة التمويلية وتفصيل أقساط بنك الراجحي لسارة",
           description: "حساب نسبة الاستقطاع القصوى DSR وإرسال العرض المبدئي عبر الـ PDF.",
-          dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000), // بعد غد
+          dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000), 
           priority: "MEDIUM",
           status: "PENDING",
         }
@@ -168,7 +163,29 @@ export async function registerTenantAction(formData: FormData) {
       return { newTenant, newAdmin };
     });
 
-    // 5. توقيع الـ JWT وتسجيل الدخول التلقائي
+    // 🚀 الإجراء التنبيهي 1: إرسال رسالة SMS لجوالك فورياً لإعلامك بالعميل الجديد [1.2.1]
+    const myMobile = process.env.ADMIN_ALERT_MOBILE || "+966557516311"; // هاتف التنبيهات الخاص بك
+    const alertSMS = `🔔 تنبيه أوركا: تم تسجيل منشأة جديدة بالمنصة باسم (${companyName}) بنطاق فرعي (${cleanSubdomain}) بنجاح!`;
+    await sendSMSNotification(myMobile, alertSMS);
+
+    // 🚀 الإجراء التنبيهي 2: إرسال بريد إلكتروني منسق بالكامل لبريدك الشخصي [1.1.2, 1.2.1]
+    const emailSubject = `🏢 تسجيل منشأة جديدة بالمنصة: ${companyName}`;
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; padding: 20px;">
+        <h2 style="color: #f59e0b;">🔔 تنبيه إدارة ORCA CRM</h2>
+        <p>تم تسجيل مطور عقاري جديد بنجاح ببيانات المنصة السحابية:</p>
+        <ul>
+          <li><strong>اسم المنشأة:</strong> ${companyName}</li>
+          <li><strong>النطاق الفرعي:</strong> ${cleanSubdomain}.orcacrm.sa</li>
+          <li><strong>اسم المسؤول:</strong> ${adminName}</li>
+          <li><strong>البريد الإلكتروني:</strong> ${adminEmail}</li>
+        </ul>
+        <p style="color: #10b981; font-weight: bold;">تلقائياً، تم إنشاء قاعدة البيانات وحقن بيانات الديمو التجريبية بنجاح!</p>
+      </div>
+    `;
+    await sendAdminEmailAlert(emailSubject, emailHtml);
+
+    // توقيع الـ JWT وتسجيل الدخول
     const sessionPayload = {
       userId: result.newAdmin.id,
       tenantId: result.newTenant.id,
@@ -185,7 +202,7 @@ export async function registerTenantAction(formData: FormData) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 ساعة صلاحية الجلسة
+      maxAge: 60 * 60 * 24, 
     });
 
     return { success: true, subdomain: result.newTenant.subdomain };
