@@ -54,7 +54,9 @@ export async function createProjectAction(formData: FormData) {
 
     await prisma.project.create({
       data: {
-        tenantId: tenant.id,
+        tenant: {
+          connect: { id: tenant.id }
+        },
         name,
         city,
         status,

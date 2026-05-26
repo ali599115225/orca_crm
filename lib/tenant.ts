@@ -1,13 +1,14 @@
-// lib/tenant.ts
 import { headers } from "next/headers";
 import { prisma } from "./prisma";
 import { getSession } from "./session"; // استدعاء الجلسة
+import { cache } from "react";
 
 /**
  * وظيفة برمجية تجلب بيانات الشركة النشطة (Tenant) تلقائياً
  * مع إعطاء الأولوية المطلقة لجلسة المستخدم المسجل دخوله حالياً لضمان دقة البيانات
+ * تم تغليفها بـ cache لتفادي تكرار الاستعلامات في الطلب الواحد
  */
-export async function getActiveTenant() {
+export const getActiveTenant = cache(async function getActiveTenantInternal() {
   // 1. أولاً: التحقق مما إذا كان هناك مستخدم مسجل دخوله حالياً ونستخرج شركته مباشرة
   const session = await getSession();
   if (session && session.tenantId) {
@@ -48,4 +49,4 @@ export async function getActiveTenant() {
   }
 
   return tenant;
-}
+});

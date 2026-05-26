@@ -1,184 +1,215 @@
 // app/page.tsx
-import React from 'react';
+import React from "react";
+import { prisma } from "@/lib/prisma";
+import { getActiveTenant } from "@/lib/tenant";
+import { createLeadAction } from "@/app/actions/leads"; // إعادة استخدام محرك تسجيل العملاء الآمن
 
-export default function LandingPage() {
+export const metadata = {
+  title: "شركة صرح الوطن العقارية - الفخامة والأصالة المعمارية بالمملكة",
+};
+
+export default async function CorporateHomePage() {
+  let companyName = "صرح الوطن العقارية";
+  let projects: any[] = [];
+  
+  try {
+    // 1. جلب بيانات المنشأة العقارية النشطة لشركتك تلقائياً من قاعدة البيانات السحابية
+    const tenant = await getActiveTenant();
+    companyName = tenant.companyName || "صرح الوطن العقارية";
+    
+    // 2. جلب مشاريعك العقارية الحقيقية والنشطة لتعرض حياً للجمهور مباشرة [2]
+    projects = await prisma.project.findMany({
+      where: { 
+        tenantId: tenant.id,
+        status: { in: ["UNDER_CONSTRUCTION", "COMPLETED"] } // عرض المشاريع الجاهزة وتحت الإنشاء فقط
+      },
+    });
+  } catch (e) {
+    // خطوة أمان بديلة في حال تعذر الاتصال المؤقت
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans text-right antialiased selection:bg-amber-500/20 selection:text-amber-500" dir="rtl">
       
-      {/* 1. شريط التنقل العلوي (Navbar) بتأثير زجاجي شفاف */}
+      {/* هيدر الموقع الرسمي الزجاجي الفخم */}
       <header className="sticky top-0 z-50 bg-slate-950/70 backdrop-blur-md border-b border-slate-900 h-16 flex items-center justify-between px-6 md:px-12">
         <div className="flex items-center space-x-reverse space-x-3">
-          <span className="text-xl font-black tracking-wider text-amber-500">ORCA CRM</span>
-          <span className="hidden md:inline-block bg-slate-900 text-[10px] px-2.5 py-1 rounded-md text-slate-400 font-extrabold border border-slate-800">
-            شريك التطوير العقاري
-          </span>
+          {/* شعار أوركا الفاخر */}
+          <svg width="35" height="35" viewBox="0 0 120 120" className="shrink-0">
+            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#F59E0B" />
+              <stop offset="100%" stop-color="#D97706" />
+            </linearGradient>
+            <path d="M15 55 L65 15 L115 55" fill="none" stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M65 25 C85 45 105 75 105 105 C105 115 95 120 85 115 C65 105 45 80 45 25 Z" fill="#0B132B"/>
+            <rect x="52" y="65" width="10" height="50" rx="3" fill="url(#goldGrad)"/>
+          </svg>
+          <span className="text-lg font-black tracking-wider text-white">{companyName}</span>
         </div>
         
         <nav className="hidden md:flex items-center space-x-reverse space-x-6 text-xs font-bold text-slate-400">
-          <a href="#features" className="hover:text-white transition-colors">المميزات</a>
-          <a href="#pipeline" className="hover:text-white transition-colors">دورة العمليات</a>
-          <a href="#pricing" className="hover:text-white transition-colors">الباقات والأسعار</a>
-          <a href="#faq" className="hover:text-white transition-colors">الأسئلة الشائعة</a>
+          <a href="#about" className="hover:text-white transition-colors">من نحن</a>
+          <a href="#projects" className="hover:text-white transition-colors">مشاريعنا العقارية</a>
+          <a href="#register-interest" className="hover:text-white transition-colors">سجل اهتمامك بالوحدات</a>
         </nav>
 
         <div className="flex items-center space-x-reverse space-x-3">
-          <a href="/login" className="text-xs font-bold text-slate-300 hover:text-white transition-colors px-4 py-2">
-            تسجيل الدخول
-          </a>
-          <a href="/register" className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-4 py-2 rounded-xl transition-all duration-300 hover:scale-[1.03] shadow-lg shadow-amber-500/10">
-            ابدأ مجاناً
+          {/* رابط بوابة دخول المبيعات والإدارة */}
+          <a href="/login" className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-black px-4 py-2 rounded-xl transition-all duration-300 hover:scale-[1.03]">
+            🔐 بوابة دخول المستشارين
           </a>
         </div>
       </header>
 
-      {/* 2. قسم البطل الرئيسي (Hero Section) الفخم مع نقوش ضوئية */}
-      <section className="relative overflow-hidden py-20 px-6 md:px-12 text-center max-w-5xl mx-auto space-y-6 z-10">
+      {/* قسم البطل الفخم (Hero Section) للمطور العقاري */}
+      <section className="relative overflow-hidden py-24 px-6 md:px-12 text-center max-w-5xl mx-auto space-y-6 z-10">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/5 blur-[120px] rounded-full -z-10" />
         
         <span className="inline-block text-[10px] bg-amber-500/10 text-amber-500 font-extrabold px-4 py-1.5 rounded-full border border-amber-500/20 tracking-wider">
-          المنصة التشغيلية الأولى لشركات التطوير العقاري بالمملكة 🇸🇦
+          مطور عقاري وطني معتمد ومرخص من الهيئة العامة للعقار 🇸🇦
         </span>
         
         <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight text-white max-w-4xl mx-auto">
-          نظّم عمليات مبيعاتك وأغلق صفقاتك العقارية <span className="text-amber-500 bg-clip-text">بذكاء وسرعة فائقة</span>
+          نصنع جودة الحياة الفاخرة بـ <span className="text-amber-500 bg-clip-text">تطوير عقاري مستدام ومبتكر</span>
         </h1>
         
         <p className="text-xs md:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          ORCA هو نظام CRM تشغيلي مخصص بالكامل لقطاع التطوير العقاري السعودي. يساعدك في أتمتة حملاتك الإعلانية، ومنع تكرار العملاء، ومراقبة أداء المبيعات، ومتابعة رحلة العميل بالكامل داخل منشأتك [1, 2].
+          أهلاً بك في {companyName}. نحن نلتزم بتطوير أرقى المجمعات والأبراج والوحدات السكنية في أرجاء المملكة العربية السعودية، مصممة بأعلى معايير جودة الحياة المعمارية وأحدث التقنيات السكنية والتمويلية المتوافقة مع البنوك المحلية [1, 2].
         </p>
 
         <div className="pt-4 flex flex-col sm:flex-row justify-center items-center gap-3">
-          <a href="/register" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-8 py-3.5 rounded-xl transition-all duration-300 hover:scale-[1.03] shadow-xl shadow-amber-500/10">
-            ابدأ تجربتك السحابية المجانية
+          <a href="#register-interest" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-8 py-3.5 rounded-xl transition-all duration-300 hover:scale-[1.03] shadow-xl shadow-amber-500/10">
+            ✉ سجل اهتمامك بالوحدات السكنية
           </a>
-          <a href="#features" className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold px-8 py-3.5 rounded-xl transition-all duration-300">
-            استكشف الميزات والعمليات
+          <a href="#projects" className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold px-8 py-3.5 rounded-xl transition-all duration-300">
+            تصفح مشاريعنا السكنية حياً
           </a>
         </div>
       </section>
 
-      {/* 3. قسم المميزات الأساسية للنظام (SaaS Features) */}
-      <section id="features" className="py-20 bg-slate-950 border-t border-slate-900 px-6 md:px-12 max-w-7xl mx-auto">
+      {/* قسم المشاريع الحية والمعروضة للجمهور مباشرة من قاعدة بياناتك */}
+      <section id="projects" className="py-20 bg-slate-950 border-t border-slate-900 px-6 md:px-12 max-w-7xl mx-auto">
         <div className="text-center space-y-2 mb-16">
-          <h2 className="text-2xl md:text-3xl font-black text-white">لماذا يختار المطورون العقاريون منصة ORCA؟</h2>
-          <p className="text-xs text-slate-400 max-w-lg mx-auto">ميزات مصممة خصيصاً لحل أعقد المشاكل التشغيلية في المبيعات العقارية بالمملكة</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white">مشاريعنا العقارية النشطة</h2>
+          <p className="text-xs text-slate-400 max-w-lg mx-auto">نستعرض لك مشاريعنا السكنية والتجارية الحية والمتاحة للبيع والاطلاع حالياً بمدينة الرياض وجدة [2]</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* الميزة 1 */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-amber-500/40 transition-all duration-300">
-            <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">🚫</div>
-            <h4 className="font-extrabold text-sm text-white">منع تكرار العملاء (Duplicate Detection)</h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              يقوم النظام بالتحقق الصارم والفوري من أرقام الجوال المدخلة لمنع تكرار العملاء وحل تضارب المبيعات وتوزيع العمولات بعدالة تامة.
-            </p>
-          </div>
-
-          {/* الميزة 2 */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-amber-500/40 transition-all duration-300">
-            <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">🎯</div>
-            <h4 className="font-extrabold text-sm text-white">تقييم مستشاري المبيعات والـ KPIs</h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              احتساب نسب تحويل المستشارين من عملاء محتملين إلى حجز وعقود، ومراقبة سرعة استجابتهم للعملاء تلقائياً لزيادة كفاءة القسم [1.2.1].
-            </p>
-          </div>
-
-          {/* الميزة 3 */}
-          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-3 hover:border-amber-500/40 transition-all duration-300">
-            <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">🏢</div>
-            <h4 className="font-extrabold text-sm text-white">إدارة المشاريع ومراقبة المخزون</h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              تحديث دورة حياة المشاريع السكنية، تتبع حالة الوحدات (المباعة، المحجوزة، الشاغرة)، ومطابقتها الفورية مع العملاء لسهولة اتخاذ القرار.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.length === 0 ? (
+            <div className="col-span-3 bg-slate-900/20 p-12 text-center border border-slate-800/80 border-dashed rounded-2xl text-slate-400 text-xs font-bold">
+              لا يوجد مشاريع سكنية نشطة معروضة للجمهور حالياً. قم بإضافة مشاريعك من لوحة تحكم الإدارة لتعرض هنا تلقائياً حياً على الإنترنت! [2]
+            </div>
+          ) : (
+            projects.map((project) => (
+              <div key={project.id} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl overflow-hidden hover:border-amber-500/40 transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-bold">
+                      {project.status === "UNDER_CONSTRUCTION" ? "قيد الإنشاء" : "جاهز للسكن"}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-bold">{project.city}</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-white">{project.name}</h3>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    مجمع سكني راقٍ يتكون من {project.unitsTotal} وحدة سكنية فاخرة، مصممة بهوية معمارية تعزز جودة الحياة وتلبي تطلعات الأسر السعودية الحديثة [2].
+                  </p>
+                </div>
+                
+                {project.minPrice && (
+                  <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-900 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">تبدأ الأسعار من:</span>
+                    <span className="text-xs font-black text-amber-500">
+                      {Number(project.minPrice).toLocaleString("ar-SA")} ر.س
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </section>
 
-      {/* 4. قسم الباقات والأسعار الموحد (Pricing Section) */}
-      <section id="pricing" className="py-20 bg-slate-950 border-t border-slate-900 px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="text-center space-y-2 mb-16">
-          <h2 className="text-2xl md:text-3xl font-black text-white">خطط اشتراك مرنة تناسب حجم منشأتك</h2>
-          <p className="text-xs text-slate-400 max-w-lg mx-auto">باقات ممتازة تدعم الدفع المحلي بـ مدى ومصممة لدعم نموك العقاري من اليوم الأول [1.2.1]</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {/* باقة 1 */}
-          <div className="border border-slate-800 rounded-2xl p-6 bg-slate-900/20 flex flex-col justify-between shadow-xl">
-            <div>
-              <h3 className="font-bold text-slate-100 text-sm">الباقة الأساسية (Basic)</h3>
-              <p className="text-[10px] text-slate-400 mt-1">تأسيس ممتاز للشركات العقارية الناشئة</p>
-              <div className="my-4">
-                <span className="text-3xl font-black text-white">299</span>
-                <span className="text-xs text-slate-500 font-medium"> ر.س / شهرياً</span>
-              </div>
-              <ul className="text-[10px] text-slate-400 space-y-2.5 mt-4 border-t border-slate-800 pt-4">
-                <li>✔ حتى 500 عميل محتملاً</li>
-                <li>✔ إدارة حتى 3 مشاريع عقارية</li>
-                <li>✔ مستخدمين عدد 2 مبيعات</li>
-                <li>✔ دعم فني أساسي عبر التذاكر</li>
-              </ul>
-            </div>
-            <a href="/register?plan=basic" className="w-full mt-6 bg-slate-900 text-center text-white hover:bg-slate-800 border border-slate-800 transition-colors p-2.5 rounded-lg text-xs font-bold">
-              حجز الباقة الآن
-            </a>
+      {/* قسم صيد واقتناص واصطياد العملاء (Lead Capture Section) */}
+      <section id="register-interest" className="py-20 bg-slate-950 border-t border-slate-900 px-6 md:px-12 max-w-4xl mx-auto">
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 md:p-12 space-y-6 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-amber-500/5 blur-[90px] rounded-full -z-10" />
+          
+          <div className="text-center space-y-2 max-w-lg mx-auto">
+            <h2 className="text-xl md:text-2xl font-black text-white">سجّل اهتمامك بالوحدات العقارية</h2>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              اختر المشروع السكني المفضل لديك وسجل بياناتك الآن، وسيتواصل معك مستشارك العقاري فوراً عبر الواتساب والاتصال لتزويدك بكامل البروشورات والحسبة المالية لبنكك [1, 2]
+            </p>
           </div>
 
-          {/* باقة 2 الاحترافية */}
-          <div className="border border-amber-500/60 rounded-2xl p-6 bg-amber-500/5 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-            <span className="absolute top-0 right-0 bg-amber-500 text-slate-950 font-black text-[8px] px-3.5 py-1 rounded-bl-lg"> الباقة الأكثر طلباً </span>
-            <div>
-              <h3 className="font-bold text-slate-100 text-sm">الباقة الاحترافية (Professional)</h3>
-              <p className="text-[10px] text-slate-400 mt-1">المحرك الأقوى لشركات التطوير والمكاتب العقارية النشطة</p>
-              <div className="my-4">
-                <span className="text-3xl font-black text-white">599</span>
-                <span className="text-xs text-slate-500 font-medium"> ر.س / شهرياً</span>
+          {/* استمارة تسجيل الاهتمام المربوطة بمحرك الـ Leads السحابي الخاص بك */}
+          <form action={createLeadAction} className="space-y-4 max-w-xl mx-auto">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">الاسم الأول *</label>
+                <input 
+                  type="text" 
+                  name="firstName" 
+                  required
+                  placeholder="محمد"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
               </div>
-              <ul className="text-[10px] text-slate-300 space-y-2.5 mt-4 border-t border-amber-500/10 pt-4">
-                <li>✔ عملاء محتملين غير محدودين</li>
-                <li>✔ مشاريع عقارية غير محدودة</li>
-                <li>✔ حتى 10 مستشاري مبيعات وعزل كامل</li>
-                <li>✔ ميزة منع التكرار والتحقق الصارم</li>
-                <li>✔ ربط منصات Snapchat و Meta Ads</li>
-              </ul>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">العائلة / القبيلة</label>
+                <input 
+                  type="text" 
+                  name="lastName" 
+                  placeholder="الغامدي"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none"
+                />
+              </div>
             </div>
-            <a href="/register?plan=professional" className="w-full mt-6 bg-amber-500 text-center text-slate-950 hover:bg-amber-600 transition-colors p-2.5 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/10">
-              حجز الباقة الآن (مدى / فيزا)
-            </a>
-          </div>
 
-          {/* باقة 3 */}
-          <div className="border border-slate-800 rounded-2xl p-6 bg-slate-900/20 flex flex-col justify-between shadow-xl">
-            <div>
-              <h3 className="font-bold text-slate-100 text-sm">باقة الشركات الكبرى (Enterprise)</h3>
-              <p className="text-[10px] text-slate-400 mt-1">تكامل تقني مخصص لشركات الاستثمار الكبرى</p>
-              <div className="my-4">
-                <span className="text-3xl font-black text-white">1,299</span>
-                <span className="text-xs text-slate-500 font-medium"> ر.س / شهرياً</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">رقم الجوال النشط *</label>
+                <input 
+                  type="tel" 
+                  name="phone" 
+                  required
+                  placeholder="05xxxxxxxx"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-left text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
               </div>
-              <ul className="text-[10px] text-slate-400 space-y-2.5 mt-4 border-t border-slate-800 pt-4">
-                <li>✔ جميع ميزات الباقة الاحترافية</li>
-                <li>✔ مستخدمين ومبيعات غير محدودين</li>
-                <li>✔ ربط مباشر بنظام التنبيهات والـ WhatsApp</li>
-                <li>✔ تخصيص البوابة التعاونية وعزل السيرفر</li>
-                <li>✔ دعم فني مخصص للشركات 24/7</li>
-              </ul>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">المشروع السكني المستهدف *</label>
+                <select 
+                  name="projectId" 
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-300 focus:outline-none"
+                >
+                  <option value="">-- اختر المشروع السكني --</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <a href="/register?plan=enterprise" className="w-full mt-6 bg-slate-900 text-center text-white hover:bg-slate-800 border border-slate-800 transition-colors p-2.5 rounded-lg text-xs font-bold">
-              تواصل معنا للتعاقد
-            </a>
-          </div>
+
+            <button 
+              type="submit" 
+              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black p-3 rounded-xl transition-all duration-300 hover:scale-[1.02] shadow-xl shadow-amber-500/10 cursor-pointer"
+            >
+              إرسال طلب الاهتمام وتأكيد الحجز ➔
+            </button>
+          </form>
         </div>
       </section>
 
-      {/* 5. فوتر الموقع الجمالي */}
+      {/* الفوتر الجمالي لشركة صرح الوطن العقارية */}
       <footer className="bg-slate-950 border-t border-slate-900 py-12 px-6 md:px-12 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-reverse space-x-3">
-            <span className="text-sm font-black text-white">ORCA CRM</span>
+            <span className="text-sm font-black text-white">{companyName}</span>
             <span>-</span>
-            <span>جميع الحقوق محفوظة لوكالة ORCA الرقمية © 2026</span>
+            <span>جميع الحقوق محفوظة للمطور العقاري © 2026</span>
           </div>
-          <p className="text-[10px] text-slate-600">رقم الإصدار MVP 1.0 - مصمم ومطور بفخر لدعم قطاع التطوير العقاري بالمملكة</p>
+          <p className="text-[9px] text-slate-600">مصمم ومطور بفخر لدعم قطاع التطوير العقاري المستدام بالمملكة العربية السعودية</p>
         </div>
       </footer>
 

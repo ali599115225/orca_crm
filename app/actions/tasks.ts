@@ -88,11 +88,11 @@ export async function createTaskAction(formData: FormData) {
     const dueDateOnly = formData.get("dueDateOnly") as string; // مثل: 2026-05-26
     const dueTimeOnly = formData.get("dueTimeOnly") as string; // مثل: 14:30
 
+    const priority = formData.get("priority") as any;
+
     if (!title || !leadId || !dueDateOnly || !dueTimeOnly || !priority) {
       throw new Error("جميع الحقول التي تحتوى على (*) هي حقول إلزامية.");
     }
-
-    const priority = formData.get("priority") as any;
 
     const lead = await prisma.lead.findUnique({
       where: { id: leadId, tenantId: tenant.id },
@@ -111,9 +111,9 @@ export async function createTaskAction(formData: FormData) {
 
     await prisma.task.create({
       data: {
-        tenantId: tenant.id,
-        leadId,
-        assignedTo: lead.assignedTo,
+        tenant: { connect: { id: tenant.id } },
+        lead: { connect: { id: leadId } },
+        assignedUser: { connect: { id: lead.assignedTo } },
         title,
         description: description || null,
         dueDate: combinedDueDate, // حفظ الموعد المدمج بنجاح

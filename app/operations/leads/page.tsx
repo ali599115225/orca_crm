@@ -179,7 +179,7 @@ export default function LeadsPage() {
                         {/* زر توليد العقد السحابي الموحد والمفتوح في تبويب خارجي مستقل */}
                         <div className="grid grid-cols-2 gap-1.5 pt-1">
                           <a 
-                            href={`/operations/contract/${lead.id}`}
+                            href={`/contract/${lead.id}`}
                             target="_blank"
                             className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[9px] font-black p-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                           >
