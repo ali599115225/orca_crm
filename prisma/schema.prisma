@@ -141,22 +141,6 @@ model Task {
   @@map("tasks")
 }
 
-model Tenant {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyName       String         @map("company_name")
-  subdomain         String         @unique
-  subscriptionPlan  String         @default("basic") @map("subscription_plan")
-  isActive          Boolean        @default(true) @map("is_active")
-  contractTerms     String?        @map("contract_terms") @db.Text // 💎 الحقل الجديد لحفظ بنود العقد [1.1.2]
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  users             User[]
-  projects          Project[]
-  leads             Lead[]
-  leadActivities    LeadActivity[]
-  tasks             Task[]
-
-  @@map("tenants")
-}
 
 model Tenant {
   id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

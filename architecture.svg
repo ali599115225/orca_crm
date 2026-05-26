@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 650" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#6D28D9" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .title { font-family: 'Cairo', sans-serif; font-weight: 900; fill: #FFFFFF; font-size: 20px; }
+    .subtitle { font-family: 'Cairo', sans-serif; font-weight: 700; fill: #94A3B8; font-size: 11px; }
+    .node-title { font-family: 'Cairo', sans-serif; font-weight: 800; fill: #FFFFFF; font-size: 13px; }
+    .node-text { font-family: 'Cairo', sans-serif; font-weight: 600; fill: #CBD5E1; font-size: 10px; }
+    .arrow-text { font-family: 'Cairo', sans-serif; font-weight: 700; fill: #F59E0B; font-size: 9px; }
+  </style>
+
+  <rect width="100%" height="100%" fill="#0B132B" rx="16"/>
+
+  <text x="425" y="40" class="title" text-anchor="middle">المخطط المعماري لمنصة ORCA الـ SaaS والوكلاء الأذكياء الأربعة</text>
+  <text x="425" y="60" class="subtitle" text-anchor="middle">هيكلية أتمتة الفوترة، عزل المستأجرين، وإشراف الوكلاء الأذكياء على الفريق البشري لعام 2026م</text>
+
+  <rect x="275" y="90" width="300" height="60" rx="12" fill="url(#blueGrad)" stroke="#1D4ED8" stroke-width="2" opacity="0.95"/>
+  <text x="425" y="115" class="node-title" text-anchor="middle">👑 لوحة الإدارة الكبرى (ORCA Super Admin)</text>
+  <text x="425" y="135" class="node-text" text-anchor="middle">إنشاء المنشآت العقارية • تفعيل الحسابات • تخصيص رخص الوكلاء الأذكياء</text>
+
+  <path d="M425 150 L425 190" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="4,4"/>
+  <polygon points="425,195 421,187 429,187" fill="#F59E0B"/>
+
+  <rect x="225" y="200" width="400" height="70" rx="12" fill="#1E293B" stroke="#F59E0B" stroke-width="2"/>
+  <text x="425" y="225" class="node-title" text-anchor="middle">💳 نظام الفوترة والاشتراكات المتكررة وصمام أمان الوصول</text>
+  <text x="425" y="245" class="node-text" text-anchor="middle">بوابة الدفع (ميسر) • تفعيل الباقات (أساسية: 1 موظف، احترافية: 3 موظفين، ذهبية: 5 موظفين)</text>
+  <text x="425" y="260" class="node-text" text-anchor="middle">تأكيد الدفع ➔ إرسال الـ SMS والـ JWT ➔ إيقاف الحساب آلياً عند انتهاء الاشتراك</text>
+
+  <path d="M425 270 L425 310" fill="none" stroke="#10B981" stroke-width="2"/>
+  <polygon points="425,315 421,307 429,307" fill="#10B981"/>
+  <text x="435" y="295" class="arrow-text" text-anchor="start">تنشيط رخص الوكلاء الأذكياء المعزولة</text>
+
+  <g transform="translate(40, 320)">
+    <rect x="0" y="0" width="770" height="130" rx="16" fill="#0F172A" stroke="#334155" stroke-width="2" stroke-dasharray="6,6"/>
+    <text x="385" y="25" class="node-title" text-anchor="middle" fill="#94A3B8">🤖 كتيبة المستشارين الأذكياء المعزولة برخص الاشتراك (SaaS AI Workforce Pool)</text>
+
+    <rect x="20" y="45" width="130" height="70" rx="8" fill="#1E293B" stroke="#8B5CF6" stroke-width="1.5"/>
+    <text x="85" y="65" class="node-title" text-anchor="middle">سند (المالي)</text>
+    <text x="85" y="85" class="node-text" text-anchor="middle">إصدار الفواتير والوصول</text>
+    <text x="85" y="100" class="node-text" text-anchor="middle">مفعل بـ (جميع الباقات)</text>
+
+    <rect x="170" y="45" width="130" height="70" rx="8" fill="#1E293B" stroke="#3B82F6" stroke-width="1.5"/>
+    <text x="235" y="65" class="node-title" text-anchor="middle">راصد (التسويق)</text>
+    <text x="235" y="85" class="node-text" text-anchor="middle">فرز الليدات وتوزيعها</text>
+    <text x="235" y="100" class="node-text" text-anchor="middle">مفعل بـ (الاحترافية والذهبية)</text>
+
+    <rect x="320" y="45" width="130" height="70" rx="8" fill="#1E293B" stroke="#F59E0B" stroke-width="1.5"/>
+    <text x="385" y="65" class="node-title" text-anchor="middle">مساعد (العمليات)</text>
+    <text x="385" y="85" class="node-text" text-anchor="middle">جدولة المهام والواتساب</text>
+    <text x="385" y="100" class="node-text" text-anchor="middle">مفعل بـ (الاحترافية والذهبية)</text>
+
+    <rect x="470" y="45" width="130" height="70" rx="8" fill="#1E293B" stroke="#10B981" stroke-width="1.5"/>
+    <text x="535" y="65" class="node-title" text-anchor="middle">خبير (التقارير)</text>
+    <text x="535" y="85" class="node-text" text-anchor="middle">حساب نسب التحويل والـ KPIs</text>
+    <text x="535" y="100" class="node-text" text-anchor="middle">مفعل بـ (الباقة الذهبية)</text>
+
+    <rect x="620" y="45" width="130" height="70" rx="8" fill="#1E293B" stroke="#EC4899" stroke-width="1.5"/>
+    <text x="685" y="65" class="node-title" text-anchor="middle">حاسم (التمويل)</text>
+    <text x="685" y="85" class="node-text" text-anchor="middle">حسابات الـ SAMA والـ DSR</text>
+    <text x="685" y="100" class="node-text" text-anchor="middle">مفعل بـ (الباقة الذهبية)</text>
+  </g>
+
+  <path d="M245 450 L185 490" fill="none" stroke="#F59E0B" stroke-width="2"/>
+  <polygon points="180,493 189,491 184,484" fill="#F59E0B"/>
+  <text x="210" y="470" class="arrow-text" text-anchor="start">إشراف وتنبيه الواتساب</text>
+
+  <path d="M605 450 L665 490" fill="none" stroke="#10B981" stroke-width="2"/>
+  <polygon points="670,493 665,484 660,491" fill="#10B981"/>
+  <text x="625" y="470" class="arrow-text" text-anchor="end">تصفية البيانات بـ tenant_id</text>
+
+  <g transform="translate(40, 500)">
+    <rect x="0" y="0" width="320" height="110" rx="16" fill="#1E293B" stroke="#F59E0B" stroke-width="1.5"/>
+    <text x="160" y="25" class="node-title" text-anchor="middle">👥 الفريق البشري والمشرف الذكي (العزل الداخلي)</text>
+    
+    <rect x="15" y="40" width="110" height="55" rx="8" fill="#0B132B" stroke="#8B5CF6" stroke-width="1"/>
+    <text x="70" y="58" class="node-title" text-anchor="middle" font-size="11">المشرف الذكي</text>
+    <text x="70" y="75" class="node-text" text-anchor="middle" font-size="9">تتبع وإغلاق الصفقات آلياً</text>
+
+    <rect x="140" y="40" width="165" height="55" rx="8" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+    <text x="222" y="58" class="node-title" text-anchor="middle" font-size="11">مستشاري المبيعات البشرية</text>
+    <text x="222" y="75" class="node-text" text-anchor="middle" font-size="9">بندر العتيبي • أحمد الغامدي</text>
+  </g>
+
+  <g transform="translate(490, 500)">
+    <rect x="0" y="0" width="320" height="110" rx="16" fill="#1E293B" stroke="#10B981" stroke-width="1.5"/>
+    <text x="160" y="25" class="node-title" text-anchor="middle">🗄️ قاعدة البيانات السحابية المعزولة (Neon Postgres)</text>
+    
+    <rect x="15" y="40" width="290" height="55" rx="8" fill="#0F172A" stroke="#10B981" stroke-width="1"/>
+    <text x="160" y="58" class="node-title" text-anchor="middle" font-size="11">عزل البيانات الصارم (Row-Level Security)</text>
+    <text x="160" y="75" class="node-text" text-anchor="middle" font-size="9">جداول منفصلة ومصفاة آلياً لكل مستخدم بموجب الـ Tenant ID المشفر</text>
+  </g>
+</svg>
