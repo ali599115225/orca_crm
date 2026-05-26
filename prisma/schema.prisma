@@ -157,3 +157,26 @@ model Tenant {
 
   @@map("tenants")
 }
+
+model Tenant {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyName         String         @map("company_name")
+  subdomain           String         @unique
+  subscriptionPlan    String         @default("basic") @map("subscription_plan")
+  isActive            Boolean        @default(true) @map("is_active")
+  contractTerms       String?        @map("contract_terms") @db.Text
+  
+  // 💎 حقول الفوترة والاشتراكات السحابية الجديدة لـ "سند" [1.1.2]
+  subscriptionExpiresAt DateTime?      @map("subscription_expires_at") @db.Timestamptz
+  paymentStatus       String         @default("UNPAID") @map("payment_status")
+  billingCycle        String         @default("MONTHLY") @map("billing_cycle")
+
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  users               User[]
+  projects            Project[]
+  leads               Lead[]
+  leadActivities      LeadActivity[]
+  tasks               Task[]
+
+  @@map("tenants")
+}
