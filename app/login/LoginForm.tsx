@@ -52,23 +52,23 @@ export function LoginForm() {
       )}
 
       <div>
-        <label className="block text-xs font-bold text-amber-500/80 mb-1.5">البريد الإلكتروني المعتمد</label>
+        <label className="block text-xs font-bold text-yellow-500/80 mb-1.5">البريد الإلكتروني المعتمد</label>
         <input 
           type="email" 
           name="email"
           required
-          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-slate-600"
+          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
           placeholder="ahmed@dar.com"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-amber-500/80 mb-1.5">كلمة المرور</label>
+        <label className="block text-xs font-bold text-yellow-500/80 mb-1.5">كلمة المرور</label>
         <input 
           type="password" 
           name="password"
           required
-          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-slate-600"
+          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
           placeholder="••••••••"
         />
       </div>
@@ -76,7 +76,7 @@ export function LoginForm() {
       <button 
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 transition-all p-3.5 rounded-xl text-xs font-black shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 active:scale-[0.99] cursor-pointer"
+        className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-slate-950 transition-all p-3.5 rounded-xl text-xs font-black shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20 active:scale-[0.99] cursor-pointer"
       >
         {loading ? "جاري التحقق والدخول الآمن..." : "دخول آمن للنظام"}
       </button>

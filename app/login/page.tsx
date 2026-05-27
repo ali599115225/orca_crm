@@ -38,7 +38,7 @@ export default async function LoginPage() {
             style={{
               position: 'absolute',
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(234,179,8,0.08) 0%, transparent 70%)',
               width: `${250 + i * 120}px`,
               height: `${250 + i * 120}px`,
               top: `${15 + i * 15}%`,
@@ -59,23 +59,23 @@ export default async function LoginPage() {
       <div className="advisor-card w-full max-w-[420px] relative z-10 space-y-8">
         {/* الهيدر */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 shadow-lg shadow-amber-500/20 text-2xl">
-            🔑
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 border border-yellow-500/30 shadow-lg shadow-yellow-500/20 overflow-hidden">
+            <img src="/logo.png" alt="ali.orca logo" className="w-12 h-12 object-contain" />
           </div>
           
           <div className="space-y-1">
-            <span className="inline-block text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 font-black px-3.5 py-1 rounded-full tracking-wider">
+            <span className="inline-block text-[10px] bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-black px-3.5 py-1 rounded-full tracking-wider">
               بوابة المستشار العقاري الموحدة
             </span>
             <h1 className="text-2xl font-black text-white pt-2">تسجيل الدخول للنظام</h1>
             <p className="text-xs text-slate-400">
-              مرحباً بك في لوحة تحكم: <span className="font-extrabold text-amber-500">{tenantName}</span>
+              مرحباً بك في لوحة تحكم: <span className="font-extrabold text-yellow-500">{tenantName}</span>
             </p>
           </div>
         </div>
 
         {/* كرت تسجيل الدخول الزجاجي الفخم */}
-        <div className="bg-slate-950/85 backdrop-blur-xl border border-amber-500/20 rounded-[24px] p-8 shadow-2xl shadow-black/60">
+        <div className="bg-slate-950/85 backdrop-blur-xl border border-yellow-500/20 rounded-[24px] p-8 shadow-2xl shadow-black/60">
           <LoginForm />
 
           <div className="mt-6 pt-5 border-t border-slate-900 text-center space-y-3">
@@ -87,7 +87,7 @@ export default async function LoginPage() {
 
         {/* رابط للعودة للصفحة الرئيسية */}
         <div className="text-center">
-          <a href="/" className="text-xs text-slate-500 hover:text-amber-500 transition-colors">
+          <a href="/" className="text-xs text-slate-500 hover:text-yellow-500 transition-colors">
             ← العودة لبوابة الشركة العقارية الرئيسية
           </a>
         </div>

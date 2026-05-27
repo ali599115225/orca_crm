@@ -39,7 +39,7 @@ export default function PricingGrid() {
       ],
       badge: "الأكثر شيوعاً 🔥",
       isPopular: true,
-      style: "border-amber-500/30 bg-slate-900/60 shadow-xl shadow-amber-500/5 hover:border-amber-500/60"
+      style: "border-yellow-500/30 bg-slate-900/60 shadow-xl shadow-yellow-500/5 hover:border-yellow-500/60"
     },
     {
       name: "الباقة الذهبية",
@@ -56,7 +56,7 @@ export default function PricingGrid() {
       ],
       badge: "الخيار الاحترافي",
       isPopular: false,
-      style: "border-slate-800/80 bg-slate-900/40 hover:border-indigo-500/40"
+      style: "border-slate-800/80 bg-slate-900/40 hover:border-yellow-500/40"
     }
   ];
 
@@ -64,7 +64,7 @@ export default function PricingGrid() {
     <div className="space-y-12">
       {/* مفتاح التبديل (Pricing Switcher) */}
       <div className="flex items-center justify-center gap-4">
-        <span className={`text-xs font-bold transition-colors ${!isYearly ? "text-amber-500" : "text-slate-400"}`}>
+        <span className={`text-xs font-bold transition-colors ${!isYearly ? "text-yellow-500" : "text-slate-400"}`}>
           الدفع الشهري
         </span>
         <button
@@ -74,12 +74,12 @@ export default function PricingGrid() {
           aria-checked={isYearly}
         >
           <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-amber-500 shadow ring-0 transition duration-200 ease-in-out ${
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-yellow-500 shadow ring-0 transition duration-200 ease-in-out ${
               isYearly ? "-translate-x-5" : "translate-x-0"
             }`}
           />
         </button>
-        <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${isYearly ? "text-amber-500" : "text-slate-400"}`}>
+        <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${isYearly ? "text-yellow-500" : "text-slate-400"}`}>
           الدفع السنوي
           <span className="bg-emerald-500/10 text-emerald-500 text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/20">
             خصم 20% ⚡
@@ -105,7 +105,7 @@ export default function PricingGrid() {
                 <div className="flex items-center justify-between">
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${
                     plan.isPopular 
-                      ? "bg-amber-500/15 text-amber-500 border-amber-500/20" 
+                      ? "bg-yellow-500/15 text-yellow-500 border-yellow-500/20" 
                       : "bg-slate-800 text-slate-400 border-slate-700/80"
                   }`}>
                     {plan.badge}
@@ -138,7 +138,7 @@ export default function PricingGrid() {
                   <span className="text-lg">🤖</span>
                   <div>
                     <p className="text-[9px] text-slate-400 font-bold">السعة المضمنة للوكلاء</p>
-                    <p className="text-xs font-black text-amber-500">{plan.agentsCount}</p>
+                    <p className="text-xs font-black text-yellow-500">{plan.agentsCount}</p>
                   </div>
                 </div>
 
@@ -148,7 +148,7 @@ export default function PricingGrid() {
                   <ul className="space-y-2.5">
                     {plan.features.map((feature, fIdx) => (
                       <li key={fIdx} className="flex items-start gap-2 text-[11px] font-semibold text-slate-300">
-                        <span className="text-amber-500 shrink-0 mt-0.5">✓</span>
+                        <span className="text-yellow-500 shrink-0 mt-0.5">✓</span>
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -162,7 +162,7 @@ export default function PricingGrid() {
                   href="#register-interest"
                   className={`block w-full text-center p-3.5 rounded-xl text-xs font-black transition-all active:scale-[0.99] ${
                     plan.isPopular
-                      ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 shadow-lg shadow-amber-500/10"
+                      ? "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-slate-950 shadow-lg shadow-yellow-500/10"
                       : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-750"
                   }`}
                 >
