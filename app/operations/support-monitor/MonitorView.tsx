@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { adminUpdateTicketAction, adminUpdateTenantPlanAction } from "@/app/actions/admin";
 import { runAllSystemAgentsAction } from "@/app/actions/errorAgent";
+import { runSystemDiagnosticsAction } from "@/app/actions/sentinel";
 
 interface Ticket {
   id: string;
@@ -60,10 +61,34 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
   const [triggeringAgents, setTriggeringAgents] = useState(false);
   const [agentsReport, setAgentsReport] = useState<any | null>(null);
 
+  // وكيل الصيانة والمراقبة السحابي الجديد
+  const [triggeringSentinel, setTriggeringSentinel] = useState(false);
+  const [sentinelReport, setSentinelReport] = useState<any | null>(null);
+
   // حالات التحميل والرسائل
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleRunSentinel = async () => {
+    setTriggeringSentinel(true);
+    setSuccess(null);
+    setError(null);
+    
+    try {
+      const result = await runSystemDiagnosticsAction();
+      setTriggeringSentinel(false);
+      if (result.success && result.report) {
+        setSuccess("تم تشغيل وكيل الصيانة والمراقبة بنجاح وإرسال تنبيهات الأداء للمشرفين!");
+        setSentinelReport(result.report);
+      } else {
+        setError(result.error || "فشل تشغيل وكيل الصيانة.");
+      }
+    } catch (err: any) {
+      setTriggeringSentinel(false);
+      setError(err.message || "حدث خطأ غير متوقع.");
+    }
+  };
 
   const handleSelectTicket = (ticket: Ticket) => {
     setEditingTicketId(ticket.id);
@@ -434,31 +459,49 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
         <div className="space-y-6">
           {/* كرت تفعيل وتنشيط الوكلاء */}
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b pb-4">
               <div>
                 <h2 className="text-base font-black text-slate-800">إدارة وتشغيل الوكلاء الأذكياء (AI Agent Registry)</h2>
                 <p className="text-xs text-slate-500 mt-1">تفعيل الوكلاء ليقوموا بأعمالهم الدورية وفحص الأخطاء وصحة النظام.</p>
               </div>
-              <button
-                onClick={handleRunAllAgents}
-                disabled={triggeringAgents}
-                className="bg-emerald-650 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-xl transition-all shadow-md hover:scale-[1.02] flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:scale-100"
-              >
-                {triggeringAgents ? (
-                  <>
-                    <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
-                    <span>جاري تشغيل وفحص الوكلاء...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚡ تشغيل وتفعيل جميع الوكلاء فورا</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleRunSentinel}
+                  disabled={triggeringSentinel}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-md hover:scale-[1.02] flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:scale-100"
+                >
+                  {triggeringSentinel ? (
+                    <>
+                      <span className="inline-block animate-spin border-2 border-slate-950 border-t-transparent rounded-full w-4 h-4" />
+                      <span>جاري فحص خادم Vercel والقاعدة...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔍 تشغيل وكيل الصيانة (Sentinel)</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleRunAllAgents}
+                  disabled={triggeringAgents}
+                  className="bg-emerald-650 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-xl transition-all shadow-md hover:scale-[1.02] flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:scale-100"
+                >
+                  {triggeringAgents ? (
+                    <>
+                      <span className="inline-block animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
+                      <span>جاري تشغيل وفحص الوكلاء...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⚡ تشغيل وتفعيل جميع الوكلاء فورا</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* شبكة معلومات الوكلاء الأربعة */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* شبكة معلومات الوكلاء */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               {/* الوكيل سند */}
               <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-xl space-y-3 relative overflow-hidden">
                 <span className="absolute top-4 left-4 bg-emerald-100 text-emerald-800 text-[8px] font-black px-2 py-0.5 rounded-full">نشط ومتصل</span>
@@ -490,20 +533,128 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
               </div>
 
               {/* الوكيل ساهر */}
-              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-xl space-y-3 relative overflow-hidden border-amber-300 bg-amber-500/[0.02]">
-                <span className="absolute top-4 left-4 bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-0.5 rounded-full border border-amber-300/30">تحت المراقبة</span>
+              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-xl space-y-3 relative overflow-hidden">
+                <span className="absolute top-4 left-4 bg-emerald-100 text-emerald-800 text-[8px] font-black px-2 py-0.5 rounded-full">نشط ومتصل</span>
                 <div className="h-10 w-10 bg-rose-100 text-rose-700 rounded-lg flex items-center justify-center text-xl font-bold">🔍</div>
                 <div>
                   <h4 className="text-xs font-black text-slate-800">الوكيل ساهر (Error Watchdog)</h4>
                   <p className="text-[10px] text-slate-500 mt-1">تتبع الأخطاء البرمجية وصحة قاعدة البيانات السحابية، فحص تشفير قنوات النقل، وإشعار الإدارة بتقارير تشخيصية فورية بالبريد الإلكتروني.</p>
                 </div>
               </div>
+
+              {/* وكيل الصيانة ساهر الجديد */}
+              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-xl space-y-3 relative overflow-hidden border-amber-300 bg-amber-500/[0.02]">
+                <span className="absolute top-4 left-4 bg-amber-100 text-amber-800 text-[8px] font-black px-2 py-0.5 rounded-full border border-amber-300/30">ساهر الصيانة</span>
+                <div className="h-10 w-10 bg-slate-900 text-amber-500 rounded-lg flex items-center justify-center text-xl font-bold">🤖</div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800">ساهر الصيانة (Sentinel Agent)</h4>
+                  <p className="text-[10px] text-slate-500 mt-1">مراقبة سحابية نشطة لثلاث طبقات: خوادم Vercel، قاعدة بيانات Neon PostgreSQL، واتصال النطاق الرئيسي والـ DNS والـ SSL.</p>
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* لوحة التقارير والتشخيص من وكيل الصيانة والمراقبة السحابي */}
+          {sentinelReport && (
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 text-white text-right">
+              <div className="flex justify-between items-center border-b border-slate-850 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <h3 className="text-sm font-black text-white">تقرير المراقبة والصيانة السحابي الشامل - وكيل الصيانة (Sentinel)</h3>
+                </div>
+                <span className="text-[10px] text-slate-400 font-bold">تاريخ الرصد: {sentinelReport.timestamp}</span>
+              </div>
+
+              {/* شبكة طبقات المراقبة الثلاث */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* 1. طبقة Vercel Cloud */}
+                <div className="bg-slate-950 p-5 rounded-xl border border-slate-850 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black text-amber-500">☁️ خوادم Vercel</h4>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded ${
+                      sentinelReport.vercel.status === "HEALTHY" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                    }`}>
+                      {sentinelReport.vercel.status === "HEALTHY" ? "مستقر" : "تنبيه فني"}
+                    </span>
+                  </div>
+                  <ul className="text-[10px] space-y-2 text-slate-350">
+                    <li>اسم المشروع: <span className="text-white font-bold">{sentinelReport.vercel.projectName}</span></li>
+                    <li>حالة النشر: <span className="text-white font-bold">{sentinelReport.vercel.latestDeploymentStatus}</span></li>
+                    <li>رابط النشر: <a href={sentinelReport.vercel.latestDeploymentUrl} target="_blank" className="text-amber-500 hover:underline" dir="ltr">{sentinelReport.vercel.latestDeploymentUrl}</a></li>
+                    <li>زمن البناء: <span className="text-white font-bold">{sentinelReport.vercel.buildTime}</span></li>
+                  </ul>
+                </div>
+
+                {/* 2. طبقة قاعدة البيانات Neon */}
+                <div className="bg-slate-950 p-5 rounded-xl border border-slate-850 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black text-amber-500">🗄️ قاعدة بيانات Neon</h4>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded ${
+                      sentinelReport.database.status === "HEALTHY" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                    }`}>
+                      {sentinelReport.database.status === "HEALTHY" ? "متصلة" : "عطل بالاتصال"}
+                    </span>
+                  </div>
+                  <ul className="text-[10px] space-y-2 text-slate-350">
+                    <li>زمن الاستجابة: <span className="text-white font-bold">{sentinelReport.database.latencyMs} ms</span></li>
+                    <li>وضع التشفير: <span className="text-white font-bold">{sentinelReport.database.sslMode}</span></li>
+                    <li>الشركات: <span className="text-white font-bold">{sentinelReport.database.totalRows.tenants}</span> | المستخدمين: <span className="text-white font-bold">{sentinelReport.database.totalRows.users}</span></li>
+                    <li>العملاء: <span className="text-white font-bold">{sentinelReport.database.totalRows.leads}</span> | المشاريع: <span className="text-white font-bold">{sentinelReport.database.totalRows.projects}</span></li>
+                  </ul>
+                </div>
+
+                {/* 3. طبقة النطاق والـ DNS */}
+                <div className="bg-slate-950 p-5 rounded-xl border border-slate-850 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black text-amber-500">🌍 النطاق والـ DNS</h4>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded ${
+                      sentinelReport.domain.status === "HEALTHY" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                    }`}>
+                      {sentinelReport.domain.status === "HEALTHY" ? "نشط" : "عطل بالنطاق"}
+                    </span>
+                  </div>
+                  <ul className="text-[10px] space-y-2 text-slate-350">
+                    <li>اسم النطاق: <span className="text-white font-bold" dir="ltr">{sentinelReport.domain.domainName}</span></li>
+                    <li>عنوان IP: <span className="text-white font-bold" dir="ltr">{sentinelReport.domain.ipResolved}</span></li>
+                    <li>كود استجابة HTTP: <span className="text-white font-bold">HTTP {sentinelReport.domain.httpResponseCode}</span></li>
+                    <li>حالة SSL: <span className="text-white font-bold">{sentinelReport.domain.sslStatus}</span></li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* المشاكل المكتشفة والتوصيات */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-rose-400">🚨 المشاكل والأخطاء المرصودة:</h4>
+                  <ul className="bg-slate-950 p-4 rounded-xl border border-slate-850 divide-y divide-slate-800/40 text-[11px] leading-relaxed text-slate-300">
+                    {sentinelReport.anomalies.map((anomaly: string, idx: number) => (
+                      <li key={idx} className="py-2 flex items-start gap-2">
+                        <span className="text-slate-500">•</span>
+                        <span>{anomaly}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-emerald-450">💡 التوصيات التقنية المقترحة:</h4>
+                  <ul className="bg-emerald-950/20 p-4 rounded-xl border border-emerald-900/30 divide-y divide-emerald-900/10 text-[11px] leading-relaxed text-emerald-350 font-bold">
+                    {sentinelReport.recommendations.map((rec: string, idx: number) => (
+                      <li key={idx} className="py-2 flex items-start gap-2">
+                        <span className="text-emerald-500">✓</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* لوحة التقارير والتشخيص من الوكيل ساهر */}
           {agentsReport && (
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 text-white">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 text-white text-right">
               <div className="flex justify-between items-center border-b border-slate-850 pb-4">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -553,7 +704,7 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
               {/* التوصيات الفورية */}
               <div className="space-y-3">
                 <h4 className="text-xs font-black text-emerald-450">💡 التوصيات والإرشادات التقنية المقترحة:</h4>
-                <ul className="bg-emerald-950/20 p-4 rounded-xl border border-emerald-900/30 divide-y divide-emerald-900/10 text-xs font-bold leading-relaxed text-emerald-300">
+                <ul className="bg-emerald-950/20 p-4 rounded-xl border border-emerald-900/30 divide-y divide-emerald-900/10 text-xs font-bold leading-relaxed text-emerald-300 font-bold">
                   {agentsReport.recommendations.map((rec: string, idx: number) => (
                     <li key={idx} className="py-2.5 flex items-start gap-2">
                       <span className="mt-0.5 shrink-0 text-emerald-500">✓</span>
