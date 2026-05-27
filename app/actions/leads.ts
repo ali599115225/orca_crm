@@ -77,7 +77,8 @@ export async function updateLeadStatusAction(leadId: string, newStatus: any) {
  */
 export async function createLeadAction(formData: FormData) {
   try {
-    const tenant = await getActiveTenant();
+    const clientHost = formData.get("clientHost") as string;
+    const tenant = await getActiveTenant(clientHost);
     
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;

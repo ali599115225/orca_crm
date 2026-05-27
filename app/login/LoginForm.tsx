@@ -44,31 +44,31 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="bg-rose-950/40 border border-rose-900/60 text-rose-400 text-xs p-3 rounded-lg font-bold">
+        <div className="bg-rose-950/40 border border-rose-900/60 text-rose-400 text-xs p-3.5 rounded-xl font-bold text-center">
           {error}
         </div>
       )}
 
       <div>
-        <label className="block text-xs font-semibold text-slate-300 mb-1">البريد الإلكتروني المعتمد</label>
+        <label className="block text-xs font-bold text-amber-500/80 mb-1.5">البريد الإلكتروني المعتمد</label>
         <input 
           type="email" 
           name="email"
           required
-          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-slate-600"
           placeholder="ahmed@dar.com"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-300 mb-1">كلمة المرور</label>
+        <label className="block text-xs font-bold text-amber-500/80 mb-1.5">كلمة المرور</label>
         <input 
           type="password" 
           name="password"
           required
-          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-slate-600"
           placeholder="••••••••"
         />
       </div>
@@ -76,7 +76,7 @@ export function LoginForm() {
       <button 
         type="submit"
         disabled={loading}
-        className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors p-2.5 rounded-lg text-xs font-bold"
+        className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 transition-all p-3.5 rounded-xl text-xs font-black shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 active:scale-[0.99] cursor-pointer"
       >
         {loading ? "جاري التحقق والدخول الآمن..." : "دخول آمن للنظام"}
       </button>

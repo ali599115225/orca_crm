@@ -1,5 +1,4 @@
-// app/page.tsx
-import React from "react";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { createLeadAction } from "@/app/actions/leads"; // إعادة استخدام محرك تسجيل العملاء الآمن
@@ -11,10 +10,14 @@ export const metadata = {
 export default async function CorporateHomePage() {
   let companyName = "صرح الوطن العقارية";
   let projects: any[] = [];
+  let host = "";
   
   try {
+    const headersList = await headers();
+    host = headersList.get("host") || "";
+    
     // 1. جلب بيانات المنشأة العقارية النشطة لشركتك تلقائياً من قاعدة البيانات السحابية
-    const tenant = await getActiveTenant();
+    const tenant = await getActiveTenant(host);
     companyName = tenant.companyName || "صرح الوطن العقارية";
     
     // 2. جلب مشاريعك العقارية الحقيقية والنشطة لتعرض حياً للجمهور مباشرة [2]
@@ -143,6 +146,7 @@ export default async function CorporateHomePage() {
 
           {/* استمارة تسجيل الاهتمام المربوطة بمحرك الـ Leads السحابي الخاص بك */}
           <form action={createLeadAction} className="space-y-4 max-w-xl mx-auto">
+            <input type="hidden" name="clientHost" value={host} />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 mb-1">الاسم الأول *</label>

@@ -8,7 +8,7 @@ import { cache } from "react";
  * مع إعطاء الأولوية المطلقة لجلسة المستخدم المسجل دخوله حالياً لضمان دقة البيانات
  * تم تغليفها بـ cache لتفادي تكرار الاستعلامات في الطلب الواحد
  */
-export const getActiveTenant = cache(async function getActiveTenantInternal() {
+export const getActiveTenant = cache(async function getActiveTenantInternal(hostOverride?: string) {
   // 1. أولاً: التحقق من الجلسة والصلاحيات الفوقية للمشرف العام
   const session = await getSession();
   const isSuperAdmin = session && (session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa");
@@ -24,8 +24,15 @@ export const getActiveTenant = cache(async function getActiveTenantInternal() {
   }
 
   // 2. إذا كان مشرفاً عاماً أو لا توجد جلسة نشطة: نعتمد على نطاق المتصفح الفرعي لتمكينه من رؤية بيانات الشركة النشطة بالرابط
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
+  let host = hostOverride || "";
+  if (!host) {
+    try {
+      const headersList = await headers();
+      host = headersList.get("host") || "";
+    } catch (e) {
+      // تجاهل أخطاء جلب الهيدرز في بيئة الـ Server Actions
+    }
+  }
   const domainParts = host.split(".");
   let subdomain = "dar-al-amar";
 
