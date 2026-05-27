@@ -15,15 +15,45 @@ export default function SuperAdminPage() {
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     async function loadData() {
-      const data = await getTenantsListAction();
-      setTenants(data);
-      setLoading(false);
+      try {
+        const data = await getTenantsListAction();
+        // إذا رجعت البيانات بشكل صحيح = المستخدم أدمن
+        setTenants(data);
+        setAuthChecked(true);
+        setLoading(false);
+      } catch (err: any) {
+        // إذا فشل التحقق = توجيه لصفحة دخول الأدمن
+        if (err.message?.includes('يجب تسجيل الدخول') || err.message?.includes('غير مصرح')) {
+          window.location.href = '/admin/login';
+        } else {
+          setError(err.message || 'خطأ في تحميل البيانات');
+          setAuthChecked(true);
+          setLoading(false);
+        }
+      }
     }
     loadData();
   }, []);
+
+  // شاشة التحميل أثناء التحقق
+  if (!authChecked) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+        fontFamily: "'Cairo', sans-serif",
+      }}>
+        <div style={{ textAlign: 'center', color: '#a78bfa' }}>
+          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🛡️</div>
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>جارٍ التحقق من صلاحيات الإدارة...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggleStatus = async (tenantId: string, currentStatus: boolean) => {
     setError(null);
