@@ -1,27 +1,27 @@
 // lib/prisma.ts
+// استخدام @neondatabase/serverless بدلاً من pg.Pool لحل مشكلة cold start في Vercel serverless
+// هذا الحل يعمل عبر HTTP بدلاً من TCP مما يلغي مشكلة انتظار اتصال pg إلى الأبد
+
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import pg from "pg";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neon } from "@neondatabase/serverless";
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-let prisma: PrismaClient;
-
-if (process.env.NODE_ENV === "production") {
-  const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
-  const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ adapter });
-} else {
-  if (!globalForPrisma.prisma) {
-    const pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
-    });
-    const adapter = new PrismaPg(pool);
-    globalForPrisma.prisma = new PrismaClient({ adapter });
-  }
-  prisma = globalForPrisma.prisma;
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
 }
 
-export { prisma };
+function createPrismaClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL!;
+  // neon() يستخدم HTTP بدلاً من TCP - لا انتظار، لا cold start timeout
+  const sql = neon(connectionString);
+  const adapter = new PrismaNeon(sql);
+  return new PrismaClient({ adapter });
+}
+
+// Singleton للتطوير المحلي لمنع تكرار الاتصال
+export const prisma = global.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  global.prisma = prisma;
+}

@@ -7,6 +7,8 @@
     "db-push": "prisma db push"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^7.8.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@types/node": "latest",
     "@types/react": "latest",
