@@ -3,16 +3,17 @@
 
 import React, { useState } from "react";
 
-export default function PricingGrid() {
+export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "light" }) {
   const [isYearly, setIsYearly] = useState(false);
 
   const plans = [
     {
       name: "باقة النمو (Essential)",
       description: "المثالية للمستشارين والوسطاء المستقلين للبدء فوراً",
-      monthlyPrice: 199,
-      yearlyPrice: 1990,
-      agentsCount: "1 وكيل ذكي (راصد جزئي)",
+      monthlyPrice: 1499,
+      yearlyPrice: 14990,
+      subtext: "", // Removed "Elegant frosted glass" placeholder text
+      agentsCount: "1 وكيل ذكي (ساهر جزئي)",
       features: [
         "إدارة العملاء المحتملين (Leads)",
         "حساب لـ 2 موظفين بشرين كحد أقصى",
@@ -23,14 +24,14 @@ export default function PricingGrid() {
       ],
       badge: "البداية السريعة",
       isPopular: false,
-      style: "border-slate-700 bg-white/5 hover:border-slate-500/80" // Standard clean frosted glass
     },
     {
       name: "الباقة الاحترافية (Elite)",
       description: "الحل الأمثل للمكاتب العقارية المتوسطة لزيادة المبيعات",
-      monthlyPrice: 599,
-      yearlyPrice: 5990,
-      agentsCount: "3 وكلاء أذكياء (راصد + سند)",
+      monthlyPrice: 4499,
+      yearlyPrice: 44990,
+      subtext: "الباقة الأكثر مبيعاً ونمواً",
+      agentsCount: "٣ وكلاء أذكياء (ساهر + سند)", // Explicitly list the digital staff package
       features: [
         "كل ما تشمله باقة النمو",
         "حسابات لـ 10 موظفين بشرين كحد أقصى",
@@ -41,13 +42,12 @@ export default function PricingGrid() {
       ],
       badge: "الأكثر شيوعاً 🔥",
       isPopular: true,
-      style: "border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.2)] bg-indigo-950/20 hover:border-indigo-400" // Royal Blue / Indigo pop
     },
     {
       name: "باقة النخبة (Bespoke)",
       description: "القوة الكاملة والتكامل الفاخر للشركات العقارية الكبرى",
-      monthlyPrice: 1199,
-      yearlyPrice: 11990,
+      isBespoke: true,
+      subtext: "دعم مؤسسي مخصص بالكامل",
       agentsCount: "قدرة وكلاء غير محدودة (Unlimited)",
       features: [
         "كل ما تشمله الباقة الاحترافية",
@@ -59,7 +59,6 @@ export default function PricingGrid() {
       ],
       badge: "الخيار المؤسسي",
       isPopular: false,
-      style: "border-yellow-600/50 bg-[#070a12] shadow-xl shadow-yellow-600/5 hover:border-yellow-500" // Dark custom card with luxury gold borders
     }
   ];
 
@@ -67,88 +66,134 @@ export default function PricingGrid() {
     <div className="space-y-12 font-sans">
       {/* مفتاح التبديل (Pricing Switcher) */}
       <div className="flex items-center justify-center gap-4">
-        <span className={`text-xs font-bold transition-colors ${!isYearly ? "text-emerald-400" : "text-slate-400"}`}>
+        <span className={`text-xs font-bold transition-colors ${
+          !isYearly 
+            ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
+            : (theme === "dark" ? "text-slate-400" : "text-slate-500")
+        }`}>
           الدفع الشهري
         </span>
         <button
           onClick={() => setIsYearly(!isYearly)}
-          className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[#0b0f19] ring-1 ring-white/10 transition-colors duration-200 ease-in-out focus:outline-none"
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            theme === "dark" ? "bg-[#0b0f19] ring-1 ring-white/10" : "bg-slate-200 ring-1 ring-slate-300"
+          }`}
           role="switch"
           aria-checked={isYearly}
         >
           <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-emerald-500 shadow ring-0 transition duration-200 ease-in-out ${
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#e5c158] shadow ring-0 transition duration-200 ease-in-out ${
               isYearly ? "-translate-x-5" : "translate-x-0"
             }`}
           />
         </button>
-        <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${isYearly ? "text-emerald-400" : "text-slate-400"}`}>
+        <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${
+          isYearly 
+            ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
+            : (theme === "dark" ? "text-slate-400" : "text-slate-500")
+        }`}>
           الدفع السنوي
         </span>
       </div>
 
       {/* شبكة الباقات الثلاث */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch pt-4">
         {plans.map((plan, idx) => {
           const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
           const displayPrice = isYearly 
             ? Math.round(plan.yearlyPrice / 12) 
             : plan.monthlyPrice;
 
+          // Determine if the card itself uses Dark Mode styling.
+          // Card 3 (Bespoke) stays strictly dark onyx layout even when the site switches to light mode.
+          const isCardDark = theme === "dark" || idx === 2;
+
+          let cardStyle = "";
+          if (idx === 0) {
+            cardStyle = isCardDark 
+              ? "border-slate-700/50 bg-white/5 hover:border-slate-500/80 text-white" 
+              : "border-slate-200 bg-white/70 text-[#0b0f19] shadow-sm hover:border-[#e5c158]/50 shadow-slate-200/50";
+          } else if (idx === 1) {
+            cardStyle = isCardDark
+              ? "border-[#cd7f32] shadow-[0_0_30px_rgba(205,127,50,0.25)] bg-[#cd7f32]/5 hover:border-[#d4af37] scale-105 text-white"
+              : "border-[#cd7f32] shadow-sm shadow-[#cd7f32]/20 bg-white/70 hover:border-[#d4af37] scale-105 text-[#0b0f19]";
+          } else {
+            cardStyle = "border-[#e5e4e2] bg-[#070a12] text-white shadow-xl shadow-[#e5e4e2]/5 hover:border-white";
+          }
+
           return (
             <div
               key={idx}
-              className={`border rounded-3xl p-8 flex flex-col justify-between transition-all duration-400 hover:-translate-y-2 backdrop-blur-md ${plan.style}`}
+              className={`border rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 backdrop-blur-md ${cardStyle}`}
             >
               <div className="space-y-6">
                 {/* الهيدر والباقة */}
                 <div className="flex items-center justify-between">
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${
                     plan.isPopular 
-                      ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/30" 
-                      : idx === 2 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" : "bg-white/5 text-slate-300 border-white/10"
+                      ? (isCardDark ? "bg-[#cd7f32]/10 text-[#e5c158] border-[#cd7f32]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20")
+                      : idx === 2 ? "bg-white/5 text-[#e5e4e2] border-[#e5e4e2]/20" : (isCardDark ? "bg-white/5 text-slate-300 border-white/10" : "bg-slate-100 text-slate-600 border-slate-300")
                   }`}>
                     {plan.badge}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-bold tracking-wider">ORCA CRM</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-slate-500" : "text-slate-400"}`}>ORCA CRM</span>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-black text-white drop-shadow-sm">{plan.name}</h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed min-h-[36px] font-semibold">
+                  <h3 className={`text-xl font-black drop-shadow-sm ${isCardDark ? "text-white" : "text-[#0b0f19]"}`}>{plan.name}</h3>
+                  <p className={`text-[11px] leading-relaxed min-h-[36px] font-semibold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>
                     {plan.description}
                   </p>
+                  {plan.subtext && (
+                    <p className={`text-[10px] font-bold ${
+                      idx === 0 ? (isCardDark ? 'text-slate-400 italic' : 'text-slate-500 italic') 
+                      : idx === 1 ? 'text-[#cd7f32]' 
+                      : 'text-[#e5e4e2]'
+                    }`}>
+                      {plan.subtext}
+                    </p>
+                  )}
                 </div>
 
                 {/* السعر */}
-                <div className="py-6 border-y border-white/5 flex items-baseline gap-1.5">
-                  <span className={`text-4xl font-black ${idx === 2 ? 'text-yellow-500' : 'text-white'}`}>
-                    {displayPrice.toLocaleString("ar-SA")}
-                  </span>
-                  <span className="text-xs text-slate-400 font-bold">ر.س / شهر</span>
-                  {isYearly && (
-                    <span className="text-[9px] text-emerald-500 font-bold block mt-1 absolute -bottom-4 right-0">
-                      (فاتورة سنوية: {price.toLocaleString("ar-SA")} ر.س)
+                <div className={`py-6 border-y flex items-baseline gap-1.5 min-h-[80px] relative ${isCardDark ? "border-white/5" : "border-slate-200"}`}>
+                  {plan.isBespoke ? (
+                    <span className={`text-2xl font-black drop-shadow-sm ${isCardDark ? "text-[#e5e4e2]" : "text-[#0b0f19]"}`}>
+                      Custom / اتصل بنا
                     </span>
+                  ) : (
+                    <>
+                      <span className={`text-4xl font-black ${idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>
+                        {displayPrice.toLocaleString("ar-SA")}
+                      </span>
+                      <span className={`text-xs font-bold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>ر.س / شهر</span>
+                      {isYearly && price && (
+                        <span className="text-[9px] text-[#e5c158] font-bold block mt-1 absolute bottom-1 right-0">
+                          (فاتورة سنوية: {price.toLocaleString("ar-SA")} ر.س)
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
 
                 {/* الوكلاء */}
-                <div className={`flex items-center gap-3 p-4 rounded-xl border ${idx === 2 ? 'bg-[#0b0f19] border-yellow-600/30' : 'bg-[#0b0f19] border-white/5'}`}>
+                <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+                  idx === 2 ? 'bg-[#0b0f19] border-[#e5e4e2]/25' : (isCardDark ? 'bg-[#0b0f19] border-white/5' : 'bg-slate-50 border-slate-200')
+                }`}>
                   <span className="text-xl">🤖</span>
                   <div>
-                    <p className="text-[9px] text-slate-400 font-bold mb-0.5">السعة المضمنة للوكلاء الذكيين</p>
-                    <p className={`text-xs font-black ${idx === 2 ? 'text-yellow-500' : idx === 1 ? 'text-indigo-400' : 'text-white'}`}>{plan.agentsCount}</p>
+                    <p className={`text-[9px] font-bold mb-0.5 ${isCardDark ? 'text-slate-400' : 'text-slate-600'}`}>السعة المضمنة للوكلاء الذكيين</p>
+                    <p className={`text-xs font-black ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>{plan.agentsCount}</p>
                   </div>
                 </div>
 
                 {/* الميزات */}
                 <div className="space-y-4 pt-4">
-                  <p className="text-[10px] text-slate-400 font-bold">القدرات والخصائص المضمنة:</p>
+                  <p className={`text-[10px] font-bold ${isCardDark ? 'text-slate-400' : 'text-slate-600'}`}>القدرات والخصائص المضمنة:</p>
                   <ul className="space-y-3">
                     {plan.features.map((feature, fIdx) => (
-                      <li key={fIdx} className="flex items-start gap-2 text-[11px] font-semibold text-slate-300">
-                        <span className={`shrink-0 mt-0.5 text-[10px] ${idx === 2 ? 'text-yellow-500' : idx === 1 ? 'text-indigo-400' : 'text-emerald-500'}`}>✓</span>
+                      <li key={fIdx} className={`flex items-start gap-2 text-[11px] font-semibold ${isCardDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <span className={`shrink-0 mt-0.5 text-[10px] ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : 'text-emerald-500'}`}>✓</span>
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -162,10 +207,10 @@ export default function PricingGrid() {
                   href="#register-interest"
                   className={`block w-full text-center p-4 rounded-xl text-xs font-black transition-all active:scale-[0.99] ${
                     plan.isPopular
-                      ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-                      : idx === 2
-                      ? "bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.2)]"
-                      : "bg-white/10 hover:bg-white/15 text-white border border-white/5"
+                      ? "bg-[#e5c158] hover:bg-[#d4af37] text-[#0b0f19] shadow-[0_0_20px_rgba(229,193,88,0.3)]"
+                      : (isCardDark 
+                          ? "bg-white/10 hover:bg-white/15 text-white border border-white/5" 
+                          : "bg-slate-100 hover:bg-slate-200 text-[#0b0f19] border border-slate-200 shadow-sm")
                   }`}
                 >
                   اختيار الباقة والتفعيل ➔

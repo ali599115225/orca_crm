@@ -79,6 +79,7 @@ model Project {
   maxPrice       Decimal?      @map("max_price") @db.Decimal(12, 2)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
   leads          Lead[]
+  units          Unit[]
 
   @@map("projects")
 }
@@ -167,6 +168,7 @@ model Tenant {
   agentSlots          AgentSlot[]
   usageMeters         UsageMeter[]
   commissions         PayrollCommission[]
+  agentTelemetryLogs  AgentTelemetryLog[]
 
   @@map("tenants")
 }
@@ -226,4 +228,67 @@ model PayrollCommission {
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("payroll_commissions")
+}
+
+model Unit {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId     String     @map("project_id") @db.Uuid
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitNumber    String     @map("unit_number")
+  floorPosition Int        @map("floor_position")
+  priceSar      Decimal    @map("price_sar") @db.Decimal(12, 2)
+  status        String     @default("Available") // Available, Reserved, Sold
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  contract      Contract?
+
+  @@unique([projectId, unitNumber], name: "uq_project_unit_number")
+  @@index([projectId], map: "idx_units_project_id")
+  @@map("units")
+}
+
+model Contract {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  unitId         String        @unique @map("unit_id") @db.Uuid
+  unit           Unit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  buyerName      String        @map("buyer_name")
+  buyerPhone     String        @map("buyer_phone")
+  totalVolumeSar Decimal       @map("total_volume_sar") @db.Decimal(12, 2)
+  signedAt       DateTime      @default(now()) @map("signed_at") @db.Timestamptz
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  installments   Installment[]
+
+  @@index([unitId], map: "idx_contracts_unit_id")
+  @@map("contracts")
+}
+
+model Installment {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractId         String        @map("contract_id") @db.Uuid
+  contract           Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  installmentNumber  Int           @map("installment_number")
+  amountSar          Decimal       @map("amount_sar") @db.Decimal(12, 2)
+  dueDate            DateTime      @map("due_date") @db.Date
+  paymentStatus      String        @default("Pending") @map("payment_status")
+  securePaymentToken String        @unique @default(dbgenerated("gen_random_uuid()")) @map("secure_payment_token") @db.Uuid
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([contractId, installmentNumber], name: "uq_contract_installment_number")
+  @@index([contractId], map: "idx_installments_contract_id")
+  @@index([dueDate], map: "idx_installments_due_date")
+  @@map("installments")
+}
+
+model AgentTelemetryLog {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId      String   @map("agent_id") // SAHER or SANAD
+  actionType   String   @map("action_type") // Lead_Screening, Link_Dispatched, Security_Lock, Payment_Confirmed
+  logMessageAr String   @map("log_message_ar") @db.Text
+  severity     String   @default("Info") // Info, Warning, Critical
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId], map: "idx_telemetry_tenant_id")
+  @@index([createdAt(sort: Desc)], map: "idx_telemetry_created_at")
+  @@map("agent_telemetry_logs")
 }

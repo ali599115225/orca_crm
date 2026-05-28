@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 
 /**
@@ -151,4 +152,5 @@ export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete("session_token");
   revalidatePath("/");
+  redirect("/login");
 }

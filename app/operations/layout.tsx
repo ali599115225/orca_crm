@@ -4,8 +4,8 @@ import { getSession } from '@/lib/session';
 import { logoutAction } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-
 import { getActiveTenant } from '@/lib/tenant';
+import TopBarClient from '@/app/components/TopBarClient';
 
 export const metadata = {
   title: 'لوحة التحكم - أوركا',
@@ -31,10 +31,10 @@ export default async function OperationsLayout({
     redirect("/login");
   }
 
-  // جلب المنشأة العقارية النشطة ديناميكياً لدعم المشرف العام والوقاية من التطفل المتقاطع
+  // جلب المنشأة العقارية النشطة ديناميكياً
   const tenant = await getActiveTenant();
 
-  // جلب البريد الإلكتروني للمستخدم الحالي للتحقق من الصلاحيات الفوقية
+  // جلب البريد الإلكتروني للمستخدم الحالي
   const user = await prisma.user.findUnique({
     where: { id: session.userId as string }
   });
@@ -42,16 +42,15 @@ export default async function OperationsLayout({
   const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
 
   const rawCompanyName = tenant?.companyName || "";
-  // التحقق هل المنشأة جديدة وببيانات فارغة لإجبارها على إكمال الملف؟
   const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");
+  const userRole = session.role ? ROLE_TRANSLATIONS[session.role as string] : "المدير العام";
 
   return (
-    // قمنا بحذف كلاس font-sans هنا ليورث النظام بأكمله خط Cairo الفاخر تلقائياً
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased selection:bg-amber-500/20 selection:text-amber-600">
+    <div className="h-screen w-screen overflow-hidden flex bg-slate-50 antialiased selection:bg-amber-500/20 selection:text-amber-600">
       
-      {/* شريط التنقل الجانبي (Sidebar) الفخم على اليسار */}
+      {/* شريط التنقل الجانبي (Sidebar) الفخم على اليمين في تخطيط الـ RTL */}
       <aside 
-        className="w-full md:w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
+        className="h-full w-full md:w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800/80 shrink-0 text-right shadow-2xl relative z-10" 
         dir="rtl"
       >
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
@@ -73,7 +72,7 @@ export default async function OperationsLayout({
         </div>
 
         {/* روابط التنقل العربية بالكامل */}
-        <nav className="flex-1 p-4 space-y-1.5 text-xs font-bold">
+        <nav className="flex-1 p-4 space-y-1.5 text-xs font-bold overflow-y-auto">
           <a href="/operations/analytics" className="flex items-center space-x-reverse space-x-3 px-4 py-3 rounded-lg hover:bg-slate-800/60 text-slate-300 hover:text-white transition-all duration-300 hover:scale-[1.02]">
             <svg width="20" height="20" className="w-4.5 h-4.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
@@ -161,23 +160,24 @@ export default async function OperationsLayout({
           </form>
         </nav>
 
-        <div className="p-4 border-t border-slate-800/80 text-[9px] text-slate-500">
+        <div className="p-4 border-t border-slate-800/80 text-[9px] text-slate-500 shrink-0">
           <p>جميع الحقوق محفوظة لوكالة أوركا</p>
           <p className="mt-1">رقم الإصدار 1.0</p>
         </div>
       </aside>
 
       {/* محتوى الشاشة الرئيسي */}
-      <main className="flex-1 flex flex-col min-w-0 text-right" dir="rtl">
-        {/* شريط تنبيه الصيانة المجدولة من وكيل صيانة الموقع */}
-        <div className="bg-slate-900 text-slate-200 text-[10px] font-bold py-2.5 px-6 text-center flex items-center justify-center gap-1.5 border-b border-slate-800 shrink-0">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-          <span>🛠️ تنبيه وكيل الصيانة: صيانة وقائية مجدولة يوم الجمعة القادم الساعة 2:00 صباحاً (بتوقيت الرياض) لمدة 30 دقيقة.</span>
-        </div>
+      <main className="h-full flex-1 flex flex-col min-w-0 text-right overflow-hidden" dir="rtl">
+        
+        {/* الترويسة الموحدة والذكية واللاصقة بالأعلى */}
+        <TopBarClient 
+          initialName={session.name as string || "أحمد الغامدي"} 
+          initialRole={userRole} 
+        />
 
-        {/* شريط التنبيه المالي والتشغيلي الذكي للمستأجرين الجدد في الأعلى */}
+        {/* شريط التنبيه المالي والتشغيلي الذكي للمستأجرين الجدد */}
         {isNewTenant && (
-          <div className="bg-amber-500 text-slate-950 text-[10px] font-black py-2.5 px-6 text-center animate-pulse flex items-center justify-center gap-1.5 border-b border-amber-600/30">
+          <div className="bg-amber-500 text-slate-950 text-[10px] font-black py-2.5 px-6 text-center animate-pulse flex items-center justify-center gap-1.5 border-b border-amber-600/30 shrink-0 select-none">
             <span>⚠️ تنبيه إداري: بيانات ملف منشأتك غير مكتملة حالياً!</span>
             <a href="/operations/onboarding" className="underline hover:text-white transition-colors font-bold">
               [ اضغط هنا لتعبئة وتنشيط ملف منشأتك العقارية الآن ]
@@ -185,31 +185,15 @@ export default async function OperationsLayout({
           </div>
         )}
 
-        <header className="bg-white border-b border-gray-200/80 h-16 flex items-center justify-between px-6 shrink-0 shadow-sm relative z-20">
-          <div className="flex items-center space-x-reverse space-x-4">
-            <div className="relative">
-              <span className="absolute bottom-0 left-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-              <div className="h-9 w-9 bg-slate-900 text-white rounded-full flex items-center justify-center font-black text-sm">
-                {session?.name ? (session.name as string).charAt(0) : "م"}
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-gray-800">{session?.name as string || "أحمد الغامدي"}</p>
-              <p className="text-[10px] text-gray-500 font-extrabold mt-0.5">
-                {session?.role ? ROLE_TRANSLATIONS[session.role as string] : "مدير المبيعات"}
-              </p>
-            </div>
+        {/* لوحة عرض المحتوى مع المحاذاة الدقيقة وتثبيت الفوتر بالأسفل */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50/50 flex flex-col justify-start">
+          <div className="w-full">
+            {children}
           </div>
           
-          <div className="flex items-center space-x-reverse space-x-3">
-            <span className="bg-slate-100 text-slate-600 text-[10px] px-3 py-1.5 rounded-lg font-bold border border-slate-200/50">
-              تحديث فوري نشط
-            </span>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50/50">
-          {children}
+          <footer className="mt-8 border-t border-gray-200/50 dark:border-slate-800/50 pt-4 pb-2 text-center text-[10px] text-slate-400 select-none font-bold shrink-0">
+            <p>جميع الحقوق محفوظة لوكالة أوركا CRM © ٢٠٢٦</p>
+          </footer>
         </div>
       </main>
 
