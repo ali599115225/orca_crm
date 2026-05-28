@@ -134,21 +134,27 @@ export async function proxy(request: NextRequest) {
   // 🛡️ حماية مسارات الـ API للوحة التحكم وضمان العزل التام للمستأجرين (Multi-tenant API Guard)
   if (pathname.startsWith("/api/v1/dashboard")) {
     const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    } else {
+      token = request.cookies.get("session_token")?.value || "";
+    }
+
+    if (!token) {
       return new NextResponse(
-        JSON.stringify({ error: "غير مصرح بالوصول: يرجى توفير الرمز المشفر المعتمد Bearer Token" }),
+        JSON.stringify({ error: "غير مصرح بالوصول: يرجى توفير الرمز المشفر المعتمد Bearer Token أو ملف تعريف الجلسة" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const token = authHeader.substring(7);
     try {
       const { payload } = await jwtVerify(token, SECRET_KEY);
       
       // تمرير الهويات والخصائص عبر الهيدرز الداخلية للطلب بشكل مؤمن
       const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-user-id", payload.user_id as string);
-      requestHeaders.set("x-company-id", payload.company_id as string);
+      requestHeaders.set("x-user-id", (payload.user_id || payload.userId) as string);
+      requestHeaders.set("x-company-id", (payload.company_id || payload.tenantId) as string);
       requestHeaders.set("x-user-role", payload.role as string);
 
       return NextResponse.next({

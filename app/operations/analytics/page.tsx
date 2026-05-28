@@ -115,11 +115,46 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     async function loadAnalytics() {
-      const data = await getAnalyticsDataAction();
-      setAnalytics(data);
-      setLoading(false);
+      try {
+        const res = await fetch("/api/v1/dashboard/metrics");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAnalytics(json.data);
+        } else {
+          const data = await getAnalyticsDataAction();
+          setAnalytics(data);
+        }
+      } catch (err) {
+        const data = await getAnalyticsDataAction();
+        setAnalytics(data);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    async function loadTelemetry() {
+      try {
+        const res = await fetch("/api/v1/dashboard/telemetry");
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          // ترتيب السجلات تصاعدياً حسب تاريخ الإنشاء لضمان التمرير الزمني الصحيح
+          const sorted = [...json.data].sort(
+            (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          const dbLogs = sorted.map((item: any) => item.logMessageAr);
+          setLogs(dbLogs);
+        }
+      } catch (err) {
+        console.error("Failed to load telemetry logs:", err);
+      }
+    }
+
     loadAnalytics();
+    loadTelemetry();
+
+    // تحديث المؤشرات كل 15 ثانية، وتحديث البث للوكلاء كل 7 ثواني
+    const metricsInterval = setInterval(loadAnalytics, 15000);
+    const telemetryInterval = setInterval(loadTelemetry, 7000);
 
     const handleThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -138,12 +173,14 @@ export default function AnalyticsDashboard() {
     window.addEventListener('lang-change', handleLangChange);
 
     return () => {
+      clearInterval(metricsInterval);
+      clearInterval(telemetryInterval);
       window.removeEventListener('theme-change', handleThemeChange);
       window.removeEventListener('lang-change', handleLangChange);
     };
   }, []);
 
-  // تهيئة السجلات الافتراضية
+  // تهيئة السجلات الافتراضية كاحتياط عند بدء التشغيل
   useEffect(() => {
     if (lang === 'AR') {
       setLogs([
@@ -164,35 +201,6 @@ export default function AnalyticsDashboard() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
-
-  // محاكاة تدفق العمليات الحية للوكلاء
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (lang === 'AR') {
-        const randomLogs = [
-          "«الوكيل ساهر: تم تحليل ملف الملاءة المالية لعميل مهتم بوحدات النخبة وتأكيد الجدية تلقائياً»",
-          "«الوكيل سند: تم رصد قسط مستحق للوحدة (٢٠٥)، جاري صياغة وإرسال رابط السداد المشفر»",
-          "«الدرع السيبراني: تجديد تشفير عقود الحجز للوحدات المفتوحة مع خادم الرياض بآمن ١٠٠٪»",
-          "«الوكيل ساهر: جدولة زيارة ميدانية للعميل المتابع مع مستشار مبيعات شركة الإنماء»",
-          "«الوكيل سند: تسجيل دفعة مالية ناجحة بقيمة ١٥٠,٠٠٠ ر.س للوحدة (٣١٢) وتحديث المخزن الحركي»"
-        ];
-        const randomLog = randomLogs[Math.floor(Math.random() * randomLogs.length)];
-        setLogs(prev => [...prev, randomLog]);
-      } else {
-        const randomLogs = [
-          "«Agent Saher: Analyzed financial profile for a client interested in Elite units and verified intent automatically»",
-          "«Agent Sanad: Detected due installment for Unit (205), generating and sending secure payment link»",
-          "«Cyber Shield: Renewed encryption for open reservation contracts with Riyadh server, 100% secure»",
-          "«Agent Saher: Scheduled physical site visit for the followed client with Al-Inma sales advisor»",
-          "«Agent Sanad: Recorded successful payment of SAR 150,000 for Unit (312) and updated inventory matrix»"
-        ];
-        const randomLog = randomLogs[Math.floor(Math.random() * randomLogs.length)];
-        setLogs(prev => [...prev, randomLog]);
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [lang]);
 
   // دالة تحويل الأرقام إلى الأرقام العربية الشرقية
   const toArabicNumerals = (num: string | number | undefined | null): string => {
