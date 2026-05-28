@@ -102,11 +102,15 @@ export default function AnalyticsDashboard() {
 
   // سجل العمليات التفاعلية للوكلاء
   const [logs, setLogs] = useState<string[]>([]);
+  
+  // المخزن الحركي للوحدات والوحدة المحددة للتفاصيل
+  const [inventoryUnits, setInventoryUnits] = useState<any[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<{
-    id: number;
-    status: 'sold' | 'available' | 'reserved';
-    floor: number;
-    price: number;
+    id: string;
+    unitNumber: string;
+    floorPosition: number;
+    priceSar: number;
+    status: string;
     area: number;
   } | null>(null);
 
@@ -149,12 +153,26 @@ export default function AnalyticsDashboard() {
       }
     }
 
+    async function loadUnits() {
+      try {
+        const res = await fetch("/api/v1/dashboard/units");
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setInventoryUnits(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load inventory units:", err);
+      }
+    }
+
     loadAnalytics();
     loadTelemetry();
+    loadUnits();
 
-    // تحديث المؤشرات كل 15 ثانية، وتحديث البث للوكلاء كل 7 ثواني
+    // تحديث المؤشرات والوحدات كل 15 ثانية، وتحديث البث للوكلاء كل 7 ثواني
     const metricsInterval = setInterval(loadAnalytics, 15000);
     const telemetryInterval = setInterval(loadTelemetry, 7000);
+    const unitsInterval = setInterval(loadUnits, 15000);
 
     const handleThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -175,6 +193,7 @@ export default function AnalyticsDashboard() {
     return () => {
       clearInterval(metricsInterval);
       clearInterval(telemetryInterval);
+      clearInterval(unitsInterval);
       window.removeEventListener('theme-change', handleThemeChange);
       window.removeEventListener('lang-change', handleLangChange);
     };
@@ -231,19 +250,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  // مصفوفة تمثل شقق البرج العقاري (المصفوفة الحركية)
-  const inventoryUnits = Array.from({ length: 64 }, (_, i) => {
-    const floor = Math.floor(i / 8) + 1;
-    const id = floor * 100 + (i % 8 + 1);
-    let status: 'sold' | 'available' | 'reserved' = 'available';
-    if (i % 3 === 0) status = 'sold';
-    else if (i % 7 === 0) status = 'reserved';
-
-    const price = (2200000 + (i % 6) * 450000);
-    const area = 160 + (i % 5) * 35;
-
-    return { id, status, floor, price, area };
-  });
+  // مصفوفة تمثل شقق البرج العقاري (يتم استردادها حياً من الـ API)
 
   return (
     <div className={`space-y-6 selection-fix p-1 transition-colors duration-500 ${
@@ -554,13 +561,14 @@ export default function AnalyticsDashboard() {
               <div className="grid grid-cols-8 sm:grid-cols-16 gap-1.5 md:gap-2.5 p-4 bg-slate-950/20 dark:bg-black/20 border border-white/5 dark:border-white/5 rounded-2xl">
                 {inventoryUnits.map((unit) => {
                   let statusColor = "";
-                  if (unit.status === 'sold') {
+                  const statusLower = String(unit.status || "available").toLowerCase();
+                  if (statusLower === 'sold') {
                     statusColor = theme === 'dark' 
                       ? "bg-emerald-500/15 border-emerald-500/60 hover:bg-emerald-500/25 text-emerald-400" 
                       : "bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800";
-                  } else if (unit.status === 'reserved') {
+                  } else if (statusLower === 'reserved') {
                     statusColor = theme === 'dark' 
-                      ? "bg-[#cd7f32]/15 border-[#E6C687]/50 hover:bg-[#cd7f32]/25 text-[#E6C687]" 
+                      ? "bg-[#735334]/15 border-[#E6C687]/50 hover:bg-[#735334]/25 text-[#E6C687]" 
                       : "bg-amber-50 border-[#735334]/50 hover:bg-amber-100 text-[#735334]";
                   } else {
                     statusColor = theme === 'dark' 
@@ -572,15 +580,15 @@ export default function AnalyticsDashboard() {
                     <button
                       key={unit.id}
                       onClick={() => setSelectedUnit(unit)}
-                      title={`${t.unit_label} ${toArabicNumerals(unit.id)} (${unit.status === 'sold' ? t.status_sold : unit.status === 'reserved' ? t.status_res : t.status_avail})`}
+                      title={`${t.unit_label} ${toArabicNumerals(unit.unitNumber)} (${statusLower === 'sold' ? t.status_sold : statusLower === 'reserved' ? t.status_res : t.status_avail})`}
                       className={`aspect-square border rounded-md flex items-center justify-center text-[8px] md:text-[9px] font-black cursor-pointer select-none transition-all duration-300 hover:scale-105 active:scale-95 ${statusColor}`}
                     >
-                      {toArabicNumerals(unit.id)}
+                      {toArabicNumerals(unit.unitNumber)}
                     </button>
                   );
                 })}
               </div>
-
+ 
               {/* الشعار التوضيحي الأوسط بالكامل في المنتصف */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className={`border px-8 py-4 rounded-2xl backdrop-blur-md shadow-2xl transition-all duration-500 ${
@@ -597,7 +605,7 @@ export default function AnalyticsDashboard() {
                 </div>
               </div>
             </div>
-
+ 
             {/* عرض تفاصيل الوحدة التي تم النقر عليها */}
             {selectedUnit && (
               <div className={`mt-5 p-4 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4 transition-all duration-500 animate-fadeIn ${
@@ -605,14 +613,14 @@ export default function AnalyticsDashboard() {
               }`}>
                 <div className="flex items-center gap-3">
                   <span className={`w-3 h-3 rounded-full ${
-                    selectedUnit.status === 'sold' ? 'bg-emerald-500' : selectedUnit.status === 'reserved' ? 'bg-[#cd7f32]' : 'bg-blue-500'
+                    String(selectedUnit.status).toLowerCase() === 'sold' ? 'bg-emerald-500' : String(selectedUnit.status).toLowerCase() === 'reserved' ? 'bg-[#735334]' : 'bg-blue-500'
                   }`} />
                   <div>
                     <h4 className="font-extrabold text-xs">
-                      {t.unit_details_title} | <span dir="ltr">{t.unit_label} {toArabicNumerals(selectedUnit.id)}</span>
+                      {t.unit_details_title} | <span dir="ltr">{t.unit_label} {toArabicNumerals(selectedUnit.unitNumber)}</span>
                     </h4>
                     <p className="text-[10px] text-gray-500 mt-0.5">
-                      {t.floor} {toArabicNumerals(selectedUnit.floor)} - {selectedUnit.status === 'sold' ? t.status_sold : selectedUnit.status === 'reserved' ? t.status_res : t.status_avail}
+                      {t.floor} {toArabicNumerals(selectedUnit.floorPosition)} - {String(selectedUnit.status).toLowerCase() === 'sold' ? t.status_sold : String(selectedUnit.status).toLowerCase() === 'reserved' ? t.status_res : t.status_avail}
                     </p>
                   </div>
                 </div>
@@ -624,7 +632,7 @@ export default function AnalyticsDashboard() {
                   <div>
                     <span className="text-gray-400 font-bold block text-[9px]">{t.price}</span>
                     <span className={theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334]'}>
-                      {formatCurrency(selectedUnit.price)}
+                      {formatCurrency(selectedUnit.priceSar)}
                     </span>
                   </div>
                 </div>
