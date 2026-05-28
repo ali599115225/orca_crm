@@ -1,7 +1,31 @@
 // proxy.ts
+// 🛡️ ORCA CRM - Unified Proxy (Auth + WAF + Security Headers)
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+
+// ===================================================
+// WAF: أنماط هجمات شائعة يجب رفضها
+// ===================================================
+const MALICIOUS_PATTERNS = [
+  /(\bSELECT\b|\bUNION\b|\bDROP\b|\bINSERT\b|\bDELETE\b)\s+/i,
+  /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+  /javascript:/gi,
+  /\.\.\//g,
+  /etc\/passwd/gi,
+];
+
+// ===================================================
+// إضافة رؤوس الأمان القياسية لكل استجابة
+// ===================================================
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  return response;
+}
+
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || "orca_crm_super_secret_key_2026_saudi_real_estate"
@@ -11,19 +35,33 @@ const SECRET_KEY = new TextEncoder().encode(
  * دالة الوكيل (Proxy) المعتمدة في Next.js 16 لإدارة وحماية الـ Subdomains
  */
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // 🛡️ WAF: رفض الطلبات التي تحتوي على أنماط هجومية
+  const fullPath = pathname + "?" + searchParams.toString();
+  for (const pattern of MALICIOUS_PATTERNS) {
+    if (pattern.test(fullPath)) {
+      console.warn(`🛡️ WAF Blocked: ${pathname}`);
+      return new NextResponse(
+        JSON.stringify({ error: "طلب مشبوه تم رفضه بواسطة نظام الحماية" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
 
   // 1. استخراج النطاق الفرعي (Subdomain) الحالي من الرابط
   const host = request.headers.get("host") || "";
   const domainParts = host.split(".");
   let currentSubdomain = "dar-al-amar"; // القيمة الافتراضية للتطوير المحلي
 
-  if (domainParts.length > 2) {
+  const isVercelPreview = host.endsWith(".vercel.app");
+
+  if (domainParts.length > 2 && !isVercelPreview) {
     currentSubdomain = domainParts[0];
   }
 
-  // التحقق مما إذا كان الرابط هو رابط تجريبي مجاني من Vercel
-  const isVercelPreview = host.endsWith(".vercel.app");
+  // تحديد ما إذا كان النطاق الحالي هو البوابة العامة للمنصة
+  const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
 
   // 2. جلب وتفكيك الـ Token المشفر للتحقق
   const sessionToken = request.cookies.get("session_token")?.value;
@@ -42,13 +80,15 @@ export async function proxy(request: NextRequest) {
       if (!isSuperAdmin) {
         const isProductionDomain = host.includes("orca.az-ez.pro");
 
-        if (isProductionDomain && payload.tenantSubdomain !== currentSubdomain) {
+        // إذا كان على نطاق فرعي مخصص لشركة أخرى (وليس النطاق الرئيسي)، نوجهه لنطاقه الفرعي الصحيح
+        if (isProductionDomain && !isMainDomain && payload.tenantSubdomain !== currentSubdomain) {
           if (payload.tenantSubdomain) {
             return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro${pathname}`, request.url));
           }
         }
 
-        if (!isProductionDomain && !isVercelPreview && payload.tenantSubdomain !== currentSubdomain) {
+        // إذا كان محلياً وليس على النطاق الفرعي الصحيح
+        if (!isProductionDomain && !isVercelPreview && !isMainDomain && payload.tenantSubdomain !== currentSubdomain) {
           const response = NextResponse.redirect(new URL("/login", request.url));
           response.cookies.delete("session_token");
           return response;
@@ -68,15 +108,21 @@ export async function proxy(request: NextRequest) {
       const isSuperAdmin = payload.email === "ali.orca@outlook.sa" || payload.email === "elite.orca@outlook.sa";
       
       if (isSuperAdmin) {
-        // للمشرف العام: نقله للتحليلات بنفس النطاق الفرعي الحالي مباشرة
+        // للمشرف العام: نقله للتحليلات مباشرة على النطاق الحالي
         return NextResponse.redirect(new URL("/operations/analytics", request.url));
       } else {
         const isProductionDomain = host.includes("orca.az-ez.pro");
-        if (isProductionDomain && payload.tenantSubdomain !== currentSubdomain) {
-          if (payload.tenantSubdomain) {
-            return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro/operations/analytics`, request.url));
+        
+        if (isProductionDomain) {
+          // إذا كان على النطاق الرئيسي، نبقيه عليه، وإذا كان على نطاق فرعي خاطئ، نحوله لنطاقه الصحيح
+          if (!isMainDomain && payload.tenantSubdomain !== currentSubdomain) {
+            if (payload.tenantSubdomain) {
+              return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro/operations/analytics`, request.url));
+            }
+          } else {
+            return NextResponse.redirect(new URL("/operations/analytics", request.url));
           }
-        } else if (payload.tenantSubdomain === currentSubdomain) {
+        } else {
           return NextResponse.redirect(new URL("/operations/analytics", request.url));
         }
       }
@@ -88,7 +134,7 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// تعيين مخرجات مسارات الفحص للوكيل المساعد
+// تعيين مسارات الفحص للوكيل المساعد
 export const config = {
   matcher: ["/operations/:path*", "/login"],
 };

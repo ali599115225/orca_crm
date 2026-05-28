@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
       dir="rtl"
       style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
-        fontFamily: "'Cairo', sans-serif",
+        fontFamily: "'Calibri', sans-serif",
       }}
     >
       {/* خلفية متحركة */}
@@ -78,7 +78,6 @@ export default function AdminLoginPage() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
         @keyframes pulse { from { transform: scale(1) rotate(0deg); opacity: 0.5; } to { transform: scale(1.3) rotate(10deg); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .admin-card { animation: fadeIn 0.6s ease forwards; }

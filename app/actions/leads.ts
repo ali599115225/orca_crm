@@ -83,12 +83,13 @@ export async function createLeadAction(formData: FormData) {
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
     const phone = formData.get("phone") as string;
+    const email = formData.get("email") as string;
     const city = formData.get("city") as string;
     const source = formData.get("source") as string;
     const projectId = formData.get("projectId") as string;
 
     if (!firstName || !phone) {
-      throw new Error("الاسم الأول ورقم الجوال حقول إلزامية.");
+      throw new Error("الاسم ورقم الجوال حقول إلزامية.");
     }
 
     const isDuplicate = await prisma.lead.findFirst({
@@ -116,6 +117,7 @@ export async function createLeadAction(formData: FormData) {
         firstName,
         lastName: lastName || null,
         phone,
+        email: email || null,
         city: city || "الرياض",
         source: source || "إعلانات سناب شات",
         status: "NEW",

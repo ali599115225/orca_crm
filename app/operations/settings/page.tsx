@@ -1,6 +1,7 @@
-// app/operations/settings/page.tsx
 import React from 'react';
 import { getActiveTenant } from '@/lib/tenant';
+import { getSession } from '@/lib/session';
+import { getTenantUsersAction } from '@/app/actions/users';
 import SettingsView from './SettingsView';
 
 export const metadata = {
@@ -9,6 +10,9 @@ export const metadata = {
 
 export default async function SettingsPage() {
   const tenant = await getActiveTenant();
+  const session = await getSession();
+  const users = await getTenantUsersAction();
+  const currentUserRole = session?.role || "READ_ONLY";
   
   return (
     <SettingsView 
@@ -18,6 +22,8 @@ export default async function SettingsPage() {
         subscriptionPlan: tenant.subscriptionPlan,
         extraAgents: tenant.extraAgents || 0,
       }} 
+      users={users}
+      currentUserRole={currentUserRole}
     />
   );
 }

@@ -15,8 +15,21 @@ export default async function LoginPage() {
   try {
     const headersList = await headers();
     host = headersList.get("host") || "";
-    const tenant = await getActiveTenant(host);
-    tenantName = tenant.companyName;
+    
+    const domainParts = host.split(".");
+    let currentSubdomain = "orca";
+    const isVercelDomain = host.endsWith(".vercel.app");
+
+    if (domainParts.length > 2 && !isVercelDomain) {
+      currentSubdomain = domainParts[0];
+    }
+
+    const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
+
+    if (!isMainDomain) {
+      const tenant = await getActiveTenant(host);
+      tenantName = tenant.companyName || "منصة ORCA العقارية";
+    }
   } catch (e) {
     // قيمة بديلة في حال تعذر قراءة النطاق الفرعي
   }
@@ -27,7 +40,7 @@ export default async function LoginPage() {
       dir="rtl"
       style={{
         background: 'linear-gradient(135deg, #090d16 0%, #1e1b10 50%, #090d16 100%)',
-        fontFamily: "'Cairo', sans-serif",
+        fontFamily: "'Calibri', sans-serif",
       }}
     >
       {/* خلفية متحركة بكرات ذهبية متوهجة */}
@@ -50,7 +63,7 @@ export default async function LoginPage() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+        body, html, * { font-family: 'Calibri', sans-serif !important; }
         @keyframes pulse { from { transform: scale(1) rotate(0deg); opacity: 0.6; } to { transform: scale(1.25) rotate(8deg); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         .advisor-card { animation: fadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

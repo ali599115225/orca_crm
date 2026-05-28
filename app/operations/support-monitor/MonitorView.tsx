@@ -168,12 +168,17 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
 
   const planTitles: Record<string, string> = {
     basic: "الباقة الأساسية",
-    professional: "الباقة الاحترافية",
-    enterprise: "باقة الشركات الكبرى",
+    silver: "الباقة الفضية",
+    gold: "الباقة الذهبية",
   };
 
   return (
     <div className="space-y-6" dir="rtl">
+      <style dangerouslySetInnerHTML={{__html: `
+        body, html, * {
+          font-family: 'Calibri', sans-serif !important;
+        }
+      `}} />
       {/* هيدر الصفحة الفخم */}
       <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-md text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -412,8 +417,8 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
                     className="w-full bg-slate-50 border rounded-lg p-2.5 text-xs text-slate-700 font-bold"
                   >
                     <option value="basic">الباقة الأساسية (Basic)</option>
-                    <option value="professional">الباقة الاحترافية (Professional)</option>
-                    <option value="enterprise">باقة الشركات الكبرى (Enterprise)</option>
+                    <option value="silver">الباقة الفضية (Silver)</option>
+                    <option value="gold">الباقة الذهبية (Gold)</option>
                   </select>
                 </div>
 

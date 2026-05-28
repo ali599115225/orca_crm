@@ -102,6 +102,29 @@ export async function getTenantsListAction() {
 }
 
 /**
+ * جلب جميع تذاكر الدعم الفني بالنظام
+ */
+export async function getTicketsListAction() {
+  try {
+    await verifySuperAdmin();
+    return await prisma.ticket.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        tenant: {
+          select: {
+            companyName: true,
+            subdomain: true,
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("خطأ جلب التذاكر الفوقي:", error);
+    return [];
+  }
+}
+
+/**
  * تعديل حالة تفعيل الشركة (نشط / معطل)
  */
 export async function toggleTenantStatusAction(tenantId: string, currentStatus: boolean) {

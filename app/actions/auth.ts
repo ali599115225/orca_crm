@@ -63,11 +63,13 @@ export async function loginAction(formData: FormData) {
     // 🛡️ فحص النطاق العقاري ومطابقة الشركة للوقاية من التطفل وتسجيل الدخول المتقاطع
     const domainParts = host.split(".");
     let currentSubdomain = "orca";
-    if (domainParts.length > 2) {
+    const isVercelDomain = host.endsWith(".vercel.app");
+
+    if (domainParts.length > 2 && !isVercelDomain) {
       currentSubdomain = domainParts[0];
     }
 
-    const isTenantSubdomain = currentSubdomain !== "orca" && currentSubdomain !== "dar-al-amar";
+    const isTenantSubdomain = currentSubdomain !== "orca" && currentSubdomain !== "dar-al-amar" && currentSubdomain !== "orca-crm" && currentSubdomain !== "www";
 
     if (!isSuperAdmin && isTenantSubdomain && user.tenant.subdomain !== currentSubdomain) {
       throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
@@ -125,7 +127,13 @@ export async function loginAction(formData: FormData) {
           redirectUrl = "/operations/analytics";
         }
       } else {
-        redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations/analytics`;
+        // إذا كان الدخول من النطاق الرئيسي أو www، نبقي المستخدم عليه لتلافي مشاكل DNS الفرعية غير المهيأة
+        const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
+        if (isMainDomain) {
+          redirectUrl = "/operations/analytics";
+        } else {
+          redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations/analytics`;
+        }
       }
     }
 
