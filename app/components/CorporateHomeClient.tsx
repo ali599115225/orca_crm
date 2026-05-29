@@ -158,6 +158,7 @@ const TRANSLATIONS = {
     statusSoldOut: "Sold Out"
   }
 };
+
 export default function CorporateHomeClient({ host, companyName, initialProjects = [] }: CorporateHomeClientProps) {
   const { theme, toggleTheme, lang, toggleLang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
@@ -178,7 +179,6 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     if (lang === 'EN') return formatted;
     return toArabicNumerals(formatted);
   };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -214,14 +214,14 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
         </div>
       </header>
 
-      {/* الـ Hero Section */}
+      {/* Hero Section */}
       <section className="py-20 px-6 text-center max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-6xl font-black mb-6">{t.landing.heroTitle}</h1>
         <p className="text-sm font-semibold opacity-80 mb-10">{t.heroSub}</p>
         <a href="#register-interest" className="bg-[#735334] text-white px-8 py-4 rounded-xl font-black">{t.heroCTA}</a>
       </section>
 
-      {/* المشاريع الحية (Property Grid) */}
+      {/* Property Grid */}
       <section id="properties" className="py-20 border-t px-6 max-w-7xl mx-auto">
         <h2 className="text-2xl font-black text-center mb-16">{t.galleryTitle}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -240,7 +240,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
         </div>
       </section>
 
-      {/* الباقات */}
+      {/* Pricing */}
       <section id="pricing" className="py-20 border-t px-6">
         <PricingGrid theme={theme} />
       </section>
