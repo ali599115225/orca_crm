@@ -1,7 +1,7 @@
 // app/components/CorporateHomeClient.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PricingGrid from "./PricingGrid";
 import { createLeadAction } from "@/app/actions/leads";
 import { useApp } from "@/app/context/AppContext";
@@ -289,9 +289,63 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     }
   };
 
-  // ─── ثيم الصفحة: دائماً الوضع الداكن السيبراني ───────────────────────────
-  // الخلفية: أسود فحمي داكن مائل للزرقة الخافتة (#060608)
-  // التدرج الحاكم: أبيض ناصع → أخضر نيوني مطفأ (#FFFFFF → #81FF89)
+  // ─── Matrix Code Rain Canvas ────────────────────────────────────────────
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // رموز المصفوفة: أرقام + حروف + رموز عربية
+    const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      + 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي٠١٢٣٤٥٦٧٨٩';
+
+    const fontSize = 13;
+    let cols = Math.floor(canvas.width / fontSize);
+    let drops: number[] = Array(cols).fill(1);
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(6, 6, 8, 0.055)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // لون الأحرف: أخضر نيوني خافت جداً
+      ctx.fillStyle = 'rgba(129, 255, 137, 0.18)';
+      ctx.font = `${fontSize}px monospace`;
+
+      cols = Math.floor(canvas.width / fontSize);
+      if (drops.length < cols) {
+        drops = [...drops, ...Array(cols - drops.length).fill(1)];
+      }
+
+      for (let i = 0; i < cols; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillStyle = i % 7 === 0
+          ? 'rgba(255, 255, 255, 0.25)' // حرف أبيض ساطع نادر
+          : 'rgba(129, 255, 137, 0.12)'; // الأخضر الخافت الأساسي
+        ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 55);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   return (
     <div
@@ -301,9 +355,22 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
         color: "#e2e8f0",
         fontFamily: "'Cairo', 'Inter', sans-serif",
         direction: lang === 'AR' ? 'rtl' : 'ltr',
+        position: 'relative',
       }}
       dir={lang === 'AR' ? 'rtl' : 'ltr'}
     >
+      {/* ─── Matrix Code Rain Canvas — طبقة ثابتة خلف كل شيء ─────────── */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0, left: 0,
+          width: '100%', height: '100%',
+          zIndex: 0,
+          pointerEvents: 'none',
+          opacity: 1,
+        }}
+      />
       {/* ─── CSS Variables + Blueprint Grid + Google Fonts ──────────────────── */}
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -426,7 +493,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       <header
         style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(6,6,8,0.92)',
+          background: 'rgba(6,6,8,0.88)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -517,7 +584,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ═══════════════════════════════════════════════════════════════════
           1. HERO SECTION — البطل الرئيسي
       ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ position: 'relative', overflow: 'hidden', minHeight: '90vh', display: 'flex', alignItems: 'center' }}>
+      <section style={{ position: 'relative', overflow: 'hidden', minHeight: '90vh', display: 'flex', alignItems: 'center', zIndex: 1 }}>
         {/* Blueprint Grid */}
         <div className="blueprint-grid" style={{ position: 'absolute', inset: 0, opacity: 0.5, zIndex: 0 }} />
 
