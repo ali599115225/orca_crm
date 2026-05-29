@@ -1,9 +1,10 @@
 // app/components/CorporateHomeClient.tsx
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import PricingGrid from "./PricingGrid";
 import { createLeadAction } from "@/app/actions/leads";
+import { useApp } from "@/app/context/AppContext";
 
 interface CorporateHomeClientProps {
   host: string;
@@ -11,23 +12,14 @@ interface CorporateHomeClientProps {
 }
 
 export default function CorporateHomeClient({ host, companyName }: CorporateHomeClientProps) {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [lang, setLang] = useState<"AR" | "EN">("AR");
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
-
-  const toggleLang = () => {
-    setLang((prev) => (prev === "AR" ? "EN" : "AR"));
-  };
+  const { theme, toggleTheme, lang, toggleLang } = useApp();
 
   return (
     <div
-      className={`min-h-screen text-right antialiased transition-colors duration-500 selection:bg-emerald-500/20 selection:text-emerald-500 ${
+      className={`min-h-screen antialiased transition-colors duration-500 selection:bg-emerald-500/20 selection:text-emerald-500 ${
         theme === "dark" ? "bg-[#0b0f19] text-white" : "bg-[#f9f9fb] text-[#0b0f19]"
-      }`}
-      dir="rtl"
+      } ${lang === 'AR' ? 'text-right' : 'text-left'}`}
+      dir={lang === 'AR' ? 'rtl' : 'ltr'}
     >
       {/* تعميم خط Calibri وتأثيرات الألوان المخصصة */}
       <style dangerouslySetInnerHTML={{__html: `
@@ -99,7 +91,7 @@ export default function CorporateHomeClient({ host, companyName }: CorporateHome
                 : "bg-white border-slate-300 text-slate-700 hover:border-[#e5c158] hover:text-[#e5c158] shadow-sm"
             }`}
           >
-            🌐 {lang === "AR" ? "EN/عربي" : "عربي/EN"}
+            🌐 {lang === "AR" ? "EN" : "عربي"}
           </button>
           
           {/* Dark/Light Mode Toggle */}

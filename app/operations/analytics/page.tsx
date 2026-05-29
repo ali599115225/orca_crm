@@ -3,6 +3,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getAnalyticsDataAction, AnalyticsSummary } from '@/app/actions/analytics';
+import { getAgentStatusAction, toggleAgentStatusAction } from '@/app/actions/agentSlots';
+import { useApp } from '@/app/context/AppContext';
 
 // هيكل الترجمة المزدوج للوحة التشغيل الفاخرة لأسواق المملكة والخليج
 const TRANSLATIONS = {
@@ -45,7 +47,16 @@ const TRANSLATIONS = {
     floor: "الطابق",
     area: "المساحة",
     price: "السعر",
-    loading_text: "جاري جلب وحساب المؤشرات والتقارير العقارية الشاملة..."
+    loading_text: "جاري جلب وحساب المؤشرات والتقارير العقارية الشاملة...",
+    agent_filter_label: "الوكيل: الكل",
+    agent_filter_saher: "الوكيل: ساهر",
+    agent_filter_sanad: "الوكيل: سند",
+    severity_filter_all: "المستوى: الكل",
+    severity_filter_info: "معلومات (Info)",
+    severity_filter_warning: "تنبيه (Warning)",
+    severity_filter_critical: "حرج (Critical)",
+    leads_unit: "عميل",
+    close_btn: "إغلاق ✕"
   },
   EN: {
     title: "Next-Gen Real Estate Ops: Sovereign Dashboard & Analytics",
@@ -86,22 +97,34 @@ const TRANSLATIONS = {
     floor: "Floor",
     area: "Area",
     price: "Price",
-    loading_text: "Fetching and calculating comprehensive real estate metrics..."
+    loading_text: "Fetching and calculating comprehensive real estate metrics...",
+    agent_filter_label: "Agent: All",
+    agent_filter_saher: "Agent: Saher",
+    agent_filter_sanad: "Agent: Sanad",
+    severity_filter_all: "Severity: All",
+    severity_filter_info: "Info",
+    severity_filter_warning: "Warning",
+    severity_filter_critical: "Critical",
+    leads_unit: "leads",
+    close_btn: "Close ✕"
   }
 };
 
 export default function AnalyticsDashboard() {
+  const { theme, lang } = useApp();
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [lang, setLang] = useState<'AR' | 'EN'>('AR');
 
   // حاله نشاط الوكلاء الذاتيين
-  const [saherActive, setSaherActive] = useState(true);
-  const [sanadActive, setSanadActive] = useState(true);
+  const [saherActive, setSaherActive] = useState(false);
+  const [sanadActive, setSanadActive] = useState(false);
 
   // سجل العمليات التفاعلية للوكلاء
-  const [logs, setLogs] = useState<string[]>([]);
+  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
+  const [selectedAgentFilter, setSelectedAgentFilter] = useState<string>('ALL'); // ALL, SAHER, SANAD
+  const [selectedSeverityFilter, setSelectedSeverityFilter] = useState<string>('ALL'); // ALL, Info, Warning, Critical
   
   // المخزن الحركي للوحدات والوحدة المحددة للتفاصيل
   const [inventoryUnits, setInventoryUnits] = useState<any[]>([]);
@@ -114,8 +137,8 @@ export default function AnalyticsDashboard() {
     area: number;
   } | null>(null);
 
-  const logEndRef = useRef<HTMLDivElement>(null);
-  const t = TRANSLATIONS[lang];
+  // مرجع حاوية سجل البث لمنع تمرير الصفحة تلقائياً
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadAnalytics() {
@@ -141,12 +164,11 @@ export default function AnalyticsDashboard() {
         const res = await fetch("/api/v1/dashboard/telemetry");
         const json = await res.json();
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          // ترتيب السجلات تصاعدياً حسب تاريخ الإنشاء لضمان التمرير الزمني الصحيح
+          // ترتيب السجلات تنازلياً حسب تاريخ الإنشاء لضمان التمرير الزمني الصحيح (الجديد في الأعلى)
           const sorted = [...json.data].sort(
-            (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
-          const dbLogs = sorted.map((item: any) => item.logMessageAr);
-          setLogs(dbLogs);
+          setTelemetryLogs(sorted);
         }
       } catch (err) {
         console.error("Failed to load telemetry logs:", err);
@@ -165,71 +187,162 @@ export default function AnalyticsDashboard() {
       }
     }
 
+    async function loadAgentStatuses() {
+      try {
+        const saherRes = await getAgentStatusAction('SAHER');
+        if (saherRes.success) setSaherActive(saherRes.isActive);
+        
+        const sanadRes = await getAgentStatusAction('SANAD');
+        if (sanadRes.success) setSanadActive(sanadRes.isActive);
+      } catch (err) {
+        console.error("Failed to load agent statuses:", err);
+      }
+    }
+
     loadAnalytics();
     loadTelemetry();
     loadUnits();
+    loadAgentStatuses();
 
     // تحديث المؤشرات والوحدات كل 15 ثانية، وتحديث البث للوكلاء كل 7 ثواني
     const metricsInterval = setInterval(loadAnalytics, 15000);
     const telemetryInterval = setInterval(loadTelemetry, 7000);
     const unitsInterval = setInterval(loadUnits, 15000);
-
-    const handleThemeChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail) {
-        setTheme(customEvent.detail);
-      }
-    };
-    const handleLangChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail) {
-        setLang(customEvent.detail);
-      }
-    };
-
-    window.addEventListener('theme-change', handleThemeChange);
-    window.addEventListener('lang-change', handleLangChange);
+    const agentsInterval = setInterval(loadAgentStatuses, 15000);
 
     return () => {
       clearInterval(metricsInterval);
       clearInterval(telemetryInterval);
       clearInterval(unitsInterval);
-      window.removeEventListener('theme-change', handleThemeChange);
-      window.removeEventListener('lang-change', handleLangChange);
+      clearInterval(agentsInterval);
     };
   }, []);
 
   // تهيئة السجلات الافتراضية كاحتياط عند بدء التشغيل
   useEffect(() => {
     if (lang === 'AR') {
-      setLogs([
-        "«قام الوكيل ساهر بفرز عميل جديد من حملة قنوات التواصل وتوجيهه لفريق النخبة لارتفاع ملاءته المالية تلقائياً»",
-        "«قام الوكيل سند بتوليد رابط دفع مشفر وإرساله عبر الواتساب الآمن للمشتري (...) لتذكيره بالقسط الثالث»",
-        "«الدرع السيبراني: تم تشفير وتأمين صك الملكية للوحدة (١٠٤) فور تأكيد عملية السداد بنجاح»"
+      setTelemetryLogs([
+        {
+          id: "mock-1",
+          agentId: "SAHER",
+          actionType: "Lead_Screening",
+          logMessageAr: "«قام الوكيل ساهر بفرز عميل جديد من حملة قنوات التواصل وتوجيهه لفريق النخبة لارتفاع ملاءته المالية تلقائياً»",
+          severity: "Info",
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "mock-2",
+          agentId: "SANAD",
+          actionType: "Link_Dispatched",
+          logMessageAr: "«قام الوكيل سند بتوليد رابط دفع مشفر وإرساله عبر الواتساب الآمن للمشتري (...) لتذكيره بالقسط الثالث»",
+          severity: "Warning",
+          createdAt: new Date(Date.now() - 60000).toISOString()
+        },
+        {
+          id: "mock-3",
+          agentId: "SAHER",
+          actionType: "Security_Lock",
+          logMessageAr: "«الدرع السيبراني: تم تشفير وتأمين صك الملكية للوحدة (١٠٤) فور تأكيد عملية السداد بنجاح»",
+          severity: "Critical",
+          createdAt: new Date(Date.now() - 120000).toISOString()
+        }
       ]);
     } else {
-      setLogs([
-        "«Agent Saher sorted a new lead from social media channels and routed it to the Elite team due to high solvency status automatically»",
-        "«Agent Sanad generated an encrypted payment link and sent it via secure WhatsApp to buyer (...) for the 3rd installment reminder»",
-        "«Cyber Shield: Encrypted and secured title deed for Unit (104) immediately upon successful payment confirmation»"
+      setTelemetryLogs([
+        {
+          id: "mock-1",
+          agentId: "SAHER",
+          actionType: "Lead_Screening",
+          logMessageAr: "«Agent Saher sorted a new lead from social media channels and routed it to the Elite team due to high solvency status automatically»",
+          severity: "Info",
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "mock-2",
+          agentId: "SANAD",
+          actionType: "Link_Dispatched",
+          logMessageAr: "«Agent Sanad generated an encrypted payment link and sent it via secure WhatsApp to buyer (...) for the 3rd installment reminder»",
+          severity: "Warning",
+          createdAt: new Date(Date.now() - 60000).toISOString()
+        },
+        {
+          id: "mock-3",
+          agentId: "SAHER",
+          actionType: "Security_Lock",
+          logMessageAr: "«Cyber Shield: Encrypted and secured title deed for Unit (104) immediately upon successful payment confirmation»",
+          severity: "Critical",
+          createdAt: new Date(Date.now() - 120000).toISOString()
+        }
       ]);
     }
   }, [lang]);
 
-  // التمرير التلقائي لسجل الأحداث
+  // إعادة scroll حاوية السجلات للأعلى عند ورود سجلات جديدة (داخل الحاوية فقط)
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = 0;
+    }
+  }, [telemetryLogs]);
 
-  // دالة تحويل الأرقام إلى الأرقام العربية الشرقية
+  const formatLogTime = (dateStr: string): string => {
+    try {
+      const date = new Date(dateStr);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
+      const timeStr = `${hours}:${minutes}:${seconds}`;
+      return toArabicNumerals(timeStr);
+    } catch (e) {
+      return "";
+    }
+  };
+
+  const handleToggleSaher = async () => {
+    const nextVal = !saherActive;
+    setSaherActive(nextVal);
+    try {
+      const res = await toggleAgentStatusAction('SAHER', nextVal);
+      if (!res.success) {
+        setSaherActive(!nextVal); // Rollback
+        alert(res.error || "فشل تعديل حالة الوكيل ساهر.");
+      } else {
+        setSaherActive(res.isActive);
+      }
+    } catch (err: any) {
+      setSaherActive(!nextVal);
+      alert(err.message || "حدث خطأ غير متوقع.");
+    }
+  };
+
+  const handleToggleSanad = async () => {
+    const nextVal = !sanadActive;
+    setSanadActive(nextVal);
+    try {
+      const res = await toggleAgentStatusAction('SANAD', nextVal);
+      if (!res.success) {
+        setSanadActive(!nextVal); // Rollback
+        alert(res.error || "فشل تعديل حالة الوكيل سند.");
+      } else {
+        setSanadActive(res.isActive);
+      }
+    } catch (err: any) {
+      setSanadActive(!nextVal);
+      alert(err.message || "حدث خطأ غير متوقع.");
+    }
+  };
+
+  const filteredLogs = telemetryLogs.filter(log => {
+    const matchAgent = selectedAgentFilter === 'ALL' || log.agentId === selectedAgentFilter;
+    const matchSeverity = selectedSeverityFilter === 'ALL' || log.severity === selectedSeverityFilter;
+    return matchAgent && matchSeverity;
+  });
+
+  // دالة تحويل الأرقام إلى الأرقام العربية الشرقية حسب اللغة النشطة
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
-    
-    // تنظيف النسبة المئوية إذا كانت جزءاً من النص
     let str = num.toString();
+    if (lang === 'EN') return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    
-    // تحويل الأرقام الإنجليزية إلى شرقية
     return str
       .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
       .replace(/%/g, "٪");
@@ -238,6 +351,9 @@ export default function AnalyticsDashboard() {
   // تنسيق المبالغ المالية مع إضافة العملة بالترميز العربي الشرقي
   const formatCurrency = (val: number): string => {
     const formatted = val.toLocaleString('en-US');
+    if (lang === 'EN') {
+      return formatted + " SAR";
+    }
     return toArabicNumerals(formatted) + " ر.س";
   };
 
@@ -250,14 +366,12 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  // مصفوفة تمثل شقق البرج العقاري (يتم استردادها حياً من الـ API)
-
   return (
     <div className={`space-y-6 selection-fix p-1 transition-colors duration-500 ${
       theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
-    }`} dir="rtl">
+    }`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
-      {/* حقن خط Calibri وعلاج مشكلة التحديد والتنقل الجانبي ديناميكياً */}
+      {/* حقن خط Calibri وعلاج مشكلة التحديد - مُنقّح بدون CSS يُعيد رسم عناصر خارج نطاق الصفحة */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
           font-family: 'Calibri', sans-serif !important;
@@ -271,95 +385,30 @@ export default function AnalyticsDashboard() {
           color: #27272a !important;
           text-shadow: none !important;
         }
-        
-        /* إعادة صياغة مظهر لوحة العمليات الكلية من خلال الـ Page */
-        .min-h-screen {
-          background-color: ${theme === 'dark' ? '#0b0f19' : '#f9f9fb'} !important;
-          transition: background-color 0.5s ease;
-        }
-        main {
-          background-color: ${theme === 'dark' ? '#0b0f19' : '#f9f9fb'} !important;
-          transition: background-color 0.5s ease;
-        }
-        main > div.flex-1 {
-          background-color: transparent !important;
-        }
-        main > header {
-          background-color: ${theme === 'dark' ? '#0f1422' : '#ffffff'} !important;
-          border-bottom: 1px solid ${theme === 'dark' ? 'rgba(205, 127, 50, 0.15)' : '#e2e8f0'} !important;
-          color: ${theme === 'dark' ? '#ffffff' : '#0b0f19'} !important;
-          transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
-          box-shadow: ${theme === 'dark' ? '0 4px 20px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)'} !important;
-        }
-        main > header p {
-          color: ${theme === 'dark' ? '#e2e8f0' : '#0b0f19'} !important;
-        }
-        main > header span.bg-slate-100 {
-          background-color: ${theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9'} !important;
-          color: ${theme === 'dark' ? '#E6C687' : '#735334'} !important;
-          border-color: ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'} !important;
-        }
-        
-        /* تلوين وتنقية الشريط الجانبي الفاخر */
-        aside.bg-slate-900 {
-          background-color: ${theme === 'dark' ? '#0e121e' : '#ffffff'} !important;
-          border-right: 1px solid ${theme === 'dark' ? 'rgba(205, 127, 50, 0.15)' : '#e5e7eb'} !important;
-          color: ${theme === 'dark' ? '#ffffff' : '#0b0f19'} !important;
-          transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
-          box-shadow: ${theme === 'dark' ? '0 10px 30px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.02)'} !important;
-        }
-        aside.bg-slate-900 a {
-          color: ${theme === 'dark' ? '#cbd5e1' : '#4b5563'} !important;
-          transition: all 0.3s ease;
-        }
-        aside.bg-slate-900 a:hover {
-          color: ${theme === 'dark' ? '#E6C687' : '#735334'} !important;
-          background-color: ${theme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f3f4f6'} !important;
-        }
-        aside.bg-slate-900 div.border-b, aside.bg-slate-900 nav.border-t, aside.bg-slate-900 div.border-t {
-          border-color: ${theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#e5e7eb'} !important;
-        }
-        aside.bg-slate-900 p.text-slate-400 {
-          color: ${theme === 'dark' ? '#94a3b8' : '#6b7280'} !important;
-        }
-        aside.bg-slate-900 p.text-slate-100 {
-          color: ${theme === 'dark' ? '#f1f5f9' : '#0b0f19'} !important;
-        }
-        aside.bg-slate-900 span.bg-emerald-950\/60 {
-          background-color: ${theme === 'dark' ? 'rgba(6,78,59,0.5)' : '#d1fae5'} !important;
-          color: ${theme === 'dark' ? '#34d399' : '#065f46'} !important;
-          border-color: ${theme === 'dark' ? 'rgba(16,185,129,0.2)' : '#a7f3d0'} !important;
-        }
-        aside.bg-slate-900 span.text-amber-500 {
-          color: ${theme === 'dark' ? '#E6C687' : '#735334'} !important;
-        }
-        aside.bg-slate-900 span.text-amber-300 {
-          color: ${theme === 'dark' ? '#E6C687' : '#735334'} !important;
-          background-color: ${theme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f9fafb'} !important;
-          border-color: ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'} !important;
-        }
-        aside.bg-slate-900 svg {
-          color: ${theme === 'dark' ? '#E6C687' : '#735334'} !important;
-        }
-        
-        /* حظر وإخفاء أي علامات مائية أو نصوص غير مرغوب فيها خاصة بـ TradingView */
-        [class*="tradingview"], [id*="tradingview"], .tradingview, #tradingview, iframe[src*="tradingview"], div[class*="TradingView"] {
+        /* حظر TradingView */
+        [class*="tradingview"], [id*="tradingview"], .tradingview, #tradingview {
           display: none !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
           visibility: hidden !important;
         }
+        /* حركة ظهور سجل البث - بالـ opacity فقط دون تحريك الـ layout */
+        @keyframes logFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .animate-log-append {
+          animation: logFadeIn 0.3s ease forwards;
+        }
       `}} />
-
+      
       {/* 1. TOP TELEMETRY HEADER & CONTROL BAR - Cleaned up to prevent duplication */}
       <header className={`border p-6 rounded-2xl transition-all duration-500 ${
         theme === 'dark' 
           ? 'bg-[#111726]/60 backdrop-blur-md border-[#cd7f32]/25 shadow-[0_0_30px_rgba(205,127,50,0.04)]' 
           : 'bg-white/80 backdrop-blur-md border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
       }`}>
-        <h1 className={`text-xl font-bold tracking-normal transition-colors text-right ${
-          theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
-        }`}>
+        <h1 className={`text-xl font-bold tracking-normal transition-colors ${
+          lang === 'AR' ? 'text-right' : 'text-left'
+        } ${theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'}`}>
           {t.title}
         </h1>
       </header>
@@ -384,7 +433,7 @@ export default function AnalyticsDashboard() {
             <input
               type="checkbox"
               checked={saherActive}
-              onChange={() => setSaherActive(prev => !prev)}
+              onChange={handleToggleSaher}
               className={`rounded focus:ring-0 ${
                 theme === 'dark' ? 'bg-slate-900 border-white/20 text-[#E6C687]' : 'bg-white border-slate-300 text-[#735334]'
               }`}
@@ -407,7 +456,7 @@ export default function AnalyticsDashboard() {
             <input
               type="checkbox"
               checked={sanadActive}
-              onChange={() => setSanadActive(prev => !prev)}
+              onChange={handleToggleSanad}
               className={`rounded focus:ring-0 ${
                 theme === 'dark' ? 'bg-slate-900 border-white/20 text-[#E6C687]' : 'bg-white border-slate-300 text-[#735334]'
               }`}
@@ -436,7 +485,7 @@ export default function AnalyticsDashboard() {
           theme === 'dark' 
             ? 'bg-[#111726]/60 border-[#cd7f32]/20 hover:border-[#cd7f32]/40 shadow-[0_0_20px_rgba(205,127,50,0.02)]' 
             : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        }`}>
+        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
           <p className={`text-[11px] font-bold transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
             {t.card1_title}
           </p>
@@ -453,7 +502,7 @@ export default function AnalyticsDashboard() {
           theme === 'dark' 
             ? 'bg-[#111726]/60 border-[#cd7f32]/35 hover:border-[#cd7f32]/50 shadow-[0_0_25px_rgba(205,127,50,0.06)]' 
             : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        }`}>
+        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
           <p className={`text-[11px] font-bold transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
             {t.card2_title}
           </p>
@@ -472,7 +521,7 @@ export default function AnalyticsDashboard() {
           theme === 'dark' 
             ? 'bg-[#111726]/60 border-[#cd7f32]/20 hover:border-[#cd7f32]/40 shadow-[0_0_20px_rgba(205,127,50,0.02)]' 
             : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        }`}>
+        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
           <p className={`text-[11px] font-bold transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
             {t.card3_title}
           </p>
@@ -491,7 +540,7 @@ export default function AnalyticsDashboard() {
           theme === 'dark' 
             ? 'bg-[#111726]/60 border-[#cd7f32]/20 hover:border-[#cd7f32]/40 shadow-[0_0_20px_rgba(205,127,50,0.02)]' 
             : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        }`}>
+        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
           <p className={`text-[11px] font-bold transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
             {t.card4_title}
           </p>
@@ -508,7 +557,7 @@ export default function AnalyticsDashboard() {
           theme === 'dark' 
             ? 'bg-[#111726]/60 border-[#cd7f32]/20 hover:border-[#cd7f32]/40 shadow-[0_0_20px_rgba(205,127,50,0.02)]' 
             : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        }`}>
+        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
           <p className={`text-[11px] font-bold transition-colors ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
             {t.card5_title}
           </p>
@@ -534,7 +583,9 @@ export default function AnalyticsDashboard() {
               ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-2xl' 
               : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
           }`}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200/10 dark:border-white/5 mb-6 gap-3">
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200/10 dark:border-white/5 mb-6 gap-3 ${
+              lang === 'AR' ? 'text-right' : 'text-left'
+            }`}>
               <h3 className={`font-black text-sm transition-colors ${theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334]'}`}>
                 {t.matrix_title}
               </h3>
@@ -610,7 +661,7 @@ export default function AnalyticsDashboard() {
             {selectedUnit && (
               <div className={`mt-5 p-4 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4 transition-all duration-500 animate-fadeIn ${
                 theme === 'dark' ? 'bg-white/5 border-[#cd7f32]/30' : 'bg-[#735334]/5 border-[#735334]/20'
-              }`}>
+              } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
                 <div className="flex items-center gap-3">
                   <span className={`w-3 h-3 rounded-full ${
                     String(selectedUnit.status).toLowerCase() === 'sold' ? 'bg-emerald-500' : String(selectedUnit.status).toLowerCase() === 'reserved' ? 'bg-[#735334]' : 'bg-blue-500'
@@ -627,7 +678,7 @@ export default function AnalyticsDashboard() {
                 <div className="flex gap-4 text-xs font-black">
                   <div>
                     <span className="text-gray-400 font-bold block text-[9px]">{t.area}</span>
-                    <span>{toArabicNumerals(selectedUnit.area)} م²</span>
+                    <span>{toArabicNumerals(selectedUnit.area)} {lang === 'AR' ? 'م²' : 'm²'}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 font-bold block text-[9px]">{t.price}</span>
@@ -644,7 +695,7 @@ export default function AnalyticsDashboard() {
                       : 'border-slate-300 hover:bg-slate-100 text-slate-600'
                   }`}
                 >
-                  إغلاق ✕
+                  {t.close_btn}
                 </button>
               </div>
             )}
@@ -655,7 +706,7 @@ export default function AnalyticsDashboard() {
             theme === 'dark' 
               ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-2xl' 
               : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-          }`}>
+          } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
             <h3 className={`font-black text-sm pb-4 border-b border-gray-200/10 dark:border-white/5 mb-5 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
             }`}>
@@ -668,7 +719,7 @@ export default function AnalyticsDashboard() {
                   <div className="flex justify-between text-xs mb-1">
                     <span className={theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}>{stage.status}</span>
                     <span className={theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334] font-black'}>
-                      {toArabicNumerals(stage.count)} {lang === 'AR' ? 'عميل' : 'leads'} ({toArabicNumerals(stage.percentage)}%)
+                      {toArabicNumerals(stage.count)} {t.leads_unit} ({toArabicNumerals(stage.percentage)}%)
                     </span>
                   </div>
                   <div className={`w-full rounded-full h-3 overflow-hidden ${
@@ -692,43 +743,101 @@ export default function AnalyticsDashboard() {
         <div className="space-y-6">
           
           {/* سجل بث وكلاء الذكاء الاصطناعي (Live Agent Telemetry Stream Log) */}
-          <div className={`border p-6 rounded-3xl flex flex-col h-[340px] transition-all duration-500 ${
+          <div className={`border p-6 rounded-3xl flex flex-col h-[400px] transition-all duration-500 ${
             theme === 'dark' 
               ? 'bg-black/40 border-[#cd7f32]/25 shadow-inner' 
               : 'bg-slate-100/70 border-slate-200 shadow-sm'
           }`}>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200/10 dark:border-white/5 mb-4 shrink-0">
-              <h3 className={`font-black text-sm transition-colors ${theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'}`}>
-                {t.log_title}
-              </h3>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
+            <div className="flex flex-col gap-2 pb-3 border-b border-gray-200/10 dark:border-white/5 mb-4 shrink-0">
+              <div className="flex items-center justify-between">
+                <h3 className={`font-black text-sm transition-colors ${theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'}`}>
+                  {t.log_title}
+                </h3>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              
+              {/* Dropdowns for Filtering */}
+              <div className="flex gap-2 mt-1">
+                {/* Agent Filter */}
+                <select
+                  value={selectedAgentFilter}
+                  onChange={(e) => setSelectedAgentFilter(e.target.value)}
+                  className={`text-[10px] font-bold py-1 px-2 rounded border focus:ring-0 ${
+                    theme === 'dark' 
+                      ? 'bg-slate-900 border-white/10 text-slate-300' 
+                      : 'bg-white border-slate-300 text-slate-700'
+                  }`}
+                  style={{ fontFamily: 'Calibri, sans-serif' }}
+                >
+                  <option value="ALL">{lang === 'AR' ? 'الوكيل: الكل' : 'Agent: All'}</option>
+                  <option value="SAHER">{lang === 'AR' ? 'الوكيل: ساهر' : 'Agent: Saher'}</option>
+                  <option value="SANAD">{lang === 'AR' ? 'الوكيل: سند' : 'Agent: Sanad'}</option>
+                </select>
+
+                {/* Severity Filter */}
+                <select
+                  value={selectedSeverityFilter}
+                  onChange={(e) => setSelectedSeverityFilter(e.target.value)}
+                  className={`text-[10px] font-bold py-1 px-2 rounded border focus:ring-0 ${
+                    theme === 'dark' 
+                      ? 'bg-slate-900 border-white/10 text-slate-300' 
+                      : 'bg-white border-slate-300 text-slate-700'
+                  }`}
+                  style={{ fontFamily: 'Calibri, sans-serif' }}
+                >
+                  <option value="ALL">{t.severity_filter_all}</option>
+                  <option value="Info">{t.severity_filter_info}</option>
+                  <option value="Warning">{t.severity_filter_warning}</option>
+                  <option value="Critical">{t.severity_filter_critical}</option>
+                </select>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-[11px] leading-relaxed">
-              {logs.map((log, lIdx) => {
+            <div 
+              ref={logContainerRef}
+              className="flex-1 overflow-y-auto space-y-3 pr-1 text-[11px] leading-relaxed"
+              style={{ overscrollBehavior: 'contain' }}
+            >
+              {filteredLogs.map((log) => {
                 let agentColor = theme === 'dark' ? 'text-slate-300' : 'text-slate-700';
-                if (log.includes("ساهر") || log.includes("Saher")) {
+                
+                // Colorize based on severity/agent
+                if (log.agentId === "SAHER") {
                   agentColor = theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334] font-bold';
-                } else if (log.includes("سند") || log.includes("Sanad")) {
+                } else if (log.agentId === "SANAD") {
                   agentColor = 'text-emerald-500 font-bold';
-                } else if (log.includes("الدرع") || log.includes("Shield")) {
-                  agentColor = 'text-blue-400 font-bold';
+                }
+                
+                // Override for Critical severity
+                if (log.severity === "Critical") {
+                  agentColor = 'text-rose-500 font-extrabold';
+                } else if (log.severity === "Warning") {
+                  agentColor = 'text-amber-500 font-bold';
                 }
 
+                // Format timestamp
+                const formattedTime = formatLogTime(log.createdAt);
+
                 return (
-                  <div key={lIdx} className={`p-3 rounded-lg transition-all duration-300 ${
-                    theme === 'dark' 
-                      ? 'bg-white/5 border border-white/5 hover:bg-white/10' 
-                      : 'bg-white border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
-                  } ${agentColor}`}>
-                    {log}
+                  <div 
+                    key={log.id} 
+                    className={`p-3 rounded-lg border transition-all duration-300 animate-log-append ${
+                      theme === 'dark' 
+                        ? 'bg-white/5 border-white/5 hover:bg-white/10' 
+                        : 'bg-white border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
+                    } ${agentColor}`}
+                  >
+                    <div className="flex justify-between items-center mb-1 text-[9px] opacity-75">
+                      <span>{log.agentId === "SAHER" ? (lang === 'AR' ? "🤖 ساهر" : "🤖 Saher") : log.agentId === "SANAD" ? (lang === 'AR' ? "⚡ سند" : "⚡ Sanad") : "💻 System"}</span>
+                      <span dir="ltr">{formattedTime}</span>
+                    </div>
+                    <div>{toArabicNumerals(log.logMessageAr)}</div>
                   </div>
                 );
               })}
-              <div ref={logEndRef} />
             </div>
           </div>
 
@@ -737,7 +846,7 @@ export default function AnalyticsDashboard() {
             theme === 'dark' 
               ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-2xl' 
               : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-          }`}>
+          } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
             <h3 className={`font-black text-sm pb-4 border-b border-gray-200/10 dark:border-white/5 mb-4 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
             }`}>
@@ -753,12 +862,14 @@ export default function AnalyticsDashboard() {
                   }`}>
                     <span className="text-xs font-bold">
                       {src.source === "Snapchat Ads" ? (lang === 'AR' ? "إعلانات سناب شات" : "Snapchat Ads") : 
-                       src.source === "Meta Ads" ? (lang === 'AR' ? "حملة ميتا الإعلانية" : "Meta Ads") : src.source}
+                       src.source === "Google Ads" ? (lang === 'AR' ? "إعلانات جوجل" : "Google Ads") : 
+                       src.source === "Meta Ads" ? (lang === 'AR' ? "حملة ميتا الإعلانية" : "Meta Ads") : 
+                       src.source === "TikTok Ads" ? (lang === 'AR' ? "إعلانات تيك توك" : "TikTok Ads") : src.source}
                     </span>
                     <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
                       theme === 'dark' ? 'bg-[#E6C687]/15 text-[#E6C687]' : 'bg-[#735334]/15 text-[#735334]'
                     }`}>
-                      {toArabicNumerals(src.count)} {lang === 'AR' ? 'عملاء' : 'leads'}
+                      {toArabicNumerals(src.count)} {t.leads_unit}
                     </span>
                   </div>
                 ))}
@@ -771,7 +882,7 @@ export default function AnalyticsDashboard() {
             theme === 'dark' 
               ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-2xl' 
               : 'bg-white/80 border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-          }`}>
+          } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
             <h3 className={`font-black text-sm pb-4 border-b border-gray-200/10 dark:border-white/5 mb-4 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
             }`}>
@@ -785,7 +896,12 @@ export default function AnalyticsDashboard() {
                   <div key={city.city} className={`p-4 border rounded-xl text-center transition-all ${
                     theme === 'dark' ? 'bg-[#0b0f19]/40 border-white/5' : 'bg-slate-50 border-slate-200'
                   }`}>
-                    <p className="text-[10px] text-gray-400 font-bold">{city.city}</p>
+                    <p className="text-[10px] text-gray-400 font-bold">
+                      {city.city === "الرياض" ? (lang === 'AR' ? "الرياض" : "Riyadh") :
+                       city.city === "جدة" ? (lang === 'AR' ? "جدة" : "Jeddah") :
+                       city.city === "الدمام" ? (lang === 'AR' ? "الدمام" : "Dammam") :
+                       city.city === "مكة" ? (lang === 'AR' ? "مكة" : "Makkah") : city.city}
+                    </p>
                     <p className={`text-xl font-black mt-1 ${theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'}`}>
                       {toArabicNumerals(city.count)}
                     </p>
