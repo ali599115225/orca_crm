@@ -18,32 +18,24 @@ export default async function WarRoomCommandPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const session = await getSession();
-  
+
   if (!session) {
     redirect("/login");
   }
 
+  const currentUserRole = (session.role as string) || "READ_ONLY";
+  const isPlatformArchitect = currentUserRole === "PLATFORM_ARCHITECT";
+
   // 1. Resolve active tab parameter
   const resolvedParams = await searchParams;
-  const initialTab = resolvedParams?.tab || "overview";
+  // ─── PLATFORM_ARCHITECT: force tab=monitor دائماً ────────────────────────
+  const initialTab = isPlatformArchitect ? "monitor" : (resolvedParams?.tab || "overview");
 
-  // 2. Fetch projects
-  const dbProjects = await prisma.project.findMany({
-    orderBy: { createdAt: "desc" }
-  });
-  const projects = dbProjects.map(p => ({
-    id: p.id,
-    name: p.name,
-    city: p.city,
-    status: p.status,
-    unitsTotal: p.unitsTotal,
-    unitsSold: p.unitsSold,
-    unitsBooked: p.unitsBooked,
-    minPrice: p.minPrice ? Number(p.minPrice) : null,
-    maxPrice: p.maxPrice ? Number(p.maxPrice) : null,
-  }));
+  // ─── Layer 1: بيانات متاحة للجميع (System-level) ──────────────────────────
+  // الـ tickets والـ tenants هي بيانات النظام (ليست بيانات مستثمرين بعينهم)
+  // PLATFORM_ARCHITECT يحتاجها لـ MonitorView
 
-  // 3. Fetch support monitor tickets
+  // 2. Fetch support monitor tickets (System-level — لا تحتوي بيانات مستثمرين)
   const allTickets = await prisma.ticket.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -70,7 +62,7 @@ export default async function WarRoomCommandPage({
     }
   }));
 
-  // 4. Fetch all tenants
+  // 3. Fetch all tenants (System-level — إحصائيات الباقات)
   const allTenants = await prisma.tenant.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -95,17 +87,73 @@ export default async function WarRoomCommandPage({
     _count: t._count,
   }));
 
+  // ─── Layer 2: بيانات المستأجر — محجوبة عن PLATFORM_ARCHITECT ─────────────
+  // إذا كان الدور PLATFORM_ARCHITECT → نرجع arrays فارغة (عزل تام)
+  if (isPlatformArchitect) {
+    return (
+      <WarRoomCommandPageClient
+        initialTab="monitor"
+        projects={[]}
+        tickets={tickets}
+        tenants={tenants}
+        chats={[]}
+        whatsappTenant={{ companyName: "", whatsappConnected: false }}
+        helpdeskTickets={[]}
+        companyName=""
+        tenantInfo={{
+          companyName: "ORCA Platform",
+          subdomain: "orca",
+          subscriptionPlan: "gold",
+          extraAgents: 0,
+        }}
+        dashboardStats={{
+          totalLeads: 0,
+          activeBookings: 0,
+          closedSales: 0,
+          totalProjects: 0,
+          pendingTasks: 0,
+        }}
+        recentLeads={[]}
+        recentTasks={[]}
+        tenantUsers={[]}
+        currentUserRole={currentUserRole}
+      />
+    );
+  }
+
+  // ─── بقية الأدوار: جلب بيانات المستأجر المحدد ────────────────────────────
+
+  // 4. Fetch projects for this tenant
+  const activeTenant = await getActiveTenant();
+
+  const dbProjects = await prisma.project.findMany({
+    where: { tenantId: activeTenant.id },
+    orderBy: { createdAt: "desc" }
+  });
+  const projects = dbProjects.map(p => ({
+    id: p.id,
+    name: p.name,
+    city: p.city,
+    status: p.status,
+    unitsTotal: p.unitsTotal,
+    unitsSold: p.unitsSold,
+    unitsBooked: p.unitsBooked,
+    minPrice: p.minPrice ? Number(p.minPrice) : null,
+    maxPrice: p.maxPrice ? Number(p.maxPrice) : null,
+  }));
+
   // 5. Fetch WhatsApp Chats & Tenant
   const whatsappChatsResult = await getMockWhatsAppChatsAction();
   const chats = whatsappChatsResult.success && whatsappChatsResult.chats ? whatsappChatsResult.chats : [];
-  const whatsappTenantRaw = whatsappChatsResult.success && whatsappChatsResult.tenant ? whatsappChatsResult.tenant : { companyName: "منصتك العقارية", whatsappConnected: false };
+  const whatsappTenantRaw = whatsappChatsResult.success && whatsappChatsResult.tenant
+    ? whatsappChatsResult.tenant
+    : { companyName: "منصتك العقارية", whatsappConnected: false };
   const whatsappTenant = {
     companyName: whatsappTenantRaw.companyName || "",
     whatsappConnected: whatsappTenantRaw.whatsappConnected || false,
   };
 
-  // 6. Fetch Helpdesk Tickets & Dashboard Stats
-  const activeTenant = await getActiveTenant();
+  // 6. Fetch Helpdesk Tickets (tenant-scoped)
   const dbHelpdeskTickets = await prisma.ticket.findMany({
     where: { tenantId: activeTenant.id },
     orderBy: { createdAt: "desc" }
@@ -119,23 +167,21 @@ export default async function WarRoomCommandPage({
     createdAt: t.createdAt.toISOString(),
   }));
 
-  // Fetch Dashboard-specific Stats & Data
+  // 7. Dashboard Stats (tenant-scoped)
   const [totalLeads, activeBookings, closedSales, totalProjectsCount, pendingTasks] = await Promise.all([
     prisma.lead.count({ where: { tenantId: activeTenant.id } }),
-    prisma.lead.count({ where: { tenantId: activeTenant.id, status: 'RESERVED' } }),
-    prisma.lead.count({ where: { tenantId: activeTenant.id, status: { in: ['CONTRACT_SIGNED', 'WON'] } } }),
+    prisma.lead.count({ where: { tenantId: activeTenant.id, status: "RESERVED" } }),
+    prisma.lead.count({ where: { tenantId: activeTenant.id, status: { in: ["CONTRACT_SIGNED", "WON"] } } }),
     prisma.project.count({ where: { tenantId: activeTenant.id } }),
-    prisma.task.count({ where: { tenantId: activeTenant.id, status: 'PENDING' } }),
+    prisma.task.count({ where: { tenantId: activeTenant.id, status: "PENDING" } }),
   ]);
 
   const dbRecentLeads = await prisma.lead.findMany({
     where: { tenantId: activeTenant.id },
     take: 5,
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     include: {
-      project: {
-        select: { name: true },
-      },
+      project: { select: { name: true } },
     },
   });
 
@@ -153,11 +199,9 @@ export default async function WarRoomCommandPage({
   const dbRecentTasks = await prisma.task.findMany({
     where: { tenantId: activeTenant.id },
     take: 5,
-    orderBy: { dueDate: 'asc' },
+    orderBy: { dueDate: "asc" },
     include: {
-      lead: {
-        select: { firstName: true, lastName: true },
-      },
+      lead: { select: { firstName: true, lastName: true } },
     },
   });
 
@@ -178,10 +222,10 @@ export default async function WarRoomCommandPage({
     pendingTasks,
   };
 
-  // Fetch tenant users for the Settings page
+  // 8. Tenant users (للـ SettingsView — ADMIN فقط)
   const dbUsers = await prisma.user.findMany({
     where: { tenantId: activeTenant.id },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: "desc" }
   });
   const tenantUsers = dbUsers.map(u => ({
     id: u.id,
@@ -212,7 +256,7 @@ export default async function WarRoomCommandPage({
       recentLeads={recentLeads}
       recentTasks={recentTasks}
       tenantUsers={tenantUsers}
-      currentUserRole={session.role as string || "READ_ONLY"}
+      currentUserRole={currentUserRole}
     />
   );
 }

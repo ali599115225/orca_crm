@@ -76,13 +76,20 @@ export async function loginAction(formData: FormData) {
       throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
     }
 
+    // ─── Layer 1: Platform Architect (مطور النخبة) ────────────────────────────
+    // ali.orca / elite.orca يحصلان على دور حصري = PLATFORM_ARCHITECT
+    // عزل تام من بيانات المستأجرين العقاريين
+    const PLATFORM_ARCHITECT_EMAILS = ["ali.orca@outlook.sa", "elite.orca@outlook.sa"];
+    const isPlatformArchitect = PLATFORM_ARCHITECT_EMAILS.includes(user.email.toLowerCase());
+
     const sessionPayload = {
       userId: user.id,
       tenantId: user.tenant.id,
       tenantSubdomain: user.tenant.subdomain,
-      role: user.role,
+      // ─── حقن PLATFORM_ARCHITECT إذا كان البريد من فريق أوركا ───────────────
+      role: isPlatformArchitect ? "PLATFORM_ARCHITECT" : user.role,
       name: user.name,
-      email: user.email, // إدراج البريد لتسهيل التحقق الإشرافي بالوسيط
+      email: user.email,
     };
 
     const sessionToken = await encrypt(sessionPayload);
@@ -106,7 +113,7 @@ export async function loginAction(formData: FormData) {
     cookieStore.set("session_token", sessionToken, cookieOptions);
 
     // تعيين النطاق العقاري الدائم للجهاز لمنع التطفل المتقاطع مستقبلاً
-    if (!isSuperAdmin) {
+    if (!isPlatformArchitect) {
       cookieStore.set("device_tenant_subdomain", user.tenant.subdomain, {
         httpOnly: true,
         secure: isSecureConnection,
@@ -117,28 +124,22 @@ export async function loginAction(formData: FormData) {
       });
     }
 
-    // تحديد رابط التوجيه المناسب للمستأجر
+    // ─── توجيه PLATFORM_ARCHITECT إلى لوحة المراقبة الحيوية فقط ─────────────
     let redirectUrl = "/operations";
-    if (isCustomDomain) {
-      if (isSuperAdmin) {
-        // للمشرف العام: إبقاؤه على النطاق الحالي (الرئيسي أو الفرعي الذي يسجل الدخول منه) لمنع مشاكل النطاقات الفرعية
-        if (isTenantSubdomain) {
-          redirectUrl = `https://${currentSubdomain}.orca.az-ez.pro/operations`;
-        } else {
-          redirectUrl = "/operations";
-        }
+    if (isPlatformArchitect) {
+      redirectUrl = "/operations?tab=monitor";
+    } else if (isCustomDomain) {
+      // إذا كان الدخول من النطاق الرئيسي أو www، نبقي المستخدم عليه
+      const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
+      if (isMainDomain) {
+        redirectUrl = "/operations";
       } else {
-        // إذا كان الدخول من النطاق الرئيسي أو www، نبقي المستخدم عليه لتلافي مشاكل DNS الفرعية غير المهيأة
-        const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
-        if (isMainDomain) {
-          redirectUrl = "/operations";
-        } else {
-          redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
-        }
+        redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
       }
     }
 
     return { success: true, redirectUrl };
+
 
   } catch (error: any) {
     return { success: false, error: error.message };

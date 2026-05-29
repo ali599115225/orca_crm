@@ -116,17 +116,28 @@ export default function OperationsLayoutClient({
     }
   };
 
-  const menuItems = [
-    { id: 'analytics', titleAr: 'لوحة التحليلات والتقارير', titleEn: 'Analytics & Reports', icon: '📈' },
-    { id: 'leads', titleAr: 'العملاء المحتملين', titleEn: 'Prospective Leads', icon: '👥' },
-    { id: 'projects', titleAr: 'إدارة المشاريع العقارية', titleEn: 'Real Estate Projects', icon: '🏢' },
-    { id: 'calculator', titleAr: 'حاسبة التمويل السكني', titleEn: 'Mortgage Calculator', icon: '🧮' },
-    { id: 'sales', titleAr: 'أداء المبيعات والمؤشرات', titleEn: 'Sales Performance', icon: '📊' },
-    { id: 'tasks', titleAr: 'المهام والتذكيرات', titleEn: 'Tasks & Reminders', icon: '📋' },
-    { id: 'settings', titleAr: 'إعدادات النظام', titleEn: 'System Settings', icon: '⚙️' },
-    { id: 'helpdesk', titleAr: 'مركز الدعم والوكيل مساعد', titleEn: 'Support Center', icon: '🛠️' },
-    { id: 'whatsapp', titleAr: 'قناة الواتساب والوكلاء', titleEn: 'WhatsApp Channel', icon: '💬' },
+  // ─── مصفوفة الصلاحيات: PLATFORM_ARCHITECT يرى Monitor فقط ─────────────────
+  const isPlatformArchitect = userRoleKey === 'PLATFORM_ARCHITECT';
+
+  // قائمة التبويبات المتاحة بحسب دور المستخدم
+  const ALL_MENU_ITEMS = [
+    { id: 'analytics', titleAr: 'لوحة التحليلات والتقارير', titleEn: 'Analytics & Reports', icon: '📈', roles: ['ADMIN', 'SALES_MANAGER', 'MARKETING', 'READ_ONLY'] },
+    { id: 'leads', titleAr: 'العملاء المحتملين', titleEn: 'Prospective Leads', icon: '👥', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE', 'MARKETING'] },
+    { id: 'projects', titleAr: 'إدارة المشاريع العقارية', titleEn: 'Real Estate Projects', icon: '🏢', roles: ['ADMIN', 'SALES_MANAGER', 'MARKETING', 'READ_ONLY'] },
+    { id: 'calculator', titleAr: 'حاسبة التمويل السكني', titleEn: 'Mortgage Calculator', icon: '🧮', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE'] },
+    { id: 'sales', titleAr: 'أداء المبيعات والمؤشرات', titleEn: 'Sales Performance', icon: '📊', roles: ['ADMIN', 'SALES_MANAGER'] },
+    { id: 'tasks', titleAr: 'المهام والتذكيرات', titleEn: 'Tasks & Reminders', icon: '📋', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE'] },
+    { id: 'settings', titleAr: 'إعدادات النظام', titleEn: 'System Settings', icon: '⚙️', roles: ['ADMIN'] },
+    { id: 'helpdesk', titleAr: 'مركز الدعم والوكيل مساعد', titleEn: 'Support Center', icon: '🛠️', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE', 'MARKETING'] },
+    { id: 'whatsapp', titleAr: 'قناة الواتساب والوكلاء', titleEn: 'WhatsApp Channel', icon: '💬', roles: ['ADMIN', 'SALES_MANAGER'] },
   ];
+
+  // ─── PLATFORM_ARCHITECT: شريط جانبي مخصص بلوحة المراقبة فقط ────────────
+  const ARCHITECT_MENU = [
+    { id: 'monitor', titleAr: 'مراقبة الاشتراكات والنظام', titleEn: 'System & Subscription Monitor', icon: '📡' },
+  ];
+
+  const menuItems = isPlatformArchitect ? ARCHITECT_MENU : ALL_MENU_ITEMS.filter(item => item.roles.includes(userRoleKey));
 
   const roleTranslated = ROLE_TRANSLATIONS[lang]?.[userRoleKey] || ROLE_TRANSLATIONS.AR[userRoleKey] || userRoleKey;
 
@@ -146,15 +157,27 @@ export default function OperationsLayoutClient({
             : 'bg-white border-slate-200 shadow-sm'
         }`}>
           {/* Header */}
-          <div className={`h-16 flex items-center px-6 border-b select-none ${
+          <div className={`h-16 flex flex-col items-start justify-center px-6 border-b select-none ${
             isDark ? 'border-slate-800' : 'border-slate-200'
           }`}>
-            <span className={`text-[11px] font-black tracking-widest uppercase ${
-              isDark ? 'text-indigo-400' : 'text-indigo-600'
-            }`}>
-              {lang === 'AR' ? 'أوركا العقارية ORCA' : 'ORCA Real Estate'}
-            </span>
+            {isPlatformArchitect ? (
+              <>
+                <span className="text-[9px] font-black tracking-widest uppercase text-amber-500 mb-0.5">
+                  PLATFORM ARCHITECT
+                </span>
+                <span className={`text-[10px] font-black tracking-wider ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                  ORCA CRM — Admin
+                </span>
+              </>
+            ) : (
+              <span className={`text-[11px] font-black tracking-widest uppercase ${
+                isDark ? 'text-indigo-400' : 'text-indigo-600'
+              }`}>
+                {lang === 'AR' ? 'أوركا العقارية ORCA' : 'ORCA Real Estate'}
+              </span>
+            )}
           </div>
+
 
           {/* Menu */}
           <nav className="flex-1 py-4 space-y-1 overflow-y-auto px-3">
