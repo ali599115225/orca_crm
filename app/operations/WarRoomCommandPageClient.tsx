@@ -71,11 +71,16 @@ export default function WarRoomCommandPageClient(props: WarRoomCommandPageClient
     );
   }
 
-  return (
+    return (
     <div className={wrapperClass} dir={lang === "AR" ? "rtl" : "ltr"}>
       {activeTab === "analytics" && <DashboardView tenant={props.tenantInfo} stats={props.dashboardStats} recentLeads={props.recentLeads} recentTasks={props.recentTasks} projects={props.projects} />}
       {activeTab === "leads" && <LeadsView />}
       {activeTab === "projects" && <ProjectsView />}
+      
+      {/* اختبار صفحات المحاسبة والإيجار */}
+      {activeTab === "ejar" && <div className="p-20 text-center font-black text-2xl">صفحة الإيجار تعمل الآن!</div>}
+      {activeTab === "erpFinance" && <div className="p-20 text-center font-black text-2xl">صفحة المحاسبة تعمل الآن!</div>}
+      
       {activeTab === "calculator" && <CalculatorView />}
       {activeTab === "sales" && <SalesView />}
       {activeTab === "tasks" && <TasksView />}
@@ -83,9 +88,6 @@ export default function WarRoomCommandPageClient(props: WarRoomCommandPageClient
       {activeTab === "helpdesk" && <HelpdeskView initialTickets={props.helpdeskTickets} tenantName={props.companyName} />}
       {activeTab === "whatsapp" && <WhatsAppView initialChats={props.chats} tenant={props.whatsappTenant} />}
       {activeTab === "zatka" && <ZatkaView />}
-      {activeTab === "ejar" && <EjarView />}
       {activeTab === "campaigns" && <CampaignsView />}
-      {activeTab === "erpFinance" && <ErpFinanceView />}
     </div>
   );
-}
