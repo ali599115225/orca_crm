@@ -132,12 +132,13 @@ export async function loginAction(formData: FormData) {
  * حركة تسجيل الخروج وتدمير الجلسة (تم تحديثها لتكون أكثر فعالية)
  */
 export async function logoutAction() {
+  export async function logoutAction() {
   const cookieStore = await cookies();
-
+  
   // حذف الكوكيز بشكل صريح
   cookieStore.delete("session_token");
   cookieStore.delete("device_tenant_subdomain");
 
-  // إعادة التوجيه لصفحة تسجيل الدخول
-  redirect("/login");
+  // التوجيه مع إضافة معلمة "logged_out" لمنع الوسيط من إعادتك فوراً
+  redirect("/login?logged_out=true");
 }
