@@ -253,6 +253,11 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
       .replace(/%/g, "٪");
   };
 
+  // دالة تنسيق العملة السعودية
+  const formatCurrency = (amount: number): string => {
+    return `${toArabicNumerals(amount)} ${lang === 'AR' ? 'ر.س' : 'SAR'}`;
+  };
+
   const handleUpgrade = async (plan: "basic" | "silver" | "gold") => {
     setSuccess(null);
     setError(null);

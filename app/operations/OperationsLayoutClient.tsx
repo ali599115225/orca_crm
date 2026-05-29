@@ -206,11 +206,31 @@ export default function OperationsLayoutClient({
             })}
           </nav>
 
-          {/* Footer */}
-          <div className={`p-4 border-t text-[10px] text-slate-400 text-center select-none font-bold shrink-0 ${
+          {/* Footer — تسجيل الخروج + نسخة */}
+          <div className={`p-3 border-t shrink-0 space-y-1 ${
             isDark ? 'border-slate-800' : 'border-slate-200'
           }`}>
-            {t.version}
+            {/* زر تسجيل الخروج */}
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+                  isDark
+                    ? 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border-transparent hover:border-rose-800/40'
+                    : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-transparent hover:border-rose-200'
+                }`}
+                style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}
+              >
+                <span className="text-sm">🚪</span>
+                <span>{lang === 'AR' ? 'تسجيل الخروج' : 'Sign Out'}</span>
+              </button>
+            </form>
+            {/* نسخة النظام */}
+            <p className={`text-[9px] text-center select-none font-bold px-2 ${
+              isDark ? 'text-slate-700' : 'text-slate-400'
+            }`}>
+              {t.version}
+            </p>
           </div>
         </aside>
 

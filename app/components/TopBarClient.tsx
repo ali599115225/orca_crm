@@ -188,22 +188,9 @@ export default function TopBarClient({
             {isDark ? '☀️' : '🌙'}
           </button>
 
-          {/* زر تسجيل الخروج */}
-          {logoutAction && (
-            <button
-              onClick={logoutAction}
-              title={lang === 'AR' ? 'تسجيل الخروج' : 'Logout'}
-              className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
-                isDark 
-                  ? 'border-slate-700 bg-slate-900/60 text-rose-450 hover:border-rose-500/40 hover:bg-rose-950/20' 
-                  : 'border-slate-300 bg-slate-50 text-rose-600 hover:border-slate-350 hover:bg-rose-50'
-              }`}
-            >
-              🚪
-            </button>
-          )}
         </div>
       </div>
+
     </header>
   );
 }
