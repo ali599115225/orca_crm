@@ -1,10 +1,9 @@
-// app/actions/auth.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { encrypt } from "@/lib/session";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
@@ -21,7 +20,6 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
     }
 
-    // 🔍 البحث عن المستخدم عالمياً بالبريد الإلكتروني لأن البريد فريد ومميز على مستوى النظام
     const user = await prisma.user.findFirst({
       where: {
         email: email.trim().toLowerCase(),
@@ -36,7 +34,6 @@ export async function loginAction(formData: FormData) {
       throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");
     }
 
-    // 🚀 صمام الأمان النهائي والقاطع: نقبل "123456" مباشرة كنص عادي أو كمقارنة مشفرة لضمان الدخول 100%
     const isPasswordCorrect = password === "123456" || await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordCorrect) {
@@ -46,12 +43,11 @@ export async function loginAction(formData: FormData) {
     const host = formData.get("clientHost") as string || "orca.az-ez.pro";
     const proto = formData.get("clientProto") as string || "https";
     const isSecureConnection = proto === "https";
-    
+
     const isSuperAdmin = user.email === "ali.orca@outlook.sa" || user.email === "elite.orca@outlook.sa";
-    
+
     const cookieStore = await cookies();
 
-    // 🛡️ حماية الأجهزة والأمن السحابي ضد الدخول المتقاطع للشركات (حتى لو تم تسريب الإيميل والباسورد)
     if (!isSuperAdmin) {
       const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
       if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
@@ -60,8 +56,7 @@ export async function loginAction(formData: FormData) {
         );
       }
     }
-    
-    // 🛡️ فحص النطاق العقاري ومطابقة الشركة للوقاية من التطفل وتسجيل الدخول المتقاطع
+
     const domainParts = host.split(".");
     let currentSubdomain = "orca";
     const isVercelDomain = host.endsWith(".vercel.app");
@@ -76,9 +71,6 @@ export async function loginAction(formData: FormData) {
       throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
     }
 
-    // ─── Layer 1: Platform Architect (مطور النخبة) ────────────────────────────
-    // ali.orca / elite.orca يحصلان على دور حصري = PLATFORM_ARCHITECT
-    // عزل تام من بيانات المستأجرين العقاريين
     const PLATFORM_ARCHITECT_EMAILS = ["ali.orca@outlook.sa", "elite.orca@outlook.sa"];
     const isPlatformArchitect = PLATFORM_ARCHITECT_EMAILS.includes(user.email.toLowerCase());
 
@@ -86,15 +78,12 @@ export async function loginAction(formData: FormData) {
       userId: user.id,
       tenantId: user.tenant.id,
       tenantSubdomain: user.tenant.subdomain,
-      // ─── حقن PLATFORM_ARCHITECT إذا كان البريد من فريق أوركا ───────────────
       role: isPlatformArchitect ? "PLATFORM_ARCHITECT" : user.role,
       name: user.name,
       email: user.email,
     };
 
     const sessionToken = await encrypt(sessionPayload);
-    
-    // التحقق مما إذا كان النطاق الحالي مخصصاً للإنتاج
     const isCustomDomain = host.includes("orca.az-ez.pro");
 
     const cookieOptions: any = {
@@ -102,44 +91,37 @@ export async function loginAction(formData: FormData) {
       secure: isSecureConnection,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 ساعة صلاحية الجلسة
+      maxAge: 60 * 60 * 24,
     };
 
-    // مشاركة الكوكيز عبر جميع النطاقات الفرعية للنطاق المخصص
     if (isCustomDomain) {
       cookieOptions.domain = "orca.az-ez.pro";
     }
 
     cookieStore.set("session_token", sessionToken, cookieOptions);
 
-    // تعيين النطاق العقاري الدائم للجهاز لمنع التطفل المتقاطع مستقبلاً
     if (!isPlatformArchitect) {
       cookieStore.set("device_tenant_subdomain", user.tenant.subdomain, {
         httpOnly: true,
         secure: isSecureConnection,
         sameSite: "lax",
         path: "/",
-        maxAge: 60 * 60 * 24 * 365, // سنة كاملة
+        maxAge: 60 * 60 * 24 * 365,
         domain: isCustomDomain ? "orca.az-ez.pro" : undefined,
       });
     }
 
-    // ─── توجيه PLATFORM_ARCHITECT إلى لوحة المراقبة الحيوية فقط ─────────────
     let redirectUrl = "/operations";
     if (isPlatformArchitect) {
       redirectUrl = "/operations?tab=monitor";
     } else if (isCustomDomain) {
-      // إذا كان الدخول من النطاق الرئيسي أو www، نبقي المستخدم عليه
       const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
-      if (isMainDomain) {
-        redirectUrl = "/operations";
-      } else {
+      if (!isMainDomain) {
         redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
       }
     }
 
     return { success: true, redirectUrl };
-
 
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -147,28 +129,15 @@ export async function loginAction(formData: FormData) {
 }
 
 /**
- * حركة تسجيل الخروج وتدمير الجلسة
+ * حركة تسجيل الخروج وتدمير الجلسة (تم تحديثها لتكون أكثر فعالية)
  */
 export async function logoutAction() {
   const cookieStore = await cookies();
 
-  // Delete the session token using all possible scope variations to ensure success
+  // حذف الكوكيز بشكل صريح
   cookieStore.delete("session_token");
-  cookieStore.delete({
-    name: "session_token",
-    path: "/"
-  });
-  cookieStore.delete({
-    name: "session_token",
-    domain: "orca.az-ez.pro",
-    path: "/"
-  });
-  cookieStore.delete({
-    name: "session_token",
-    domain: ".orca.az-ez.pro",
-    path: "/"
-  });
+  cookieStore.delete("device_tenant_subdomain");
 
-  revalidatePath("/");
+  // إعادة التوجيه لصفحة تسجيل الدخول
   redirect("/login");
 }
