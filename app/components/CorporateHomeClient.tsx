@@ -1,7 +1,7 @@
 // app/components/CorporateHomeClient.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import PricingGrid from "./PricingGrid";
 import { createLeadAction } from "@/app/actions/leads";
 import { useApp } from "@/app/context/AppContext";
@@ -105,43 +105,6 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formStatus, setFormStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  // ─── Matrix Code Rain ──────────────────────────────────────────────────────
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener('resize', resize);
-    const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      + 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي٠١٢٣٤٥٦٧٨٩';
-    const fs = 13;
-    let cols = Math.floor(canvas.width / fs);
-    let drops: number[] = Array(cols).fill(1);
-    const draw = () => {
-      ctx.fillStyle = 'rgba(17,17,17,0.055)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fs}px monospace`;
-      cols = Math.floor(canvas.width / fs);
-      if (drops.length < cols) drops = [...drops, ...Array(cols - drops.length).fill(1)];
-      for (let i = 0; i < cols; i++) {
-        const ch = chars[Math.floor(Math.random() * chars.length)];
-        // لون الأحرف: أزرق نيوني خافت جداً مع بعض الفضي
-        ctx.fillStyle = i % 9 === 0
-          ? 'rgba(192,192,192,0.20)'   // فضي نادر
-          : i % 5 === 0
-            ? 'rgba(0,123,255,0.18)'   // أزرق نيوني
-            : 'rgba(0,123,255,0.09)';  // أزرق خافت جداً
-        ctx.fillText(ch, i * fs, drops[i] * fs);
-        if (drops[i] * fs > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      }
-    };
-    const id = setInterval(draw, 55);
-    return () => { clearInterval(id); window.removeEventListener('resize', resize); };
-  }, []);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   const toAr = (n: string | number | null | undefined): string => {
@@ -304,8 +267,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
   return (
     <div dir={dir} style={{ minHeight: '100vh', background: '#111111', color: '#e2e8f0', fontFamily: "'Cairo','Inter',sans-serif", direction: dir, position: 'relative', WebkitFontSmoothing: 'antialiased' }}>
 
-      {/* Matrix Code Rain */}
-      <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />
+
 
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
