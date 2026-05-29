@@ -196,17 +196,17 @@ export default function ProjectsView() {
   return (
     <div className="space-y-6 selection-fix p-1">
       
-      {/* حقن خط Calibri وعلاج مشكلة التحديد وتنسيق السمة والـ layout */}
+      {/* حقن خط Cairo/Inter وتنسيق السمة والـ layout */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           letter-spacing: normal !important;
         }
         .selection-fix, .selection-fix * {
           letter-spacing: normal !important;
         }
         ::selection {
-          background-color: ${theme === "dark" ? "rgba(205, 127, 50, 0.15)" : "rgba(115, 83, 52, 0.12)"} !important;
+          background-color: ${theme === "dark" ? "rgba(99, 102, 241, 0.2)" : "rgba(79, 70, 229, 0.15)"} !important;
           color: #27272a !important;
           text-shadow: none !important;
         }

@@ -214,12 +214,12 @@ export default function AgentsHudView({
   const capPercentage = maxSlots > 900000 ? 10 : Math.min(100, (activeCount / maxSlots) * 100);
 
   return (
-    <div className="space-y-8" dir="rtl" style={{ fontFamily: "'Calibri', sans-serif" }}>
+    <div className="space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
 
       {/* هيدر الصفحة */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="text-[10px] bg-amber-500/10 text-amber-500 font-extrabold px-3 py-1.5 rounded-full border border-amber-500/20">
+          <span className="text-[10px] bg-indigo-500/10 text-indigo-400 font-extrabold px-3 py-1.5 rounded-full border border-indigo-500/20">
             🤖 AI Agents Control Center — HUD
           </span>
           <h1 className="text-2xl font-black text-white mt-2">

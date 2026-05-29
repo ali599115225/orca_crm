@@ -91,11 +91,11 @@ export default function WarRoomCommandPageClient({
         isDark ? "text-white" : "text-[#0b0f19]"
       }`}
       dir={lang === "AR" ? "rtl" : "ltr"}
-      style={{ fontFamily: 'Calibri, sans-serif' }}
+      style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}
     >
       <style dangerouslySetInnerHTML={{ __html: `
         body, html, * {
-          font-family: 'Calibri', 'Arial', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
       `}} />
 

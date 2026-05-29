@@ -176,7 +176,7 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
     <div className="space-y-6" dir="rtl">
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
       `}} />
       {/* هيدر الصفحة الفخم */}

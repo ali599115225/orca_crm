@@ -75,22 +75,22 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
       }`}
       dir={lang === "AR" ? "rtl" : "ltr"}
     >
-      {/* تعميم خط Calibri وعلاج مشكلة تحديد النصوص العربية */}
+      {/* تعميم خط Cairo/Inter وتنسيق السمة والـ layout */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
         .vault-card, .vault-card * {
           letter-spacing: normal !important;
         }
         .vault-card ::selection {
-          background-color: ${isDark ? "rgba(230, 198, 135, 0.15)" : "rgba(115, 83, 52, 0.15)"} !important;
+          background-color: ${isDark ? "rgba(99, 102, 241, 0.2)" : "rgba(79, 70, 229, 0.15)"} !important;
           color: #0b0f19 !important;
           text-shadow: none !important;
           display: inline !important;
         }
         ::selection {
-          background-color: ${isDark ? "rgba(230, 198, 135, 0.15)" : "rgba(115, 83, 52, 0.15)"} !important;
+          background-color: ${isDark ? "rgba(99, 102, 241, 0.2)" : "rgba(79, 70, 229, 0.15)"} !important;
           color: #0b0f19 !important;
           text-shadow: none !important;
         }
@@ -99,10 +99,10 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
       {/* خلفية جمالية خافتة تتناسب مع كل وضع */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10">
         <div className={`absolute top-1/4 left-1/4 w-[500px] h-[500px] blur-[120px] rounded-full transition-colors duration-500 ${
-          isDark ? "bg-[#cd7f32]/5" : "bg-[#735334]/5"
+          isDark ? "bg-indigo-500/5" : "bg-indigo-550/5"
         }`} />
         <div className={`absolute bottom-1/4 right-1/4 w-[400px] h-[400px] blur-[100px] rounded-full transition-colors duration-500 ${
-          isDark ? "bg-emerald-500/3" : "bg-emerald-500/2"
+          isDark ? "bg-purple-500/3" : "bg-purple-500/2"
         }`} />
       </div>
 
@@ -111,14 +111,14 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
         {/* logo */}
         <div className="flex items-center gap-2 select-none cursor-pointer">
           <span className={`text-lg font-black tracking-wider transition-colors duration-500 ${
-            isDark ? "text-[#E6C687]" : "text-[#735334]"
+            isDark ? "text-indigo-400" : "text-indigo-650"
           }`}>
             ORCA CRM
           </span>
           <span className={`text-[8px] font-bold border px-1.5 py-0.5 rounded transition-colors duration-500 ${
-            isDark ? "border-[#E6C687]/30 text-[#E6C687]/80" : "border-[#735334]/30 text-[#735334]"
+            isDark ? "border-indigo-400/30 text-indigo-400/80" : "border-indigo-600/30 text-indigo-650"
           }`} dir="ltr">
-            RTL Secure
+            Secure Edition
           </span>
         </div>
 
@@ -128,8 +128,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
             onClick={toggleLang}
             className={`h-8 px-2.5 rounded-lg border text-[10px] font-bold transition-all cursor-pointer ${
               isDark
-                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#E6C687]/50 hover:text-[#E6C687]"
-                : "bg-white border-slate-300 text-slate-700 hover:border-[#735334] hover:text-[#735334] shadow-sm"
+                ? "bg-white/5 border-white/10 text-slate-300 hover:border-indigo-400/50 hover:text-indigo-450"
+                : "bg-white border-slate-300 text-slate-700 hover:border-indigo-600 hover:text-indigo-650 shadow-sm"
             }`}
           >
             🌐 {lang === "AR" ? "EN" : "عربي"}
@@ -139,8 +139,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
             onClick={toggleTheme}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer ${
               isDark
-                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#E6C687]/50 hover:text-[#E6C687]"
-                : "bg-white border-slate-300 text-slate-700 hover:border-[#735334] hover:text-[#735334] shadow-sm"
+                ? "bg-white/5 border-white/10 text-slate-300 hover:border-indigo-400/50 hover:text-indigo-450"
+                : "bg-white border-slate-300 text-slate-700 hover:border-indigo-600 hover:text-indigo-650 shadow-sm"
             }`}
             title="تبديل وضع الألوان"
           >
@@ -153,7 +153,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
       <main className="flex-1 flex items-center justify-center w-full max-w-[460px] z-10 py-6">
         <div className={`vault-card w-full transition-all duration-500 border ${
           isDark
-            ? "bg-[#0b0f19]/80 border-[#cd7f32]/30 backdrop-blur-xl shadow-[0_0_40px_rgba(205,127,50,0.15)] rounded-[28px] p-8 md:p-10 shadow-black/80"
+            ? "bg-[#0b0f19]/80 border-indigo-500/30 backdrop-blur-xl shadow-[0_0_40px_rgba(99,102,241,0.15)] rounded-[28px] p-8 md:p-10 shadow-black/80"
             : "bg-white/70 border-slate-200 backdrop-blur-md shadow-sm shadow-slate-200/50 rounded-[28px] p-8 md:p-10"
         }`}>
           
@@ -164,7 +164,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
               onClick={() => { setIsAdminMode(!isAdminMode); setError(null); }}
               className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all cursor-pointer border ${
                 isAdminMode 
-                  ? (isDark ? "bg-[#E6C687] text-slate-950 border-[#E6C687]" : "bg-[#735334] text-white border-[#735334]") 
+                  ? (isDark ? "bg-indigo-550 text-white border-indigo-500" : "bg-indigo-600 text-white border-indigo-600") 
                   : (isDark ? "bg-transparent text-slate-400 border-slate-800 hover:text-slate-200" : "bg-transparent text-slate-500 border-slate-200 hover:text-slate-800")
               }`}
             >
@@ -182,9 +182,9 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
                 <div style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   width: "56px", height: "56px", borderRadius: "16px",
-                  background: isDark ? "rgba(115, 83, 52, 0.15)" : "rgba(115, 83, 52, 0.1)",
-                  border: "1px solid #735334",
-                  boxShadow: isDark ? "0 0 20px rgba(115, 83, 52, 0.2)" : "0 5px 15px rgba(115, 83, 52, 0.1)",
+                  background: isDark ? "rgba(99, 102, 241, 0.15)" : "rgba(79, 70, 229, 0.1)",
+                  border: "1px solid #4f46e5",
+                  boxShadow: isDark ? "0 0 20px rgba(99, 102, 241, 0.2)" : "0 5px 15px rgba(79, 70, 229, 0.1)",
                   marginBottom: "8px", fontSize: "24px"
                 }}>
                   🛡️
@@ -209,7 +209,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
                 ? (lang === "AR" ? "مخصصة لفريق أوركا فقط — وصول محظور على الغير" : "Exclusively for Orca Personnel — Unauthorized Access Prohibited")
                 : (lang === "AR" ? `مرحباً بك مجدداً. ادخل إلى حصنك الرقمي لإدارة وحماية محفظتك العقارية في لوحة تحكم: ` : "Welcome back. Access your digital vault to manage and protect your portfolio under: ")
               }
-              {!isAdminMode && <span className={`font-black ${isDark ? "text-[#E6C687]" : "text-[#735334]"}`}>{tenantName}</span>}
+              {!isAdminMode && <span className={`font-black ${isDark ? "text-indigo-400" : "text-indigo-650"}`}>{tenantName}</span>}
             </p>
           </div>
 
@@ -223,7 +223,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
             {/* البريد الإلكتروني */}
             <div className="space-y-2">
               <label className={`block text-xs font-bold transition-colors duration-500 ${
-                isDark ? "text-[#E6C687]" : "text-[#735334]"
+                isDark ? "text-indigo-405" : "text-indigo-650"
               }`}>
                 {isAdminMode 
                   ? (lang === "AR" ? "بريد الإدارة الفوقية" : "Super Admin Email Address")
@@ -244,8 +244,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
                   placeholder={isAdminMode ? "ali.orca@outlook.sa" : "name@company.com"}
                   className={`w-full border rounded-xl pl-4 pr-11 py-3.5 text-xs transition-all duration-300 focus:outline-none focus:ring-1 ${
                     isDark
-                      ? "bg-[#0b0f19]/60 border-white/10 text-white placeholder:text-slate-600 focus:border-[#E6C687]/50 focus:ring-[#E6C687]/50"
-                      : "bg-white/80 border-slate-300 text-[#0b0f19] placeholder:text-slate-400 focus:border-[#735334]/50 focus:ring-[#735334]/50"
+                      ? "bg-[#0b0f19]/60 border-white/10 text-white placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-indigo-400/50"
+                      : "bg-white/80 border-slate-300 text-[#0b0f19] placeholder:text-slate-400 focus:border-indigo-600/50 focus:ring-indigo-600/50"
                   }`}
                 />
               </div>
@@ -254,7 +254,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
             {/* كلمة المرور */}
             <div className="space-y-2">
               <label className={`block text-xs font-bold transition-colors duration-500 ${
-                isDark ? "text-[#E6C687]" : "text-[#735334]"
+                isDark ? "text-indigo-405" : "text-indigo-650"
               }`}>
                 {isAdminMode 
                   ? (lang === "AR" ? "كلمة المرور السرية" : "Secret Encryption Password")
@@ -274,8 +274,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
                   placeholder="••••••••"
                   className={`w-full border rounded-xl pl-4 pr-11 py-3.5 text-xs transition-all duration-300 focus:outline-none focus:ring-1 ${
                     isDark
-                      ? "bg-[#0b0f19]/60 border-white/10 text-white placeholder:text-slate-600 focus:border-[#E6C687]/50 focus:ring-[#E6C687]/50"
-                      : "bg-white/80 border-slate-300 text-[#0b0f19] placeholder:text-slate-400 focus:border-[#735334]/50 focus:ring-[#735334]/50"
+                      ? "bg-[#0b0f19]/60 border-white/10 text-white placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-indigo-400/50"
+                      : "bg-white/80 border-slate-300 text-[#0b0f19] placeholder:text-slate-400 focus:border-indigo-600/50 focus:ring-indigo-600/50"
                   }`}
                 />
               </div>
@@ -289,8 +289,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
                   defaultChecked
                   className={`rounded focus:ring-0 ${
                     isDark
-                      ? "bg-[#0b0f19] border-white/20 text-[#E6C687]"
-                      : "bg-white border-slate-300 text-[#735334]"
+                      ? "bg-[#0b0f19] border-white/20 text-indigo-400"
+                      : "bg-white border-slate-300 text-indigo-600"
                   }`}
                 />
                 <span className={isDark ? "text-slate-400" : "text-slate-600"}>
@@ -301,7 +301,7 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
               <a
                 href="#forgot"
                 className={`hover:underline transition-colors ${
-                  isDark ? "text-[#E6C687]/90 hover:text-white" : "text-[#735334] hover:text-[#5a4028]"
+                  isDark ? "text-indigo-400/90 hover:text-white" : "text-indigo-650 hover:text-indigo-805"
                 }`}
               >
                 {lang === "AR" ? "نسيت كلمة المرور؟" : "Forgot Password?"}
@@ -314,8 +314,8 @@ export default function LoginClient({ tenantName, host }: LoginClientProps) {
               disabled={loading}
               className={`w-full rounded-xl p-4 text-xs font-black transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2 ${
                 isDark
-                  ? "bg-[#E6C687] hover:bg-[#d4af37] text-[#0b0f19] shadow-[0_4px_20px_rgba(230,198,135,0.25)]"
-                  : "bg-[#735334] hover:bg-[#5a4028] text-white shadow-[0_4px_20px_rgba(115,83,52,0.25)]"
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_4px_20px_rgba(99,102,241,0.25)]"
+                  : "bg-indigo-650 hover:bg-indigo-700 text-white shadow-[0_4px_20px_rgba(79,70,229,0.25)]"
               }`}
             >
               {loading ? (

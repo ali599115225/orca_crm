@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     // 4. إرسال تقرير يومي للمشرف
     // ===================================================
     const emailHtml = `
-      <div style="font-family: 'Calibri', Arial, sans-serif; direction: rtl; text-align: right; padding: 25px; background: #0f172a; color: #e2e8f0; border-radius: 12px;">
+      <div style="font-family: 'Cairo', 'Inter', Arial, sans-serif; direction: rtl; text-align: right; padding: 25px; background: #0f172a; color: #e2e8f0; border-radius: 12px;">
         <h2 style="color: #f59e0b; border-bottom: 1px solid #f59e0b30; padding-bottom: 12px;">
           ⏰ تقرير Cron Job اليومي - الوكيل سند
         </h2>

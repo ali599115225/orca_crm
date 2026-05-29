@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
   const hasCritical = report.dbStatus === "ERROR" || report.failoverTriggered;
 
   const emailHtml = `
-    <div style="font-family: 'Calibri', Arial, sans-serif; direction: rtl; text-align: right; padding: 25px; background: #0f172a; color: #e2e8f0; border-radius: 12px;">
+    <div style="font-family: 'Cairo', 'Inter', Arial, sans-serif; direction: rtl; text-align: right; padding: 25px; background: #0f172a; color: #e2e8f0; border-radius: 12px;">
       <h2 style="color: ${hasCritical ? "#ef4444" : "#10b981"}; border-bottom: 1px solid #f59e0b30; padding-bottom: 12px;">
         🤖 الوكيل ساهر: ${hasCritical ? "🚨 تنبيه حرج" : "✅ فحص دوري"} - Self-Healing Report
       </h2>

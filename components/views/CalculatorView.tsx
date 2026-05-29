@@ -280,10 +280,8 @@ export default function CalculatorView() {
       
       {/* تضمين خط كاليبري وخصائص التنسيق العام */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.cdnfonts.com/css/calibri');
-        
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Calibri', 'Calibri-Regular', 'Arial', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
         
         /* تباين خاص بالمظهر الداكن والفاتح */
@@ -297,7 +295,7 @@ export default function CalculatorView() {
           background: rgba(11, 15, 25, 0.6) !important;
           backdrop-filter: blur(18px) !important;
           -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(115, 83, 52, 0.35) !important; /* Polished Bronze border */
+          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
           box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
         }
         
@@ -306,25 +304,25 @@ export default function CalculatorView() {
           background: rgba(255, 255, 255, 0.92) !important;
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
+          border: 1px solid rgba(224, 231, 255, 0.9) !important;
           box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
         }
         
         .bronze-glow-dark {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 0 20px rgba(115, 83, 52, 0.35) !important;
+          border: 1px solid #6366f1 !important;
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.35) !important;
         }
         
         .bronze-glow-light {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 4px 20px rgba(115, 83, 52, 0.12) !important;
+          border: 1px solid #4f46e5 !important;
+          box-shadow: 0 4px 20px rgba(79, 70, 229, 0.12) !important;
         }
         
         .text-royal-bronze {
-          color: #735334 !important;
+          color: #4f46e5 !important;
         }
         .text-gold-accent {
-          color: #E6C687 !important;
+          color: #818cf8 !important;
         }
       `}} />
 
@@ -332,8 +330,8 @@ export default function CalculatorView() {
       <div className={`mb-8 ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
         <span className={`inline-block text-[10px] font-extrabold px-3 py-1 rounded-full border ${
           isDark 
-            ? 'bg-amber-500/10 text-[#E6C687] border-[#735334]/40' 
-            : 'bg-[#735334]/10 text-[#735334] border-[#735334]/20'
+            ? 'bg-indigo-500/10 text-indigo-450 border-indigo-500/30' 
+            : 'bg-indigo-50 text-indigo-600 border-indigo-200'
         }`}>
           {t.tag}
         </span>

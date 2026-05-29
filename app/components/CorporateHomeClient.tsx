@@ -301,14 +301,14 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       } ${lang === 'AR' ? 'text-right' : 'text-left'}`}
       dir={lang === 'AR' ? 'rtl' : 'ltr'}
     >
-      {/* تعميم خط Calibri وتأثيرات الألوان المخصصة */}
+      {/* تعميم خطوط Cairo و Inter وتأثيرات الألوان المخصصة */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           letter-spacing: normal !important;
         }
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           letter-spacing: normal !important;
         }
         /* خلفية الشبكة الهندسية المخصصة */

@@ -132,7 +132,7 @@ export default function OperationsLayoutClient({
 
   return (
     <div 
-      className={`h-screen w-full overflow-hidden flex flex-col antialiased transition-colors duration-300 selection:bg-amber-500/20 selection:text-amber-600 ${
+      className={`h-screen w-full overflow-hidden flex flex-col antialiased transition-colors duration-300 selection:bg-indigo-500/20 selection:text-indigo-650 ${
         isDark ? 'bg-[#0b0f19] text-[#e2e8f0]' : 'bg-[#f9f9fb] text-[#0f172a]'
       }`} 
       dir={lang === 'AR' ? 'rtl' : 'ltr'}
@@ -150,7 +150,7 @@ export default function OperationsLayoutClient({
             isDark ? 'border-slate-800' : 'border-slate-200'
           }`}>
             <span className={`text-[11px] font-black tracking-widest uppercase ${
-              isDark ? 'text-amber-400' : 'text-[#735334]'
+              isDark ? 'text-indigo-400' : 'text-indigo-600'
             }`}>
               {lang === 'AR' ? 'أوركا العقارية ORCA' : 'ORCA Real Estate'}
             </span>
@@ -168,13 +168,13 @@ export default function OperationsLayoutClient({
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                     active
                       ? isDark
-                        ? 'bg-[#735334]/25 text-[#E6C687] border border-[#735334]/40 font-black shadow-md'
-                        : 'bg-[#735334]/10 text-[#735334] border border-[#735334]/20 font-black'
+                        ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-black shadow-md'
+                        : 'bg-indigo-50 text-indigo-650 border border-indigo-150 font-black shadow-sm'
                       : isDark
                         ? 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
                         : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent'
                   }`}
-                  style={{ fontFamily: 'Calibri, sans-serif' }}
+                  style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}
                 >
                   <span className="text-sm">{item.icon}</span>
                   <span>{lang === 'AR' ? item.titleAr : item.titleEn}</span>

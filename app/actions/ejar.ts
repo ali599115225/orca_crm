@@ -178,7 +178,7 @@ export async function submitContractToEjarAction(
     });
 
     const emailHtml = `
-      <div style="font-family: 'Calibri', Arial, sans-serif; direction: rtl; text-align: right; padding: 30px; background: #f8fafc; border-radius: 12px;">
+      <div style="font-family: 'Cairo', 'Inter', Arial, sans-serif; direction: rtl; text-align: right; padding: 30px; background: #f8fafc; border-radius: 12px;">
         <h2 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 12px;">
           🏛️ إيجار: تم تسجيل عقد عقاري جديد بنجاح
         </h2>

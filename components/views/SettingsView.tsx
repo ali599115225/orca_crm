@@ -380,12 +380,9 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
   return (
     <div className={`settings-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
-      {/* خط كاليبري والهوية المزدوجة المصقولة */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.cdnfonts.com/css/calibri');
-        
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Calibri', 'Calibri-Regular', 'Arial', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
         
         .settings-page-wrapper {
@@ -398,7 +395,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           background: rgba(11, 15, 25, 0.6) !important;
           backdrop-filter: blur(18px) !important;
           -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(115, 83, 52, 0.35) !important; /* Polished Bronze border */
+          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
           box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
         }
         

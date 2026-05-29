@@ -2,7 +2,9 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
+import { UIBusProvider } from "@/app/context/UIBusContext";
 import RootHtml from "@/app/components/RootHtml";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -39,13 +41,17 @@ export default async function RootLayout({
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <RootHtml 
-          initialName={initialName} 
-          userRoleKey={userRoleKey} 
-          isSuperAdmin={isSuperAdmin}
-        >
-          {children}
-        </RootHtml>
+        <UIBusProvider>
+          <RootHtml 
+            initialName={initialName} 
+            userRoleKey={userRoleKey} 
+            isSuperAdmin={isSuperAdmin}
+          >
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </RootHtml>
+        </UIBusProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

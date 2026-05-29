@@ -118,7 +118,7 @@ export default function TopBarClient({
           transform: translateX(-50%);
           white-space: nowrap;
           z-index: 100;
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           animation: tooltipFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
         @keyframes tooltipFadeIn {
@@ -126,10 +126,10 @@ export default function TopBarClient({
           to { opacity: 1; transform: translate(-50%, 0); }
         }
         .header-tab-active {
-          border-bottom: 2px solid ${isDark ? '#E6C687' : '#735334'} !important;
-          color: ${isDark ? '#E6C687' : '#735334'} !important;
+          border-bottom: 2px solid ${isDark ? '#818cf8' : '#4f46e5'} !important;
+          color: ${isDark ? '#818cf8' : '#4f46e5'} !important;
           font-weight: 900 !important;
-          background: ${isDark ? 'rgba(115, 83, 52, 0.1)' : 'rgba(115, 83, 52, 0.05)'};
+          background: ${isDark ? 'rgba(79, 70, 229, 0.1)' : 'rgba(79, 70, 229, 0.05)'};
         }
       `}} />
 
@@ -139,15 +139,13 @@ export default function TopBarClient({
         <div className="flex items-center space-x-reverse space-x-3.5">
           <div className="relative">
             <span className="absolute bottom-0 left-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-current" />
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center font-black text-sm shadow-md ${
-              isDark ? 'bg-amber-500 text-slate-950' : 'bg-amber-500 text-slate-950'
-            }`}>
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center font-black text-sm shadow-md bg-indigo-600 text-white`}>
               {displayName.charAt(0)}
             </div>
           </div>
           <div className="text-right">
             <p className={`text-xs font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayName}</p>
-            <p className={`text-[9px] font-extrabold mt-0.5 tracking-wide leading-none ${isDark ? 'text-[#E6C687]' : 'text-[#735334]'}`}>{initialRole}</p>
+            <p className={`text-[9px] font-extrabold mt-0.5 tracking-wide leading-none ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{initialRole}</p>
           </div>
         </div>
 
@@ -171,8 +169,8 @@ export default function TopBarClient({
             onClick={toggleLang}
             className={`h-8 px-3 rounded-lg border text-[10px] font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-[#E6C687]/50 hover:text-[#E6C687]' 
-                : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-[#735334]/50 hover:text-[#735334]'
+                ? 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-indigo-400/50 hover:text-indigo-400' 
+                : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-indigo-600/50 hover:text-indigo-600'
             }`}
           >
             🌐 {lang === 'AR' ? 'EN' : 'عربي'}
@@ -183,8 +181,8 @@ export default function TopBarClient({
             onClick={toggleTheme}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-slate-900/60 text-[#E6C687] hover:border-[#E6C687]/50' 
-                : 'border-slate-300 bg-slate-50 text-[#735334] hover:border-[#735334]/50'
+                ? 'border-slate-700 bg-slate-900/60 text-indigo-400 hover:border-indigo-400/50' 
+                : 'border-slate-300 bg-slate-50 text-indigo-600 hover:border-indigo-600/50'
             }`}
           >
             {isDark ? '☀️' : '🌙'}

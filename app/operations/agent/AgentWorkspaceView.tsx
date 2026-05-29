@@ -202,14 +202,14 @@ export default function AgentWorkspaceView({ initialLeads, userId, userName }: A
   return (
     <div className={`agent-workspace-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
-      {/* خط كاليبري وعلاج مشكلة التحديد وتنسيق السمة والـ layout */}
+      {/* خط Cairo/Inter وتنسيق السمة والـ layout */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           letter-spacing: normal !important;
         }
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Calibri', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
           letter-spacing: normal !important;
         }
         

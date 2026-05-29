@@ -1,203 +1,173 @@
 // app/api/whatsapp/webhook/route.ts
-// 📱 WhatsApp Cloud API - Meta Webhook Handler
-// يستقبل رسائل واتساب الحقيقية من Meta Business API ويحولها لعملاء في النظام
+// 📱 Green API Webhook Handler — Orca CRM
+// يستقبل رسائل واتساب من Green API (Instance: 7107636615)
+// ويُحوِّلها فوراً للوكيل ساهر للتأهيل والإسناد الذكي
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
 
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "orca_whatsapp_verify_2026";
-const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || "";
-const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "";
+// ─── إعدادات Green API ───────────────────────────────────────────────────────
+const GREEN_API_ID_INSTANCE =
+  process.env.GREEN_API_ID_INSTANCE ||
+  process.env.WHATSAPP_INSTANCE_ID ||
+  "7107636615";
 
-// ===================================================
-// GET: التحقق من Webhook (Meta Verification)
-// ===================================================
+const GREEN_API_TOKEN_INSTANCE =
+  process.env.GREEN_API_TOKEN_INSTANCE ||
+  process.env.WHATSAPP_API_TOKEN ||
+  "";
+
+const GREEN_API_URL =
+  process.env.GREEN_API_URL ||
+  process.env.WHATSAPP_API_URL ||
+  "https://7107.api.greenapi.com";
+
+const WEBHOOK_SECRET =
+  process.env.WHATSAPP_WEBHOOK_SECRET || "orca_whatsapp_webhook_2026_secret";
+
+// ─── هيكل رسائل Green API ───────────────────────────────────────────────────
+
+interface GreenAPIWebhookBody {
+  typeWebhook: string;           // "incomingMessageReceived" | "outgoingMessageReceived" | ...
+  instanceData?: {
+    idInstance: number;
+    wid: string;
+    typeInstance: string;
+  };
+  timestamp?: number;
+  idMessage?: string;
+  senderData?: {
+    chatId: string;             // "966501234567@c.us"
+    chatName: string;           // اسم المحادثة
+    sender: string;             // "966501234567@c.us"
+    senderName: string;         // اسم المُرسِل
+    senderContactName?: string;
+  };
+  messageData?: {
+    typeMessage: string;        // "textMessage" | "imageMessage" | ...
+    textMessageData?: {
+      textMessage: string;      // نص الرسالة
+    };
+    imageMessageData?: {
+      caption?: string;
+    };
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GET: التحقق من Webhook (لا تستخدمه Green API — لكن نُبقيه للتوافقية)
+// ═══════════════════════════════════════════════════════════════════
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token");
 
+  if (token === WEBHOOK_SECRET) {
+    return NextResponse.json({ status: "Webhook active", instance: GREEN_API_ID_INSTANCE });
+  }
+
+  // دعم التحقق من Meta API (للتوافقية)
   const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
+  const hubToken = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
-
-  if (mode === "subscribe" && token === WHATSAPP_VERIFY_TOKEN) {
-    console.log("✅ WhatsApp Webhook verified successfully");
+  if (mode === "subscribe" && hubToken === WEBHOOK_SECRET) {
     return new NextResponse(challenge, { status: 200 });
   }
 
-  return NextResponse.json({ error: "Verification failed" }, { status: 403 });
+  return NextResponse.json({ status: "OK" }, { status: 200 });
 }
 
-// ===================================================
-// POST: استقبال رسائل WhatsApp الواردة
-// ===================================================
+// ═══════════════════════════════════════════════════════════════════
+// POST: استقبال رسائل Green API الواردة → ساهر
+// ═══════════════════════════════════════════════════════════════════
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: GreenAPIWebhookBody = await request.json();
 
-    // التحقق من صحة البيانات القادمة من Meta
-    if (body.object !== "whatsapp_business_account") {
-      return NextResponse.json({ status: "ignored" }, { status: 200 });
+    // تجاهل الرسائل الصادرة والتحديثات غير الجوهرية
+    if (body.typeWebhook !== "incomingMessageReceived") {
+      return NextResponse.json({ status: "ignored", type: body.typeWebhook });
     }
 
-    const entries = body.entry || [];
-    for (const entry of entries) {
-      const changes = entry.changes || [];
-      for (const change of changes) {
-        if (change.field !== "messages") continue;
+    // التأكد من أن الرسالة نصية
+    const messageType = body.messageData?.typeMessage;
+    const textMessage =
+      body.messageData?.textMessageData?.textMessage ||
+      body.messageData?.imageMessageData?.caption ||
+      "";
 
-        const value = change.value;
-        const messages = value?.messages || [];
-        const contacts = value?.contacts || [];
-
-        for (const message of messages) {
-          if (message.type === "text") {
-            await processIncomingWhatsAppMessage({
-              from: message.from,
-              messageId: message.id,
-              text: message.text?.body || "",
-              timestamp: message.timestamp,
-              contact: contacts[0] || null,
-              phoneNumberId: value.metadata?.phone_number_id,
-            });
-          }
-        }
-      }
+    if (!textMessage || !body.senderData) {
+      return NextResponse.json({ status: "no_text" });
     }
 
-    return NextResponse.json({ status: "OK" }, { status: 200 });
+    // استخراج رقم الهاتف (إزالة "@c.us" من نهاية المعرف)
+    const rawPhone = body.senderData.sender || body.senderData.chatId;
+    const senderPhone = "+" + rawPhone.replace("@c.us", "").replace("@g.us", "");
+    const senderName = body.senderData.senderName || body.senderData.chatName || "";
+    const chatId = body.senderData.chatId;
+
+    console.log(
+      `[WhatsApp→Saher] 📩 رسالة واردة | من: ${senderPhone} | ${textMessage.substring(0, 50)}...`
+    );
+
+    // ─── تسليم الرسالة للوكيل ساهر للتأهيل الفوري ──────────────────
+    const saherResult = await processSaherWhatsAppLeadAction({
+      senderPhone,
+      senderName,
+      messageText: textMessage,
+      timestamp: new Date(
+        (body.timestamp || Date.now() / 1000) * 1000
+      ).toISOString(),
+      chatId,
+    });
+
+    // ─── إرسال رد الوكيل ساهر عبر Green API ──────────────────────────
+    if (saherResult.responseToClient) {
+      await sendGreenAPIReply(chatId, saherResult.responseToClient);
+    }
+
+    return NextResponse.json({
+      status: "processed",
+      leadId: saherResult.leadId,
+      assignedTo: saherResult.assignedTo,
+      saherAction: saherResult.saherOutput?.action,
+    });
+
   } catch (error: any) {
-    console.error("WhatsApp Webhook Error:", error);
+    console.error("[WhatsApp Webhook] خطأ:", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }
 
-// ===================================================
-// معالجة رسالة واتساب واردة وتحويلها لعميل
-// ===================================================
-async function processIncomingWhatsAppMessage(data: {
-  from: string;
-  messageId: string;
-  text: string;
-  timestamp: string;
-  contact: any;
-  phoneNumberId: string;
-}) {
-  try {
-    // 1. إيجاد الشركة (Tenant) التي تملك هذا الرقم
-    const tenant = await prisma.tenant.findFirst({
-      where: { whatsappConnected: true, isActive: true },
-    });
-
-    if (!tenant) {
-      console.warn("No active tenant found for WhatsApp phone ID:", data.phoneNumberId);
-      return;
-    }
-
-    // 2. البحث إذا كان العميل موجوداً مسبقاً
-    const existingLead = await prisma.lead.findFirst({
-      where: {
-        tenantId: tenant.id,
-        phone: data.from,
-      },
-    });
-
-    const contactName = data.contact?.profile?.name || `عميل واتساب ${data.from}`;
-    const nameParts = contactName.split(" ");
-    const firstName = nameParts[0] || "عميل";
-    const lastName = nameParts.slice(1).join(" ") || "واتساب";
-
-    if (existingLead) {
-      // 3a. إضافة نشاط جديد للعميل الموجود
-      await prisma.leadActivity.create({
-        data: {
-          tenantId: tenant.id,
-          leadId: existingLead.id,
-          activityType: "WHATSAPP_MESSAGE",
-          description: `📱 رسالة واتساب واردة: "${data.text}"`,
-        },
-      });
-    } else {
-      // 3b. إنشاء عميل جديد من رسالة واتساب (Round-Robin يُشغَّل عبر DB Trigger)
-      const newLead = await prisma.lead.create({
-        data: {
-          tenantId: tenant.id,
-          firstName,
-          lastName,
-          phone: data.from,
-          city: "غير محدد",
-          source: "WhatsApp",
-          status: "NEW",
-          leadScore: 60,
-          // assigned_to سيُعيَّن تلقائياً بواسطة trigger_leads_round_robin
-        },
-      });
-
-      // سجّل الرسالة الأولى كنشاط
-      await prisma.leadActivity.create({
-        data: {
-          tenantId: tenant.id,
-          leadId: newLead.id,
-          activityType: "WHATSAPP_MESSAGE",
-          description: `📱 أول رسالة واتساب من عميل جديد: "${data.text}"`,
-        },
-      });
-    }
-
-    // 4. الرد التلقائي الفوري من الوكيل الذكي
-    const aiReply = generateAIReply(data.text, tenant.companyName);
-    await sendWhatsAppReply(data.from, aiReply);
-
-  } catch (error: any) {
-    console.error("Error processing WhatsApp message:", error);
-  }
-}
-
-// ===================================================
-// توليد ردود الوكيل الذكي
-// ===================================================
-function generateAIReply(messageText: string, companyName: string): string {
-  const msg = messageText.trim().toLowerCase();
-
-  if (msg.includes("سعر") || msg.includes("بكم") || msg.includes("تكلف") || msg.includes("اسعار")) {
-    return `مرحباً! 🏠 تبدأ أسعار ${companyName} من 450,000 ر.س للشقق السكنية، و1,200,000 ر.س للفلل المستقلة. هل تود معرفة المزيد أو حجز زيارة؟`;
-  }
-  if (msg.includes("موقع") || msg.includes("وين") || msg.includes("حي") || msg.includes("مكان")) {
-    return `📍 مشاريعنا في أرقى أحياء الرياض وجدة! اتصل بنا أو راسلنا لأرسل لك الموقع التفصيلي والخريطة.`;
-  }
-  if (msg.includes("تمويل") || msg.includes("قسط") || msg.includes("بنك") || msg.includes("سكني")) {
-    return `💰 نعم! جميع مشاريع ${companyName} متوافقة مع برامج التمويل العقاري وبرنامج سكني. سنتواصل معك لشرح خيارات الدفع المناسبة.`;
-  }
-  if (msg.includes("زيارة") || msg.includes("معاينة") || msg.includes("موعد")) {
-    return `🗓️ يسعدنا استقبالك! معارضنا مفتوحة يومياً من 4-9م. ما هو الموعد المناسب لك؟`;
-  }
-
-  return `أهلاً بك في ${companyName}! 🌟 شكراً لتواصلك. سيتواصل معك أحد مستشارينا العقاريين خلال دقائق. كيف يمكننا مساعدتك؟`;
-}
-
-// ===================================================
-// إرسال رد واتساب عبر Meta Cloud API
-// ===================================================
-async function sendWhatsAppReply(to: string, message: string): Promise<void> {
-  if (!WHATSAPP_API_TOKEN || !WHATSAPP_PHONE_ID) {
-    console.log("[Mock WhatsApp Reply] To:", to, "Message:", message);
+// ═══════════════════════════════════════════════════════════════════
+// إرسال رد عبر Green API
+// ═══════════════════════════════════════════════════════════════════
+async function sendGreenAPIReply(chatId: string, message: string): Promise<void> {
+  if (!GREEN_API_TOKEN_INSTANCE || GREEN_API_TOKEN_INSTANCE.startsWith("ضع_هنا")) {
+    console.log("[Green API - Mock] الرد:", message);
     return;
   }
 
   try {
-    await fetch(`https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`, {
+    const endpoint = `${GREEN_API_URL}/waInstance${GREEN_API_ID_INSTANCE}/sendMessage/${GREEN_API_TOKEN_INSTANCE}`;
+
+    const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: message },
+        chatId,
+        message,
+        linkPreview: false,
       }),
     });
-  } catch (error) {
-    console.error("Failed to send WhatsApp reply:", error);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[Green API] فشل الإرسال (${response.status}):`, errText);
+    } else {
+      console.log(`[Green API] ✅ تم إرسال رد ساهر لـ ${chatId}`);
+    }
+  } catch (error: any) {
+    console.error("[Green API] خطأ في الإرسال:", error.message);
   }
 }

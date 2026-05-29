@@ -201,12 +201,9 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
   return (
     <div className={`whatsapp-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
-      {/* خط كاليبري ونظام الألوان المزدوج المتسق لقناة الواتساب */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.cdnfonts.com/css/calibri');
-        
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Calibri', 'Calibri-Regular', 'Arial', sans-serif !important;
+          font-family: 'Cairo', 'Inter', sans-serif !important;
         }
         
         .whatsapp-page-wrapper {
@@ -218,7 +215,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
           background: rgba(11, 15, 25, 0.6) !important;
           backdrop-filter: blur(18px) !important;
           -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(115, 83, 52, 0.35) !important; /* Polished Bronze border */
+          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
           box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
         }
         
@@ -226,18 +223,18 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
           background: rgba(255, 255, 255, 0.92) !important;
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
+          border: 1px solid rgba(224, 231, 255, 0.9) !important;
           box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
         }
         
         .bronze-glow-dark {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 0 20px rgba(115, 83, 52, 0.35) !important;
+          border: 1px solid #6366f1 !important;
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.35) !important;
         }
         
         .bronze-glow-light {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 4px 20px rgba(115, 83, 52, 0.12) !important;
+          border: 1px solid #4f46e5 !important;
+          box-shadow: 0 4px 20px rgba(79, 70, 229, 0.12) !important;
         }
 
         .dark-canvas {
