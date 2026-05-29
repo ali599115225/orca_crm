@@ -135,7 +135,7 @@ export async function checkAndSuspendExpiredTenantsAction() {
       });
 
       // 🚀 إرسال رسالة جوال آلية تذكيرية بضرورة التجديد [1.2.1]
-      const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca.az-ez.pro/operations/settings`;
+      const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca-az-ez.pro/operations/settings`;
       const clientMobile = "+966557516311"; // هاتف المدير العقاري
       await sendSMSNotification(clientMobile, suspendSMS);
     }

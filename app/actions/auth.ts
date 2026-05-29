@@ -43,7 +43,7 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
     }
 
-    const host = formData.get("clientHost") as string || "orca.az-ez.pro";
+    const host = formData.get("clientHost") as string || "orca-az-ez.pro";
     const proto = formData.get("clientProto") as string || "https";
     const isSecureConnection = proto === "https";
     
@@ -88,7 +88,7 @@ export async function loginAction(formData: FormData) {
     const sessionToken = await encrypt(sessionPayload);
     
     // التحقق مما إذا كان النطاق الحالي مخصصاً للإنتاج
-    const isCustomDomain = host.includes("orca.az-ez.pro");
+    const isCustomDomain = host.includes("orca-az-ez.pro");
 
     const cookieOptions: any = {
       httpOnly: true,
@@ -100,7 +100,7 @@ export async function loginAction(formData: FormData) {
 
     // مشاركة الكوكيز عبر جميع النطاقات الفرعية للنطاق المخصص
     if (isCustomDomain) {
-      cookieOptions.domain = "orca.az-ez.pro";
+      cookieOptions.domain = "orca-az-ez.pro";
     }
 
     cookieStore.set("session_token", sessionToken, cookieOptions);
@@ -113,7 +113,7 @@ export async function loginAction(formData: FormData) {
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 365, // سنة كاملة
-        domain: isCustomDomain ? "orca.az-ez.pro" : undefined,
+        domain: isCustomDomain ? "orca-az-ez.pro" : undefined,
       });
     }
 
@@ -123,7 +123,7 @@ export async function loginAction(formData: FormData) {
       if (isSuperAdmin) {
         // للمشرف العام: إبقاؤه على النطاق الحالي (الرئيسي أو الفرعي الذي يسجل الدخول منه) لمنع مشاكل النطاقات الفرعية
         if (isTenantSubdomain) {
-          redirectUrl = `https://${currentSubdomain}.orca.az-ez.pro/operations/analytics`;
+          redirectUrl = `https://${currentSubdomain}.orca-az-ez.pro/operations/analytics`;
         } else {
           redirectUrl = "/operations/analytics";
         }
@@ -133,7 +133,7 @@ export async function loginAction(formData: FormData) {
         if (isMainDomain) {
           redirectUrl = "/operations/analytics";
         } else {
-          redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations/analytics`;
+          redirectUrl = `https://${user.tenant.subdomain}.orca-az-ez.pro/operations/analytics`;
         }
       }
     }

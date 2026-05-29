@@ -65,7 +65,7 @@ export async function runInstallmentAgentAction() {
         }
 
         // إنشاء رابط الدفع المشفر
-        const paymentLink = `https://${tenant.subdomain}.orca.az-ez.pro/pay/${installment.securePaymentToken}`;
+        const paymentLink = `https://${tenant.subdomain}.orca-az-ez.pro/pay/${installment.securePaymentToken}`;
 
         // صياغة تفاصيل الرسالة
         const buyerName = contract.buyerName;
