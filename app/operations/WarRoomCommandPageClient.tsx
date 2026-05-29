@@ -1,4 +1,3 @@
-// app/operations/WarRoomCommandPageClient.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,6 +14,7 @@ import TasksView from "@/components/views/TasksView";
 import SettingsView from "@/components/views/SettingsView";
 import MonitorView from "@/components/views/MonitorView";
 import DashboardView from "@/app/operations/dashboard/DashboardView";
+import ZatkaView from "@/components/views/ZatkaView";
 
 interface WarRoomCommandPageClientProps {
   initialTab: string;
@@ -49,7 +49,7 @@ interface WarRoomCommandPageClientProps {
 
 // ─── مصفوفة الصلاحيات الكاملة لكل دور ───────────────────────────────────────
 // PLATFORM_ARCHITECT: monitor فقط — حظر تام من بيانات المستأجرين
-// ADMIN: كل التبويبات لشركته
+// ADMIN: كل التبويبات لشركته بما فيها الفوترة لـ ZATKA
 // SALES_MANAGER: معظم التبويبات ما عدا Settings
 // SALES_EMPLOYEE: تبويبات العمل الميداني فقط
 // MARKETING: تحليلات + عملاء + واتساب
@@ -57,8 +57,8 @@ interface WarRoomCommandPageClientProps {
 
 const ROLE_ALLOWED_TABS: Record<string, string[]> = {
   PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp"],
-  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp"],
+  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp", "zatka"],
+  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp", "zatka"],
   SALES_EMPLOYEE: ["leads", "tasks", "helpdesk", "calculator"],
   MARKETING: ["analytics", "leads", "projects", "helpdesk", "whatsapp"],
   READ_ONLY: ["analytics", "leads", "projects"],
@@ -216,6 +216,13 @@ export default function WarRoomCommandPageClient({
       {activeTabVal === "whatsapp" && allowedTabs.includes("whatsapp") && (
         <div className="fade-in">
           <WhatsAppView initialChats={chats} tenant={whatsappTenant} />
+        </div>
+      )}
+
+      {/* ─── ZATKA E-Invoicing Compliance Gateway ─────────────────────────── */}
+      {activeTabVal === "zatka" && allowedTabs.includes("zatka") && (
+        <div className="fade-in">
+          <ZatkaView />
         </div>
       )}
     </div>
