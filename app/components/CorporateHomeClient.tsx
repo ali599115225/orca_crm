@@ -85,7 +85,7 @@ const TRANSLATIONS = {
     soldUnits: "الوحدات المباعة: ٤٢٠ وحدة",
     availUnits: "الوحدات المتاحة: ١٥٠ وحدة",
     bookedUnits: "الوحدات المحجوزة: ٨٥ وحدة",
-    netFlows: "التدفقات النقدية المحصنة: ٤٢,٥٠٠,٠٠٠ ر.س",
+    netFlows: "التدفقات النقدية: ٤٢,٥٠٠,٠٠٠ ر.س",
     fromPortfolio: "من المحفظة",
     digitalEmployees: "الموظفون الرقميون",
     workflowTitle: "دورة عمل ذكية خالية من التدخل البشري",
@@ -93,7 +93,7 @@ const TRANSLATIONS = {
     agentSaher: "الوكيل: ساهر (Saher)",
     saherRole: "وحدة فحص وفرز العملاء (Lead Capture & Qualification)",
     saherBullets: [
-      "استقبل وتصنيف العملاء من الحملات بذكاء",
+      "استقبال وتصنيف العملاء من الحملات بذكاء",
       "الرد الفوري وقياس مدى جدية الاهتمام تلقائياً",
       "جدولة المواعيد وتوجيه المهام للفريق البشري"
     ],
@@ -105,23 +105,23 @@ const TRANSLATIONS = {
       "تحديث السجلات المالية وإيقاف الخدمات للمتأخرين آلياً"
     ],
     feature1Title: "إدارة المخزون الحركي",
-    feature1Desc: "(Kinetic Inventory Management) نظام تتبع ديناميكي للوحدات المتاحة والمحجوزة والمباعة بتحديثات لحظية تمنع أي تعارض في الحجوزات.",
+    feature1Desc: "نظام تتبع ديناميكي للوحدات المتاحة والمحجوزة والمباعة بتحديثات لحظية تمنع أي تعارض في الحجوزات.",
     feature2Title: "لوحة الوسطاء الموحدة",
-    feature2Desc: "(Unified Broker Portal) منصة موحدة لإدارة جميع الوكالات ومسوقي العقارات، توزيع العمولات تلقائياً وحساب الإنجاز بدقة فائقة.",
+    feature2Desc: "منصة موحدة لإدارة جميع الوكالات ومسوقي العقارات، توزيع العمولات تلقائياً وحساب الإنجاز بدقة فائقة.",
     feature3Title: "درع الحماية الكاملة والتشفير السيبراني",
-    feature3Desc: "تشفير مصرفي متطور وعالي الكفاءة لحماية بيانات المشترين، الصكوك العقارية، وعقود الأقساط المالية دون أي ثغرات أو تدخل خارجي.",
-    pricingTitle: "حدد قدرة وكلاء الذكاء الاصطناعي",
+    feature3Desc: "تشفير مصرفي متطور لحماية بيانات المشترين، الصكوك العقارية، وعقود الأقساط المالية دون أي ثغرات.",
+    pricingTitle: "الباقات الاستثمارية",
     pricingSub: "بنية تسعير مصممة لتواكب حجم العمليات والمبيعات المستهدفة لمنشأتك العقارية.",
     supportTitle: "📞 دعم النخبة",
-    supportDesc: "مدراء حسابات متوفرون على مدار الساعة لخدمة عملائنا.",
+    supportDesc: "مدراء حسابات متوفرون على مدار الساعة.",
     whatsappContact: "واتساب التواصل: +٩٦٦ ٥٠ ٥١٢ ٣٤٥٦",
     financialSecurity: "💳 الأمان المالي",
     securityDesc: "بوابة دفع مشفرة بالكامل.",
     allRights: "جميع الحقوق محفوظة لمنصة أوركا © ٢٠٢٦",
     landing: {
-      heroTitle: "الجيل الجديد من إدارة العقارات: أتمتة كاملة مدفوعة بـ Orca CRM للوكلاء ونظام الحماية السيبرانية"
+      heroTitle: "الجيل الجديد من إدارة العقارات السحابية"
     },
-    cloudStatus: "حالة الاتصال السحابي: مشفر وآمن ١٠٠٪",
+    cloudStatus: "الاتصال السحابي: مشفر وآمن ١٠٠٪",
     investorTitle: "نموذج الاقتناص الاستثماري المباشر",
     investorSubtitle: "وثّق اهتمامك الاستثماري فوريّاً ليتم تأهيل وفحص الملاءة المالية تلقائياً بواسطة ساهر",
     investorNameLabel: "الاسم الثنائي للمستثمر *",
@@ -132,7 +132,7 @@ const TRANSLATIONS = {
     projectPlaceholder: "اختر المشروع السكني المستهدف",
     submitBtn: "توثيق الاهتمام وتأهيل الطلب فوريّاً",
     galleryTitle: "معرض الأصول العقارية الفاخرة",
-    gallerySubtitle: "استعرض الأصول العقارية المتاحة والمدرجة حالياً في المحفظة الاستثمارية للشركة",
+    gallerySubtitle: "استعرض الأصول العقارية المتاحة والمدرجة حالياً في المحفظة الاستثمارية",
     pricingStarts: "تبدأ الأسعار من:",
     unitLayout: "٤ غرف وصالة | دور متكرر",
     saudiRiyal: "ر.س",
@@ -152,10 +152,10 @@ const TRANSLATIONS = {
     heroCTA: "Start Managing Your Portfolio Free",
     serverRiyadh: "Riyadh Server: 100% Secure",
     cyberShield: "Cyber Shield: Active",
-    soldUnits: "Sold Units: 420 Units",
-    availUnits: "Available Units: 150 Units",
-    bookedUnits: "Reserved Units: 85 Units",
-    netFlows: "Secured Cash Flows: 42,500,000 SAR",
+    soldUnits: "Sold Units: 420",
+    availUnits: "Available: 150 Units",
+    bookedUnits: "Reserved: 85 Units",
+    netFlows: "Cash Flows: 42,500,000 SAR",
     fromPortfolio: "of Portfolio",
     digitalEmployees: "Digital Staff",
     workflowTitle: "Autonomous Touchless Workflows",
@@ -180,18 +180,18 @@ const TRANSLATIONS = {
     feature2Desc: "A centralized platform to coordinate broker channels, automate split commission payouts, and trace agency KPIs.",
     feature3Title: "Cyber Shield Protection",
     feature3Desc: "Bank-grade high-security encryption wrapping buyer accounts, title deeds, and installment transactions securely.",
-    pricingTitle: "Empower Your Digital Agents",
+    pricingTitle: "Investment Subscription Tiers",
     pricingSub: "Customizable subscription plans built to scale with your property transaction volumes.",
     supportTitle: "⚡ Elite Support",
-    supportDesc: "Dedicated account executives available 24/7 to handle configuration support.",
-    whatsappContact: "WhatsApp Contact: +966 50 512 3456",
+    supportDesc: "Dedicated account executives available 24/7.",
+    whatsappContact: "WhatsApp: +966 50 512 3456",
     financialSecurity: "💳 Secure Payments",
-    securityDesc: "100% encrypted bank-grade checkout endpoints.",
+    securityDesc: "100% encrypted bank-grade checkout.",
     allRights: "All rights reserved to Orca CRM © 2026",
     landing: {
-      heroTitle: "Next-Gen Real Estate: 100% Automations Powered by Orca CRM and Cyber Security Protection"
+      heroTitle: "Next-Gen Cloud Real Estate Management"
     },
-    cloudStatus: "Cloud Sync Status: 100% Encrypted & Secure",
+    cloudStatus: "Cloud Sync: 100% Encrypted & Secure",
     investorTitle: "Direct Investor Capture Node",
     investorSubtitle: "Log your investment intent now to initiate automatic solvency qualification by Agent Saher",
     investorNameLabel: "Two-Word Investor Name *",
@@ -201,9 +201,9 @@ const TRANSLATIONS = {
     projectLabel: "Target Investment Asset *",
     projectPlaceholder: "Select target residential project",
     submitBtn: "Submit Intent & Fast-Track Qualification",
-    galleryTitle: "Luxury Estate & Asset Portfolio Showcase",
+    galleryTitle: "Luxury Estate & Asset Portfolio",
     gallerySubtitle: "Browse current active residential and commercial properties in our investment pool",
-    pricingStarts: "Pricing Starts From:",
+    pricingStarts: "Starting From:",
     unitLayout: "4 Rooms & Salon | Standard Floor",
     saudiRiyal: "SAR",
     statusPlanning: "Planning Phase",
@@ -217,11 +217,9 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
   const { theme, toggleTheme, lang, toggleLang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 
-  // إدارة تقديم النموذج المباشر لساهر
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formStatus, setFormStatus] = useState<{ success: boolean; message: string } | null>(null);
 
-  // دالة تحويل الأرقام إلى الأرقام العربية الشرقية حسب اللغة النشطة
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
@@ -261,7 +259,6 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     }
   };
 
-  // إعداد بيانات الأصول للعرض (دمج مشاريع المنشأة مع المشاريع الافتراضية)
   const displayProjects = initialProjects && initialProjects.length > 0
     ? initialProjects.map((p, idx) => ({
         id: p.id,
@@ -292,644 +289,960 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     }
   };
 
-  const isDark = theme === "dark";
+  // ─── ثيم الصفحة: دائماً الوضع الداكن السيبراني ───────────────────────────
+  // الخلفية: أسود فحمي داكن مائل للزرقة الخافتة (#060608)
+  // التدرج الحاكم: أبيض ناصع → أخضر نيوني مطفأ (#FFFFFF → #81FF89)
 
   return (
     <div
-      className={`min-h-screen antialiased transition-colors duration-500 selection:bg-emerald-500/20 selection:text-emerald-500 calibri-strictly ${
-        isDark ? "bg-[#0b0f19] text-white dark-canvas" : "bg-[#f9f9fb] text-[#0b0f19] light-canvas"
-      } ${lang === 'AR' ? 'text-right' : 'text-left'}`}
+      className="min-h-screen antialiased selection:bg-[#81FF89]/20 selection:text-[#81FF89]"
+      style={{
+        background: "#060608",
+        color: "#e2e8f0",
+        fontFamily: "'Cairo', 'Inter', sans-serif",
+        direction: lang === 'AR' ? 'rtl' : 'ltr',
+      }}
       dir={lang === 'AR' ? 'rtl' : 'ltr'}
     >
-      {/* تعميم خطوط Cairo و Inter وتأثيرات الألوان المخصصة */}
+      {/* ─── CSS Variables + Blueprint Grid + Google Fonts ──────────────────── */}
       <style dangerouslySetInnerHTML={{__html: `
-        body, html, * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-          letter-spacing: normal !important;
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        :root {
+          --bg-primary: #060608;
+          --bg-secondary: #0d0f14;
+          --bg-card: rgba(13, 15, 20, 0.85);
+          --accent-green: #81FF89;
+          --accent-green-dim: rgba(129, 255, 137, 0.12);
+          --accent-green-border: rgba(129, 255, 137, 0.2);
+          --border-steel: rgba(255,255,255,0.07);
+          --border-hover: rgba(129, 255, 137, 0.3);
+          --text-primary: #f1f5f9;
+          --text-muted: #64748b;
+          --text-dim: #334155;
         }
-        .calibri-strictly, .calibri-strictly * {
+
+        *, *::before, *::after {
           font-family: 'Cairo', 'Inter', sans-serif !important;
-          letter-spacing: normal !important;
+          box-sizing: border-box;
         }
-        /* خلفية الشبكة الهندسية المخصصة */
+
+        /* ─── Blueprint Grid السيبراني ──────────────────────────────────────── */
         .blueprint-grid {
-          background-image: 
-            linear-gradient(to right, ${isDark ? "rgba(255,255,255,0.03)" : "rgba(11,15,25,0.03)"} 1px, transparent 1px),
-            linear-gradient(to bottom, ${isDark ? "rgba(255,255,255,0.03)" : "rgba(11,15,25,0.03)"} 1px, transparent 1px);
-          background-size: 40px 40px;
+          background-image:
+            linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+          background-size: 48px 48px;
         }
-        
-        .frosted-glass-dark {
-          background: rgba(11, 15, 25, 0.65) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(115, 83, 52, 0.35) !important; /* Polished Bronze border */
-          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
+
+        /* ─── تدرج العبور السيادي: أبيض → أخضر نيوني ───────────────────── */
+        .auth-gradient {
+          background: linear-gradient(90deg, #FFFFFF 0%, #81FF89 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
-        
-        .milky-glass-light {
-          background: rgba(255, 255, 255, 0.92) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
+
+        /* ─── Frosted Glass Dark Layer ───────────────────────────────────── */
+        .glass-dark {
+          background: rgba(13, 15, 20, 0.75) !important;
+          backdrop-filter: blur(20px) !important;
+          -webkit-backdrop-filter: blur(20px) !important;
+          border: 1px solid rgba(255,255,255,0.07) !important;
         }
+
+        .glass-dark:hover {
+          border-color: rgba(129, 255, 137, 0.25) !important;
+          box-shadow: 0 0 30px rgba(129, 255, 137, 0.05) !important;
+        }
+
+        /* ─── Neon Glow على الأزرار ──────────────────────────────────────── */
+        .btn-neon {
+          background: linear-gradient(135deg, rgba(129,255,137,0.15) 0%, rgba(129,255,137,0.08) 100%);
+          border: 1px solid rgba(129,255,137,0.35);
+          color: #81FF89;
+          transition: all 0.25s ease;
+        }
+
+        .btn-neon:hover {
+          background: rgba(129,255,137,0.2);
+          border-color: rgba(129,255,137,0.6);
+          box-shadow: 0 0 20px rgba(129,255,137,0.2);
+          transform: translateY(-1px);
+        }
+
+        .btn-solid {
+          background: #81FF89;
+          color: #060608;
+          font-weight: 900;
+          transition: all 0.25s ease;
+        }
+
+        .btn-solid:hover {
+          background: #a5f5aa;
+          box-shadow: 0 0 30px rgba(129,255,137,0.35);
+          transform: translateY(-1px);
+        }
+
+        /* ─── Badge النبض الأخضر ─────────────────────────────────────────── */
+        .pulse-green {
+          animation: pulseGreen 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseGreen {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(129, 255, 137, 0.4); }
+          50% { box-shadow: 0 0 0 5px rgba(129, 255, 137, 0); }
+        }
+
+        /* ─── Fade In ────────────────────────────────────────────────────── */
+        .fade-up {
+          animation: fadeUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Card Hover ─────────────────────────────────────────────────── */
+        .card-hover {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+          transform: translateY(-4px);
+        }
+
+        /* ─── Scrollbar Dark ─────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0d0f14; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(129,255,137,0.3); }
       `}} />
 
-      {/* هيدر الموقع الرسمي الزجاجي الفخم */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          HEADER — الشريط العلوي الزجاجي
+      ══════════════════════════════════════════════════════════════════════ */}
       <header
-        className={`sticky top-0 z-50 backdrop-blur-lg border-b transition-colors duration-500 h-16 flex items-center justify-between px-6 md:px-12 ${
-          isDark ? "bg-[#0b0f19]/80 border-white/5" : "bg-[#f9f9fb]/80 border-slate-200"
-        }`}
+        style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: 'rgba(6,6,8,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+        }}
       >
-        <div className="flex items-center space-x-reverse space-x-3">
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center text-[10px] font-black transition-all select-none cursor-pointer shadow-lg ${
-            isDark 
-              ? "bg-white/5 border-white/10 text-slate-400 hover:border-[#735334]/50 hover:text-[#E6C687] shadow-[#735334]/5" 
-              : "bg-slate-100 border-slate-300 text-slate-600 hover:border-[#735334] hover:text-[#735334] shadow-slate-200"
-          }`}>
-            ORCA
+        <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+          {/* شعار ORCA */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              border: '1px solid rgba(129,255,137,0.25)',
+              background: 'rgba(129,255,137,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, fontWeight: 900, color: '#81FF89', letterSpacing: 1
+            }}>
+              ORCA
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9', letterSpacing: 1 }}>ORCA CRM</div>
+              <div style={{ fontSize: 8, color: '#81FF89', fontWeight: 700 }} dir="ltr">Real Estate Cloud</div>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className={`text-sm font-black tracking-wider ${isDark ? "text-white" : "text-[#735334] font-bold"}`}>
-              ORCA CRM
-            </span>
-            <span className="text-[8px] text-[#735334] font-bold" dir="ltr">Luxury Edition</span>
+
+          {/* روابط التنقل */}
+          <nav style={{ display: 'none', gap: 32, fontSize: 11, fontWeight: 700 }} className="md:flex">
+            {[
+              { href: '#features', label: t.navFeatures },
+              { href: '#workflow', label: t.navWorkflow },
+              { href: '#properties', label: t.navProperties },
+              { href: '#pricing', label: t.navPricing },
+            ].map(item => (
+              <a key={item.href} href={item.href} style={{
+                color: '#64748b', transition: 'color 0.2s',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#81FF89')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* أدوات التحكم */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={toggleLang} style={{
+              height: 32, padding: '0 12px', borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#94a3b8', fontSize: 10, fontWeight: 700,
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}>
+              🌐 {lang === 'AR' ? 'EN' : 'عربي'}
+            </button>
+
+            <button onClick={toggleTheme} style={{
+              width: 32, height: 32, borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#94a3b8', fontSize: 12,
+              cursor: 'pointer', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              ☀
+            </button>
+
+            <a href="/login" style={{
+              height: 32, padding: '0 14px', borderRadius: 8, textDecoration: 'none',
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#94a3b8', fontSize: 10, fontWeight: 700,
+              display: 'flex', alignItems: 'center', transition: 'all 0.2s',
+            }}>
+              {lang === 'AR' ? 'تسجيل الدخول' : 'Sign In'}
+            </a>
+
+            <a href="#register-interest" className="btn-solid" style={{
+              height: 32, padding: '0 16px', borderRadius: 8, textDecoration: 'none',
+              fontSize: 10, fontWeight: 900,
+              display: 'flex', alignItems: 'center',
+            }}>
+              {t.startFree}
+            </a>
           </div>
-        </div>
-        
-        <nav className="hidden md:flex items-center space-x-reverse space-x-8 text-xs font-bold transition-colors">
-          <a href="#features" className={`transition-colors ${isDark ? "text-slate-400 hover:text-white" : "text-[#735334] hover:opacity-80"}`}>
-            {t.navFeatures}
-          </a>
-          <a href="#workflow" className={`transition-colors ${isDark ? "text-slate-400 hover:text-white" : "text-[#735334] hover:opacity-80"}`}>
-            {t.navWorkflow}
-          </a>
-          <a href="#properties" className={`transition-colors ${isDark ? "text-slate-400 hover:text-white" : "text-[#735334] hover:opacity-80"}`}>
-            {t.navProperties}
-          </a>
-          <a href="#pricing" className={`transition-colors ${isDark ? "text-slate-400 hover:text-white" : "text-[#735334] hover:opacity-80"}`}>
-            {t.navPricing}
-          </a>
-        </nav>
-
-        <div className="flex items-center space-x-reverse space-x-3">
-          {/* تبديل اللغة */}
-          <button 
-            onClick={toggleLang}
-            className={`h-8 px-2.5 rounded-lg border flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer ${
-              isDark 
-                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#735334]/50 hover:text-[#E6C687]" 
-                : "bg-white border-slate-300 text-slate-700 hover:border-[#735334] hover:text-[#735334] shadow-sm"
-            }`}
-          >
-            🌐 {lang === "AR" ? "EN" : "عربي"}
-          </button>
-          
-          {/* تبديل السمة */}
-          <button 
-            onClick={toggleTheme}
-            className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer ${
-              isDark 
-                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#735334]/50 hover:text-[#E6C687]" 
-                : "bg-white border-slate-300 text-slate-700 hover:border-[#735334] hover:text-[#735334] shadow-sm"
-            }`}
-            title="تبديل الوضع الليلي / النهاري"
-          >
-            {isDark ? "☀" : "☾"}
-          </button>
-
-          <a 
-            href="/operations" 
-            className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-wide transition-all border ${
-              isDark 
-                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#735334]/50 hover:text-[#E6C687]" 
-                : "bg-white border-[#735334]/20 text-[#735334] hover:border-[#735334]"
-            }`}
-          >
-            {lang === "AR" ? "بوابة الإدارة الفوقية" : "Admin Gateway"}
-          </a>
-
-          <a 
-            href="#register-interest" 
-            className="bg-[#735334] hover:bg-[#5f4229] text-white px-4 py-2 rounded-lg text-[10px] font-black tracking-wide transition-all shadow-[0_0_15px_rgba(115,83,52,0.2)]"
-          >
-            {t.startFree}
-          </a>
         </div>
       </header>
 
-      {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden py-16 md:py-24 px-6 md:px-12 max-w-7xl mx-auto z-10 min-h-[85vh] flex items-center">
-        <div className="absolute inset-0 blueprint-grid opacity-50 -z-10" />
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#735334]/5 blur-[120px] rounded-full -z-10" />
-        
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          
-          {/* الجانب الأيمن */}
-          <div className="space-y-8 text-right relative z-20">
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <span className={`inline-block text-[10px] font-extrabold px-4 py-1.5 rounded-full border tracking-wider transition-all duration-300 ${
-                  isDark 
-                    ? "bg-[#735334]/15 text-[#E6C687] border-[#735334]/35 shadow-[0_0_15px_rgba(115,83,52,0.15)]" 
-                    : "bg-[#735334]/10 text-[#735334] border-[#735334]/20 shadow-none"
-                }`}>
+      {/* ═══════════════════════════════════════════════════════════════════
+          1. HERO SECTION — البطل الرئيسي
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section style={{ position: 'relative', overflow: 'hidden', minHeight: '90vh', display: 'flex', alignItems: 'center' }}>
+        {/* Blueprint Grid */}
+        <div className="blueprint-grid" style={{ position: 'absolute', inset: 0, opacity: 0.5, zIndex: 0 }} />
+
+        {/* Glow Orbs */}
+        <div style={{
+          position: 'absolute', top: '20%', right: '15%',
+          width: 500, height: 500,
+          background: 'radial-gradient(circle, rgba(129,255,137,0.06) 0%, transparent 70%)',
+          borderRadius: '50%', zIndex: 0
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '10%', left: '10%',
+          width: 350, height: 350,
+          background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)',
+          borderRadius: '50%', zIndex: 0
+        }} />
+
+        <div className="max-w-7xl mx-auto px-6 md:px-10 w-full" style={{ position: 'relative', zIndex: 10, paddingTop: 80, paddingBottom: 80 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}
+               className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+
+            {/* ─── النص الرئيسي ─────────────────────────────────────────── */}
+            <div className="fade-up" style={{ textAlign: lang === 'AR' ? 'right' : 'left', order: lang === 'AR' ? 0 : 0 }}>
+              {/* شارة الحالة */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap', justifyContent: lang === 'AR' ? 'flex-start' : 'flex-start' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 99,
+                  border: '1px solid rgba(129,255,137,0.2)',
+                  background: 'rgba(129,255,137,0.08)',
+                  color: '#81FF89', fontSize: 10, fontWeight: 700
+                }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: '#81FF89', display: 'inline-block'
+                  }} className="pulse-green" />
                   {t.heroBadge}
                 </span>
-
-                {/* شارة الاتصال السحابي التفاعلية المطلوبة */}
-                <span className={`inline-block text-[10px] font-extrabold px-4 py-1.5 rounded-full border tracking-wider transition-all duration-300 cursor-help hover:scale-105 ${
-                  isDark
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                    : "bg-emerald-50 text-emerald-800 border-emerald-200 shadow-none"
-                }`}>
-                  🟢 {t.cloudStatus}
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 14px', borderRadius: 99,
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: '#64748b', fontSize: 10, fontWeight: 700
+                }}>
+                  🔒 {t.cloudStatus}
                 </span>
               </div>
 
-              <h1 className={`text-4xl md:text-5xl lg:text-6xl font-black leading-tight hero-headline ${
-                isDark ? "text-white" : "text-[#735334]"
-              }`}>
-                {t.landing.heroTitle}
+              {/* العنوان الرئيسي — التدرج الحاكم */}
+              <h1 style={{
+                fontSize: 'clamp(32px, 5vw, 58px)',
+                fontWeight: 900,
+                lineHeight: 1.15,
+                marginBottom: 24,
+                letterSpacing: '-0.5px'
+              }}>
+                <span className="auth-gradient">{t.landing.heroTitle}</span>
               </h1>
-            </div>
-            
-            <p className={`text-sm md:text-base leading-relaxed max-w-xl font-semibold ${
-              isDark ? "text-slate-400" : "text-slate-700"
-            }`}>
-              {t.heroSub}
-            </p>
 
-            <div className="pt-4">
-              <a 
-                href="#register-interest" 
-                className="inline-block bg-[#735334] hover:bg-[#5f4229] text-white text-sm md:text-base font-black px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 shadow-[0_0_30px_rgba(115,83,52,0.3)]"
-              >
-                {t.heroCTA}
-              </a>
-            </div>
-          </div>
+              {/* الوصف */}
+              <p style={{
+                fontSize: 14, lineHeight: 1.85,
+                color: '#64748b', fontWeight: 600,
+                maxWidth: 520, marginBottom: 40,
+              }}>
+                {t.heroSub}
+              </p>
 
-          {/* الجانب الأيسر */}
-          <div className="relative z-10 flex justify-center lg:justify-end perspective-[1000px]">
-            <div className="relative w-full max-w-[500px] aspect-[4/3] bg-slate-900 rounded-[2rem] border-[8px] border-slate-800 shadow-2xl transform lg:-rotate-y-12 lg:rotate-x-6 hover:rotate-0 transition-transform duration-700 ease-out flex flex-col overflow-hidden ring-1 ring-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-              
-              <div className="h-6 bg-slate-950/80 border-b border-white/5 flex items-center px-4 justify-between shrink-0">
-                <div className="flex gap-1.5 items-center">
-                  <div className="w-2 h-2 rounded-full bg-rose-500/80"></div>
-                  <div className="w-2 h-2 rounded-full bg-amber-500/80"></div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500/80"></div>
-                </div>
-                <div className="text-[8px] text-emerald-400 font-bold tracking-wide flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {t.serverRiyadh}
-                </div>
+              {/* أزرار الـ CTA */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <a href="#register-interest" className="btn-solid" style={{
+                  padding: '14px 32px', borderRadius: 12,
+                  fontSize: 13, fontWeight: 900, textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 8
+                }}>
+                  {t.heroCTA} ←
+                </a>
+                <a href="#pricing" className="btn-neon" style={{
+                  padding: '14px 24px', borderRadius: 12,
+                  fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center'
+                }}>
+                  {t.navPricing}
+                </a>
               </div>
-              
-              <div className="flex-1 bg-[#0b0f19] p-6 relative overflow-hidden flex flex-col gap-6">
-                <div className="absolute inset-0 blueprint-grid opacity-20" />
-                
-                <div className="flex justify-between items-center relative z-10">
-                  <div className="w-24 h-4 bg-white/10 rounded-full"></div>
-                  <div className="flex items-center gap-1 bg-[#735334]/20 border border-[#735334]/40 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(115,83,52,0.2)]">
-                    <span className="text-[8px] text-[#E6C687]">🛡️</span>
-                    <span className="text-[8px] text-[#E6C687] font-bold">{t.cyberShield}</span>
-                  </div>
-                </div>
 
-                <div className="flex-1 flex items-center justify-center relative z-10 gap-8">
-                  <div className="relative w-40 h-40 rounded-full bg-slate-900 border-4 border-slate-800 flex items-center justify-center overflow-hidden shadow-inner">
-                    <div className="absolute inset-0 bg-[#10b981]" style={{ clipPath: "polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 70%)" }}></div>
-                    <div className="absolute inset-0 bg-[#3b82f6]" style={{ clipPath: "polygon(50% 50%, 0 70%, 0 0, 30% 0)" }}></div>
-                    <div className="absolute inset-0 bg-[#735334]" style={{ clipPath: "polygon(50% 50%, 30% 0, 100% 0)" }}></div>
-                    <div className="w-24 h-24 bg-[#0b0f19] rounded-full z-10 border border-white/5 flex items-center justify-center flex-col shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]">
-                      <span className="text-xl font-black text-white">{toArabicNumerals("85")}%</span>
-                      <span className="text-[8px] text-slate-400 font-bold">{t.fromPortfolio}</span>
-                    </div>
+              {/* مؤشرات الإحصاء */}
+              <div style={{
+                display: 'flex', gap: 32, marginTop: 48,
+                paddingTop: 32,
+                borderTop: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                {[
+                  { val: '420+', label: lang === 'AR' ? 'وحدة مباعة' : 'Units Sold' },
+                  { val: '98%', label: lang === 'AR' ? 'رضا العملاء' : 'Client Satisfaction' },
+                  { val: '24/7', label: lang === 'AR' ? 'وكيل ذكي نشط' : 'AI Agent Active' },
+                ].map(stat => (
+                  <div key={stat.val}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#81FF89', marginBottom: 4 }}>{stat.val}</div>
+                    <div style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>{stat.label}</div>
                   </div>
-
-                  <div className="space-y-4 text-right text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.4)]"></div>
-                      <span className="text-[10px] text-slate-300 font-bold">{toArabicNumerals(t.soldUnits)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.4)]"></div>
-                      <span className="text-[10px] text-slate-300 font-bold">{toArabicNumerals(t.availUnits)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[#735334] shadow-[0_0_10px_rgba(115,83,52,0.4)]"></div>
-                      <span className="text-[10px] text-slate-300 font-bold">{toArabicNumerals(t.bookedUnits)}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="h-12 w-full bg-white/5 rounded-lg border border-white/5 relative z-10 overflow-hidden flex items-end">
-                  <div className="absolute top-1 left-2 text-[8px] text-[#E6C687] font-bold z-20">
-                    {toArabicNumerals(t.netFlows)}
-                  </div>
-                  <div className="w-full h-8 bg-gradient-to-t from-[#735334]/10 to-transparent relative">
-                    <svg className="absolute bottom-0 w-full h-full text-[#735334]" preserveAspectRatio="none" viewBox="0 0 100 100" fill="none">
-                      <path d="M0 100 L20 60 L40 80 L60 30 L80 50 L100 10" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke"/>
-                    </svg>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-            
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-[#735334]/5 blur-[80px] -z-10 rounded-full"></div>
-          </div>
 
+            {/* ─── لوحة HUD التفاعلية ────────────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+              {/* نبضة خلفية */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'radial-gradient(circle at center, rgba(129,255,137,0.05) 0%, transparent 65%)',
+                borderRadius: '50%'
+              }} />
+
+              <div style={{
+                width: '100%', maxWidth: 460,
+                borderRadius: 24,
+                border: '1px solid rgba(255,255,255,0.07)',
+                background: 'rgba(13,15,20,0.9)',
+                overflow: 'hidden',
+                boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(129,255,137,0.05)',
+              }}>
+                {/* شريط المحطة */}
+                <div style={{
+                  height: 44, background: 'rgba(0,0,0,0.4)',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  display: 'flex', alignItems: 'center',
+                  padding: '0 16px', justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {['#ff5f57','#febc2e','#28c840'].map(c => (
+                      <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.7 }} />
+                    ))}
+                  </div>
+                  <div style={{
+                    fontSize: 9, color: '#22c55e', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: 5
+                  }} dir="ltr">
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                    {t.serverRiyadh}
+                  </div>
+                </div>
+
+                {/* المحتوى الداخلي */}
+                <div style={{ padding: 24, position: 'relative' }}>
+                  <div className="blueprint-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
+
+                  <div style={{ position: 'relative', zIndex: 10 }}>
+                    {/* شارة الدرع */}
+                    <div style={{
+                      display: 'flex', justifyContent: 'flex-end', marginBottom: 20
+                    }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: 99,
+                        background: 'rgba(129,255,137,0.1)',
+                        border: '1px solid rgba(129,255,137,0.25)',
+                        color: '#81FF89', fontSize: 9, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: 4
+                      }}>
+                        🛡️ {t.cyberShield}
+                      </span>
+                    </div>
+
+                    {/* الدائرة الإحصائية */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, marginBottom: 24 }}>
+                      <div style={{
+                        width: 130, height: 130, borderRadius: '50%',
+                        border: '3px solid rgba(255,255,255,0.07)',
+                        background: '#0d0f14',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        position: 'relative', overflow: 'hidden',
+                        boxShadow: '0 0 30px rgba(129,255,137,0.1) inset'
+                      }}>
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          background: '#22c55e',
+                          clipPath: 'polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 70%)'
+                        }} />
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          background: '#3b82f6',
+                          clipPath: 'polygon(50% 50%, 0 70%, 0 0, 30% 0)'
+                        }} />
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          background: '#81FF89',
+                          clipPath: 'polygon(50% 50%, 30% 0, 100% 0)',
+                          opacity: 0.7
+                        }} />
+                        <div style={{
+                          width: 78, height: 78, background: '#0d0f14',
+                          borderRadius: '50%', zIndex: 10,
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                          <span style={{ fontSize: 18, fontWeight: 900, color: '#f1f5f9' }}>
+                            {toArabicNumerals("85")}%
+                          </span>
+                          <span style={{ fontSize: 7, color: '#475569', fontWeight: 600, textAlign: 'center' }}>
+                            {t.fromPortfolio}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {[
+                          { color: '#22c55e', label: t.soldUnits },
+                          { color: '#3b82f6', label: t.availUnits },
+                          { color: '#81FF89', label: t.bookedUnits },
+                        ].map(item => (
+                          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <div style={{
+                              width: 9, height: 9, borderRadius: '50%',
+                              background: item.color,
+                              boxShadow: `0 0 8px ${item.color}60`
+                            }} />
+                            <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>
+                              {toArabicNumerals(item.label)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* شريط التدفق النقدي */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: 12, padding: '10px 14px',
+                      position: 'relative', overflow: 'hidden'
+                    }}>
+                      <div style={{ fontSize: 8, color: '#81FF89', fontWeight: 700, marginBottom: 6 }}>
+                        {toArabicNumerals(t.netFlows)}
+                      </div>
+                      <svg width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#81FF89" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#22c55e" stopOpacity="0.8" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M0 35 L30 25 L60 30 L90 10 L120 20 L150 5 L180 15 L200 2"
+                          stroke="url(#flowGrad)" strokeWidth="2" fill="none"
+                          vectorEffect="non-scaling-stroke" />
+                        <path d="M0 35 L30 25 L60 30 L90 10 L120 20 L150 5 L180 15 L200 2 L200 40 L0 40 Z"
+                          fill="rgba(129,255,137,0.05)" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 
-      {/* 2. AI WORKFLOW INFOGRAPHIC */}
-      <section id="workflow" className={`py-20 border-t transition-colors duration-500 px-6 md:px-12 max-w-7xl mx-auto`}>
-        <div className="text-center space-y-3 mb-16">
-          <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-wider transition-all duration-300 ${
-            isDark ? "bg-[#735334]/15 text-[#E6C687] border-[#735334]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20"
-          }`}>
-            {t.digitalEmployees}
-          </span>
-          <h2 className={`text-2xl md:text-3xl font-black ${isDark ? "text-white" : "text-[#735334]"}`}>
-            {t.workflowTitle}
-          </h2>
-          <p className={`text-xs max-w-lg mx-auto font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-            {t.workflowSub}
-          </p>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-0 max-w-4xl mx-auto relative">
-          
-          <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-white/5 -z-10">
-            <div className="h-full bg-gradient-to-r from-transparent via-[#735334] to-transparent w-full opacity-40 animate-pulse"></div>
-          </div>
-
-          <div className="md:hidden absolute top-0 left-1/2 -translate-x-1/2 h-full w-0.5 bg-white/5 -z-10">
-            <div className="w-full h-full bg-gradient-to-b from-transparent via-[#735334] to-transparent opacity-40 animate-pulse"></div>
-          </div>
-
-          {/* ساهر */}
-          <div className={`border p-6 rounded-2xl w-full md:w-1/2 z-10 relative overflow-hidden group transition-all duration-300 ${
-            isDark 
-              ? "bg-white/5 border-[#735334]/30 frosted-glass-dark hover:border-[#735334]/60" 
-              : "bg-white/70 backdrop-blur-md border-slate-200 milky-glass-light hover:border-[#735334]/50 shadow-sm"
-          }`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#735334]/5 blur-[40px] rounded-full group-hover:bg-[#735334]/10 transition-all"></div>
-            <div className="flex items-center gap-4 border-b border-white/5 pb-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-[#735334]/10 border border-[#735334]/30 flex items-center justify-center relative">
-                <span className="text-xl">🤖</span>
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0b0f19] animate-pulse"></span>
-              </div>
-              <div>
-                <h3 className={`text-sm font-black ${isDark ? "text-white" : "text-[#735334]"}`}>
-                  {t.agentSaher}
-                </h3>
-                <p className="text-[9px] text-[#735334] font-bold">{t.saherRole}</p>
-              </div>
-            </div>
-            <ul className={`space-y-3 text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-              {t.saherBullets.map((b, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-[#735334] rounded-full"></div>
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="w-8 h-8 md:w-16 md:h-16 flex items-center justify-center shrink-0 z-10 rotate-90 md:rotate-180 text-[#735334] opacity-80 font-bold">
-            ➔
-          </div>
-
-          {/* سند */}
-          <div className={`border p-6 rounded-2xl w-full md:w-1/2 z-10 relative overflow-hidden group transition-all duration-300 ${
-            isDark 
-              ? "bg-white/5 border-[#735334]/30 frosted-glass-dark hover:border-[#735334]/60" 
-              : "bg-white/70 backdrop-blur-md border-slate-200 milky-glass-light hover:border-[#735334]/50 shadow-sm"
-          }`}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#735334]/5 blur-[40px] rounded-full group-hover:bg-[#735334]/10 transition-all"></div>
-            <div className="flex items-center gap-4 border-b border-white/5 pb-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center relative">
-                <span className="text-xl">💳</span>
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0b0f19] animate-pulse"></span>
-              </div>
-              <div>
-                <h3 className={`text-sm font-black ${isDark ? "text-white" : "text-[#735334]"}`}>
-                  {t.agentSanad}
-                </h3>
-                <p className="text-[9px] text-emerald-400 font-bold">{t.sanadRole}</p>
-              </div>
-            </div>
-            <ul className={`space-y-3 text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-              {t.sanadBullets.map((b, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 3. FEATURE CARDS */}
-      <section id="features" className="py-20 border-t px-6 md:px-12 max-w-7xl mx-auto relative overflow-hidden">
-        <div className="absolute inset-0 blueprint-grid opacity-10 -z-10" />
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto relative z-10">
-          
-          <div className={`border p-8 rounded-3xl space-y-4 transition-all duration-300 hover:scale-[1.02] group ${
-            isDark ? "frosted-glass-dark hover:border-[#735334]/60" : "milky-glass-light hover:border-[#735334]/50"
-          }`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[#735334] transition-colors ${
-              isDark ? "bg-[#0b0f19] border border-white/10" : "bg-white border border-slate-200 shadow-sm"
-            }`}>
-              📊
-            </div>
-            <h3 className={`font-extrabold text-sm transition-colors ${
-              isDark ? "text-white group-hover:text-[#E6C687]" : "text-[#735334] group-hover:opacity-80"
-            }`}>
-              {t.feature1Title}
-            </h3>
-            <p className={`text-[11px] leading-relaxed font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-              {t.feature1Desc}
+      {/* ═══════════════════════════════════════════════════════════════════
+          2. AI WORKFLOW — الوكلاء الرقميون
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section id="workflow" style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '80px 0'
+      }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-10">
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span style={{
+              display: 'inline-block', padding: '5px 16px', borderRadius: 99,
+              border: '1px solid rgba(129,255,137,0.2)',
+              background: 'rgba(129,255,137,0.07)',
+              color: '#81FF89', fontSize: 10, fontWeight: 700,
+              marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase'
+            }}>
+              {t.digitalEmployees}
+            </span>
+            <h2 style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 900, marginBottom: 12 }}>
+              <span className="auth-gradient">{t.workflowTitle}</span>
+            </h2>
+            <p style={{ fontSize: 13, color: '#475569', fontWeight: 600, maxWidth: 480, margin: '0 auto' }}>
+              {t.workflowSub}
             </p>
           </div>
 
-          <div className={`border p-8 rounded-3xl space-y-4 transition-all duration-300 hover:scale-[1.02] group ${
-            isDark ? "frosted-glass-dark hover:border-[#735334]/60" : "milky-glass-light hover:border-[#735334]/50"
-          }`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[#735334] transition-colors ${
-              isDark ? "bg-[#0b0f19] border border-white/10" : "bg-white border border-slate-200 shadow-sm"
-            }`}>
-              🤝
-            </div>
-            <h3 className={`font-extrabold text-sm transition-colors ${
-              isDark ? "text-white group-hover:text-[#E6C687]" : "text-[#735334] group-hover:opacity-80"
-            }`}>
-              {t.feature2Title}
-            </h3>
-            <p className={`text-[11px] leading-relaxed font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-              {t.feature2Desc}
-            </p>
-          </div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr auto 1fr',
+            gap: 24, alignItems: 'center', maxWidth: 860, margin: '0 auto'
+          }} className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr]">
 
-          <div className={`border p-8 rounded-3xl space-y-4 transition-all duration-300 hover:scale-[1.02] group ${
-            isDark ? "frosted-glass-dark hover:border-[#735334]/60" : "milky-glass-light hover:border-[#735334]/50"
-          }`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[#735334] transition-colors ${
-              isDark ? "bg-[#0b0f19] border border-white/10" : "bg-white border border-slate-200 shadow-sm"
-            }`}>
-              🛡️
-            </div>
-            <h3 className={`font-extrabold text-sm transition-colors ${
-              isDark ? "text-white group-hover:text-[#E6C687]" : "text-[#735334] group-hover:opacity-80"
-            }`}>
-              {t.feature3Title}
-            </h3>
-            <p className={`text-[11px] leading-relaxed font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-              {t.feature3Desc}
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* معرض الأصول الفاخرة (Property Grid View Showcase) */}
-      <section id="properties" className="py-20 border-t px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="text-center space-y-2 mb-16">
-          <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-wider transition-all duration-300 ${
-            isDark ? "bg-[#735334]/15 text-[#E6C687] border-[#735334]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20"
-          }`}>
-            {lang === 'AR' ? 'محفظة المشاريع والوحدات' : 'Asset & Project Portfolio'}
-          </span>
-          <h2 className={`text-2xl md:text-3xl font-black pt-2 ${isDark ? "text-white" : "text-[#735334]"}`}>
-            {t.galleryTitle}
-          </h2>
-          <p className={`text-xs max-w-lg mx-auto font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-            {t.gallerySubtitle}
-          </p>
-        </div>
-
-        {/* شبكة الأصول والممتلكات */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {displayProjects.map((project) => (
-            <div 
-              key={project.id}
-              className={`border rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5 shadow-lg group ${
-                isDark ? "frosted-glass-dark border-[#735334]/30" : "milky-glass-light border-slate-200"
-              }`}
-            >
-              {/* صورة الأصل مع تأثير زووم عند الحوم */}
-              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                <img 
-                  src={project.thumbnail} 
-                  alt={project.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                {/* شارة المدينة الفاخرة */}
-                <span className="absolute top-4 right-4 bg-[#735334] text-white text-[9px] font-bold px-3 py-1 rounded-full border border-[#E6C687]/30 shadow-md">
-                  📍 {project.city}
-                </span>
-                
-                {/* شارة حالة المشروع */}
-                <span className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-[#E6C687] text-[8px] font-extrabold px-2.5 py-1 rounded-md border border-white/10">
-                  {getStatusLabel(project.status)}
-                </span>
-              </div>
-
-              {/* تفاصيل العقار */}
-              <div className="p-6 space-y-4">
+            {/* ساهر */}
+            <div className="glass-dark card-hover" style={{ borderRadius: 20, padding: 28 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                paddingBottom: 18, marginBottom: 18,
+                borderBottom: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%',
+                  background: 'rgba(129,255,137,0.08)',
+                  border: '1px solid rgba(129,255,137,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 22, position: 'relative'
+                }}>
+                  🤖
+                  <span style={{
+                    position: 'absolute', top: -2, right: -2,
+                    width: 12, height: 12, borderRadius: '50%',
+                    background: '#22c55e',
+                    border: '2px solid #060608'
+                  }} className="pulse-green" />
+                </div>
                 <div>
-                  <h3 className={`font-black text-sm transition-colors ${isDark ? "text-white" : "text-[#735334]"}`}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9' }}>{t.agentSaher}</div>
+                  <div style={{ fontSize: 9, color: '#81FF89', fontWeight: 700 }}>{t.saherRole}</div>
+                </div>
+              </div>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {t.saherBullets.map((b, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#81FF89', marginTop: 5, flexShrink: 0 }} />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* سهم التوجيه */}
+            <div style={{
+              fontSize: 22, color: 'rgba(129,255,137,0.4)',
+              textAlign: 'center', transform: lang === 'AR' ? 'rotate(180deg)' : 'none'
+            }} className="hidden md:block">
+              →
+            </div>
+
+            {/* سند */}
+            <div className="glass-dark card-hover" style={{ borderRadius: 20, padding: 28 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                paddingBottom: 18, marginBottom: 18,
+                borderBottom: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%',
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px solid rgba(34,197,94,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 22, position: 'relative'
+                }}>
+                  💳
+                  <span style={{
+                    position: 'absolute', top: -2, right: -2,
+                    width: 12, height: 12, borderRadius: '50%',
+                    background: '#22c55e',
+                    border: '2px solid #060608'
+                  }} className="pulse-green" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9' }}>{t.agentSanad}</div>
+                  <div style={{ fontSize: 9, color: '#22c55e', fontWeight: 700 }}>{t.sanadRole}</div>
+                </div>
+              </div>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {t.sanadBullets.map((b, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', marginTop: 5, flexShrink: 0 }} />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          3. FEATURE CARDS — بطاقات المميزات
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section id="features" style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '80px 0', position: 'relative', overflow: 'hidden'
+      }}>
+        <div className="blueprint-grid" style={{ position: 'absolute', inset: 0, opacity: 0.15 }} />
+        <div className="max-w-7xl mx-auto px-6 md:px-10" style={{ position: 'relative', zIndex: 10 }}>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 24, maxWidth: 900, margin: '0 auto'
+          }} className="grid grid-cols-1 md:grid-cols-3">
+
+            {[
+              { icon: '📊', title: t.feature1Title, desc: t.feature1Desc, color: '#81FF89' },
+              { icon: '🤝', title: t.feature2Title, desc: t.feature2Desc, color: '#818cf8' },
+              { icon: '🛡️', title: t.feature3Title, desc: t.feature3Desc, color: '#f59e0b' },
+            ].map((feature) => (
+              <div key={feature.title} className="glass-dark card-hover" style={{
+                borderRadius: 20, padding: 28,
+              }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, marginBottom: 18
+                }}>
+                  {feature.icon}
+                </div>
+                <h3 style={{
+                  fontSize: 13, fontWeight: 900, marginBottom: 10,
+                  color: feature.color
+                }}>
+                  {feature.title}
+                </h3>
+                <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.8, fontWeight: 600 }}>
+                  {feature.desc}
+                </p>
+              </div>
+            ))}
+
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          4. PROPERTIES — معرض الأصول
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section id="properties" style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '80px 0'
+      }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-10">
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span style={{
+              display: 'inline-block', padding: '5px 16px', borderRadius: 99,
+              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#64748b', fontSize: 10, fontWeight: 700,
+              marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase'
+            }}>
+              {lang === 'AR' ? 'محفظة المشاريع والوحدات' : 'Asset & Project Portfolio'}
+            </span>
+            <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 900, marginBottom: 12 }}>
+              <span className="auth-gradient">{t.galleryTitle}</span>
+            </h2>
+            <p style={{ fontSize: 12, color: '#475569', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>
+              {t.gallerySubtitle}
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 20, maxWidth: 900, margin: '0 auto'
+          }} className="grid grid-cols-1 md:grid-cols-3">
+            {displayProjects.map((project) => (
+              <div key={project.id} className="card-hover" style={{
+                borderRadius: 18, overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.07)',
+                background: 'rgba(13,15,20,0.85)',
+                backdropFilter: 'blur(12px)',
+              }}>
+                <div style={{ position: 'relative', height: 180, overflow: 'hidden' }}>
+                  <img
+                    src={project.thumbnail}
+                    alt={project.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  />
+                  <span style={{
+                    position: 'absolute', top: 12, right: 12,
+                    background: 'rgba(6,6,8,0.85)', backdropFilter: 'blur(8px)',
+                    color: '#94a3b8', fontSize: 9, fontWeight: 700,
+                    padding: '4px 10px', borderRadius: 99,
+                    border: '1px solid rgba(255,255,255,0.07)'
+                  }}>
+                    📍 {project.city}
+                  </span>
+                  <span style={{
+                    position: 'absolute', bottom: 12, right: 12,
+                    background: 'rgba(6,6,8,0.85)', backdropFilter: 'blur(8px)',
+                    color: '#81FF89', fontSize: 8, fontWeight: 700,
+                    padding: '4px 10px', borderRadius: 8,
+                    border: '1px solid rgba(129,255,137,0.15)'
+                  }}>
+                    {getStatusLabel(project.status)}
+                  </span>
+                </div>
+
+                <div style={{ padding: '18px 20px' }}>
+                  <h3 style={{ fontSize: 12, fontWeight: 900, color: '#f1f5f9', marginBottom: 6 }}>
                     {project.name}
                   </h3>
-                  <p className="text-[9px] text-slate-400 font-bold mt-1">
+                  <p style={{ fontSize: 9, color: '#475569', fontWeight: 600, marginBottom: 14 }}>
                     🏡 {project.layout}
                   </p>
-                </div>
-
-                <div className={`pt-4 border-t flex justify-between items-center ${isDark ? "border-white/5" : "border-slate-200"}`}>
-                  <span className="text-[9px] text-slate-500 font-bold">
-                    {t.pricingStarts}
-                  </span>
-                  <span className={`text-xs font-black ${isDark ? "text-[#E6C687]" : "text-[#735334]"}`}>
-                    {formatPrice(project.minPrice)} {t.saudiRiyal}
-                  </span>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)'
+                  }}>
+                    <span style={{ fontSize: 9, color: '#334155', fontWeight: 600 }}>
+                      {t.pricingStarts}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: '#81FF89' }}>
+                      {formatPrice(project.minPrice)} {t.saudiRiyal}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* 4. PRICING GRID */}
-      <section id="pricing" className="py-20 border-t px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="text-center space-y-2 mb-16">
-          <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-wider transition-all duration-300 ${
-            isDark ? "bg-[#735334]/15 text-[#E6C687] border-[#735334]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20"
-          }`}>
-            {t.navPricing}
-          </span>
-          <h2 className={`text-2xl md:text-3xl font-black pt-2 ${isDark ? "text-white" : "text-[#735334]"}`}>
-            {t.pricingTitle}
-          </h2>
-          <p className={`text-xs max-w-lg mx-auto font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
-            {t.pricingSub}
-          </p>
-        </div>
-
-        <PricingGrid theme={theme} />
-      </section>
-
-      {/* نموذج الاقتناص الاستثماري المباشر (High-Conversion Investor Capture Node) */}
-      <section id="register-interest" className="py-20 border-t px-6 md:px-12 max-w-4xl mx-auto">
-        <div className={`border rounded-3xl p-8 md:p-12 space-y-8 relative overflow-hidden shadow-2xl ${
-          isDark ? "frosted-glass-dark border-[#735334]/30" : "milky-glass-light border-slate-200"
-        }`}>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#735334]/5 blur-[90px] rounded-full -z-10" />
-          
-          <div className="text-center space-y-2 max-w-lg mx-auto">
-            <h2 className={`text-xl md:text-2xl font-black ${isDark ? "text-white" : "text-[#735334]"}`}>
-              {t.investorTitle}
+      {/* ═══════════════════════════════════════════════════════════════════
+          5. PRICING — الباقات
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section id="pricing" style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '80px 0', position: 'relative', overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
+          width: 600, height: 400,
+          background: 'radial-gradient(ellipse, rgba(129,255,137,0.04) 0%, transparent 65%)',
+          pointerEvents: 'none'
+        }} />
+        <div className="max-w-7xl mx-auto px-6 md:px-10" style={{ position: 'relative', zIndex: 10 }}>
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span style={{
+              display: 'inline-block', padding: '5px 16px', borderRadius: 99,
+              border: '1px solid rgba(129,255,137,0.2)',
+              background: 'rgba(129,255,137,0.07)',
+              color: '#81FF89', fontSize: 10, fontWeight: 700,
+              marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase'
+            }}>
+              {t.navPricing}
+            </span>
+            <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 30px)', fontWeight: 900, marginBottom: 12 }}>
+              <span className="auth-gradient">{t.pricingTitle}</span>
             </h2>
-            <p className={`text-[10px] leading-relaxed font-bold ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-              {t.investorSubtitle}
+            <p style={{ fontSize: 12, color: '#475569', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>
+              {t.pricingSub}
             </p>
           </div>
 
-          {formStatus && (
-            <div className={`p-4 rounded-xl text-xs font-bold text-center border ${
-              formStatus.success 
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
-                : "bg-rose-500/10 border-rose-500/20 text-rose-400"
-            }`}>
-              {formStatus.message}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 max-w-xl mx-auto font-semibold text-right">
-            <input type="hidden" name="clientHost" value={host} />
-            <input type="hidden" name="city" value="الرياض" />
-            <input type="hidden" name="source" value="الموقع الإلكتروني الرسمي" />
-            
-            {/* الاسم الثنائي للمستثمر */}
-            <div>
-              <label className={`block text-[10px] font-bold mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                {t.investorNameLabel}
-              </label>
-              <input 
-                type="text" 
-                name="investorName" 
-                required 
-                placeholder={t.investorNamePlaceholder} 
-                className={`w-full border rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#735334]/50 focus:border-[#735334]/50 transition-colors ${
-                  isDark ? "bg-[#0b0f19] border-white/10 text-white" : "bg-white border-slate-300 text-[#0b0f19]"
-                }`} 
-              />
-            </div>
-
-            {/* رقم الجوال الموثق */}
-            <div>
-              <label className={`block text-[10px] font-bold mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                {t.phoneLabel}
-              </label>
-              <input 
-                type="tel" 
-                name="phone" 
-                required 
-                placeholder={t.phonePlaceholder} 
-                className={`w-full border rounded-xl p-3 text-xs text-left focus:outline-none focus:ring-1 focus:ring-[#735334]/50 focus:border-[#735334]/50 transition-colors ${
-                  isDark ? "bg-[#0b0f19] border-white/10 text-white" : "bg-white border-slate-300 text-[#0b0f19]"
-                }`} 
-              />
-            </div>
-
-            {/* المشروع العقاري المستهدف */}
-            <div>
-              <label className={`block text-[10px] font-bold mb-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                {t.projectLabel}
-              </label>
-              <select 
-                name="projectId" 
-                required 
-                className={`w-full border rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#735334]/50 focus:border-[#735334]/50 transition-colors ${
-                  isDark ? "bg-[#0b0f19] border-white/10 text-slate-300" : "bg-white border-slate-300 text-slate-700"
-                }`}
-              >
-                <option value="">{t.projectPlaceholder}</option>
-                {displayProjects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="w-full bg-[#735334] hover:bg-[#5f4229] disabled:bg-slate-700 text-white text-sm font-black p-4 rounded-xl transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(115,83,52,0.2)] cursor-pointer mt-2"
-            >
-              {isSubmitting 
-                ? (lang === 'AR' ? "جاري التوثيق..." : "Qualifying...") 
-                : `${t.submitBtn} ➔`
-              }
-            </button>
-          </form>
+          <PricingGrid theme="dark" />
         </div>
       </section>
 
-      {/* الفوتر الجمالي */}
-      <footer className={`border-t py-12 px-6 md:px-12 text-right text-xs transition-colors duration-500 ${
-        isDark ? "bg-[#0b0f19] border-white/5 text-slate-500" : "bg-slate-100 border-slate-200 text-slate-600"
-      }`}>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-          <div className="space-y-3">
-            <h4 className={`font-extrabold text-sm ${isDark ? "text-white" : "text-[#735334]"}`}>
-              {t.supportTitle}
-            </h4>
-            <p className={`text-[11px] leading-relaxed font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-              {t.supportDesc}
-            </p>
-            <p className="text-[#735334] font-extrabold text-xs">
-              {toArabicNumerals(t.whatsappContact)}
-            </p>
-          </div>
-          
-          <div className="space-y-3">
-            <h4 className={`font-extrabold text-sm ${isDark ? "text-white" : "text-[#735334]"}`}>
-              {t.financialSecurity}
-            </h4>
-            <p className={`text-[11px] leading-relaxed font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-              {t.securityDesc}
-            </p>
-            <div className="flex items-center gap-3 font-extrabold text-[10px]">
-              <span className={`px-2 py-1 border rounded ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-300 text-[#0b0f19]"}`}>مدى</span>
-              <span className={`px-2 py-1 border rounded ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-300 text-[#0b0f19]"}`}>Visa</span>
-              <span className={`px-2 py-1 border rounded ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-300 text-[#0b0f19]"}`}>Mastercard</span>
+      {/* ═══════════════════════════════════════════════════════════════════
+          6. INVESTOR FORM — نموذج الاقتناص
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section id="register-interest" style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '80px 0'
+      }}>
+        <div className="max-w-4xl mx-auto px-6 md:px-10">
+          <div className="glass-dark" style={{
+            borderRadius: 24, padding: '48px 56px',
+            position: 'relative', overflow: 'hidden',
+            boxShadow: '0 0 60px rgba(129,255,137,0.04)'
+          }}>
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 300, height: 300,
+              background: 'radial-gradient(circle, rgba(129,255,137,0.04) 0%, transparent 70%)',
+              borderRadius: '50%', pointerEvents: 'none'
+            }} />
+
+            <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 10 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 10 }}>
+                <span className="auth-gradient">{t.investorTitle}</span>
+              </h2>
+              <p style={{ fontSize: 11, color: '#475569', fontWeight: 600, lineHeight: 1.7 }}>
+                {t.investorSubtitle}
+              </p>
             </div>
-          </div>
-          
-          <div className="space-y-3 text-right md:text-left">
-            <div className="flex items-center md:justify-end gap-2">
-              <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#735334]"}`}>ORCA CRM</span>
-            </div>
-            <p className="text-[10px] text-slate-500 font-semibold">
-              {toArabicNumerals(t.allRights)}
-            </p>
-            <div className="pt-2">
-              <a 
-                href="/admin" 
-                className={`text-[9px] font-bold transition-opacity hover:opacity-80 ${isDark ? "text-slate-600" : "text-[#735334]/70"}`}
+
+            {formStatus && (
+              <div style={{
+                marginBottom: 24, padding: '14px 20px', borderRadius: 12,
+                background: formStatus.success ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${formStatus.success ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                color: formStatus.success ? '#22c55e' : '#ef4444',
+                fontSize: 12, fontWeight: 700, textAlign: 'center',
+                position: 'relative', zIndex: 10
+              }}>
+                {formStatus.message}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', zIndex: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="grid grid-cols-1 md:grid-cols-2">
+                {/* الاسم */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                    {t.investorNameLabel}
+                  </label>
+                  <input
+                    name="name"
+                    type="text"
+                    required
+                    placeholder={t.investorNamePlaceholder}
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 10,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: '#f1f5f9', fontSize: 12, fontWeight: 600,
+                      outline: 'none', transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(129,255,137,0.4)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
+                  />
+                </div>
+
+                {/* الجوال */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                    {t.phoneLabel}
+                  </label>
+                  <input
+                    name="phone"
+                    type="tel"
+                    required
+                    placeholder={t.phonePlaceholder}
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 10,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: '#f1f5f9', fontSize: 12, fontWeight: 600,
+                      outline: 'none', transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(129,255,137,0.4)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
+                  />
+                </div>
+              </div>
+
+              {/* المشروع */}
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                  {t.projectLabel}
+                </label>
+                <select
+                  name="projectId"
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 10,
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#94a3b8', fontSize: 12, fontWeight: 600,
+                    outline: 'none', appearance: 'none',
+                  }}
+                >
+                  <option value="">{t.projectPlaceholder}</option>
+                  {displayProjects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* زر الإرسال */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-solid"
+                style={{
+                  padding: '14px 24px', borderRadius: 12,
+                  fontSize: 13, fontWeight: 900, border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.6 : 1,
+                  marginTop: 8,
+                }}
               >
-                {lang === "AR" ? "🔒 بوابة التحكم الإشرافي" : "🔒 Administrative Access Portal"}
-              </a>
-            </div>
+                {isSubmitting
+                  ? (lang === 'AR' ? 'جارٍ المعالجة...' : 'Processing...')
+                  : t.submitBtn
+                }
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════════════════════════════════ */}
+      <footer style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '40px 0 32px'
+      }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-10" style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 20
+        }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#81FF89', marginBottom: 4 }}>ORCA CRM</div>
+            <div style={{ fontSize: 10, color: '#334155', fontWeight: 600 }}>{t.allRights}</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 28 }}>
+            {[
+              { icon: '📞', text: t.supportTitle, sub: t.whatsappContact },
+              { icon: '💳', text: t.financialSecurity, sub: t.securityDesc },
+            ].map(item => (
+              <div key={item.icon} style={{ textAlign: lang === 'AR' ? 'right' : 'left' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 2 }}>{item.text}</div>
+                <div style={{ fontSize: 9, color: '#334155', fontWeight: 600 }}>{item.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 9, color: '#22c55e', fontWeight: 700
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: '#22c55e', display: 'inline-block'
+            }} className="pulse-green" />
+            {t.serverRiyadh}
           </div>
         </div>
       </footer>
+
     </div>
   );
 }
