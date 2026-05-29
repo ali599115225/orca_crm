@@ -15,6 +15,8 @@ import SettingsView from "@/components/views/SettingsView";
 import MonitorView from "@/components/views/MonitorView";
 import DashboardView from "@/app/operations/dashboard/DashboardView";
 import ZatkaView from "@/components/views/ZatkaView";
+import EjarView from "@/components/views/EjarView";
+import CampaignsView from "@/components/views/CampaignsView";
 
 interface WarRoomCommandPageClientProps {
   initialTab: string;
@@ -49,18 +51,18 @@ interface WarRoomCommandPageClientProps {
 
 // ─── مصفوفة الصلاحيات الكاملة لكل دور ───────────────────────────────────────
 // PLATFORM_ARCHITECT: monitor فقط — حظر تام من بيانات المستأجرين
-// ADMIN: كل التبويبات لشركته بما فيها الفوترة لـ ZATKA
-// SALES_MANAGER: معظم التبويبات ما عدا Settings
-// SALES_EMPLOYEE: تبويبات العمل الميداني فقط
-// MARKETING: تحليلات + عملاء + واتساب
-// READ_ONLY: قراءة فقط
+// ADMIN: كل التبويبات لشركته بما فيها الامتثال الحكومي والحملات الشاملة
+// SALES_MANAGER: التبويبات التشغيلية والتسويقية ما عدا الإعدادات العليا
+// SALES_EMPLOYEE: تبويبات العمل الميداني المباشر
+// MARKETING: تحليلات + عملاء + واتساب + الحملات الإعلانية
+// READ_ONLY: قراءة ومراقبة فقط
 
 const ROLE_ALLOWED_TABS: Record<string, string[]> = {
   PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp", "zatka"],
-  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp", "zatka"],
+  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns"],
+  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns"],
   SALES_EMPLOYEE: ["leads", "tasks", "helpdesk", "calculator"],
-  MARKETING: ["analytics", "leads", "projects", "helpdesk", "whatsapp"],
+  MARKETING: ["analytics", "leads", "projects", "helpdesk", "whatsapp", "campaigns"],
   READ_ONLY: ["analytics", "leads", "projects"],
 };
 
@@ -115,7 +117,7 @@ export default function WarRoomCommandPageClient({
   const dir = lang === "AR" ? "rtl" : "ltr";
   const fontStyle: React.CSSProperties = { fontFamily: "'Cairo', 'Inter', sans-serif" };
 
-  // ─── PLATFORM_ARCHITECT: لوحة المراقبة الحيوية — بيانات عقارية محجوبة ────
+  // ─── PLATFORM_ARCHITECT: وضع العزل السيبراني النشط ────
   if (isPlatformArchitect) {
     return (
       <div className={wrapperClass} dir={dir} style={fontStyle}>
@@ -194,7 +196,7 @@ export default function WarRoomCommandPageClient({
         </div>
       )}
 
-      {/* ─── Settings: ADMIN فقط ───────────────────────────────────────────── */}
+      {/* ─── Settings ──────────────────────────────────────────────────────── */}
       {activeTabVal === "settings" && allowedTabs.includes("settings") && (
         <div className="fade-in">
           <SettingsView
@@ -223,6 +225,20 @@ export default function WarRoomCommandPageClient({
       {activeTabVal === "zatka" && allowedTabs.includes("zatka") && (
         <div className="fade-in">
           <ZatkaView />
+        </div>
+      )}
+
+      {/* ─── Ejar Unified Contract Gateway ────────────────────────────────── */}
+      {activeTabVal === "ejar" && allowedTabs.includes("ejar") && (
+        <div className="fade-in">
+          <EjarView />
+        </div>
+      )}
+
+      {/* ─── AI Omni-Channel Marketing Campaigns ──────────────────────────── */}
+      {activeTabVal === "campaigns" && allowedTabs.includes("campaigns") && (
+        <div className="fade-in">
+          <CampaignsView />
         </div>
       )}
     </div>
