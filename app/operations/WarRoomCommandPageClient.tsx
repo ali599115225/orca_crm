@@ -17,6 +17,7 @@ import DashboardView from "@/app/operations/dashboard/DashboardView";
 import ZatkaView from "@/components/views/ZatkaView";
 import EjarView from "@/components/views/EjarView";
 import CampaignsView from "@/components/views/CampaignsView";
+import ErpFinanceView from "@/components/views/ErpFinanceView";
 
 interface WarRoomCommandPageClientProps {
   initialTab: string;
@@ -51,16 +52,16 @@ interface WarRoomCommandPageClientProps {
 
 // ─── مصفوفة الصلاحيات الكاملة لكل دور ───────────────────────────────────────
 // PLATFORM_ARCHITECT: monitor فقط — حظر تام من بيانات المستأجرين
-// ADMIN: كل التبويبات لشركته بما فيها الامتثال الحكومي والحملات الشاملة
-// SALES_MANAGER: التبويبات التشغيلية والتسويقية ما عدا الإعدادات العليا
+// ADMIN: كل التبويبات لشركته بما فيها الامتثال الحكومي، المحاسبة، والحملات الشاملة
+// SALES_MANAGER: التبويبات التشغيلية، التسويقية، والمالية ما عدا الإعدادات العليا
 // SALES_EMPLOYEE: تبويبات العمل الميداني المباشر
 // MARKETING: تحليلات + عملاء + واتساب + الحملات الإعلانية
 // READ_ONLY: قراءة ومراقبة فقط
 
 const ROLE_ALLOWED_TABS: Record<string, string[]> = {
   PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns"],
-  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns"],
+  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns", "erpFinance"],
+  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp", "zatka", "ejar", "campaigns", "erpFinance"],
   SALES_EMPLOYEE: ["leads", "tasks", "helpdesk", "calculator"],
   MARKETING: ["analytics", "leads", "projects", "helpdesk", "whatsapp", "campaigns"],
   READ_ONLY: ["analytics", "leads", "projects"],
@@ -239,6 +240,13 @@ export default function WarRoomCommandPageClient({
       {activeTabVal === "campaigns" && allowedTabs.includes("campaigns") && (
         <div className="fade-in">
           <CampaignsView />
+        </div>
+      )}
+
+      {/* ─── ERP Ledger & Corporate Finance Core ──────────────────────────── */}
+      {activeTabVal === "erpFinance" && allowedTabs.includes("erpFinance") && (
+        <div className="fade-in">
+          <ErpFinanceView />
         </div>
       )}
     </div>
