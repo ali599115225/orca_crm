@@ -212,7 +212,7 @@ export default function SafeModePage() {
             </a>
 
             <a
-              href="/admin/login"
+              href="/login"
               style={{
                 background: "rgba(30, 41, 59, 0.8)",
                 border: "1px solid rgba(255, 255, 255, 0.1)",

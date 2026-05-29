@@ -32,7 +32,7 @@ export function LoginForm() {
         if (result.redirectUrl && result.redirectUrl.startsWith("http")) {
           window.location.href = result.redirectUrl;
         } else {
-          router.push(result.redirectUrl || "/operations/analytics");
+          router.push(result.redirectUrl || "/operations");
         }
       } else {
         setError(result.error || "فشل تسجيل الدخول. يرجى التحقق من البيانات.");

@@ -62,7 +62,7 @@ const TRANSLATIONS = {
   }
 };
 
-export default function TasksPage() {
+export default function TasksView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 

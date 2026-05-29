@@ -33,7 +33,7 @@ export async function completeOnboardingAction(formData: FormData) {
     // إعادة إنعاش الكاش لتحديث واجهة لوحة التحكم والـ Sidebar بالاسم الجديد فوراً
     revalidatePath("/operations/layout");
     revalidatePath("/operations/settings");
-    revalidatePath("/operations/analytics");
+    revalidatePath("/operations");
     
     return { success: true };
   } catch (error: any) {

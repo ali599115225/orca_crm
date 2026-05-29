@@ -21,11 +21,11 @@ export function RegisterForm() {
 
     if (result.success) {
       // في الإنتاج الفعلي، يتم تحويل العميل لنطاقه الفرعي الحقيقي:
-      // const targetUrl = `http://${result.subdomain}.orcacrm.sa/operations/analytics`;
+      // const targetUrl = `http://${result.subdomain}.orcacrm.sa/operations`;
       // window.location.href = targetUrl;
       
       // في بيئة التطوير المحلي، نوجهه مباشرة للوحة التحليلات
-      router.push("/operations/analytics");
+      router.push("/operations");
     } else {
       setError(result.error || "حدث خطأ غير متوقع أثناء التسجيل.");
     }

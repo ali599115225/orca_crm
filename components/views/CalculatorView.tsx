@@ -178,7 +178,7 @@ const TRANSLATIONS = {
   }
 };
 
-export default function MortgageCalculatorPage() {
+export default function CalculatorView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 

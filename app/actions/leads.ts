@@ -65,7 +65,7 @@ export async function updateLeadStatusAction(leadId: string, newStatus: any) {
     });
 
     revalidatePath("/operations/leads");
-    revalidatePath("/operations/analytics");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -70,7 +70,7 @@ export async function handleSuccessfulPaymentAction(tenantId: string, plan: stri
 
     // 4. إرسال الرسالة النصية التلقائية الفورية لجوال المطور العقاري الجديد [1.2.1, 1.2.2]
     const welcomeMessage = `🔒 تنبيه أوركا: تم تفعيل باقتك العقارية بنجاح!
-رابط لوحتك الخاصة: https://${tenant.subdomain}.orca-az-ez.pro/login
+رابط لوحتك الخاصة: https://${tenant.subdomain}.orca.az-ez.pro/login
 البريد: ${adminUser.email}
 الباسورد: ${plainPassword}
 (يرجى حفظ البيانات وتغيير الباسورد فور الدخول)`;
@@ -94,7 +94,7 @@ export async function handleSuccessfulPaymentAction(tenantId: string, plan: stri
     `;
     await sendAdminEmailAlert(emailSubject, emailHtml);
 
-    revalidatePath("/admin");
+    revalidatePath("/operations");
     return { success: true };
 
   } catch (error: any) {
@@ -135,12 +135,12 @@ export async function checkAndSuspendExpiredTenantsAction() {
       });
 
       // 🚀 إرسال رسالة جوال آلية تذكيرية بضرورة التجديد [1.2.1]
-      const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca-az-ez.pro/operations/settings`;
+      const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca.az-ez.pro/operations?tab=settings`;
       const clientMobile = "+966557516311"; // هاتف المدير العقاري
       await sendSMSNotification(clientMobile, suspendSMS);
     }
 
-    revalidatePath("/admin");
+    revalidatePath("/operations");
     return { success: true, updatedCount: expiredTenants.length };
 
   } catch (error: any) {

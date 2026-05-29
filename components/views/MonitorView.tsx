@@ -365,7 +365,7 @@ export default function MonitorView({ initialTickets, initialTenants }: MonitorV
                     <tr key={tenant.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4">
                         <div className="font-bold text-slate-800">{tenant.companyName}</div>
-                        <div className="text-[9px] text-slate-400" dir="ltr">{tenant.subdomain}.orca-az-ez.pro</div>
+                        <div className="text-[9px] text-slate-400" dir="ltr">{tenant.subdomain}.orca.az-ez.pro</div>
                       </td>
                       <td className="p-4">
                         <div className="font-bold text-slate-700">{planTitles[tenant.subscriptionPlan] || tenant.subscriptionPlan}</div>

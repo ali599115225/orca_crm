@@ -134,7 +134,7 @@ const TRANSLATIONS = {
   }
 };
 
-export default function ProjectsPage() {
+export default function ProjectsView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 

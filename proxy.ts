@@ -78,12 +78,12 @@ export async function proxy(request: NextRequest) {
 
       // فحص أمان الـ SaaS الصارم وتوجيه المستخدم لنطاقه الفرعي الصحيح (لغير المشرفين فقط)
       if (!isSuperAdmin) {
-        const isProductionDomain = host.includes("orca-az-ez.pro");
+        const isProductionDomain = host.includes("orca.az-ez.pro");
 
         // إذا كان على نطاق فرعي مخصص لشركة أخرى (وليس النطاق الرئيسي)، نوجهه لنطاقه الفرعي الصحيح
         if (isProductionDomain && !isMainDomain && payload.tenantSubdomain !== currentSubdomain) {
           if (payload.tenantSubdomain) {
-            return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca-az-ez.pro${pathname}`, request.url));
+            return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro${pathname}`, request.url));
           }
         }
 
@@ -109,21 +109,21 @@ export async function proxy(request: NextRequest) {
       
       if (isSuperAdmin) {
         // للمشرف العام: نقله للتحليلات مباشرة على النطاق الحالي
-        return NextResponse.redirect(new URL("/operations/analytics", request.url));
+        return NextResponse.redirect(new URL("/operations", request.url));
       } else {
-        const isProductionDomain = host.includes("orca-az-ez.pro");
+        const isProductionDomain = host.includes("orca.az-ez.pro");
         
         if (isProductionDomain) {
           // إذا كان على النطاق الرئيسي، نبقيه عليه، وإذا كان على نطاق فرعي خاطئ، نحوله لنطاقه الصحيح
           if (!isMainDomain && payload.tenantSubdomain !== currentSubdomain) {
             if (payload.tenantSubdomain) {
-              return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca-az-ez.pro/operations/analytics`, request.url));
+              return NextResponse.redirect(new URL(`https://${payload.tenantSubdomain}.orca.az-ez.pro/operations`, request.url));
             }
           } else {
-            return NextResponse.redirect(new URL("/operations/analytics", request.url));
+            return NextResponse.redirect(new URL("/operations", request.url));
           }
         } else {
-          return NextResponse.redirect(new URL("/operations/analytics", request.url));
+          return NextResponse.redirect(new URL("/operations", request.url));
         }
       }
     } catch (e) {

@@ -12,7 +12,7 @@ export async function saveContractTermsAction(terms: string) {
       where: { id: tenant.id },
       data: { contractTerms: terms },
     });
-    revalidatePath("/operations/analytics");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

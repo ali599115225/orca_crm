@@ -65,7 +65,8 @@ export async function runInstallmentAgentAction() {
         }
 
         // إنشاء رابط الدفع المشفر
-        const paymentLink = `https://${tenant.subdomain}.orca-az-ez.pro/pay/${installment.securePaymentToken}`;
+        const paymentLink = `https://${tenant.subdomain}.orca.az-ez.pro/pay/${installment.securePaymentToken}`;
+
 
         // صياغة تفاصيل الرسالة
         const buyerName = contract.buyerName;
@@ -101,7 +102,7 @@ export async function runInstallmentAgentAction() {
     }
 
     try {
-      revalidatePath("/operations/analytics");
+      revalidatePath("/operations");
     } catch (e) {
       // تجاهل خطأ غياب سياق Next.js عند التشغيل كسكريبت مستقل
     }

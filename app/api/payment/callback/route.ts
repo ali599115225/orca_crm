@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   const invoiceId = searchParams.get("id");
   const status = searchParams.get("status");
 
-  const fallbackUrl = new URL("/operations/settings", request.url);
+  const fallbackUrl = new URL("/operations", request.url);
+  fallbackUrl.searchParams.set("tab", "settings");
 
   if (!invoiceId || status !== "paid") {
     fallbackUrl.searchParams.set("error", "فشلت عملية الدفع أو تم إلغاؤها من قبل المستخدم.");
@@ -34,7 +35,8 @@ export async function GET(request: NextRequest) {
               }
             }
           });
-          const successUrl = new URL("/operations/settings", request.url);
+          const successUrl = new URL("/operations", request.url);
+          successUrl.searchParams.set("tab", "settings");
           successUrl.searchParams.set("success", `[وضع تجريبي] تم شراء عدد ${agentCount} وكلاء إضافيين بنجاح وتحديث السعة!`);
           return NextResponse.redirect(successUrl);
         }
@@ -44,7 +46,8 @@ export async function GET(request: NextRequest) {
           // تفويض تفعيل الحساب وحساب المدة وإصدار الأكواد بالكامل للوكيل سند [1.1, 1.2.1]
           await handleSuccessfulPaymentAction(tenantId, plan, "MONTHLY");
 
-          const successUrl = new URL("/operations/settings", request.url);
+          const successUrl = new URL("/operations", request.url);
+          successUrl.searchParams.set("tab", "settings");
           successUrl.searchParams.set("success", `[وضع تجريبي] تم ترقية خطة منشأتك العقارية بنجاح وتكليف الوكيل سند!`);
           return NextResponse.redirect(successUrl);
         }
@@ -79,7 +82,8 @@ export async function GET(request: NextRequest) {
           }
         });
 
-        const successUrl = new URL("/operations/settings", request.url);
+        const successUrl = new URL("/operations", request.url);
+        successUrl.searchParams.set("tab", "settings");
         successUrl.searchParams.set("success", `تم شراء عدد ${agentCount} وكلاء إضافيين بنجاح وتحديث سعة النظام!`);
         return NextResponse.redirect(successUrl);
       } else {
@@ -87,7 +91,8 @@ export async function GET(request: NextRequest) {
         // تفويض تفعيل الحساب وحساب المدة وإصدار الأكواد بالكامل للوكيل سند [1.1, 1.2.1]
         await handleSuccessfulPaymentAction(tenantId, plan, "MONTHLY");
 
-        const successUrl = new URL("/operations/settings", request.url);
+        const successUrl = new URL("/operations", request.url);
+        successUrl.searchParams.set("tab", "settings");
         successUrl.searchParams.set("success", `تم ترقية خطة منشأتك العقارية بنجاح وتفعيل الوكيل سند!`);
         return NextResponse.redirect(successUrl);
       }

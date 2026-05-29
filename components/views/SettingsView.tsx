@@ -514,7 +514,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                     <span className={`border border-r-0 rounded-l-lg px-3.5 py-2.5 text-[10px] font-bold ${
                       isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
                     }`}>
-                      .orca-az-ez.pro
+                      .orca.az-ez.pro
                     </span>
                     <input 
                       type="text" 

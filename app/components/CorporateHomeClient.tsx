@@ -400,7 +400,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
           </button>
 
           <a 
-            href="/admin" 
+            href="/operations" 
             className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-wide transition-all border ${
               isDark 
                 ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#735334]/50 hover:text-[#E6C687]" 

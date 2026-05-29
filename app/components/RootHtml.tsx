@@ -2,20 +2,48 @@
 
 import React from 'react';
 import { useApp } from '@/app/context/AppContext';
+import { usePathname } from 'next/navigation';
+import TopBarClient from './TopBarClient';
+import { logoutAction } from '@/app/actions/auth';
 
-export default function RootHtml({ children }: { children: React.ReactNode }) {
+export default function RootHtml({ 
+  children,
+  initialName = "",
+  userRoleKey = "READ_ONLY",
+  isSuperAdmin = false,
+}: { 
+  children: React.ReactNode;
+  initialName?: string;
+  userRoleKey?: string;
+  isSuperAdmin?: boolean;
+}) {
   const { theme, lang } = useApp();
   const currentLang = lang === 'AR' ? 'ar' : 'en';
   const currentTheme = theme;
+  const pathname = usePathname();
+  const isOperations = pathname?.startsWith('/operations');
+
+  const ROLE_TRANSLATIONS: Record<string, Record<string, string>> = {
+    AR: {
+      ADMIN: "المدير العام",
+      SALES_MANAGER: "مدير المبيعات",
+      SALES_EMPLOYEE: "مستشار عقاري",
+      MARKETING: "إدارة التسويق",
+      READ_ONLY: "مشاهدة فقط",
+    },
+    EN: {
+      ADMIN: "General Manager",
+      SALES_MANAGER: "Sales Manager",
+      SALES_EMPLOYEE: "Real Estate Consultant",
+      MARKETING: "Marketing Department",
+      READ_ONLY: "Read Only",
+    }
+  };
+
+  const roleTranslated = ROLE_TRANSLATIONS[lang]?.[userRoleKey] || ROLE_TRANSLATIONS.AR[userRoleKey] || userRoleKey;
 
   return (
-    <html 
-      lang={currentLang} 
-      dir={currentLang === 'AR' ? 'rtl' : 'ltr'} 
-      translate="no" 
-      className={`notranslate ${currentTheme}`}
-      {...{ class: currentTheme }}
-    >
+    <html lang={currentLang} dir={currentLang === 'ar' ? 'rtl' : 'ltr'} class={currentTheme}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
@@ -31,8 +59,18 @@ export default function RootHtml({ children }: { children: React.ReactNode }) {
           })();
         ` }} />
       </head>
-      <body className="bg-[#0b0f19] text-slate-100 min-h-screen antialiased">
-        {children}
+      <body className="bg-[#0b0f19] text-slate-100 min-h-screen antialiased flex flex-col">
+        {isOperations && (
+          <TopBarClient 
+            initialName={initialName} 
+            initialRole={roleTranslated} 
+            isSuperAdmin={isSuperAdmin}
+            logoutAction={logoutAction}
+          />
+        )}
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
+          {children}
+        </div>
       </body>
     </html>
   );

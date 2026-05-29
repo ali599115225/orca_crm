@@ -44,8 +44,7 @@ export async function adminUpdateTicketAction(ticketId: string, status: "OPEN" |
       }
     });
 
-    revalidatePath("/operations/support-monitor");
-    revalidatePath("/operations/helpdesk");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     console.error("خطأ إدارة التذاكر الفوقي:", error);
@@ -68,8 +67,7 @@ export async function adminUpdateTenantPlanAction(tenantId: string, plan: string
       }
     });
 
-    revalidatePath("/operations/support-monitor");
-    revalidatePath("/operations/settings");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     console.error("خطأ إدارة باقات المستأجرين الفوقي:", error);
@@ -136,8 +134,7 @@ export async function toggleTenantStatusAction(tenantId: string, currentStatus: 
         isActive: !currentStatus
       }
     });
-    revalidatePath("/admin");
-    revalidatePath("/operations/support-monitor");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -156,9 +153,7 @@ export async function updateTenantPlanAction(tenantId: string, plan: string) {
         subscriptionPlan: plan
       }
     });
-    revalidatePath("/admin");
-    revalidatePath("/operations/support-monitor");
-    revalidatePath("/operations/settings");
+    revalidatePath("/operations");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

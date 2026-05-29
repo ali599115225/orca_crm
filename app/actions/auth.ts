@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { encrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
@@ -43,7 +43,7 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
     }
 
-    const host = formData.get("clientHost") as string || "orca-az-ez.pro";
+    const host = formData.get("clientHost") as string || "orca.az-ez.pro";
     const proto = formData.get("clientProto") as string || "https";
     const isSecureConnection = proto === "https";
     
@@ -88,7 +88,7 @@ export async function loginAction(formData: FormData) {
     const sessionToken = await encrypt(sessionPayload);
     
     // التحقق مما إذا كان النطاق الحالي مخصصاً للإنتاج
-    const isCustomDomain = host.includes("orca-az-ez.pro");
+    const isCustomDomain = host.includes("orca.az-ez.pro");
 
     const cookieOptions: any = {
       httpOnly: true,
@@ -100,7 +100,7 @@ export async function loginAction(formData: FormData) {
 
     // مشاركة الكوكيز عبر جميع النطاقات الفرعية للنطاق المخصص
     if (isCustomDomain) {
-      cookieOptions.domain = "orca-az-ez.pro";
+      cookieOptions.domain = "orca.az-ez.pro";
     }
 
     cookieStore.set("session_token", sessionToken, cookieOptions);
@@ -113,27 +113,27 @@ export async function loginAction(formData: FormData) {
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 365, // سنة كاملة
-        domain: isCustomDomain ? "orca-az-ez.pro" : undefined,
+        domain: isCustomDomain ? "orca.az-ez.pro" : undefined,
       });
     }
 
     // تحديد رابط التوجيه المناسب للمستأجر
-    let redirectUrl = "/operations/analytics";
+    let redirectUrl = "/operations";
     if (isCustomDomain) {
       if (isSuperAdmin) {
         // للمشرف العام: إبقاؤه على النطاق الحالي (الرئيسي أو الفرعي الذي يسجل الدخول منه) لمنع مشاكل النطاقات الفرعية
         if (isTenantSubdomain) {
-          redirectUrl = `https://${currentSubdomain}.orca-az-ez.pro/operations/analytics`;
+          redirectUrl = `https://${currentSubdomain}.orca.az-ez.pro/operations`;
         } else {
-          redirectUrl = "/operations/analytics";
+          redirectUrl = "/operations";
         }
       } else {
         // إذا كان الدخول من النطاق الرئيسي أو www، نبقي المستخدم عليه لتلافي مشاكل DNS الفرعية غير المهيأة
         const isMainDomain = currentSubdomain === "orca" || currentSubdomain === "www" || currentSubdomain === "dar-al-amar" || currentSubdomain === "orca-crm";
         if (isMainDomain) {
-          redirectUrl = "/operations/analytics";
+          redirectUrl = "/operations";
         } else {
-          redirectUrl = `https://${user.tenant.subdomain}.orca-az-ez.pro/operations/analytics`;
+          redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
         }
       }
     }
@@ -150,7 +150,24 @@ export async function loginAction(formData: FormData) {
  */
 export async function logoutAction() {
   const cookieStore = await cookies();
+
+  // Delete the session token using all possible scope variations to ensure success
   cookieStore.delete("session_token");
+  cookieStore.delete({
+    name: "session_token",
+    path: "/"
+  });
+  cookieStore.delete({
+    name: "session_token",
+    domain: "orca.az-ez.pro",
+    path: "/"
+  });
+  cookieStore.delete({
+    name: "session_token",
+    domain: ".orca.az-ez.pro",
+    path: "/"
+  });
+
   revalidatePath("/");
   redirect("/login");
 }

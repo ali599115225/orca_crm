@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
   // 2. فحص أمان SaaS ذكي: إذا كانت البيانات مكتملة ومفعّلة مسبقاً (مثل شركة العلي)،
   // نقوم بتحويل العميل تلقائياً بداخل السيرفر لصفحة التحليلات مباشرة دون عرض الاستمارة
   if (!isNewTenant) {
-    redirect("/operations/analytics");
+    redirect("/operations");
   }
 
   return (

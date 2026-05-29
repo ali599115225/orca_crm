@@ -12,7 +12,7 @@ export default function SovereignSidebar() {
     { name: "Projects", href: "/operations/projects", icon: <FolderKanban size={18} /> },
     { name: "Sales", href: "/operations/sales", icon: <ShoppingCart size={18} /> },
     { name: "Tasks", href: "/operations/tasks", icon: <CheckSquare size={18} /> },
-    { name: "Analytics", href: "/operations/analytics", icon: <BarChart3 size={18} /> },
+    { name: "Analytics", href: "/operations", icon: <BarChart3 size={18} /> },
     { name: "Settings", href: "/operations/settings", icon: <Settings size={18} /> },
   ];
 

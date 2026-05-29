@@ -196,7 +196,7 @@ const TRANSLATIONS = {
   }
 };
 
-export default function LeadsPage() {
+export default function LeadsView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 

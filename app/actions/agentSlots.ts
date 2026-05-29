@@ -253,13 +253,13 @@ export async function toggleAgentStatusAction(agentType: "SAHER" | "SANAD", newS
         where: { id: slot.id },
         data: { isActive: newStatus },
       });
-      revalidatePath("/operations/analytics");
+      revalidatePath("/operations");
       return { success: true, isActive: updated.isActive };
     } else {
       if (newStatus) {
         const result = await createAgentSlotAction(agentType);
         if (result.success && result.slot) {
-          revalidatePath("/operations/analytics");
+          revalidatePath("/operations");
           return { success: true, isActive: true };
         } else {
           return { success: false, error: result.error || "فشل تفعيل مقعد الوكيل." };

@@ -62,7 +62,7 @@ const TRANSLATIONS = {
   }
 };
 
-export default function SalesManagementPage() {
+export default function SalesView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
 

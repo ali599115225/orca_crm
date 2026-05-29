@@ -188,7 +188,7 @@ export async function runAllSystemAgentsAction() {
     const saherReport = await saherTrackSystemErrorsAction();
 
     // 2. إعادة تنشيط ذاكرة التخزين
-    revalidatePath("/operations/support-monitor");
+    revalidatePath("/operations");
 
     return {
       success: true,

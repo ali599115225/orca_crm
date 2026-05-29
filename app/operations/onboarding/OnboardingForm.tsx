@@ -26,7 +26,7 @@ export function OnboardingForm() {
       setTimeout(() => {
         // تحديث كاش السيرفر والانتقال التلقائي للوحة التحكم
         router.refresh(); 
-        router.push("/operations/analytics");
+        router.push("/operations");
       }, 1500);
     } else {
       setError(result.error || "حدث خطأ غير متوقع.");
