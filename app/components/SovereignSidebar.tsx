@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, FolderKanban, ShoppingCart, CheckSquare, BarChart3, Settings, Home } from "lucide-react";
+import { Users, FolderKanban, ShoppingCart, CheckSquare, BarChart3, Settings, Home, FileText, Calculator, LogOut } from "lucide-react";
 
 export default function SovereignSidebar() {
   const pathname = usePathname();
@@ -12,6 +12,8 @@ export default function SovereignSidebar() {
     { name: "Projects", href: "/operations/projects", icon: <FolderKanban size={18} /> },
     { name: "Sales", href: "/operations/sales", icon: <ShoppingCart size={18} /> },
     { name: "Tasks", href: "/operations/tasks", icon: <CheckSquare size={18} /> },
+    { name: "Ejar", href: "/operations/ejar", icon: <FileText size={18} /> },
+    { name: "Accounting", href: "/operations/accounting", icon: <Calculator size={18} /> },
     { name: "Analytics", href: "/operations", icon: <BarChart3 size={18} /> },
     { name: "Settings", href: "/operations/settings", icon: <Settings size={18} /> },
   ];
@@ -49,8 +51,19 @@ export default function SovereignSidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-theme-border">
+      {/* Bottom Footer Area */}
+      <div className="p-4 border-t border-theme-border space-y-3">
+        
+        {/* Logout Button */}
+        <Link
+          href="/logout"
+          className="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl text-sm font-bold transition-all"
+        >
+          <LogOut size={16} />
+          Sign Out
+        </Link>
+
+        {/* Home Button */}
         <Link
           href="/home"
           className="flex items-center gap-3 px-4 py-3 bg-theme-primary text-white rounded-xl text-sm font-bold justify-center"
