@@ -1,9 +1,9 @@
 /* app/globals.css */
 @import "tailwindcss";
 
-body {
+body, html, *, input, select, textarea, button {
   /* تعميم خط Calibri على كامل النظام */
-  font-family: 'Calibri', system-ui, -apple-system, sans-serif;
+  font-family: 'Calibri', system-ui, -apple-system, sans-serif !important;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

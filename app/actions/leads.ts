@@ -80,8 +80,16 @@ export async function createLeadAction(formData: FormData) {
     const clientHost = formData.get("clientHost") as string;
     const tenant = await getActiveTenant(clientHost);
     
-    const firstName = formData.get("firstName") as string;
-    const lastName = formData.get("lastName") as string;
+    let firstName = formData.get("firstName") as string;
+    let lastName = formData.get("lastName") as string;
+    const investorName = formData.get("investorName") as string;
+    
+    if (investorName) {
+      const parts = investorName.trim().split(/\s+/);
+      firstName = parts[0] || "";
+      lastName = parts.slice(1).join(" ") || "";
+    }
+    
     const phone = formData.get("phone") as string;
     const email = formData.get("email") as string;
     const city = formData.get("city") as string;

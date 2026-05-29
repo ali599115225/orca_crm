@@ -2,9 +2,16 @@
 "use client";
 
 import React, { useState } from "react";
+import { useApp } from "@/app/context/AppContext";
 
 export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "light" }) {
+  const { lang } = useApp();
   const [isYearly, setIsYearly] = useState(false);
+  
+  const formatNumber = (num: number): string => {
+    if (lang === 'EN') return num.toLocaleString("en-US");
+    return num.toLocaleString("ar-SA");
+  };
 
   const plans = [
     {
@@ -164,12 +171,14 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                   ) : (
                     <>
                       <span className={`text-4xl font-black ${idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>
-                        {displayPrice.toLocaleString("ar-SA")}
+                        {formatNumber(displayPrice)}
                       </span>
-                      <span className={`text-xs font-bold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>ر.س / شهر</span>
+                      <span className={`text-xs font-bold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>
+                        {lang === 'AR' ? 'ر.س / شهر' : 'SAR / month'}
+                      </span>
                       {isYearly && price && (
                         <span className="text-[9px] text-[#e5c158] font-bold block mt-1 absolute bottom-1 right-0">
-                          (فاتورة سنوية: {price.toLocaleString("ar-SA")} ر.س)
+                          {lang === 'AR' ? `(فاتورة سنوية: ${formatNumber(price)} ر.س)` : `(Billed annually: ${formatNumber(price)} SAR)`}
                         </span>
                       )}
                     </>

@@ -6,29 +6,27 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 type Theme = 'dark' | 'light';
 type Lang = 'AR' | 'EN';
 
-interface AppContextType {
+interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+}
+
+interface LanguageContextType {
   lang: Lang;
   toggleLang: () => void;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [lang, setLang] = useState<Lang>('AR');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
       window.dispatchEvent(new CustomEvent('theme-change', { detail: savedTheme }));
-    }
-    const savedLang = localStorage.getItem('lang') as Lang;
-    if (savedLang) {
-      setLang(savedLang);
-      window.dispatchEvent(new CustomEvent('lang-change', { detail: savedLang }));
     }
   }, []);
 
@@ -39,6 +37,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent('theme-change', { detail: nextTheme }));
   };
 
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('dark', 'light');
+    root.classList.add(theme);
+  }, [theme]);
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLang] = useState<Lang>('AR');
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem('lang') as Lang;
+    if (savedLang) {
+      setLang(savedLang);
+      window.dispatchEvent(new CustomEvent('lang-change', { detail: savedLang }));
+    }
+  }, []);
+
   const toggleLang = () => {
     const nextLang = lang === 'AR' ? 'EN' : 'AR';
     setLang(nextLang);
@@ -46,26 +68,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent('lang-change', { detail: nextLang }));
   };
 
-  // المزامنة اللحظية مع ترويسة HTML والـ direction
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('dark', 'light');
-    root.classList.add(theme);
     root.setAttribute('lang', lang === 'AR' ? 'ar' : 'en');
     root.setAttribute('dir', lang === 'AR' ? 'rtl' : 'ltr');
-  }, [theme, lang]);
+  }, [lang]);
 
   return (
-    <AppContext.Provider value={{ theme, toggleTheme, lang, toggleLang }}>
+    <LanguageContext.Provider value={{ lang, toggleLang }}>
       {children}
-    </AppContext.Provider>
+    </LanguageContext.Provider>
+  );
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <LanguageProvider>
+      <ThemeProvider>
+        {children}
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
 
 export function useApp() {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
+  const themeContext = useContext(ThemeContext);
+  const langContext = useContext(LanguageContext);
+  if (!themeContext || !langContext) {
+    throw new Error('useApp must be used within AppProvider/ThemeProvider/LanguageProvider');
   }
-  return context;
+  return {
+    theme: themeContext.theme,
+    toggleTheme: themeContext.toggleTheme,
+    lang: langContext.lang,
+    toggleLang: langContext.toggleLang,
+  };
 }
