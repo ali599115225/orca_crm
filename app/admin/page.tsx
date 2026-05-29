@@ -16,7 +16,7 @@ const TRANSLATIONS = {
     submitBtn: "🔒 دخول آمن للإدارة",
     loadingText: "⏳ جارٍ التحقق من الهوية...",
     errorUnauthorized: "⛔ هذه البوابة مخصصة للإدارة الفوقية فقط. يُمنع الوصول.",
-    backToSales: "← بوابة دخول الشركات العقارية"
+    backToSales: "← العودة إلى الصفحة الرئيسية"
   },
   EN: {
     title: "Super Admin Command Gateway",
@@ -26,7 +26,7 @@ const TRANSLATIONS = {
     submitBtn: "🔒 Secure Administrative Entry",
     loadingText: "⏳ Verifying Identity...",
     errorUnauthorized: "⛔ This gateway is restricted to Super Administrators only.",
-    backToSales: "← Back to Client Portal"
+    backToSales: "← Back to Main Landing Page"
   }
 };
 
@@ -206,7 +206,7 @@ export default function AdminLoginPage() {
         {/* Back Link */}
         <div style={{ textAlign: "center", marginTop: "24px" }}>
           <a 
-            href="/login" 
+            href="/" 
             className={`text-[10px] font-extrabold transition-opacity hover:opacity-85 ${isDark ? "text-slate-500" : "text-[#735334]"}`}
           >
             {t.backToSales}

@@ -400,6 +400,17 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
           </button>
 
           <a 
+            href="/admin" 
+            className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-wide transition-all border ${
+              isDark 
+                ? "bg-white/5 border-white/10 text-slate-300 hover:border-[#735334]/50 hover:text-[#E6C687]" 
+                : "bg-white border-[#735334]/20 text-[#735334] hover:border-[#735334]"
+            }`}
+          >
+            {lang === "AR" ? "بوابة الإدارة الفوقية" : "Admin Gateway"}
+          </a>
+
+          <a 
             href="#register-interest" 
             className="bg-[#735334] hover:bg-[#5f4229] text-white px-4 py-2 rounded-lg text-[10px] font-black tracking-wide transition-all shadow-[0_0_15px_rgba(115,83,52,0.2)]"
           >
@@ -908,6 +919,14 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             <p className="text-[10px] text-slate-500 font-semibold">
               {toArabicNumerals(t.allRights)}
             </p>
+            <div className="pt-2">
+              <a 
+                href="/admin" 
+                className={`text-[9px] font-bold transition-opacity hover:opacity-80 ${isDark ? "text-slate-600" : "text-[#735334]/70"}`}
+              >
+                {lang === "AR" ? "🔒 بوابة التحكم الإشرافي" : "🔒 Administrative Access Portal"}
+              </a>
+            </div>
           </div>
         </div>
       </footer>
