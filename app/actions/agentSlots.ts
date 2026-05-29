@@ -204,3 +204,71 @@ export async function incrementUsageMeterAction(
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * جلب حالة نشاط وكيل معين (ساهر أو سند) للشركة النشطة
+ */
+export async function getAgentStatusAction(agentType: "SAHER" | "SANAD") {
+  try {
+    const tenant = await getActiveTenant();
+    const slot = await prisma.agentSlot.findFirst({
+      where: { tenantId: tenant.id, agentType },
+    });
+    return { success: true, isActive: slot ? slot.isActive : false };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * تبديل حالة نشاط وكيل معين (ساهر أو سند) مع التحقق من قيود الباقة والـ Cap Lock
+ */
+export async function toggleAgentStatusAction(agentType: "SAHER" | "SANAD", newStatus: boolean) {
+  try {
+    const tenant = await getActiveTenant();
+    const slot = await prisma.agentSlot.findFirst({
+      where: { tenantId: tenant.id, agentType },
+    });
+
+    if (newStatus) {
+      // التحقق من سعة المقاعد النشطة للباقة
+      const currentActiveSlots = await prisma.agentSlot.count({
+        where: { tenantId: tenant.id, isActive: true },
+      });
+      const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
+      const maxSlots = PLAN_SLOT_LIMITS[plan] ?? 1;
+
+      const isAlreadyActive = slot ? slot.isActive : false;
+      if (!isAlreadyActive && currentActiveSlots >= maxSlots) {
+        return {
+          success: false,
+          capLock: true,
+          error: `🔒 قفل السعة: لقد وصلت للحد الأقصى (${maxSlots} مقاعد) لباقة ${plan}. يرجى الترقية للباقة الذهبية للحصول على مقاعد غير محدودة.`,
+        };
+      }
+    }
+
+    if (slot) {
+      const updated = await prisma.agentSlot.update({
+        where: { id: slot.id },
+        data: { isActive: newStatus },
+      });
+      revalidatePath("/operations/analytics");
+      return { success: true, isActive: updated.isActive };
+    } else {
+      if (newStatus) {
+        const result = await createAgentSlotAction(agentType);
+        if (result.success && result.slot) {
+          revalidatePath("/operations/analytics");
+          return { success: true, isActive: true };
+        } else {
+          return { success: false, error: result.error || "فشل تفعيل مقعد الوكيل." };
+        }
+      }
+      return { success: true, isActive: false };
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
