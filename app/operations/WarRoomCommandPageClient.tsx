@@ -13,6 +13,8 @@ import SalesView     from "@/components/views/SalesView";
 import TasksView     from "@/components/views/TasksView";
 import SettingsView  from "@/components/views/SettingsView";
 import MonitorView   from "@/components/views/MonitorView";
+import RentalView    from "@/components/views/RentalView";
+import AccountingView from "@/components/views/AccountingView";
 import DashboardView from "@/app/operations/dashboard/DashboardView";
 
 interface Props {
@@ -34,11 +36,11 @@ interface Props {
 
 const ROLE_ALLOWED: Record<string, string[]> = {
   PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN:              ["overview","operations","monitor","whatsapp","helpdesk","settings"],
-  SALES_MANAGER:      ["overview","operations","whatsapp","helpdesk"],
-  SALES_EMPLOYEE:     ["overview","operations","helpdesk"],
-  MARKETING:          ["overview","operations","whatsapp","helpdesk"],
-  READ_ONLY:          ["overview"],
+  ADMIN:              ["analytics","leads","projects","rental","accounting","calculator","sales","tasks","settings","helpdesk","whatsapp"],
+  SALES_MANAGER:      ["analytics","leads","projects","rental","accounting","calculator","sales","tasks","helpdesk","whatsapp"],
+  SALES_EMPLOYEE:     ["leads","tasks","helpdesk","calculator","rental"],
+  MARKETING:          ["analytics","leads","projects","helpdesk","whatsapp"],
+  READ_ONLY:          ["analytics","leads","projects"],
 };
 
 export default function WarRoomCommandPageClient({
@@ -51,7 +53,7 @@ export default function WarRoomCommandPageClient({
 
   const isPlatformArchitect = currentUserRole === "PLATFORM_ARCHITECT";
   const allowed = ROLE_ALLOWED[currentUserRole] ?? ROLE_ALLOWED.READ_ONLY;
-  const defaultTab = isPlatformArchitect ? "monitor" : (initialTab || "overview");
+  const defaultTab = isPlatformArchitect ? "monitor" : (initialTab === "overview" ? "analytics" : (initialTab || "analytics"));
 
   const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -152,6 +154,18 @@ export default function WarRoomCommandPageClient({
             users={tenantUsers}
             currentUserRole={currentUserRole}
           />
+        </div>
+      )}
+
+      {show("rental") && (
+        <div className="fade-in">
+          <RentalView />
+        </div>
+      )}
+
+      {show("accounting") && (
+        <div className="fade-in">
+          <AccountingView />
         </div>
       )}
     </div>
