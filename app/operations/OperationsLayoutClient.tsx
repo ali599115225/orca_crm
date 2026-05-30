@@ -113,8 +113,8 @@ export default function OperationsLayoutClient({
         </div>
       )}
 
-      {/* ── الجسم: flex-row-reverse لوضع Sidebar على اليمين ─── */}
-      <div className="flex-1 flex flex-row-reverse overflow-hidden min-h-0">
+      {/* ── الجسم: flex-row — aside أول في DOM → يمين في RTL، يسار في LTR ─── */}
+      <div className="flex-1 flex flex-row overflow-hidden min-h-0">
 
         {/* ════ SIDEBAR — جانب اليمين ════ */}
         <aside className={`w-[240px] shrink-0 flex flex-col transition-colors duration-300 ${
