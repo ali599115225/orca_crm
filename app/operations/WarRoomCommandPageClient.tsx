@@ -4,150 +4,102 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
 
-// استيراد جميع الواجهات
-import WhatsAppView from "@/components/views/WhatsAppView";
-import HelpdeskView from "@/components/views/HelpdeskView";
-import LeadsView from "@/components/views/LeadsView";
-import ProjectsView from "@/components/views/ProjectsView";
+import WhatsAppView  from "@/components/views/WhatsAppView";
+import HelpdeskView  from "@/components/views/HelpdeskView";
+import LeadsView     from "@/components/views/LeadsView";
+import ProjectsView  from "@/components/views/ProjectsView";
 import CalculatorView from "@/components/views/CalculatorView";
-import SalesView from "@/components/views/SalesView";
-import TasksView from "@/components/views/TasksView";
-import SettingsView from "@/components/views/SettingsView";
-import MonitorView from "@/components/views/MonitorView";
+import SalesView     from "@/components/views/SalesView";
+import TasksView     from "@/components/views/TasksView";
+import SettingsView  from "@/components/views/SettingsView";
+import MonitorView   from "@/components/views/MonitorView";
 import DashboardView from "@/app/operations/dashboard/DashboardView";
 
-interface WarRoomCommandPageClientProps {
+interface Props {
   initialTab: string;
   projects: any[];
   tickets: any[];
   tenants: any[];
   chats: any[];
-  whatsappTenant: {
-    companyName: string;
-    whatsappConnected: boolean;
-  };
+  whatsappTenant: { companyName: string; whatsappConnected: boolean };
   helpdeskTickets: any[];
   companyName: string;
-  tenantInfo: {
-    companyName: string;
-    subdomain: string;
-    subscriptionPlan: string;
-    extraAgents: number;
-  };
-  dashboardStats: {
-    totalLeads: number;
-    activeBookings: number;
-    closedSales: number;
-    totalProjects: number;
-    pendingTasks: number;
-  };
+  tenantInfo: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number };
+  dashboardStats: { totalLeads: number; activeBookings: number; closedSales: number; totalProjects: number; pendingTasks: number };
   recentLeads: any[];
   recentTasks: any[];
   tenantUsers: any[];
   currentUserRole: string;
 }
 
-// ─── مصفوفة الصلاحيات الكاملة لكل دور ───────────────────────────────────────
-// PLATFORM_ARCHITECT: monitor فقط — حظر تام من بيانات المستأجرين
-// ADMIN: كل التبويبات لشركته
-// SALES_MANAGER: معظم التبويبات ما عدا Settings
-// SALES_EMPLOYEE: تبويبات العمل الميداني فقط
-// MARKETING: تحليلات + عملاء + واتساب
-// READ_ONLY: قراءة فقط
-
-const ROLE_ALLOWED_TABS: Record<string, string[]> = {
+const ROLE_ALLOWED: Record<string, string[]> = {
   PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "settings", "helpdesk", "whatsapp"],
-  SALES_MANAGER: ["analytics", "leads", "projects", "calculator", "sales", "tasks", "helpdesk", "whatsapp"],
-  SALES_EMPLOYEE: ["leads", "tasks", "helpdesk", "calculator"],
-  MARKETING: ["analytics", "leads", "projects", "helpdesk", "whatsapp"],
-  READ_ONLY: ["analytics", "leads", "projects"],
+  ADMIN:              ["overview","operations","monitor","whatsapp","helpdesk","settings"],
+  SALES_MANAGER:      ["overview","operations","whatsapp","helpdesk"],
+  SALES_EMPLOYEE:     ["overview","operations","helpdesk"],
+  MARKETING:          ["overview","operations","whatsapp","helpdesk"],
+  READ_ONLY:          ["overview"],
 };
 
 export default function WarRoomCommandPageClient({
-  initialTab,
-  projects,
-  tickets,
-  tenants,
-  chats,
-  whatsappTenant,
-  helpdeskTickets,
-  companyName,
-  tenantInfo,
-  dashboardStats,
-  recentLeads,
-  recentTasks,
-  tenantUsers,
-  currentUserRole,
-}: WarRoomCommandPageClientProps) {
+  initialTab, projects, tickets, tenants, chats, whatsappTenant,
+  helpdeskTickets, companyName, tenantInfo, dashboardStats,
+  recentLeads, recentTasks, tenantUsers, currentUserRole,
+}: Props) {
   const { theme, lang } = useApp();
   const isDark = theme === "dark";
 
-  // ─── عزل PLATFORM_ARCHITECT ───────────────────────────────────────────────
   const isPlatformArchitect = currentUserRole === "PLATFORM_ARCHITECT";
-  const allowedTabs = ROLE_ALLOWED_TABS[currentUserRole] ?? ROLE_ALLOWED_TABS.READ_ONLY;
-  const defaultTab = isPlatformArchitect ? "monitor" : (initialTab || "analytics");
+  const allowed = ROLE_ALLOWED[currentUserRole] ?? ROLE_ALLOWED.READ_ONLY;
+  const defaultTab = isPlatformArchitect ? "monitor" : (initialTab || "overview");
 
-  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const urlTab = new URLSearchParams(window.location.search).get("tab") || defaultTab;
-    // ─── صمام الأمان: رفض أي تبويب خارج الصلاحيات ───────────────────────
-    const safeTab = allowedTabs.includes(urlTab) ? urlTab : defaultTab;
-    setActiveTab(safeTab);
-
-    const onPopState = () => {
+    const syncTab = () => {
       const t = new URLSearchParams(window.location.search).get("tab") || defaultTab;
-      setActiveTab(allowedTabs.includes(t) ? t : defaultTab);
+      setActiveTab(allowed.includes(t) ? t : defaultTab);
     };
-
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    syncTab();
+    window.addEventListener("popstate", syncTab);
+    return () => window.removeEventListener("popstate", syncTab);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // تطبيع تبويب overview → analytics
-  const activeTabVal = activeTab === "overview" ? "analytics" : activeTab;
+  const show = (tab: string) => activeTab === tab && allowed.includes(tab);
+  const dir  = lang === "AR" ? "rtl" : "ltr";
+  const font = { fontFamily: "Calibri, 'Cairo', sans-serif" };
 
-  const wrapperClass = `min-h-[85vh] transition-all duration-300 ${isDark ? "text-white" : "text-[#0b0f19]"}`;
-  const dir = lang === "AR" ? "rtl" : "ltr";
-  const fontStyle: React.CSSProperties = { fontFamily: "'Cairo', 'Inter', sans-serif" };
-
-  // ─── PLATFORM_ARCHITECT: لوحة المراقبة الحيوية — بيانات عقارية محجوبة ────
+  // ─── PLATFORM_ARCHITECT isolation ────────────────────────────────────────
   if (isPlatformArchitect) {
     return (
-      <div className={wrapperClass} dir={dir} style={fontStyle}>
-        <div className="mb-6 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-3 text-xs font-bold text-amber-400">
-          <span className="text-lg shrink-0">🔐</span>
+      <div dir={dir} style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19' }}>
+        <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>🔐</span>
           <div>
-            <div className="text-[11px] font-black text-amber-300">
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#f59e0b' }}>
               {lang === "AR" ? "وضع العزل السيبراني النشط" : "Cyber Isolation Mode — Active"}
             </div>
-            <div className="text-[10px] mt-0.5 text-amber-400/80">
+            <div style={{ fontSize: 10, color: '#92400e', marginTop: 3 }}>
               {lang === "AR"
-                ? "أنت مسجَّل بصلاحية مطور النخبة (Platform Architect). بيانات المستأجرين العقاريين: مُحجوبة تماماً — لا قراءة ولا استعراض."
-                : "You are logged in as Platform Architect. All tenant business data (leads, deals, projects, WhatsApp) is strictly denied for privacy protection."}
+                ? "أنت مسجَّل بصلاحية مطور النخبة. بيانات المستأجرين محجوبة تماماً."
+                : "You are logged in as Platform Architect. All tenant business data is strictly denied."}
             </div>
           </div>
         </div>
-        <MonitorView initialTickets={tickets} initialTenants={tenants} />
+        <div className="fade-in">
+          <MonitorView initialTickets={tickets} initialTenants={tenants} />
+        </div>
       </div>
     );
   }
 
-  // ─── بقية الأدوار: عرض التبويبات المسموح بها فقط ─────────────────────────
   return (
-    <div className={wrapperClass} dir={dir} style={fontStyle}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        * { font-family: 'Cairo', 'Inter', sans-serif !important; }
-        .fade-in { animation: fadeIn 0.2s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-      `}} />
+    <div dir={dir} style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19', minHeight: '80vh' }}>
+      <style dangerouslySetInnerHTML={{ __html: `.fade-in{animation:opsFade 0.2s ease;}@keyframes opsFade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}` }} />
 
-      {/* ─── Analytics ─────────────────────────────────────────────────────── */}
-      {activeTabVal === "analytics" && allowedTabs.includes("analytics") && (
+      {/* ── Case 1: Overview ──────────────────────────────────────────────── */}
+      {show("overview") && (
         <div className="fade-in">
           <DashboardView
             tenant={tenantInfo}
@@ -159,43 +111,41 @@ export default function WarRoomCommandPageClient({
         </div>
       )}
 
-      {/* ─── Leads ─────────────────────────────────────────────────────────── */}
-      {activeTabVal === "leads" && allowedTabs.includes("leads") && (
+      {/* ── Case 2: Operations — أصول + حاسبة + مبيعات + عملاء + مهام ───── */}
+      {show("operations") && (
         <div className="fade-in">
-          <LeadsView />
+          <OperationsComposite
+            projects={projects}
+            isDark={isDark}
+            lang={lang}
+            tenantInfo={tenantInfo}
+          />
         </div>
       )}
 
-      {/* ─── Projects ──────────────────────────────────────────────────────── */}
-      {activeTabVal === "projects" && allowedTabs.includes("projects") && (
+      {/* ── Case 3: Monitor ──────────────────────────────────────────────── */}
+      {show("monitor") && (
         <div className="fade-in">
-          <ProjectsView />
+          <MonitorView initialTickets={tickets} initialTenants={tenants} />
         </div>
       )}
 
-      {/* ─── Calculator ────────────────────────────────────────────────────── */}
-      {activeTabVal === "calculator" && allowedTabs.includes("calculator") && (
+      {/* ── Case 4: WhatsApp ─────────────────────────────────────────────── */}
+      {show("whatsapp") && (
         <div className="fade-in">
-          <CalculatorView />
+          <WhatsAppView initialChats={chats} tenant={whatsappTenant} />
         </div>
       )}
 
-      {/* ─── Sales ─────────────────────────────────────────────────────────── */}
-      {activeTabVal === "sales" && allowedTabs.includes("sales") && (
+      {/* ── Case 5: Helpdesk ─────────────────────────────────────────────── */}
+      {show("helpdesk") && (
         <div className="fade-in">
-          <SalesView />
+          <HelpdeskView initialTickets={helpdeskTickets} tenantName={companyName} />
         </div>
       )}
 
-      {/* ─── Tasks ─────────────────────────────────────────────────────────── */}
-      {activeTabVal === "tasks" && allowedTabs.includes("tasks") && (
-        <div className="fade-in">
-          <TasksView />
-        </div>
-      )}
-
-      {/* ─── Settings: ADMIN فقط ───────────────────────────────────────────── */}
-      {activeTabVal === "settings" && allowedTabs.includes("settings") && (
+      {/* ── Case 6: Settings ─────────────────────────────────────────────── */}
+      {show("settings") && (
         <div className="fade-in">
           <SettingsView
             tenant={tenantInfo}
@@ -204,20 +154,58 @@ export default function WarRoomCommandPageClient({
           />
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ─── Helpdesk ──────────────────────────────────────────────────────── */}
-      {activeTabVal === "helpdesk" && allowedTabs.includes("helpdesk") && (
-        <div className="fade-in">
-          <HelpdeskView initialTickets={helpdeskTickets} tenantName={companyName} />
-        </div>
-      )}
+// ─── Operations Composite: Module A + Module B ─────────────────────────────
+function OperationsComposite({
+  projects, isDark, lang, tenantInfo,
+}: { projects: any[]; isDark: boolean; lang: string; tenantInfo: any }) {
+  const [subTab, setSubTab] = useState<'assets'|'calculator'|'sales'|'leads'|'tasks'>('assets');
+  const dir = lang === 'AR' ? 'rtl' : 'ltr';
+  const font = { fontFamily: "Calibri, 'Cairo', sans-serif" };
 
-      {/* ─── WhatsApp ──────────────────────────────────────────────────────── */}
-      {activeTabVal === "whatsapp" && allowedTabs.includes("whatsapp") && (
-        <div className="fade-in">
-          <WhatsAppView initialChats={chats} tenant={whatsappTenant} />
-        </div>
-      )}
+  const SUB = [
+    { id: 'assets',     ar: 'الأصول العقارية',  en: 'Real Estate Assets', icon: '🏢' },
+    { id: 'calculator', ar: 'حاسبة التمويل',    en: 'Mortgage Calc',      icon: '🧮' },
+    { id: 'sales',      ar: 'أداء المبيعات',    en: 'Sales KPIs',         icon: '📊' },
+    { id: 'leads',      ar: 'العملاء المحتملين', en: 'Leads Pipeline',     icon: '👥' },
+    { id: 'tasks',      ar: 'المهام',            en: 'Tasks',              icon: '📋' },
+  ] as const;
+
+  return (
+    <div dir={dir} style={font}>
+      {/* Sub-tab row */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 24,
+        borderBottom: '1px solid rgba(115,83,52,0.2)',
+        overflowX: 'auto', paddingBottom: 0,
+      }}>
+        {SUB.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setSubTab(s.id)}
+            style={{
+              padding: '8px 16px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              background: 'transparent', border: 'none',
+              borderBottom: subTab === s.id ? '2px solid #735334' : '2px solid transparent',
+              color: subTab === s.id ? '#d4a97a' : '#475569',
+              display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', outline: 'none',
+            }}
+          >
+            <span>{s.icon}</span>
+            <span>{lang === 'AR' ? s.ar : s.en}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Module A: Asset Pipelines (ORCA CRM / SAMA DSR) */}
+      {subTab === 'assets'     && <div className="fade-in"><ProjectsView /></div>}
+      {subTab === 'calculator' && <div className="fade-in"><CalculatorView /></div>}
+      {subTab === 'sales'      && <div className="fade-in"><SalesView /></div>}
+      {subTab === 'leads'      && <div className="fade-in"><LeadsView /></div>}
+      {subTab === 'tasks'      && <div className="fade-in"><TasksView /></div>}
     </div>
   );
 }

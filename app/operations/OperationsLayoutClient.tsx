@@ -1,68 +1,11 @@
 // app/operations/OperationsLayoutClient.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/app/context/AppContext';
+import { useRouter } from 'next/navigation';
 
-const ROLE_TRANSLATIONS: Record<string, Record<string, string>> = {
-  AR: {
-    ADMIN: "المدير العام",
-    SALES_MANAGER: "مدير المبيعات",
-    SALES_EMPLOYEE: "مستشار عقاري",
-    MARKETING: "إدارة التسويق",
-    READ_ONLY: "مشاهدة فقط",
-  },
-  EN: {
-    ADMIN: "General Manager",
-    SALES_MANAGER: "Sales Manager",
-    SALES_EMPLOYEE: "Real Estate Consultant",
-    MARKETING: "Marketing Department",
-    READ_ONLY: "Read Only",
-  }
-};
-
-const TRANSLATIONS = {
-  AR: {
-    analytics: "لوحة التحليلات والتقارير",
-    leads: "العملاء المحتملين",
-    projects: "إدارة المشاريع العقارية",
-    calculator: "حاسبة التمويل السكني",
-    sales: "أداء المبيعات والمؤشرات",
-    tasks: "المهام والتذكيرات",
-    settings: "إعدادات النظام",
-    helpdesk: "مركز الدعم والوكيل مساعد",
-    whatsapp: "قناة الواتساب والوكلاء",
-    logout: "تسجيل الخروج",
-    currentCompany: "الشركة الحالية:",
-    professionalPlan: "الباقة الاحترافية (نشط)",
-    copyrights: "جميع الحقوق محفوظة لوكالة أوركا",
-    version: "رقم الإصدار ١.٠",
-    alertTitle: "⚠️ تنبيه إداري: بيانات ملف منشأتك غير مكتملة حالياً!",
-    alertAction: "[ اضغط هنا لتعبئة وتنشيط ملف منشأتك العقارية الآن ]",
-    footerCopyrights: "جميع الحقوق محفوظة لوكالة أوركا CRM © ٢٠٢٦"
-  },
-  EN: {
-    analytics: "Analytics & Reporting Dashboard",
-    leads: "Investment Lead Pipeline",
-    projects: "Real Estate Asset Portfolio",
-    calculator: "Advanced Mortgage Calculator",
-    sales: "Sales Performance & KPIs",
-    tasks: "Task & Field Ledger",
-    settings: "System & SaaS Settings",
-    helpdesk: "Support Center & AI Helpdesk",
-    whatsapp: "WhatsApp Integration Channel",
-    logout: "Logout",
-    currentCompany: "Current Company:",
-    professionalPlan: "Professional Plan (Active)",
-    copyrights: "All rights reserved to Orca Agency",
-    version: "Version 1.0",
-    alertTitle: "⚠️ Administrative Alert: Your tenant profile is currently incomplete!",
-    alertAction: "[ Click here to fill and activate your real estate profile now ]",
-    footerCopyrights: "All rights reserved to Orca CRM © 2026"
-  }
-};
-
-interface OperationsLayoutClientProps {
+interface Props {
   initialName: string;
   userRoleKey: string;
   isSuperAdmin: boolean;
@@ -72,192 +15,258 @@ interface OperationsLayoutClientProps {
   children: React.ReactNode;
 }
 
-export default function OperationsLayoutClient({
-  initialName,
-  userRoleKey,
-  isSuperAdmin,
-  companyName,
-  isNewTenant,
-  logoutAction,
-  children,
-}: OperationsLayoutClientProps) {
-  const { theme, lang } = useApp();
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
-  const isDark = theme === 'dark';
-  
-  const [activeTab, setActiveTab] = React.useState('analytics');
+const ROLE_TABS: Record<string, string[]> = {
+  PLATFORM_ARCHITECT: ['monitor'],
+  ADMIN:              ['overview','operations','monitor','whatsapp','helpdesk','settings'],
+  SALES_MANAGER:      ['overview','operations','whatsapp','helpdesk'],
+  SALES_EMPLOYEE:     ['overview','operations','helpdesk'],
+  MARKETING:          ['overview','operations','whatsapp','helpdesk'],
+  READ_ONLY:          ['overview'],
+};
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const tab = new URLSearchParams(window.location.search).get('tab') || 'analytics';
-      setActiveTab(tab);
-      
-      const handleLocationChange = () => {
-        const currentTab = new URLSearchParams(window.location.search).get('tab') || 'analytics';
-        setActiveTab(currentTab);
-      };
-      
-      window.addEventListener('popstate', handleLocationChange);
-      return () => window.removeEventListener('popstate', handleLocationChange);
-    }
+const TAB_LABELS: Record<string, { ar: string; en: string; icon: string }> = {
+  overview:    { ar: 'نظرة عامة',        en: 'Overview',        icon: '📈' },
+  operations:  { ar: 'العمليات والأصول', en: 'Operations',      icon: '🏢' },
+  monitor:     { ar: 'مراقبة الاشتراكات',en: 'Monitor',         icon: '📡' },
+  whatsapp:    { ar: 'الواتساب',         en: 'WhatsApp',        icon: '💬' },
+  helpdesk:    { ar: 'الدعم الفني',      en: 'Helpdesk',        icon: '🛠️' },
+  settings:    { ar: 'الإعدادات',        en: 'Settings',        icon: '⚙️' },
+};
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Calibri:wght@400;600;700;800&display=swap');
+  *, *::before, *::after { font-family: Calibri, 'Cairo', sans-serif !important; box-sizing: border-box; }
+  .ops-tab { transition: all 0.18s ease; cursor: pointer; }
+  .ops-tab:hover { background: rgba(115,83,52,0.15) !important; color: #d4a97a !important; }
+  .ops-tab.active {
+    background: rgba(115,83,52,0.22) !important;
+    border-bottom: 2px solid #735334 !important;
+    color: #d4a97a !important;
+    font-weight: 800 !important;
+  }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; }
+  .fade-in { animation: opsFade 0.2s ease; }
+  @keyframes opsFade { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:#0d1020; }
+  ::-webkit-scrollbar-thumb { background:#735334; border-radius:3px; }
+`;
+
+export default function OperationsLayoutClient({
+  initialName, userRoleKey, isSuperAdmin, companyName, isNewTenant, logoutAction, children
+}: Props) {
+  const { lang } = useApp();
+  const router = useRouter();
+  const dir = lang === 'AR' ? 'rtl' : 'ltr';
+
+  const isPlatformArchitect = userRoleKey === 'PLATFORM_ARCHITECT';
+  const allowedTabs = ROLE_TABS[userRoleKey] ?? ROLE_TABS.READ_ONLY;
+  const defaultTab = isPlatformArchitect ? 'monitor' : allowedTabs[0];
+
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab') || defaultTab;
+    setActiveTab(allowedTabs.includes(t) ? t : defaultTab);
+    const onPop = () => {
+      const pt = new URLSearchParams(window.location.search).get('tab') || defaultTab;
+      setActiveTab(allowedTabs.includes(pt) ? pt : defaultTab);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId);
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname !== '/operations') {
-        window.location.href = `/operations?tab=${tabId}`;
-      } else {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', tabId);
-        window.history.pushState(null, '', url.pathname + url.search);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      }
-    }
+  const switchTab = (tab: string) => {
+    if (!allowedTabs.includes(tab)) return;
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState(null, '', url.pathname + url.search);
   };
 
-  // ─── مصفوفة الصلاحيات: PLATFORM_ARCHITECT يرى Monitor فقط ─────────────────
-  const isPlatformArchitect = userRoleKey === 'PLATFORM_ARCHITECT';
-
-  // قائمة التبويبات المتاحة بحسب دور المستخدم
-  const ALL_MENU_ITEMS = [
-    { id: 'analytics', titleAr: 'لوحة التحليلات والتقارير', titleEn: 'Analytics & Reports', icon: '📈', roles: ['ADMIN', 'SALES_MANAGER', 'MARKETING', 'READ_ONLY'] },
-    { id: 'leads', titleAr: 'العملاء المحتملين', titleEn: 'Prospective Leads', icon: '👥', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE', 'MARKETING'] },
-    { id: 'projects', titleAr: 'إدارة المشاريع العقارية', titleEn: 'Real Estate Projects', icon: '🏢', roles: ['ADMIN', 'SALES_MANAGER', 'MARKETING', 'READ_ONLY'] },
-    { id: 'calculator', titleAr: 'حاسبة التمويل السكني', titleEn: 'Mortgage Calculator', icon: '🧮', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE'] },
-    { id: 'sales', titleAr: 'أداء المبيعات والمؤشرات', titleEn: 'Sales Performance', icon: '📊', roles: ['ADMIN', 'SALES_MANAGER'] },
-    { id: 'tasks', titleAr: 'المهام والتذكيرات', titleEn: 'Tasks & Reminders', icon: '📋', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE'] },
-    { id: 'settings', titleAr: 'إعدادات النظام', titleEn: 'System Settings', icon: '⚙️', roles: ['ADMIN'] },
-    { id: 'helpdesk', titleAr: 'مركز الدعم والوكيل مساعد', titleEn: 'Support Center', icon: '🛠️', roles: ['ADMIN', 'SALES_MANAGER', 'SALES_EMPLOYEE', 'MARKETING'] },
-    { id: 'whatsapp', titleAr: 'قناة الواتساب والوكلاء', titleEn: 'WhatsApp Channel', icon: '💬', roles: ['ADMIN', 'SALES_MANAGER'] },
-  ];
-
-  // ─── PLATFORM_ARCHITECT: شريط جانبي مخصص بلوحة المراقبة فقط ────────────
-  const ARCHITECT_MENU = [
-    { id: 'monitor', titleAr: 'مراقبة الاشتراكات والنظام', titleEn: 'System & Subscription Monitor', icon: '📡' },
-  ];
-
-  const menuItems = isPlatformArchitect ? ARCHITECT_MENU : ALL_MENU_ITEMS.filter(item => item.roles.includes(userRoleKey));
-
-  const roleTranslated = ROLE_TRANSLATIONS[lang]?.[userRoleKey] || ROLE_TRANSLATIONS.AR[userRoleKey] || userRoleKey;
+  const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+    await (logoutAction as unknown as () => Promise<void>)();
+    router.push('/login');
+  };
 
   return (
-    <div 
-      className={`h-screen w-full overflow-hidden flex flex-col antialiased transition-colors duration-300 selection:bg-indigo-500/20 selection:text-indigo-650 ${
-        isDark ? 'bg-[#0b0f19] text-[#e2e8f0]' : 'bg-[#f9f9fb] text-[#0f172a]'
-      }`} 
-      dir={lang === 'AR' ? 'rtl' : 'ltr'}
+    <div
+      dir={dir}
+      style={{
+        minHeight: '100vh',
+        background: '#0b0f19',
+        color: '#e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        WebkitFontSmoothing: 'antialiased',
+      }}
     >
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        
-        {/* Sidebar */}
-        <aside className={`w-[240px] shrink-0 flex flex-col border-l border-r transition-colors duration-300 ${
-          isDark 
-            ? 'bg-[#0d1220] border-slate-800/80 text-white' 
-            : 'bg-white border-slate-200 shadow-sm'
-        }`}>
-          {/* Header */}
-          <div className={`h-16 flex flex-col items-start justify-center px-6 border-b select-none ${
-            isDark ? 'border-slate-800' : 'border-slate-200'
-          }`}>
-            {isPlatformArchitect ? (
-              <>
-                <span className="text-[9px] font-black tracking-widest uppercase text-amber-500 mb-0.5">
-                  PLATFORM ARCHITECT
-                </span>
-                <span className={`text-[10px] font-black tracking-wider ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                  ORCA CRM — Admin
-                </span>
-              </>
-            ) : (
-              <span className={`text-[11px] font-black tracking-widest uppercase ${
-                isDark ? 'text-indigo-400' : 'text-indigo-600'
-              }`}>
-                {lang === 'AR' ? 'أوركا العقارية ORCA' : 'ORCA Real Estate'}
-              </span>
-            )}
-          </div>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-
-          {/* Menu */}
-          <nav className="flex-1 py-4 space-y-1 overflow-y-auto px-3">
-            {menuItems.map((item) => {
-              const active = activeTab === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabClick(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                    active
-                      ? isDark
-                        ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-black shadow-md'
-                        : 'bg-indigo-50 text-indigo-650 border border-indigo-150 font-black shadow-sm'
-                      : isDark
-                        ? 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
-                        : 'text-slate-650 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent'
-                  }`}
-                  style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}
-                >
-                  <span className="text-sm">{item.icon}</span>
-                  <span>{lang === 'AR' ? item.titleAr : item.titleEn}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Footer — تسجيل الخروج + نسخة */}
-          <div className={`p-3 border-t shrink-0 space-y-1 ${
-            isDark ? 'border-slate-800' : 'border-slate-200'
-          }`}>
-            {/* زر تسجيل الخروج */}
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
-                  isDark
-                    ? 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border-transparent hover:border-rose-800/40'
-                    : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-transparent hover:border-rose-200'
-                }`}
-                style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}
-              >
-                <span className="text-sm">🚪</span>
-                <span>{lang === 'AR' ? 'تسجيل الخروج' : 'Sign Out'}</span>
-              </button>
-            </form>
-            {/* نسخة النظام */}
-            <p className={`text-[9px] text-center select-none font-bold px-2 ${
-              isDark ? 'text-slate-700' : 'text-slate-400'
-            }`}>
-              {t.version}
-            </p>
-          </div>
-        </aside>
-
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {/* Tenant Profile Alert Warning Banner */}
-          {isNewTenant && (
-            <div className="bg-amber-500 text-slate-950 text-[10px] font-black py-2.5 px-6 text-center animate-pulse flex items-center justify-center gap-1.5 border-b border-amber-600/30 shrink-0 select-none">
-              <span>{t.alertTitle}</span>
-              <a href="/operations/onboarding" className="underline hover:text-white transition-colors font-bold">
-                {t.alertAction}
-              </a>
-            </div>
+      {/* ══════════════════════════════════════════════════════════
+          GLOBAL STATUS HEADER — 100% width, 4 metrics
+      ══════════════════════════════════════════════════════════ */}
+      <div style={{
+        width: '100%',
+        background: 'rgba(13,16,32,0.95)',
+        borderBottom: '1px solid rgba(115,83,52,0.3)',
+        backdropFilter: 'blur(12px)',
+        padding: '0 32px',
+        height: 44,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 60,
+        flexShrink: 0,
+      }}>
+        {/* شعار */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/logo.png" alt="ORCA" style={{ width: 26, height: 26, objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(115,83,52,0.5))' }} />
+          <span style={{ fontSize: 11, fontWeight: 900, color: '#d4a97a', letterSpacing: 1 }}>ORCA CRM</span>
+          {companyName && (
+            <span style={{ fontSize: 9, color: '#475569', fontWeight: 700 }}>/ {companyName}</span>
           )}
+        </div>
 
-          {/* Core dynamic content viewer */}
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col justify-start" style={{ overscrollBehavior: 'contain' }}>
-            <div className="w-full">
-              {children}
-            </div>
-            
-            <footer className="mt-8 border-t border-gray-250/20 pt-4 pb-2 text-center text-[10px] text-slate-400 select-none font-bold shrink-0">
-              <p>{t.footerCopyrights}</p>
-            </footer>
-          </div>
-        </main>
+        {/* 4 مقاييس الحالة */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span className="status-pill" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'opsFade 2s infinite' }} />
+            🟢 {lang === 'AR' ? 'صحة القاعدة' : 'DB Health'}
+          </span>
+          <span className="status-pill" style={{ background: 'rgba(0,123,255,0.1)', color: '#5aabff', border: '1px solid rgba(0,123,255,0.2)' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#5aabff', display: 'inline-block' }} />
+            ⚡ {lang === 'AR' ? 'صحة السيرفر' : 'Server OK'}
+          </span>
+          <span className="status-pill" style={{ background: 'rgba(115,83,52,0.12)', color: '#d4a97a', border: '1px solid rgba(115,83,52,0.25)' }}>
+            ☁️ {lang === 'AR' ? 'مراقبة فيرسيل' : 'Vercel Live'}
+          </span>
+          <span className="status-pill" style={{ background: 'rgba(255,255,255,0.04)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.07)' }}>
+            🔔 {lang === 'AR' ? 'الإشعارات' : 'Notifications'}
+          </span>
+        </div>
+
+        {/* اسم المستخدم */}
+        <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, textAlign: dir === 'rtl' ? 'right' : 'left' }}>
+          {initialName}
+          {isSuperAdmin && (
+            <span style={{ marginRight: 6, marginLeft: 6, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontSize: 8, fontWeight: 900 }}>ARCH</span>
+          )}
+        </div>
       </div>
+
+      {/* New Tenant Alert */}
+      {isNewTenant && !isPlatformArchitect && (
+        <div style={{ background: '#f59e0b', color: '#0b0f19', fontSize: 10, fontWeight: 900, padding: '9px 32px', textAlign: 'center', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <span>⚠️ {lang === 'AR' ? 'بيانات ملف منشأتك غير مكتملة!' : 'Your tenant profile is incomplete!'}</span>
+          <a href="/operations/onboarding" style={{ textDecoration: 'underline', fontWeight: 700 }}>
+            {lang === 'AR' ? 'اضغط هنا للتفعيل' : 'Click here to activate'}
+          </a>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          HORIZONTAL NAVBAR — 100% width tab row
+      ══════════════════════════════════════════════════════════ */}
+      <div style={{
+        width: '100%',
+        background: 'rgba(11,15,25,0.98)',
+        borderBottom: '1px solid rgba(115,83,52,0.2)',
+        display: 'flex',
+        alignItems: 'stretch',
+        flexShrink: 0,
+        overflowX: 'auto',
+        paddingLeft: 24,
+        paddingRight: 24,
+        zIndex: 50,
+      }}>
+        {allowedTabs.map(tab => {
+          const lbl = TAB_LABELS[tab];
+          if (!lbl) return null;
+          return (
+            <button
+              key={tab}
+              onClick={() => switchTab(tab)}
+              className={`ops-tab${activeTab === tab ? ' active' : ''}`}
+              style={{
+                padding: '12px 20px',
+                fontSize: 11,
+                fontWeight: 700,
+                color: activeTab === tab ? '#d4a97a' : '#475569',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid #735334' : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                whiteSpace: 'nowrap',
+                outline: 'none',
+              }}
+            >
+              <span style={{ fontSize: 13 }}>{lbl.icon}</span>
+              <span>{lang === 'AR' ? lbl.ar : lbl.en}</span>
+            </button>
+          );
+        })}
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* زر تسجيل الخروج — نهاية الـ NavBar */}
+        <button
+          onClick={handleLogout}
+          className="ops-tab"
+          style={{
+            padding: '12px 20px',
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#f87171',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 7,
+            whiteSpace: 'nowrap',
+            outline: 'none',
+          }}
+        >
+          🔒 {lang === 'AR' ? 'تسجيل الخروج' : 'Sign Out'}
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          MAIN CONTENT — full viewport width, no aside
+      ══════════════════════════════════════════════════════════ */}
+      <main style={{
+        flex: 1,
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        padding: '28px 32px',
+        width: '100%',
+      }}>
+        {/* حقن activeTab في children عبر data attribute */}
+        <div data-active-tab={activeTab} style={{ width: '100%' }}>
+          {children}
+        </div>
+        <footer style={{
+          marginTop: 40,
+          borderTop: '1px solid rgba(115,83,52,0.15)',
+          paddingTop: 16,
+          paddingBottom: 8,
+          textAlign: 'center',
+          fontSize: 9,
+          color: '#334155',
+          fontWeight: 700,
+        }}>
+          {lang === 'AR' ? 'جميع الحقوق محفوظة لأوركا CRM © ٢٠٢٦' : 'All rights reserved to Orca CRM © 2026'}
+        </footer>
+      </main>
     </div>
   );
 }
