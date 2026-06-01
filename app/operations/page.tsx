@@ -24,102 +24,14 @@ export default async function WarRoomCommandPage({
   }
 
   const currentUserRole = (session.role as string) || "READ_ONLY";
-  const isPlatformArchitect = currentUserRole === "PLATFORM_ARCHITECT";
 
   // 1. Resolve active tab parameter
   const resolvedParams = await searchParams;
-  // ─── PLATFORM_ARCHITECT: force tab=monitor دائماً ────────────────────────
-  const initialTab = isPlatformArchitect ? "monitor" : (resolvedParams?.tab || "overview");
+  const initialTab = resolvedParams?.tab || "overview";
 
-  // ─── Layer 1: بيانات متاحة للجميع (System-level) ──────────────────────────
-  // الـ tickets والـ tenants هي بيانات النظام (ليست بيانات مستثمرين بعينهم)
-  // PLATFORM_ARCHITECT يحتاجها لـ MonitorView
+  // ─── Layer 2: بيانات المستأجر ────────────────────────────
+  // جلب بيانات المستأجر المحدد 
 
-  // 2. Fetch support monitor tickets (System-level — لا تحتوي بيانات مستثمرين)
-  const allTickets = await prisma.ticket.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      tenant: {
-        select: {
-          companyName: true,
-          subdomain: true,
-        }
-      }
-    }
-  });
-  const tickets = allTickets.map(t => ({
-    id: t.id,
-    tenantId: t.tenantId,
-    title: t.title,
-    description: t.description,
-    status: t.status,
-    aiResponse: t.aiResponse,
-    createdAt: t.createdAt.toISOString(),
-    updatedAt: t.updatedAt.toISOString(),
-    tenant: {
-      companyName: t.tenant?.companyName || "",
-      subdomain: t.tenant?.subdomain || "",
-    }
-  }));
-
-  // 3. Fetch all tenants (System-level — إحصائيات الباقات)
-  const allTenants = await prisma.tenant.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: {
-        select: {
-          users: true,
-          projects: true,
-          leads: true,
-        }
-      }
-    }
-  });
-  const tenants = allTenants.map(t => ({
-    id: t.id,
-    companyName: t.companyName,
-    subdomain: t.subdomain,
-    subscriptionPlan: t.subscriptionPlan,
-    isActive: t.isActive,
-    extraAgents: t.extraAgents,
-    whatsappConnected: t.whatsappConnected,
-    createdAt: t.createdAt.toISOString(),
-    _count: t._count,
-  }));
-
-  // ─── Layer 2: بيانات المستأجر — محجوبة عن PLATFORM_ARCHITECT ─────────────
-  // إذا كان الدور PLATFORM_ARCHITECT → نرجع arrays فارغة (عزل تام)
-  if (isPlatformArchitect) {
-    return (
-      <WarRoomCommandPageClient
-        initialTab="monitor"
-        projects={[]}
-        tickets={tickets}
-        tenants={tenants}
-        chats={[]}
-        whatsappTenant={{ companyName: "", whatsappConnected: false }}
-        helpdeskTickets={[]}
-        companyName=""
-        tenantInfo={{
-          companyName: "ORCA Platform",
-          subdomain: "orca",
-          subscriptionPlan: "gold",
-          extraAgents: 0,
-        }}
-        dashboardStats={{
-          totalLeads: 0,
-          activeBookings: 0,
-          closedSales: 0,
-          totalProjects: 0,
-          pendingTasks: 0,
-        }}
-        recentLeads={[]}
-        recentTasks={[]}
-        tenantUsers={[]}
-        currentUserRole={currentUserRole}
-      />
-    );
-  }
 
   // ─── بقية الأدوار: جلب بيانات المستأجر المحدد ────────────────────────────
 
@@ -240,8 +152,8 @@ export default async function WarRoomCommandPage({
     <WarRoomCommandPageClient
       initialTab={initialTab}
       projects={projects}
-      tickets={tickets}
-      tenants={tenants}
+      tickets={[]}
+      tenants={[]}
       chats={chats}
       whatsappTenant={whatsappTenant}
       helpdeskTickets={helpdeskTickets}
@@ -251,6 +163,7 @@ export default async function WarRoomCommandPage({
         subdomain: activeTenant.subdomain,
         subscriptionPlan: activeTenant.subscriptionPlan,
         extraAgents: activeTenant.extraAgents,
+        growthWarning: activeTenant.growthWarning,
       }}
       dashboardStats={dashboardStats}
       recentLeads={recentLeads}

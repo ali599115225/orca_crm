@@ -5,7 +5,7 @@ import { logoutAction } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
-import OperationsLayoutClient from './OperationsLayoutClient';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export const metadata = {
   title: 'لوحة التحكم - أوركا',
@@ -38,15 +38,8 @@ export default async function OperationsLayout({
   const userRoleKey = session.role as string || "READ_ONLY";
 
   return (
-    <OperationsLayoutClient
-      initialName={session.name as string || "أحمد الغامدي"}
-      userRoleKey={userRoleKey}
-      isSuperAdmin={isSuperAdmin}
-      companyName={rawCompanyName}
-      isNewTenant={isNewTenant}
-      logoutAction={logoutAction}
-    >
+    <DashboardLayout currentUserRole={userRoleKey}>
       {children}
-    </OperationsLayoutClient>
+    </DashboardLayout>
   );
 }

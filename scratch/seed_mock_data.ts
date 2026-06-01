@@ -29,13 +29,38 @@ async function main() {
   console.log("🔑 جاري تشفير كلمة المرور الافتراضية...");
   const securePassword = await bcrypt.hash("123456", 10);
 
+  console.log("🧹 جاري تنظيف الجداول العالمية لتجنب قيود العلاقات (Foreign Keys)...");
+  await prisma.agentTelemetryLog.deleteMany({});
+  await prisma.usageMeter.deleteMany({});
+  await prisma.agentSlot.deleteMany({});
+  await prisma.payrollCommission.deleteMany({});
+  await prisma.installment.deleteMany({});
+  await prisma.contract.deleteMany({});
+  await prisma.unit.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.leadActivity.deleteMany({});
+  await prisma.lead.deleteMany({});
+  await prisma.project.deleteMany({});
+  await prisma.ticket.deleteMany({});
+
   // 1. تحديث باقة المطور العقاري الخاصة بالمستخدم (شركة العلي العقارية) لتفعيل الوكلاء
   console.log("🏢 جاري تهيئة حساب شركة العلي العقارية (النظام الخاص بك)...");
-  const myTenant = await prisma.tenant.findUnique({
+  let myTenant = await prisma.tenant.findUnique({
     where: { subdomain: "orca-crm-one" }
   });
 
-  if (myTenant) {
+  if (!myTenant) {
+    myTenant = await prisma.tenant.create({
+      data: {
+        companyName: "شركة العلي العقارية",
+        subdomain: "orca-crm-one",
+        subscriptionPlan: "gold",
+        whatsappConnected: true,
+        extraAgents: 10,
+        isActive: true,
+      }
+    });
+  } else {
     await prisma.tenant.update({
       where: { id: myTenant.id },
       data: {
@@ -45,122 +70,248 @@ async function main() {
         isActive: true,
       }
     });
-
-    // حذف البيانات القديمة لشركة العلي لإعادة تغذيتها بشكل فخم ومقنع
-    await prisma.task.deleteMany({ where: { tenantId: myTenant.id } });
-    await prisma.leadActivity.deleteMany({ where: { tenantId: myTenant.id } });
-    await prisma.lead.deleteMany({ where: { tenantId: myTenant.id } });
-    await prisma.project.deleteMany({ where: { tenantId: myTenant.id } });
-    await prisma.ticket.deleteMany({ where: { tenantId: myTenant.id } });
-
-    // إضافة 15 مشروع لشركة العلي
-    const myProjectsData = Array.from({ length: 15 }).map((_, i) => ({
-      tenantId: myTenant.id,
-      name: `مجمع النخبة السكني ${100 + i + 1}`,
-      city: i % 3 === 0 ? "الرياض" : i % 3 === 1 ? "جدة" : "الدمام",
-      status: i % 4 === 0 ? "PLANNING" : i % 4 === 1 ? "UNDER_CONSTRUCTION" : i % 4 === 2 ? "COMPLETED" : "SOLD_OUT",
-      unitsTotal: 80 + i * 10,
-      unitsSold: 40 + i * 5,
-      unitsBooked: 10 + i,
-      minPrice: 1100000 + i * 100000,
-      maxPrice: 2200000 + i * 150000,
-    }));
-    await prisma.project.createMany({ data: myProjectsData });
-    const myProjects = await prisma.project.findMany({ where: { tenantId: myTenant.id } });
-
-    // جلب مستخدمين مبيعات شركة العلي لربط الليدات بهم
-    const myUsers = await prisma.user.findMany({ where: { tenantId: myTenant.id } });
-    
-    // في حال عدم وجود موظفي مبيعات، نقوم بإنشائهم
-    let salesUser = myUsers.find(u => u.role === "SALES_EMPLOYEE" || u.role === "ADMIN");
-    if (!salesUser) {
-      salesUser = await prisma.user.create({
-        data: {
-          tenantId: myTenant.id,
-          name: "عبد الله المالكي",
-          email: "sales.ali@outlook.sa",
-          passwordHash: securePassword,
-          role: "SALES_EMPLOYEE",
-        }
-      });
-    }
-
-    // إضافة 35 عميل مهتم لشركة العلي
-    const myLeadsData = Array.from({ length: 35 }).map((_, i) => {
-      const proj = myProjects[i % myProjects.length];
-      const randomDays = Math.floor(Math.random() * 30);
-      const createdAt = new Date();
-      createdAt.setDate(createdAt.getDate() - randomDays);
-
-      return {
-        tenantId: myTenant.id,
-        projectId: proj.id,
-        assignedTo: salesUser?.id,
-        firstName: `عميل تجريبي ${i + 1}`,
-        lastName: `العلي`,
-        phone: `0555555${i.toString().padStart(3, "0")}`,
-        email: `client${i}@example.com`,
-        city: proj.city,
-        source: LEAD_SOURCES[i % LEAD_SOURCES.length],
-        status: LEAD_STATUSES[i % LEAD_STATUSES.length] as any,
-        leadScore: 40 + (i * 3) % 60,
-        createdAt,
-      };
-    });
-
-    for (const leadData of myLeadsData) {
-      await prisma.lead.create({ data: leadData });
-    }
-
-    const myLeads = await prisma.lead.findMany({ where: { tenantId: myTenant.id } });
-
-    // إضافة أنشطة ومهام لشركة العلي
-    for (const lead of myLeads.slice(0, 15)) {
-      await prisma.leadActivity.create({
-        data: {
-          tenantId: myTenant.id,
-          leadId: lead.id,
-          userId: salesUser?.id,
-          activityType: "CALL_COMPLETED",
-          description: "تم الاتصال بالعميل وشرح تفاصيل المشروع ومناقشة الدفعة الأولى.",
-        }
-      });
-
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 2);
-      await prisma.task.create({
-        data: {
-          tenantId: myTenant.id,
-          leadId: lead.id,
-          assignedTo: salesUser!.id,
-          title: "متابعة العميل هاتفياً وتأكيد موعد الزيارة للموقع",
-          dueDate,
-          priority: "HIGH",
-          status: "PENDING",
-        }
-      });
-    }
-
-    // إضافة تذاكر دعم لشركة العلي
-    await prisma.ticket.createMany({
-      data: [
-        {
-          tenantId: myTenant.id,
-          title: "مشكلة في ربط خط الواتساب السحابي",
-          description: "تظهر علامة فصل الاتصال عند تفعيل الرمز الشريطي QR Code في صفحة الإعدادات.",
-          status: "OPEN",
-        },
-        {
-          tenantId: myTenant.id,
-          title: "استفسار عن طريقة ترقية سعة الوكلاء",
-          description: "نحتاج لإضافة وكيلين إضافيين للباقة الذهبية، هل الدفع يكون شهرياً أم سنوياً؟",
-          status: "OPEN",
-        }
-      ]
-    });
-
-    console.log("✅ تمت تهيئة وتغذية حساب شركة العلي العقارية بنجاح!");
   }
+
+  // حذف البيانات القديمة لشركة العلي لتجنب تعارض العلاقات وإعادة تغذيتها بنظافة
+  await prisma.agentTelemetryLog.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.usageMeter.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.agentSlot.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.payrollCommission.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.installment.deleteMany({ where: { contract: { unit: { project: { tenantId: myTenant.id } } } } });
+  await prisma.contract.deleteMany({ where: { unit: { project: { tenantId: myTenant.id } } } });
+  await prisma.unit.deleteMany({ where: { project: { tenantId: myTenant.id } } });
+  await prisma.task.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.leadActivity.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.lead.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.project.deleteMany({ where: { tenantId: myTenant.id } });
+  await prisma.ticket.deleteMany({ where: { tenantId: myTenant.id } });
+
+  // إضافة وكلاء شركة العلي (ساهر وسند)
+  console.log("🤖 جاري تهيئة وكلاء النظام (ساهر وسند) لشركة العلي...");
+  const slotSaher = await prisma.agentSlot.create({
+    data: {
+      tenantId: myTenant.id,
+      slotNumber: 1,
+      agentType: "SAHER",
+      isActive: true,
+    }
+  });
+
+  const slotSanad = await prisma.agentSlot.create({
+    data: {
+      tenantId: myTenant.id,
+      slotNumber: 2,
+      agentType: "SANAD",
+      isActive: true,
+    }
+  });
+
+  // إضافة مقاييس الاستخدام لوكلاء شركة العلي
+  await prisma.usageMeter.createMany({
+    data: [
+      {
+        tenantId: myTenant.id,
+        agentSlotId: slotSaher.id,
+        metricType: "RUNS",
+        limitValue: 1000,
+        usageValue: 245,
+        resetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+      {
+        tenantId: myTenant.id,
+        agentSlotId: slotSanad.id,
+        metricType: "DISPATCHES",
+        limitValue: 500,
+        usageValue: 245,
+        resetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }
+    ]
+  });
+
+  // إضافة 15 مشروع لشركة العلي
+  const myProjectsData = Array.from({ length: 15 }).map((_, i) => ({
+    tenantId: myTenant!.id,
+    name: `مجمع النخبة السكني ${100 + i + 1}`,
+    city: i % 3 === 0 ? "الرياض" : i % 3 === 1 ? "جدة" : "الدمام",
+    status: (i % 4 === 0 ? "PLANNING" : i % 4 === 1 ? "UNDER_CONSTRUCTION" : i % 4 === 2 ? "COMPLETED" : "SOLD_OUT") as any,
+    unitsTotal: 80 + i * 10,
+    unitsSold: 40 + i * 5,
+    unitsBooked: 10 + i,
+    minPrice: 1100000 + i * 100000,
+    maxPrice: 2200000 + i * 150000,
+  }));
+  await prisma.project.createMany({ data: myProjectsData });
+  const myProjects = await prisma.project.findMany({ where: { tenantId: myTenant.id } });
+
+  // جلب مستخدمين مبيعات شركة العلي لربط الليدات بهم
+  const myUsers = await prisma.user.findMany({ where: { tenantId: myTenant.id } });
+  
+  // في حال عدم وجود موظفي مبيعات، نقوم بإنشائهم
+  let salesUser = myUsers.find(u => u.role === "SALES_EMPLOYEE" || u.role === "ADMIN");
+  if (!salesUser) {
+    salesUser = await prisma.user.create({
+      data: {
+        tenantId: myTenant.id,
+        name: "عبد الله المالكي",
+        email: "sales.ali@outlook.sa",
+        passwordHash: securePassword,
+        role: "SALES_EMPLOYEE",
+      }
+    });
+  }
+
+  // إضافة 245 وحدة عقاريةSold لتكوين العقود
+  const soldUnitsData = Array.from({ length: 245 }).map((_, i) => ({
+    projectId: myProjects[i % myProjects.length].id,
+    unitNumber: `U-${300 + i}`,
+    floorPosition: (i % 5) + 1,
+    priceSar: 1200000 + (i % 10) * 50000,
+    status: "Sold",
+  }));
+  await prisma.unit.createMany({ data: soldUnitsData });
+  const mySoldUnits = await prisma.unit.findMany({
+    where: { project: { tenantId: myTenant.id } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // إضافة 245 عقد عقاري نشط
+  const contractsData = mySoldUnits.map((unit, i) => ({
+    unitId: unit.id,
+    buyerName: `مستأجر عقاري ${i + 1}`,
+    buyerPhone: `0555555${i.toString().padStart(3, "0")}`,
+    totalVolumeSar: unit.priceSar,
+    signedAt: new Date(Date.now() - (i % 30) * 24 * 60 * 60 * 1000),
+  }));
+  await prisma.contract.createMany({ data: contractsData });
+  const myContracts = await prisma.contract.findMany({
+    where: { unit: { project: { tenantId: myTenant.id } } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // إضافة أقساط عقارية بقيمة محصلة إجمالية تبلغ 3,248,500 ر.س بالضبط
+  // 244 قسط بقيمة 13,260 ر.س، وقسط واحد بقيمة 13,060 ر.س
+  // وأقساط متأخرة بقيمة 400,000 ر.س (40 قسط بقيمة 10,000 ر.س)
+  const installmentsData = [];
+  for (let i = 0; i < 245; i++) {
+    const contract = myContracts[i];
+    const amount = i === 244 ? 13060 : 13260;
+    
+    // الأقساط المحصلة
+    installmentsData.push({
+      contractId: contract.id,
+      installmentNumber: 1,
+      amountSar: amount,
+      dueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // مستحقة قديماً ومسددة
+      paymentStatus: "Paid",
+    });
+
+    // إضافة أقساط معلقة (متأخرة) لـ 40 عقداً فقط بقيمة 10,000 ر.س لكل منها ليصبح المجموع 400,000 ر.س
+    if (i < 40) {
+      installmentsData.push({
+        contractId: contract.id,
+        installmentNumber: 2,
+        amountSar: 10000,
+        dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // متأخرة
+        paymentStatus: "Pending",
+      });
+    }
+  }
+  await prisma.installment.createMany({ data: installmentsData });
+
+  // إضافة سجلات تتبع الوكيل ساهر وسند للامتثال ونسبة النجاح لـ زاتكا تبلغ 98% بالضبط
+  // 240 سجل نجاح، و5 سجلات تنبيه
+  const telemetryLogs = [];
+  for (let i = 0; i < 245; i++) {
+    const contract = myContracts[i];
+    const isSuccess = i < 240;
+    telemetryLogs.push({
+      tenantId: myTenant.id,
+      agentId: "Sanad",
+      actionType: isSuccess ? "Link_Dispatched" : "Security_Lock",
+      logMessageAr: isSuccess
+        ? `«قام الوكيل سند بتعميد وتصدير ملف العقد XML رقم CR-${1000+i} لمنصة زاتكا بنجاح كامل بنسبة 100%»`
+        : `«تنبيه الوكيل: تم رفض إرسال الفاتورة للعقد رقم CR-${1000+i} لمنصة زاتكا بسبب خطأ في ترميز الرقم الضريبي»`,
+      severity: isSuccess ? "Info" : "Warning",
+      createdAt: new Date(Date.now() - (i % 5) * 24 * 60 * 60 * 1000),
+    });
+  }
+  await prisma.agentTelemetryLog.createMany({ data: telemetryLogs });
+
+  // إضافة 35 عميل مهتم لشركة العلي
+  const myLeadsData = Array.from({ length: 35 }).map((_, i) => {
+    const proj = myProjects[i % myProjects.length];
+    const randomDays = Math.floor(Math.random() * 30);
+    const createdAt = new Date();
+    createdAt.setDate(createdAt.getDate() - randomDays);
+
+    return {
+      tenantId: myTenant!.id,
+      projectId: proj.id,
+      assignedTo: salesUser?.id,
+      firstName: `عميل تجريبي ${i + 1}`,
+      lastName: `العلي`,
+      phone: `0555555${i.toString().padStart(3, "0")}`,
+      email: `client${i}@example.com`,
+      city: proj.city,
+      source: LEAD_SOURCES[i % LEAD_SOURCES.length],
+      status: LEAD_STATUSES[i % LEAD_STATUSES.length] as any,
+      leadScore: 40 + (i * 3) % 60,
+      createdAt,
+    };
+  });
+
+  for (const leadData of myLeadsData) {
+    await prisma.lead.create({ data: leadData });
+  }
+
+  const myLeads = await prisma.lead.findMany({ where: { tenantId: myTenant.id } });
+
+  // إضافة أنشطة ومهام لشركة العلي
+  for (const lead of myLeads.slice(0, 15)) {
+    await prisma.leadActivity.create({
+      data: {
+        tenantId: myTenant.id,
+        leadId: lead.id,
+        userId: salesUser?.id,
+        activityType: "CALL_COMPLETED",
+        description: "تم الاتصال بالعميل وشرح تفاصيل المشروع ومناقشة الدفعة الأولى.",
+      }
+    });
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 2);
+    await prisma.task.create({
+      data: {
+        tenantId: myTenant.id,
+        leadId: lead.id,
+        assignedTo: salesUser!.id,
+        title: "متابعة العميل هاتفياً وتأكيد موعد الزيارة للموقع",
+        dueDate,
+        priority: "HIGH",
+        status: "PENDING",
+      }
+    });
+  }
+
+  // إضافة تذاكر دعم لشركة العلي
+  await prisma.ticket.createMany({
+    data: [
+      {
+        tenantId: myTenant.id,
+        title: "مشكلة في ربط خط الواتساب السحابي",
+        description: "تظهر علامة فصل الاتصال عند تفعيل الرمز الشريطي QR Code في صفحة الإعدادات.",
+        status: "OPEN",
+      },
+      {
+        tenantId: myTenant.id,
+        title: "استفسار عن طريقة ترقية سعة الوكلاء",
+        description: "نحتاج لإضافة وكيلين إضافيين للباقة الذهبية، هل الدفع يكون شهرياً أم سنوياً؟",
+        status: "OPEN",
+      }
+    ]
+  });
+
+  console.log("✅ تمت تهيئة وتغذية حساب شركة العلي العقارية بنجاح!");
 
   // 2. تنظيف الشركات القديمة الأخرى لتفادي التكرار
   console.log("🧹 جاري تنظيف باقي الحسابات والمطورين الآخرين...");
@@ -216,7 +367,7 @@ async function main() {
       tenantId: tenant.id,
       name: `برج النخبة الذهبي ${i + 1}`,
       city: CITIES[i % CITIES.length],
-      status: i % 5 === 0 ? "PLANNING" : i % 5 === 1 ? "UNDER_CONSTRUCTION" : i % 5 === 2 ? "COMPLETED" : "SOLD_OUT",
+      status: (i % 5 === 0 ? "PLANNING" : i % 5 === 1 ? "UNDER_CONSTRUCTION" : i % 5 === 2 ? "COMPLETED" : "SOLD_OUT") as any,
       unitsTotal: 100 + (i % 5) * 20,
       unitsSold: 60 + (i % 5) * 10,
       unitsBooked: 10 + (i % 5) * 2,
@@ -341,7 +492,7 @@ async function main() {
       tenantId: tenant.id,
       name: `مجمع ريزيدنس الفضي ${i + 1}`,
       city: CITIES[i % CITIES.length],
-      status: i % 3 === 0 ? "UNDER_CONSTRUCTION" : "COMPLETED",
+      status: (i % 3 === 0 ? "UNDER_CONSTRUCTION" : "COMPLETED") as any,
       unitsTotal: 50 + i * 5,
       unitsSold: 30 + i * 2,
       unitsBooked: 5,
@@ -427,7 +578,7 @@ async function main() {
       tenantId: tenant.id,
       name: `فيلا يسر المحدودة ${i + 1}`,
       city: CITIES[i % CITIES.length],
-      status: "COMPLETED",
+      status: "COMPLETED" as any,
       unitsTotal: 10,
       unitsSold: 7,
       unitsBooked: 1,

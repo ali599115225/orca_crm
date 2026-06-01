@@ -43,7 +43,7 @@ export default function RootHtml({
   const roleTranslated = ROLE_TRANSLATIONS[lang]?.[userRoleKey] || ROLE_TRANSLATIONS.AR[userRoleKey] || userRoleKey;
 
   return (
-    <html lang={currentLang} dir={currentLang === 'ar' ? 'rtl' : 'ltr'} class={currentTheme}>
+    <html lang={currentLang} dir={currentLang === 'ar' ? 'rtl' : 'ltr'} className={currentTheme}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {

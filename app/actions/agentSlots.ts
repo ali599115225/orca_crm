@@ -11,6 +11,9 @@ const PLAN_SLOT_LIMITS: Record<string, number> = {
   basic: 1,
   silver: 5,
   gold: 999999,
+  platinum: 999999,
+  professional: 999999,
+  diamond: 999999,
 };
 
 /**

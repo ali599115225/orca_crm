@@ -79,8 +79,8 @@ const MOCK_LEADS = [
 
 const TRANSLATIONS = {
   AR: {
-    title: "مركز التدفق الاستثماري وإدارة الملاءة المالية",
-    subtitle: "تتبع مسار المستثمرين، مكافحة التكرار، وأتمتة حركة التدفق عبر الوكلاء الأذكياء",
+    title: "إدارة حوكمة البيانات والتحقق من الملاءة",
+    subtitle: "أتمتة العمليات الاستثمارية وتتبع مسار تدفق الفرص العقارية مع مكافحة التكرار لضمان الامتثال المالي عبر الوكلاء الأذكياء",
     investorActive: "مستثمر نشط",
     kanbanMode: "🗂️ عرض لوحة البطاقات (Kanban)",
     tableMode: "📋 عرض جدول البيانات",
@@ -212,6 +212,7 @@ export default function LeadsView() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<any | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // جلب البيانات الحية عند فتح الصفحة ومزامنة السمة
   useEffect(() => {
@@ -271,7 +272,7 @@ export default function LeadsView() {
   // تطبيق قناع حماية الجوال للأرقام السيادية
   const formatPhoneMask = (phone: string): string => {
     if (!phone) return "";
-    let clean = phone.replace(/\s+/g, "");
+    let clean = phone.replace(/\s+/g, "").replace(/\.0+$/, "");
     if (lang === 'EN') {
       if (clean.startsWith("05")) {
         return "05" + "x".repeat(8);
@@ -324,6 +325,29 @@ export default function LeadsView() {
     }
   };
 
+  const getRelativeTime = (dateStr: string) => {
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHrs = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHrs / 24);
+
+      if (lang === 'EN') {
+        if (diffMins < 1) return `just now`;
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHrs < 24) return `${diffHrs}h ago`;
+        return `${diffDays}d ago`;
+      } else {
+        if (diffMins < 1) return `الآن`;
+        if (diffMins < 60) return `منذ ${toArabicNumerals(diffMins)} دقيقة`;
+        if (diffHrs < 24) return `منذ ${toArabicNumerals(diffHrs)} ساعة`;
+        return `منذ ${toArabicNumerals(diffDays)} يوم`;
+      }
+    } catch (e) {
+      return lang === 'AR' ? 'منذ فترة' : 'recently';
+    }
+  };
+
   const matchesSource = (leadSource: string, filter: string) => {
     if (filter === 'ALL') return true;
     const src = (leadSource || "").toLowerCase();
@@ -350,376 +374,247 @@ export default function LeadsView() {
   });
 
   return (
-    <div className="space-y-6 selection-fix p-1">
+    <div className="p-4 md:p-6 lg:p-8 h-full flex flex-col w-full max-w-[1800px] mx-auto" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
-      {/* حقن خط Cairo/Inter وتنسيق السمة والـ layout */}
-      <style dangerouslySetInnerHTML={{__html: `
-        body, html, * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-          letter-spacing: normal !important;
-        }
-        .selection-fix, .selection-fix * {
-          letter-spacing: normal !important;
-        }
-        ::selection {
-          background-color: ${theme === "dark" ? "rgba(99, 102, 241, 0.2)" : "rgba(79, 70, 229, 0.15)"} !important;
-          color: #27272a !important;
-          text-shadow: none !important;
-        }
-      `}} />
-
-      {/* الهيدر وزري التبديل الفخمين بين الجدول واللوحة */}
-      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <div className={`flex items-center gap-3 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse justify-end'}`}>
-            <h1 className={`text-2xl font-bold tracking-normal transition-colors ${
-              theme === 'dark' ? 'text-white' : 'text-[#0b0f19]'
-            }`}>
-              {t.title}
-            </h1>
-            <span className={`px-2.5 py-1 text-xs font-black rounded-full shrink-0 ${
-              theme === 'dark' ? 'bg-[#E6C687]/20 text-[#E6C687]' : 'bg-[#735334]/20 text-[#735334]'
-            }`}>
-              {toArabicNumerals(filteredLeads.length)} {t.investorActive}
-            </span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+            <i className="ph-bold ph-kanban"></i> {lang === 'AR' ? 'مسار التدفق الاستثماري' : 'Investment Pipeline Flow'}
           </div>
-          <p className={`text-xs mt-1 transition-colors ${
-            theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
-          }`}>
-            {t.subtitle}
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            {lang === 'AR' ? 'إدارة حوكمة البيانات والتحقق من الملاءة' : 'Data Governance & Solvency Validation'}
+          </h1>
+          <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
+            {lang === 'AR' 
+              ? 'أتمتة العمليات الاستثمارية وتتبع مسار تدفق الفرص العقارية مع مكافحة التكرار لضمان الامتثال المالي عبر الوكلاء الأذكياء.'
+              : 'Autonomous process automation, solvency validation, and lead tracking for strict compliance.'
+            }
           </p>
         </div>
 
-        {/* أزرار التبديل الدائرية الناعمة بتأثير الـ Cairo */}
-        <div className={`flex p-1 rounded-xl self-start md:self-auto border transition-all duration-300 ${
-          theme === 'dark' 
-            ? 'bg-[#111726]/40 border-white/5' 
-            : 'bg-white border-slate-200 shadow-sm'
-        }`}>
-          <button 
-            onClick={() => setViewMode('kanban')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-              viewMode === 'kanban' 
-                ? (theme === 'dark' ? 'bg-[#E6C687] text-slate-950 shadow-sm' : 'bg-[#735334] text-white shadow-sm') 
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {t.kanbanMode}
-          </button>
-          <button 
-            onClick={() => setViewMode('table')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-              viewMode === 'table' 
-                ? (theme === 'dark' ? 'bg-[#E6C687] text-slate-950 shadow-sm' : 'bg-[#735334] text-white shadow-sm') 
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {t.tableMode}
-          </button>
-        </div>
-      </div>
-
-      {/* نموذج الإضافة السريع للمستثمر المعتمد بقاعدة البيانات */}
-      <div className={`p-6 rounded-2xl border transition-all duration-500 ${
-        theme === 'dark' 
-          ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-[0_0_30px_rgba(205,127,50,0.04)]' 
-          : 'bg-white border-[#735334]/20 shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-      } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-        <h2 className={`text-sm font-bold mb-4 border-b pb-2 ${
-          theme === 'dark' ? 'text-[#E6C687] border-white/5' : 'text-[#735334] border-slate-200'
-        }`}>
-          {t.formTitle}
-        </h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
-          {/* اسم المضيف الخفي لمزامنة المستأجر */}
-          <input type="hidden" name="clientHost" value={typeof window !== "undefined" ? window.location.host : ""} />
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* View Toggles */}
+          <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-lg border border-slate-200 dark:border-slate-800">
+            <button 
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-semibold transition-all cursor-pointer ${
+                viewMode === 'kanban' 
+                  ? 'bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <i className="ph-fill ph-kanban"></i> {lang === 'AR' ? 'لوحة البطاقات' : 'Kanban Board'}
+            </button>
+            <button 
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all cursor-pointer ${
+                viewMode === 'table' 
+                  ? 'bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <i className="ph-fill ph-list-dashes"></i> {lang === 'AR' ? 'جدول البيانات' : 'Data Table'}
+            </button>
+          </div>
           
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.firstName}</label>
-            <input 
-              type="text" 
-              name="firstName" 
-              required 
-              className={`w-full border rounded-lg p-2 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-800'
-              }`} 
-              placeholder={lang === 'AR' ? "مثال: عبد العزيز" : "e.g. Abdulaziz"} 
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.lastName}</label>
-            <input 
-              type="text" 
-              name="lastName" 
-              className={`w-full border rounded-lg p-2 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-800'
-              }`} 
-              placeholder={lang === 'AR' ? "الشمري" : "Al-Shammari"} 
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.phone}</label>
-            <input 
-              type="tel" 
-              name="phone" 
-              required 
-              className={`w-full border rounded-lg p-2 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white text-left' : 'bg-white border-slate-300 text-slate-800 text-left'
-              }`} 
-              placeholder="05xxxxxxxx" 
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.email}</label>
-            <input 
-              type="email" 
-              name="email" 
-              className={`w-full border rounded-lg p-2 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white text-left' : 'bg-white border-slate-300 text-slate-800 text-left'
-              }`} 
-              placeholder="name@company.com" 
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.city}</label>
-            <select 
-              name="city" 
-              className={`w-full border rounded-lg p-2.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-850'
-              }`}
-            >
-              <option value="الرياض">{lang === 'AR' ? "الرياض" : "Riyadh"}</option>
-              <option value="جدة">{lang === 'AR' ? "جدة" : "Jeddah"}</option>
-              <option value="الدمام">{lang === 'AR' ? "الدمام" : "Dammam"}</option>
-              <option value="مكة">{lang === 'AR' ? "مكة" : "Makkah"}</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.source}</label>
-            <select 
-              name="source" 
-              className={`w-full border rounded-lg p-2.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-850'
-              }`}
-            >
-              <option value="Snapchat Ads">{lang === 'AR' ? "إعلانات سناب شات" : "Snapchat Ads"}</option>
-              <option value="Google Ads">{lang === 'AR' ? "إعلانات جوجل" : "Google Ads"}</option>
-              <option value="Meta Ads">{lang === 'AR' ? "حملة ميتا الإعلانية" : "Meta Ads"}</option>
-              <option value="TikTok Ads">{lang === 'AR' ? "إعلانات تيك توك" : "TikTok Ads"}</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.targetProject}</label>
-            <select 
-              name="projectId" 
-              className={`w-full border rounded-lg p-2.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-850'
-              }`}
-            >
-              <option value="">{lang === 'AR' ? "-- اختر مشروعاً --" : "-- Select Project --"}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
           <button 
-            type="submit" 
-            className={`w-full text-xs font-black p-2.5 rounded-lg transition-all duration-300 cursor-pointer shadow-md hover:scale-[1.02] ${
-              theme === 'dark' ? 'bg-[#E6C687] text-slate-950 hover:bg-[#E6C687]/90' : 'bg-[#735334] text-white hover:bg-[#735334]/90'
-            }`}
+            onClick={() => setIsFormOpen(true)}
+            className="flex items-center justify-center gap-2 bg-[#df7b62] hover:bg-[#c5654e] text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-all shadow-md cursor-pointer"
           >
-            {t.submitBtn}
+            <i className="ph-bold ph-plus"></i> {lang === 'AR' ? 'مستثمر جديد' : 'New Investor'}
           </button>
-        </form>
+        </div>
       </div>
 
-      {/* التنبيهات ورسائل النجاح والخطأ */}
-      {errorMessage && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-4 rounded-xl font-bold">
-          {errorMessage}
-        </div>
-      )}
-      {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-4 rounded-xl font-bold">
-          {successMessage}
-        </div>
-      )}
-
-      {/* الفلترة والبحث المتقدم */}
-      <div className={`p-5 rounded-2xl border flex flex-col md:flex-row gap-4 justify-between items-center transition-all duration-500 ${
-        theme === 'dark' 
-          ? 'bg-[#111726]/40 border-white/5 shadow-inner' 
-          : 'bg-white border-slate-200/60 shadow-[0_4px_20px_rgba(0,0,0,0.02)]'
-      } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-        <div className="flex flex-col md:flex-row gap-3 w-full">
-          {/* بحث برقم الهاتف */}
-          <div className="w-full md:w-1/3">
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.tablePhone}</label>
+      {/* Search and Filters row */}
+      <div className="sticky top-0 z-50 bg-[#f8fafc]/90 dark:bg-[#0b1120]/90 backdrop-blur-md py-4 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 border-b border-slate-200/50 dark:border-slate-800/50 -mt-4 md:-mt-6 lg:-mt-8 pt-4 md:pt-6 lg:pt-8 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className={`flex items-center border rounded-xl px-4 py-2.5 transition-all ${theme === 'dark' ? 'bg-[#151f32] border-slate-800 focus-within:border-[#df7b62]' : 'bg-white border-slate-200 focus-within:border-[#df7b62]'}`}>
+            <i className="ph ph-magnifying-glass text-slate-400 text-lg ml-2"></i>
             <input 
               type="text" 
-              placeholder={t.searchPlaceholder} 
-              className={`w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-800'
-              }`}
               value={searchPhone}
               onChange={(e) => setSearchPhone(e.target.value)}
+              placeholder={t.searchPlaceholder} 
+              className={`bg-transparent border-none outline-none text-sm w-full font-sans ${theme === 'dark' ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`} 
             />
           </div>
 
-          {/* فلتر قناة الحملة */}
-          <div className="w-full md:w-1/3">
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.source}</label>
-            <select
-              value={selectedSourceFilter}
-              onChange={(e) => setSelectedSourceFilter(e.target.value)}
-              className={`w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-850'
-              }`}
-            >
-              <option value="ALL">{t.sourcePlaceholder}</option>
-              <option value="SNAPCHAT">{t.snapchatAds}</option>
-              <option value="GOOGLE">{t.googleAds}</option>
-              <option value="META">{t.metaAds}</option>
-              <option value="TIKTOK">{t.tiktokAds}</option>
-            </select>
-          </div>
+          <select
+            value={selectedSourceFilter}
+            onChange={(e) => setSelectedSourceFilter(e.target.value)}
+            className={`rounded-xl border px-4 py-2.5 text-sm transition-all focus:outline-none focus:border-[#df7b62] ${theme === 'dark' ? 'bg-[#151f32] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+          >
+            <option value="ALL">{t.sourcePlaceholder}</option>
+            <option value="SNAPCHAT">{t.snapchatAds}</option>
+            <option value="GOOGLE">{t.googleAds}</option>
+            <option value="META">{t.metaAds}</option>
+            <option value="TIKTOK">{t.tiktokAds}</option>
+          </select>
 
-          {/* فلتر تقييم الوكيل ساهر */}
-          <div className="w-full md:w-1/3">
-            <label className="block text-[10px] font-bold text-gray-500 mb-1">{t.scoreLabel}</label>
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className={`w-full border rounded-lg px-3 py-1.5 text-xs focus:ring-0 focus:outline-none ${
-                theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-850'
-              }`}
-            >
-              <option value="ALL">{t.statusPlaceholder}</option>
-              <option value="HIGH">{t.highSolvency}</option>
-              <option value="WARM">{t.warmPipeline}</option>
-              <option value="LOW">{t.lowSolvency}</option>
-            </select>
-          </div>
+          <select
+            value={selectedStatusFilter}
+            onChange={(e) => setSelectedStatusFilter(e.target.value)}
+            className={`rounded-xl border px-4 py-2.5 text-sm transition-all focus:outline-none focus:border-[#df7b62] ${theme === 'dark' ? 'bg-[#151f32] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+          >
+            <option value="ALL">{t.statusPlaceholder}</option>
+            <option value="HIGH">{t.highSolvency}</option>
+            <option value="WARM">{t.warmPipeline}</option>
+            <option value="LOW">{t.lowSolvency}</option>
+          </select>
         </div>
       </div>
 
-      {/* طريقة العرض 1: عرض بطاقات الكانبان التفاعلية */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto pb-4">
-          {STATUS_PIPELINE.map((column) => {
-            const columnLeads = filteredLeads.filter((l) => l.status === column.key);
-            const columnLabel = lang === 'AR' ? column.labelAr : column.labelEn;
+        /* Kanban Board Container */
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 pb-4 no-scrollbar scroll-container relative z-10 w-full">
+          {[
+            {
+              key: 'NEW_REQUESTS',
+              labelAr: 'طلبات استثمارية واردة',
+              labelEn: 'Incoming Investment Requests',
+              statuses: ['NEW'],
+              color: 'text-sky-500 bg-sky-500'
+            },
+            {
+              key: 'IN_PROGRESS',
+              labelAr: 'قيد المتابعة والمعاينة',
+              labelEn: 'Diplomatic Qualification & Site Inspection',
+              statuses: ['CONTACTED', 'VISIT_SCHEDULED', 'VISITED', 'OFFER_MADE', 'RESERVED'],
+              color: 'text-indigo-500 bg-indigo-500'
+            },
+            {
+              key: 'CLOSED_WON',
+              labelAr: 'إقفال الصفقة والتوثيق',
+              labelEn: 'Deal Closure & Registration',
+              statuses: ['CONTRACT_SIGNED', 'WON'],
+              color: 'text-emerald-500 bg-emerald-500'
+            }
+          ].map((stage) => {
+            const stageLeads = filteredLeads.filter(l => stage.statuses.includes(l.status));
+            const count = stageLeads.length;
+
             return (
-              <div 
-                key={column.key} 
-                className={`rounded-2xl p-4 flex flex-col space-y-3 min-w-[220px] transition-colors duration-500 border ${
-                  theme === 'dark'
-                    ? 'bg-black/30 border-white/5 shadow-inner'
-                    : 'bg-slate-100 border-slate-200 shadow-sm'
-                }`}
-              >
-                {/* هيدر العمود المطور بدقة */}
-                <div className={`p-3 rounded-xl border shadow-sm flex items-center justify-between text-xs font-black ${
-                  theme === 'dark'
-                    ? 'bg-[#111726]/80 border-white/5 text-[#E6C687]'
-                    : 'bg-white border-slate-200 text-[#735334]'
-                }`}>
-                  <span>{columnLabel}</span>
-                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${
-                    theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {toArabicNumerals(columnLeads.length)}
+              <div key={stage.key} className="flex flex-col w-full">
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2.5 text-xs md:text-sm truncate">
+                    <span className={`w-2.5 h-2.5 rounded-full ${stage.color} shrink-0 shadow-[0_0_8px_currentColor]`}></span>
+                    <span className="truncate tracking-wide font-extrabold">{lang === 'AR' ? stage.labelAr : stage.labelEn}</span>
+                  </h3>
+                  <span className="bg-slate-200 dark:bg-[#151f32] text-slate-700 dark:text-slate-350 text-xs font-bold px-3 py-1 rounded-full font-en shrink-0 border border-slate-300/40 dark:border-slate-800/40 shadow-sm">
+                    {toArabicNumerals(count)}
                   </span>
                 </div>
 
-                {/* بطاقات المبيعات بداخل العمود */}
-                <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[450px] min-h-[200px] pr-1">
-                  {columnLeads.length === 0 ? (
-                    <div className={`h-full flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed rounded-2xl ${
-                      theme === 'dark'
-                        ? 'border-white/5 bg-white/5 text-slate-500'
-                        : 'border-slate-300/40 bg-white/40 text-slate-400'
-                    }`}>
-                      <span className="text-[10px] font-bold">{t.awaitingNew}</span>
-                    </div>
-                  ) : (
-                    columnLeads.map((lead) => {
-                      let badgeStyle = "";
-                      let scoreLabel = "";
-                      if (lead.leadScore >= 75) {
-                        scoreLabel = t.scoreHigh;
-                        badgeStyle = theme === 'dark' 
-                          ? "bg-emerald-500 text-slate-950 font-black shadow-[0_2px_8px_rgba(16,185,129,0.25)]" 
-                          : "bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold";
-                      } else if (lead.leadScore >= 40) {
-                        scoreLabel = t.scoreWarm;
-                        badgeStyle = theme === 'dark'
-                          ? "bg-blue-500/20 border border-blue-400/30 text-blue-400 font-bold"
-                          : "bg-blue-100 border border-blue-300 text-blue-800 font-extrabold";
-                      } else {
-                        scoreLabel = t.scoreLow;
-                        badgeStyle = theme === 'dark'
-                          ? "bg-rose-950/40 border border-rose-800/30 text-rose-400 font-medium"
-                          : "bg-rose-100 border border-rose-300 text-rose-800 font-medium";
+                <div className={`bg-white/40 dark:bg-[#151f32]/40 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/60 rounded-3xl p-4 pb-12 h-[648px] min-h-[648px] max-h-[648px] overflow-y-auto no-scrollbar scroll-container mask-fade-top flex flex-col gap-4 transition-all duration-300 ${
+                  count === 0 ? 'justify-center border-dashed border-slate-300 dark:border-slate-800' : ''
+                }`}>
+                  {count === 0 ? (
+                    <p className="text-slate-400 dark:text-slate-500 text-sm text-center leading-relaxed font-medium">
+                      {stage.key === 'CLOSED_WON'
+                        ? (lang === 'AR' ? <>اسحب بطاقة العميل هنا <br/> عند استلام العربون</> : <>Drag investor card here <br/> on deposit receipt</>)
+                        : (lang === 'AR' ? 'لا يوجد مستثمرون في هذه المرحلة' : 'No investors in this stage')
                       }
+                    </p>
+                  ) : (
+                    stageLeads.map((lead) => {
+                      const isClosed = stage.key === 'CLOSED_WON';
+                      const isHigh = lead.leadScore >= 75;
+                      const isWarm = lead.leadScore >= 40 && lead.leadScore < 75;
+                      
+                      const currentStageConfig = STATUS_PIPELINE.find(s => s.key === lead.status);
+                      const nextStatus = currentStageConfig?.next;
 
                       return (
-                        <div 
-                          key={lead.id} 
+                        <div
+                          key={lead.id}
                           onClick={() => setSelectedLeadForDrawer(lead)}
-                          className={`p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] space-y-3 cursor-pointer select-none ${
-                            theme === 'dark'
-                              ? 'bg-[#111726]/60 border-white/5 hover:border-[#cd7f32]/40 shadow-sm'
-                              : 'bg-white border-slate-200 hover:border-[#735334]/50 shadow-[0_2px_8px_rgba(0,0,0,0.015)]'
-                          }`}
+                          className={`bg-white dark:bg-[#0b1120] border ${
+                            isClosed
+                              ? 'border-emerald-500/20 dark:border-emerald-500/10 shadow-[0_2px_12px_rgba(16,185,129,0.03)] hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] animate-fade-in'
+                              : 'border-slate-200/90 dark:border-slate-800/85 hover:border-[#df7b62]/50 dark:hover:border-[#df7b62]/40 hover:shadow-[0_0_20px_rgba(223,123,98,0.15)] animate-fade-in'
+                          } p-5 rounded-2xl transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between gap-3 h-[190px] min-h-[190px] max-h-[190px] w-full shrink-0`}
                         >
-                          <div>
-                            <div className="flex justify-between items-start gap-1">
-                              <h4 className="font-extrabold text-xs truncate">{lead.firstName} {lead.lastName || ""}</h4>
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] tracking-wide shrink-0 ${badgeStyle}`}>
-                                {scoreLabel}
+                          {isClosed && <div className="absolute top-0 right-0 left-0 h-[3px] bg-emerald-500"></div>}
+
+                          {/* Row 1: Badges */}
+                          <div className="flex justify-between items-center gap-2 h-[22px] min-w-0">
+                            {lead.project ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold border bg-slate-500/5 dark:bg-slate-400/5 text-slate-650 dark:text-slate-350 border-slate-200/80 dark:border-slate-800/60 min-w-0 max-w-[135px]" title={lead.project.name}>
+                                <i className="ph-bold ph-buildings text-[11px] shrink-0"></i>
+                                <span className="truncate">{lead.project.name}</span>
                               </span>
-                            </div>
-                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5" dir="ltr">
-                              {formatPhoneMask(lead.phone)}
-                            </p>
-                          </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-transparent bg-slate-500/0 text-slate-400">
+                                <i className="ph-bold ph-buildings text-[11px] opacity-0 shrink-0"></i>
+                                <span>—</span>
+                              </span>
+                            )}
 
-                          {lead.project && (
-                            <div className={`text-[9px] border p-1.5 rounded-md font-bold truncate ${
-                              theme === 'dark' ? 'bg-slate-900/60 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-600'
+                            {/* Solvency classification pill */}
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${
+                              isHigh
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : isWarm
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                             }`}>
-                              🎯 {lead.project.name}
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold border-t border-gray-200/10 pt-2.5">
-                            <span>{t.drawerScore} {toArabicNumerals(lead.leadScore)}٪</span>
-                            <span>{lead.city}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                              <span>{isHigh ? t.scoreHigh : isWarm ? t.scoreWarm : t.scoreLow} ({toArabicNumerals(lead.leadScore)}%)</span>
+                            </span>
                           </div>
 
-                          {/* زر توليد العقد السحابي الموحد */}
-                          <div className="grid grid-cols-2 gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
-                            <a 
-                              href={`/contract/${lead.id}`}
-                              target="_blank"
-                              className={`text-[9px] font-black p-1.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer hover:scale-[1.02] ${
-                                theme === 'dark' ? 'bg-[#E6C687] text-slate-950' : 'bg-[#735334] text-white'
-                              }`}
-                            >
-                              {t.allocationContract}
-                            </a>
+                          {/* Row 2: Name and Subdetails */}
+                          <div className="flex-1 flex flex-col justify-center min-h-0 py-1 gap-1">
+                            <h4 className="text-slate-900 dark:text-white font-bold text-sm group-hover:text-[#df7b62] transition-colors leading-tight truncate">
+                              {lead.firstName} {lead.lastName || ''}
+                            </h4>
+                            
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-slate-500 dark:text-slate-400 text-xs font-mono tracking-wide flex items-center gap-1.5">
+                                <i className="ph ph-phone text-slate-400 text-[13px] shrink-0"></i>
+                                <span className="truncate">{formatPhoneMask(lead.phone)}</span>
+                              </p>
+                              <p className="text-slate-450 dark:text-slate-550 text-[10px] flex items-center gap-1.5">
+                                <i className="ph ph-megaphone text-slate-400 text-[12px] shrink-0"></i>
+                                <span className="truncate">{lead.source || (lang === 'AR' ? 'مباشر' : 'Direct')}</span>
+                              </p>
+                            </div>
+                          </div>
 
-                            {column.next && (
-                              <button 
+                          {/* Divider */}
+                          <div className="border-t border-slate-100 dark:border-slate-800/80 my-0.5"></div>
+
+                          {/* Row 3: Footer actions and Status info */}
+                          <div className="flex items-center justify-between gap-2 h-7 shrink-0">
+                            {/* Time/Status info */}
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 shrink-0">
+                              <i className="ph ph-clock text-[12px]"></i>
+                              <span>{getRelativeTime(lead.createdAt)}</span>
+                            </div>
+
+                            {/* Move button */}
+                            {nextStatus ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveToNextStep(lead.id, lead.status, nextStatus);
+                                }}
                                 disabled={updatingId === lead.id}
-                                onClick={() => handleMoveToNextStep(lead.id, column.key, column.next!)}
-                                className={`text-[9px] font-bold p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center hover:scale-[1.02] ${
-                                  theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
-                                }`}
+                                className="text-[10px] font-bold text-[#df7b62] bg-[#df7b62]/10 hover:bg-[#df7b62] hover:text-white px-2.5 py-1 rounded-lg border border-[#df7b62]/20 hover:border-transparent transition-all duration-200 flex items-center gap-1 disabled:opacity-50 cursor-pointer shrink-0"
                               >
-                                {updatingId === lead.id ? t.processingBtn : t.nextBtn}
+                                {updatingId === lead.id ? t.processingBtn : (
+                                  <>
+                                    <span>{lang === 'AR' ? 'ترقية الحالة' : 'Advance'}</span>
+                                    <i className={`ph-bold ${lang === 'AR' ? 'ph-arrow-left' : 'ph-arrow-right'} text-[11px]`}></i>
+                                  </>
+                                )}
                               </button>
+                            ) : (
+                              <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0">
+                                <i className="ph-fill ph-seal-check text-xs"></i> <span>{lang === 'AR' ? 'مكتمل' : 'Completed'}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -732,127 +627,66 @@ export default function LeadsView() {
           })}
         </div>
       ) : (
-        /* طريقة العرض 2: عرض جدول البيانات الكلاسيكي المنسق بالكامل بالعربية */
-        <div className={`rounded-2xl border overflow-hidden transition-all duration-500 ${
-          theme === 'dark' 
-            ? 'bg-[#111726]/60 border-[#cd7f32]/25 shadow-2xl' 
-            : 'bg-white border-[#735334]/20 shadow-[0_8px_30px_rgba(0,0,0,0.035)]'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <div className={`p-4 border-b flex flex-wrap gap-2 items-center justify-between ${
-            theme === 'dark' ? 'border-white/5' : 'border-slate-100'
-          }`}>
-            <h3 className="font-bold text-xs">{t.tableTitle}</h3>
+        /* Table Container */
+        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20">
+            <h2 className="text-slate-900 dark:text-white font-bold text-lg">{t.tableTitle}</h2>
           </div>
-
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-right border-collapse">
-              <thead className={theme === 'dark' ? 'bg-slate-950/40 text-slate-300' : 'bg-slate-100 text-slate-650'}>
-                <tr className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-200'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-                  <th className="px-5 py-3 font-extrabold">{t.tableId}</th>
-                  <th className="px-5 py-3 font-extrabold">{t.tableInvestor}</th>
-                  <th className="px-4 py-3 font-extrabold">{t.tablePhone}</th>
-                  <th className="px-4 py-3 font-extrabold">{t.tableSource}</th>
-                  <th className="px-4 py-3 font-extrabold">{t.tableClassification}</th>
-                  <th className="px-4 py-3 font-extrabold">{t.tableTime}</th>
-                  <th className="px-5 py-3 font-extrabold">{t.tableActions}</th>
+            <table className="w-full text-right border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0b1120]/30">
+                  <th className="p-4 font-semibold">{t.tableId}</th>
+                  <th className="p-4 font-semibold">{t.tableInvestor}</th>
+                  <th className="p-4 font-semibold">{t.tablePhone}</th>
+                  <th className="p-4 font-semibold">{t.tableSource}</th>
+                  <th className="p-4 font-semibold">{t.tableClassification}</th>
+                  <th className="p-4 font-semibold">{t.tableTime}</th>
+                  <th className="p-4 font-semibold">{t.tableActions}</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-105'}`}>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-400 font-medium">
+                    <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
                       {t.noData}
                     </td>
                   </tr>
                 ) : (
-                  filteredLeads.map((lead, index) => {
-                    let badgeStyle = "";
-                    let scoreLabel = "";
-                    if (lead.leadScore >= 75) {
-                      scoreLabel = t.scoreHigh;
-                      badgeStyle = theme === 'dark' 
-                        ? "bg-emerald-500 text-slate-950 font-black shadow-[0_2px_8px_rgba(16,185,129,0.25)]" 
-                        : "bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold";
-                    } else if (lead.leadScore >= 40) {
-                      scoreLabel = t.scoreWarm;
-                      badgeStyle = theme === 'dark'
-                        ? "bg-blue-500/20 border border-blue-400/30 text-blue-400 font-bold"
-                        : "bg-blue-100 border border-blue-300 text-blue-800 font-extrabold";
-                    } else {
-                      scoreLabel = t.scoreLow;
-                      badgeStyle = theme === 'dark'
-                        ? "bg-rose-950/40 border border-rose-800/30 text-rose-400 font-medium"
-                        : "bg-rose-100 border border-rose-300 text-rose-800 font-medium";
-                    }
-
-                    return (
-                      <tr 
-                        key={lead.id} 
-                        onClick={() => setSelectedLeadForDrawer(lead)}
-                        className={`transition-colors cursor-pointer ${
-                          theme === 'dark' ? 'hover:bg-white/5 text-slate-350' : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        {/* الرقم المتسلسل */}
-                        <td className="px-5 py-3.5 font-bold">
-                          {toArabicNumerals(index + 1)}
-                        </td>
-                        
-                        {/* الاسم */}
-                        <td className="px-5 py-3.5 font-bold">
-                          {lead.firstName} {lead.lastName || ""}
-                        </td>
-                        
-                        {/* الجوال */}
-                        <td className="px-4 py-3.5 font-bold" dir="ltr">
-                          {formatPhoneMask(lead.phone)}
-                        </td>
-                        
-                        {/* المصدر والمشروع */}
-                        <td className="px-4 py-3.5">
-                          <p className="font-semibold">{lead.source}</p>
-                          {lead.project && (
-                            <p className="text-[10px] text-amber-500 mt-0.5">🎯 {lead.project.name}</p>
-                          )}
-                        </td>
-                        
-                        {/* تصنيف ساهر */}
-                        <td className="px-4 py-3.5">
-                          <span className={`px-2.5 py-1 rounded text-[10px] tracking-wide shrink-0 ${badgeStyle}`}>
-                            {scoreLabel} ({toArabicNumerals(lead.leadScore)}٪)
-                          </span>
-                        </td>
-                        
-                        {/* وقت الاقتناص */}
-                        <td className="px-4 py-3.5" dir="ltr">
-                          {formatDateTime(lead.createdAt)}
-                        </td>
-                        
-                        {/* الإجراءات */}
-                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2">
-                            <a 
-                              href={`/contract/${lead.id}`}
-                              target="_blank"
-                              className={`text-[10px] font-black px-3 py-1.5 rounded-lg transition-all inline-block hover:scale-[1.02] ${
-                                theme === 'dark' ? 'bg-[#E6C687] text-slate-950' : 'bg-[#735334] text-white'
-                              }`}
-                            >
-                              {t.allocationContract}
-                            </a>
-                            <button 
-                              onClick={() => setSelectedLeadForDrawer(lead)}
-                              className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all inline-block hover:scale-[1.02] ${
-                                theme === 'dark' ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
-                              }`}
-                            >
-                              {t.tableDetails}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  filteredLeads.map((lead, index) => (
+                    <tr 
+                      key={lead.id} 
+                      onClick={() => setSelectedLeadForDrawer(lead)}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors cursor-pointer"
+                    >
+                      <td className="p-4 font-en">{toArabicNumerals(index + 1)}</td>
+                      <td className="p-4 font-bold text-slate-900 dark:text-white">
+                        {lead.firstName} {lead.lastName || ''}
+                      </td>
+                      <td className="p-4 font-en">{formatPhoneMask(lead.phone)}</td>
+                      <td className="p-4">{lead.source || '—'}</td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold ${
+                          lead.leadScore >= 75 
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                            : lead.leadScore >= 40 
+                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' 
+                            : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {lead.leadScore >= 75 ? t.scoreHigh : lead.leadScore >= 40 ? t.scoreWarm : t.scoreLow} ({toArabicNumerals(lead.leadScore)}%)
+                        </span>
+                      </td>
+                      <td className="p-4 font-en">{formatDateTime(lead.createdAt)}</td>
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => setSelectedLeadForDrawer(lead)}
+                          className="text-[#df7b62] hover:text-[#c5654e] font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          {t.tableDetails}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -860,103 +694,233 @@ export default function LeadsView() {
         </div>
       )}
 
-      {/* تفاصيل العميل وتحليل الوكيل ساهر - Context Drawer */}
-      {selectedLeadForDrawer && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity"
-          onClick={() => setSelectedLeadForDrawer(null)}
-        >
+      {/* Add Lead Modal */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
-            className={`fixed inset-y-0 w-full sm:w-96 border-l shadow-2xl p-6 flex flex-col transition-all duration-300 transform translate-x-0 ${
-              theme === 'dark'
-                ? 'bg-[#111726]/95 border-[#cd7f32]/25 text-white'
-                : 'bg-white/95 border-[#735334]/25 text-[#735334]'
-            } ${lang === 'AR' ? 'right-0 border-r' : 'left-0 border-l'}`} 
-            dir={lang === 'AR' ? 'rtl' : 'ltr'}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Drawer Header */}
-            <div className={`flex items-center justify-between pb-4 border-b mb-6 ${
-              theme === 'dark' ? 'border-white/10' : 'border-slate-200'
-            }`}>
-              <h3 className={`font-black text-sm ${
-                theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334]'
-              }`}>{t.drawerTitle}</h3>
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsFormOpen(false)}
+          />
+          <div className="relative w-full max-w-lg bg-[#0b1120] text-white border border-slate-800 rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] z-10">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <i className="ph-fill ph-user-plus text-[#df7b62] text-xl"></i>
+                {t.formTitle}
+              </h2>
               <button 
-                onClick={() => setSelectedLeadForDrawer(null)} 
-                className={`text-xs font-bold ${
-                  theme === 'dark' ? 'text-white hover:text-amber-500' : 'text-[#735334] hover:text-amber-700'
-                }`}
-              >{t.drawerClose}</button>
+                onClick={() => setIsFormOpen(false)}
+                className="text-slate-400 hover:text-white font-bold cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            
-            {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto space-y-4 text-xs font-semibold">
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerName}</label>
-                <span className={`text-sm font-extrabold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  {selectedLeadForDrawer.firstName} {selectedLeadForDrawer.lastName || ""}
-                </span>
-              </div>
-              
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerPhone}</label>
-                <span className={`text-sm font-extrabold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`} dir="ltr">
-                  {formatPhoneMask(selectedLeadForDrawer.phone)}
-                </span>
-              </div>
-              
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerSource}</label>
-                <span className={`text-sm font-extrabold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  {selectedLeadForDrawer.source}
-                </span>
-              </div>
-              
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerCity}</label>
-                <span className={`text-sm font-extrabold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  {selectedLeadForDrawer.city}
-                </span>
-              </div>
 
-              {selectedLeadForDrawer.project && (
+            {errorMessage && (
+              <div className="p-3 mb-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+                {errorMessage}
+              </div>
+            )}
+            {successMessage && (
+              <div className="p-3 mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                {successMessage}
+              </div>
+            )}
+
+            <form onSubmit={async (e) => {
+              await handleSubmit(e);
+              setTimeout(() => {
+                setIsFormOpen(false);
+                setSuccessMessage(null);
+              }, 2000);
+            }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerTarget}</label>
-                  <span className={`text-sm font-extrabold ${theme === 'dark' ? 'text-[#E6C687]' : 'text-[#735334]'}`}>
-                    {selectedLeadForDrawer.project.name}
+                  <label className="block text-slate-400 text-xs mb-1.5">{t.firstName}</label>
+                  <input 
+                    type="text" 
+                    name="firstName" 
+                    required 
+                    className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1.5">{t.lastName}</label>
+                  <input 
+                    type="text" 
+                    name="lastName" 
+                    className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 text-xs mb-1.5">{t.phone}</label>
+                <input 
+                  type="text" 
+                  name="phone" 
+                  required 
+                  className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                  placeholder="05xxxxxxxx"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 text-xs mb-1.5">{t.email}</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1.5">{t.city}</label>
+                  <input 
+                    type="text" 
+                    name="city" 
+                    className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1.5">{t.source}</label>
+                  <select 
+                    name="source" 
+                    className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                  >
+                    <option value="Snapchat Ads">{t.snapchatAds}</option>
+                    <option value="Google Ads">{t.googleAds}</option>
+                    <option value="Meta Ads">{t.metaAds}</option>
+                    <option value="TikTok Ads">{t.tiktokAds}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 text-xs mb-1.5">{t.targetProject}</label>
+                <select 
+                  name="projectId" 
+                  className="w-full rounded-lg bg-[#151f32] border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#df7b62]"
+                >
+                  <option value="">-- {t.targetProject} --</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3 rounded-lg bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-sm transition-colors mt-4 cursor-pointer"
+              >
+                {t.submitBtn}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Drawer Sidebar */}
+      {selectedLeadForDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedLeadForDrawer(null)}
+          />
+          <div className="relative w-full max-w-lg bg-[#0b1120] text-white border-r border-slate-800 h-full flex flex-col z-10 shadow-2xl p-6 overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <i className="ph-fill ph-user-focus text-[#df7b62] text-xl"></i>
+                {t.drawerTitle}
+              </h2>
+              <button 
+                onClick={() => setSelectedLeadForDrawer(null)}
+                className="text-slate-400 hover:text-white transition-colors font-bold text-sm cursor-pointer"
+              >
+                {t.drawerClose}
+              </button>
+            </div>
+
+            <div className="space-y-5 flex-1">
+              <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                <p className="text-slate-400 text-xs mb-1">{t.drawerName}</p>
+                <p className="font-bold text-base text-white">
+                  {selectedLeadForDrawer.firstName} {selectedLeadForDrawer.lastName || ''}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                  <p className="text-slate-400 text-xs mb-1">{t.drawerPhone}</p>
+                  <p className="font-bold text-sm text-white font-en">{formatPhoneMask(selectedLeadForDrawer.phone)}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                  <p className="text-slate-400 text-xs mb-1">{t.drawerSource}</p>
+                  <p className="font-bold text-sm text-white">{selectedLeadForDrawer.source || '—'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                  <p className="text-slate-400 text-xs mb-1">{t.drawerCity}</p>
+                  <p className="font-bold text-sm text-white">{selectedLeadForDrawer.city || '—'}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                  <p className="text-slate-400 text-xs mb-1">{t.drawerTarget}</p>
+                  <p className="font-bold text-sm text-white">{selectedLeadForDrawer.project?.name || '—'}</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                <p className="text-slate-400 text-xs mb-1">{t.drawerScore}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${
+                    selectedLeadForDrawer.leadScore >= 75 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                      : selectedLeadForDrawer.leadScore >= 40 
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}>
+                    {selectedLeadForDrawer.leadScore >= 75 ? t.scoreHigh : selectedLeadForDrawer.leadScore >= 40 ? t.scoreWarm : t.scoreLow}
                   </span>
+                  <span className="text-sm font-en font-bold text-white">({toArabicNumerals(selectedLeadForDrawer.leadScore)}%)</span>
                 </div>
-              )}
-              
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerScore}</label>
-                <span className={`text-sm font-extrabold ${
-                  theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'
-                }`}>{toArabicNumerals(selectedLeadForDrawer.leadScore)}٪</span>
               </div>
 
-              <div>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1">{t.drawerStatus}</label>
-                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-600 border border-sky-100">
-                  {selectedLeadForDrawer.status}
-                </span>
+              <div className="p-4 rounded-xl bg-[#151f32] border border-slate-800">
+                <p className="text-slate-400 text-xs mb-1">{t.drawerStatus}</p>
+                <p className="font-bold text-sm text-[#df7b62]">
+                  {lang === 'AR' 
+                    ? (STATUS_PIPELINE.find(s => s.key === selectedLeadForDrawer.status)?.labelAr || selectedLeadForDrawer.status)
+                    : (STATUS_PIPELINE.find(s => s.key === selectedLeadForDrawer.status)?.labelEn || selectedLeadForDrawer.status)
+                  }
+                </p>
               </div>
 
-              <div className={`pt-4 border-t ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
-                <label className="text-slate-400 font-bold block text-[10px] mb-1.5">{t.drawerNlp}</label>
-                <div className={`p-4 rounded-xl border text-[11px] leading-relaxed select-text ${
-                  theme === 'dark'
-                    ? 'bg-slate-950/60 border-white/5 text-slate-300 selection:bg-[#E6C687]/20 selection:text-white'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 selection:bg-[#735334]/20 selection:text-[#735334]'
-                }`} style={{ fontFamily: 'Calibri, sans-serif' }}>
+              {/* AI Agent Saher NLP Intent Analysis */}
+              <div className="p-5 rounded-xl bg-[#df7b62]/10 border border-[#df7b62]/20 shadow-md">
+                <p className="text-[#df7b62] text-xs font-bold mb-2 flex items-center gap-1.5">
+                  <i className="ph-fill ph-robot text-base animate-pulse"></i>
+                  {t.drawerNlp}
+                </p>
+                <p className="text-slate-350 text-xs leading-relaxed italic">
                   {getSyntheticIntentText(selectedLeadForDrawer)}
-                </div>
+                </p>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* CSS للتمرير الأفقي المخفي */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #df7b62; }
+      `}} />
+
     </div>
   );
 }

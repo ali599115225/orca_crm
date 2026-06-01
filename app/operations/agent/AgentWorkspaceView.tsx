@@ -205,11 +205,11 @@ export default function AgentWorkspaceView({ initialLeads, userId, userName }: A
       {/* خط Cairo/Inter وتنسيق السمة والـ layout */}
       <style dangerouslySetInnerHTML={{__html: `
         body, html, * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
+          font-family: 'Calibri', 'Segoe UI', sans-serif !important;
           letter-spacing: normal !important;
         }
         .calibri-strictly, .calibri-strictly * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
+          font-family: 'Calibri', 'Segoe UI', sans-serif !important;
           letter-spacing: normal !important;
         }
         

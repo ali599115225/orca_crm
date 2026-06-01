@@ -118,7 +118,7 @@ export default function TopBarClient({
           transform: translateX(-50%);
           white-space: nowrap;
           z-index: 100;
-          font-family: 'Cairo', 'Inter', sans-serif !important;
+          font-family: 'Calibri', 'Segoe UI', sans-serif !important;
           animation: tooltipFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
         @keyframes tooltipFadeIn {

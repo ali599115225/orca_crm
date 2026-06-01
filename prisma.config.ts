@@ -1,9 +1,7 @@
 // prisma.config.ts
-import "dotenv/config";
+// ✅ Vercel reads DATABASE_URL directly from Environment Variables — no dotenv needed.
 import { defineConfig } from "prisma/config";
 
-// إزالة قسم datasource هنا لأن المصدر الآن في schema.prisma مباشرةً
-// هذا يمنع التعارض بين ملفي الإعداد ويعمل بشكل صحيح مع Vercel
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {

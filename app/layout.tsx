@@ -1,58 +1,41 @@
-// app/layout.tsx
-import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata } from 'next'
+import './globals.css'
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
 import { UIBusProvider } from "@/app/context/UIBusContext";
-import RootHtml from "@/app/components/RootHtml";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-
 export const metadata: Metadata = {
-  title: "ORCA CRM - نظام التطوير العقاري",
-  description: "النظام التشغيلي العقاري الأول لإدارة العملاء والمبيعات بالمملكة العربية السعودية",
-  // 🔒 منع محرك ترجمة جوجل التلقائي من التدخل في الكود نهائياً
-  other: {
-    google: "notranslate",
-  }
-};
+  title: 'ORCA CRM',
+  description: 'نظام إدارة علاقات العملاء العقاري - مؤسسة أبعاد السكنية',
+}
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const session = await getSession();
-  let initialName = "";
-  let userRoleKey = "READ_ONLY";
-  let isSuperAdmin = false;
-
-  if (session) {
-    initialName = session.name as string || "أحمد الغامدي";
-    userRoleKey = session.role as string || "READ_ONLY";
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId as string }
-    });
-    const userEmail = user?.email || "";
-    isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
-  }
-
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <UIBusProvider>
-          <RootHtml 
-            initialName={initialName} 
-            userRoleKey={userRoleKey} 
-            isSuperAdmin={isSuperAdmin}
-          >
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </RootHtml>
-        </UIBusProvider>
-      </ThemeProvider>
-    </LanguageProvider>
-  );
+    <html lang="ar" dir="rtl" className="dark">
+      <head>
+        {/* Google Fonts: Cairo for Arabic, Inter for English/Numbers */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        
+        {/* Phosphor Icons */}
+        <script src="https://unpkg.com/@phosphor-icons/web"></script>
+      </head>
+      <body className="font-sans bg-[#0b1120] text-slate-100 antialiased min-h-screen flex flex-col selection:bg-[#df7b62] selection:text-white">
+        <LanguageProvider>
+          <ThemeProvider>
+            <UIBusProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </UIBusProvider>
+          </ThemeProvider>
+        </LanguageProvider>
+      </body>
+    </html>
+  )
 }

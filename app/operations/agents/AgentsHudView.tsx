@@ -45,6 +45,9 @@ const PLAN_LABELS: Record<string, string> = {
   basic: "الأساسية",
   silver: "الفضية",
   gold: "الذهبية",
+  platinum: "البلاتينية",
+  professional: "الاحترافية",
+  diamond: "الماسية",
 };
 
 const AGENT_TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -214,7 +217,7 @@ export default function AgentsHudView({
   const capPercentage = maxSlots > 900000 ? 10 : Math.min(100, (activeCount / maxSlots) * 100);
 
   return (
-    <div className="space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
+    <div className="space-y-8" dir="rtl" style={{ fontFamily: "'Calibri', 'Segoe UI', sans-serif" }}>
 
       {/* هيدر الصفحة */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

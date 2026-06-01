@@ -108,8 +108,8 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
         {plans.map((plan, idx) => {
           const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
           const displayPrice = isYearly 
-            ? Math.round(plan.yearlyPrice / 12) 
-            : plan.monthlyPrice;
+            ? (plan.yearlyPrice ? Math.round(plan.yearlyPrice / 12) : 0) 
+            : (plan.monthlyPrice || 0);
 
           // Determine if the card itself uses Dark Mode styling.
           // Card 3 (Bespoke) stays strictly dark onyx layout even when the site switches to light mode.

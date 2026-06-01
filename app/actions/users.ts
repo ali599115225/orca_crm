@@ -12,12 +12,18 @@ const PLAN_LIMITS: Record<string, number> = {
   basic: 2,
   silver: 10,
   gold: 99999, // لا محدود
+  platinum: 99999,
+  professional: 99999,
+  diamond: 99999,
 };
 
 const PLAN_NAMES: Record<string, string> = {
   basic: "الباقة الأساسية (حد موظفين: 2)",
   silver: "الباقة الفضية (حد موظفين: 10)",
   gold: "الباقة الذهبية (موظفين لا محدود)",
+  platinum: "الباقة البلاتينية (موظفين لا محدود)",
+  professional: "الباقة الاحترافية (موظفين لا محدود)",
+  diamond: "الباقة الماسية (موظفين لا محدود)",
 };
 
 /**

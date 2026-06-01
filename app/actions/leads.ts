@@ -100,6 +100,32 @@ export async function createLeadAction(formData: FormData) {
       throw new Error("الاسم ورقم الجوال حقول إلزامية.");
     }
 
+    // فحص حماية النظام وسعة باقة العملاء (System Protection Limit)
+    const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
+    let leadsLimit = 99999;
+    if (plan === "basic") {
+      leadsLimit = 100;
+    } else if (plan === "silver" || plan === "pro" || plan === "professional") {
+      leadsLimit = 1000;
+    }
+
+    const currentLeadsCount = await prisma.lead.count({
+      where: { tenantId: tenant.id }
+    });
+
+    if (currentLeadsCount >= leadsLimit) {
+      await prisma.auditLog.create({
+        data: {
+          tenantId: tenant.id,
+          action: "LIMIT_EXCEEDED_EMERGENCY",
+          tableName: "leads",
+          recordId: "SYSTEM",
+          details: `محاولة إضافة عميل جديد مرفوضة بسبب الوصول لـ 100% من سعة الباقة (${currentLeadsCount}/${leadsLimit}). حالة الطوارئ مفعلة.`
+        }
+      });
+      throw new Error(`حالة الطوارئ: لقد وصلت إلى الحد الأقصى لسعة العملاء المتاحة في باقتك (${leadsLimit} عميل). لا يمكن استقبال عملاء جدد.`);
+    }
+
     const isDuplicate = await prisma.lead.findFirst({
       where: {
         tenantId: tenant.id,

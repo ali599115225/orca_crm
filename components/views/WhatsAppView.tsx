@@ -1,4 +1,4 @@
-// app/operations/whatsapp/WhatsAppView.tsx
+// components/views/WhatsAppView.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -33,10 +33,10 @@ const TRANSLATIONS = {
   AR: {
     title: "تكامل الواتساب والوكلاء الافتراضيين (WhatsApp CRM API)",
     subtitle: "اربط حساب الواتساب الخاص بـ {companyName} لتفعيل تتبع العملاء عبر الذكاء الاصطناعي على مدار الساعة.",
-    connected: "القناة متصلة",
-    disconnected: "القناة غير متصلة",
-    pairingTitle: "لوحة إقران القناة (Device Pairing)",
-    pairingDesc: "قم بربط رقم جوال مبيعات الشركة بالمنصة. سيقوم الوكيل الذكي باستقبال رسائل العملاء العقاريين والرد الفوري عليها لضمان عدم ضياع أي صفقة.",
+    connected: "القناة متصلة ونشطة",
+    disconnected: "القناة غير متصلة حالياً",
+    pairingTitle: "لوحة إقران الجهاز (Device Pairing)",
+    pairingDesc: "قم بربط رقم جوال مبيعات الشركة بالمنصة. سيقوم الوكيل الذكي باستقبل رسائل العملاء العقاريين والرد الفوري عليها لضمان عدم ضياع أي صفقة.",
     pairingQrDesc: "امسح الكود عبر واتساب الجوال (Linked Devices)",
     connectedDevice: "الجهاز المرتبط:",
     connectedPhone: "الرقم المتصل:",
@@ -52,13 +52,13 @@ const TRANSLATIONS = {
     agentTyping: "جاري صياغة الرد من الوكيل الذكي...",
     inputPlaceholder: "اكتب رسالة كأنك العميل (مثال: كم الأسعار؟ أو أين موقع الفلل؟)...",
     sendBtn: "إرسال",
-    offlineWarning: "⚠️ يرجى ربط جوال المبيعات أولاً بالضغط على \"ربط الجهاز ومحاكاة الاتصال\" لتفعيل محادثات الوكيل.",
-    selectConversation: "الرجاء اختيار محادثة من القائمة اليمنى للبدء",
+    offlineWarning: "⚠️ يرجى ربط جوال المبيعات أولاً بالضغط على 'ربط الجهاز ومحاكاة الاتصال' لتفعيل محادثات الوكيل والرد التلقائي.",
+    selectConversation: "الرجاء اختيار محادثة من القائمة للبدء",
   },
   EN: {
     title: "WhatsApp Integration & Virtual Agents (WhatsApp CRM API)",
     subtitle: "Connect the WhatsApp account for {companyName} to activate 24/7 AI-driven customer tracking.",
-    connected: "Channel Connected",
+    connected: "Channel Connected & Active",
     disconnected: "Channel Disconnected",
     pairingTitle: "Device Pairing Panel",
     pairingDesc: "Link your sales mobile number to the platform. The Smart Agent will ingest customer messages and reply instantly, ensuring no deal is lost.",
@@ -77,7 +77,7 @@ const TRANSLATIONS = {
     agentTyping: "AI Smart Agent is drafting response...",
     inputPlaceholder: "Type a message as the client (e.g. What are the rates? or Where is the project site?)...",
     sendBtn: "Send",
-    offlineWarning: "⚠️ Please link the sales device first by clicking 'Link Device & Simulate Connection' to activate agent chat.",
+    offlineWarning: "⚠️ Please link the sales device first by clicking 'Link Device & Simulate Connection' to activate agent chat and auto-replies.",
     selectConversation: "Please select a conversation from the list to begin",
   }
 };
@@ -85,6 +85,8 @@ const TRANSLATIONS = {
 export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps) {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+  const isArabic = lang === "AR";
+  const dir = isArabic ? "rtl" : "ltr";
 
   const [connected, setConnected] = useState(tenant.whatsappConnected);
   const [chats, setChats] = useState<Chat[]>(initialChats);
@@ -105,7 +107,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
-    if (lang === 'EN') return str;
+    if (!isArabic) return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
     return str
       .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
@@ -118,7 +120,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
     if (timeStr === "الآن" || timeStr === "Now") {
       return t.now;
     }
-    if (lang === 'EN') return timeStr;
+    if (!isArabic) return timeStr;
     let converted = timeStr
       .replace(/AM/gi, "ص")
       .replace(/PM/gi, "م")
@@ -155,8 +157,8 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
           return {
             ...c,
             lastMessage: userText,
-            time: lang === 'AR' ? "الآن" : "Now",
-            messages: [...c.messages, { sender: "client", text: userText, time: lang === 'AR' ? "الآن" : "Now" }]
+            time: isArabic ? "الآن" : "Now",
+            messages: [...c.messages, { sender: "client", text: userText, time: isArabic ? "الآن" : "Now" }]
           };
         }
         return c;
@@ -178,8 +180,8 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
               return {
                 ...c,
                 lastMessage: result.agentMessage.text,
-                time: lang === 'AR' ? "الآن" : "Now",
-                messages: [...c.messages, { ...result.agentMessage, time: lang === 'AR' ? "الآن" : "Now" }]
+                time: isArabic ? "الآن" : "Now",
+                messages: [...c.messages, { ...result.agentMessage, time: isArabic ? "الآن" : "Now" }]
               };
             }
             return c;
@@ -196,350 +198,195 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
     );
   };
 
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`whatsapp-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
       
-      <style dangerouslySetInnerHTML={{ __html: `
-        .calibri-strictly, .calibri-strictly * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-        }
-        
-        .whatsapp-page-wrapper {
-          min-height: 100%;
-          transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        
-        .frosted-glass-dark {
-          background: rgba(11, 15, 25, 0.6) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
-          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
-        }
-        
-        .milky-glass-light {
-          background: rgba(255, 255, 255, 0.92) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(224, 231, 255, 0.9) !important;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
-        }
-        
-        .bronze-glow-dark {
-          border: 1px solid #6366f1 !important;
-          box-shadow: 0 0 20px rgba(99, 102, 241, 0.35) !important;
-        }
-        
-        .bronze-glow-light {
-          border: 1px solid #4f46e5 !important;
-          box-shadow: 0 4px 20px rgba(79, 70, 229, 0.12) !important;
-        }
-
-        .dark-canvas {
-          background-color: #0b0f19 !important;
-          color: #ffffff !important;
-        }
-        
-        .light-canvas {
-          background-color: #f9f9fb !important;
-          color: #0b0f19 !important;
-        }
-      `}} />
-
-      {/* الترويسة الرئيسية */}
-      <div className={`p-6 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-5 mb-6 transition-all ${
-        isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-      }`}>
-        <div className={lang === 'AR' ? 'text-right' : 'text-left'}>
-          <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {t.title}
-          </h1>
-          <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            {t.subtitle.replace('{companyName}', tenant.companyName)}
-          </p>
+      {/* Header */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+          <i className="ph-bold ph-whatsapp-logo"></i> {t.activeChannelBadge}
         </div>
-        
-        <div className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all ${
-          connected 
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-            : 'bg-slate-800/80 text-slate-400 border-slate-700'
-        }`}>
-          <span className={`w-2.5 h-2.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-          {connected ? t.connected : t.disconnected}
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          {t.title}
+        </h1>
+        <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
+          {t.subtitle.replace('{companyName}', tenant.companyName)}
+        </p>
+      </div>
+
+      {/* Connection Panel */}
+      <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6">
+        <div className="space-y-3 lg:max-w-2xl">
+          <h3 className="text-slate-900 dark:text-white font-bold text-base flex items-center gap-2">
+            <i className={`ph-fill ph-circle text-xs ${connected ? 'text-emerald-500 animate-pulse' : 'text-slate-400'}`}></i>
+            {t.pairingTitle}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.pairingDesc}</p>
+          
+          {connected && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/60 text-slate-600 dark:text-slate-450">
+              <p><span className="font-semibold">{t.connectedDevice}</span> <span className="font-bold text-slate-850 dark:text-white">iPhone 15 Pro</span></p>
+              <p><span className="font-semibold">{t.connectedPhone}</span> <span className="font-bold text-slate-850 dark:text-white font-en">+966 50 111 2222</span></p>
+              <p><span className="font-semibold">{t.activeAgentLabel}</span> <span className="font-bold text-indigo-500">{t.aiAgentBadge}</span></p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0 justify-center">
+          {/* Simulated QR placeholder */}
+          {!connected && (
+            <div className="flex items-center gap-3 bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 p-3 rounded-xl">
+              <div className="w-14 h-14 bg-slate-800 dark:bg-slate-700 flex items-center justify-center rounded-lg border border-slate-600 shrink-0">
+                <i className="ph ph-qr-code text-white text-3xl opacity-80"></i>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">{t.pairingQrDesc}</p>
+            </div>
+          )}
+
+          <button 
+            onClick={handleConnectToggle}
+            disabled={loadingAction}
+            className={`px-5 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer w-full sm:w-auto shadow-sm ${
+              connected 
+                ? 'bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 hover:border-transparent' 
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.01]'
+            }`}
+          >
+            {loadingAction ? t.processing : (connected ? t.disconnectBtn : t.connectBtn)}
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* العمود الأيمن: التحكم بالاتصال وقناة الـ API (Device Pairing Control Widget) */}
-        <div className={`p-6 rounded-2xl h-fit flex flex-col justify-between space-y-6 transition-all ${
-          isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <div className="space-y-4">
-            <h2 className={`text-sm font-black border-b pb-2 ${isDark ? 'text-[#E6C687] border-slate-850' : 'text-[#735334] border-slate-200'}`}>
-              {t.pairingTitle}
-            </h2>
-            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.pairingDesc}
-            </p>
-
-            {!connected ? (
-              /* وضع غير متصل: عرض كود QR وهمي تفاعلي للربط */
-              <div className={`p-6 rounded-xl border border-dashed flex flex-col items-center justify-center space-y-4 relative overflow-hidden ${
-                isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="absolute inset-0 bg-[#0b0f19]/30 backdrop-blur-[1px] flex items-center justify-center animate-pulse pointer-events-none"></div>
-                <div className="w-40 h-40 bg-white p-2 rounded-lg shadow-md border flex items-center justify-center relative z-10">
-                  <div className="w-full h-full bg-slate-900 rounded opacity-80 grid grid-cols-5 grid-rows-5 gap-1 p-2">
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-slate-900 rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                    <div className="bg-white rounded-sm"></div>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-slate-400 z-10">
-                  {t.pairingQrDesc}
-                </span>
-              </div>
-            ) : (
-              /* وضع متصل: تفاصيل الجهاز النشط والاتصال بالـ API */
-              <div className={`p-4 border rounded-xl space-y-3.5 transition-all ${
-                isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center justify-between text-xs border-b border-slate-800/40 pb-2">
-                  <span className="text-slate-400">{t.connectedDevice}</span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                    iPhone {toArabicNumerals(15)} Pro Max
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs border-b border-slate-800/40 pb-2">
-                  <span className="text-slate-400">{t.connectedPhone}</span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-800'}`} dir="ltr">
-                    {toArabicNumerals("+966 55 751 6311")}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">{t.activeAgentLabel}</span>
-                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                    {t.aiAgentBadge}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleConnectToggle}
-            disabled={loadingAction}
-            className={`w-full p-3 rounded-xl text-xs font-black transition-all cursor-pointer hover:scale-[1.01] ${
-              connected 
-                ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20' 
-                : 'bg-amber-500 text-slate-950 hover:bg-amber-600'
-            }`}
-          >
-            {loadingAction 
-              ? t.processing 
-              : connected 
-                ? t.disconnectBtn 
-                : t.connectBtn}
-          </button>
-        </div>
-
-        {/* كابينة المحادثة المدمجة 3 أعمدة ( simulated chat and window workspace ) */}
-        <div className={`lg:col-span-2 rounded-2xl border overflow-hidden flex flex-col md:flex-row h-[550px] transition-all ${
-          isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-        }`}>
+      {/* Simulator Workspace */}
+      {connected ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[500px]">
           
-          {/* العمود الثاني: قائمة المحادثات (Current Simulated Chat Threads Feed - 35%) */}
-          <div className={`w-full md:w-[35%] flex flex-col ${
-            lang === 'AR' ? 'border-l border-l-white/5' : 'border-r border-r-slate-200'
-          } ${isDark ? 'bg-slate-950/40' : 'bg-slate-50/50'}`}>
-            <div className={`p-4 border-b ${isDark ? 'bg-slate-950/70 border-slate-800' : 'bg-white border-slate-200'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-              <h3 className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                {t.conversationsTitle}
-              </h3>
-              <p className="text-[9px] text-slate-400 mt-0.5 font-bold">{t.conversationsDesc}</p>
+          {/* Left panel: chats list (4 cols) */}
+          <div className="lg:col-span-4 bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+            <div>
+              <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.conversationsTitle}</h3>
+              <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">{t.conversationsDesc}</p>
             </div>
-            
-            <div className={`flex-1 overflow-y-auto divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+
+            <div className="space-y-2 overflow-y-auto max-h-[400px] no-scrollbar flex-grow">
               {chats.map(chat => {
                 const isActive = activeChatId === chat.id;
                 return (
-                  <button
+                  <div 
                     key={chat.id}
                     onClick={() => handleSelectChat(chat.id)}
-                    className={`w-full p-4 flex items-center justify-between transition-all cursor-pointer ${
-                      lang === 'AR' ? 'text-right' : 'text-left'
-                    } ${
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start ${
                       isActive 
-                        ? (isDark 
-                            ? `bg-slate-900/60 border-[#735334] ${lang === 'AR' ? 'border-r-4' : 'border-l-4'}` 
-                            : `bg-white border-[#735334] ${lang === 'AR' ? 'border-r-4' : 'border-l-4'}`) 
-                        : (isDark ? 'hover:bg-slate-900/30' : 'hover:bg-slate-100/60')
+                        ? 'bg-[#df7b62]/5 border-[#df7b62]/40 shadow-sm' 
+                        : 'bg-slate-50 dark:bg-[#0b1120] border-slate-200 dark:border-slate-850 hover:border-slate-350 dark:hover:border-slate-800'
                     }`}
                   >
-                    <div className="space-y-1 overflow-hidden flex-1 pl-2">
-                      <div className="flex justify-between items-baseline">
-                        <h4 className={`text-xs font-black ${isActive ? 'text-amber-500' : (isDark ? 'text-slate-200' : 'text-slate-800')}`}>
-                          {chat.contactName}
-                        </h4>
-                        <span className="text-[8px] text-slate-400 shrink-0 font-bold">
-                          {formatTimestamp(chat.time)}
-                        </span>
+                    <div className="space-y-1.5 flex-1 min-w-0 pr-1">
+                      <div className="flex items-center justify-between w-full">
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{chat.contactName}</h4>
+                        <span className="text-[9px] text-slate-400 font-en shrink-0">{formatTimestamp(chat.time)}</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 truncate font-semibold">{chat.lastMessage}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate leading-snug">{chat.lastMessage}</p>
                     </div>
                     {chat.unread && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                      <div className="w-2.5 h-2.5 bg-[#df7b62] rounded-full shrink-0 ml-2 mt-1"></div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* العمود الثالث: نافذة المحادثة النشطة (Active Workspace Chat Screen - 65%) */}
-          <div className={`flex-1 flex flex-col justify-between relative ${
-            isDark ? 'bg-[#090d16]' : 'bg-slate-100/50'
-          }`}>
+          {/* Right panel: chat dialogue message pane (8 cols) */}
+          <div className="lg:col-span-8 bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col overflow-hidden min-h-[450px]">
             {activeChat ? (
               <>
-                {/* رأس المحادثة والعميل النشط */}
-                <div className={`p-4 border-b flex items-center justify-between ${
-                  isDark ? 'bg-slate-950/70 border-slate-800' : 'bg-white border-slate-200'
-                } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
+                {/* Chat header */}
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 flex items-center justify-between gap-4">
                   <div>
-                    <h3 className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                      {activeChat.contactName}
-                    </h3>
-                    <p className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`} dir="ltr">
-                      {toArabicNumerals(activeChat.contactPhone)}
-                    </p>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{activeChat.contactName}</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-wider">{activeChat.contactPhone}</p>
                   </div>
-                  
-                  <span className={`text-[8px] px-2.5 py-0.5 rounded-full font-black border ${
-                    isDark 
-                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' 
-                      : 'bg-[#735334]/15 text-[#735334] border-[#735334]/20'
-                  }`}>
-                    {t.activeChannelBadge}
+                  <span className="text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                    {t.aiAgentBadge}
                   </span>
                 </div>
 
-                {/* منطقة الرسائل والفقاعات الملونة */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                  {activeChat.messages.map((msg, index) => {
-                    const isClient = msg.sender === 'client';
+                {/* Messages dialogue */}
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[350px] flex-grow no-scrollbar bg-slate-50/20 dark:bg-[#0b1120]/10 flex flex-col">
+                  {activeChat.messages.map((m, idx) => {
+                    const isAgent = m.sender === "agent";
                     return (
                       <div 
-                        key={index}
-                        className={`flex ${isClient ? 'justify-start' : 'justify-end'}`}
+                        key={idx} 
+                        className={`flex flex-col max-w-[80%] ${
+                          isAgent 
+                            ? 'self-start items-start' 
+                            : 'self-end items-end'
+                        } space-y-1`}
                       >
-                        <div 
-                          className={`max-w-[75%] p-3.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                            isClient 
-                              ? 'bg-emerald-600/90 text-white rounded-tr-none' 
-                              : (isDark 
-                                  ? 'bg-slate-900 border border-slate-850 text-slate-100 rounded-tl-none' 
-                                  : 'bg-[#fdfbf7] border border-slate-200 text-slate-800 rounded-tl-none')
-                          }`}
-                        >
-                          <p className="font-semibold">{msg.text}</p>
-                          <span className={`block text-[8px] mt-1 text-right font-bold ${
-                            isClient ? 'text-emerald-100' : 'text-slate-400'
-                          }`}>
-                            {formatTimestamp(msg.time)}
-                          </span>
+                        <div className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                          isAgent 
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-850 dark:text-slate-200 rounded-br-none' 
+                            : 'bg-[#df7b62] text-white rounded-bl-none shadow-sm'
+                        }`}>
+                          {m.text}
                         </div>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 px-1 font-en">{formatTimestamp(m.time)}</span>
                       </div>
                     );
                   })}
 
-                  {/* مؤشر الكتابة التفاعلي للوكيل الذكي */}
+                  {/* Typing simulation */}
                   {isTyping && (
-                    <div className="flex justify-end animate-pulse">
-                      <div className={`p-3.5 rounded-2xl rounded-tl-none text-[10px] shadow-sm flex items-center gap-2.5 font-bold ${
-                        isDark ? 'bg-slate-900 text-slate-400' : 'bg-[#fdfbf7] text-slate-600'
-                      }`}>
-                        <span className="flex gap-0.5">
-                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                          <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                        </span>
-                        <span>{t.agentTyping}</span>
+                    <div className="self-start flex flex-col items-start space-y-1">
+                      <div className="bg-slate-100 dark:bg-slate-800 text-slate-450 dark:text-slate-450 p-2.5 rounded-2xl rounded-br-none text-xs flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-100"></span>
+                        <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-200"></span>
+                        <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-300"></span>
+                        <span className="ml-1 text-[10px] italic">{t.agentTyping}</span>
                       </div>
                     </div>
                   )}
-
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* صندوق مدخلات الرسائل */}
-                <div className={`p-4 border-t ${isDark ? 'bg-slate-950/70 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  {connected ? (
-                    <form onSubmit={handleSendMessage} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        placeholder={t.inputPlaceholder}
-                        className={`flex-1 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#735334] ${
-                          isDark 
-                            ? 'bg-slate-950 border border-slate-800 text-white' 
-                            : 'bg-slate-50 border border-slate-200 text-slate-900'
-                        }`}
-                        disabled={isTyping}
-                      />
-                      <button
-                        type="submit"
-                        disabled={!messageInput.trim() || isTyping}
-                        className={`px-5 py-3 rounded-xl text-xs font-black transition-all cursor-pointer text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed ${
-                          isDark ? 'bg-amber-500 hover:bg-amber-600' : 'bg-amber-500 hover:bg-amber-600'
-                        }`}
-                      >
-                        {t.sendBtn}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="text-center p-2 text-xs text-slate-400 font-bold leading-normal">
-                      {t.offlineWarning}
-                    </div>
-                  )}
-                </div>
+                {/* Input area */}
+                <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-200 dark:border-slate-800 flex gap-3 bg-slate-50/40 dark:bg-[#151f32]">
+                  <input 
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    disabled={isTyping}
+                    placeholder={t.inputPlaceholder}
+                    className="flex-grow rounded-xl bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-850 px-4 py-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:border-[#df7b62]"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={!messageInput.trim() || isTyping}
+                    className="bg-[#df7b62] hover:bg-[#c5654e] text-white px-5 py-3 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    {t.sendBtn}
+                  </button>
+                </form>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-xs text-slate-450 font-bold">
-                {t.selectConversation}
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <i className="ph ph-chat-circle-dots text-4xl text-slate-400 dark:text-slate-500 mb-2"></i>
+                <p className="text-slate-450 dark:text-slate-500 text-sm">{t.selectConversation}</p>
               </div>
             )}
           </div>
 
         </div>
+      ) : (
+        /* Disconnected State Warning */
+        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 p-6 rounded-2xl text-center text-sm font-semibold leading-relaxed max-w-3xl mx-auto space-y-3">
+          <i className="ph ph-warning text-3xl block text-rose-500"></i>
+          <p>{t.offlineWarning}</p>
+        </div>
+      )}
 
-      </div>
     </div>
   );
 }

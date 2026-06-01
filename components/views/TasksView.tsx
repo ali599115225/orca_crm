@@ -1,4 +1,4 @@
-// app/operations/tasks/page.tsx
+// components/views/TasksView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,7 +7,7 @@ import { useApp } from '@/app/context/AppContext';
 
 const TRANSLATIONS = {
   AR: {
-    tag: "نظام المتابعة والجدولة الذاتية لعام {year} 🗓️",
+    tag: "نظام المتابعة والجدولة الذاتية لعام ٢٠٢٦ 🗓️",
     title: "نظام المتابعة والتذكيرات الميدانية",
     desc: "جدولة زيارات المعاينة، اتصالات الحسبة التمويلية وتوقيع عقود المبيعات مع أتمتة كاملة للتذكير.",
     successMsg: "تمت جدولة مهمة المتابعة والتذكير بنجاح وتكليف مستشار العميل!",
@@ -34,7 +34,7 @@ const TRANSLATIONS = {
     priorityLow: "منخفضة"
   },
   EN: {
-    tag: "Autonomous Follow-up Ledger {year} 🗓️",
+    tag: "Autonomous Follow-up Ledger 2026 🗓️",
     title: "Tasks & Field Reminders Ledger",
     desc: "Schedule inspection viewings, mortgage evaluations, and contract signings with automated notification pings.",
     successMsg: "Follow-up task scheduled successfully and assigned to the client consultant!",
@@ -65,12 +65,15 @@ const TRANSLATIONS = {
 export default function TasksView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+  const isArabic = lang === 'AR';
+  const dir = isArabic ? 'rtl' : 'ltr';
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -109,6 +112,7 @@ export default function TasksView() {
       e.currentTarget.reset();
       const updatedTasks = await getTasksAction();
       setTasks(updatedTasks);
+      setTimeout(() => setSuccessMessage(null), 3000);
     } else {
       setErrorMessage(result.error || "حدث خطأ غير متوقع.");
     }
@@ -118,385 +122,255 @@ export default function TasksView() {
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
-    if (lang === 'EN') return str;
+    if (!isArabic) return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str
-      .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
-      .replace(/%/g, "٪");
+    return str.replace(/[0-9]/g, (w) => arabicDigits[+w]);
   };
 
-  // تنسيق التاريخ والوقت للأرقام العربية الشرقية
-  const formatTaskDate = (dateStr: string) => {
-    const dateObj = new Date(dateStr);
-    const formatted = dateObj.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    return toArabicNumerals(formatted);
+  const formatTaskDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr || "";
+    }
   };
 
-  const pendingCount = tasks.filter(t => t.status === 'PENDING').length;
-  const completedCount = tasks.filter(t => t.status === 'COMPLETED').length;
+  const filteredTasks = tasks.filter(t => 
+    (t.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.lead?.firstName || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const isDark = theme === 'dark';
+  const pendingTasks = tasks.filter(t => t.status === "PENDING").length;
+  const completedTasks = tasks.filter(t => t.status === "COMPLETED").length;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
+        <div className="w-10 h-10 border-4 border-[#df7b62] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm text-slate-500 dark:text-slate-450">{t.loading}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={`tasks-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
       
-      <style dangerouslySetInnerHTML={{ __html: `
-        .calibri-strictly, .calibri-strictly * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-        }
-        
-        /* تباين خاص بالمظهر الداكن والفاتح */
-        .tasks-page-wrapper {
-          min-height: 100%;
-          transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        
-        /* تأثير الزجاج المتلألئ للمظهر الداكن */
-        .frosted-glass-dark {
-          background: rgba(11, 15, 25, 0.6) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
-          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
-        }
-        
-        /* المظهر الفاتح الراقي */
-        .milky-glass-light {
-          background: rgba(255, 255, 255, 0.92) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
-        }
-        
-        .bronze-glow-dark {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 0 20px rgba(115, 83, 52, 0.35) !important;
-        }
-        
-        .bronze-glow-light {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 4px 20px rgba(115, 83, 52, 0.12) !important;
-        }
-        
-        .text-royal-bronze {
-          color: #735334 !important;
-        }
-        .text-gold-accent {
-          color: #E6C687 !important;
-        }
-      `}} />
-
-      {/* الترويسة العليا للمهام والتذكيرات */}
-      <div className={`mb-8 ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-        <span className={`inline-block text-[10px] font-extrabold px-3 py-1 rounded-full border ${
-          isDark 
-            ? 'bg-amber-500/10 text-[#E6C687] border-[#735334]/40' 
-            : 'bg-[#735334]/10 text-[#735334] border-[#735334]/20'
-        }`}>
-          {t.tag.replace('{year}', toArabicNumerals(2026))}
-        </span>
-        <h1 className={`text-3xl font-black mt-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      {/* Header */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+          <i className="ph-bold ph-calendar-check"></i> {t.tag}
+        </div>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
+        <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
           {t.desc}
         </p>
       </div>
 
-      {/* تنبيهات العمليات */}
-      {errorMessage && (
-        <div className="bg-rose-950/20 border border-rose-800/50 text-rose-300 text-xs p-4 rounded-xl font-bold mb-6">
-          {errorMessage}
-        </div>
-      )}
-      {successMessage && (
-        <div className="bg-emerald-950/20 border border-emerald-800/50 text-emerald-400 text-xs p-4 rounded-xl font-bold mb-6">
-          {successMessage}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         
-        {/* نموذج جدولة مهمة جديدة للعميل (Schedule New Follow-up) */}
-        <div className={`p-6 rounded-2xl h-fit space-y-5 transition-all ${isDark ? 'frosted-glass-dark' : 'milky-glass-light'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <h2 className={`font-black text-sm pb-2 border-b ${isDark ? 'text-[#E6C687] border-slate-800' : 'text-[#735334] border-slate-200'}`}>
-            {t.formTitle}
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* اسم المهمة / الإجراء المطلوب */}
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.taskTitleLabel}
-              </label>
+        {/* Left Column: Task List (7 cols) */}
+        <div className="lg:col-span-7 space-y-4 flex flex-col">
+          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold bg-[#df7b62]/10 text-[#df7b62] border border-[#df7b62]/20 px-2.5 py-1 rounded-full">
+                {t.counterPending}{toArabicNumerals(pendingTasks)}
+              </span>
+              <span className="text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                {t.counterCompleted}{toArabicNumerals(completedTasks)}
+              </span>
+            </div>
+
+            <div className={`flex items-center border rounded-full px-4 py-2 transition-all ${theme === 'dark' ? 'bg-[#0b1120] border-slate-850 focus-within:border-[#df7b62]' : 'bg-slate-50 border-slate-300 focus-within:border-[#df7b62]'}`}>
+              <i className="ph ph-magnifying-glass text-slate-400 text-base ml-2"></i>
               <input 
                 type="text" 
-                name="title"
-                required
-                className={`w-full rounded-lg p-2.5 text-xs font-bold transition-all focus:outline-none focus:ring-1 focus:ring-[#735334] ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-[#735334]/50 text-white' 
-                    : 'bg-white border border-slate-300 text-slate-900'
-                }`}
-                placeholder={t.taskTitlePlaceholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={isArabic ? "ابحث عن مهمة..." : "Search tasks..."} 
+                className="bg-transparent border-none outline-none text-xs w-40 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
               />
-            </div>
-
-            {/* العميل المرتبط بالمهمة */}
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.leadLabel}
-              </label>
-              <select 
-                name="leadId" 
-                required 
-                className={`w-full rounded-lg p-2.5 text-xs cursor-pointer focus:outline-none ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-[#735334]/50 text-white' 
-                    : 'bg-white border border-slate-300 text-slate-850'
-                }`}
-              >
-                <option value="">{t.leadPlaceholder}</option>
-                {leads.map((l) => (
-                  <option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* تاريخ ووقت الاستحقاق */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t.dueDateLabel}
-                </label>
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    name="dueDateOnly"
-                    required
-                    className={`w-full rounded-lg pl-3 pr-8 py-2.5 text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#735334] ${
-                      isDark 
-                        ? 'bg-slate-950/70 border border-[#735334]/50 text-white' 
-                        : 'bg-white border border-slate-300 text-slate-900'
-                    }`}
-                  />
-                  <div className={`absolute inset-y-0 flex items-center pointer-events-none text-slate-400 ${lang === 'AR' ? 'right-0 pr-2.5' : 'left-0 pl-2.5'}`}>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t.dueTimeLabel}
-                </label>
-                <div className="relative">
-                  <input 
-                    type="time" 
-                    name="dueTimeOnly"
-                    required
-                    className={`w-full rounded-lg pl-3 pr-8 py-2.5 text-[11px] font-bold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#735334] ${
-                      isDark 
-                        ? 'bg-slate-950/70 border border-[#735334]/50 text-white' 
-                        : 'bg-white border border-slate-300 text-slate-900'
-                    }`}
-                  />
-                  <div className={`absolute inset-y-0 flex items-center pointer-events-none text-slate-400 ${lang === 'AR' ? 'right-0 pr-2.5' : 'left-0 pl-2.5'}`}>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* مستوى الأهمية */}
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.priorityLabel}
-              </label>
-              <select 
-                name="priority" 
-                className={`w-full rounded-lg p-2.5 text-xs cursor-pointer focus:outline-none ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-[#735334]/50 text-white' 
-                    : 'bg-white border border-slate-300 text-slate-850'
-                }`}
-              >
-                <option value="LOW">{lang === 'AR' ? "منخفضة" : "Low"}</option>
-                <option value="MEDIUM">{lang === 'AR' ? "متوسطة" : "Medium"}</option>
-                <option value="HIGH">{lang === 'AR' ? "حرجة" : "Critical"}</option>
-              </select>
-            </div>
-
-            {/* ملاحظات وتفاصيل إضافية */}
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.notesLabel}
-              </label>
-              <textarea 
-                name="description"
-                rows={3}
-                className={`w-full rounded-lg p-2.5 text-xs transition-all focus:outline-none focus:ring-1 focus:ring-[#735334] ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-[#735334]/50 text-white text-right' 
-                    : 'bg-white border border-slate-300 text-slate-900 text-right'
-                }`}
-                placeholder={t.notesPlaceholder}
-              />
-            </div>
-
-            {/* زر الحفظ */}
-            <button 
-              type="submit"
-              className={`w-full transition-all p-3 rounded-lg text-xs font-bold cursor-pointer text-white ${
-                isDark 
-                  ? 'bg-[#735334] hover:bg-[#5f4229]' 
-                  : 'bg-[#735334] hover:bg-[#4a3520]'
-              }`}
-            >
-              {t.saveBtn}
-            </button>
-          </form>
-        </div>
-
-        {/* قائمة المهام المجدولة النشطة من قاعدة البيانات */}
-        <div className="lg:col-span-2 space-y-4">
-          
-          {/* كرت العنوان والعدادات الإجمالية للمهام */}
-          <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
-            isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-          } ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-            <h3 className={`font-black text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {t.listTitle}
-            </h3>
-            
-            {/* Task Overview Counters */}
-            <div className="flex gap-2 text-[10px] font-bold">
-              <span className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
-                isDark 
-                  ? 'bg-amber-950/30 border border-amber-900/50 text-amber-400' 
-                  : 'bg-amber-50 border border-amber-200 text-amber-800'
-              }`}>
-                {t.counterPending}{toArabicNumerals(pendingCount)}
-              </span>
-              <span className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
-                isDark 
-                  ? 'bg-emerald-950/30 border border-emerald-900/50 text-emerald-400' 
-                  : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-              }`}>
-                {t.counterCompleted}{toArabicNumerals(completedCount)}
-              </span>
             </div>
           </div>
 
-          {/* لوحة عرض شبكة المهام */}
-          <div className={`rounded-2xl border overflow-hidden shadow-sm divide-y transition-all ${
-            isDark ? 'frosted-glass-dark divide-slate-800' : 'milky-glass-light divide-slate-105'
-          }`}>
-            
-            {loading ? (
-              <div className="p-12 text-center text-slate-450 font-bold">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping inline-block ml-2"></span>
-                {t.loading}
+          <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] no-scrollbar">
+            {filteredTasks.length === 0 ? (
+              <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-12 text-center">
+                <i className="ph ph-calendar-x text-4xl text-slate-400 dark:text-slate-500 mb-3 block"></i>
+                <h4 className="text-slate-900 dark:text-white font-bold text-base mb-1">{t.emptyTitle}</h4>
+                <p className="text-slate-400 text-xs">{t.emptySub}</p>
               </div>
-            ) : tasks.length === 0 ? (
-              
-              /* Empty State Vector Anchor */
-              <div className="p-16 flex flex-col items-center justify-center text-center">
-                <svg className="w-16 h-16 text-slate-500/40 mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <p className="text-sm font-black text-slate-400">
-                  {t.emptyTitle}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-1 font-bold">
-                  {t.emptySub}
-                </p>
-              </div>
-              
             ) : (
-              tasks.map((task) => (
-                <div key={task.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
-                  isDark ? 'hover:bg-slate-900/30' : 'hover:bg-slate-50/50'
-                } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-                  
-                  <div className={`flex items-start gap-3 ${lang === 'AR' ? '' : 'flex-row-reverse'}`}>
+              filteredTasks.map((task) => {
+                const isCompleted = task.status === "COMPLETED";
+                const isHigh = task.priority === "HIGH";
+                const isMedium = task.priority === "MEDIUM";
+
+                return (
+                  <div 
+                    key={task.id} 
+                    className={`bg-white dark:bg-[#151f32] border ${
+                      isCompleted 
+                        ? 'border-emerald-500/20 bg-emerald-500/5' 
+                        : 'border-slate-200 dark:border-slate-800/80'
+                    } p-4 rounded-xl shadow-sm hover:border-[#df7b62]/40 transition-all flex items-start gap-4 cursor-pointer`}
+                    onClick={() => handleToggle(task.id, task.status)}
+                  >
                     <input 
                       type="checkbox" 
-                      checked={task.status === 'COMPLETED'}
-                      onChange={() => handleToggle(task.id, task.status)}
-                      className={`mt-1.5 h-4.5 w-4.5 rounded transition-all cursor-pointer ${
-                        isDark ? 'accent-amber-500 bg-slate-950 border-[#735334]/50' : 'accent-[#735334]'
-                      }`}
+                      checked={isCompleted}
+                      onChange={() => {}} // toggled via parent div click
+                      className="w-5 h-5 rounded-md border-slate-300 dark:border-slate-700 text-[#df7b62] focus:ring-[#df7b62] shrink-0 mt-0.5"
                     />
-                    <div>
-                      <h4 className={`text-xs font-black ${
-                        task.status === 'COMPLETED' 
-                          ? 'line-through text-slate-550' 
-                          : (isDark ? 'text-white' : 'text-slate-800')
+                    
+                    <div className="flex-grow space-y-1">
+                      <h4 className={`text-slate-900 dark:text-white font-bold text-sm leading-tight transition-all ${
+                        isCompleted ? 'line-through text-slate-450 dark:text-slate-500' : ''
                       }`}>
                         {task.title}
                       </h4>
-                      
-                      {task.description && (
-                        <p className={`text-[10px] mt-1.5 p-2 rounded-lg border max-w-lg leading-relaxed ${
-                          isDark 
-                            ? 'bg-slate-950/40 border-slate-800 text-slate-400' 
-                            : 'bg-slate-50 border-slate-200 text-slate-600'
-                        }`}>
-                          {task.description}
+                      {task.lead && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {isArabic ? "العميل المستهدف: " : "Target Prospect: "}
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{task.lead.firstName} {task.lead.lastName || ''}</span>
                         </p>
                       )}
-                      
-                      <p className={`text-[10px] mt-2 font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {lang === 'AR' ? 'العميل: ' : 'Client: '}
-                        <span className={isDark ? 'text-amber-300' : 'text-[#735334]'}>
-                          {task.lead?.firstName} {task.lead?.lastName || ""}
-                        </span>
-                      </p>
-                      
-                      <p className="text-[10px] text-amber-500 font-extrabold mt-1.5">
-                        {lang === 'AR' ? 'الاستحقاق: ' : 'Due: '}{formatTaskDate(task.dueDate)}
-                      </p>
+                      {task.notes && (
+                        <p className="text-[11px] text-slate-450 dark:text-slate-500 italic mt-1 leading-relaxed">
+                          {task.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                        isHigh 
+                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' 
+                          : isMedium 
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                      }`}>
+                        {isHigh ? t.priorityHigh : isMedium ? t.priorityMedium : t.priorityLow}
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-en font-semibold">
+                        {formatTaskDate(task.dueDate)}
+                      </span>
                     </div>
                   </div>
-
-                  {/* معلومات المسؤول والدرجة التفضيلية */}
-                  <div className="flex items-center gap-2 self-end sm:self-auto text-[10px] font-bold">
-                    <span className={isDark ? 'text-slate-500' : 'text-slate-405'}>
-                      {t.assignedRep}{task.assignedUser?.name}
-                    </span>
-                    
-                    <span className={`text-[9px] px-2 py-0.5 rounded font-black border ${
-                      task.priority === 'HIGH' 
-                        ? 'bg-rose-500/10 border-rose-500/25 text-rose-500' 
-                        : task.priority === 'MEDIUM' 
-                          ? 'bg-amber-500/10 border-amber-500/25 text-amber-500' 
-                          : (isDark ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-650')
-                    }`}>
-                      {task.priority === 'HIGH' ? t.priorityHigh : task.priority === 'MEDIUM' ? t.priorityMedium : t.priorityLow}
-                    </span>
-                  </div>
-
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
+        {/* Right Column: Create Task Form (5 cols) */}
+        <div className="lg:col-span-5">
+          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-5">
+            <h3 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
+              <i className="ph-bold ph-calendar-plus text-[#df7b62]"></i>
+              {t.formTitle}
+            </h3>
+
+            {errorMessage && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+                {errorMessage}
+              </div>
+            )}
+            {successMessage && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                {successMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.taskTitleLabel}</label>
+                <input 
+                  type="text" 
+                  name="title" 
+                  required 
+                  placeholder={t.taskTitlePlaceholder}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.leadLabel}</label>
+                <select 
+                  name="leadId" 
+                  required 
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                >
+                  <option value="">{t.leadPlaceholder}</option>
+                  {leads.map(l => (
+                    <option key={l.id} value={l.id}>{l.firstName} {l.lastName || ''} ({formatTaskDate(l.createdAt)})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.dueDateLabel}</label>
+                  <input 
+                    type="date" 
+                    name="dueDate" 
+                    required 
+                    className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.dueTimeLabel}</label>
+                  <input 
+                    type="time" 
+                    name="dueTime" 
+                    required 
+                    className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.priorityLabel}</label>
+                <select 
+                  name="priority" 
+                  required
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                >
+                  <option value="HIGH">{t.priorityHigh}</option>
+                  <option value="MEDIUM">{t.priorityMedium}</option>
+                  <option value="LOW">{t.priorityLow}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.notesLabel}</label>
+                <textarea 
+                  name="notes" 
+                  rows={3}
+                  placeholder={t.notesPlaceholder}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3.5 rounded-xl bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-sm transition-colors mt-4 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-95 duration-200"
+              >
+                {t.saveBtn}
+              </button>
+            </form>
+          </div>
+        </div>
+
       </div>
+
     </div>
   );
 }

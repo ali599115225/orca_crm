@@ -174,7 +174,7 @@ function NotificationCenter({
   return (
     <div
       className="fixed bottom-6 left-6 z-[9999] flex flex-col gap-3"
-      style={{ fontFamily: "'Cairo', 'Inter', system-ui, sans-serif" }}
+      style={{ fontFamily: "'Calibri', 'Segoe UI', sans-serif" }}
     >
       {notifications.slice(0, 5).map((n) => (
         <NotificationItem key={n.id} notification={n} onDismiss={onDismiss} />

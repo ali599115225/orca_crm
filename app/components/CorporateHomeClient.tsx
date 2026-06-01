@@ -140,10 +140,10 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
   // الأزرق النيوني: للأزرار النشطة والـ hover والشعار
 
   const CSS = `
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
 
     *, *::before, *::after {
-      font-family: 'Cairo', 'Inter', sans-serif !important;
+      font-family: 'Calibri', 'Segoe UI', sans-serif !important;
       box-sizing: border-box;
     }
 
@@ -265,7 +265,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
   const dir = lang === 'AR' ? 'rtl' : 'ltr';
 
   return (
-    <div dir={dir} style={{ minHeight: '100vh', background: '#111111', color: '#e2e8f0', fontFamily: "'Cairo','Inter',sans-serif", direction: dir, position: 'relative', WebkitFontSmoothing: 'antialiased' }}>
+    <div dir={dir} style={{ minHeight: '100vh', background: '#111111', color: '#e2e8f0', fontFamily: "'Calibri', 'Segoe UI', sans-serif", direction: dir, position: 'relative', WebkitFontSmoothing: 'antialiased' }}>
 
 
 
@@ -355,10 +355,10 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
 
               {/* CTA Buttons */}
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="#register-interest" className="btn-blue" style={{ padding: '14px 32px', borderRadius: 12, fontSize: 13, fontWeight: 900, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <a href="#register-interest" className="btn-blue" style={{ padding: '14px 32px', borderRadius: 8, fontSize: 13, fontWeight: 900, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {t.heroCTA} ←
                 </a>
-                <a href="#pricing" className="btn-outline" style={{ padding: '14px 24px', borderRadius: 12, fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                <a href="#pricing" className="btn-outline" style={{ padding: '14px 24px', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
                   {t.navPricing}
                 </a>
               </div>
@@ -381,7 +381,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             {/* ── لوحة HUD ── */}
             <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(0,123,255,0.06) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
-              <div style={{ width: '100%', maxWidth: 460, borderRadius: 24, border: '1px solid rgba(0,123,255,0.12)', background: 'rgba(22,22,28,0.92)', overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,123,255,0.06)' }}>
+              <div style={{ width: '100%', maxWidth: 460, borderRadius: 8, border: '1px solid rgba(0,123,255,0.12)', background: 'rgba(22,22,28,0.92)', overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,123,255,0.06)' }}>
 
                 {/* شريط العنوان */}
                 <div style={{ height: 44, background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
@@ -428,7 +428,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
                     </div>
 
                     {/* شريط التدفق النقدي */}
-                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,123,255,0.1)', borderRadius: 12, padding: '10px 14px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,123,255,0.1)', borderRadius: 8, padding: '10px 14px' }}>
                       <div style={{ fontSize: 8, color: '#5aabff', fontWeight: 700, marginBottom: 6 }}>{toAr(t.netFlows)}</div>
                       <svg width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none">
                         <defs>
@@ -469,7 +469,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr]" style={{ gap: 24, alignItems: 'center', maxWidth: 860, margin: '0 auto' }}>
 
             {/* ساهر */}
-            <div className="glass card-lift" style={{ borderRadius: 20, padding: 28 }}>
+            <div className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(0,123,255,0.08)', border: '1px solid rgba(0,123,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
                   🤖
@@ -495,7 +495,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             <div className="hidden md:block" style={{ fontSize: 22, color: 'rgba(0,123,255,0.4)', textAlign: 'center', transform: lang === 'AR' ? 'rotate(180deg)' : 'none' }}>→</div>
 
             {/* سند */}
-            <div className="glass card-lift" style={{ borderRadius: 20, padding: 28 }}>
+            <div className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
                   💳
@@ -532,8 +532,8 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
               { icon: '🤝', t: t.f2t, d: t.f2d, c: '#C0C0C0' },
               { icon: '🛡️', t: t.f3t, d: t.f3d, c: '#22c55e' },
             ].map(f => (
-              <div key={f.t} className="glass card-lift" style={{ borderRadius: 20, padding: 28 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 18 }}>{f.icon}</div>
+              <div key={f.t} className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 18 }}>{f.icon}</div>
                 <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 10, color: f.c }}>{f.t}</h3>
                 <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.8, fontWeight: 600 }}>{f.d}</p>
               </div>
@@ -555,7 +555,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 20, maxWidth: 900, margin: '0 auto' }}>
             {projects.map(p => (
-              <div key={p.id} className="card-lift" style={{ borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(22,22,28,0.88)', backdropFilter: 'blur(12px)' }}>
+              <div key={p.id} className="card-lift" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(22,22,28,0.88)', backdropFilter: 'blur(12px)' }}>
                 <div style={{ position: 'relative', height: 180, overflow: 'hidden' }}>
                   <img src={p.thumb} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
@@ -598,7 +598,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       ══════════════════════════════════════════════════════════ */}
       <section id="register-interest" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
         <div className="max-w-4xl mx-auto" style={{ padding: '0 40px' }}>
-          <div className="glass" style={{ borderRadius: 24, padding: '48px 52px', position: 'relative', overflow: 'hidden', boxShadow: '0 0 60px rgba(0,123,255,0.05)' }}>
+          <div className="glass" style={{ borderRadius: 8, padding: '48px 52px', position: 'relative', overflow: 'hidden', boxShadow: '0 0 60px rgba(0,123,255,0.05)' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 300, height: 300, background: 'radial-gradient(circle, rgba(0,123,255,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
             <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 10 }}>
@@ -609,7 +609,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             </div>
 
             {formStatus && (
-              <div style={{ marginBottom: 24, padding: '14px 20px', borderRadius: 12, background: formStatus.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${formStatus.ok ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, color: formStatus.ok ? '#22c55e' : '#ef4444', fontSize: 12, fontWeight: 700, textAlign: 'center', position: 'relative', zIndex: 10 }}>
+              <div style={{ marginBottom: 24, padding: '14px 20px', borderRadius: 8, background: formStatus.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${formStatus.ok ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, color: formStatus.ok ? '#22c55e' : '#ef4444', fontSize: 12, fontWeight: 700, textAlign: 'center', position: 'relative', zIndex: 10 }}>
                 {formStatus.msg}
               </div>
             )}
@@ -632,7 +632,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
                   {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              <button type="submit" disabled={isSubmitting} className="btn-blue" style={{ padding: '14px 24px', borderRadius: 12, fontSize: 13, fontWeight: 900, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.6 : 1, marginTop: 8 }}>
+              <button type="submit" disabled={isSubmitting} className="btn-blue" style={{ padding: '14px 24px', borderRadius: 8, fontSize: 13, fontWeight: 900, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.6 : 1, marginTop: 8 }}>
                 {isSubmitting ? (lang === 'AR' ? 'جارٍ المعالجة...' : 'Processing...') : t.submitBtn}
               </button>
             </form>

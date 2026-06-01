@@ -1,7 +1,7 @@
-// app/operations/helpdesk/HelpdeskView.tsx
+// components/views/HelpdeskView.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createTicketAction, closeTicketAction } from '@/app/actions/helpdesk';
 import { useApp } from '@/app/context/AppContext';
 
@@ -22,7 +22,7 @@ interface HelpdeskViewProps {
 const TRANSLATIONS = {
   AR: {
     title: "مركز الدعم والوكيل مساعد",
-    subtitle: "تواصل مع الوكيل مساعد للحصول على إجابات تقنية فورية أو تصعيد المشاكل الحرجة لعام {year}م.",
+    subtitle: "تواصل مع الوكيل مساعد للحصول على إجابات تقنية فورية أو تصعيد المشاكل الحرجة لعام ٢٠٢٦م.",
     badgeText: "مساعد الدعم الذكي - SaaS Helpdesk Agent",
     openTicket: "فتح تذكرة دعم فني",
     openTicketSub: "سيقوم الوكيل مساعد بالرد عليك تلقائياً فور الإرسال",
@@ -50,7 +50,7 @@ const TRANSLATIONS = {
   },
   EN: {
     title: "Support Center & Agent Assistant",
-    subtitle: "Communicate with the AI assistant for instant technical answers or escalate critical issues for the year {year}.",
+    subtitle: "Communicate with the AI assistant for instant technical answers or escalate critical issues for the year 2026.",
     badgeText: "SaaS Helpdesk Agent",
     openTicket: "Open Support Ticket",
     openTicketSub: "The AI assistant will respond to you automatically upon submission",
@@ -81,6 +81,8 @@ const TRANSLATIONS = {
 export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskViewProps) {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+  const isArabic = lang === 'AR';
+  const dir = isArabic ? 'rtl' : 'ltr';
 
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [loading, setLoading] = useState(false);
@@ -92,7 +94,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
-    if (lang === 'EN') return str;
+    if (!isArabic) return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
     return str
       .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
@@ -101,7 +103,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
   const formatTicketDate = (dateStr: string | Date) => {
     const dateObj = new Date(dateStr);
-    const formatted = dateObj.toLocaleDateString('en-US', {
+    const formatted = dateObj.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
@@ -123,7 +125,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       setSuccess(t.successMsg);
       e.currentTarget.reset();
       
-      if (result.ticket) {
+      if ('ticket' in result && result.ticket) {
         const newTicket: Ticket = {
           id: result.ticket.id,
           title: result.ticket.title,
@@ -135,6 +137,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
         const updated = [newTicket, ...tickets];
         setTickets(updated);
         setSelectedTicket(newTicket);
+        setTimeout(() => setSuccess(null), 3000);
       } else {
         window.location.reload();
       }
@@ -153,290 +156,188 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     }
   };
 
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`helpdesk-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
       
-      <style dangerouslySetInnerHTML={{ __html: `
-        .calibri-strictly, .calibri-strictly * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-        }
-        
-        .helpdesk-page-wrapper {
-          min-height: 100%;
-          transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        
-        .frosted-glass-dark {
-          background: rgba(11, 15, 25, 0.6) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(99, 102, 241, 0.25) !important; /* Polished Indigo border */
-          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
-        }
-        
-        .milky-glass-light {
-          background: rgba(255, 255, 255, 0.92) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
-        }
-        
-        .bronze-glow-dark {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 0 20px rgba(115, 83, 52, 0.35) !important;
-        }
-        
-        .bronze-glow-light {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 4px 20px rgba(115, 83, 52, 0.12) !important;
-        }
-
-        .dark-canvas {
-          background-color: #0b0f19 !important;
-          color: #ffffff !important;
-        }
-        
-        .light-canvas {
-          background-color: #f9f9fb !important;
-          color: #0b0f19 !important;
-        }
-      `}} />
-
-      {/* الترويسة وشارة الذكاء الاصطناعي (Header & AI Badge Layout) */}
-      <div className={`p-6 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-5 mb-6 transition-all ${
-        isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-      }`}>
-        <div className={lang === 'AR' ? 'text-right' : 'text-left'}>
-          <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {t.title}
-          </h1>
-          <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            {t.subtitle.replace('{year}', toArabicNumerals(2026))}
-          </p>
+      {/* Header */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+          <i className="ph-bold ph-headset"></i> {t.badgeText}
         </div>
-        
-        {/* شارة الذكاء الاصطناعي الفخمة الملونة */}
-        <div className={`px-4 py-2 rounded-xl font-bold text-xs shrink-0 text-center border ${
-          isDark 
-            ? 'bg-[#735334]/20 text-[#E6C687] border-[#735334]/40 shadow-[0_0_15px_rgba(115,83,52,0.2)]' 
-            : 'bg-[#735334]/10 text-[#735334] border-[#735334]/20 shadow-sm'
-        }`}>
-          {t.badgeText}
-        </div>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          {t.title}
+        </h1>
+        <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
+          {t.subtitle}
+        </p>
       </div>
 
-      {/* التنبيهات والأخطاء */}
-      {success && (
-        <div className="bg-emerald-950/20 border border-emerald-800/50 text-emerald-400 text-xs p-4 rounded-xl font-bold mb-6">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="bg-rose-950/20 border border-rose-800/50 text-rose-300 text-xs p-4 rounded-xl font-bold mb-6">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
         
-        {/* استمارة فتح تذكرة دعم فني جديدة */}
-        <div className={`p-6 rounded-2xl h-fit space-y-5 transition-all ${isDark ? 'frosted-glass-dark' : 'milky-glass-light'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <div>
-            <h3 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>{t.openTicket}</h3>
-            <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {t.openTicketSub}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.subjectLabel}
-              </label>
-              <input 
-                type="text" 
-                name="title" 
-                required 
-                placeholder={t.subjectPlaceholder}
-                className={`w-full rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-[#735334] focus:outline-none ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-slate-800 text-white' 
-                    : 'bg-white border border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.detailsLabel}
-              </label>
-              <textarea 
-                name="description" 
-                required 
-                rows={5}
-                placeholder={t.detailsPlaceholder}
-                className={`w-full rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-[#735334] focus:outline-none ${
-                  isDark 
-                    ? 'bg-slate-950/70 border border-slate-800 text-white' 
-                    : 'bg-white border border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={loading}
-              className={`w-full py-3 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md text-white ${
-                isDark ? 'bg-[#735334] hover:bg-[#5f4229]' : 'bg-[#735334] hover:bg-[#4a3520]'
-              }`}
-            >
-              {loading ? t.submittingBtn : t.submitBtn}
-            </button>
-          </form>
-        </div>
-
-        {/* سجل التذاكر والاستفسارات العقارية (Ticket Ledger Subsystem) */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Left Side: Creation Form & Ticket List (5 cols) */}
+        <div className="lg:col-span-5 space-y-6">
           
-          <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
-            isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-          }`}>
-            <h3 className={`font-black text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {t.ledgerTitle}
-            </h3>
-            
-            {/* العداد النشط بالتنسيق الشرقي */}
-            <span className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
-              isDark ? 'bg-slate-950 border border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
-            }`}>
-              {t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}
-            </span>
+          {/* Create ticket form */}
+          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.openTicket}</h3>
+              <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">{t.openTicketSub}</p>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold animate-shake">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.subjectLabel}</label>
+                <input 
+                  type="text" 
+                  name="title" 
+                  required 
+                  placeholder={t.subjectPlaceholder}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.detailsLabel}</label>
+                <textarea 
+                  name="description" 
+                  rows={4} 
+                  required 
+                  placeholder={t.detailsPlaceholder}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-sm transition-colors cursor-pointer disabled:opacity-55 hover:shadow-sm"
+              >
+                {loading ? t.submittingBtn : t.submitBtn}
+              </button>
+            </form>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* القائمة الجانبية للتذاكر */}
-            <div className={`rounded-2xl border overflow-hidden shadow-sm divide-y h-[450px] overflow-y-auto transition-all ${
-              isDark ? 'frosted-glass-dark divide-slate-800' : 'milky-glass-light divide-slate-100'
-            }`}>
+          {/* Ticket list ledger */}
+          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
+            <h4 className="text-slate-900 dark:text-white font-bold text-sm border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
+              <span>{t.ledgerTitle}</span>
+              <span className="text-xs text-slate-400 font-normal">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
+            </h4>
+
+            <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
               {tickets.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400 font-bold text-xs">
+                <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
                   {t.emptyStateLeft}
                 </div>
               ) : (
-                tickets.map((tSingle) => (
-                  <div 
-                    key={tSingle.id} 
-                    onClick={() => setSelectedTicket(tSingle)}
-                    className={`p-4 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${lang === 'AR' ? 'text-right' : 'text-left'} ${
-                      selectedTicket?.id === tSingle.id 
-                        ? (isDark ? 'bg-[#735334]/20 border-r-4 border-[#735334]' : 'bg-[#735334]/5 border-r-4 border-[#735334]') 
-                        : (isDark ? 'hover:bg-slate-900/30' : 'hover:bg-slate-50/50')
-                    }`}
-                  >
-                    <div>
-                      <div className="flex justify-between items-start gap-2">
-                        <h4 className={`font-black text-xs line-clamp-1 flex-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                          {tSingle.title}
-                        </h4>
-                        
-                        <span className={`text-[8px] font-black px-2 py-0.5 rounded border shrink-0 ${
-                          tSingle.status === 'OPEN' 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                            : (isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500')
+                tickets.map((ticket) => {
+                  const isActive = selectedTicket?.id === ticket.id;
+                  const isOpen = ticket.status === 'OPEN';
+                  return (
+                    <div 
+                      key={ticket.id}
+                      onClick={() => setSelectedTicket(ticket)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start ${
+                        isActive 
+                          ? 'bg-[#df7b62]/5 border-[#df7b62]/40' 
+                          : 'bg-slate-50 dark:bg-[#0b1120] border-slate-200 dark:border-slate-850 hover:border-slate-350 dark:hover:border-slate-800'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <h5 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">{ticket.title}</h5>
+                        <p className="text-[10px] text-slate-400">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {ticket.aiResponse && (
+                          <span className="text-[9px] bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
+                            {t.aiResponded}
+                          </span>
+                        )}
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          isOpen 
+                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                            : 'bg-slate-200/80 dark:bg-slate-800 text-slate-500 border-slate-250 dark:border-slate-700'
                         }`}>
-                          {tSingle.status === 'OPEN' ? t.statusActive : t.statusClosed}
+                          {isOpen ? t.statusActive : t.statusClosed}
                         </span>
                       </div>
-                      
-                      <p className={`text-[10px] line-clamp-2 mt-1 leading-normal ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {tSingle.description}
-                      </p>
                     </div>
-
-                    <div className={`flex items-center justify-between text-[9px] text-slate-400 font-bold border-t border-slate-700/20 pt-2 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-                      <span>{t.ticketDate.replace('{date}', formatTicketDate(tSingle.createdAt))}</span>
-                      {tSingle.aiResponse && <span className="text-amber-500 font-black">{t.aiResponded}</span>}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
-
-            {/* تفاصيل التذكرة المفتوحة */}
-            <div className={`rounded-2xl border p-5 shadow-sm h-[450px] flex flex-col justify-between transition-all ${
-              isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-            } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-              {selectedTicket ? (
-                <div className="space-y-4 flex-1 flex flex-col justify-between overflow-y-auto">
-                  <div className="space-y-3">
-                    <div className={`flex justify-between items-center border-b pb-2 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                      <h4 className={`font-black text-xs leading-normal ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                        {selectedTicket.title}
-                      </h4>
-                      
-                      {selectedTicket.status === 'OPEN' && (
-                        <button 
-                          onClick={() => handleCloseTicket(selectedTicket.id)}
-                          className="bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 text-[9px] font-black px-2.5 py-1 rounded-lg border border-rose-500/20 transition-colors cursor-pointer"
-                        >
-                          {t.closeTicketBtn}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.authorLabel}</p>
-                      <p className={`text-[11px] p-3 rounded-lg leading-relaxed border font-semibold ${
-                        isDark ? 'bg-slate-950/40 border-slate-800 text-slate-350' : 'bg-slate-50 border-slate-200 text-slate-600'
-                      }`}>
-                        {selectedTicket.description}
-                      </p>
-                    </div>
-
-                    {selectedTicket.aiResponse && (
-                      <div className={`p-3.5 border rounded-xl space-y-1.5 animate-in fade-in duration-300 ${
-                        isDark ? 'bg-[#735334]/10 border-[#735334]/20' : 'bg-amber-500/5 border-amber-500/20'
-                      }`}>
-                        <div className="flex items-center gap-1.5 text-amber-500">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          <p className="text-[9px] font-black">{t.aiAgentLabel}</p>
-                        </div>
-                        <p className={`text-[10px] leading-relaxed font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {selectedTicket.aiResponse}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-[9px] text-slate-400 text-center border-t border-slate-700/20 pt-3">
-                    {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', toArabicNumerals(selectedTicket.id.substring(0, 8).toUpperCase()))}
-                  </div>
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-2 py-10">
-                  <svg width="32" height="32" className="text-slate-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <p className="text-xs font-bold text-slate-500">
-                    {t.emptyStateRightTitle}
-                  </p>
-                  <p className="text-[9px] text-slate-400">
-                    {t.emptyStateRightDesc}
-                  </p>
-                </div>
-              )}
-            </div>
-
           </div>
+        </div>
 
+        {/* Right Side: Selected Ticket view (7 cols) */}
+        <div className="lg:col-span-7">
+          {selectedTicket ? (
+            <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-6">
+              
+              {/* Detail header */}
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-4 flex justify-between items-center gap-4">
+                <div>
+                  <h3 className="text-slate-900 dark:text-white font-bold text-lg">{selectedTicket.title}</h3>
+                  <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-1 font-en">
+                    {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', selectedTicket.id)}
+                  </p>
+                </div>
+                {selectedTicket.status === 'OPEN' && (
+                  <button 
+                    onClick={() => handleCloseTicket(selectedTicket.id)}
+                    className="bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-rose-500/20 hover:border-transparent cursor-pointer shrink-0"
+                  >
+                    {t.closeTicketBtn}
+                  </button>
+                )}
+              </div>
+
+              {/* Inquiry description */}
+              <div className="bg-slate-50 dark:bg-[#0b1120] border border-slate-100 dark:border-slate-850 p-4 rounded-xl">
+                <p className="text-[#df7b62] text-[10px] font-bold mb-1.5">{t.authorLabel}</p>
+                <p className="text-slate-750 dark:text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
+              </div>
+
+              {/* AI response box */}
+              {selectedTicket.aiResponse ? (
+                <div className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-2xl space-y-3 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-[40px] pointer-events-none"></div>
+                  
+                  <div className="flex items-center gap-2 border-b border-indigo-500/10 pb-2 relative z-10">
+                    <i className="ph-fill ph-robot text-indigo-500 text-lg"></i>
+                    <h5 className="text-indigo-600 dark:text-indigo-400 font-bold text-xs">{t.aiAgentLabel}</h5>
+                  </div>
+                  
+                  <div className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed whitespace-pre-wrap relative z-10">
+                    {selectedTicket.aiResponse}
+                  </div>
+                </div>
+              ) : null}
+
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-16 text-center shadow-sm">
+              <i className="ph ph-article-ny-times text-5xl text-slate-400 dark:text-slate-500 mb-4 block"></i>
+              <h3 className="text-slate-900 dark:text-white font-bold text-base mb-1">{t.emptyStateRightTitle}</h3>
+              <p className="text-slate-400 text-xs">{t.emptyStateRightDesc}</p>
+            </div>
+          )}
         </div>
 
       </div>
+
     </div>
   );
 }
-

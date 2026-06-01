@@ -89,6 +89,7 @@ export default async function DashboardPage() {
         companyName: tenant.companyName,
         subdomain: tenant.subdomain,
         subscriptionPlan: tenant.subscriptionPlan,
+        extraAgents: tenant.extraAgents,
       }}
       stats={{
         totalLeads,

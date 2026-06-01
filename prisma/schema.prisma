@@ -105,6 +105,7 @@ model Lead {
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   leadActivities LeadActivity[]
   tasks          Task[]
+  mansourChats   MansourChat[]
 
   @@map("leads")
 }
@@ -150,6 +151,13 @@ model Tenant {
   subscriptionPlan    String         @default("basic") @map("subscription_plan")
   isActive            Boolean        @default(true) @map("is_active")
   contractTerms       String?        @map("contract_terms") @db.Text
+  commercialRegistry  String?        @map("commercial_registry")
+  vatNumber           String?        @map("vat_number")
+  nationalAddress     String?        @map("national_address")
+  encryptedClientId   String?        @map("encrypted_client_id")
+  encryptedClientSecret String?      @map("encrypted_client_secret")
+  encryptedApiKey     String?        @map("encrypted_api_key")
+  encryptedZatcaCredentials String?  @map("encrypted_zatca_credentials")
   
   // 💎 حقول الفوترة والاشتراكات السحابية الجديدة لـ "سند" [1.1.2]
   subscriptionExpiresAt DateTime?      @map("subscription_expires_at") @db.Timestamptz
@@ -157,6 +165,7 @@ model Tenant {
   billingCycle        String         @default("MONTHLY") @map("billing_cycle")
   extraAgents         Int            @default(0) @map("extra_agents")
   whatsappConnected   Boolean        @default(false) @map("whatsapp_connected")
+  growthWarning       Boolean        @default(false) @map("growth_warning")
 
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   users               User[]
@@ -169,6 +178,11 @@ model Tenant {
   usageMeters         UsageMeter[]
   commissions         PayrollCommission[]
   agentTelemetryLogs  AgentTelemetryLog[]
+  auditLogs           AuditLog[]
+  followupSequences   FollowupSequence[]
+  mansourChats        MansourChat[]
+  platformConnections PlatformConnection[]
+  agentLeases         AgentLease[]
 
   @@map("tenants")
 }
@@ -291,4 +305,86 @@ model AgentTelemetryLog {
   @@index([tenantId], map: "idx_telemetry_tenant_id")
   @@index([createdAt(sort: Desc)], map: "idx_telemetry_created_at")
   @@map("agent_telemetry_logs")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?  @map("user_id") @db.Uuid
+  action    String
+  tableName String   @map("table_name")
+  recordId  String   @map("record_id")
+  details   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId], map: "idx_audit_logs_tenant_id")
+  @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@map("audit_logs")
+}
+
+model FollowupSequence {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status    String   // INTERESTED, STUDY, CLOSED
+  delayDays Int      @map("delay_days")
+  message   String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("followup_sequences")
+}
+
+model MansourChat {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId       String?  @map("lead_id") @db.Uuid
+  lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  contactName  String   @map("contact_name")
+  contactPhone String   @map("contact_phone")
+  lastMessage  String   @map("last_message") @db.Text
+  status       String   @default("INTERESTED") // INTERESTED, STUDY, CLOSED
+  messagesJson String   @map("messages_json") @db.Text // JSON list of message objects [{sender, text, time}]
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("mansour_chats")
+}
+
+model PlatformConnection {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  platform        String   // GOOGLE, META, TIKTOK, SNAPCHAT, TWITTER, LINKEDIN
+  accountId       String   @map("account_id") // Ad Account ID or Organization ID
+  encryptedApiKey String?  @map("encrypted_api_key") @db.Text // Encrypted API Integration Key
+  status          String   @default("DISCONNECTED") // CONNECTED, CONNECTION_ERROR, SYNCING, DISCONNECTED
+  
+  // Mansour customized lead routing parameters per platform
+  leadTone        String   @default("PROFESSIONAL") // CASUAL, PROFESSIONAL, URGENT, DETAILED
+  autoWelcomeMsg  String   @default("") @map("auto_welcome_msg") @db.Text // Custom welcome message
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, platform])
+  @@map("platform_connections")
+}
+
+model AgentLease {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId     String   @map("agent_id") // SAHER, SANAD, BASEER, KHABEER, MANSOUR
+  startDate   DateTime @map("start_date") @db.Timestamptz
+  endDate     DateTime @map("end_date") @db.Timestamptz
+  leasePrice  Decimal  @map("lease_price") @db.Decimal(10, 2)
+  autoRenewal Boolean  @default(false) @map("auto_renewal")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, agentId])
+  @@map("agent_leases")
 }

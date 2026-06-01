@@ -21,7 +21,7 @@ export async function encrypt(payload: any) {
 /**
  * فك التشفير والتحقق من صحة الـ Token
  */
-export async function decrypt(input: string) {
+export async function decrypt(input: string): Promise<any> {
   try {
     const { payload } = await jwtVerify(input, SECRET_KEY, {
       algorithms: ["HS256"],

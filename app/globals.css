@@ -1,87 +1,25 @@
-/* app/globals.css */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;750;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
-body, html, *, input, select, textarea, button {
-  /* تعميم خطوط Cairo و Inter على كامل النظام */
-  font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif !important;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+.no-scrollbar, .scroll-container {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar, .scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
-/* كلاس مخصص ليعطي البطاقات تأثير طفو ناعم جداً عند تمرير الماوس */
-.premium-card {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.premium-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgb(15 23 42 / 0.05), 0 8px 10px -6px rgb(15 23 42 / 0.05);
+.price-tag {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  font-weight: 700;
 }
 
-/* تخصيص شريط التمرير (Scrollbar) ليكون ناعماً وشبه شفاف لراحة العين */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+.mask-fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
 }
 
-/* الوضع الفاتح - scrollbar أفتح */
-html.light ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+.mask-fade-vertical {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
 }
-html.light ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* ==========================================
-   قواعد الهوية البصرية الحركية للمظهر المزدوج 
-   ========================================== */
-
-/* 1. السمة الداكنة (Sovereign Onyx & Bronze) */
-html.dark body,
-html.dark main,
-html.dark div.flex-1.overflow-y-auto {
-  background-color: #0b0f19 !important;
-  color: #e2e8f0 !important;
-}
-
-html.dark footer {
-  border-top-color: rgba(115, 83, 52, 0.2) !important;
-  color: #64748b !important;
-}
-
-/* 2. السمة المضيئة (Ivory & Royal Bronze) */
-html.light body,
-html.light main,
-html.light div.flex-1.overflow-y-auto {
-  background-color: #f9f9fb !important;
-  color: #0f172a !important;
-}
-
-html.light footer {
-  border-top-color: rgba(226, 232, 240, 0.8) !important;
-  color: #475569 !important;
-}
-
-/* 3. منع الترجمة التلقائية للحفاظ على الأرقام العربية والإنجليزية المنسقة */
-.notranslate {
-  translate: no !important;
-}
-
-/* 4. انتقالات سلسة للعناصر عند تبديل السمة */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
-}
+

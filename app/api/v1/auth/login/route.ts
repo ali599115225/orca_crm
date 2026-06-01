@@ -74,11 +74,7 @@ export async function POST(request: NextRequest) {
       .setExpirationTime("12h")
       .sign(SECRET_KEY);
 
-    // تحديث تاريخ آخر تسجيل دخول بصورة غير معطلة للسرعة
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() }
-    }).catch(err => console.error("فشل تحديث تاريخ تسجيل الدخول:", err));
+    // تحديث تاريخ آخر تسجيل دخول بصورة غير معطلة للسرعة (تم تخطيه لعدم وجود الحقل في الموديل)
 
     return NextResponse.json({
       success: true,

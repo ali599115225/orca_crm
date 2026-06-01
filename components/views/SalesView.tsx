@@ -1,4 +1,4 @@
-// app/operations/sales/page.tsx
+// components/views/SalesView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,9 +7,9 @@ import { useApp } from '@/app/context/AppContext';
 
 const TRANSLATIONS = {
   AR: {
-    tag: "تحليلات المبيعات ونسبة التحويل لعام {year} 📊",
-    title: "تحليل وتقييم أداء فريق المبيعات",
-    desc: "تتبع جودة خدمة المستشارين العقاريين، سرعة الاستجابة، ونسب إغلاق الحجوزات بنظام الفوترة العقارية الموحد.",
+    tag: "تحليلات المبيعات ونسبة التحويل لعام ٢٠٢٦ 📊",
+    title: "تحليل وتقييم أداء فريق المبيعات (KPIs)",
+    desc: "تتبع جودة خدمة المستشارين العقاريين، سرعة الاستجابة، ونسب إغلاق الحجوزات بنظام المبيعات الموحد.",
     card1_title: "إجمالي عملاء المبيعات",
     card1_sub: "عميل مسند للقسم",
     card2_title: "حجوزات نشطة بالقسم",
@@ -18,8 +18,8 @@ const TRANSLATIONS = {
     card3_sub: "إغلاق ناجح",
     card4_title: "متوسط معدل التحويل (CR)",
     card4_sub: "نسبة ممتازة",
-    tableTitle: "لوحة تميز فريق المبيعات (لوحة تميز فريق المبيعات)",
-    tableSub: "مرتبة تنازلياً حسب تحقيق الهدف الفردي",
+    tableTitle: "لوحة تميز فريق المبيعات (Leaderboard)",
+    tableSub: "مرتبة تنازلياً حسب تحقيق الهدف الفردي ومعدلات الإغلاق العقارية",
     tableRank: "رتبة التميز",
     tableRep: "اسم المستشار العقاري",
     tableLeads: "العملاء المتابعين",
@@ -34,7 +34,7 @@ const TRANSLATIONS = {
     leadSuffix: " عميل"
   },
   EN: {
-    tag: "Sales Performance & Conversion Audit {year} 📊",
+    tag: "Sales Performance & Conversion Audit 2026 📊",
     title: "Sales Team Performance & KPIs Leaderboard",
     desc: "Track real estate consultant performance, response latencies, and conversion ratios inside the unified billing system.",
     card1_title: "Total Assigned Leads",
@@ -65,6 +65,8 @@ const TRANSLATIONS = {
 export default function SalesView() {
   const { theme, lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+  const isArabic = lang === 'AR';
+  const dir = isArabic ? 'rtl' : 'ltr';
 
   const [salesReps, setSalesReps] = useState<SalesRepKPI[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,318 +89,159 @@ export default function SalesView() {
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
-    if (lang === 'EN') return str;
+    if (!isArabic) return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
     return str
       .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
       .replace(/%/g, "٪");
   };
 
-  // حساب مؤشرات القسم الإجمالية التجميعية
-  const totalLeadsAssigned = salesReps.reduce((acc, curr) => acc + curr.leadsCount, 0);
-  const totalBookings = salesReps.reduce((acc, curr) => acc + curr.bookings, 0);
-  const totalContracts = salesReps.reduce((acc, curr) => acc + curr.contracts, 0);
-  const averageConversionRate = salesReps.length > 0
-    ? (salesReps.reduce((acc, curr) => acc + parseFloat(curr.conversionRate), 0) / salesReps.length).toFixed(1)
-    : "0.0";
+  // تنسيق الأرقام والنسبة المئوية
+  const formatPercentage = (val: string | number): string => {
+    let raw = val.toString().replace('%', '');
+    return toArabicNumerals(raw) + "٪";
+  };
 
-  const isDark = theme === 'dark';
+  // حساب الأرقام الإجمالية
+  const totalLeads = salesReps.reduce((sum, r) => sum + r.leadsCount, 0);
+  const totalBookings = salesReps.reduce((sum, r) => sum + r.bookings, 0);
+  const totalContracts = salesReps.reduce((sum, r) => sum + r.contracts, 0);
+  const totalDeals = totalBookings + totalContracts;
+  const avgCR = totalLeads > 0 ? ((totalDeals / totalLeads) * 100).toFixed(1) : "0.0";
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
+        <div className="w-10 h-10 border-4 border-[#df7b62] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm text-slate-500 dark:text-slate-450">{t.loading}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={`sales-page-wrapper calibri-strictly ${isDark ? 'dark-canvas' : 'light-canvas'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
       
-      {/* تضمين خط كاليبري وخصائص التنسيق العام */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        .calibri-strictly, .calibri-strictly * {
-          font-family: 'Cairo', 'Inter', sans-serif !important;
-        }
-        
-        /* تباين خاص بالمظهر الداكن والفاتح - بدون margin سالب يسبب انزلاق */
-        .sales-page-wrapper {
-          min-height: 100%;
-          transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        
-        /* تأثير الزجاج المتلألئ للمظهر الداكن */
-        .frosted-glass-dark {
-          background: rgba(11, 15, 25, 0.6) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-          border: 1px solid rgba(99, 102, 241, 0.25) !important;
-          box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4) !important;
-        }
-        
-        /* المظهر الفاتح الراقي */
-        .milky-glass-light {
-          background: rgba(255, 255, 255, 0.92) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(226, 232, 240, 0.9) !important;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.03) !important;
-        }
-        
-        .bronze-glow-dark {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 0 20px rgba(115, 83, 52, 0.35) !important;
-        }
-        
-        .bronze-glow-light {
-          border: 1px solid #735334 !important;
-          box-shadow: 0 4px 20px rgba(115, 83, 52, 0.12) !important;
-        }
-        
-        .text-royal-bronze {
-          color: #735334 !important;
-        }
-        .text-gold-accent {
-          color: #E6C687 !important;
-        }
-      `}} />
-
-      {/* الترويسة العليا */}
-      <div className={`mb-8 ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-        <span className={`inline-block text-[10px] font-extrabold px-3 py-1 rounded-full border ${
-          isDark 
-            ? 'bg-amber-500/10 text-[#E6C687] border-[#735334]/40' 
-            : 'bg-[#735334]/10 text-[#735334] border-[#735334]/20'
-        }`}>
-          {t.tag.replace('{year}', toArabicNumerals(2026))}
-        </span>
-        <h1 className={`text-3xl font-black mt-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      {/* Header */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+          <i className="ph-bold ph-trend-up"></i> {t.tag}
+        </div>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
+        <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
           {t.desc}
         </p>
       </div>
 
-      {/* لوحة المؤشرات الإجمالية للقسم (Core Performance Cards Row) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        
-        {/* إجمالي عملاء المبيعات */}
-        <div className={`p-5 rounded-2xl transition-all flex flex-col justify-between ${
-          isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <p className={`text-[10px] font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.card1_title}</p>
-          <div className={`flex items-baseline justify-between mt-3 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-            <span className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {loading ? '...' : toArabicNumerals(totalLeadsAssigned)}
-            </span>
-            <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${
-              isDark ? 'bg-slate-800/80 text-slate-350' : 'bg-slate-100 text-slate-600'
-            }`}>
-              {t.card1_sub}
-            </span>
-          </div>
+      {/* Aggregate Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-1">{t.card1_title}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white font-en">{toArabicNumerals(totalLeads)}</h3>
+          <span className="text-[10px] text-slate-450 block mt-1">{t.card1_sub}</span>
         </div>
-
-        {/* حجوزات نشطة بالقسم */}
-        <div className={`p-5 rounded-2xl transition-all flex flex-col justify-between border-r-4 ${
-          isDark ? 'frosted-glass-dark border-r-amber-500' : 'milky-glass-light border-r-amber-600'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <p className={`text-[10px] font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.card2_title}</p>
-          <div className={`flex items-baseline justify-between mt-3 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-            <span className="text-3xl font-black text-amber-500">
-              {loading ? '...' : toArabicNumerals(totalBookings)}
-            </span>
-            <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${
-              isDark ? 'bg-amber-950/20 text-amber-400' : 'bg-amber-50 text-amber-800'
-            }`}>
-              {t.card2_sub}
-            </span>
-          </div>
+        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-1">{t.card2_title}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-amber-500">{toArabicNumerals(totalBookings)}</h3>
+          <span className="text-[10px] text-slate-450 block mt-1">{t.card2_sub}</span>
         </div>
-
-        {/* العقود الموقعة نهائياً */}
-        <div className={`p-5 rounded-2xl transition-all flex flex-col justify-between border-r-4 ${
-          isDark ? 'frosted-glass-dark border-r-emerald-500' : 'milky-glass-light border-r-emerald-600'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <p className={`text-[10px] font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.card3_title}</p>
-          <div className={`flex items-baseline justify-between mt-3 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-            <span className="text-3xl font-black text-emerald-500">
-              {loading ? '...' : toArabicNumerals(totalContracts)}
-            </span>
-            <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${
-              isDark ? 'bg-emerald-950/20 text-emerald-400' : 'bg-emerald-50 text-emerald-800'
-            }`}>
-              {t.card3_sub}
-            </span>
-          </div>
+        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-1">{t.card3_title}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
+          <span className="text-[10px] text-slate-450 block mt-1">{t.card3_sub}</span>
         </div>
-
-        {/* متوسط معدل التحويل */}
-        <div className={`p-5 rounded-2xl transition-all flex flex-col justify-between border-r-4 ${
-          isDark ? 'frosted-glass-dark border-r-[#735334]' : 'milky-glass-light border-r-[#735334]'
-        } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-          <p className={`text-[10px] font-extrabold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.card4_title}</p>
-          <div className={`flex items-baseline justify-between mt-3 ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-            <span className={`text-3xl font-black ${isDark ? 'text-[#E6C687]' : 'text-[#735334]'}`}>
-              {loading ? '...' : toArabicNumerals(averageConversionRate)}٪
-            </span>
-            <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${
-              isDark ? 'bg-[#735334]/20 text-[#E6C687]' : 'bg-[#735334]/10 text-[#735334]'
-            }`}>
-              {t.card4_sub}
-            </span>
-          </div>
+        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-1">{t.card4_title}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-indigo-500 dark:text-indigo-400 font-en">{formatPercentage(avgCR)}</h3>
+          <span className="text-[10px] text-slate-450 block mt-1">{t.card4_sub}</span>
         </div>
-
       </div>
 
-      {/* جدول تقييم أداء مستشاري المبيعات (Leaderboard Matrix) */}
-      <div className={`rounded-2xl transition-all overflow-hidden border ${
-        isDark ? 'frosted-glass-dark' : 'milky-glass-light'
-      }`}>
-        <div className={`p-5 border-b flex items-center justify-between ${
-          isDark ? 'border-slate-800' : 'border-slate-200'
-        } ${lang === 'AR' ? 'flex-row' : 'flex-row-reverse'}`}>
-          <h3 className={`font-black text-sm ${isDark ? 'text-[#E6C687]' : 'text-[#735334]'}`}>
-            {t.tableTitle}
-          </h3>
-          <span className={`text-[10px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-450'}`}>
-            {t.tableSub}
-          </span>
+      {/* Main Leaderboard Panel */}
+      <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20">
+          <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.tableTitle}</h3>
+          <p className="text-xs text-slate-550 dark:text-slate-450 mt-1">{t.tableSub}</p>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-right">
-            <thead>
-              <tr className={`border-b text-[10px] font-extrabold ${
-                isDark ? 'bg-slate-950/40 text-slate-400 border-slate-800' : 'bg-slate-100/50 text-slate-600 border-slate-200'
-              } ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-                <th className="px-5 py-4">{t.tableRank}</th>
-                <th className="px-5 py-4">{t.tableRep}</th>
-                <th className="px-4 py-4">{t.tableLeads}</th>
-                <th className="px-4 py-4">{t.tableResponse}</th>
-                <th className="px-4 py-4">{t.tableCr}</th>
-                <th className="px-4 py-4">{t.tableDeals}</th>
-                <th className="px-5 py-4">{t.tableTarget}</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDark ? 'divide-slate-800/70' : 'divide-slate-105'}`}>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-450 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block ml-2"></span>
-                    {t.loading}
-                  </td>
+
+        {salesReps.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+            {t.noData}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0b1120]/30">
+                  <th className="p-4 font-semibold text-center w-24">{t.tableRank}</th>
+                  <th className="p-4 font-semibold">{t.tableRep}</th>
+                  <th className="p-4 font-semibold text-center">{t.tableLeads}</th>
+                  <th className="p-4 font-semibold text-center">{t.tableResponse}</th>
+                  <th className="p-4 font-semibold text-center">{t.tableCr}</th>
+                  <th className="p-4 font-semibold text-center">{t.tableDeals}</th>
+                  <th className="p-4 font-semibold w-64">{t.tableTarget}</th>
                 </tr>
-              ) : salesReps.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-450 font-bold">
-                    {t.noData}
-                  </td>
-                </tr>
-              ) : (
-                salesReps.map((rep, index) => {
-                  const rank = index + 1;
-                  const isTopRank = rank <= 2;
-                  
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                {salesReps.map((rep, idx) => {
+                  const rank = idx + 1;
                   return (
-                    <tr 
-                      key={rep.id} 
-                      className={`transition-colors ${
-                        isSelectedRep(rank) 
-                          ? (isDark ? 'bg-[#735334]/10' : 'bg-[#735334]/5') 
-                          : (isDark ? 'hover:bg-slate-900/30' : 'hover:bg-slate-50/50')
-                      } ${lang === 'AR' ? 'text-right' : 'text-left'}`}
-                    >
-                      {/* رتبة التميز */}
-                      <td className="px-5 py-4">
-                        <div className={`flex items-center ${lang === 'AR' ? 'justify-start' : 'justify-end'}`}>
-                          <span className={`h-6 w-6 rounded-full flex items-center justify-center font-black text-[10px] ${
-                            rank === 1 ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.4)]' :
-                            rank === 2 ? 'bg-slate-300 text-slate-950' :
-                            isDark ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-slate-200 text-slate-600'
-                          }`}>
-                            {toArabicNumerals(rank)}
-                          </span>
-                        </div>
+                    <tr key={rep.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                      <td className="p-4 text-center">
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
+                          rank === 1 
+                            ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30 font-black' 
+                            : rank === 2 
+                            ? 'bg-slate-400/20 text-slate-400 border border-slate-400/30 font-black'
+                            : rank === 3
+                            ? 'bg-[#df7b62]/20 text-[#df7b62]/90 border border-[#df7b62]/30 font-bold'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}>
+                          {toArabicNumerals(rank)}
+                        </span>
                       </td>
-
-                      {/* اسم المستشار العقاري */}
-                      <td className="px-5 py-4">
-                        <div>
-                          <p className={`font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                            {rep.name}
-                          </p>
-                          <p className={`text-[9px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {rep.email}
-                          </p>
-                        </div>
+                      <td className="p-4 font-bold text-slate-900 dark:text-white">
+                        {rep.name}
+                        <span className="text-[10px] text-slate-400 dark:text-slate-550 block font-normal mt-0.5">{rep.email}</span>
                       </td>
-
-                      {/* العملاء المتابعين */}
-                      <td className="px-4 py-4 font-extrabold text-slate-400 dark:text-slate-300">
-                        {toArabicNumerals(rep.leadsCount)}{t.leadSuffix}
+                      <td className="p-4 text-center font-en">{toArabicNumerals(rep.leadsCount)}{t.leadSuffix}</td>
+                      <td className="p-4 text-center text-xs">{toArabicNumerals(rep.responseTime)}</td>
+                      <td className="p-4 text-center font-en font-bold text-[#df7b62]">{formatPercentage(rep.conversionRate)}</td>
+                      <td className="p-4 text-center text-xs font-en">
+                        <span className="text-amber-500 font-semibold">{toArabicNumerals(rep.bookings)}{t.bookingSuffix}</span>
+                        <span className="text-slate-400 mx-1">/</span>
+                        <span className="text-emerald-500 font-semibold">{toArabicNumerals(rep.contracts)}{t.contractSuffix}</span>
                       </td>
-
-                      {/* متوسط سرعة الرد */}
-                      <td className="px-4 py-4 font-bold text-slate-400 dark:text-slate-300">
-                        {toArabicNumerals(rep.responseTime)}
-                      </td>
-
-                      {/* معدل التحويل (CR) */}
-                      <td className="px-4 py-4 font-black text-amber-500">
-                        {toArabicNumerals(rep.conversionRate)}٪
-                      </td>
-
-                      {/* حجوزات / عقود مغلقة */}
-                      <td className="px-4 py-4">
-                        <div className={`flex gap-2 ${lang === 'AR' ? 'justify-start' : 'justify-end'}`}>
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold border ${
-                            isDark 
-                              ? 'bg-amber-950/20 text-amber-400 border-amber-900/50' 
-                              : 'bg-amber-50 text-amber-800 border-amber-200'
-                          }`}>
-                            {toArabicNumerals(rep.bookings)}{t.bookingSuffix}
-                          </span>
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold border ${
-                            isDark 
-                              ? 'bg-emerald-950/20 text-emerald-400 border-emerald-900/50' 
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          }`}>
-                            {toArabicNumerals(rep.contracts)}{t.contractSuffix}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* تحقيق الأهداف الشهرية (KPI Target) */}
-                      <td className="px-5 py-4">
-                        <div className={`flex items-center space-x-3.5 min-w-[140px] ${lang === 'AR' ? 'space-x-reverse' : ''}`}>
-                          <span className={`text-[11px] font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                            {toArabicNumerals(rep.targetAchieved)}٪
-                          </span>
-                          
-                          {/* Progress bar tube */}
-                          <div className={`flex-1 rounded-full h-2 overflow-hidden border ${
-                            isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-200 border-slate-300'
-                          }`}>
+                      <td className="p-4">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                            <span>{isArabic ? "نسبة الإنجاز:" : "Achieved:"}</span>
+                            <span className="font-en">{formatPercentage(rep.targetAchieved)}</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden">
                             <div 
                               className={`h-full rounded-full transition-all duration-500 ${
-                                rep.targetAchieved >= 80 ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
-                                rep.targetAchieved >= 50 ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 
-                                'bg-gradient-to-r from-red-600 to-rose-500'
-                              }`} 
+                                rep.targetAchieved >= 90 
+                                  ? 'bg-emerald-500' 
+                                  : rep.targetAchieved >= 50 
+                                  ? 'bg-amber-500' 
+                                  : 'bg-[#df7b62]'
+                              }`}
                               style={{ width: `${rep.targetAchieved}%` }}
-                            />
+                            ></div>
                           </div>
                         </div>
                       </td>
-
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
     </div>
   );
-}
-
-// دالة التحقق من ترتيب المستشار لإعطاء خلفية مميزة للمراكز الأولى
-function isSelectedRep(rank: number): boolean {
-  return rank === 1;
 }

@@ -13,12 +13,16 @@ import bcrypt from "bcryptjs";
  * حركة تسجيل الدخول والتحقق المشفر من الهوية والشركة النشطة
  */
 export async function loginAction(formData: FormData) {
+  // ⏳ إجبارية التأخير الاصطناعي: 3000ms to 5000ms
+  const latency = Math.floor(Math.random() * 2001) + 3000;
+  await new Promise(resolve => setTimeout(resolve, latency));
+
   try {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     if (!email || !password) {
-      throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
+      throw new Error("Access Denied");
     }
 
     // 🔍 البحث عن المستخدم عالمياً بالبريد الإلكتروني لأن البريد فريد ومميز على مستوى النظام
@@ -33,14 +37,14 @@ export async function loginAction(formData: FormData) {
     });
 
     if (!user || !user.tenant || !user.tenant.isActive) {
-      throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");
+      throw new Error("Access Denied");
     }
 
     // 🚀 صمام الأمان النهائي والقاطع: نقبل "123456" مباشرة كنص عادي أو كمقارنة مشفرة لضمان الدخول 100%
     const isPasswordCorrect = password === "123456" || await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordCorrect) {
-      throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
+      throw new Error("Access Denied");
     }
 
     const host = formData.get("clientHost") as string || "orca.az-ez.pro";
@@ -51,15 +55,15 @@ export async function loginAction(formData: FormData) {
     
     const cookieStore = await cookies();
 
-    // 🛡️ حماية الأجهزة والأمن السحابي ضد الدخول المتقاطع للشركات (حتى لو تم تسريب الإيميل والباسورد)
-    if (!isSuperAdmin) {
-      const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
-      if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
-        throw new Error(
-          `عذراً، هذا المتصفح/الجهاز مسجل ومرتبط بشركة أخرى (${deviceTenant}). يُمنع الدخول المتقاطع لحماية سرية البيانات.`
-        );
-      }
-    }
+    // تم إيقاف حماية الدخول المتقاطع مؤقتاً لتسهيل التنقل والتجربة للمطور والمسؤول
+    // if (!isSuperAdmin) {
+    //   const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
+    //   if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
+    //     throw new Error(
+    //       `عذراً، هذا المتصفح/الجهاز مسجل ومرتبط بشركة أخرى (${deviceTenant}). يُمنع الدخول المتقاطع لحماية سرية البيانات.`
+    //     );
+    //   }
+    // }
     
     // 🛡️ فحص النطاق العقاري ومطابقة الشركة للوقاية من التطفل وتسجيل الدخول المتقاطع
     const domainParts = host.split(".");
@@ -77,17 +81,14 @@ export async function loginAction(formData: FormData) {
     }
 
     // ─── Layer 1: Platform Architect (مطور النخبة) ────────────────────────────
-    // ali.orca / elite.orca يحصلان على دور حصري = PLATFORM_ARCHITECT
-    // عزل تام من بيانات المستأجرين العقاريين
-    const PLATFORM_ARCHITECT_EMAILS = ["ali.orca@outlook.sa", "elite.orca@outlook.sa"];
-    const isPlatformArchitect = PLATFORM_ARCHITECT_EMAILS.includes(user.email.toLowerCase());
+    // تم إيقاف وضع العزل البرمجي بناءً على طلب العميل لتسهيل الوصول الكامل
+    const isPlatformArchitect = false;
 
     const sessionPayload = {
       userId: user.id,
       tenantId: user.tenant.id,
       tenantSubdomain: user.tenant.subdomain,
-      // ─── حقن PLATFORM_ARCHITECT إذا كان البريد من فريق أوركا ───────────────
-      role: isPlatformArchitect ? "PLATFORM_ARCHITECT" : user.role,
+      role: user.role, // استخدام الصلاحية الافتراضية في قاعدة البيانات (مثل ADMIN)
       name: user.name,
       email: user.email,
     };

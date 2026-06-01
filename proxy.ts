@@ -187,33 +187,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (pathname === "/login") {
-    const sessionToken = request.cookies.get("session_token")?.value;
-    if (sessionToken) {
-      const session = await verifySession(sessionToken);
-      if (session) {
-        const isSuperAdmin =
-          session.email === "ali.orca@outlook.sa" ||
-          session.email === "elite.orca@outlook.sa";
 
-        if (isProductionDomain) {
-          // إذا كان على النطاق الرئيسي، نبقيه عليه، وإذا كان على نطاق فرعي خاطئ، نحوله لنطاقه الصحيح
-          if (!isMainDomain && session.tenantSubdomain !== currentSubdomain) {
-            if (session.tenantSubdomain) {
-              return addSecurityHeaders(
-                NextResponse.redirect(
-                  new URL(`https://${session.tenantSubdomain}.${PRODUCTION_DOMAIN}/operations`, request.url)
-                )
-              );
-            }
-          }
-          return addSecurityHeaders(NextResponse.redirect(new URL("/operations", request.url)));
-        } else {
-          return addSecurityHeaders(NextResponse.redirect(new URL("/operations", request.url)));
-        }
-      }
-    }
-  }
 
   // 5️⃣ حماية مسارات API الداخلية (dashboard)
   if (pathname.startsWith("/api/v1/dashboard")) {

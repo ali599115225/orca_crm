@@ -12,10 +12,12 @@ import CalculatorView from "@/components/views/CalculatorView";
 import SalesView     from "@/components/views/SalesView";
 import TasksView     from "@/components/views/TasksView";
 import SettingsView  from "@/components/views/SettingsView";
-import MonitorView   from "@/components/views/MonitorView";
 import RentalView    from "@/components/views/RentalView";
-import AccountingView from "@/components/views/AccountingView";
+import AdvancedErpView from "@/components/views/AdvancedErpView";
 import DashboardView from "@/app/operations/dashboard/DashboardView";
+import GrowthView from "@/components/views/GrowthView";
+import AgentManagementView from "@/components/views/AgentManagementView";
+import LogsViewer from "@/components/views/LogsViewer";
 
 interface Props {
   initialTab: string;
@@ -26,7 +28,7 @@ interface Props {
   whatsappTenant: { companyName: string; whatsappConnected: boolean };
   helpdeskTickets: any[];
   companyName: string;
-  tenantInfo: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number };
+  tenantInfo: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number; growthWarning: boolean };
   dashboardStats: { totalLeads: number; activeBookings: number; closedSales: number; totalProjects: number; pendingTasks: number };
   recentLeads: any[];
   recentTasks: any[];
@@ -35,12 +37,11 @@ interface Props {
 }
 
 const ROLE_ALLOWED: Record<string, string[]> = {
-  PLATFORM_ARCHITECT: ["monitor"],
-  ADMIN:              ["analytics","leads","projects","rental","accounting","calculator","sales","tasks","settings","helpdesk","whatsapp"],
-  SALES_MANAGER:      ["analytics","leads","projects","rental","accounting","calculator","sales","tasks","helpdesk","whatsapp"],
-  SALES_EMPLOYEE:     ["leads","tasks","helpdesk","calculator","rental"],
-  MARKETING:          ["analytics","leads","projects","helpdesk","whatsapp"],
-  READ_ONLY:          ["analytics","leads","projects"],
+  ADMIN:              ["analytics","leads","projects","rental","calculator","sales","tasks","settings","helpdesk","whatsapp","growth","agents","logs"],
+  SALES_MANAGER:      ["analytics","leads","projects","rental","calculator","sales","tasks","helpdesk","whatsapp","growth","agents"],
+  SALES_EMPLOYEE:     ["leads","tasks","helpdesk","calculator","rental","agents"],
+  MARKETING:          ["analytics","leads","projects","helpdesk","whatsapp","growth","agents"],
+  READ_ONLY:          ["analytics","leads","projects","agents"],
 };
 
 export default function WarRoomCommandPageClient({
@@ -50,12 +51,19 @@ export default function WarRoomCommandPageClient({
 }: Props) {
   const { theme, lang } = useApp();
   const isDark = theme === "dark";
+  const isArabic = lang === "AR";
 
-  const isPlatformArchitect = currentUserRole === "PLATFORM_ARCHITECT";
   const allowed = ROLE_ALLOWED[currentUserRole] ?? ROLE_ALLOWED.READ_ONLY;
-  const defaultTab = isPlatformArchitect ? "monitor" : (initialTab === "overview" ? "analytics" : (initialTab || "analytics"));
+  const defaultTab = initialTab === "overview" ? "analytics" : (initialTab || "analytics");
 
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [showGrowthAlert, setShowGrowthAlert] = useState(false);
+
+  useEffect(() => {
+    if (tenantInfo.growthWarning) {
+      setShowGrowthAlert(true);
+    }
+  }, [tenantInfo.growthWarning]);
 
   useEffect(() => {
     const syncTab = () => {
@@ -70,38 +78,14 @@ export default function WarRoomCommandPageClient({
 
   const show = (tab: string) => activeTab === tab && allowed.includes(tab);
   const dir  = lang === "AR" ? "rtl" : "ltr";
-  const font = { fontFamily: "Calibri, 'Cairo', sans-serif" };
-
-  // ─── PLATFORM_ARCHITECT isolation ────────────────────────────────────────
-  if (isPlatformArchitect) {
-    return (
-      <div dir={dir} style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19' }}>
-        <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>🔐</span>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#f59e0b' }}>
-              {lang === "AR" ? "وضع العزل السيبراني النشط" : "Cyber Isolation Mode — Active"}
-            </div>
-            <div style={{ fontSize: 10, color: '#92400e', marginTop: 3 }}>
-              {lang === "AR"
-                ? "أنت مسجَّل بصلاحية مطور النخبة. بيانات المستأجرين محجوبة تماماً."
-                : "You are logged in as Platform Architect. All tenant business data is strictly denied."}
-            </div>
-          </div>
-        </div>
-        <div className="fade-in">
-          <MonitorView initialTickets={tickets} initialTenants={tenants} />
-        </div>
-      </div>
-    );
-  }
+  const font = { fontFamily: "'Calibri', 'Segoe UI', sans-serif" };
 
   return (
     <div dir={dir} style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19', minHeight: '80vh' }}>
       <style dangerouslySetInnerHTML={{ __html: `.fade-in{animation:opsFade 0.2s ease;}@keyframes opsFade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}` }} />
 
       {/* ── Case 1: Overview ──────────────────────────────────────────────── */}
-      {show("overview") && (
+      {show("analytics") && (
         <div className="fade-in">
           <DashboardView
             tenant={tenantInfo}
@@ -114,23 +98,37 @@ export default function WarRoomCommandPageClient({
       )}
 
       {/* ── Case 2: Operations — أصول + حاسبة + مبيعات + عملاء + مهام ───── */}
-      {show("operations") && (
+      {show("projects") && (
         <div className="fade-in">
-          <OperationsComposite
-            projects={projects}
-            isDark={isDark}
-            lang={lang}
-            tenantInfo={tenantInfo}
-          />
+          <ProjectsView />
         </div>
       )}
 
-      {/* ── Case 3: Monitor ──────────────────────────────────────────────── */}
-      {show("monitor") && (
+      {show("calculator") && (
         <div className="fade-in">
-          <MonitorView initialTickets={tickets} initialTenants={tenants} />
+          <CalculatorView />
         </div>
       )}
+
+      {show("sales") && (
+        <div className="fade-in">
+          <SalesView />
+        </div>
+      )}
+
+      {show("leads") && (
+        <div className="fade-in">
+          <LeadsView />
+        </div>
+      )}
+
+      {show("tasks") && (
+        <div className="fade-in">
+          <TasksView />
+        </div>
+      )}
+
+
 
       {/* ── Case 4: WhatsApp ─────────────────────────────────────────────── */}
       {show("whatsapp") && (
@@ -159,67 +157,96 @@ export default function WarRoomCommandPageClient({
 
       {show("rental") && (
         <div className="fade-in">
-          <RentalView />
+          <AdvancedErpView tenantPlan={tenantInfo.subscriptionPlan} initialTab="ijara" />
         </div>
       )}
 
-      {show("accounting") && (
+      {show("growth") && (
         <div className="fade-in">
-          <AccountingView />
+          <GrowthView tenantPlan={tenantInfo.subscriptionPlan} />
+        </div>
+      )}
+
+      {show("agents") && (
+        <div className="fade-in">
+          <AgentManagementView 
+            tenantPlan={tenantInfo.subscriptionPlan}
+            totalLeads={dashboardStats.totalLeads}
+            totalProjects={dashboardStats.totalProjects}
+            totalUsers={tenantUsers.length}
+          />
+        </div>
+      )}
+
+      {show("logs") && (
+        <div className="fade-in">
+          <LogsViewer />
+        </div>
+      )}
+
+      {/* ⚠️ Glassmorphic Growth Warning Modal (تحذير اقتراب سعة الباقة) */}
+      {showGrowthAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg p-4 animate-fade-in">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#1e1c3a] to-slate-950 border-2 border-indigo-500/30 max-w-md w-full p-6 space-y-6 shadow-[0_0_30px_rgba(99,102,241,0.25)] text-center" dir={dir}>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#df7b62]/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+            <div className="flex flex-col items-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-[#df7b62]/20 border border-[#df7b62]/40 flex items-center justify-center text-[#df7b62] text-xl animate-pulse">
+                <i className="ph-bold ph-warning text-lg"></i>
+              </div>
+              <h3 className="text-white font-extrabold text-base tracking-wide">
+                {lang === 'AR' ? "تحذير اقتراب السعة - ٨٠٪ مستهلك!" : "Capacity Warning - 80% Consumed!"}
+              </h3>
+            </div>
+
+            <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl text-xs text-slate-300 leading-relaxed font-sans text-right" dir={dir}>
+              <p className="text-center font-bold text-[#df7b62] mb-2">
+                {lang === 'AR' ? `نظام مراقبة النمو للوكيل منصور` : `Mansour Growth Intelligence Alert`}
+              </p>
+              <p className="text-center text-[11px] leading-relaxed text-slate-400">
+                {lang === 'AR' 
+                  ? `أهلاً بك، لاحظت أننا استهلكنا 80% من سعة باقتك الحالية. لضمان استمرارية أداء حملاتك دون انقطاع وتجنب قفل سعة المقاعد أو العملاء، نقترح اتخاذ إجراء فوري.`
+                  : `Welcome, we observed that you have consumed 80% of your current plan limits. To ensure uninterrupted flow and avoid capacity locks, we recommend action.`}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button 
+                onClick={() => {
+                  setShowGrowthAlert(false);
+                  // Redirect to agents tab leasing
+                  window.history.pushState(null, '', `?tab=agents&action=renew-lease`);
+                  window.dispatchEvent(new CustomEvent('popstate'));
+                }}
+                className="w-full bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all shadow-md"
+              >
+                {lang === 'AR' ? "استئجار وكيل إضافي (٤٠٠ ر.س)" : "Lease Extra Agent (400 SAR)"}
+              </button>
+              <button 
+                onClick={() => {
+                  setShowGrowthAlert(false);
+                  // Redirect to settings view upgrade
+                  window.history.pushState(null, '', `?tab=settings`);
+                  window.dispatchEvent(new CustomEvent('popstate'));
+                }}
+                className="w-full bg-gradient-to-r from-[#df7b62] to-[#c5654e] hover:shadow-[0_0_15px_rgba(223,123,98,0.3)] text-white text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all border border-[#df7b62]/30 flex items-center justify-center gap-1.5"
+              >
+                <i className="ph-bold ph-sparkle"></i>
+                <span>{lang === 'AR' ? "ترقية الباقة الشاملة ➔" : "Upgrade Entire Plan ➔"}</span>
+              </button>
+              <button 
+                onClick={() => setShowGrowthAlert(false)}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-350 text-[10px] font-bold py-2 rounded-xl cursor-pointer transition-all border border-slate-750"
+              >
+                {lang === 'AR' ? "تجاهل التنبيه مؤقتاً" : "Dismiss Alert"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Operations Composite: Module A + Module B ─────────────────────────────
-function OperationsComposite({
-  projects, isDark, lang, tenantInfo,
-}: { projects: any[]; isDark: boolean; lang: string; tenantInfo: any }) {
-  const [subTab, setSubTab] = useState<'assets'|'calculator'|'sales'|'leads'|'tasks'>('assets');
-  const dir = lang === 'AR' ? 'rtl' : 'ltr';
-  const font = { fontFamily: "Calibri, 'Cairo', sans-serif" };
 
-  const SUB = [
-    { id: 'assets',     ar: 'الأصول العقارية',  en: 'Real Estate Assets', icon: '🏢' },
-    { id: 'calculator', ar: 'حاسبة التمويل',    en: 'Mortgage Calc',      icon: '🧮' },
-    { id: 'sales',      ar: 'أداء المبيعات',    en: 'Sales KPIs',         icon: '📊' },
-    { id: 'leads',      ar: 'العملاء المحتملين', en: 'Leads Pipeline',     icon: '👥' },
-    { id: 'tasks',      ar: 'المهام',            en: 'Tasks',              icon: '📋' },
-  ] as const;
-
-  return (
-    <div dir={dir} style={font}>
-      {/* Sub-tab row */}
-      <div style={{
-        display: 'flex', gap: 4, marginBottom: 24,
-        borderBottom: '1px solid rgba(115,83,52,0.2)',
-        overflowX: 'auto', paddingBottom: 0,
-      }}>
-        {SUB.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setSubTab(s.id)}
-            style={{
-              padding: '8px 16px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-              background: 'transparent', border: 'none',
-              borderBottom: subTab === s.id ? '2px solid #735334' : '2px solid transparent',
-              color: subTab === s.id ? '#d4a97a' : '#475569',
-              display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', outline: 'none',
-            }}
-          >
-            <span>{s.icon}</span>
-            <span>{lang === 'AR' ? s.ar : s.en}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Module A: Asset Pipelines (ORCA CRM / SAMA DSR) */}
-      {subTab === 'assets'     && <div className="fade-in"><ProjectsView /></div>}
-      {subTab === 'calculator' && <div className="fade-in"><CalculatorView /></div>}
-      {subTab === 'sales'      && <div className="fade-in"><SalesView /></div>}
-      {subTab === 'leads'      && <div className="fade-in"><LeadsView /></div>}
-      {subTab === 'tasks'      && <div className="fade-in"><TasksView /></div>}
-    </div>
-  );
-}

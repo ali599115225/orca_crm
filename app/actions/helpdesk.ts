@@ -61,7 +61,7 @@ export async function createTicketAction(formData: FormData) {
     }
 
     // 3. تحديث التذكرة وحقن رد الوكيل مساعد في قاعدة البيانات
-    await prisma.ticket.update({
+    const updatedTicket = await prisma.ticket.update({
       where: { id: ticket.id },
       data: {
         aiResponse: aiReply
@@ -69,7 +69,7 @@ export async function createTicketAction(formData: FormData) {
     });
 
     revalidatePath("/operations/helpdesk");
-    return { success: true };
+    return { success: true, ticket: updatedTicket };
 
   } catch (error: any) {
     return { success: false, error: error.message };

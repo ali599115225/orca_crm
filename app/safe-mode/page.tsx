@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 // ─── أسباب الفشل وترجماتها ──────────────────────────────────────────────────
@@ -109,7 +109,7 @@ function StatusPulse({ color }: { color: string }) {
 }
 
 // ─── الصفحة الرئيسية ────────────────────────────────────────────────────────
-export default function SafeModePage() {
+function SafeModeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const reason = searchParams.get("reason") || "unknown";
@@ -171,7 +171,7 @@ export default function SafeModePage() {
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{
         background: "radial-gradient(ellipse at 50% 0%, #1e1b4b 0%, #0f172a 60%, #020617 100%)",
-        fontFamily: "'Cairo', 'Inter', system-ui, sans-serif",
+        fontFamily: "'Calibri', 'Segoe UI', sans-serif",
         direction: "rtl",
       }}
     >
@@ -282,5 +282,17 @@ export default function SafeModePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SafeModePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white font-sans">
+        جاري التحميل...
+      </div>
+    }>
+      <SafeModeContent />
+    </Suspense>
   );
 }
