@@ -18,7 +18,7 @@ export default function ProjectsView() {
   ];
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="orca-page orca-stack">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">إدارة المشاريع العقارية</h1>
         <Button icon={Plus}>إضافة مشروع</Button>

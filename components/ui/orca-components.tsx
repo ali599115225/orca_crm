@@ -7,9 +7,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', icon: Icon, ...props }) => {
-  const baseClass = "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2";
+  const baseClass = "orca-focus px-4 py-2 rounded-lg font-medium orca-transition flex items-center gap-2";
   const variants = {
-    primary: "bg-[#df7b62] text-white hover:bg-[#c5654e] shadow-sm",
+    primary: "bg-[#df7b62] text-white hover:bg-[#c5654e] shadow-sm hover:shadow-[0_4px_14px_-4px_rgba(223,123,98,0.45)]",
     secondary: "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
   };
   return (
@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', i
 };
 
 export const Card: React.FC<{children: React.ReactNode, className?: string}> = ({ children, className = "" }) => (
-  <div className={`bg-white dark:bg-[#151f32] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 ${className}`}>
+  <div className={`orca-panel-light orca-transition p-6 ${className}`}>
     {children}
   </div>
 );
@@ -45,7 +45,7 @@ export const DataTable: React.FC<{columns: any[], data: any[]}> = ({ columns, da
       </thead>
       <tbody>
         {data.map((row, i) => (
-          <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+          <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 orca-transition">
             {columns.map((col, j) => <td key={j} className="py-4 px-4 text-slate-800 dark:text-slate-200">{row[col.accessor]}</td>)}
           </tr>
         ))}

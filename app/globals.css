@@ -1,29 +1,26 @@
 @import "tailwindcss";
 
+/* ─── Base polish (readability & rhythm) ─────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(223, 123, 98, 0.28);
+  color: inherit;
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────────── */
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
 }
 
-.price-tag {
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
-  font-weight: 700;
-}
-
-.mask-fade-top {
-  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
-}
-
-.mask-fade-vertical {
-  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
-}
-
-/* شريط تمرير مخفي افتراضياً — يظهر رفيعاً عند المرور أو التمرير ثم يتلاشى */
 .scrollbar-fade {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -67,3 +64,127 @@
   background-color: rgba(223, 123, 98, 0.6);
 }
 
+/* ─── Masks ──────────────────────────────────────────────────────────────── */
+.mask-fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+}
+
+.mask-fade-vertical {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+/* ─── ORCA design tokens (structure only — same palette) ─────────────────── */
+.orca-page {
+  padding: 1rem;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .orca-page {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .orca-page {
+    padding: 2rem;
+  }
+}
+
+.orca-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .orca-stack {
+    gap: 1.5rem;
+  }
+}
+
+.orca-panel {
+  background-color: rgba(21, 31, 50, 0.4);
+  border: 1px solid rgba(30, 41, 59, 0.85);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 4px 24px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition:
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+}
+
+.orca-panel:hover {
+  border-color: rgba(51, 65, 85, 0.95);
+}
+
+.orca-panel-light {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.dark .orca-panel-light,
+:where(.dark, [data-theme="dark"]) .orca-panel-light {
+  background-color: #151f32;
+  border-color: rgba(30, 41, 59, 0.85);
+  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.35);
+}
+
+.orca-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px -12px rgba(0, 0, 0, 0.55);
+}
+
+.orca-transition {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.orca-view-enter {
+  animation: orcaViewEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes orcaViewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.orca-focus:focus-visible {
+  outline: 2px solid rgba(223, 123, 98, 0.55);
+  outline-offset: 2px;
+}
+
+.orca-divider {
+  border-color: rgba(30, 41, 59, 0.75);
+}
+
+.orca-section-title {
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.price-tag {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+}

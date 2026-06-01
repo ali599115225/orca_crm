@@ -470,11 +470,11 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   return (
-    <div ref={growthRootRef} className="w-full" dir={dir}>
-    <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div ref={growthRootRef} className="w-full orca-view-enter" dir={dir}>
+    <div className="orca-page orca-stack">
       
       {/* Page Header (Cyber Glass) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-slate-800/80 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="orca-hero bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 p-5 md:p-6">
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#df7b62]/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         
@@ -502,7 +502,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
           <button
             onClick={handleRunBaseerInsight}
             disabled={loadingInsight}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#df7b62] to-[#c5654e] hover:shadow-[0_0_20px_rgba(223,123,98,0.35)] text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50 shrink-0 border border-[#df7b62]/40"
+            className="orca-focus flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#df7b62] to-[#c5654e] hover:shadow-[0_0_20px_rgba(223,123,98,0.35)] text-white font-bold text-xs orca-transition cursor-pointer disabled:opacity-50 shrink-0 border border-[#df7b62]/40"
           >
             {loadingInsight ? (
               <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -530,12 +530,12 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold leading-relaxed orca-view-enter">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold leading-relaxed orca-view-enter">
           {success}
         </div>
       )}
@@ -580,7 +580,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
             
             {/* Total Marketing Spend */}
-            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto orca-panel p-5 relative overflow-hidden group hover:border-[#df7b62]/30 orca-transition">
               <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "إجمالي الإنفاق التسويقي" : "Total Ad Spend"}</span>
@@ -591,7 +591,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Average CAC */}
-            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto orca-panel p-5 relative overflow-hidden group hover:border-[#df7b62]/30 orca-transition">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "تكلفة الاستحواذ على العميل (CAC)" : "Average CAC"}</span>
@@ -602,7 +602,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Closed Contract Value */}
-            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto orca-panel p-5 relative overflow-hidden group hover:border-[#df7b62]/30 orca-transition">
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "قيمة العقود الموقعة" : "Closed Contract Value"}</span>
@@ -613,7 +613,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Marketing ROI % */}
-            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto orca-panel p-5 relative overflow-hidden group hover:border-[#df7b62]/30 orca-transition">
               <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "معدل العائد التسويقي (ROI)" : "Marketing ROI"}</span>
@@ -631,8 +631,8 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* CAC vs Contract Value per Project (7 cols) */}
-        <div className="lg:col-span-7 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl backdrop-blur-md">
-          <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-2.5 flex items-center gap-2 mb-4">
+        <div className="lg:col-span-7 w-full h-auto orca-panel p-5">
+          <h3 className="orca-section-title text-white font-bold text-sm border-b orca-divider pb-2.5 flex items-center gap-2 mb-4">
             <i className="ph-bold ph-chart-bar text-[#df7b62]"></i>
             {isArabic ? "أداء المشاريع الاستثمارية: الإنفاق والتسويق مقابل المبيعات" : "Project ROI: Marketing CAC vs Contract Value"}
           </h3>
@@ -740,8 +740,8 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Lead Sources Breakdown ROI (5 cols) */}
-        <div className="lg:col-span-5 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl backdrop-blur-md flex flex-col gap-3 min-h-0">
-          <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-2.5 flex items-center gap-2 shrink-0">
+        <div className="lg:col-span-5 w-full h-auto orca-panel p-5 flex flex-col gap-3 min-h-0">
+          <h3 className="orca-section-title text-white font-bold text-sm border-b orca-divider pb-2.5 flex items-center gap-2 shrink-0">
             <i className="ph-bold ph-funnel text-[#df7b62]"></i>
             {isArabic ? "تحليل كفاءة قنوات الاستحواذ والتسويق" : "Lead Sources Efficiency Analysis"}
           </h3>
@@ -790,7 +790,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* Chats List Column (3 cols) */}
-        <div className="lg:col-span-3 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-3 w-full h-[min(480px,72vh)] orca-panel flex flex-col overflow-hidden min-h-0">
           <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/30 shrink-0">
             <h3 className="text-white font-bold text-xs flex items-center gap-2">
               <i className="ph-bold ph-chat text-[#df7b62] text-sm"></i>
@@ -837,7 +837,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* WhatsApp Chat Window (5 cols) */}
-        <div className="lg:col-span-5 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-5 w-full h-[min(480px,72vh)] orca-panel flex flex-col overflow-hidden min-h-0">
           {activeChat ? (
             <>
               {/* Chat Header */}
@@ -940,7 +940,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Followups Sequences Configurations (4 cols) */}
-        <div className="lg:col-span-4 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl p-4 shadow-xl flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-4 w-full h-[min(480px,72vh)] orca-panel p-4 flex flex-col overflow-hidden min-h-0">
           <h3 className="text-white font-bold text-xs border-b border-slate-800 pb-2.5 flex items-center gap-2 shrink-0">
             <i className="ph-bold ph-gear-six text-[#df7b62] text-sm"></i>
             {isArabic ? "مسارات المتابعة الآلية لمنصور" : "Mansour Sequences Settings"}
@@ -1117,7 +1117,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   return (
                     <div 
                       key={plat.platform}
-                      className={`relative w-full h-auto overflow-hidden rounded-2xl bg-gradient-to-br ${colorClass} border p-5 shadow-lg backdrop-blur-md transition-all duration-300 ${
+                      className={`relative w-full h-auto overflow-hidden rounded-2xl bg-gradient-to-br ${colorClass} border p-5 orca-transition ${
                         isSelected ? 'ring-2 ring-[#df7b62]' : 'hover:scale-[1.02]'
                       }`}
                       style={{ boxShadow: isSelected ? `0 0 20px ${glowColor}` : undefined }}
@@ -1298,7 +1298,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
           )}
 
           {/* Unified ROI Comparison Dashboard Table */}
-          <div className="bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md">
+          <div className="orca-panel p-6">
             <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-3 flex items-center gap-2 mb-5">
               <i className="ph-bold ph-presentation-chart text-[#df7b62]"></i>
               {isArabic ? "التحليل الموحد ومقارنة كفاءة المنصات الإعلانية (Unified ROI Dashboard)" : "Unified Multi-Channel Ad ROI Comparison"}

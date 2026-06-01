@@ -374,7 +374,7 @@ export default function LeadsView() {
   });
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 h-full flex flex-col w-full max-w-[1800px] mx-auto" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="orca-page h-full flex flex-col w-full max-w-[1800px] mx-auto" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -468,7 +468,7 @@ export default function LeadsView() {
 
       {viewMode === 'kanban' ? (
         /* Kanban Board Container */
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 pb-4 no-scrollbar scroll-container relative z-10 w-full">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 pb-4 scrollbar-fade scroll-container relative z-10 w-full">
           {[
             {
               key: 'NEW_REQUESTS',
@@ -507,7 +507,7 @@ export default function LeadsView() {
                   </span>
                 </div>
 
-                <div className={`bg-white/40 dark:bg-[#151f32]/40 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/60 rounded-3xl p-4 pb-12 h-[648px] min-h-[648px] max-h-[648px] overflow-y-auto no-scrollbar scroll-container mask-fade-top flex flex-col gap-4 transition-all duration-300 ${
+                <div className={`bg-white/40 dark:bg-[#151f32]/40 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/60 rounded-3xl p-4 pb-12 h-[648px] min-h-[648px] max-h-[648px] overflow-y-auto scrollbar-fade scroll-container mask-fade-top flex flex-col gap-4 transition-all duration-300 ${
                   count === 0 ? 'justify-center border-dashed border-slate-300 dark:border-slate-800' : ''
                 }`}>
                   {count === 0 ? (

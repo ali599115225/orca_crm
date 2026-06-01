@@ -89,12 +89,11 @@ export default function WarRoomCommandPageClient({
   const font = { fontFamily: "'Calibri', 'Segoe UI', sans-serif" };
 
   return (
-    <div dir={dir} style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19', minHeight: '80vh' }}>
-      <style dangerouslySetInnerHTML={{ __html: `.fade-in{animation:opsFade 0.2s ease;}@keyframes opsFade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}` }} />
+    <div dir={dir} className="min-h-0" style={{ ...font, color: isDark ? '#e2e8f0' : '#0b0f19' }}>
 
       {/* ── Case 1: Overview ──────────────────────────────────────────────── */}
       {show("analytics") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <DashboardView
             tenant={tenantInfo}
             stats={dashboardStats}
@@ -107,31 +106,31 @@ export default function WarRoomCommandPageClient({
 
       {/* ── Case 2: Operations — أصول + حاسبة + مبيعات + عملاء + مهام ───── */}
       {show("projects") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <ProjectsView />
         </div>
       )}
 
       {show("calculator") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <CalculatorView />
         </div>
       )}
 
       {show("sales") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <SalesView />
         </div>
       )}
 
       {show("leads") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <LeadsView />
         </div>
       )}
 
       {show("tasks") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <TasksView />
         </div>
       )}
@@ -140,21 +139,21 @@ export default function WarRoomCommandPageClient({
 
       {/* ── Case 4: WhatsApp ─────────────────────────────────────────────── */}
       {show("whatsapp") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <WhatsAppView initialChats={chats} tenant={whatsappTenant} />
         </div>
       )}
 
       {/* ── Case 5: Helpdesk ─────────────────────────────────────────────── */}
       {show("helpdesk") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <HelpdeskView initialTickets={helpdeskTickets} tenantName={companyName} />
         </div>
       )}
 
       {/* ── Case 6: Settings ─────────────────────────────────────────────── */}
       {show("settings") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <SettingsView
             tenant={tenantInfo}
             users={tenantUsers}
@@ -164,19 +163,19 @@ export default function WarRoomCommandPageClient({
       )}
 
       {show("rental") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <AdvancedErpView tenantPlan={tenantInfo.subscriptionPlan} initialTab="ijara" />
         </div>
       )}
 
       {show("growth") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <GrowthView tenantPlan={tenantInfo.subscriptionPlan} />
         </div>
       )}
 
       {show("agents") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <AgentManagementView 
             tenantPlan={tenantInfo.subscriptionPlan}
             totalLeads={dashboardStats.totalLeads}
@@ -187,13 +186,13 @@ export default function WarRoomCommandPageClient({
       )}
 
       {show("logs") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           <LogsViewer />
         </div>
       )}
 
       {show("monitor") && (
-        <div className="fade-in">
+        <div className="orca-view-enter">
           {/* Platform Architect — لوحة المراقبة الكاملة */}
           <DashboardView
             tenant={tenantInfo}

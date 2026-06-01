@@ -555,7 +555,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
   );
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full relative" dir={dir}>
+    <div className="orca-page orca-stack relative" dir={dir}>
       
       {/* Toast Notification */}
       {toast && (

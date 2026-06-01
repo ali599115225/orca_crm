@@ -119,7 +119,7 @@ export default function SalesView() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
+    <div className="orca-page orca-stack" dir={dir}>
       
       {/* Header */}
       <div>

@@ -157,7 +157,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
+    <div className="orca-page orca-stack" dir={dir}>
       
       {/* Header */}
       <div>
@@ -235,7 +235,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               <span className="text-xs text-slate-400 font-normal">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
             </h4>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+            <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-fade">
               {tickets.length === 0 ? (
                 <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
                   {t.emptyStateLeft}

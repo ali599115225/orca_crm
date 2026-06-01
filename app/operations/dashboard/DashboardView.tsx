@@ -99,10 +99,10 @@ export default function DashboardView({
   ];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="orca-page orca-stack" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
       {/* Welcome Banner (البنر الترحيبي) */}
-      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-l from-white to-slate-50 dark:from-[#151f32] dark:to-[#0b1120] border border-slate-200 dark:border-slate-800/80 shadow-sm p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="orca-hero orca-panel-light relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-l from-white to-slate-50 dark:from-[#151f32] dark:to-[#0b1120] p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#df7b62]/10 dark:bg-[#df7b62]/5 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
         
         <div className="relative z-10">
@@ -137,7 +137,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         
         {/* Card 1 */}
-        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.1)] transition-all group">
+        <div className="orca-panel-light p-4 orca-transition group hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.12)]">
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-0.5">
@@ -158,7 +158,7 @@ export default function DashboardView({
         </div>
 
         {/* Card 2 */}
-        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.1)] transition-all group relative overflow-hidden">
+        <div className="orca-panel-light p-4 orca-transition group relative overflow-hidden hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.12)]">
           <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-l from-amber-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div className="flex justify-between items-start mb-3">
             <div>
@@ -179,7 +179,7 @@ export default function DashboardView({
         </div>
 
         {/* Card 3 */}
-        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.1)] transition-all group relative overflow-hidden">
+        <div className="orca-panel-light p-4 orca-transition group relative overflow-hidden hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.12)]">
           <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-l from-[#df7b62] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div className="flex justify-between items-start mb-3">
             <div>
@@ -201,7 +201,7 @@ export default function DashboardView({
         </div>
 
         {/* Card 4 */}
-        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.1)] transition-all group">
+        <div className="orca-panel-light p-4 orca-transition group hover:shadow-[0_4px_20px_-4px_rgba(223,123,98,0.12)]">
           <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-0.5">
@@ -226,7 +226,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
         
         {/* Recent Requests (الطلبات الحديثة) */}
-        <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+        <div className="orca-panel-light flex flex-col overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/20">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-[#df7b62]/10 flex items-center justify-center text-[#df7b62]">
@@ -246,7 +246,7 @@ export default function DashboardView({
             </span>
           </div>
 
-          <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[400px] no-scrollbar">
+          <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[400px] scrollbar-fade">
             {recentLeads.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
                 {lang === 'AR' ? 'لا يوجد طلبات استثمارية مسجلة حالياً.' : 'No registered leads found.'}
@@ -336,7 +336,7 @@ export default function DashboardView({
               </button>
             </div>
           ) : (
-            <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[400px] no-scrollbar">
+            <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[400px] scrollbar-fade">
               {recentTasks.map((task) => (
                 <div key={task.id} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0b1120] hover:border-[#df7b62]/40 dark:hover:border-[#df7b62]/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group shadow-sm hover:shadow-md">
                   <div className="flex items-start gap-4">

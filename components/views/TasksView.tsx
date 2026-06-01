@@ -159,7 +159,7 @@ export default function TasksView() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
+    <div className="orca-page orca-stack" dir={dir}>
       
       {/* Header */}
       <div>
@@ -200,7 +200,7 @@ export default function TasksView() {
             </div>
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] no-scrollbar">
+          <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] scrollbar-fade">
             {filteredTasks.length === 0 ? (
               <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-12 text-center">
                 <i className="ph ph-calendar-x text-4xl text-slate-400 dark:text-slate-500 mb-3 block"></i>

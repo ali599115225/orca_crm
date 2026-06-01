@@ -199,7 +199,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-[1600px] mx-auto w-full" dir={dir}>
+    <div className="orca-page orca-stack" dir={dir}>
       
       {/* Header */}
       <div>
@@ -268,7 +268,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
               <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">{t.conversationsDesc}</p>
             </div>
 
-            <div className="space-y-2 overflow-y-auto max-h-[400px] no-scrollbar flex-grow">
+            <div className="space-y-2 overflow-y-auto max-h-[400px] scrollbar-fade flex-grow">
               {chats.map(chat => {
                 const isActive = activeChatId === chat.id;
                 return (
@@ -313,7 +313,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                 </div>
 
                 {/* Messages dialogue */}
-                <div className="p-4 space-y-4 overflow-y-auto max-h-[350px] flex-grow no-scrollbar bg-slate-50/20 dark:bg-[#0b1120]/10 flex flex-col">
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[350px] flex-grow scrollbar-fade bg-slate-50/20 dark:bg-[#0b1120]/10 flex flex-col">
                   {activeChat.messages.map((m, idx) => {
                     const isAgent = m.sender === "agent";
                     return (

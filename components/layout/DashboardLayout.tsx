@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/app/context/AppContext';
 
 interface DashboardLayoutProps {
@@ -13,6 +13,26 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
   const isDarkMode = theme === 'dark';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('analytics');
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const hideTimers = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>();
+    const onScroll = (e: Event) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('scrollbar-fade')) return;
+      target.classList.add('scrollbar-fade--visible');
+      const prev = hideTimers.get(target);
+      if (prev) clearTimeout(prev);
+      hideTimers.set(
+        target,
+        setTimeout(() => target.classList.remove('scrollbar-fade--visible'), 900)
+      );
+    };
+    main.addEventListener('scroll', onScroll, true);
+    return () => main.removeEventListener('scroll', onScroll, true);
+  }, []);
 
   // مزامنة حالة التبويب النشط من الرابط
   useEffect(() => {
@@ -94,7 +114,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed md:relative top-0 ${lang === 'AR' ? 'right-0 border-l' : 'left-0 border-r'} h-full w-72 flex flex-col flex-shrink-0 z-50 transition-transform duration-300 ease-in-out ${isDarkMode ? 'bg-[#0b1120]/95 border-[#1e293b]' : 'bg-white/95 border-slate-200'} backdrop-blur-xl shadow-2xl md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : (lang === 'AR' ? 'translate-x-full' : '-translate-x-full')}`}>
+      <aside className={`fixed md:relative top-0 ${lang === 'AR' ? 'right-0 border-l' : 'left-0 border-r'} h-full w-72 flex flex-col flex-shrink-0 z-50 orca-transition transition-transform duration-300 ease-out ${isDarkMode ? 'bg-[#0b1120]/95 border-[#1e293b]' : 'bg-white/95 border-slate-200'} backdrop-blur-xl shadow-[4px_0_24px_-8px_rgba(0,0,0,0.35)] md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : (lang === 'AR' ? 'translate-x-full' : '-translate-x-full')}`}>
         
         {/* Header/Logo */}
         <div className="p-6 pb-6 flex justify-between items-center">
@@ -117,7 +137,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
 
         {/* User Profile */}
         <div className={`px-6 pb-6 border-b ${isDarkMode ? 'border-slate-800/50' : 'border-slate-200'}`}>
-            <div className={`border rounded-xl p-3 flex items-center gap-3 transition-colors cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 hover:border-[#df7b62]/30' : 'bg-slate-50 border-slate-200 hover:border-[#df7b62]/30'}`}>
+            <div className={`border rounded-xl p-3 flex items-center gap-3 orca-transition cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 hover:border-[#df7b62]/30' : 'bg-slate-50 border-slate-200 hover:border-[#df7b62]/30'}`}>
                 <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white font-bold text-lg border border-slate-600 font-en shadow-inner">ع</div>
                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 bg-[#10b981] border-[3px] rounded-full ${isDarkMode ? 'border-[#151f32]' : 'border-slate-50'}`}></div>
@@ -137,8 +157,8 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
         </div>
 
         {/* Navigation Menu */}
-        <div className="flex-1 overflow-y-auto py-4 scroll-container scrollbar-fade mask-fade-vertical">
-            <nav className="space-y-1">
+        <div className="flex-1 overflow-y-auto py-3 scroll-container scrollbar-fade mask-fade-vertical">
+            <nav className="space-y-0.5">
                 {navItems.map((item, index) => {
                   const isActive = activeTab === item.tab;
                   return (
@@ -146,13 +166,13 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
                       key={index} 
                       href={`?tab=${item.tab}`}
                       onClick={(e) => handleTabClick(e, item.tab)}
-                      className={`flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all group ${
+                      className={`orca-focus flex items-center gap-3 px-5 py-2.5 mx-2 rounded-lg text-sm font-medium orca-transition group ${
                         isActive 
-                          ? (isDarkMode ? 'bg-[#df7b62]/10 border-r-4 border-[#df7b62] text-white font-bold' : 'bg-[#df7b62]/10 border-r-4 border-[#df7b62] text-slate-900 font-bold') 
-                          : (isDarkMode ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')
+                          ? (isDarkMode ? 'bg-[#df7b62]/10 border-e-[3px] border-[#df7b62] text-white font-bold shadow-[inset_0_0_0_1px_rgba(223,123,98,0.08)]' : 'bg-[#df7b62]/10 border-e-[3px] border-[#df7b62] text-slate-900 font-bold') 
+                          : (isDarkMode ? 'text-slate-400 hover:text-white hover:bg-white/[0.04]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80')
                       }`}
                     >
-                        <i className={`${item.icon} text-lg transition-colors ${isActive ? 'text-[#df7b62]' : 'text-slate-400 group-hover:text-[#df7b62]'}`}></i>
+                        <i className={`${item.icon} text-lg orca-transition ${isActive ? 'text-[#df7b62]' : 'text-slate-400 group-hover:text-[#df7b62]'}`}></i>
                         <span>{item.label}</span>
                         {item.badge && (
                             <span className={`${lang === 'AR' ? 'mr-auto' : 'ml-auto'} bg-[#df7b62]/20 text-[#df7b62] text-[10px] px-2 py-0.5 rounded-full font-en`}>{item.badge}</span>
@@ -170,7 +190,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
                 const { logoutAction } = await import('@/app/actions/auth');
                 await logoutAction();
               }}
-              className={`flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+              className={`orca-focus flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-semibold orca-transition border ${
                 isDarkMode 
                   ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30' 
                   : 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100 hover:border-rose-300'
@@ -189,7 +209,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
       <div className="flex-grow flex flex-col h-screen overflow-hidden">
         
         {/* Header */}
-        <header className={`h-20 flex items-center justify-between px-4 lg:px-8 border-b z-10 sticky top-0 transition-colors duration-500 ${isDarkMode ? 'bg-[#0b1120]/80 border-slate-800/80 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
+        <header className={`h-[4.5rem] flex items-center justify-between px-4 lg:px-6 border-b z-10 sticky top-0 orca-transition ${isDarkMode ? 'bg-[#0b1120]/85 border-slate-800/70 backdrop-blur-md shadow-[0_1px_0_rgba(255,255,255,0.04)]' : 'bg-white/85 border-slate-200 backdrop-blur-md shadow-sm'}`}>
             
             {/* Mobile Menu Button */}
             <button 
@@ -201,7 +221,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
 
             {/* Actions Bar */}
             <div className={`flex items-center gap-3 ${lang === 'AR' ? 'mr-auto' : 'ml-auto'}`}>
-                <div className={`hidden md:flex items-center border rounded-full px-4 py-2 transition-all ${isDarkMode ? 'bg-[#151f32] border-slate-700 focus-within:border-[#df7b62]/50 focus-within:ring-1 focus-within:ring-[#df7b62]/50' : 'bg-slate-50 border-slate-300 focus-within:border-[#df7b62]/50 focus-within:ring-1 focus-within:ring-[#df7b62]/50'}`}>
+                <div className={`hidden md:flex items-center border rounded-full px-4 py-2 orca-transition ${isDarkMode ? 'bg-[#151f32] border-slate-700 focus-within:border-[#df7b62]/50 focus-within:ring-1 focus-within:ring-[#df7b62]/40' : 'bg-slate-50 border-slate-300 focus-within:border-[#df7b62]/50 focus-within:ring-1 focus-within:ring-[#df7b62]/40'}`}>
                     <i className="ph ph-magnifying-glass text-slate-400 text-lg ml-2"></i>
                     <input 
                       type="text" 
@@ -215,7 +235,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
                 {/* Theme Toggle */}
                 <button 
                   onClick={toggleTheme}
-                  className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 text-slate-400 hover:text-[#df7b62] hover:border-[#df7b62]/50' : 'bg-slate-50 border-slate-300 text-slate-600 hover:text-[#df7b62] hover:border-[#df7b62]/50'}`}
+                  className={`orca-focus w-10 h-10 rounded-full border flex items-center justify-center orca-transition cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 text-slate-400 hover:text-[#df7b62] hover:border-[#df7b62]/50' : 'bg-slate-50 border-slate-300 text-slate-600 hover:text-[#df7b62] hover:border-[#df7b62]/50'}`}
                 >
                     <i className={`ph ${isDarkMode ? 'ph-moon' : 'ph-sun'} text-lg`}></i>
                 </button>
@@ -223,7 +243,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
                 {/* Language Toggle */}
                 <button 
                   onClick={toggleLang}
-                  className={`flex items-center gap-2 h-10 px-4 rounded-full border transition-colors text-sm font-en cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 text-slate-400 hover:text-white' : 'bg-slate-50 border-slate-300 text-slate-600 hover:text-slate-900'}`}
+                  className={`orca-focus flex items-center gap-2 h-10 px-4 rounded-full border orca-transition text-sm font-en cursor-pointer ${isDarkMode ? 'bg-[#151f32] border-slate-700 text-slate-400 hover:text-white' : 'bg-slate-50 border-slate-300 text-slate-600 hover:text-slate-900'}`}
                 >
                     <i className="ph ph-globe"></i>
                     <span className="font-medium">{lang === 'AR' ? 'EN' : 'AR'}</span>
@@ -245,7 +265,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
         </header>
 
         {/* Content View */}
-        <main className="flex-1 overflow-y-auto scrollbar-fade relative w-full">
+        <main ref={mainRef} className="flex-1 overflow-y-auto scrollbar-fade relative w-full">
             {children}
         </main>
         
