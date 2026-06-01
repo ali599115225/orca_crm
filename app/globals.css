@@ -23,40 +23,47 @@
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
 }
 
-/* شريط تمرير رفيع يظهر عند التمرير/المرور ويتلاشى تلقائياً */
+/* شريط تمرير مخفي افتراضياً — يظهر رفيعاً عند المرور أو التمرير ثم يتلاشى */
 .scrollbar-fade {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-fade::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .scrollbar-fade:hover,
 .scrollbar-fade:focus-within,
 .scrollbar-fade.scrollbar-fade--visible {
-  scrollbar-color: rgba(100, 116, 139, 0.42) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.45) transparent;
 }
 
-.scrollbar-fade::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+.scrollbar-fade:hover::-webkit-scrollbar,
+.scrollbar-fade:focus-within::-webkit-scrollbar,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
-.scrollbar-fade::-webkit-scrollbar-track {
+.scrollbar-fade:hover::-webkit-scrollbar-track,
+.scrollbar-fade:focus-within::-webkit-scrollbar-track,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-track {
   background: transparent;
-}
-
-.scrollbar-fade::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 999px;
-  transition: background-color 0.45s ease;
 }
 
 .scrollbar-fade:hover::-webkit-scrollbar-thumb,
 .scrollbar-fade:focus-within::-webkit-scrollbar-thumb,
 .scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.38);
+  background-color: rgba(71, 85, 105, 0.42);
+  border-radius: 999px;
+  transition: background-color 0.35s ease;
 }
 
-.scrollbar-fade::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(223, 123, 98, 0.55);
+.scrollbar-fade:hover::-webkit-scrollbar-thumb:hover,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(223, 123, 98, 0.6);
 }
 

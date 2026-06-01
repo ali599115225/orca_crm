@@ -628,11 +628,11 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       )}
 
       {/* ROI & Funnel View Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* CAC vs Contract Value per Project (7 cols) */}
-        <div className="lg:col-span-7 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md">
-          <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-3 flex items-center gap-2 mb-5">
+        <div className="lg:col-span-7 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl backdrop-blur-md">
+          <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-2.5 flex items-center gap-2 mb-4">
             <i className="ph-bold ph-chart-bar text-[#df7b62]"></i>
             {isArabic ? "أداء المشاريع الاستثمارية: الإنفاق والتسويق مقابل المبيعات" : "Project ROI: Marketing CAC vs Contract Value"}
           </h3>
@@ -666,8 +666,8 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                 )}
 
                 <div
-                  className={`space-y-2 pr-1 ${
-                    visibleProjectStats.length > 5 ? 'max-h-[min(300px,42vh)] overflow-y-auto scrollbar-fade' : ''
+                  className={`space-y-1.5 ps-0.5 pe-1 ${
+                    visibleProjectStats.length > 5 ? 'max-h-[min(280px,38vh)] overflow-y-auto scrollbar-fade' : ''
                   }`}
                 >
                 {(() => {
@@ -683,31 +683,28 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   const percentage =
                     metric > 0 ? Math.max(8, Math.round((metric / maxMetric) * 100)) : 0;
                   return (
-                    <div key={p.id} className="p-2.5 rounded-xl bg-slate-900/30 border border-slate-800/60 space-y-1.5">
-                      <div className="flex justify-between items-center gap-3">
-                        <div className="min-w-0">
-                          <h4 className="text-white text-xs font-bold truncate">{p.name}</h4>
-                          <span className="text-[10px] text-slate-500 font-semibold">{p.city}</span>
+                    <div key={p.id} className="px-3 py-2 rounded-lg bg-slate-900/30 border border-slate-800/60">
+                      <div className="flex justify-between items-start gap-2 mb-1.5">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-white text-[11px] font-bold truncate leading-tight">{p.name}</h4>
+                          <span className="text-[9px] text-slate-500 font-semibold">{p.city}</span>
                         </div>
-                        <div className="text-left shrink-0">
-                          <span className="text-[10px] text-slate-400 font-bold block">{isArabic ? "العقود الموقعة" : "Closed Contracts"}</span>
-                          <span className="text-xs text-white font-black font-en">{formatCurrency(p.contractValue)}</span>
+                        <div className="shrink-0 text-end">
+                          <span className="text-[9px] text-slate-400 font-bold block leading-none">{isArabic ? "العقود" : "Contracts"}</span>
+                          <span className="text-[11px] text-white font-black font-en">{formatCurrency(p.contractValue)}</span>
                         </div>
                       </div>
-                      
-                      <div className="space-y-1">
-                        <div className="w-full bg-[#0b1120] h-2 rounded-full overflow-hidden">
-                          {percentage > 0 && (
-                            <div
-                              style={{ width: `${percentage}%` }}
-                              className="bg-gradient-to-r from-[#df7b62] to-indigo-500 h-2 rounded-full transition-all duration-500"
-                            />
-                          )}
-                        </div>
-                        <div className="flex justify-between text-[9px] font-bold text-slate-500 gap-2">
-                          <span className="truncate">{isArabic ? `متوسط تكلفة الاستحواذ: ${formatCurrency(p.cac)}` : `CAC: ${formatCurrency(p.cac)}`}</span>
-                          <span className="shrink-0">{isArabic ? `العملاء: ${toArabicNumerals(p.leadsCount)} | صفقات: ${toArabicNumerals(p.closedDeals)}` : `Leads: ${p.leadsCount} | Closed: ${p.closedDeals}`}</span>
-                        </div>
+                      <div className="w-full bg-[#0b1120] h-1.5 rounded-full overflow-hidden mb-1">
+                        {percentage > 0 && (
+                          <div
+                            style={{ width: `${percentage}%` }}
+                            className="bg-gradient-to-r from-[#df7b62] to-indigo-500 h-1.5 rounded-full transition-all duration-500"
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-[9px] font-bold text-slate-500">
+                        <span className="truncate">{isArabic ? `CAC: ${formatCurrency(p.cac)}` : `CAC: ${formatCurrency(p.cac)}`}</span>
+                        <span className="shrink-0">{isArabic ? `عملاء ${toArabicNumerals(p.leadsCount)} · صفقات ${toArabicNumerals(p.closedDeals)}` : `Leads ${p.leadsCount} · Closed ${p.closedDeals}`}</span>
                       </div>
                     </div>
                   );
@@ -716,22 +713,22 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                 </div>
 
                 {/* Lead conversion path funnel */}
-                <div className="pt-4 border-t border-slate-800">
-                  <h4 className="text-slate-400 text-xs font-bold mb-4">{isArabic ? "مسار تحول العميل من إعلان إلى عقد موقع" : "Ad to Contract Conversion Funnel"}</h4>
-                  <div className="grid grid-cols-5 gap-2 text-center text-[10px] items-center">
-                    <div className="p-2 rounded-lg bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] font-bold">
-                      <p className="font-en font-black text-sm">{toArabicNumerals(stats.totalLeads)}</p>
-                      <p>{isArabic ? "إعلان وارد" : "Incoming Ad"}</p>
+                <div className="pt-3 mt-1 border-t border-slate-800 shrink-0">
+                  <h4 className="text-slate-400 text-[11px] font-bold mb-3">{isArabic ? "مسار تحول العميل من إعلان إلى عقد موقع" : "Ad to Contract Conversion Funnel"}</h4>
+                  <div className="flex items-center justify-between gap-1.5 sm:gap-2 text-center text-[10px]">
+                    <div className="flex-1 min-w-0 px-2 py-2 rounded-lg bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] font-bold">
+                      <p className="font-en font-black text-sm leading-none">{toArabicNumerals(stats.totalLeads)}</p>
+                      <p className="mt-1 leading-tight">{isArabic ? "إعلان وارد" : "Incoming Ad"}</p>
                     </div>
-                    <div className="flex items-center justify-center text-slate-600"><i className="ph-bold ph-arrow-left text-base"></i></div>
-                    <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold">
-                      <p className="font-en font-black text-sm">{toArabicNumerals(Math.round(stats.totalLeads * 0.7))}</p>
-                      <p>{isArabic ? "تأهيل وتواصل" : "Contacted"}</p>
+                    <i className={`ph-bold ${isArabic ? 'ph-caret-left' : 'ph-caret-right'} text-slate-600 text-sm shrink-0`} aria-hidden />
+                    <div className="flex-1 min-w-0 px-2 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold">
+                      <p className="font-en font-black text-sm leading-none">{toArabicNumerals(Math.round(stats.totalLeads * 0.7))}</p>
+                      <p className="mt-1 leading-tight">{isArabic ? "تأهيل وتواصل" : "Contacted"}</p>
                     </div>
-                    <div className="flex items-center justify-center text-slate-600"><i className="ph-bold ph-arrow-left text-base"></i></div>
-                    <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
-                      <p className="font-en font-black text-sm">{toArabicNumerals(stats.closedSalesCount)}</p>
-                      <p>{isArabic ? "عقد موقع" : "Signed Contract"}</p>
+                    <i className={`ph-bold ${isArabic ? 'ph-caret-left' : 'ph-caret-right'} text-slate-600 text-sm shrink-0`} aria-hidden />
+                    <div className="flex-1 min-w-0 px-2 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
+                      <p className="font-en font-black text-sm leading-none">{toArabicNumerals(stats.closedSalesCount)}</p>
+                      <p className="mt-1 leading-tight">{isArabic ? "عقد موقع" : "Signed Contract"}</p>
                     </div>
                   </div>
                 </div>
@@ -743,46 +740,44 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Lead Sources Breakdown ROI (5 cols) */}
-        <div className="lg:col-span-5 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col gap-4">
-          <div>
-            <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-3 flex items-center gap-2 mb-4">
-              <i className="ph-bold ph-funnel text-[#df7b62]"></i>
-              {isArabic ? "تحليل كفاءة قنوات الاستحواذ والتسويق" : "Lead Sources Efficiency Analysis"}
-            </h3>
+        <div className="lg:col-span-5 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl backdrop-blur-md flex flex-col gap-3 min-h-0">
+          <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-2.5 flex items-center gap-2 shrink-0">
+            <i className="ph-bold ph-funnel text-[#df7b62]"></i>
+            {isArabic ? "تحليل كفاءة قنوات الاستحواذ والتسويق" : "Lead Sources Efficiency Analysis"}
+          </h3>
 
-            {loadingStats ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(n => <div key={n} className="h-10 bg-[#151f32]/60 animate-pulse rounded-xl"></div>)}
-              </div>
-            ) : (
-              stats && (
-                <div className="overflow-x-auto scrollbar-fade">
-                  <table className="w-full text-right border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="pb-2 font-bold">{isArabic ? "المصدر" : "Source"}</th>
-                        <th className="pb-2 font-bold text-center">{isArabic ? "العملاء" : "Leads"}</th>
-                        <th className="pb-2 font-bold text-center">{isArabic ? "معدل التحويل" : "Conv. %"}</th>
-                        <th className="pb-2 font-bold text-left">{isArabic ? "تكلفة الاستحواذ" : "CAC"}</th>
+          {loadingStats ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(n => <div key={n} className="h-8 bg-[#151f32]/60 animate-pulse rounded-lg"></div>)}
+            </div>
+          ) : (
+            stats && (
+              <div className="flex-1 min-h-0 max-h-[min(280px,38vh)] overflow-auto scrollbar-fade -mx-0.5 px-0.5">
+                <table className="w-full text-right border-collapse text-[11px]">
+                  <thead className="sticky top-0 z-10 bg-[#151f32]/95 backdrop-blur-sm">
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="py-1.5 pe-2 font-bold text-start">{isArabic ? "المصدر" : "Source"}</th>
+                      <th className="py-1.5 px-1 font-bold text-center whitespace-nowrap">{isArabic ? "العملاء" : "Leads"}</th>
+                      <th className="py-1.5 px-1 font-bold text-center whitespace-nowrap">{isArabic ? "التحويل" : "Conv."}</th>
+                      <th className="py-1.5 ps-2 font-bold text-end whitespace-nowrap">{isArabic ? "CAC" : "CAC"}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-slate-300">
+                    {stats.sourcesBreakdown.map((s: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-900/10 transition-colors">
+                        <td className="py-1.5 pe-2 font-bold text-white text-[10px] leading-tight">{s.source}</td>
+                        <td className="py-1.5 px-1 text-center font-en text-[10px]">{toArabicNumerals(s.count)}</td>
+                        <td className="py-1.5 px-1 text-center font-en text-[#df7b62] font-bold text-[10px]">{toArabicNumerals(s.conversionRate)}</td>
+                        <td className="py-1.5 ps-2 text-end font-en font-bold text-[10px] whitespace-nowrap">{s.spend === 0 ? "0 SAR" : formatCurrency(s.cac)}</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/40 text-slate-300">
-                      {stats.sourcesBreakdown.map((s: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-900/10">
-                          <td className="py-2.5 font-bold text-white">{s.source}</td>
-                          <td className="py-2.5 text-center font-en">{toArabicNumerals(s.count)}</td>
-                          <td className="py-2.5 text-center font-en text-[#df7b62] font-bold">{toArabicNumerals(s.conversionRate)}</td>
-                          <td className="py-2.5 text-left font-en font-bold">{s.spend === 0 ? "0 SAR" : formatCurrency(s.cac)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            )}
-          </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
 
-          <div className="bg-[#df7b62]/5 border border-[#df7b62]/10 p-3 rounded-xl text-[10px] text-slate-400 mt-4 leading-relaxed">
+          <div className="bg-[#df7b62]/5 border border-[#df7b62]/10 p-2.5 rounded-xl text-[10px] text-slate-400 leading-snug shrink-0">
             💡 {isArabic 
               ? "تحليل تكلفة الاستحواذ (CAC) المذكورة مبني على متوسط الإنفاق لكل قناة إعلانية مقابل العقود العقارية المغلقة والمسجلة تحت سياق المستأجر بنجاح."
               : "Customer Acquisition Cost (CAC) calculation is calculated using total spend per ad platform divided by converted signed leases."}
@@ -792,11 +787,11 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       </div>
 
       {/* WhatsApp CRM & Followups Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* Chats List Column (3 cols) */}
-        <div className="lg:col-span-3 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-800 bg-slate-900/30">
+        <div className="lg:col-span-3 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden min-h-0">
+          <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/30 shrink-0">
             <h3 className="text-white font-bold text-xs flex items-center gap-2">
               <i className="ph-bold ph-chat text-[#df7b62] text-sm"></i>
               {isArabic ? "محادثات الوكيل منصور" : "Mansour Automated Chats"}
@@ -806,9 +801,9 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto scrollbar-fade divide-y divide-slate-850/60">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-fade divide-y divide-slate-850/60">
             {loadingChats ? (
-              [1, 2, 3].map(n => <div key={n} className="p-4 animate-pulse h-16 bg-[#151f32]/20"></div>)
+              [1, 2, 3].map(n => <div key={n} className="px-3 py-2 animate-pulse h-12 bg-[#151f32]/20"></div>)
             ) : (
               chats.map(chat => {
                 const isActive = activeChatId === chat.id;
@@ -816,16 +811,18 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   <div
                     key={chat.id}
                     onClick={() => setActiveChatId(chat.id)}
-                    className={`px-3 py-2.5 transition-all cursor-pointer ${
-                      isActive ? 'bg-[#df7b62]/10 border-r-4 border-[#df7b62]' : 'hover:bg-slate-900/20'
+                    className={`px-3 py-2 transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#df7b62]/10 border-e-4 border-[#df7b62]'
+                        : 'hover:bg-slate-900/20'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-1 text-xs">
-                      <span className="font-bold text-white">{chat.contactName}</span>
-                      <span className="text-[9px] text-slate-500 font-semibold">{chat.status === "INTERESTED" ? (isArabic ? "مهتم" : "Interested") : chat.status === "STUDY" ? (isArabic ? "قيد الدراسة" : "Study") : (isArabic ? "مغلق" : "Closed")}</span>
+                    <div className="flex justify-between items-center gap-2 mb-0.5">
+                      <span className="font-bold text-white text-[11px] truncate">{chat.contactName}</span>
+                      <span className="text-[9px] text-slate-500 font-semibold shrink-0">{chat.status === "INTERESTED" ? (isArabic ? "مهتم" : "Interested") : chat.status === "STUDY" ? (isArabic ? "قيد الدراسة" : "Study") : (isArabic ? "مغلق" : "Closed")}</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 truncate">{chat.lastMessage}</p>
-                    <div className="flex justify-between text-[9px] text-slate-500 font-semibold mt-1">
+                    <p className="text-[10px] text-slate-400 truncate leading-tight">{chat.lastMessage}</p>
+                    <div className="flex justify-between items-center text-[9px] text-slate-500 font-semibold mt-0.5">
                       <span className="font-en">{chat.contactPhone}</span>
                       <span className="text-emerald-500 flex items-center gap-1">
                         <i className="ph-bold ph-shield-check"></i>
@@ -840,11 +837,11 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* WhatsApp Chat Window (5 cols) */}
-        <div className="lg:col-span-5 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+        <div className="lg:col-span-5 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden min-h-0">
           {activeChat ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b border-slate-800 bg-slate-900/30 flex justify-between items-center">
+              <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/30 flex flex-wrap justify-between items-center gap-2 shrink-0">
                 <div>
                   <h4 className="text-white font-bold text-xs">{activeChat.contactName}</h4>
                   <p className="text-[9px] text-slate-500 font-semibold font-en">{activeChat.contactPhone}</p>
@@ -868,9 +865,9 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               </div>
 
               {/* Messages Area */}
-              <div ref={chatScrollContainerRef as any} className="flex-1 overflow-y-auto scrollbar-fade p-4 space-y-4 bg-slate-900/10">
-                <div className="text-center">
-                  <span className="inline-block px-3 py-1 rounded bg-slate-900/50 border border-slate-850 text-[9px] text-slate-500 font-bold">
+              <div ref={chatScrollContainerRef as any} className="flex-1 min-h-0 overflow-y-auto scrollbar-fade p-3 space-y-3 bg-slate-900/10">
+                <div className="text-center shrink-0">
+                  <span className="inline-block px-2.5 py-1 rounded bg-slate-900/50 border border-slate-850 text-[9px] text-slate-500 font-bold leading-tight">
                     🔒 {isArabic ? "المحادثات مشفرة بالكامل بقاعدة البيانات بمعيار AES-256" : "All conversations are encrypted in database via AES-256"}
                   </span>
                 </div>
@@ -916,7 +913,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               </div>
 
               {/* Chat Send Message input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800 bg-slate-900/30 flex gap-2">
+              <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-800 bg-slate-900/30 flex gap-2 shrink-0">
                 <input
                   type="text"
                   value={messageInput}
@@ -943,13 +940,13 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Followups Sequences Configurations (4 cols) */}
-        <div className="lg:col-span-4 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl flex flex-col overflow-hidden min-h-0">
-          <h3 className="text-white font-bold text-xs border-b border-slate-800 pb-3 flex items-center gap-2 shrink-0">
+        <div className="lg:col-span-4 w-full h-[min(480px,72vh)] bg-[#151f32]/40 border border-slate-850 rounded-2xl p-4 shadow-xl flex flex-col overflow-hidden min-h-0">
+          <h3 className="text-white font-bold text-xs border-b border-slate-800 pb-2.5 flex items-center gap-2 shrink-0">
             <i className="ph-bold ph-gear-six text-[#df7b62] text-sm"></i>
             {isArabic ? "مسارات المتابعة الآلية لمنصور" : "Mansour Sequences Settings"}
           </h3>
 
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-fade space-y-2 pr-1 mt-3">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-fade space-y-1.5 ps-0.5 pe-1 mt-2">
               {loadingSequences ? (
                 [1, 2].map(n => <div key={n} className="h-10 bg-[#151f32]/25 animate-pulse rounded-lg"></div>)
               ) : (
@@ -974,7 +971,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
           </div>
 
           {/* New Sequence Form */}
-          <form onSubmit={handleSaveSequence} className="space-y-3 pt-3 border-t border-slate-800 mt-3 shrink-0">
+          <form onSubmit={handleSaveSequence} className="space-y-2 pt-2.5 border-t border-slate-800 mt-2 shrink-0">
             <h4 className="text-slate-400 text-[10px] font-bold">{isArabic ? "إضافة مسار متابعة جديد" : "Add follow-up sequence"}</h4>
             
             <div className="grid grid-cols-2 gap-2">
@@ -1011,7 +1008,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                 rows={2}
                 required
                 placeholder={isArabic ? "اكتب محتوى الرسالة هنا..." : "Type sequence message template..."}
-                className="w-full rounded-lg bg-[#0b1120] border border-slate-800 px-3 py-2 text-[10px] text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-lg bg-[#0b1120] border border-slate-800 px-3 py-2 text-[10px] text-white focus:outline-none focus:border-[#df7b62] scrollbar-fade resize-none"
               />
             </div>
 
