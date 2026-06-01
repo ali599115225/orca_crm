@@ -502,7 +502,7 @@ export default function LeadsView() {
                     <span className={`w-2.5 h-2.5 rounded-full ${stage.color} shrink-0 shadow-[0_0_8px_currentColor]`}></span>
                     <span className="truncate tracking-wide font-extrabold">{lang === 'AR' ? stage.labelAr : stage.labelEn}</span>
                   </h3>
-                  <span className="bg-slate-200 dark:bg-[#151f32] text-slate-700 dark:text-slate-350 text-xs font-bold px-3 py-1 rounded-full font-en shrink-0 border border-slate-300/40 dark:border-slate-800/40 shadow-sm">
+                  <span className="bg-slate-200 dark:bg-[#151f32] text-slate-700 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full font-en shrink-0 border border-slate-300/40 dark:border-slate-800/40 shadow-sm">
                     {toArabicNumerals(count)}
                   </span>
                 </div>
@@ -532,69 +532,78 @@ export default function LeadsView() {
                           onClick={() => setSelectedLeadForDrawer(lead)}
                           className={`bg-white dark:bg-[#0b1120] border ${
                             isClosed
-                              ? 'border-emerald-500/20 dark:border-emerald-500/10 shadow-[0_2px_12px_rgba(16,185,129,0.03)] hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] animate-fade-in'
-                              : 'border-slate-200/90 dark:border-slate-800/85 hover:border-[#df7b62]/50 dark:hover:border-[#df7b62]/40 hover:shadow-[0_0_20px_rgba(223,123,98,0.15)] animate-fade-in'
-                          } p-5 rounded-2xl transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between gap-3 h-[190px] min-h-[190px] max-h-[190px] w-full shrink-0`}
+                              ? 'border-emerald-500/20 dark:border-emerald-500/10 shadow-[0_2px_12px_rgba(16,185,129,0.03)] hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] orca-view-enter'
+                              : 'border-slate-200/90 dark:border-slate-800/85 hover:border-[#df7b62]/50 dark:hover:border-[#df7b62]/40 hover:shadow-[0_0_20px_rgba(223,123,98,0.15)] orca-view-enter'
+                          } p-4 rounded-2xl orca-transition cursor-pointer relative overflow-hidden group flex flex-col gap-2.5 min-h-[168px] w-full shrink-0`}
                         >
                           {isClosed && <div className="absolute top-0 right-0 left-0 h-[3px] bg-emerald-500"></div>}
 
                           {/* Row 1: Badges */}
-                          <div className="flex justify-between items-center gap-2 h-[22px] min-w-0">
+                          <div className="flex items-start justify-between gap-2 min-w-0">
                             {lead.project ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold border bg-slate-500/5 dark:bg-slate-400/5 text-slate-650 dark:text-slate-350 border-slate-200/80 dark:border-slate-800/60 min-w-0 max-w-[135px]" title={lead.project.name}>
-                                <i className="ph-bold ph-buildings text-[11px] shrink-0"></i>
-                                <span className="truncate">{lead.project.name}</span>
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-slate-500/5 dark:bg-slate-400/5 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800/60 min-w-0 flex-1 max-w-[58%]"
+                                title={lead.project.name}
+                              >
+                                <i className="ph-bold ph-buildings text-[11px] shrink-0 opacity-80"></i>
+                                <span className="truncate leading-tight">{lead.project.name}</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-transparent bg-slate-500/0 text-slate-400">
-                                <i className="ph-bold ph-buildings text-[11px] opacity-0 shrink-0"></i>
-                                <span>—</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full text-slate-500 dark:text-slate-500 min-w-0 flex-1">
+                                <i className="ph-bold ph-buildings text-[11px] shrink-0 opacity-40"></i>
+                                <span className="leading-tight">—</span>
                               </span>
                             )}
 
-                            {/* Solvency classification pill */}
-                            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${
-                              isHigh
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                : isWarm
-                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                            }`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                              <span>{isHigh ? t.scoreHigh : isWarm ? t.scoreWarm : t.scoreLow} ({toArabicNumerals(lead.leadScore)}%)</span>
+                            <span
+                              title={`${isHigh ? t.scoreHigh : isWarm ? t.scoreWarm : t.scoreLow} (${toArabicNumerals(lead.leadScore)}%)`}
+                              className={`inline-flex flex-col items-end gap-0.5 text-[9px] font-semibold px-2 py-1 rounded-lg border shrink-0 max-w-[42%] leading-tight ${
+                                isHigh
+                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25'
+                                  : isWarm
+                                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25'
+                                  : 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25'
+                              }`}
+                            >
+                              <span className="flex items-center gap-1 w-full justify-end">
+                                <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
+                                <span className="truncate">{isHigh ? t.scoreHigh : isWarm ? t.scoreWarm : t.scoreLow}</span>
+                              </span>
+                              <span className="font-en text-[10px] opacity-90">{toArabicNumerals(lead.leadScore)}%</span>
                             </span>
                           </div>
 
                           {/* Row 2: Name and Subdetails */}
-                          <div className="flex-1 flex flex-col justify-center min-h-0 py-1 gap-1">
-                            <h4 className="text-slate-900 dark:text-white font-bold text-sm group-hover:text-[#df7b62] transition-colors leading-tight truncate">
+                          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                            <h4
+                              className="text-slate-900 dark:text-slate-100 font-semibold text-[13px] group-hover:text-[#df7b62] orca-transition leading-snug line-clamp-2"
+                              title={`${lead.firstName} ${lead.lastName || ''}`.trim()}
+                            >
                               {lead.firstName} {lead.lastName || ''}
                             </h4>
-                            
-                            <div className="flex flex-col gap-0.5">
-                              <p className="text-slate-500 dark:text-slate-400 text-xs font-mono tracking-wide flex items-center gap-1.5">
-                                <i className="ph ph-phone text-slate-400 text-[13px] shrink-0"></i>
-                                <span className="truncate">{formatPhoneMask(lead.phone)}</span>
+
+                            <div className="flex flex-col gap-1">
+                              <p className="text-slate-600 dark:text-slate-300 text-[11px] font-mono tracking-wide flex items-center gap-1.5 min-w-0">
+                                <i className="ph ph-phone text-slate-500 dark:text-slate-400 text-xs shrink-0"></i>
+                                <span className="truncate" dir="ltr">{formatPhoneMask(lead.phone)}</span>
                               </p>
-                              <p className="text-slate-450 dark:text-slate-550 text-[10px] flex items-center gap-1.5">
-                                <i className="ph ph-megaphone text-slate-400 text-[12px] shrink-0"></i>
-                                <span className="truncate">{lead.source || (lang === 'AR' ? 'مباشر' : 'Direct')}</span>
+                              <p
+                                className="text-slate-500 dark:text-slate-400 text-[10px] flex items-center gap-1.5 min-w-0"
+                                title={lead.source || (lang === 'AR' ? 'مباشر' : 'Direct')}
+                              >
+                                <i className="ph ph-megaphone text-slate-500 dark:text-slate-400 text-xs shrink-0"></i>
+                                <span className="truncate leading-tight">{lead.source || (lang === 'AR' ? 'مباشر' : 'Direct')}</span>
                               </p>
                             </div>
                           </div>
 
-                          {/* Divider */}
-                          <div className="border-t border-slate-100 dark:border-slate-800/80 my-0.5"></div>
-
-                          {/* Row 3: Footer actions and Status info */}
-                          <div className="flex items-center justify-between gap-2 h-7 shrink-0">
-                            {/* Time/Status info */}
-                            <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 shrink-0">
-                              <i className="ph ph-clock text-[12px]"></i>
-                              <span>{getRelativeTime(lead.createdAt)}</span>
+                          {/* Row 3: Footer */}
+                          <div className="flex items-center justify-between gap-2 pt-2 mt-auto border-t border-slate-100/90 dark:border-slate-800/90">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 min-w-0 shrink">
+                              <i className="ph ph-clock text-xs shrink-0"></i>
+                              <span className="truncate">{getRelativeTime(lead.createdAt)}</span>
                             </div>
 
-                            {/* Move button */}
                             {nextStatus ? (
                               <button
                                 onClick={(e) => {
@@ -602,18 +611,21 @@ export default function LeadsView() {
                                   handleMoveToNextStep(lead.id, lead.status, nextStatus);
                                 }}
                                 disabled={updatingId === lead.id}
-                                className="text-[10px] font-bold text-[#df7b62] bg-[#df7b62]/10 hover:bg-[#df7b62] hover:text-white px-2.5 py-1 rounded-lg border border-[#df7b62]/20 hover:border-transparent transition-all duration-200 flex items-center gap-1 disabled:opacity-50 cursor-pointer shrink-0"
+                                className="orca-focus text-[10px] font-semibold text-[#df7b62] bg-[#df7b62]/10 hover:bg-[#df7b62] hover:text-white px-2 py-1 rounded-lg border border-[#df7b62]/25 hover:border-transparent orca-transition inline-flex items-center justify-center gap-1 disabled:opacity-50 cursor-pointer shrink-0 leading-none"
                               >
-                                {updatingId === lead.id ? t.processingBtn : (
+                                {updatingId === lead.id ? (
+                                  t.processingBtn
+                                ) : (
                                   <>
-                                    <span>{lang === 'AR' ? 'ترقية الحالة' : 'Advance'}</span>
-                                    <i className={`ph-bold ${lang === 'AR' ? 'ph-arrow-left' : 'ph-arrow-right'} text-[11px]`}></i>
+                                    <span className="whitespace-nowrap">{lang === 'AR' ? 'ترقية الحالة' : 'Advance'}</span>
+                                    <i className={`ph-bold ${lang === 'AR' ? 'ph-caret-left' : 'ph-caret-right'} text-[10px]`} aria-hidden />
                                   </>
                                 )}
                               </button>
                             ) : (
-                              <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0">
-                                <i className="ph-fill ph-seal-check text-xs"></i> <span>{lang === 'AR' ? 'مكتمل' : 'Completed'}</span>
+                              <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/80 dark:border-emerald-500/25 px-2 py-1 rounded-lg inline-flex items-center gap-1 shrink-0 leading-none">
+                                <i className="ph-fill ph-seal-check text-xs" aria-hidden />
+                                <span>{lang === 'AR' ? 'مكتمل' : 'Done'}</span>
                               </div>
                             )}
                           </div>
