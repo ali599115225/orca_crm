@@ -53,6 +53,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
     { label: 'قناة الواتساب والوكلاء', icon: 'ph-whatsapp-logo', tab: 'whatsapp' },
     { label: 'سجل النظام (Logs)', icon: 'ph-notebook', tab: 'logs' },
     { label: 'إعدادات النظام', icon: 'ph-gear', tab: 'settings' },
+    { label: 'مراقبة المنصة', icon: 'ph-radar', tab: 'monitor' },
   ] : [
     { label: 'Analytics & Reports', icon: 'ph-chart-line-up', tab: 'analytics' },
     { label: 'Prospective Investors', icon: 'ph-users-three', tab: 'leads' },
@@ -67,10 +68,15 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
     { label: 'WhatsApp & Channels', icon: 'ph-whatsapp-logo', tab: 'whatsapp' },
     { label: 'System Logs', icon: 'ph-notebook', tab: 'logs' },
     { label: 'System Settings', icon: 'ph-gear', tab: 'settings' },
+    { label: 'Platform Monitor', icon: 'ph-radar', tab: 'monitor' },
   ];
 
   const navItems = rawNavItems.filter(item => {
-    if (item.tab === 'logs' && currentUserRole !== 'ADMIN') {
+    if (item.tab === 'logs' && currentUserRole !== 'ADMIN' && currentUserRole !== 'PLATFORM_ARCHITECT') {
+      return false;
+    }
+    // تبويب Monitor حصري لـ PLATFORM_ARCHITECT فقط
+    if (item.tab === 'monitor' && currentUserRole !== 'PLATFORM_ARCHITECT') {
       return false;
     }
     return true;

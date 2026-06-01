@@ -37,6 +37,7 @@ interface Props {
 }
 
 const ROLE_ALLOWED: Record<string, string[]> = {
+  PLATFORM_ARCHITECT: ["analytics","leads","projects","rental","calculator","sales","tasks","settings","helpdesk","whatsapp","growth","agents","logs","monitor"],
   ADMIN:              ["analytics","leads","projects","rental","calculator","sales","tasks","settings","helpdesk","whatsapp","growth","agents","logs"],
   SALES_MANAGER:      ["analytics","leads","projects","rental","calculator","sales","tasks","helpdesk","whatsapp","growth","agents"],
   SALES_EMPLOYEE:     ["leads","tasks","helpdesk","calculator","rental","agents"],
@@ -54,7 +55,14 @@ export default function WarRoomCommandPageClient({
   const isArabic = lang === "AR";
 
   const allowed = ROLE_ALLOWED[currentUserRole] ?? ROLE_ALLOWED.READ_ONLY;
-  const defaultTab = initialTab === "overview" ? "analytics" : (initialTab || "analytics");
+  // تطبيع التبويب الافتراضي — overview وmonitor يقعان على analytics إذا لم يكن monitor متاحاً
+  const defaultTab = (initialTab === "overview")
+    ? "analytics"
+    : (initialTab === "monitor" && allowed.includes("monitor"))
+      ? "monitor"
+      : (initialTab && allowed.includes(initialTab))
+        ? initialTab
+        : "analytics";
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showGrowthAlert, setShowGrowthAlert] = useState(false);
@@ -181,6 +189,19 @@ export default function WarRoomCommandPageClient({
       {show("logs") && (
         <div className="fade-in">
           <LogsViewer />
+        </div>
+      )}
+
+      {show("monitor") && (
+        <div className="fade-in">
+          {/* Platform Architect — لوحة المراقبة الكاملة */}
+          <DashboardView
+            tenant={tenantInfo}
+            stats={dashboardStats}
+            recentLeads={recentLeads}
+            recentTasks={recentTasks}
+            projects={projects}
+          />
         </div>
       )}
 

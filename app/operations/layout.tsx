@@ -1,7 +1,6 @@
 // app/operations/layout.tsx
 import React from 'react';
 import { getSession } from '@/lib/session';
-import { logoutAction } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
