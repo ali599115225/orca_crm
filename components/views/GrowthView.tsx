@@ -124,6 +124,30 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   const PROJECT_PREVIEW_LIMIT = 8;
 
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const growthRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = growthRootRef.current;
+    if (!root) return;
+
+    const hideTimers = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>();
+
+    const onScroll = (e: Event) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('scrollbar-fade')) return;
+
+      target.classList.add('scrollbar-fade--visible');
+      const prev = hideTimers.get(target);
+      if (prev) clearTimeout(prev);
+      hideTimers.set(
+        target,
+        setTimeout(() => target.classList.remove('scrollbar-fade--visible'), 900)
+      );
+    };
+
+    root.addEventListener('scroll', onScroll, true);
+    return () => root.removeEventListener('scroll', onScroll, true);
+  }, [activeSubTab, loadingStats, loadingChats, loadingSequences, showAllProjects]);
 
   const sortedProjectStats = useMemo(() => {
     if (!stats?.projectStats?.length) return [];
@@ -446,7 +470,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   return (
-    <div className="w-full" dir={dir}>
+    <div ref={growthRootRef} className="w-full" dir={dir}>
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto w-full">
       
       {/* Page Header (Cyber Glass) */}
@@ -643,7 +667,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
 
                 <div
                   className={`space-y-2 pr-1 ${
-                    visibleProjectStats.length > 5 ? 'max-h-[min(300px,42vh)] overflow-y-auto' : ''
+                    visibleProjectStats.length > 5 ? 'max-h-[min(300px,42vh)] overflow-y-auto scrollbar-fade' : ''
                   }`}
                 >
                 {(() => {
@@ -732,7 +756,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               </div>
             ) : (
               stats && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto scrollbar-fade">
                   <table className="w-full text-right border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400">
@@ -782,7 +806,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-850/60">
+          <div className="flex-1 overflow-y-auto scrollbar-fade divide-y divide-slate-850/60">
             {loadingChats ? (
               [1, 2, 3].map(n => <div key={n} className="p-4 animate-pulse h-16 bg-[#151f32]/20"></div>)
             ) : (
@@ -844,7 +868,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               </div>
 
               {/* Messages Area */}
-              <div ref={chatScrollContainerRef as any} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/10">
+              <div ref={chatScrollContainerRef as any} className="flex-1 overflow-y-auto scrollbar-fade p-4 space-y-4 bg-slate-900/10">
                 <div className="text-center">
                   <span className="inline-block px-3 py-1 rounded bg-slate-900/50 border border-slate-850 text-[9px] text-slate-500 font-bold">
                     🔒 {isArabic ? "المحادثات مشفرة بالكامل بقاعدة البيانات بمعيار AES-256" : "All conversations are encrypted in database via AES-256"}
@@ -925,7 +949,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             {isArabic ? "مسارات المتابعة الآلية لمنصور" : "Mansour Sequences Settings"}
           </h3>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 mt-3">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-fade space-y-2 pr-1 mt-3">
               {loadingSequences ? (
                 [1, 2].map(n => <div key={n} className="h-10 bg-[#151f32]/25 animate-pulse rounded-lg"></div>)
               ) : (
@@ -1283,7 +1307,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               {isArabic ? "التحليل الموحد ومقارنة كفاءة المنصات الإعلانية (Unified ROI Dashboard)" : "Unified Multi-Channel Ad ROI Comparison"}
             </h3>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-fade">
               <table className="w-full text-right border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400">
@@ -1362,7 +1386,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Report Content */}
-            <div className="bg-slate-950/60 border border-slate-850 p-5 rounded-xl text-xs md:text-sm text-slate-300 leading-relaxed max-h-[450px] overflow-y-auto pr-2 relative z-10 space-y-4">
+            <div className="bg-slate-950/60 border border-slate-850 p-5 rounded-xl text-xs md:text-sm text-slate-300 leading-relaxed max-h-[450px] overflow-y-auto scrollbar-fade pr-2 relative z-10 space-y-4">
               <div className="markdown-body font-sans space-y-4">
                 {baseerInsight.split('\n').map((line, idx) => {
                   if (line.startsWith('###')) {

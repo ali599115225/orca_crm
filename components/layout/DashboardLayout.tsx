@@ -137,7 +137,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
         </div>
 
         {/* Navigation Menu */}
-        <div className="flex-1 overflow-y-auto py-4 scroll-container no-scrollbar mask-fade-vertical">
+        <div className="flex-1 overflow-y-auto py-4 scroll-container scrollbar-fade mask-fade-vertical">
             <nav className="space-y-1">
                 {navItems.map((item, index) => {
                   const isActive = activeTab === item.tab;
@@ -245,7 +245,7 @@ export default function DashboardLayout({ children, currentUserRole = 'READ_ONLY
         </header>
 
         {/* Content View */}
-        <main className="flex-1 overflow-y-auto no-scrollbar relative w-full">
+        <main className="flex-1 overflow-y-auto scrollbar-fade relative w-full">
             {children}
         </main>
         
