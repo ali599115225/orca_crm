@@ -33,6 +33,8 @@ export async function getGrowthMarketingStatsAction() {
     // 1. جلب المشاريع السكنية مع العملاء المحتملين والعقود التابعة لها
     const projects = await prisma.project.findMany({
       where: { tenantId: tenant.id },
+      orderBy: { createdAt: "desc" },
+      take: 120,
       include: {
         leads: true,
         units: {

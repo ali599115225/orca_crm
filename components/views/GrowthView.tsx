@@ -1,7 +1,7 @@
 // components/views/GrowthView.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import {
@@ -120,7 +120,24 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [showAllProjects, setShowAllProjects] = useState(false);
+  const PROJECT_PREVIEW_LIMIT = 8;
+
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const sortedProjectStats = useMemo(() => {
+    if (!stats?.projectStats?.length) return [];
+    return [...stats.projectStats].sort((a: any, b: any) => {
+      const scoreA = Number(a.contractValue) + Number(a.leadsCount) * 500 + Number(a.closedDeals) * 2000;
+      const scoreB = Number(b.contractValue) + Number(b.leadsCount) * 500 + Number(b.closedDeals) * 2000;
+      return scoreB - scoreA;
+    });
+  }, [stats]);
+
+  const visibleProjectStats = useMemo(() => {
+    if (showAllProjects) return sortedProjectStats;
+    return sortedProjectStats.slice(0, PROJECT_PREVIEW_LIMIT);
+  }, [sortedProjectStats, showAllProjects]);
 
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -429,7 +446,8 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   return (
-    <div className={`p-4 md:p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto w-full`} dir={dir}>
+    <div className="w-full" dir={dir}>
+    <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto w-full">
       
       {/* Page Header (Cyber Glass) */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-slate-800/80 p-6 shadow-2xl backdrop-blur-xl">
@@ -528,17 +546,17 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         <>
           {/* ROI Statistics Grid */}
           {loadingStats ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
           {[1, 2, 3, 4].map(n => (
             <div key={n} className="h-28 bg-[#151f32]/40 border border-slate-800 rounded-2xl animate-pulse"></div>
           ))}
         </div>
       ) : (
         stats && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
             
             {/* Total Marketing Spend */}
-            <div className="bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
               <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "إجمالي الإنفاق التسويقي" : "Total Ad Spend"}</span>
@@ -549,7 +567,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Average CAC */}
-            <div className="bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "تكلفة الاستحواذ على العميل (CAC)" : "Average CAC"}</span>
@@ -560,7 +578,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Closed Contract Value */}
-            <div className="bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "قيمة العقود الموقعة" : "Closed Contract Value"}</span>
@@ -571,7 +589,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
 
             {/* Marketing ROI % */}
-            <div className="bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
+            <div className="w-full h-auto bg-[#151f32]/40 border border-slate-850 p-5 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden group hover:border-[#df7b62]/30 transition-all duration-300">
               <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold text-slate-400">{isArabic ? "معدل العائد التسويقي (ROI)" : "Marketing ROI"}</span>
@@ -586,10 +604,10 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       )}
 
       {/* ROI & Funnel View Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
         
         {/* CAC vs Contract Value per Project (7 cols) */}
-        <div className="lg:col-span-7 bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md">
+        <div className="lg:col-span-7 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md">
           <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-3 flex items-center gap-2 mb-5">
             <i className="ph-bold ph-chart-bar text-[#df7b62]"></i>
             {isArabic ? "أداء المشاريع الاستثمارية: الإنفاق والتسويق مقابل المبيعات" : "Project ROI: Marketing CAC vs Contract Value"}
@@ -601,44 +619,82 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
             </div>
           ) : (
             stats && (
-              <div className="space-y-6">
-                {stats.projectStats.map((p: any) => {
-                  const maxVal = Math.max(...stats.projectStats.map((x: any) => x.contractValue), 1);
-                  const percentage = Math.round((p.contractValue / maxVal) * 100);
+              <div className="space-y-4">
+                {sortedProjectStats.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-500 font-semibold">
+                      {isArabic
+                        ? `عرض ${toArabicNumerals(visibleProjectStats.length)} من ${toArabicNumerals(sortedProjectStats.length)} مشروع`
+                        : `Showing ${visibleProjectStats.length} of ${sortedProjectStats.length} projects`}
+                    </span>
+                    {sortedProjectStats.length > PROJECT_PREVIEW_LIMIT && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllProjects((v) => !v)}
+                        className="text-[10px] font-bold text-[#df7b62] hover:text-[#c5654e] cursor-pointer transition-colors"
+                      >
+                        {showAllProjects
+                          ? (isArabic ? "عرض أقل ▲" : "Show less ▲")
+                          : (isArabic ? `عرض الكل (${toArabicNumerals(sortedProjectStats.length)}) ▼` : `Show all (${sortedProjectStats.length}) ▼`)}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div
+                  className={`space-y-2 pr-1 ${
+                    visibleProjectStats.length > 5 ? 'max-h-[min(300px,42vh)] overflow-y-auto' : ''
+                  }`}
+                >
+                {(() => {
+                  const maxMetric = Math.max(
+                    ...sortedProjectStats.map((x: any) =>
+                      Number(x.contractValue) > 0 ? Number(x.contractValue) : Number(x.leadsCount)
+                    ),
+                    1
+                  );
+                  return visibleProjectStats.map((p: any) => {
+                  const metric =
+                    Number(p.contractValue) > 0 ? Number(p.contractValue) : Number(p.leadsCount);
+                  const percentage =
+                    metric > 0 ? Math.max(8, Math.round((metric / maxMetric) * 100)) : 0;
                   return (
-                    <div key={p.id} className="p-4 rounded-xl bg-slate-900/30 border border-slate-800/60 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h4 className="text-white text-xs font-bold">{p.name}</h4>
+                    <div key={p.id} className="p-2.5 rounded-xl bg-slate-900/30 border border-slate-800/60 space-y-1.5">
+                      <div className="flex justify-between items-center gap-3">
+                        <div className="min-w-0">
+                          <h4 className="text-white text-xs font-bold truncate">{p.name}</h4>
                           <span className="text-[10px] text-slate-500 font-semibold">{p.city}</span>
                         </div>
-                        <div className="text-left">
+                        <div className="text-left shrink-0">
                           <span className="text-[10px] text-slate-400 font-bold block">{isArabic ? "العقود الموقعة" : "Closed Contracts"}</span>
                           <span className="text-xs text-white font-black font-en">{formatCurrency(p.contractValue)}</span>
                         </div>
                       </div>
                       
-                      {/* Comparison Progress Bar */}
                       <div className="space-y-1">
-                        <div className="w-full bg-[#0b1120] h-2.5 rounded-full overflow-hidden flex">
-                          <div 
-                            style={{ width: `${Math.max(5, percentage)}%` }} 
-                            className="bg-gradient-to-r from-[#df7b62] to-indigo-500 h-full rounded-full transition-all duration-500"
-                          ></div>
+                        <div className="w-full bg-[#0b1120] h-2 rounded-full overflow-hidden">
+                          {percentage > 0 && (
+                            <div
+                              style={{ width: `${percentage}%` }}
+                              className="bg-gradient-to-r from-[#df7b62] to-indigo-500 h-2 rounded-full transition-all duration-500"
+                            />
+                          )}
                         </div>
-                        <div className="flex justify-between text-[9px] font-bold text-slate-500">
-                          <span>{isArabic ? `متوسط تكلفة الاستحواذ: ${formatCurrency(p.cac)}` : `CAC: ${formatCurrency(p.cac)}`}</span>
-                          <span>{isArabic ? `العملاء: ${toArabicNumerals(p.leadsCount)} | صفقات: ${toArabicNumerals(p.closedDeals)}` : `Leads: ${p.leadsCount} | Closed: ${p.closedDeals}`}</span>
+                        <div className="flex justify-between text-[9px] font-bold text-slate-500 gap-2">
+                          <span className="truncate">{isArabic ? `متوسط تكلفة الاستحواذ: ${formatCurrency(p.cac)}` : `CAC: ${formatCurrency(p.cac)}`}</span>
+                          <span className="shrink-0">{isArabic ? `العملاء: ${toArabicNumerals(p.leadsCount)} | صفقات: ${toArabicNumerals(p.closedDeals)}` : `Leads: ${p.leadsCount} | Closed: ${p.closedDeals}`}</span>
                         </div>
                       </div>
                     </div>
                   );
-                })}
+                });
+                })()}
+                </div>
 
                 {/* Lead conversion path funnel */}
                 <div className="pt-4 border-t border-slate-800">
                   <h4 className="text-slate-400 text-xs font-bold mb-4">{isArabic ? "مسار تحول العميل من إعلان إلى عقد موقع" : "Ad to Contract Conversion Funnel"}</h4>
-                  <div className="grid grid-cols-5 gap-2 text-center text-[10px]">
+                  <div className="grid grid-cols-5 gap-2 text-center text-[10px] items-center">
                     <div className="p-2 rounded-lg bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] font-bold">
                       <p className="font-en font-black text-sm">{toArabicNumerals(stats.totalLeads)}</p>
                       <p>{isArabic ? "إعلان وارد" : "Incoming Ad"}</p>
@@ -663,7 +719,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Lead Sources Breakdown ROI (5 cols) */}
-        <div className="lg:col-span-5 bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col justify-between">
+        <div className="lg:col-span-5 w-full h-auto bg-[#151f32]/40 border border-slate-850 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col gap-4">
           <div>
             <h3 className="text-white font-bold text-sm border-b border-slate-800 pb-3 flex items-center gap-2 mb-4">
               <i className="ph-bold ph-funnel text-[#df7b62]"></i>
@@ -712,10 +768,10 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
       </div>
 
       {/* WhatsApp CRM & Followups Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
         
         {/* Chats List Column (3 cols) */}
-        <div className="lg:col-span-3 bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden h-[600px] backdrop-blur-md">
+        <div className="lg:col-span-3 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-800 bg-slate-900/30">
             <h3 className="text-white font-bold text-xs flex items-center gap-2">
               <i className="ph-bold ph-chat text-[#df7b62] text-sm"></i>
@@ -736,7 +792,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   <div
                     key={chat.id}
                     onClick={() => setActiveChatId(chat.id)}
-                    className={`p-4 transition-all cursor-pointer ${
+                    className={`px-3 py-2.5 transition-all cursor-pointer ${
                       isActive ? 'bg-[#df7b62]/10 border-r-4 border-[#df7b62]' : 'hover:bg-slate-900/20'
                     }`}
                   >
@@ -760,7 +816,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* WhatsApp Chat Window (5 cols) */}
-        <div className="lg:col-span-5 bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden h-[600px] backdrop-blur-md">
+        <div className="lg:col-span-5 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl shadow-xl flex flex-col overflow-hidden">
           {activeChat ? (
             <>
               {/* Chat Header */}
@@ -863,27 +919,25 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
         {/* Followups Sequences Configurations (4 cols) */}
-        <div className="lg:col-span-4 bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl flex flex-col h-[600px] overflow-y-auto backdrop-blur-md justify-between">
-          <div className="space-y-4">
-            <h3 className="text-white font-bold text-xs border-b border-slate-800 pb-3 flex items-center gap-2">
-              <i className="ph-bold ph-gear-six text-[#df7b62] text-sm"></i>
-              {isArabic ? "مسارات المتابعة الآلية لمنصور" : "Mansour Sequences Settings"}
-            </h3>
+        <div className="lg:col-span-4 w-full h-[520px] bg-[#151f32]/40 border border-slate-850 rounded-2xl p-5 shadow-xl flex flex-col overflow-hidden min-h-0">
+          <h3 className="text-white font-bold text-xs border-b border-slate-800 pb-3 flex items-center gap-2 shrink-0">
+            <i className="ph-bold ph-gear-six text-[#df7b62] text-sm"></i>
+            {isArabic ? "مسارات المتابعة الآلية لمنصور" : "Mansour Sequences Settings"}
+          </h3>
 
-            {/* Config List */}
-            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 mt-3">
               {loadingSequences ? (
                 [1, 2].map(n => <div key={n} className="h-10 bg-[#151f32]/25 animate-pulse rounded-lg"></div>)
               ) : (
                 sequences.map(seq => (
-                  <div key={seq.id} className="p-3 rounded-lg bg-slate-900/40 border border-slate-850/80 text-[10px] space-y-1 relative">
+                  <div key={seq.id} className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-850/80 text-[10px] space-y-1 relative">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-[#df7b62]">
                         {seq.status === "INTERESTED" ? (isArabic ? "مهتم" : "Interested") : seq.status === "STUDY" ? (isArabic ? "قيد الدراسة" : "Study") : (isArabic ? "مغلق" : "Closed")}
                       </span>
                       <span className="text-slate-500 font-semibold">{isArabic ? `بعد ${toArabicNumerals(seq.delayDays)} يوم` : `After ${seq.delayDays} days`}</span>
                     </div>
-                    <p className="text-slate-350 leading-relaxed font-sans">{seq.message}</p>
+                    <p className="text-slate-400 leading-snug font-sans line-clamp-3">{seq.message}</p>
                     <button
                       onClick={() => handleDeleteSequence(seq.id)}
                       className="absolute top-2 left-2 text-rose-500 hover:text-rose-455 text-[9px] font-bold cursor-pointer"
@@ -893,11 +947,10 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   </div>
                 ))
               )}
-            </div>
           </div>
 
           {/* New Sequence Form */}
-          <form onSubmit={handleSaveSequence} className="space-y-3 pt-4 border-t border-slate-800 mt-4">
+          <form onSubmit={handleSaveSequence} className="space-y-3 pt-3 border-t border-slate-800 mt-3 shrink-0">
             <h4 className="text-slate-400 text-[10px] font-bold">{isArabic ? "إضافة مسار متابعة جديد" : "Add follow-up sequence"}</h4>
             
             <div className="grid grid-cols-2 gap-2">
@@ -949,7 +1002,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
 
       </div>
-        </>
+      </>
       )}
 
       {activeSubTab === 'ads_center' && (
@@ -992,7 +1045,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               {isArabic ? "انقر على أي منصة لتهيئة معرف الحساب، مفاتيح الربط الآمنة، وتخصيص طريقة معالجة الوكيل منصور للعملاء القادمين منها." : "Click on any ad platform to configure Account ID, secure keys, and customize Agent Mansour's lead welcome response."}
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {loadingPlatforms ? (
                 [1, 2, 3, 4, 5, 6].map(n => (
                   <div key={n} className="h-40 bg-[#151f32]/40 border border-slate-800 rounded-2xl animate-pulse"></div>
@@ -1043,7 +1096,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                   return (
                     <div 
                       key={plat.platform}
-                      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${colorClass} border p-5 shadow-lg backdrop-blur-md transition-all duration-300 ${
+                      className={`relative w-full h-auto overflow-hidden rounded-2xl bg-gradient-to-br ${colorClass} border p-5 shadow-lg backdrop-blur-md transition-all duration-300 ${
                         isSelected ? 'ring-2 ring-[#df7b62]' : 'hover:scale-[1.02]'
                       }`}
                       style={{ boxShadow: isSelected ? `0 0 20px ${glowColor}` : undefined }}
@@ -1133,7 +1186,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
                 </button>
               </h4>
 
-              <form onSubmit={handleSavePlatformConnection} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <form onSubmit={handleSavePlatformConnection} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* Credentials Side (6 cols) */}
                 <div className="lg:col-span-6 space-y-4">
@@ -1513,7 +1566,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
               </p>
 
               {/* Comparison Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 {/* Current Scenario */}
                 <div className="p-4 rounded-xl border border-slate-800 bg-[#0b1120]/60 space-y-3">
                   <h4 className="text-slate-400 font-bold text-xs border-b border-slate-850 pb-2">
@@ -1603,6 +1656,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
         </div>
       )}
 
+    </div>
     </div>
   );
 }
