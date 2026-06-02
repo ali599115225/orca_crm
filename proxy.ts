@@ -1,8 +1,8 @@
 ﻿import { NextResponse } from "next/navigation";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
-  // تمرير مطلق وفوري لكافة الروابط والتبويبات دون أي حظر أو عزل
+// التصدير الافتراضي باسم proxy ليتوافق 100% مع معمارية البناء المتوقعة
+export default function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
