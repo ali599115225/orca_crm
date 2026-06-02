@@ -7,7 +7,7 @@ import ErpFinanceView from './ErpFinanceView';
 import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard, AlertCircle } from 'lucide-react';
 
 export default function RentalView() {
-  // استخدام التبديل المحلي الصارم لكسر جمود الأزرار
+  // استخدام حالة التبديل المحلي الصارم
   const [currentSubTab, setCurrentSubTab] = useState('dashboard');
 
   const tabs = [
@@ -20,7 +20,7 @@ export default function RentalView() {
   return (
     <div className="w-full min-h-screen text-slate-100 space-y-6" dir="rtl">
       
-      {/* هيدر الصفحة */}
+      {/* هيدر الصفحة الاستراتيجي */}
       <div className="flex flex-col space-y-2 pb-2">
         <div className="flex items-center gap-2 text-[#df7b62] text-[11px] font-black uppercase tracking-wider bg-[#df7b62]/10 border border-[#df7b62]/20 px-2.5 py-1 rounded-full w-fit">
           <Home size={12} /> الامتثال والتحصيل المالي العقاري
@@ -31,17 +31,14 @@ export default function RentalView() {
         </div>
       </div>
 
-      {/* شريط التبويبات العلوي - مع فك الارتباط التام لمنع التجمد */}
+      {/* شريط التبويبات العلوي التكتيكي الصافي */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800/60 pb-3 relative z-30">
         {tabs.map((tab) => {
           const isSelected = currentSubTab === tab.id;
           return (
-            <button
+            <div
               key={tab.id}
-              type="button"
-              onClick={() => {
-                setCurrentSubTab(tab.id);
-              }}
+              onClick={() => setCurrentSubTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 cursor-pointer select-none border ${
                 isSelected
                   ? 'bg-[#df7b62] text-white shadow-lg shadow-[#df7b62]/20 border-[#df7b62]'
@@ -50,12 +47,12 @@ export default function RentalView() {
             >
               {tab.icon}
               <span>{tab.name}</span>
-            </button>
+            </div>
           );
-        ))}
+        })}
       </div>
 
-      {/* عرض المحتوى التكتيكي بناءً على الحالة المحلية المحدثة */}
+      {/* عرض المحتوى بناءً على الحالة المحلية المحدثة */}
       <div className="w-full relative z-10 mt-4">
         {currentSubTab === 'dashboard' && (
           <div className="space-y-6">
@@ -83,7 +80,7 @@ export default function RentalView() {
             <div className="bg-emerald-500/5 border border-emerald-500/10 p-3.5 rounded-xl flex items-center justify-between gap-3 text-xs font-bold text-emerald-400">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={16} />
-                <span>جميع العقود متوافقة مع معايير وزارة الإسكان والتطوير الحضري وتخضع لتدقيق الامتثال التلقائي.</span>
+                <span>جميع العقود متوافقة مع معايير وزارة الإسكان وتخضع لتدقيق الامتثال التلقائي.</span>
               </div>
             </div>
 
@@ -112,15 +109,15 @@ export default function RentalView() {
                     <input type="text" placeholder="محمد العتيبي" className="w-full bg-[#0b1120] border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none" />
                   </div>
                 </div>
-                <button type="button" className="w-full py-2.5 bg-[#df7b62] hover:bg-[#c5654e] text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
+                <div className="w-full py-2.5 bg-[#df7b62] hover:bg-[#c5654e] text-white text-xs font-bold rounded-xl transition-all text-center cursor-pointer">
                   حفظ وتعميد العقد بالسيرفر ➔
-                </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* فك الحظر الاستدعائي للواجهات الفرعية بشكل معزول ومباشر */}
+        {/* استدعاء المكونات الفرعية المعزولة */}
         {currentSubTab === 'ejar' && <div className="w-full block text-right"><EjarView /></div>}
         {currentSubTab === 'zatca' && <div className="w-full block text-right"><ZatcaView /></div>}
         {currentSubTab === 'finance' && <div className="w-full block text-right"><ErpFinanceView /></div>}
