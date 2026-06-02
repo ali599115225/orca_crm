@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import RentalView from '@/components/views/RentalView';
 
+// منع الكاش الميت وإجبار السيرفر على الرندرة الديناميكية النقية لصفحة الـ HTML
 export const dynamic = 'force-dynamic';
 
 export default function RentalOperationsPage() {
