@@ -1,57 +1,36 @@
-// lib/crypto.ts
-import crypto from "crypto";
+﻿import crypto from 'crypto';
 
-const ALGORITHM = "aes-256-cbc";
+// تأكد من وجود المفتاح السري أو استخدام مفتاح افتراضي آمن للتطوير
+const ENCRYPTION_KEY = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'orca_secure_architect_secret_key_32';
+const IV_LENGTH = 16;
 
-// We use the system's JWT_SECRET or a default 32-byte string for key derivation
-const ENCRYPTION_KEY = process.env.JWT_SECRET || "orca_crm_super_secure_key_32_bytes_long_123456"; 
+// مواءمة طول المفتاح ليكون 32 بايت دائماً لـ aes-256-cbc
+const key = crypto.createHash('sha256').update(String(ENCRYPTION_KEY)).digest();
 
-/**
- * Encrypt a text string securely
- */
-export function encryptText(text: string): string {
-  if (!text) return "";
-  try {
-    // Generate a 32-byte key from our secret key
-    const key = Buffer.alloc(32);
-    Buffer.from(ENCRYPTION_KEY).copy(key);
-
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    
-    let encrypted = cipher.update(text, "utf8", "hex");
-    encrypted += cipher.final("hex");
-    
-    return iv.toString("hex") + ":" + encrypted;
-  } catch (error) {
-    console.error("Encryption helper failed:", error);
-    return "";
-  }
+export function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
 }
 
-/**
- * Decrypt a secured text string
- */
-export function decryptText(encryptedText: string): string {
-  if (!encryptedText) return "";
+export function decrypt(text: string): string | null {
   try {
-    const key = Buffer.alloc(32);
-    Buffer.from(ENCRYPTION_KEY).copy(key);
-
-    const parts = encryptedText.split(":");
-    if (parts.length !== 2) return "";
+    if (!text || !text.includes(':')) return null;
     
-    const iv = Buffer.from(parts.shift() || "", "hex");
-    const encrypted = parts.join(":");
+    const textParts = text.split(':');
+    const iv = Buffer.from(textParts.shift()!, 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
     
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
     
-    let decrypted = decipher.update(encrypted, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-    
-    return decrypted;
+    return decrypted.toString('utf8');
   } catch (error) {
-    console.error("Decryption helper failed:", error);
-    return "";
+    // التقاط خطأ الـ bad decrypt بأمان ودون إسقاط الخادم أو تعليق الـ SSR
+    console.warn("⚠️ Decryption failed (Expired or invalid token token). Returning null safely.");
+    return null;
   }
 }
