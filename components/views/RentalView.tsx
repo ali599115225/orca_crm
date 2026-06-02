@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard, CheckCircle } from 'lucide-react';
 
 export default function RentalView() {
   const [currentSubTab, setCurrentSubTab] = useState('dashboard');
@@ -27,7 +27,7 @@ export default function RentalView() {
         </div>
       </div>
 
-      {/* شريط التبويبات العلوي التكتيكي الصافي */}
+      {/* شريط التبويبات العلوي */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800/60 pb-3 relative z-30">
         {tabs.map((tab) => {
           const isSelected = currentSubTab === tab.id;
@@ -48,12 +48,11 @@ export default function RentalView() {
         })}
       </div>
 
-      {/* عرض المحتوى بناءً على الحالة المحلية لمنع الالتفاف الدائري */}
+      {/* عرض المحتوى بناءً على الحالة المحلية */}
       <div className="w-full relative z-10 mt-4">
         
-        {/* 1. التبويب الرئيسي: لوحة التحكم وسجل العقود */}
         {currentSubTab === 'dashboard' && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#151f32] border border-slate-800 p-4 rounded-2xl flex flex-col justify-between h-24">
                 <span className="text-slate-400 text-[10px] font-black tracking-wider">عقود الإيجار النشطة</span>
@@ -112,9 +111,9 @@ export default function RentalView() {
           </div>
         )}
 
-        {/* 2. تبويب شبكة إيجار الوطنية الحية */}
+        {/* واجهة إيجار مدمجة ونقية */}
         {currentSubTab === 'ejar' && (
-          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 animate-fade-in text-right">
+          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 text-right">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
                 <h3 className="text-sm font-black text-white flex items-center gap-2">🟢 بوابة الربط مع شبكة إيجار الوطنية</h3>
@@ -122,60 +121,42 @@ export default function RentalView() {
               </div>
               <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold rounded-full">متصل حياً</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-[#0b1120] border border-slate-850 p-4 rounded-xl">
-                <span className="text-slate-500 text-[10px] font-bold block">العقود الموثقة</span>
-                <span className="text-lg font-black text-white font-inter mt-1 block">٠ عقد</span>
-              </div>
-              <div className="bg-[#0b1120] border border-slate-850 p-4 rounded-xl">
-                <span className="text-slate-500 text-[10px] font-bold block">طلبات التوثيق المعلقة</span>
-                <span className="text-lg font-black text-amber-400 font-inter mt-1 block">٠ طلب</span>
-              </div>
-              <div className="bg-[#0b1120] border border-slate-850 p-4 rounded-xl">
-                <span className="text-slate-500 text-[10px] font-bold block">حالة الاتصال بالـ API</span>
-                <span className="text-lg font-black text-emerald-400 text-xs font-bold mt-1 block">مستقر بنسبة 100%</span>
-              </div>
-            </div>
+            <p className="text-xs text-slate-400">بوابة الربط جاهزة تماماً لبث واستقبال البيانات.</p>
           </div>
         )}
 
-        {/* 3. تبويب هيئة الزكاة والضريبة والجمارك ZATCA */}
+        {/* واجهة زاتكا مدمجة ونقية */}
         {currentSubTab === 'zatca' && (
-          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 animate-fade-in text-right">
+          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 text-right">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2">🛡️ حوكمة الفوترة الإلكترونية (ZATCA) - المرحلة الثانية</h3>
-                <p className="text-slate-400 text-xs mt-1">توليد الـ الحقول المشفرة Cryptographic Stamps والأختام الإلكترونية للفواتير</p>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">🛡️ حوكمة الفوترة الإلكترونية (ZATCA)</h3>
+                <p className="text-slate-400 text-xs mt-1">توليد الأختام الإلكترونية للفواتير العقارية</p>
               </div>
-              <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold rounded-full">الربط التلقائي نشط</span>
+              <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold rounded-full">الربط نشط</span>
             </div>
-            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center justify-between text-xs font-medium text-slate-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle size={16} className="text-indigo-400" />
-                <span>تم ربط وتعميد الـ Cryptographic Keys وجاهز لتوليد الـ QR Code لجميع فواتير التحصيل العقاري الماسية.</span>
-              </div>
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center gap-2 text-xs text-slate-300">
+              <CheckCircle size={16} className="text-indigo-400" />
+              <span>جاهز لتوليد الـ QR Code لجميع فواتير التحصيل العقاري.</span>
             </div>
           </div>
         )}
 
-        {/* 4. تبويب القيود ودفتر الأستاذ المالي المحاسبي */}
+        {/* واجهة المحاسبة مدمجة ونقية */}
         {currentSubTab === 'finance' && (
-          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 animate-fade-in text-right">
+          <div className="bg-[#151f32]/40 border border-slate-800 rounded-2xl p-6 space-y-6 text-right">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2">🧮 شجرة الحسابات ودفتر الأستاذ العام (ERP)</h3>
-                <p className="text-slate-400 text-xs mt-1">توليد القيود المحاسبية التلقائية وموازين المراجعة للتدفقات النقدية العقارية</p>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">🧮 شجرة الحسابات ودفتر الأستاذ العام</h3>
+                <p className="text-slate-400 text-xs mt-1">توليد القيود المحاسبية التلقائية وموازين المراجعة</p>
               </div>
               <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold rounded-full">جاهز للترحيل</span>
             </div>
-            <div className="p-8 text-center text-slate-500 text-xs font-semibold border border-dashed border-slate-800 rounded-xl">
-              لا توجد قيود محاسبية أو عمليات ترحيل غير مسجلة حالياً في هذا النطاق الماسي
-            </div>
+            <p className="text-xs text-slate-400 text-center py-4">لا توجد قيود محاسبية غير مسجلة حالياً.</p>
           </div>
         )}
 
       </div>
-
     </div>
   );
 }
