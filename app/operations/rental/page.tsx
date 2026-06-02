@@ -1,13 +1,9 @@
 ﻿'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
+import RentalView from "@/components/views/RentalView";
 
-// استدعاء مباشر وحصري للملف الفعلي الموجود في الشجرة بدون حرف s زائد
-const RentalViewComponent = dynamic(() => import('@/components/views/RentalView'), {
-  ssr: false,
-});
-
-export default function RentalPage() {
-  return <RentalViewComponent />;
+export default function RENTALPage() {
+  // واجهة حوكمة الإيجارات والامتثال المالي المستقرة
+  return <RentalView />;
 }

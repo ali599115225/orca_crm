@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { useApp } from '@/app/context/AppContext';
@@ -141,7 +141,7 @@ export default function ZatkaView() {
           <table className="w-full text-xs text-right border-collapse">
             <thead>
               <tr className={`border-b text-[10px] font-extrabold ${isDark ? 'bg-slate-950/80 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
-                <th className="px-5 py-3">{lang === 'AR' ? "رقم الفاتورة" : "Invoice No."}</th>
+                <th className="px-5 py-3">{lang === 'AR' ? "الرقم التسلسلي للفاتورة الإلكترونية" : "Invoice No."}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "المستفيد / المنشأة" : "Client / entity"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "صافي المبلغ" : "Net Amount"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "الضريبة المضافة (١٥٪)" : "VAT (15%)"}</th>

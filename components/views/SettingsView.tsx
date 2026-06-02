@@ -1,4 +1,4 @@
-// components/views/SettingsView.tsx
+﻿// components/views/SettingsView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -77,7 +77,7 @@ const ROLE_TRANSLATIONS = {
 
 const TRANSLATIONS = {
   AR: {
-    title: "إعدادات النظام والعمليات السحابية (SaaS Settings)",
+    title: "حوكمة النظام والربط الحكومي والعمليات السحابية (SaaS Settings)",
     desc: "تخصيص وإدارة اشتراكك العقاري، وإدارة حسابات موظفي المبيعات والوصول لعام ٢٠٢٦م.",
     currentPlan: "الباقة الحالية: ",
     tabBilling: "💳 باقة الاشتراك والترقيات",
@@ -131,7 +131,7 @@ const TRANSLATIONS = {
     staffPassword: "كلمة المرور الافتراضية *",
     staffSubmit: "إنشاء حساب الموظف ➔",
     editStaffTitle: "تعديل صلاحيات الموظف: ",
-    editStaffSave: "حفظ التغييرات",
+    editStaffSave: "اعتماد وتحديث إعدادات المنشأة",
     editStaffCancel: "✕ إلغاء",
     editStaffName: "الاسم الكامل",
     editStaffRole: "دور الصلاحية",
@@ -433,7 +433,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
       .replace(/%/g, "٪");
   };
 
-  // دالة تنسيق العملة السعودية
+  // دالة تنسيق العملة الرسمية (ريال سعودي) الرسمية (ريال سعودي) السعودية
   const formatCurrency = (amount: number): string => {
     return `${toArabicNumerals(amount)} ${isArabic ? 'ر.س' : 'SAR'}`;
   };

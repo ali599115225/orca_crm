@@ -1,4 +1,4 @@
-// components/views/RentalView.tsx
+﻿// components/views/RentalView.tsx
 "use client";
 import React, { useState } from "react";
 import { useApp } from "@/app/context/AppContext";

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { useApp } from '@/app/context/AppContext';
@@ -113,14 +113,14 @@ export default function ErpFinanceView() {
       {/* جدول القيود وسندات القبض حياً (Live General Ledger Subsystem) */}
       <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
         <div className="p-4 border-b border-slate-800 bg-slate-900/20">
-          <h3 className="font-bold text-xs text-white">{lang === 'AR' ? "سجل حركة قيود الحسابات العقارية والترحيل المالي" : "Real Estate Accounting Ledger & ERP Status"}</h3>
+          <h3 className="font-bold text-xs text-white">{lang === 'AR' ? "سجل حركة قيود الحساب الرئيسي (الدليل المحاسبي)ات العقارية والترحيل المالي" : "Real Estate Accounting Ledger & ERP Status"}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-right border-collapse">
             <thead>
               <tr className={`border-b text-[10px] font-extrabold ${isDark ? 'bg-slate-950/80 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
                 <th className="px-5 py-3">{lang === 'AR' ? "رقم القيد" : "Entry No."}</th>
-                <th className="px-4 py-3">{lang === 'AR' ? "البيان والشرح المحاسبي" : "Description / Allocation"}</th>
+                <th className="px-4 py-3">{lang === 'AR' ? "شرح القيد المحاسبي والبيان والشرح المحاسبي" : "Description / Allocation"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "قيمة السند" : "Transaction Amount"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "المستشار العقاري" : "Real Estate Advisor"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "عمولة المبيعات" : "Commission"}</th>

@@ -1,4 +1,4 @@
-// components/views/SalesView.tsx
+﻿// components/views/SalesView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';

@@ -1,4 +1,4 @@
-// components/views/WhatsAppView.tsx
+﻿// components/views/WhatsAppView.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";

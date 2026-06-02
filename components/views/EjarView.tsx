@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { useApp } from '@/app/context/AppContext';
@@ -6,8 +6,8 @@ import { useApp } from '@/app/context/AppContext';
 interface ContractLog {
   id: string;
   contractNo: string;
-  lessor: string; // المؤجر
-  lessee: string; // المستأجر
+  lessor: string; // الطرف الأول (المؤجر)
+  lessee: string; // الطرف الثاني (المستأجر)
   unitName: string;
   rentAmount: number;
   status: 'VERIFIED' | 'PENDING' | 'EXPIRED';
@@ -65,7 +65,7 @@ export default function EjarView() {
               {lang === 'AR' ? "منظومة ربط وتوثيق العقود — شبكة إيجار الوطنية (Ejar)" : "National Ejar Contract Integration Hub"}
             </h1>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
-              {lang === 'AR' ? "أتمتة سحب بيانات المؤجرين والمستأجرين، توثيق العقود الموحدة، ومراقبة حالة الدفعات والدعم السكني حياً لعام ٢٠٢٦م." : "Automate landlord & tenant syncing, unified contract registration, and live lease payout status tracking for 2026."}
+              {lang === 'AR' ? "أتمتة سحب بيانات الطرف الأول (المؤجر)ين والطرف الثاني (المستأجر)ين، توثيق العقود الموحدة، ومراقبة حالة الدفعات والدعم السكني حياً لعام ٢٠٢٦م." : "Automate landlord & tenant syncing, unified contract registration, and live lease payout status tracking for 2026."}
             </p>
           </div>
 
@@ -84,7 +84,7 @@ export default function EjarView() {
           <div className="space-y-2">
             <h3 className={`text-xs font-black ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{lang === 'AR' ? "🔄 المزامنة الشبكية الحية" : "🔄 Live Network Sync"}</h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              {lang === 'AR' ? "قم بسحب أحدث حالات العقود السكنية والتجارية وتوثيقات المستأجرين المسجلة في منصة وزارة الإسكان مباشرة." : "Pull latest residential and commercial lease statuses directly from the Ministry of Housing database."}
+              {lang === 'AR' ? "قم بسحب أحدث حالات العقود السكنية والتجارية وتوثيقات الطرف الثاني (المستأجر)ين المسجلة في منصة وزارة الإسكان مباشرة." : "Pull latest residential and commercial lease statuses directly from the Ministry of Housing database."}
             </p>
           </div>
           <button
@@ -134,7 +134,7 @@ export default function EjarView() {
             <thead>
               <tr className={`border-b text-[10px] font-extrabold ${isDark ? 'bg-slate-950/80 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
                 <th className="px-5 py-3">{lang === 'AR' ? "رقم عقد إيجار" : "Contract No."}</th>
-                <th className="px-4 py-3">{lang === 'AR' ? "المؤجر / المستأجر" : "Parties (Lessor/Lessee)"}</th>
+                <th className="px-4 py-3">{lang === 'AR' ? "الطرف الأول (المؤجر) / الطرف الثاني (المستأجر)" : "Parties (Lessor/Lessee)"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "الوحدة العقارية" : "Property Unit"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "القيمة الإيجارية" : "Rental Value"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "حالة التوثيق الوزاري" : "Ejar State"}</th>

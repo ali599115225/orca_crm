@@ -1,4 +1,4 @@
-// components/views/HelpdeskView.tsx
+﻿// components/views/HelpdeskView.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -33,7 +33,7 @@ const TRANSLATIONS = {
     submitBtn: "✉️ إرسال التذكرة للوكيل مساعد",
     submittingBtn: "جاري الإرسال ومراجعة الوكيل...",
     totalTickets: "إجمالي {count} تذاكر",
-    emptyStateLeft: "لا توجد تذاكر دعم سابقة لشركتكم.",
+    emptyStateLeft: "لا توجد بلاغات صيانة أو طلبات تشغيل مسجلة حالياً دعم سابقة لشركتكم.",
     statusActive: "نشطة",
     statusClosed: "مغلقة",
     ticketDate: "تاريخ: {date}",
