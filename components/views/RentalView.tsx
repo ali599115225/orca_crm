@@ -1,9 +1,9 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import EjarView from '@/components/views/EjarView';
-import ZatcaView from '@/components/views/ZatcaView';
-import ErpFinanceView from '@/components/views/ErpFinanceView';
+import EjarView from './EjarView';
+import ZatcaView from './ZatcaView';
+import ErpFinanceView from './ErpFinanceView';
 import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard } from 'lucide-react';
 
 export default function RentalView() {
@@ -30,7 +30,7 @@ export default function RentalView() {
         </div>
       </div>
 
-      {/* شريط التبويبات العلوي الصافي */}
+      {/* شريط التبويبات العلوي */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800/60 pb-3 relative z-30">
         {tabs.map((tab) => {
           const isSelected = currentSubTab === tab.id;
@@ -116,7 +116,7 @@ export default function RentalView() {
           </div>
         )}
 
-        {/* استدعاء المكونات الفرعية بالمسارات الحقيقية */}
+        {/* استدعاء المكونات الفرعية المجاورة بالمسار الجغرافي الصافي */}
         {currentSubTab === 'ejar' && <div className="w-full block text-right"><EjarView /></div>}
         {currentSubTab === 'zatca' && <div className="w-full block text-right"><ZatcaView /></div>}
         {currentSubTab === 'finance' && <div className="w-full block text-right"><ErpFinanceView /></div>}
