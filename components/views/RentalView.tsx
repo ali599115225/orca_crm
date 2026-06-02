@@ -1,13 +1,12 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import EjarView from './EjarView';
-import ZatcaView from './ZatcaView';
-import ErpFinanceView from './ErpFinanceView';
-import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard, AlertCircle } from 'lucide-react';
+import EjarView from '@/components/views/EjarView';
+import ZatcaView from '@/components/views/ZatcaView';
+import ErpFinanceView from '@/components/views/ErpFinanceView';
+import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard } from 'lucide-react';
 
 export default function RentalView() {
-  // استخدام حالة التبديل المحلي الصارم
   const [currentSubTab, setCurrentSubTab] = useState('dashboard');
 
   const tabs = [
@@ -20,7 +19,7 @@ export default function RentalView() {
   return (
     <div className="w-full min-h-screen text-slate-100 space-y-6" dir="rtl">
       
-      {/* هيدر الصفحة الاستراتيجي */}
+      {/* هيدر الصفحة */}
       <div className="flex flex-col space-y-2 pb-2">
         <div className="flex items-center gap-2 text-[#df7b62] text-[11px] font-black uppercase tracking-wider bg-[#df7b62]/10 border border-[#df7b62]/20 px-2.5 py-1 rounded-full w-fit">
           <Home size={12} /> الامتثال والتحصيل المالي العقاري
@@ -31,7 +30,7 @@ export default function RentalView() {
         </div>
       </div>
 
-      {/* شريط التبويبات العلوي التكتيكي الصافي */}
+      {/* شريط التبويبات العلوي الصافي */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800/60 pb-3 relative z-30">
         {tabs.map((tab) => {
           const isSelected = currentSubTab === tab.id;
@@ -52,11 +51,11 @@ export default function RentalView() {
         })}
       </div>
 
-      {/* عرض المحتوى بناءً على الحالة المحلية المحدثة */}
+      {/* عرض المحتوى بناءً على الحالة المحلية */}
       <div className="w-full relative z-10 mt-4">
         {currentSubTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* كروت المؤشرات الحية */}
+            {/* كروت المؤشرات */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#151f32] border border-slate-800 p-4 rounded-2xl flex flex-col justify-between h-24">
                 <span className="text-slate-400 text-[10px] font-black tracking-wider">عقود الإيجار النشطة</span>
@@ -76,7 +75,7 @@ export default function RentalView() {
               </div>
             </div>
 
-            {/* شريط الإقرار والتحصين */}
+            {/* شريط الإقرار */}
             <div className="bg-emerald-500/5 border border-emerald-500/10 p-3.5 rounded-xl flex items-center justify-between gap-3 text-xs font-bold text-emerald-400">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={16} />
@@ -117,7 +116,7 @@ export default function RentalView() {
           </div>
         )}
 
-        {/* استدعاء المكونات الفرعية المعزولة */}
+        {/* استدعاء المكونات الفرعية بالمسارات الحقيقية */}
         {currentSubTab === 'ejar' && <div className="w-full block text-right"><EjarView /></div>}
         {currentSubTab === 'zatca' && <div className="w-full block text-right"><ZatcaView /></div>}
         {currentSubTab === 'finance' && <div className="w-full block text-right"><ErpFinanceView /></div>}
