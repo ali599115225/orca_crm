@@ -18,3 +18,14 @@ out/
 # ملفات النظام الأخرى
 .DS_Store
 thumbs.db
+# --- حماية ملفات مشروع أوركا المكتشفة ---
+recovery-codes.txt
+analysis_summary.md
+DESIGN_ARCHIVE.md
+scratch/
+
+# --- حماية ملفات مشروع أوركا المكتشفة ---
+recovery-codes.txt
+analysis_summary.md
+DESIGN_ARCHIVE.md
+scratch/
