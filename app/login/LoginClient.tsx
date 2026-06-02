@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { loginAction } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // استيراد مكوّن الروابط لـ Next.js
 
 interface LoginClientProps {
   tenantName?: string;
@@ -237,7 +238,6 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
       {/* Main Content */}
       <main className="flex-grow flex items-center justify-center p-4 z-10 relative w-full">
-        {/* Adjusted Card size */}
         <div className={`w-full max-w-[950px] rounded-[1.5rem] shadow-xl overflow-hidden flex flex-col md:flex-row border transition-colors duration-500 min-h-[550px] ${isDarkMode ? 'bg-[#151f32] border-slate-800/50 shadow-2xl' : 'bg-white border-slate-200'}`}>
           
           {/* Left Graphic Panel */}
@@ -373,14 +373,16 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                 <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                   {lang === 'AR' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
-                <input type="email" name="email" defaultValue="ali.orca@outlook.sa" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#df7b62] border text-left transition-colors ${isDarkMode ? 'bg-[#1e293b] text-white border-slate-700' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" required />
+                {/* تم حذف البريد الافتراضي هنا لأمان الكود */}
+                <input type="email" name="email" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#df7b62] border text-left transition-colors ${isDarkMode ? 'bg-[#1e293b] text-white border-slate-700' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="example@domain.com" required />
               </div>
 
               <div className="space-y-1.5 text-right">
                 <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                   {lang === 'AR' ? 'كلمة المرور' : 'Password'}
                 </label>
-                <input type="password" name="password" defaultValue="12345678" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#df7b62] border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-[#1e293b] text-white border-slate-700' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" required />
+                {/* تم حذف كلمة المرور الافتراضية هنا لأمان الكود */}
+                <input type="password" name="password" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#df7b62] border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-[#1e293b] text-white border-slate-700' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="••••••••" required />
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -405,19 +407,19 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Footer المحدّث بروابط Next.js الديناميكية */}
       <footer className="w-full p-6 text-center text-xs md:text-sm text-slate-500 flex items-center justify-center gap-4 z-10 relative">
-        <a href="#" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
+        <Link href="/privacy-policy" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
-        </a>
+        </Link>
         <span>|</span>
-        <a href="#" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
+        <Link href="/disclaimer" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
-        </a>
+        </Link>
         <span>|</span>
-        <a href="#" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
+        <Link href="/terms-and-conditions" className={`transition-colors ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
-        </a>
+        </Link>
       </footer>
     </div>
   );
