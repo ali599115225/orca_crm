@@ -45,7 +45,7 @@ export default function SovereignSidebar() {
               ].join(" ")}
             >
               {item.icon}
-              <span>{item.name}</span>
+              <span>{item.name === "Settings" ? "إعدادات الحساب" : item.name}</span>
             </Link>
           );
         })}
