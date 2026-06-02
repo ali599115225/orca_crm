@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import EjarView from './EjarView';
-import ZatcaView from './ZatcaView';
+import ZatkaView from './ZatkaView';
 import ErpFinanceView from './ErpFinanceView';
 import { Home, FileText, ShieldCheck, Calculator, LayoutDashboard } from 'lucide-react';
 
@@ -116,7 +116,7 @@ export default function RentalView() {
           </div>
         )}
 
-        {/* استدعاء المكونات الفرعية المجاورة بالمسار الجغرافي الصافي */}
+        {/* استدعاء المكونات الفرعية الجارة بمسارات الحالة المحلية */}
         {currentSubTab === 'ejar' && <div className="w-full block text-right"><EjarView /></div>}
         {currentSubTab === 'zatca' && <div className="w-full block text-right"><ZatcaView /></div>}
         {currentSubTab === 'finance' && <div className="w-full block text-right"><ErpFinanceView /></div>}
