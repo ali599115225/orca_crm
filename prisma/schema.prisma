@@ -4,8 +4,9 @@ datasource db {
   provider = "postgresql"
 }
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "library"
+  provider      = "prisma-client-js"
+  engineType    = "library"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
   
 
