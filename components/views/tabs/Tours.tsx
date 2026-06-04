@@ -1,0 +1,260 @@
+// components/views/tabs/Tours.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+
+type Tour = {
+  id: string;
+  leadId: string;
+  assignedTo: string;
+  startAt: string;
+  location: string;
+  status: string;
+  attendees: number;
+  notes: string | null;
+};
+
+type Lead = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+};
+
+export default function Tours() {
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [btnLoading, setBtnLoading] = useState(false);
+
+  // Form states
+  const [leadId, setLeadId] = useState("");
+  const [location, setLocation] = useState("مشروع النرجس السكني");
+  const [startAt, setStartAt] = useState("");
+  const [attendees, setAttendees] = useState("2");
+  const [notes, setNotes] = useState("");
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [toursRes, leadsRes] = await Promise.all([
+        fetch("/api/v1/tours"),
+        fetch("/api/v1/leads"),
+      ]);
+      const toursJson = await toursRes.json();
+      const leadsJson = await leadsRes.json();
+
+      if (toursJson.success) setTours(toursJson.data);
+      if (leadsJson.success) setLeads(leadsJson.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCreateTour = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadId || !startAt || !location) return;
+
+    try {
+      setBtnLoading(true);
+      const res = await fetch("/api/v1/tours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId,
+          startAt,
+          location,
+          attendees,
+          notes,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setLeadId("");
+        setStartAt("");
+        setNotes("");
+        loadData();
+        alert("تم إنشاء الجولة وجدولة إرسال رسائل تذكير تلقائية عبر الواتساب بنجاح.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBtnLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (tourId: string, toStatus: string) => {
+    try {
+      setBtnLoading(true);
+      const res = await fetch(`/api/v1/tours/${tourId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: toStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        loadData();
+        if (toStatus === "COMPLETED") {
+          alert("تم إتمام الزيارة بنجاح وجدولة مهمة متابعة تلقائية للفريق الميداني.");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBtnLoading(false);
+    }
+  };
+
+  const getLeadName = (lid: string) => {
+    const l = leads.find(lead => lead.id === lid);
+    return l ? `${l.firstName} ${l.lastName || ""}`.trim() : "عميل غير معروف";
+  };
+
+  return (
+    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-5 rounded-2xl">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Scheduler Panel */}
+        <div className="bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <h3 className="text-white font-bold text-sm mb-4">حجز وتنسيق جولة عقارية (Schedule Tour)</h3>
+          <form onSubmit={handleCreateTour} className="space-y-4 text-xs">
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-400">العميل المحتمل *</label>
+              <select
+                value={leadId}
+                onChange={(e) => setLeadId(e.target.value)}
+                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                required
+              >
+                <option value="">-- اختر العميل --</option>
+                {leads.map((l) => (
+                  <option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-400">تاريخ ووقت المعاينة الميدانية *</label>
+              <input
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white font-en"
+                required
+              >
+              </input>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-400">موقع الجولة / المشروع *</label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                required
+              >
+                <option value="مشروع النرجس السكني">مشروع النرجس السكني</option>
+                <option value="برج أوركا الياسمين">برج أوركا الياسمين</option>
+                <option value="مشروع أبراج مكة الإدارية">مشروع أبراج مكة الإدارية</option>
+                <option value="جولة افتراضية Virtual Tour">جولة افتراضية Virtual Tour</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-400">عدد المرافقين</label>
+              <input
+                type="number"
+                value={attendees}
+                onChange={(e) => setAttendees(e.target.value)}
+                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-400">ملاحظات إضافية (أية تفاصيل خاصة)</label>
+              <textarea
+                placeholder="أدخل ملاحظات خاصة بالزيارة..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="bg-[#042A44] border border-slate-700 rounded p-2 text-white h-16 resize-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={btnLoading}
+              className="w-full bg-[#df7b62] hover:bg-[#c5654e] text-white rounded font-bold px-3 py-2 transition-all text-center"
+            >
+              {btnLoading ? "جاري الحفظ..." : "حفظ الجولة وجدولة التذكيرات"}
+            </button>
+          </form>
+        </div>
+
+        {/* Tours List Panel */}
+        <div className="lg:col-span-2 bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <h3 className="text-white font-bold text-sm mb-3">الجولات العقارية المجدولة (Scheduled Tours)</h3>
+          {loading ? (
+            <div className="py-12 text-center text-slate-400 text-xs">جاري تحميل الجولات...</div>
+          ) : tours.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 text-xs">لا توجد جولات عقارية مجدولة حالياً.</div>
+          ) : (
+            <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 scrollbar-fade">
+              {tours.map((tour) => {
+                const dateStr = new Date(tour.startAt).toLocaleString("ar-SA", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                });
+                return (
+                  <div key={tour.id} className="p-3 bg-[#042A44] border border-slate-800 rounded-xl hover:border-[#df7b62]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold">{getLeadName(tour.leadId)}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                          tour.status === "SCHEDULED"
+                            ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                            : tour.status === "COMPLETED"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-slate-500/10 text-slate-400"
+                        }`}>
+                          {tour.status}
+                        </span>
+                      </div>
+                      <p className="text-slate-450">موقع الجولة: <span className="text-slate-300 font-semibold">{tour.location}</span></p>
+                      <p className="text-slate-450 font-en">التاريخ: <span className="text-indigo-400 font-semibold">{dateStr}</span></p>
+                      {tour.notes && <p className="text-slate-500 italic text-[11px]">ملاحظة: {tour.notes}</p>}
+                    </div>
+
+                    {tour.status === "SCHEDULED" && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateStatus(tour.id, "COMPLETED")}
+                          disabled={btnLoading}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded text-xs transition-colors"
+                        >
+                          إتمام الزيارة
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(tour.id, "CANCELLED")}
+                          disabled={btnLoading}
+                          className="bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 px-3 py-1 rounded text-xs transition-colors"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
