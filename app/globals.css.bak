@@ -1,0 +1,864 @@
+@import "tailwindcss";
+
+/* ─── Base polish (readability & rhythm) ─────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(223, 123, 98, 0.28);
+  color: inherit;
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────────── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-fade {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-fade::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.scrollbar-fade:hover,
+.scrollbar-fade:focus-within,
+.scrollbar-fade.scrollbar-fade--visible {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.45) transparent;
+}
+
+.scrollbar-fade:hover::-webkit-scrollbar,
+.scrollbar-fade:focus-within::-webkit-scrollbar,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-fade:hover::-webkit-scrollbar-track,
+.scrollbar-fade:focus-within::-webkit-scrollbar-track,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-fade:hover::-webkit-scrollbar-thumb,
+.scrollbar-fade:focus-within::-webkit-scrollbar-thumb,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb {
+  background-color: rgba(71, 85, 105, 0.42);
+  border-radius: 999px;
+  transition: background-color 0.35s ease;
+}
+
+.scrollbar-fade:hover::-webkit-scrollbar-thumb:hover,
+.scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(223, 123, 98, 0.6);
+}
+
+/* ─── Masks ──────────────────────────────────────────────────────────────── */
+.mask-fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+}
+
+.mask-fade-vertical {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+/* ─── ORCA design tokens (structure only — same palette) ─────────────────── */
+.orca-page {
+  padding: 1rem;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .orca-page {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .orca-page {
+    padding: 2rem;
+  }
+}
+
+.orca-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .orca-stack {
+    gap: 1.5rem;
+  }
+}
+
+.orca-panel {
+  background-color: rgba(21, 31, 50, 0.4);
+  border: 1px solid rgba(30, 41, 59, 0.85);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 4px 24px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition:
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+}
+
+.orca-panel:hover {
+  border-color: rgba(51, 65, 85, 0.95);
+}
+
+.orca-panel-light {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.dark .orca-panel-light,
+:where(.dark, [data-theme="dark"]) .orca-panel-light {
+  background-color: #151f32;
+  border-color: rgba(30, 41, 59, 0.85);
+  box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.35);
+}
+
+.orca-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px -12px rgba(0, 0, 0, 0.55);
+}
+
+.orca-transition {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.orca-view-enter {
+  animation: orcaViewEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes orcaViewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.orca-focus:focus-visible {
+  outline: 2px solid rgba(223, 123, 98, 0.55);
+  outline-offset: 2px;
+}
+
+.orca-divider {
+  border-color: rgba(30, 41, 59, 0.75);
+}
+
+.orca-section-title {
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.price-tag {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+}
+/* 🌙 شريط تمرير أنيق بأسلوب ORCA Dark Mode */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  transition: width 0.3s ease-in-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #02121F; /* خلفية داكنة مثل السيدر */
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0EA5E9 0%, #0369A1 100%);
+  border-radius: 8px;
+  border: 1px solid #0EA5E9;
+  box-shadow: 0 0 6px rgba(14,165,233,0.4);
+  transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22D3EE 0%, #0EA5E9 100%);
+  box-shadow: 0 0 10px rgba(34,211,238,0.6);
+}
+
+/* دعم Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #0EA5E9 #02121F;
+  transition: all 0.3s ease-in-out;
+}
+
+/* ✨ حركة ظهور الشريط عند السحب */
+.custom-scrollbar::-webkit-scrollbar {
+  opacity: 0;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* تحسين المظهر العام */
+.custom-scrollbar {
+  scroll-behavior: smooth;
+}
+/* تحسينات ORCA ULTRA PIPELINE */
+.stage-column:hover {
+  box-shadow: 0 0 12px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.lead-card {
+  background: rgba(4,42,68,0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(14,165,233,0.2);
+  transition: all 0.3s ease;
+  animation: cardFadeIn 0.4s ease;
+}
+.lead-card:hover {
+  border-color: #0EA5E9;
+  box-shadow: 0 0 10px rgba(14,165,233,0.3);
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stage-column:hover::-webkit-scrollbar-thumb {
+  box-shadow: 0 0 12px rgba(34,211,238,0.6);
+}
+
+.btn-whatsapp {
+  background: linear-gradient(90deg, #22C55E 0%, #16A34A 100%);
+}
+.btn-call {
+  background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+}
+.btn-whatsapp:active, .btn-call:active {
+  transform: scale(0.95);
+}
+
+.stage-stats {
+  background: rgba(14,165,233,0.1);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.add-lead-btn:hover {
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14,165,233,0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(14,165,233,0); }
+  100% { box-shadow: 0 0 0 0 rgba(14,165,233,0); }
+}
+/* تحسينات واجهة ORCA ULTRA PIPELINE */
+.stage-column {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* شريط تمرير أنيق داخل الكروت */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0EA5E9 0%, #0369A1 100%);
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(14,165,233,0.4);
+  transition: all 0.3s ease-in-out;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22D3EE 0%, #0EA5E9 100%);
+  box-shadow: 0 0 10px rgba(34,211,238,0.6);
+}
+.custom-scrollbar::-webkit-scrollbar {
+  opacity: 0;
+}
+.custom-scrollbar:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* تحسين الكروت */
+.lead-card {
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: rgba(4,42,68,0.6);
+  backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+}
+.lead-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 10px rgba(14,165,233,0.3);
+}
+
+/* تحسين الأزرار */
+.btn-call, .btn-whatsapp {
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+}
+.btn-call:hover {
+  background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+}
+.btn-whatsapp:hover {
+  background: linear-gradient(90deg, #22C55E 0%, #16A34A 100%);
+}
+/* تحسينات واجهة ORCA ULTRA PIPELINE */
+.stage-column {
+  min-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 16px;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+
+/* شريط تمرير أنيق */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0EA5E9 0%, #0369A1 100%);
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(14,165,233,0.4);
+  transition: all 0.3s ease-in-out;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22D3EE 0%, #0EA5E9 100%);
+  box-shadow: 0 0 10px rgba(34,211,238,0.6);
+}
+.custom-scrollbar::-webkit-scrollbar {
+  opacity: 0;
+}
+.stage-column:hover .custom-scrollbar::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* الكروت */
+.lead-card {
+  background: rgba(4,42,68,0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(14,165,233,0.2);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+.lead-card:hover {
+  border-color: #0EA5E9;
+  box-shadow: 0 0 10px rgba(14,165,233,0.3);
+  transform: translateY(-3px);
+}
+
+/* الأزرار */
+.btn-whatsapp {
+  background: linear-gradient(90deg, #22C55E 0%, #16A34A 100%);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+}
+.btn-call {
+  background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+}
+.btn-whatsapp:active, .btn-call:active {
+  transform: scale(0.95);
+}
+
+/* حركة جانبية للأعمدة */
+.stage-column:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 0 20px rgba(14,165,233,0.25);
+}
+/* تحسينات الأزرار */
+.btn-whatsapp,
+.btn-call,
+.btn-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 50px;
+  font-size: 11px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+.btn-whatsapp {
+  background: linear-gradient(90deg, #22C55E 0%, #16A34A 100%);
+  color: #fff;
+}
+.btn-call {
+  background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+  color: #fff;
+}
+.btn-arrow {
+  background: #1E293B;
+  color: #fff;
+}
+.btn-whatsapp:hover,
+.btn-call:hover,
+.btn-arrow:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 6px rgba(14,165,233,0.3);
+}
+
+/* توحيد ارتفاع الأعمدة */
+.stage-column {
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* تأثير التلاشي للأعلى والأسفل */
+.custom-scrollbar {
+  position: relative;
+  overflow-y: auto;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.stage-column {
+  height: 82vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+
+/* تلاشي للأعلى والأسفل */
+.custom-scrollbar {
+  position: relative;
+  overflow-y: auto;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.stage-column {
+  height: auto;
+  min-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+.custom-scrollbar {
+  overflow-y: visible;
+}
+.stage-column {
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+.stage-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  max-height: 78vh;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+
+/* تلاشي للأعلى والأسفل داخل الأعمدة */
+.custom-scrollbar {
+  position: relative;
+  overflow-y: auto;
+  flex: 1;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0EA5E9 0%, #0369A1 100%);
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(14,165,233,0.4);
+  transition: all 0.3s ease-in-out;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22D3EE 0%, #0EA5E9 100%);
+  box-shadow: 0 0 10px rgba(34,211,238,0.6);
+}
+.stage-column {
+  height: 78vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+.custom-scrollbar {
+  position: relative;
+  overflow-y: auto;
+  flex: 1;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.stage-column {
+  flex: 1;
+  height: 75vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(14,165,233,0.3);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.stage-column:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+.custom-scrollbar {
+  position: relative;
+  overflow-y: auto;
+  flex: 1;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+/* صفحة العملاء المحتملين – نفس هوية صفحة العمليات */
+.leads-page {
+  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* عنوان الصفحة */
+.leads-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0EA5E9;
+  margin-bottom: 20px;
+}
+
+/* بطاقة العميل المحتمل */
+.lead-card {
+  background: rgba(4,42,68,0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(14,165,233,0.3);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+.lead-card:hover {
+  box-shadow: 0 0 14px rgba(14,165,233,0.25);
+  transform: translateY(-2px);
+}
+
+/* نصوص ثانوية */
+.text-muted {
+  color: #94A3B8;
+  font-size: 12px;
+}
+
+/* زر رئيسي */
+.btn-primary {
+  background: #0EA5E9;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  background: #22D3EE;
+  box-shadow: 0 0 10px rgba(34,211,238,0.4);
+}
+/* Pipeline DnD enhancements */
+.stage-column.drag-over {
+  background: linear-gradient(180deg, rgba(6,58,86,0.45), rgba(2,18,31,0.45));
+  border-color: rgba(34,211,238,0.45);
+  transform: scale(1.01);
+}
+.lead-card.dragging {
+  box-shadow: 0 10px 30px rgba(2,18,31,0.6);
+  transform: rotate(-1deg) scale(1.02);
+  z-index: 50;
+}
+/* Tabs core styles */
+.tabs-row { display:flex; gap:8px; }
+.tab-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.tab-active {
+  background: linear-gradient(90deg,#0EA5E9,#22D3EE);
+  color: #02121F;
+  box-shadow: 0 6px 18px rgba(14,165,233,0.18);
+}
+.tab-inactive {
+  background: rgba(4,42,68,0.45);
+  color: #94A3B8;
+  border: 1px solid rgba(14,165,233,0.08);
+}
+.tab-inactive:hover { background: rgba(4,42,68,0.65); color: #fff; }
+
+/* Tab content area */
+.tab-area { margin-top: 12px; }
+.tab-pane { background: rgba(4,42,68,0.55); padding:16px; border-radius:10px; border:1px solid rgba(14,165,233,0.08); }
+.tab-pane-title { color:#0EA5E9; margin-bottom:8px; }
+/* AI Analysis styles */
+.ai-card {
+  background: rgba(6,48,72,0.55);
+  border: 1px solid rgba(14,165,233,0.12);
+  padding: 14px;
+  border-radius: 10px;
+}
+.ai-card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.ai-name { font-weight:700; color:#0EA5E9; font-size:16px; }
+.ai-summary { color:#E6EEF6; font-size:13px; margin-top:6px; }
+.ai-score { background:linear-gradient(90deg,#0EA5E9,#22D3EE); color:#02121F; padding:6px 10px; border-radius:8px; font-weight:700; }
+.ai-sentiment { margin-top:10px; color:#94A3B8; }
+.sentiment.positive { color:#22C55E; font-weight:700; }
+.sentiment.neutral { color:#F59E0B; font-weight:700; }
+.sentiment.negative { color:#EF4444; font-weight:700; }
+.ai-highlights { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+.highlight { background: rgba(14,165,233,0.12); color:#0EA5E9; padding:6px 8px; border-radius:8px; font-size:12px; }
+.ai-actions { display:flex; gap:8px; margin-top:12px; }
+.btn-secondary { background: transparent; border:1px solid rgba(14,165,233,0.12); color:#E6EEF6; padding:8px 12px; border-radius:8px; }
+/* Activities styles */
+.activity-list { display:flex; flex-direction:column; gap:10px; }
+.activity-item { display:flex; gap:12px; background: rgba(6,48,72,0.5); padding:12px; border-radius:10px; border:1px solid rgba(14,165,233,0.08); }
+.activity-type { width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#02121F; font-weight:700; }
+.activity-type.call { background: linear-gradient(90deg,#0EA5E9,#22D3EE); }
+.activity-type.message { background: linear-gradient(90deg,#34D399,#10B981); }
+.activity-type.meeting { background: linear-gradient(90deg,#F59E0B,#F97316); }
+.activity-title { font-weight:700; color:#E6EEF6; }
+.activity-note { margin-top:6px; color:#94A3B8; font-size:13px; }
+/* Tasks styles */
+.task-column { background: rgba(6,48,72,0.45); padding:12px; border-radius:10px; border:1px solid rgba(14,165,233,0.06); min-height:200px; }
+.task-column-title { font-weight:700; color:#0EA5E9; margin-bottom:8px; }
+.task-card { background: rgba(4,42,68,0.6); padding:10px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(14,165,233,0.06); }
+.task-title { font-weight:700; color:#E6EEF6; }
+/* Details styles */
+.details-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.details-card { background: rgba(6,48,72,0.5); padding:14px; border-radius:10px; border:1px solid rgba(14,165,233,0.06); }
+.detail-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(14,165,233,0.04); }
+.label { color:#94A3B8; font-size:13px; }
+.value { color:#E6EEF6; font-weight:600; }
+.attachments { margin-top:8px; list-style:none; padding:0; display:flex; flex-direction:column; gap:6px; }
+.attachment-item { background: rgba(14,165,233,0.06); padding:8px; border-radius:8px; color:#0EA5E9; }
+/* Modal مركزي للتفاصيل */
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* صندوق المودال */
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  background: rgba(4,42,68,0.95);
+  border: 1px solid rgba(14,165,233,0.12);
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(2,18,31,0.6);
+  color: #E6EEF6;
+  transform: translateY(8px);
+  animation: modalIn 220ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* زر الإغلاق */
+.modal-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* عنوان المودال */
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0EA5E9;
+  margin-bottom: 6px;
+}
+
+/* حركة دخول المودال */
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* تحسينات للأزرار داخل المودال */
+.modal-card .btn-primary {
+  background: linear-gradient(90deg,#0EA5E9,#22D3EE);
+  color: #02121F;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 700;
+}
+/* Pipeline DnD styles (appended) */
+.stage-column {
+  height: 68vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4,42,68,0.42);
+  border: 1px solid rgba(14,165,233,0.12);
+  border-radius: 10px;
+  padding: 10px;
+  overflow: hidden;
+  transition: all 0.18s ease;
+}
+.stage-column.drag-over {
+  background: linear-gradient(180deg, rgba(6,58,86,0.55), rgba(2,18,31,0.45));
+  border-color: rgba(34,211,238,0.35);
+  transform: translateY(-4px);
+}
+.stage-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:700;
+  color:#22D3EE;
+  margin-bottom:8px;
+}
+.stage-header .count {
+  background: rgba(14,165,233,0.12);
+  padding:4px 8px;
+  border-radius:8px;
+  font-size:12px;
+}
+.custom-scrollbar {
+  overflow-y:auto;
+  flex:1;
+  padding-right:6px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+.lead-card {
+  background: rgba(6,48,72,0.6);
+  border: 1px solid rgba(14,165,233,0.08);
+  border-radius:8px;
+  padding:10px;
+  transition: all 0.18s ease;
+}
+.lead-card.dragging {
+  box-shadow: 0 14px 40px rgba(2,18,31,0.6);
+  transform: scale(1.02);
+  z-index:60;
+}
+.lead-name { font-weight:700; color:#E6EEF6; }
+.lead-city { color:#94A3B8; font-size:13px; }
+.lead-score { color:#0EA5E9; font-weight:700; }
+@media (max-width: 1024px) {
+  .grid.grid-cols-6 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}

@@ -1,0 +1,23 @@
+﻿"use client";
+import { useState } from "react";
+
+export default function Details() {
+  const [client] = useState({
+    name: "أحمد السبيعي",
+    phone: "050-1234567",
+    email: "ahmed@example.com",
+    notes: "مهتم بشراء خلال شهر",
+  });
+
+  return (
+    <div className="tab-pane">
+      <h3 className="tab-pane-title">التفاصيل</h3>
+      <div className="details-card">
+        <div className="detail-row"><div className="label">الاسم</div><div className="value">{client.name}</div></div>
+        <div className="detail-row"><div className="label">الهاتف</div><div className="value">{client.phone}</div></div>
+        <div className="detail-row"><div className="label">البريد الإلكتروني</div><div className="value">{client.email}</div></div>
+        <div className="detail-row"><div className="label">ملاحظات</div><div className="value">{client.notes}</div></div>
+      </div>
+    </div>
+  );
+}

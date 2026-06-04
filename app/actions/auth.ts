@@ -1,7 +1,7 @@
 // app/actions/auth.ts
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
@@ -31,8 +31,9 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
     }
 
+    console.log("[LOGIN ACTION DEBUG] logging in email:", email);
     // 🔍 البحث عن المستخدم عالمياً — البريد فريد على مستوى النظام بالكامل
-    const user = await prisma.user.findFirst({
+    const user = await rawPrisma.user.findFirst({
       where: {
         email: email.trim().toLowerCase(),
         isActive: true,
@@ -41,6 +42,9 @@ export async function loginAction(formData: FormData) {
         tenant: true,
       }
     });
+
+    console.log("[LOGIN ACTION DEBUG] found user:", user ? { id: user.id, email: user.email, isActive: user.isActive } : null);
+    console.log("[LOGIN ACTION DEBUG] found tenant:", user?.tenant ? { id: user.tenant.id, subdomain: user.tenant.subdomain, isActive: user.tenant.isActive } : null);
 
     if (!user || !user.tenant || !user.tenant.isActive) {
       throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");

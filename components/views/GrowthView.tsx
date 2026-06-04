@@ -1,4 +1,4 @@
-﻿// components/views/GrowthView.tsx
+// components/views/GrowthView.tsx
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -451,7 +451,7 @@ export default function GrowthView({ tenantPlan = 'basic' }: GrowthViewProps) {
   };
 
   const getLockedAgents = () => {
-    const plan = 'diamond'; // Forced Diamond by Ali
+    const plan = 'diamond' as string; // Forced Diamond by Ali
     if (plan === 'pro') {
       return [
         { id: 'BASEER', nameAr: 'بصير (التحليل والاستشراف الإعلاني)', nameEn: 'Baseer (Ad ROI Analysis)' },

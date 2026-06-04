@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "generatedAt": "2026-06-04T02:59:00+03:00",
+    "agent": "Antigravity",
+    "projectRoot": "C:\\Users\\ali59\\Desktop\\REDC"
+  },
+  "projectRoot": "C:\\Users\\ali59\\Desktop\\REDC",
+  "gitAvailable": false,
+  "fileTree": {
+    "note": "Depth-3 tree, node_modules and .next excluded",
+    "structure": [
+      { "path": "app/", "type": "dir", "children": ["api/leads/route.ts", "actions/", "context/", "contract/", "leads/page.tsx", "login/", "operations/", "globals.css", "layout.tsx", "page.tsx"] },
+      { "path": "components/", "type": "dir", "children": ["i18n/ar.ts", "layout/DashboardLayout.tsx", "ui/orca-components.tsx", "views/pipeline/", "views/tabs/", "views/*.tsx (18 files)"] },
+      { "path": "lib/", "type": "dir", "children": ["session.ts", "tenant.ts", "prisma.ts", "notifications.ts", "agents/", "saher/", "resilience/"] },
+      { "path": "prisma/", "type": "dir" },
+      { "path": "generated/", "type": "dir" },
+      { "path": "database/", "type": "dir" },
+      { "path": "logs/", "type": "dir" },
+      { "path": "scratch/", "type": "dir" },
+      { "path": "scripts/", "type": "dir" },
+      { "path": "public/", "type": "dir" }
+    ]
+  },
+  "modifiedFiles": {
+    "last7Days": [
+      { "file": "components/views/pipeline/Pipeline.tsx.bak", "lastModified": "2026-06-04T02:45:26" },
+      { "file": "components/views/tabs/AIAnalysis.tsx", "lastModified": "2026-06-04T02:45:26" },
+      { "file": "components/views/tabs/LeadsTabs.tsx", "lastModified": "2026-06-04T02:45:25" },
+      { "file": "components/i18n/ar.ts", "lastModified": "2026-06-04T02:45:25" },
+      { "file": "components/views/tabs/Details.tsx.bak", "lastModified": "2026-06-04T02:40:15" },
+      { "file": "components/views/tabs/Tasks.tsx.bak", "lastModified": "2026-06-04T02:40:15" },
+      { "file": "components/views/tabs/Activities.tsx.bak", "lastModified": "2026-06-04T02:40:15" },
+      { "file": "components/views/tabs/AIAnalysis.tsx.bak", "lastModified": "2026-06-04T02:40:15" },
+      { "file": "components/views/tabs/LeadsTabs.tsx.bak", "lastModified": "2026-06-04T02:40:14" },
+      { "file": "app/leads/page.tsx", "lastModified": "2026-06-04T02:40:14" },
+      { "file": "app/globals.css", "lastModified": "2026-06-04T02:35:08" },
+      { "file": "app/api/leads/route.ts", "lastModified": "2026-06-04T02:35:07" },
+      { "file": "components/views/tabs/Pipeline.tsx", "lastModified": "2026-06-04T02:32:21" },
+      { "file": "package.json", "lastModified": "2026-06-04T02:20:53" },
+      { "file": "app/actions/* (12 files)", "lastModified": "2026-06-02T06:07:10" },
+      { "file": "lib/* (10 files)", "lastModified": "2026-06-02T06:06:02" }
+    ],
+    "bakFiles": [
+      "app/globals.css.bak",
+      "app/api/leads/route.ts.bak",
+      "app/leads/page.tsx.bak",
+      "components/views/pipeline/Pipeline.tsx.bak",
+      "components/views/tabs/Activities.tsx.bak",
+      "components/views/tabs/AIAnalysis.tsx.bak",
+      "components/views/tabs/Details.tsx.bak",
+      "components/views/tabs/LeadsTabs.tsx.bak",
+      "components/views/tabs/Pipeline.tsx.bak",
+      "components/views/tabs/Tasks.tsx.bak"
+    ]
+  },
+  "components": {
+    "tabs": [
+      { "file": "components/views/tabs/LeadsTabs.tsx", "description": "Main tabs container — controls 5 tabs with useState, has search bar (decorative only)", "lines": 58, "status": "functional" },
+      { "file": "components/views/tabs/Pipeline.tsx", "description": "Pipeline DnD tab — react-beautiful-dnd with 6 stages (conflicts with pipeline/Pipeline.tsx)", "lines": "~100", "status": "conflicting-name" },
+      { "file": "components/views/tabs/AIAnalysis.tsx", "description": "AI Analysis placeholder — 12 lines, title only, no real data", "lines": 12, "status": "stub" },
+      { "file": "components/views/tabs/Activities.tsx", "description": "Activities placeholder — 12 lines, title only, no activity list", "lines": 12, "status": "stub" },
+      { "file": "components/views/tabs/Tasks.tsx", "description": "Tasks placeholder — 12 lines, title only, no task list", "lines": 12, "status": "stub" },
+      { "file": "components/views/tabs/Details.tsx", "description": "Details placeholder — 12 lines, title only, no client data", "lines": 12, "status": "stub" }
+    ],
+    "pipeline": {
+      "files": [
+        {
+          "file": "components/views/pipeline/Pipeline.tsx",
+          "role": "primary-with-explicit-booleans",
+          "dndLibrary": "react-beautiful-dnd",
+          "state": { "data": "Record<string, Lead[]>", "stages": "const array of 6 stages" },
+          "droppableProps": { "isDropDisabled": false, "isCombineEnabled": false, "ignoreContainerClipping": false },
+          "issues": [],
+          "status": "correct-boolean-props"
+        },
+        {
+          "file": "components/views/pipeline/PipelineDnd.tsx",
+          "role": "duplicate",
+          "dndLibrary": "react-beautiful-dnd",
+          "state": { "stages": "useState(initialStages)", "data": "Record<string, Lead[]>" },
+          "droppableProps": "NO explicit boolean props",
+          "issues": ["Missing isDropDisabled prop", "Missing isCombineEnabled prop", "Missing ignoreContainerClipping prop"],
+          "status": "incomplete-will-throw-warnings"
+        },
+        {
+          "file": "components/views/pipeline/PipelineView.tsx",
+          "role": "static-no-dnd",
+          "dndLibrary": null,
+          "state": { "leads": "useState (static, no setter used)" },
+          "issues": ["No drag-drop functionality"],
+          "status": "static-placeholder"
+        }
+      ],
+      "criticalIssue": "THREE Pipeline implementations exist — one must be chosen and others removed",
+      "suggestedFixes": [
+        "In PipelineDnd.tsx line 77: add isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false} to <Droppable>",
+        "Replace react-beautiful-dnd with @hello-pangea/dnd (API identical)",
+        "Remove PipelineDnd.tsx and PipelineView.tsx — keep only Pipeline.tsx",
+        "Remove components/views/tabs/Pipeline.tsx to avoid name conflict"
+      ]
+    }
+  },
+  "i18n": {
+    "files": ["components/i18n/ar.ts"],
+    "englishFile": null,
+    "note": "No English translation file despite EN toggle in UI",
+    "keysSample": [
+      "appName", "dashboard", "leads", "realEstateProjects",
+      "tabPipeline", "tabAI", "tabActivities", "tabTasks", "tabDetails",
+      "pipelineTitle", "stageNew", "stageContacted", "stageQualified", "stageProposal", "stageNegotiation", "stageClosed",
+      "globalSearchPlaceholder", "searchButton", "crmTitle",
+      "dndSetupError.isDropDisabled", "dndSetupError.isCombineEnabled"
+    ],
+    "issues": [
+      "lead1/lead2/lead3 data hardcoded in i18n file — should come from API",
+      "No en.ts file — language toggle is non-functional for EN"
+    ]
+  },
+  "css": {
+    "file": "app/globals.css",
+    "totalLines": 1031,
+    "totalBytes": 28044,
+    "globalsSummary": "1031-line CSS file with extensive duplication. Contains 9 definitions of .stage-column with conflicting height values (68vh, 75vh, 78vh, 80vh, 82vh, 85vh, auto). Tabs, Modal, Pipeline, and Scrollbar rules are each defined twice.",
+    "duplicatedRules": [
+      { "selector": ".stage-column", "count": 9, "conflictingValues": "height: 68vh/75vh/78vh/80vh/82vh/85vh/auto" },
+      { "selector": ".lead-card", "count": 5, "conflictingValues": "border-radius: 8px/10px/12px" },
+      { "selector": ".custom-scrollbar", "count": 6, "conflictingValues": "mask-image variants" },
+      { "selector": ".tabs-row + .tab-btn + .tab-active", "count": 2, "lines": "676-699 and 887-906" },
+      { "selector": ".modal-root + .modal-card", "count": 2, "lines": "743-799 and 967-1014" }
+    ],
+    "importantRules": [
+      ".tab-btn { padding:8px 14px; border-radius:10px; font-size:14px; }",
+      ".tab-active { background: linear-gradient(90deg,#0EA5E9,#22D3EE); color:#02121F; }",
+      ".stage-column.drag-over { border-color:rgba(34,211,238,0.35); transform:translateY(-4px); }",
+      ".lead-card.dragging { box-shadow:0 14px 40px rgba(2,18,31,0.6); transform:scale(1.02); }",
+      ".modal-root { position:fixed; inset:0; z-index:60; }",
+      ".modal-card { max-width:720px; animation:modalIn 220ms; }",
+      "@keyframes modalIn { from { opacity:0; transform:translateY(18px); } }"
+    ]
+  },
+  "dependencies": {
+    "react-beautiful-dnd": "13.1.1",
+    "@hello-pangea/dnd": null,
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/modifiers": "9.0.0",
+    "@dnd-kit/utilities": "3.2.2",
+    "next": "latest (installed)",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "@google/generative-ai": "0.24.1",
+    "@neondatabase/serverless": "1.1.0",
+    "prisma": "7.8.0",
+    "jose": "6.2.3",
+    "lucide-react": "1.16.0",
+    "gsap": "3.15.0",
+    "resend": "6.12.4",
+    "conflict_note": "Both react-beautiful-dnd AND @dnd-kit/* are installed — DnD library not unified"
+  },
+  "consoleErrors": [
+    {
+      "message": "Warning: isDropDisabled must be a boolean",
+      "source": "react-beautiful-dnd",
+      "affectedFile": "components/views/pipeline/PipelineDnd.tsx",
+      "line": 77,
+      "fix": "Add isDropDisabled={false} to <Droppable> component"
+    },
+    {
+      "message": "Warning: isCombineEnabled must be a boolean",
+      "source": "react-beautiful-dnd",
+      "affectedFile": "components/views/pipeline/PipelineDnd.tsx",
+      "line": 77,
+      "fix": "Add isCombineEnabled={false} to <Droppable> component"
+    },
+    {
+      "message": "Warning: ignoreContainerClipping must be a boolean",
+      "source": "react-beautiful-dnd",
+      "affectedFile": "components/views/pipeline/PipelineDnd.tsx",
+      "line": 77,
+      "fix": "Add ignoreContainerClipping={false} to <Droppable> component"
+    },
+    {
+      "message": "Warning: findDOMNode is deprecated in StrictMode",
+      "source": "react-beautiful-dnd@13.1.1 with React 18",
+      "affectedFile": "all Pipeline components using react-beautiful-dnd",
+      "fix": "Migrate to @hello-pangea/dnd which has React 18 StrictMode support"
+    },
+    {
+      "message": "Error: Invariant failed: Cannot find droppable entry with id [...]",
+      "source": "react-beautiful-dnd incompatibility with React 18 Strict Mode double-render",
+      "fix": "Remove React.StrictMode OR migrate to @hello-pangea/dnd"
+    }
+  ],
+  "functionalChecks": {
+    "pipeline_dnd": {
+      "status": "partial",
+      "notes": "Pipeline.tsx (primary) has correct boolean props. PipelineDnd.tsx missing props. Three versions exist."
+    },
+    "modal": {
+      "status": "css-only",
+      "notes": "CSS classes exist for modal but no JSX Modal component. No Esc key handler. No backdrop-click-to-close component."
+    },
+    "tabs_switching": {
+      "status": "working",
+      "notes": "LeadsTabs.tsx uses useState correctly. Tab switching works."
+    },
+    "search": {
+      "status": "decorative-only",
+      "notes": "Search input exists but has no onChange handler — non-functional."
+    }
+  },
+  "recommendations": [
+    "URGENT: Migrate from react-beautiful-dnd to @hello-pangea/dnd (npm uninstall react-beautiful-dnd && npm install @hello-pangea/dnd) — only import path changes",
+    "URGENT: Clean globals.css — remove 8 duplicate .stage-column definitions, keep only lines 809-1031",
+    "HIGH: Remove duplicate Pipeline files — keep only components/views/pipeline/Pipeline.tsx",
+    "HIGH: Build real content for stub tabs: Activities (activity log), Tasks (task list), Details (client info), AIAnalysis (AI results)",
+    "MEDIUM: Add standalone Modal component with Esc key and backdrop-click support",
+    "MEDIUM: Add localStorage persistence for Pipeline order",
+    "LOW: Create components/i18n/en.ts for English support",
+    "LOW: Initialize Git repository to track changes"
+  ],
+  "priorityActions": [
+    { "priority": 1, "action": "Replace react-beautiful-dnd with @hello-pangea/dnd", "effort": "30 minutes", "impact": "Fixes all DnD console errors and React 18 compatibility" },
+    { "priority": 2, "action": "Clean globals.css duplicated rules", "effort": "1-2 hours", "impact": "Eliminates CSS unpredictability and reduces file by ~600 lines" },
+    { "priority": 3, "action": "Build real tab content (Activities, Tasks, Details, AI)", "effort": "3-4 hours", "impact": "Makes the application actually usable beyond Pipeline tab" },
+    { "priority": 4, "action": "Add Modal JSX component with keyboard support", "effort": "30 minutes", "impact": "Complete modal UX with Esc close and backdrop click" },
+    { "priority": 5, "action": "Initialize Git repository", "effort": "5 minutes", "impact": "Prevents code loss, enables rollback" }
+  ]
+}

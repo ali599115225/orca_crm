@@ -6,13 +6,22 @@ import pg from "pg";
 import { tenantContext } from "./tenant-context";
 
 function createRawPrismaClient(): PrismaClient {
+  // ─── تنظيف رابط قاعدة البيانات من channel_binding غير المدعوم في Neon Pooler
+  const rawUrl = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/gi, "");
+  const sslConfig = (process.env.NODE_ENV === "production" || rawUrl.includes("neon.tech") || rawUrl.includes("sslmode=require"))
+    ? { rejectUnauthorized: false, checkServerIdentity: () => undefined }
+    : false;
+  
+  console.log("Prisma init - rawUrl length:", rawUrl.length, "sslConfig:", !!sslConfig);
+
   const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: rawUrl,
     // ⏱️ timeouts لمنع التجميد في Vercel serverless + Neon cold start
-    connectionTimeoutMillis: 8000,   // أقصى 8 ثانية لإنشاء الاتصال
+    connectionTimeoutMillis: 10000,  // أقصى 10 ثانية لإنشاء الاتصال
     idleTimeoutMillis: 10000,        // إغلاق الاتصال غير المستخدم بعد 10 ثواني
     max: 1,                          // حد أقصى اتصال واحد في serverless
-    ssl: { rejectUnauthorized: false }, // SSL مرن لـ Neon
+    // ─── SSL: مرن في التطوير، صارم ومتوافق مع Neon في الإنتاج
+    ssl: sslConfig,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });

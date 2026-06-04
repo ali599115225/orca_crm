@@ -1,0 +1,28 @@
+﻿"use client";
+import { useState } from "react";
+
+export default function AIAnalysis() {
+  const [items] = useState([
+    { id: "a1", title: "أحمد السبيعي", summary: "مهتم بشراء خلال شهر", score: 85 },
+    { id: "a2", title: "سارة العتيبي", summary: "تحتاج متابعة", score: 60 },
+  ]);
+
+  return (
+    <div className="tab-pane">
+      <h3 className="tab-pane-title">تحليل الذكاء الاصطناعي</h3>
+      <div className="grid grid-cols-2 gap-4">
+        {items.map((it) => (
+          <div key={it.id} className="ai-card">
+            <div className="ai-card-header">
+              <div>
+                <div className="ai-name">{it.title}</div>
+                <div className="ai-summary">{it.summary}</div>
+              </div>
+              <div className="ai-score">{it.score}%</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

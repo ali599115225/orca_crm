@@ -1,6 +1,6 @@
 // app/api/v1/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // البحث عن المستخدم في قاعدة البيانات
-    const user = await prisma.user.findUnique({
+    const user = await rawPrisma.user.findUnique({
       where: { email: cleanEmail }
     });
 

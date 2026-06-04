@@ -1,26 +1,53 @@
-// prisma/seed.ts
-import { prisma } from "../lib/prisma";
-import bcrypt from "bcryptjs";
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("❌ خطأ: DATABASE_URL فارغ!");
+  process.exit(1);
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("🧹 جاري تنظيف قاعدة البيانات القديمة لضمان تغذية سليمة...");
-  
-  // تنظيف الجداول بالترتيب لتجنب تعارض العلاقات (Foreign Keys)
-  await prisma.task.deleteMany({});
+  console.log("🚀 جاري الاتصال بقاعدة البيانات...");
+  console.log("🧹 جاري التنظيف...");
+
+  await prisma.generalLedger.deleteMany({});
+  await prisma.receipt.deleteMany({});
+  await prisma.installment.deleteMany({});
+  await prisma.contract.deleteMany({});
+  await prisma.unit.deleteMany({});
+  await prisma.mansourChat.deleteMany({});
   await prisma.leadActivity.deleteMany({});
+  await prisma.task.deleteMany({});
   await prisma.lead.deleteMany({});
   await prisma.project.deleteMany({});
+  await prisma.payrollCommission.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.agentSlot.deleteMany({});
+  await prisma.usageMeter.deleteMany({});
+  await prisma.ticket.deleteMany({});
+  await prisma.followupSequence.deleteMany({});
+  await prisma.platformConnection.deleteMany({});
+  await prisma.agentLease.deleteMany({});
+  await prisma.agentTelemetryLog.deleteMany({});
+  await prisma.auditLog.deleteMany({});
   await prisma.tenant.deleteMany({});
 
-  console.log("🔑 جاري تشفير كلمات المرور الافتراضية بنظام Bcrypt...");
-  
-  // تشفير كلمة المرور الافتراضية '123456' بقوة ملح تبلغ 10 جولات (Salt Rounds)
+  console.log("🔑 جاري إنشاء البيانات التجريبية...");
+
   const securePassword = await bcrypt.hash("123456", 10);
 
-  console.log("🏗️ جاري إنشاء الشركة العقارية التجريبية (Tenant)...");
-  
-  // 1. إنشاء شركة عقارية (Tenant)
+  // Tenant
   const tenant = await prisma.tenant.create({
     data: {
       companyName: "شركة دار الأعمار العقارية",
@@ -29,93 +56,98 @@ async function main() {
     },
   });
 
-  // 2. إنشاء مستخدمين بكلمات مرور مشفرة تماماً
-  const manager = await prisma.user.create({
+  // User
+  const user = await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      name: "أحمد الغامدي",
-      email: "ahmed@dar.com",
-      passwordHash: securePassword, // حفظ الهاش المشفر وليس النص العادي
-      role: "SALES_MANAGER",
+      name: "علي المدير",
+      email: "admin@dar-al-amar.com",
+      passwordHash: securePassword,
+      role: "ADMIN",
     },
   });
 
-  const salesEmployee = await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      name: "بندر العتيبي",
-      email: "bandar@dar.com",
-      passwordHash: securePassword, // حفظ الهاش المشفر وليس النص العادي
-      role: "SALES_EMPLOYEE",
-    },
-  });
-
-  // 3. إنشاء مشاريع عقارية
-  const project1 = await prisma.project.create({
+  // Project
+  const project = await prisma.project.create({
     data: {
       tenantId: tenant.id,
       name: "نرجس ريزيدنس 101",
       city: "الرياض",
       status: "UNDER_CONSTRUCTION",
-      unitsTotal: 120,
-      unitsSold: 85,
-      unitsBooked: 15,
-      minPrice: 1200000,
-      maxPrice: 1800000,
     },
   });
 
-  const project2 = await prisma.project.create({
+  // Unit — بدون tenantId لأنه غير موجود في schema
+  const unit = await prisma.unit.create({
     data: {
-      tenantId: tenant.id,
-      name: "واحة الملقا الفاخرة",
-      city: "الرياض",
-      status: "COMPLETED",
-      unitsTotal: 45,
-      unitsSold: 40,
-      unitsBooked: 3,
-      minPrice: 2800000,
-      maxPrice: 4500000,
+      projectId: project.id,
+      unitNumber: "A-101",
+      floorPosition: 1,
+      priceSar: 100000,
+      status: "Reserved",
     },
   });
 
-  // 4. إنشاء عملاء محتملين (Leads) وربطهم بالمشاريع والمسؤولين
-  await prisma.lead.createMany({
+  // Contract — بدون tenantId
+  const contract = await prisma.contract.create({
+    data: {
+      unitId: unit.id,
+      buyerName: "سليمان الراشد",
+      buyerPhone: "0505123456",
+      totalVolumeSar: 100000,
+    },
+  });
+
+  // Installments — بدون tenantId
+  await prisma.installment.createMany({
     data: [
       {
-        tenantId: tenant.id,
-        projectId: project1.id,
-        assignedTo: salesEmployee.id,
-        firstName: "سليمان بن عبد العزيز",
-        lastName: "الراشد",
-        phone: "0505123456",
-        email: "sulaiman@example.com",
-        city: "الرياض",
-        source: "إعلانات سناب شات",
-        status: "VISIT_SCHEDULED",
-        leadScore: 85,
+        contractId: contract.id,
+        installmentNumber: 1,
+        amountSar: 50000,
+        dueDate: new Date("2026-07-01"),
+        paymentStatus: "Paid",
       },
       {
-        tenantId: tenant.id,
-        projectId: project2.id,
-        assignedTo: salesEmployee.id,
-        firstName: "منى محمد",
-        lastName: "الشمري",
-        phone: "0555987654",
-        email: "mona@example.com",
-        city: "الرياض",
-        source: "حملة ميتا إعلانية",
-        status: "NEW",
-        leadScore: 60,
+        contractId: contract.id,
+        installmentNumber: 2,
+        amountSar: 50000,
+        dueDate: new Date("2026-12-01"),
+        paymentStatus: "Pending",
       },
     ],
   });
 
-  console.log("✅ تمت إعادة تهيئة وتغذية قاعدة البيانات ببيانات مشفرة وآمنة تماماً!");
+  // Receipt — بدون tenantId
+  const receipt = await prisma.receipt.create({
+    data: {
+      invoiceId: contract.id,
+      amount: 50000,
+      paymentMethod: "BANK_TRANSFER",
+      status: "COMPLETED",
+    },
+  });
+
+  // GeneralLedger — بدون tenantId
+  // GeneralLedger — سجل واحد فقط لأن receiptId @unique
+await prisma.generalLedger.create({
+  data: {
+    receiptId: receipt.id,
+    debit: 50000,
+    credit: 50000,
+    description: "دفعة أولى - عقد رقم " + contract.id,
+  },
+});
+
+  console.log("🎉 تمت التغذية بنجاح كامل!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ خطأ أثناء الـ Seed:", e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
   });

@@ -1,7 +1,7 @@
 // app/actions/register.ts
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
@@ -30,7 +30,7 @@ export async function registerTenantAction(formData: FormData) {
     }
 
     // 1. التحقق من عدم حجز النطاق الفرعي مسبقاً
-    const existingTenant = await prisma.tenant.findUnique({
+    const existingTenant = await rawPrisma.tenant.findUnique({
       where: { subdomain: cleanSubdomain },
     });
 
@@ -39,7 +39,7 @@ export async function registerTenantAction(formData: FormData) {
     }
 
     // 2. التحقق من عدم تسجيل البريد الإلكتروني مسبقاً
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await rawPrisma.user.findUnique({
       where: { email: adminEmail.trim().toLowerCase() },
     });
 
