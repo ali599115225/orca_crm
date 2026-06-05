@@ -89,7 +89,7 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
 
 const NOTIFICATION_ICON_COLORS: Record<NotificationType, string> = {
   success: "text-emerald-400",
-  error: "text-red-400",
+  error: "text-[#A7C7E7]",
   warning: "text-amber-400",
   info: "text-indigo-400",
 };
@@ -137,7 +137,7 @@ function NotificationItem({
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-semibold">{notification.title}</p>
         {notification.message && (
-          <p className="text-slate-300 text-xs mt-0.5 leading-relaxed">{notification.message}</p>
+          <p className="text-[#C4D8E5] font-medium text-xs mt-0.5 leading-relaxed">{notification.message}</p>
         )}
         {notification.action && (
           <button
@@ -151,7 +151,7 @@ function NotificationItem({
 
       <button
         onClick={handleDismiss}
-        className="text-slate-400 hover:text-white text-lg leading-none transition-colors flex-shrink-0"
+        className="text-[#C4D8E5] font-medium hover:text-white text-lg leading-none transition-colors flex-shrink-0"
         aria-label="إغلاق الإشعار"
       >
         ×

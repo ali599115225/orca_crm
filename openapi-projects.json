@@ -1,0 +1,324 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ORCA CRM - Projects API",
+    "description": "REST API endpoints for managing real estate projects, planning phases, unit inventory, construction progress reports, bookings, and integrations with the Accounting microservice.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/projects/{projectId}/summary": {
+      "get": {
+        "summary": "Get project metadata and overview summary",
+        "description": "Retrieves the overview stats, location, status, and description of a project. Supports caching.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "location": { "type": "string" },
+                    "status": { "type": "string" },
+                    "unitsTotal": { "type": "integer" },
+                    "unitsSold": { "type": "integer" },
+                    "progressPercent": { "type": "integer" },
+                    "description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/phases": {
+      "get": {
+        "summary": "List development phases",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of phases retrieved successfully"
+          }
+        }
+      }
+    },
+    "/phases": {
+      "post": {
+        "summary": "Create a new phase",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["projectId", "name", "startAt", "endAt"],
+                "properties": {
+                  "projectId": { "type": "string" },
+                  "name": { "type": "string" },
+                  "startAt": { "type": "string", "format": "date" },
+                  "endAt": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Phase created"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/units": {
+      "get": {
+        "summary": "List units in a project",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of units"
+          }
+        }
+      }
+    },
+    "/units/{unitId}/status": {
+      "patch": {
+        "summary": "Update unit sales status",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "unitId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["Available", "Hold", "Sold"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Unit status updated"
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/bookings": {
+      "post": {
+        "summary": "Create unit booking",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["unitId", "leadId", "price"],
+                "properties": {
+                  "unitId": { "type": "string" },
+                  "leadId": { "type": "string" },
+                  "price": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking created, events emitted"
+          }
+        }
+      }
+    },
+    "/contracts": {
+      "post": {
+        "summary": "Generate a sales contract draft",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["bookingId", "templateId", "parties"],
+                "properties": {
+                  "bookingId": { "type": "string" },
+                  "templateId": { "type": "string" },
+                  "parties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": { "type": "string" },
+                        "id": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract created"
+          }
+        }
+      }
+    },
+    "/documents": {
+      "get": {
+        "summary": "Get document references from central registry",
+        "parameters": [
+          {
+            "name": "entity",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["project", "unit", "contract"] }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/construction/reports": {
+      "post": {
+        "summary": "Post onsite construction report",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["projectId", "phaseId", "progressPercent", "mediaUrls"],
+                "properties": {
+                  "projectId": { "type": "string" },
+                  "phaseId": { "type": "string" },
+                  "progressPercent": { "type": "integer" },
+                  "mediaUrls": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report logged and progress percent updated"
+          }
+        }
+      }
+    },
+    "/webhooks/accounting/payment-received": {
+      "post": {
+        "summary": "Receive payment notification webhook from Accounting",
+        "description": "Triggered by Accounting Service on successful installment receipt, updating project summary references.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["projectId", "amountSar", "bookingId", "timestamp"],
+                "properties": {
+                  "projectId": { "type": "string" },
+                  "amountSar": { "type": "number" },
+                  "bookingId": { "type": "string" },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Processed successfully"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-KEY"
+      }
+    }
+  }
+}

@@ -36,26 +36,26 @@ export default function LeadsTabs() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <input 
             placeholder={lang === 'AR' ? 'بحث شامل بالاسم أو الجوال...' : 'Global search leads...'} 
-            className="px-3 py-1.5 rounded-md bg-[#042A44] border border-[#0ea5e9]/20 text-white text-xs" 
+            className="px-3 py-2 rounded-md bg-brand-panel border border-brand-border text-brand-text-primary text-xs outline-none focus:border-brand-interactive/50" 
           />
-          <button className="bg-[#df7b62] hover:bg-[#c5654e] text-white px-4 py-1.5 rounded-md text-xs font-bold transition-colors">
+          <button className="bg-brand-interactive text-brand-bg hover:bg-brand-interactive-hover px-4 py-2 rounded-md text-xs font-bold transition-colors cursor-pointer">
             {lang === 'AR' ? 'بحث' : 'Search'}
           </button>
         </div>
       </div>
 
-      <div className="tabs-row flex flex-wrap gap-2 mb-6 border-b border-slate-800 pb-3">
+      <div className="tabs-row flex flex-wrap gap-2 mb-6 border-b border-brand-border pb-3">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               active === t.id 
-                ? "bg-[#df7b62] text-white" 
-                : "bg-[#042A44] text-[#94A3B8] border border-slate-800 hover:text-white"
+                ? "bg-brand-interactive text-brand-bg" 
+                : "bg-brand-panel text-brand-text-secondary border border-brand-border hover:text-brand-text-primary hover:bg-brand-bg"
             }`}
           >
             {lang === 'AR' ? t.labelAr : t.labelEn}

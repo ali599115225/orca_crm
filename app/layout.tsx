@@ -25,7 +25,7 @@ export default function RootLayout({
         {/* Phosphor Icons */}
         <script src="https://unpkg.com/@phosphor-icons/web"></script>
       </head>
-      <body className="font-sans bg-[#0b1120] text-slate-100 antialiased min-h-screen flex flex-col selection:bg-[#df7b62] selection:text-white">
+      <body className="font-sans bg-[#1C2B48] text-slate-100 antialiased min-h-screen flex flex-col selection:bg-[#8EB1D1] selection:text-white">
         <LanguageProvider>
           <ThemeProvider>
             <UIBusProvider>

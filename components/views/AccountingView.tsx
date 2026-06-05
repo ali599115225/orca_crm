@@ -40,7 +40,7 @@ export default function AccountingView() {
   });
 
   return (
-    <div className="p-6 text-white min-h-screen bg-[#0b1120]">
+    <div className="p-6 text-white min-h-screen bg-[#1C2B48]">
        {/* مساحة عمل فارغة - جاهزة للتصميم الجديد */}
        <h1>واجهة قيد التطوير</h1>
     </div>

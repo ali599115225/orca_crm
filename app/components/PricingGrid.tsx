@@ -76,7 +76,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
         <span className={`text-xs font-bold transition-colors ${
           !isYearly 
             ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
-            : (theme === "dark" ? "text-slate-400" : "text-slate-500")
+            : (theme === "dark" ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium")
         }`}>
           الدفع الشهري
         </span>
@@ -97,7 +97,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
         <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${
           isYearly 
             ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
-            : (theme === "dark" ? "text-slate-400" : "text-slate-500")
+            : (theme === "dark" ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium")
         }`}>
           الدفع السنوي
         </span>
@@ -119,7 +119,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
           if (idx === 0) {
             cardStyle = isCardDark 
               ? "border-slate-700/50 bg-white/5 hover:border-slate-500/80 text-white" 
-              : "border-slate-200 bg-white/70 text-[#0b0f19] shadow-sm hover:border-[#e5c158]/50 shadow-slate-200/50";
+              : "border-[#A7C7E7]/20 bg-white/70 text-[#0b0f19] shadow-sm hover:border-[#e5c158]/50 shadow-slate-200/50";
           } else if (idx === 1) {
             cardStyle = isCardDark
               ? "border-[#cd7f32] shadow-[0_0_30px_rgba(205,127,50,0.25)] bg-[#cd7f32]/5 hover:border-[#d4af37] scale-105 text-white"
@@ -139,21 +139,21 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${
                     plan.isPopular 
                       ? (isCardDark ? "bg-[#cd7f32]/10 text-[#e5c158] border-[#cd7f32]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20")
-                      : idx === 2 ? "bg-white/5 text-[#e5e4e2] border-[#e5e4e2]/20" : (isCardDark ? "bg-white/5 text-slate-300 border-white/10" : "bg-slate-100 text-slate-600 border-slate-300")
+                      : idx === 2 ? "bg-white/5 text-[#e5e4e2] border-[#e5e4e2]/20" : (isCardDark ? "bg-white/5 text-[#C4D8E5] font-medium border-white/10" : "bg-slate-100 text-[#C4D8E5] font-medium border-slate-300")
                   }`}>
                     {plan.badge}
                   </span>
-                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-slate-500" : "text-slate-400"}`}>ORCA CRM</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>ORCA CRM</span>
                 </div>
 
                 <div className="space-y-2">
                   <h3 className={`text-xl font-black drop-shadow-sm ${isCardDark ? "text-white" : "text-[#0b0f19]"}`}>{plan.name}</h3>
-                  <p className={`text-[11px] leading-relaxed min-h-[36px] font-semibold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>
+                  <p className={`text-[11px] leading-relaxed min-h-[36px] font-semibold ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>
                     {plan.description}
                   </p>
                   {plan.subtext && (
                     <p className={`text-[10px] font-bold ${
-                      idx === 0 ? (isCardDark ? 'text-slate-400 italic' : 'text-slate-500 italic') 
+                      idx === 0 ? (isCardDark ? 'text-[#C4D8E5] font-medium italic' : 'text-[#C4D8E5] font-medium italic') 
                       : idx === 1 ? 'text-[#cd7f32]' 
                       : 'text-[#e5e4e2]'
                     }`}>
@@ -163,7 +163,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                 </div>
 
                 {/* السعر */}
-                <div className={`py-6 border-y flex items-baseline gap-1.5 min-h-[80px] relative ${isCardDark ? "border-white/5" : "border-slate-200"}`}>
+                <div className={`py-6 border-y flex items-baseline gap-1.5 min-h-[80px] relative ${isCardDark ? "border-white/5" : "border-[#A7C7E7]/20"}`}>
                   {plan.isBespoke ? (
                     <span className={`text-2xl font-black drop-shadow-sm ${isCardDark ? "text-[#e5e4e2]" : "text-[#0b0f19]"}`}>
                       Custom / اتصل بنا
@@ -173,7 +173,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                       <span className={`text-4xl font-black ${idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>
                         {formatNumber(displayPrice)}
                       </span>
-                      <span className={`text-xs font-bold ${isCardDark ? "text-slate-400" : "text-slate-600"}`}>
+                      <span className={`text-xs font-bold ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>
                         {lang === 'AR' ? 'ر.س / شهر' : 'SAR / month'}
                       </span>
                       {isYearly && price && (
@@ -187,21 +187,21 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
 
                 {/* الوكلاء */}
                 <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-                  idx === 2 ? 'bg-[#0b0f19] border-[#e5e4e2]/25' : (isCardDark ? 'bg-[#0b0f19] border-white/5' : 'bg-slate-50 border-slate-200')
+                  idx === 2 ? 'bg-[#0b0f19] border-[#e5e4e2]/25' : (isCardDark ? 'bg-[#0b0f19] border-white/5' : 'bg-slate-50 border-[#A7C7E7]/20')
                 }`}>
                   <span className="text-xl">🤖</span>
                   <div>
-                    <p className={`text-[9px] font-bold mb-0.5 ${isCardDark ? 'text-slate-400' : 'text-slate-600'}`}>السعة المضمنة للوكلاء الذكيين</p>
+                    <p className={`text-[9px] font-bold mb-0.5 ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-[#C4D8E5] font-medium'}`}>السعة المضمنة للوكلاء الذكيين</p>
                     <p className={`text-xs font-black ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>{plan.agentsCount}</p>
                   </div>
                 </div>
 
                 {/* الميزات */}
                 <div className="space-y-4 pt-4">
-                  <p className={`text-[10px] font-bold ${isCardDark ? 'text-slate-400' : 'text-slate-600'}`}>القدرات والخصائص المضمنة:</p>
+                  <p className={`text-[10px] font-bold ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-[#C4D8E5] font-medium'}`}>القدرات والخصائص المضمنة:</p>
                   <ul className="space-y-3">
                     {plan.features.map((feature, fIdx) => (
-                      <li key={fIdx} className={`flex items-start gap-2 text-[11px] font-semibold ${isCardDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      <li key={fIdx} className={`flex items-start gap-2 text-[11px] font-semibold ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-slate-700'}`}>
                         <span className={`shrink-0 mt-0.5 text-[10px] ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : 'text-emerald-500'}`}>✓</span>
                         <span>{feature}</span>
                       </li>
@@ -219,7 +219,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                       ? "bg-[#e5c158] hover:bg-[#d4af37] text-[#0b0f19] shadow-[0_0_20px_rgba(229,193,88,0.3)]"
                       : (isCardDark 
                           ? "bg-white/10 hover:bg-white/15 text-white border border-white/5" 
-                          : "bg-slate-100 hover:bg-slate-200 text-[#0b0f19] border border-slate-200 shadow-sm")
+                          : "bg-slate-100 hover:bg-slate-200 text-[#0b0f19] border border-[#A7C7E7]/20 shadow-sm")
                   }`}
                 >
                   اختيار الباقة والتفعيل ➔

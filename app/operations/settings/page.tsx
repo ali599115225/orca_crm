@@ -1,17 +1,83 @@
-'use client';
+// app/operations/settings/page.tsx
+import { prisma } from '@/lib/prisma';
+import SettingsView from '@/components/views/SettingsView';
+import { getActiveTenant } from '@/lib/tenant';
+import { getSession } from '@/lib/session';
 
-import React from 'react';
-import SettingsView from "@/components/views/SettingsView";
+export const dynamic = 'force-dynamic';
 
-export default function SETTINGSPage() {
-  // تحضير بيانات مستأجر افتراضية متوافقة مع الخصائص المطلوبة في الواجهة
-  const mockTenant = {
-    companyName: "مؤسسة أبعاد السكنية",
-    subdomain: "abaad",
-    subscriptionPlan: "SUPER",
+export default async function SettingsPage() {
+  // Default values
+  let tenant = {
+    companyName: 'ORCA CRM',
+    subdomain: 'orca',
+    subscriptionPlan: 'BASIC',
     extraAgents: 0,
     growthWarning: false,
   };
+  let users: any[] = [];
+  let currentUserRole = 'READ_ONLY';
 
-  return <SettingsView tenant={mockTenant} />;
+  try {
+    const activeTenant = await getActiveTenant();
+    const session = await getSession();
+    
+    if (session) {
+      currentUserRole = session.role || 'READ_ONLY';
+    }
+
+    // Fetch tenant details from DB
+    const dbTenant = await prisma.tenant.findUnique({
+      where: { id: activeTenant.id },
+      select: {
+        companyName:      true,
+        subdomain:        true,
+        subscriptionPlan: true,
+        extraAgents:      true,
+        _count:           { select: { leads: true } },
+      }
+    });
+
+    if (dbTenant) {
+      const PLAN_LEAD_LIMITS: Record<string, number> = {
+        BASIC: 200, SILVER: 1000, GOLD: 5000, SUPER: 99999,
+      };
+      const limit = PLAN_LEAD_LIMITS[dbTenant.subscriptionPlan] ?? 200;
+      const growthWarning = dbTenant._count.leads > limit * 0.8;
+
+      tenant = {
+        companyName:      dbTenant.companyName,
+        subdomain:        dbTenant.subdomain,
+        subscriptionPlan: dbTenant.subscriptionPlan,
+        extraAgents:      dbTenant.extraAgents ?? 0,
+        growthWarning,
+      };
+    }
+
+    // Fetch all users associated with this tenant
+    const dbUsers = await prisma.user.findMany({
+      where: { tenantId: activeTenant.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    users = dbUsers.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      isActive: u.isActive,
+      createdAt: u.createdAt.toISOString()
+    }));
+
+  } catch (err) {
+    console.error('[SettingsPage] DB fetch error:', err);
+  }
+
+  return (
+    <SettingsView 
+      tenant={tenant} 
+      users={users} 
+      currentUserRole={currentUserRole} 
+    />
+  );
 }

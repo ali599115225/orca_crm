@@ -41,67 +41,67 @@ export function RegisterForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">اسم المنشأة التطويرية *</label>
+          <label className="block text-xs font-semibold text-[#C4D8E5] font-medium mb-1">اسم المنشأة التطويرية *</label>
           <input 
             type="text" 
             name="companyName"
             required
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             placeholder="شركة الماجدية العقارية"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">النطاق الفرعي المطلوب (Subdomain) *</label>
+          <label className="block text-xs font-semibold text-[#C4D8E5] font-medium mb-1">النطاق الفرعي المطلوب (Subdomain) *</label>
           <div className="flex" dir="ltr">
-            <span className="bg-slate-800 border border-slate-700 rounded-l-lg px-2.5 py-2.5 text-[10px] text-slate-400">
+            <span className="bg-[#1C2B48] border border-slate-700 rounded-l-lg px-2.5 py-2.5 text-[10px] text-[#C4D8E5] font-medium">
               .orcacrm.sa
             </span>
             <input 
               type="text" 
               name="subdomain"
               required
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-r-lg p-2.5 text-xs text-white text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="flex-1 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-r-lg p-2.5 text-xs text-white text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder="al-majediah"
             />
           </div>
         </div>
       </div>
 
-      <div className="border-t border-slate-800 pt-4">
-        <p className="text-[10px] font-bold text-slate-400 mb-3">بيانات المدير العام للمنصة (Admin User)</p>
+      <div className="border-t border-[#A7C7E7]/20 pt-4">
+        <p className="text-[10px] font-bold text-[#C4D8E5] font-medium mb-3">بيانات المدير العام للمنصة (Admin User)</p>
         
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">الاسم الكامل *</label>
+            <label className="block text-xs font-semibold text-[#C4D8E5] font-medium mb-1">الاسم الكامل *</label>
             <input 
               type="text" 
               name="adminName"
               required
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none"
+              className="w-full bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-lg p-2.5 text-xs text-white focus:outline-none"
               placeholder="عبد العزيز بن محمد"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">البريد الإلكتروني للإدارة *</label>
+              <label className="block text-xs font-semibold text-[#C4D8E5] font-medium mb-1">البريد الإلكتروني للإدارة *</label>
               <input 
                 type="email" 
                 name="adminEmail"
                 required
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none"
+                className="w-full bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-lg p-2.5 text-xs text-white focus:outline-none"
                 placeholder="admin@company.com"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">كلمة المرور المشفرة *</label>
+              <label className="block text-xs font-semibold text-[#C4D8E5] font-medium mb-1">كلمة المرور المشفرة *</label>
               <input 
                 type="password" 
                 name="adminPassword"
                 required
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="••••••••"
               />
             </div>
@@ -118,7 +118,7 @@ export function RegisterForm() {
       </button>
 
       <div className="text-center pt-2">
-        <a href="/login" className="text-[10px] text-slate-400 hover:text-white transition-colors">
+        <a href="/login" className="text-[10px] text-[#C4D8E5] font-medium hover:text-white transition-colors">
           لديك حساب منشأة مسبقاً؟ تسجيل الدخول
         </a>
       </div>

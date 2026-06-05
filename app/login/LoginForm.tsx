@@ -57,7 +57,7 @@ export function LoginForm() {
           type="email" 
           name="email"
           required
-          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
+          className="w-full bg-[#1C2B48]/60 border border-[#A7C7E7]/20 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-[#C4D8E5] font-medium"
           placeholder="ahmed@dar.com"
         />
       </div>
@@ -68,7 +68,7 @@ export function LoginForm() {
           type="password" 
           name="password"
           required
-          className="w-full bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
+          className="w-full bg-[#1C2B48]/60 border border-[#A7C7E7]/20 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-[#C4D8E5] font-medium"
           placeholder="••••••••"
         />
       </div>

@@ -119,20 +119,20 @@ export default function Opportunities() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-5 rounded-2xl">
+    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Creation Form */}
-        <div className="bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4 flex flex-col justify-between">
+        <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4 flex flex-col justify-between">
           <div>
             <h3 className="text-white font-bold text-sm mb-4">إنشاء فرصة صفقة جديدة (Create Opportunity)</h3>
             <form onSubmit={handleCreateOpportunity} className="space-y-3.5 text-xs">
               <div className="flex flex-col gap-1">
-                <label className="text-slate-400">اختر العميل المحتمل *</label>
+                <label className="text-[#C4D8E5] font-medium">اختر العميل المحتمل *</label>
                 <select
                   value={leadId}
                   onChange={(e) => setLeadId(e.target.value)}
-                  className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                  className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                   required
                 >
                   <option value="">-- اختر العميل --</option>
@@ -143,47 +143,47 @@ export default function Opportunities() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-400">قيمة العقار المتوقعة (SAR) *</label>
+                <label className="text-[#C4D8E5] font-medium">قيمة العقار المتوقعة (SAR) *</label>
                 <input
                   type="number"
                   placeholder="مثال: 750000"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                  className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                   required
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-400">احتمالية إغلاق الصفقة (٪)</label>
+                <label className="text-[#C4D8E5] font-medium">احتمالية إغلاق الصفقة (٪)</label>
                 <input
                   type="range"
                   min="10"
                   max="100"
                   value={probability}
                   onChange={(e) => setProbability(e.target.value)}
-                  className="w-full accent-[#df7b62]"
+                  className="w-full accent-[#8EB1D1]"
                 />
                 <span className="text-left font-en font-bold text-white">{probability}%</span>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-400">الوحدات المرتبطة (Unit IDs)</label>
+                <label className="text-[#C4D8E5] font-medium">الوحدات المرتبطة (Unit IDs)</label>
                 <input
                   placeholder="أدخل معرفات الوحدات مفصولة بفاصلة"
                   value={unitIds}
                   onChange={(e) => setUnitIds(e.target.value)}
-                  className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white animate-pulse"
+                  className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white animate-pulse"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-slate-400">تاريخ الإغلاق المتوقع</label>
+                <label className="text-[#C4D8E5] font-medium">تاريخ الإغلاق المتوقع</label>
                 <input
                   type="date"
                   value={closeDate}
                   onChange={(e) => setCloseDate(e.target.value)}
-                  className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white font-en"
+                  className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
                 />
               </div>
 
@@ -191,14 +191,14 @@ export default function Opportunities() {
                 <button
                   type="submit"
                   disabled={btnLoading}
-                  className="flex-1 bg-[#df7b62] hover:bg-[#c5654e] text-white rounded font-bold px-3 py-1.5 transition-all text-center"
+                  className="flex-1 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
                 >
                   حفظ الفرصة
                 </button>
                 <button
                   type="button"
                   onClick={optimizeOfferPrice}
-                  className="bg-indigo-650 hover:bg-indigo-700 text-white rounded font-bold px-3 py-1.5 transition-all"
+                  className="bg-indigo-650 hover:bg-indigo-700 text-white rounded font-bold px-3 py-2 transition-all"
                 >
                   تحسين السعر (AI)
                 </button>
@@ -213,23 +213,23 @@ export default function Opportunities() {
                 <span>سعر العرض المقترح (AI)</span>
                 <span className="font-en text-sm text-white">{aiPrice.toLocaleString()} ر.س</span>
               </div>
-              <p className="text-slate-400 leading-relaxed text-[11px]">{aiRationale}</p>
+              <p className="text-[#C4D8E5] font-medium leading-relaxed text-xs">{aiRationale}</p>
             </div>
           )}
         </div>
 
         {/* Opportunities List Table */}
-        <div className="lg:col-span-2 bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-3">الصفقات والفرص النشطة (Opportunities List)</h3>
+        <div className="lg:col-span-2 bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <h3 className="text-white font-bold text-sm mb-4">الصفقات والفرص النشطة (Opportunities List)</h3>
           {loading ? (
-            <div className="py-12 text-center text-slate-400 text-xs">جاري تحميل الصفقات...</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">جاري تحميل الصفقات...</div>
           ) : opportunities.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs">لا توجد فرص صفقات مسجلة حالياً.</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا توجد فرص صفقات مسجلة حالياً.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-right border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-semibold">
+                  <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium font-semibold">
                     <th className="py-2 px-1">العميل</th>
                     <th className="py-2 px-1">القيمة المقدرة</th>
                     <th className="py-2 px-1 text-center">الاحتمالية</th>
@@ -239,17 +239,17 @@ export default function Opportunities() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-200">
                   {opportunities.map((opp) => (
-                    <tr key={opp.id} className="hover:bg-[#042A44]/60 transition-colors">
-                      <td className="py-2.5 px-1 font-bold text-white">{getLeadName(opp.leadId)}</td>
-                      <td className="py-2.5 px-1 font-en">{Number(opp.value).toLocaleString()} ر.س</td>
-                      <td className="py-2.5 px-1 text-center">
-                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-en">
+                    <tr key={opp.id} className="hover:bg-[#1C2B48]/60 transition-colors">
+                      <td className="py-2 px-1 font-bold text-white">{getLeadName(opp.leadId)}</td>
+                      <td className="py-2 px-1 font-en">{Number(opp.value).toLocaleString()} ر.س</td>
+                      <td className="py-2 px-1 text-center">
+                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded font-en">
                           {opp.probability}%
                         </span>
                       </td>
-                      <td className="py-2.5 px-1 font-en">{opp.closeDate.slice(0, 10)}</td>
-                      <td className="py-2.5 px-1">
-                        <span className="bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/20 px-2 py-0.5 rounded">
+                      <td className="py-2 px-1 font-en">{opp.closeDate.slice(0, 10)}</td>
+                      <td className="py-2 px-1">
+                        <span className="bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/20 px-2 py-1 rounded">
                           {opp.status}
                         </span>
                       </td>

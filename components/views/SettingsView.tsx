@@ -1,4 +1,4 @@
-﻿// components/views/SettingsView.tsx
+// components/views/SettingsView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -713,25 +713,25 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold mb-3">
             <i className="ph-bold ph-gear"></i> {isArabic ? "عمليات المنصة والتهيئة" : "System & Client Configurations"}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white mb-2">
             {t.title}
           </h1>
-          <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400 font-medium">
+          <p className="text-xs md:text-sm text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-medium">
             {t.desc}
           </p>
         </div>
 
         {/* Tab selector */}
-        <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-xl border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 shrink-0">
           <button 
             onClick={() => setActiveTab('billing')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'billing' 
-                ? 'bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white shadow-sm' 
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
+                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
             }`}
           >
             {t.tabBilling}
@@ -740,8 +740,8 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
             onClick={() => setActiveTab('staff')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'staff' 
-                ? 'bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white shadow-sm' 
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
+                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
             }`}
           >
             {t.tabStaff.replace('{count}', toArabicNumerals(users.length))}
@@ -750,8 +750,8 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
             onClick={() => setActiveTab('compliance')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'compliance' 
-                ? 'bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white shadow-sm' 
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
+                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
             }`}
           >
             {t.tabCompliance}
@@ -775,19 +775,19 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
         <div className="space-y-6 md:space-y-8">
           
           {/* Tenant Details Card */}
-          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-              <i className="ph-bold ph-buildings text-[#df7b62]"></i>
+          <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm">
+            <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base border-b border-slate-100 dark:border-[#A7C7E7]/20 pb-3 flex items-center gap-2">
+              <i className="ph-bold ph-buildings text-[#8EB1D1]"></i>
               {t.tenantTitle}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 text-sm">
               <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">{t.companyLabel}:</span>
-                <p className="font-bold text-slate-900 dark:text-white text-base">{tenant.companyName}</p>
+                <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.companyLabel}:</span>
+                <p className="font-bold text-[#E8ECEF] font-bold dark:text-white text-base">{tenant.companyName}</p>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold">{t.subdomainLabel}:</span>
+                <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.subdomainLabel}:</span>
                 <p className="font-bold text-indigo-500 text-base font-en">{tenant.subdomain}.orca.az-ez.pro</p>
               </div>
             </div>
@@ -795,22 +795,22 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
 
           {/* Pricing cards grid */}
           <div className="space-y-4">
-            <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.pricingTitle}</h3>
+            <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.pricingTitle}</h3>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Basic Plan */}
               <div className={`bg-white dark:bg-[#151f32] border rounded-2xl p-6 flex flex-col justify-between gap-6 relative ${
-                plan === 'basic' ? 'border-[#df7b62] ring-1 ring-[#df7b62]' : 'border-slate-200 dark:border-slate-800/80'
+                plan === 'basic' ? 'border-[#8EB1D1] ring-1 ring-[#8EB1D1]' : 'border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80'
               }`}>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-slate-900 dark:text-white font-bold text-base">{t.planBasic}</h4>
-                    {plan === 'basic' && <span className="bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
+                    <h4 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.planBasic}</h4>
+                    {plan === 'basic' && <span className="bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white font-en"><span className="price-tag">{formatCurrency(450)}</span> <span className="text-xs text-slate-500 font-semibold">{t.priceMonth}</span></h2>
+                  <h2 className="text-2xl font-black text-[#E8ECEF] font-bold dark:text-white font-en"><span className="price-tag">{formatCurrency(450)}</span> <span className="text-xs text-[#C4D8E5] font-medium font-semibold">{t.priceMonth}</span></h2>
                   
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-2.5 text-xs text-slate-655 dark:text-slate-400 font-medium">
+                  <div className="border-t border-slate-100 dark:border-[#A7C7E7]/20 pt-4 space-y-2.5 text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-medium">
                     <p>{t.limitStaff.replace('{count}', toArabicNumerals(2))}</p>
                     <p>{t.limitLeads.replace('{count}', toArabicNumerals(100))}</p>
                     <p>{t.limitProjects.replace('{count}', toArabicNumerals(2))}</p>
@@ -822,7 +822,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   <button 
                     onClick={() => handleUpgrade('basic')}
                     disabled={loadingPlan !== null}
-                    className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-850 hover:bg-[#df7b62]/10 text-slate-700 dark:text-slate-300 hover:text-[#df7b62] border border-slate-200 dark:border-slate-700/60 hover:border-[#df7b62]/30 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-850 hover:bg-[#8EB1D1]/10 text-slate-700 dark:text-[#C4D8E5] font-medium hover:text-[#8EB1D1] border border-[#A7C7E7]/20 dark:border-slate-700/60 hover:border-[#8EB1D1]/30 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loadingPlan === 'basic' ? t.actionUpgradePrep : t.upgradeBtn}
                   </button>
@@ -831,16 +831,16 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
 
               {/* Silver Plan */}
               <div className={`bg-white dark:bg-[#151f32] border rounded-2xl p-6 flex flex-col justify-between gap-6 relative ${
-                plan === 'silver' ? 'border-[#df7b62] ring-1 ring-[#df7b62]' : 'border-slate-200 dark:border-slate-800/80'
+                plan === 'silver' ? 'border-[#8EB1D1] ring-1 ring-[#8EB1D1]' : 'border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80'
               }`}>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-slate-900 dark:text-white font-bold text-base">{t.planSilver}</h4>
-                    {plan === 'silver' && <span className="bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
+                    <h4 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.planSilver}</h4>
+                    {plan === 'silver' && <span className="bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white font-en"><span className="price-tag">{formatCurrency(900)}</span> <span className="text-xs text-slate-500 font-semibold">{t.priceMonth}</span></h2>
+                  <h2 className="text-2xl font-black text-[#E8ECEF] font-bold dark:text-white font-en"><span className="price-tag">{formatCurrency(900)}</span> <span className="text-xs text-[#C4D8E5] font-medium font-semibold">{t.priceMonth}</span></h2>
                   
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-2.5 text-xs text-slate-655 dark:text-slate-400 font-medium">
+                  <div className="border-t border-slate-100 dark:border-[#A7C7E7]/20 pt-4 space-y-2.5 text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-medium">
                     <p>{t.limitStaff.replace('{count}', toArabicNumerals(10))}</p>
                     <p>{t.limitLeads.replace('{count}', toArabicNumerals(1000))}</p>
                     <p>{t.limitProjects.replace('{count}', toArabicNumerals(10))}</p>
@@ -852,7 +852,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   <button 
                     onClick={() => handleUpgradeClick('silver')}
                     disabled={loadingPlan !== null}
-                    className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-850 hover:bg-[#df7b62]/10 text-slate-700 dark:text-slate-300 hover:text-[#df7b62] border border-slate-200 dark:border-slate-700/60 hover:border-[#df7b62]/30 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-850 hover:bg-[#8EB1D1]/10 text-slate-700 dark:text-[#C4D8E5] font-medium hover:text-[#8EB1D1] border border-[#A7C7E7]/20 dark:border-slate-700/60 hover:border-[#8EB1D1]/30 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loadingPlan === 'silver' ? t.actionUpgradePrep : t.upgradeBtnSilver}
                   </button>
@@ -861,17 +861,17 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
 
               {/* Gold Plan */}
               <div className={`bg-[#0f172a] border rounded-2xl p-6 flex flex-col justify-between gap-6 relative shadow-lg ${
-                plan === 'gold' ? 'border-[#df7b62] ring-1 ring-[#df7b62]' : 'border-slate-800'
+                plan === 'gold' ? 'border-[#8EB1D1] ring-1 ring-[#8EB1D1]' : 'border-[#A7C7E7]/20'
               }`}>
-                <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-[#df7b62] text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider">POPULAR</div>
+                <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-[#8EB1D1] text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider">POPULAR</div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-white font-bold text-base">{t.planGold}</h4>
-                    {plan === 'gold' && <span className="bg-[#df7b62]/20 border border-[#df7b62]/35 text-[#df7b62] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
+                    {plan === 'gold' && <span className="bg-[#8EB1D1]/20 border border-[#8EB1D1]/35 text-[#8EB1D1] text-[10px] font-bold px-2 py-0.5 rounded">{t.activePlan}</span>}
                   </div>
-                  <h2 className="text-2xl font-black text-white font-en"><span className="price-tag">{formatCurrency(2400)}</span> <span className="text-xs text-slate-400 font-semibold">{t.priceMonth}</span></h2>
+                  <h2 className="text-2xl font-black text-white font-en"><span className="price-tag">{formatCurrency(2400)}</span> <span className="text-xs text-[#C4D8E5] font-medium font-semibold">{t.priceMonth}</span></h2>
                   
-                  <div className="border-t border-slate-850 pt-4 space-y-2.5 text-xs text-slate-400 font-medium">
+                  <div className="border-t border-slate-850 pt-4 space-y-2.5 text-xs text-[#C4D8E5] font-medium font-medium">
                     <p>{t.limitStaffGold}</p>
                     <p>{t.limitLeadsGold}</p>
                     <p>{t.limitProjectsGold}</p>
@@ -883,7 +883,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   <button 
                     onClick={() => handleUpgradeClick('gold')}
                     disabled={loadingPlan !== null}
-                    className="w-full py-3 rounded-xl bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50 hover:shadow-md"
+                    className="w-full py-3 rounded-xl bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50 hover:shadow-md"
                   >
                     {loadingPlan === 'gold' ? t.actionUpgradePrep : t.upgradeBtnGold}
                   </button>
@@ -902,16 +902,16 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
             }).length;
 
             return (
-              <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl">
                     <i className="ph-fill ph-robot"></i>
                   </div>
                   <div>
-                    <h4 className="text-slate-900 dark:text-white font-bold text-base flex items-center gap-2">
+                    <h4 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base flex items-center gap-2">
                       {isArabic ? "مؤشر حالة الوكلاء الأذكياء" : "AI Agent Status Monitor"}
                     </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                    <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mt-1 font-semibold">
                       {isArabic 
                         ? `لديك حالياً ${toArabicNumerals(activeCount)} من أصل ٥ وكلاء نشطين بباقتك.` 
                         : `You currently have ${activeCount} out of 5 active agents in your plan.`}
@@ -942,10 +942,10 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           {/* Create new employee form (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
             
-            <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
-                <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.addStaffTitle}</h3>
-                <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-700/80 px-2.5 py-1 rounded-full font-en">
+            <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="border-b border-slate-100 dark:border-[#A7C7E7]/20 pb-3 flex justify-between items-center">
+                <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.addStaffTitle}</h3>
+                <span className="text-xs font-bold bg-slate-100 dark:bg-[#1C2B48] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium border border-[#A7C7E7]/20 dark:border-slate-700/80 px-2.5 py-1 rounded-full font-en">
                   {toArabicNumerals(currentUsersCount)} / {limit === 99999 ? t.unlimited : toArabicNumerals(limit)} {t.staffActiveSeats}
                 </span>
               </div>
@@ -958,31 +958,31 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
               ) : (
                 <form onSubmit={handleAddEmployee} className="space-y-4">
                   <div>
-                    <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.staffName}</label>
+                    <label className="block text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.staffName}</label>
                     <input 
                       type="text" 
                       name="name" 
                       required 
-                      className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                      className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.staffEmail}</label>
+                    <label className="block text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.staffEmail}</label>
                     <input 
                       type="email" 
                       name="email" 
                       required 
-                      className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                      className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.staffRole}</label>
+                    <label className="block text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.staffRole}</label>
                     <select 
                       name="role" 
                       required 
-                      className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                      className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                     >
                       <option value="SALES_EMPLOYEE">{t.roleEmployee}</option>
                       <option value="SALES_MANAGER">{t.roleManager}</option>
@@ -993,20 +993,20 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   </div>
 
                   <div>
-                    <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.staffPassword}</label>
+                    <label className="block text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.staffPassword}</label>
                     <input 
                       type="password" 
                       name="password" 
                       required 
                       placeholder="••••••••"
-                      className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                      className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                     />
                   </div>
 
                   <button 
                     type="submit" 
                     disabled={loadingCreate}
-                    className="w-full py-3.5 rounded-xl bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-sm transition-colors mt-4 cursor-pointer hover:shadow-md disabled:opacity-55"
+                    className="w-full py-3.5 rounded-xl bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold text-sm transition-colors mt-4 cursor-pointer hover:shadow-md disabled:opacity-55"
                   >
                     {loadingCreate ? t.actionCreatePrep : t.staffSubmit}
                   </button>
@@ -1019,26 +1019,26 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
               <div className="bg-white dark:bg-[#151f32] border border-indigo-500/25 rounded-2xl p-6 shadow-md space-y-4">
                 <div className="border-b border-slate-100 dark:border-slate-850 pb-3 flex justify-between items-center">
                   <h4 className="text-indigo-550 dark:text-indigo-400 font-bold text-sm">{t.editStaffTitle} {editingUser.name}</h4>
-                  <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-white cursor-pointer text-sm">✕</button>
+                  <button onClick={() => setEditingUser(null)} className="text-[#C4D8E5] font-medium hover:text-white cursor-pointer text-sm">✕</button>
                 </div>
                 <form onSubmit={handleEditRole} className="space-y-4">
                   <div>
-                    <label className="block text-slate-400 text-[10px] font-semibold mb-1">{t.editStaffName}</label>
+                    <label className="block text-[#C4D8E5] font-medium text-[10px] font-semibold mb-1">{t.editStaffName}</label>
                     <input 
                       type="text" 
                       name="name" 
                       required 
                       defaultValue={editingUser.name}
-                      className="w-full rounded-lg bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                      className="w-full rounded-lg bg-[#1C2B48] border border-[#A7C7E7]/20 px-3 py-2 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-[10px] font-semibold mb-1">{t.editStaffRole}</label>
+                    <label className="block text-[#C4D8E5] font-medium text-[10px] font-semibold mb-1">{t.editStaffRole}</label>
                     <select 
                       name="role" 
                       required 
                       defaultValue={editingUser.role}
-                      className="w-full rounded-lg bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                      className="w-full rounded-lg bg-[#1C2B48] border border-[#A7C7E7]/20 px-3 py-2 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                     >
                       <option value="SALES_EMPLOYEE">{t.roleEmployee}</option>
                       <option value="SALES_MANAGER">{t.roleManager}</option>
@@ -1049,7 +1049,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   </div>
                   <div className="flex gap-2">
                     <button type="submit" className="bg-indigo-600 hover:bg-indigo-755 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer">{t.editStaffSave}</button>
-                    <button type="button" onClick={() => setEditingUser(null)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer">{t.editStaffCancel}</button>
+                    <button type="button" onClick={() => setEditingUser(null)} className="bg-slate-100 dark:bg-[#1C2B48] text-slate-700 dark:text-[#C4D8E5] font-medium px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer">{t.editStaffCancel}</button>
                   </div>
                 </form>
               </div>
@@ -1057,15 +1057,15 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           </div>
 
           {/* Active staff ledger table (7 cols) */}
-          <div className="lg:col-span-7 bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20">
-              <h2 className="text-slate-900 dark:text-white font-bold text-base">{t.staffTableTitle}</h2>
+          <div className="lg:col-span-7 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80 bg-slate-50/50 dark:bg-[#1C2B48]/20">
+              <h2 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.staffTableTitle}</h2>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-right border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0b1120]/30">
+                  <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30">
                     <th className="p-3 font-semibold text-center w-14">{t.staffTableId}</th>
                     <th className="p-3 font-semibold">{t.staffName}</th>
                     <th className="p-3 font-semibold">{t.staffTableEmail}</th>
@@ -1073,23 +1073,23 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                     <th className="p-3 font-semibold text-center w-48">{t.staffTableActions}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
                   {users.map((u, idx) => {
                     const number = idx + 1;
                     const isProcessing = loadingActionId === u.id;
                     const isCurrentUser = currentUserRole === u.role && u.email === tenant.subdomain; // approximate check
                     return (
-                      <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                      <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
                         <td className="p-3 text-center font-en">{toArabicNumerals(number)}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">
+                        <td className="p-3 font-bold text-[#E8ECEF] font-bold dark:text-white">
                           {u.name}
-                          <span className="text-[10px] text-slate-450 dark:text-slate-550 block font-bold font-sans mt-0.5">
+                          <span className="text-[10px] text-slate-450 dark:text-[#C4D8E5] font-medium block font-bold font-sans mt-0.5">
                             {ROLE_TRANSLATIONS[lang]?.[u.role as "ADMIN"] || u.role}
                           </span>
                         </td>
                         <td className="p-3 font-en">
                           {u.email}
-                          <span className="text-[9px] text-slate-400 block mt-0.5">
+                          <span className="text-[9px] text-[#C4D8E5] font-medium block mt-0.5">
                             {toArabicNumerals(new Date(u.createdAt).toLocaleDateString())}
                           </span>
                         </td>
@@ -1107,14 +1107,14 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                             <button
                               onClick={() => setEditingUser(u)}
                               disabled={isProcessing}
-                              className="text-indigo-650 hover:text-indigo-500 dark:text-indigo-400 font-bold transition-all px-2 py-1 rounded bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 cursor-pointer"
+                              className="text-indigo-650 hover:text-indigo-500 dark:text-indigo-400 font-bold transition-all px-2 py-1 rounded bg-[#1C2B48] border border-[#A7C7E7]/20 cursor-pointer"
                             >
                               {t.btnEdit}
                             </button>
                             <button
                               onClick={() => handleToggleStatus(u)}
                               disabled={isProcessing}
-                              className={`font-bold transition-all px-2 py-1 rounded bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 cursor-pointer ${
+                              className={`font-bold transition-all px-2 py-1 rounded bg-[#1C2B48] border border-[#A7C7E7]/20 cursor-pointer ${
                                 u.isActive ? 'text-amber-600 hover:text-amber-500' : 'text-emerald-600 hover:text-emerald-500'
                               }`}
                             >
@@ -1123,7 +1123,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                             <button
                               onClick={() => handleDeleteEmployee(u.id)}
                               disabled={isProcessing}
-                              className="text-rose-600 hover:text-rose-500 font-bold transition-all px-2 py-1 rounded bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 cursor-pointer"
+                              className="text-rose-600 hover:text-rose-500 font-bold transition-all px-2 py-1 rounded bg-[#1C2B48] border border-[#A7C7E7]/20 cursor-pointer"
                             >
                               {t.btnDelete}
                             </button>
@@ -1166,34 +1166,34 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
               statusBadgeClass = "bg-amber-500/10 border-amber-500/20 text-amber-500 dark:text-amber-400";
               dotColor = "bg-amber-500";
               csidText = t.csidValid;
-              csidBadgeClass = "bg-[#df7b62]/10 border-[#df7b62]/20 text-[#df7b62]";
+              csidBadgeClass = "bg-[#8EB1D1]/10 border-[#8EB1D1]/20 text-[#8EB1D1]";
             }
 
             return (
-              <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold">
                     <i className="ph-bold ph-shield-check"></i> {t.statusIndicatorTitle}
                   </div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-lg font-bold text-[#E8ECEF] font-bold dark:text-white">
                     {t.complianceTitle}
                   </h2>
-                  <p className="text-xs text-slate-550 dark:text-slate-400 font-medium max-w-xl">
+                  <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-medium max-w-xl">
                     {t.complianceDesc}
                   </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto shrink-0">
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="p-4 rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 space-y-2">
                     <div className="flex justify-between items-center gap-6 text-xs">
-                      <span className="text-slate-550 dark:text-slate-400 font-semibold">{t.statusLabel}</span>
+                      <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-semibold">{t.statusLabel}</span>
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold border text-[10px] ${statusBadgeClass}`}>
                         <span className={`w-2 h-2 rounded-full ${dotColor} ${isConnected ? 'animate-pulse' : ''}`}></span>
                         {statusText}
                       </span>
                     </div>
                     <div className="flex justify-between items-center gap-6 text-xs">
-                      <span className="text-slate-550 dark:text-slate-400 font-semibold">{t.csidLabel}</span>
+                      <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-semibold">{t.csidLabel}</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border text-[9px] ${csidBadgeClass}`}>
                         {csidText}
                       </span>
@@ -1207,20 +1207,20 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           {loadingCompliance ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
               <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-              <p className="text-xs text-slate-500 font-semibold">{isArabic ? "جاري فحص حالة الامتثال..." : "Checking compliance status..."}</p>
+              <p className="text-xs text-[#C4D8E5] font-medium font-semibold">{isArabic ? "جاري فحص حالة الامتثال..." : "Checking compliance status..."}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
               
               {/* Left Side: Compliance Checklist & Profile Completeness Forms */}
               <div className="lg:col-span-6 space-y-6">
-                <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm space-y-6">
                   <div>
-                    <h3 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-                      <i className="ph-bold ph-list-checks text-[#df7b62]"></i>
+                    <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base border-b border-slate-100 dark:border-[#A7C7E7]/20 pb-3 flex items-center gap-2">
+                      <i className="ph-bold ph-list-checks text-[#8EB1D1]"></i>
                       {t.checklistTitle}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-450 mt-2">{t.checklistDesc}</p>
+                    <p className="text-xs text-[#C4D8E5] font-medium dark:text-slate-450 mt-2">{t.checklistDesc}</p>
                   </div>
 
                   {/* Checklist items list */}
@@ -1237,7 +1237,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                         }`}>
                           <div className="flex justify-between items-start gap-4">
                             <div className="space-y-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[#E8ECEF] font-bold dark:text-white flex items-center gap-1.5">
                                 {isCompliant ? (
                                   <i className="ph-bold ph-check-circle text-emerald-500 text-base"></i>
                                 ) : (
@@ -1245,7 +1245,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                                 )}
                                 {t.profileCompletenessLabel}
                               </span>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-450">{t.profileCompletenessDesc}</p>
+                              <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-slate-450">{t.profileCompletenessDesc}</p>
                             </div>
                             <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
                               isCompliant ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
@@ -1261,46 +1261,46 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                           )}
 
                           {/* Profile fields update form inside checklist card for UX convenience */}
-                          <form onSubmit={handleSaveProfile} className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
+                          <form onSubmit={handleSaveProfile} className="mt-4 pt-4 border-t border-slate-100 dark:border-[#A7C7E7]/80 space-y-3">
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.crInput}</label>
+                                <label className="block text-[10px] font-semibold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-1">{t.crInput}</label>
                                 <input 
                                   type="text" 
                                   name="commercialRegistry" 
                                   defaultValue={complianceInfo?.commercialRegistry}
                                   placeholder="1010XXXXXX"
                                   required
-                                  className="w-full rounded-lg bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                                  className="w-full rounded-lg bg-white dark:bg-[#1C2B48] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 px-3 py-2 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                                 />
                               </div>
                               <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.vatInput}</label>
+                                <label className="block text-[10px] font-semibold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-1">{t.vatInput}</label>
                                 <input 
                                   type="text" 
                                   name="vatNumber" 
                                   defaultValue={complianceInfo?.vatNumber}
                                   placeholder="3000XXXXXXXXXXX"
                                   required
-                                  className="w-full rounded-lg bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                                  className="w-full rounded-lg bg-white dark:bg-[#1C2B48] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 px-3 py-2 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                                 />
                               </div>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.addressInput}</label>
+                              <label className="block text-[10px] font-semibold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-1">{t.addressInput}</label>
                               <input 
                                 type="text" 
                                 name="nationalAddress" 
                                 defaultValue={complianceInfo?.nationalAddress}
                                 placeholder="الرياض، الياسمين، رمز بريدي 12345"
                                 required
-                                className="w-full rounded-lg bg-white dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                                className="w-full rounded-lg bg-white dark:bg-[#1C2B48] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 px-3 py-2 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                               />
                             </div>
                             <button 
                               type="submit" 
                               disabled={savingProfile}
-                              className="bg-[#df7b62] hover:bg-[#c5654e] text-white text-[10px] font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-55"
+                              className="bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[10px] font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-55"
                             >
                               {savingProfile ? t.savingProfile : t.saveProfileBtn}
                             </button>
@@ -1320,7 +1320,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                         }`}>
                           <div className="flex justify-between items-start gap-4">
                             <div className="space-y-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[#E8ECEF] font-bold dark:text-white flex items-center gap-1.5">
                                 {isCompliant ? (
                                   <i className="ph-bold ph-check-circle text-emerald-500 text-base"></i>
                                 ) : (
@@ -1328,7 +1328,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                                 )}
                                 {t.disclaimerLabel}
                               </span>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-450">
+                              <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-slate-450">
                                 {isCompliant ? t.disclaimerSigned : t.disclaimerLink}
                               </p>
                             </div>
@@ -1372,7 +1372,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                         }`}>
                           <div className="flex justify-between items-start gap-4">
                             <div className="space-y-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[#E8ECEF] font-bold dark:text-white flex items-center gap-1.5">
                                 {isCompliant ? (
                                   <i className="ph-bold ph-check-circle text-emerald-500 text-base"></i>
                                 ) : (
@@ -1380,7 +1380,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                                 )}
                                 {t.saherLabel}
                               </span>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-450">{t.saherDesc}</p>
+                              <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-slate-450">{t.saherDesc}</p>
                             </div>
                             <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
                               isCompliant ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
@@ -1401,7 +1401,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   </div>
 
                   {/* Activation Button Panel */}
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
+                  <div className="pt-4 border-t border-slate-100 dark:border-[#A7C7E7]/80 space-y-4">
                     {(() => {
                       const isAllCompliant = complianceResult?.isReady === true;
                       const isConnected = complianceInfo?.whatsappConnected;
@@ -1414,8 +1414,8 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                               isConnected
                                 ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 cursor-not-allowed'
                                 : isAllCompliant
-                                  ? 'bg-[#df7b62] hover:bg-[#c5654e] text-white cursor-pointer hover:shadow-md'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border border-slate-200 dark:border-slate-700/80 cursor-not-allowed'
+                                  ? 'bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white cursor-pointer hover:shadow-md'
+                                  : 'bg-slate-100 dark:bg-[#1C2B48] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium border border-[#A7C7E7]/20 dark:border-slate-700/80 cursor-not-allowed'
                             }`}
                           >
                             {activatingConnection ? t.activating : isConnected ? (isArabic ? "✓ الربط مفعل ونشط حالياً" : "✓ Connection active") : t.activateBtn}
@@ -1442,13 +1442,13 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
 
               {/* Right Side: Secure Credentials Input Form */}
               <div className="lg:col-span-6 space-y-6">
-                <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm space-y-4">
                   <div>
-                    <h3 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-                      <i className="ph-bold ph-key text-[#df7b62]"></i>
+                    <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base border-b border-slate-100 dark:border-[#A7C7E7]/20 pb-3 flex items-center gap-2">
+                      <i className="ph-bold ph-key text-[#8EB1D1]"></i>
                       {t.credentialsFormTitle}
                     </h3>
-                    <p className="text-xs text-slate-550 dark:text-slate-400 mt-2">
+                    <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mt-2">
                       {t.credentialsFormDesc}
                     </p>
                   </div>
@@ -1456,89 +1456,89 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   <form onSubmit={handleSaveCredentials} className="space-y-4 pt-2">
                     {/* Client ID */}
                     <div>
-                      <label className="block text-slate-555 dark:text-slate-400 text-xs font-semibold mb-2">{t.clientIdLabel}</label>
+                      <label className="block text-slate-555 dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.clientIdLabel}</label>
                       <div className="relative">
                         <input 
                           type={showCredentials.clientId ? "text" : "password"} 
                           name="clientId"
                           required
                           placeholder={complianceInfo?.hasClientId ? "••••••••••••••••" : "Client ID..."}
-                          className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                          className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCredentials(prev => ({ ...prev, clientId: !prev.clientId }))}
-                          className="absolute inset-y-0 left-3 flex items-center text-slate-450 hover:text-slate-600 dark:hover:text-white cursor-pointer px-1"
+                          className="absolute inset-y-0 left-3 flex items-center text-slate-450 hover:text-[#C4D8E5] font-medium dark:hover:text-white cursor-pointer px-1"
                         >
                           <i className={`ph-bold ${showCredentials.clientId ? "ph-eye-slash" : "ph-eye"}`}></i>
                         </button>
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-400 mt-1 block">
+                      <span className="text-[10px] font-semibold text-[#C4D8E5] font-medium mt-1 block">
                         {complianceInfo?.hasClientId ? `✓ ${t.savedStatus}` : `⚠️ ${t.notSavedStatus}`}
                       </span>
                     </div>
 
                     {/* Client Secret */}
                     <div>
-                      <label className="block text-slate-555 dark:text-slate-400 text-xs font-semibold mb-2">{t.clientSecretLabel}</label>
+                      <label className="block text-slate-555 dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.clientSecretLabel}</label>
                       <div className="relative">
                         <input 
                           type={showCredentials.clientSecret ? "text" : "password"} 
                           name="clientSecret"
                           required
                           placeholder={complianceInfo?.hasClientSecret ? "••••••••••••••••" : "Client Secret..."}
-                          className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                          className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCredentials(prev => ({ ...prev, clientSecret: !prev.clientSecret }))}
-                          className="absolute inset-y-0 left-3 flex items-center text-slate-455 hover:text-slate-600 dark:hover:text-white cursor-pointer px-1"
+                          className="absolute inset-y-0 left-3 flex items-center text-slate-455 hover:text-[#C4D8E5] font-medium dark:hover:text-white cursor-pointer px-1"
                         >
                           <i className={`ph-bold ${showCredentials.clientSecret ? "ph-eye-slash" : "ph-eye"}`}></i>
                         </button>
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-400 mt-1 block">
+                      <span className="text-[10px] font-semibold text-[#C4D8E5] font-medium mt-1 block">
                         {complianceInfo?.hasClientSecret ? `✓ ${t.savedStatus}` : `⚠️ ${t.notSavedStatus}`}
                       </span>
                     </div>
 
                     {/* API Key */}
                     <div>
-                      <label className="block text-slate-555 dark:text-slate-400 text-xs font-semibold mb-2">{t.apiKeyLabel}</label>
+                      <label className="block text-slate-555 dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.apiKeyLabel}</label>
                       <div className="relative">
                         <input 
                           type={showCredentials.apiKey ? "text" : "password"} 
                           name="apiKey"
                           required
                           placeholder={complianceInfo?.hasApiKey ? "••••••••••••••••" : "API Key..."}
-                          className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                          className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowCredentials(prev => ({ ...prev, apiKey: !prev.apiKey }))}
-                          className="absolute inset-y-0 left-3 flex items-center text-slate-455 hover:text-slate-600 dark:hover:text-white cursor-pointer px-1"
+                          className="absolute inset-y-0 left-3 flex items-center text-slate-455 hover:text-[#C4D8E5] font-medium dark:hover:text-white cursor-pointer px-1"
                         >
                           <i className={`ph-bold ${showCredentials.apiKey ? "ph-eye-slash" : "ph-eye"}`}></i>
                         </button>
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-400 mt-1 block">
+                      <span className="text-[10px] font-semibold text-[#C4D8E5] font-medium mt-1 block">
                         {complianceInfo?.hasApiKey ? `✓ ${t.savedStatus}` : `⚠️ ${t.notSavedStatus}`}
                       </span>
                     </div>
 
                     {/* ZATCA Credentials */}
                     <div>
-                      <label className="block text-slate-555 dark:text-slate-400 text-xs font-semibold mb-2">{t.zatcaCredsLabel}</label>
+                      <label className="block text-slate-555 dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-2">{t.zatcaCredsLabel}</label>
                       <div className="relative">
                         <textarea 
                           name="zatcaCredentials"
                           required
                           rows={3}
                           placeholder={complianceInfo?.hasZatcaCredentials ? "••••••••••••••••••••••••••••••••" : "ZATCA private keys payload structure..."}
-                          className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                          className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold dark:text-white focus:outline-none focus:border-[#8EB1D1]"
                         />
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-400 mt-1 block">
+                      <span className="text-[10px] font-semibold text-[#C4D8E5] font-medium mt-1 block">
                         {complianceInfo?.hasZatcaCredentials ? `✓ ${t.savedStatus}` : `⚠️ ${t.notSavedStatus}`}
                       </span>
                     </div>
@@ -1546,7 +1546,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                     <button 
                       type="submit" 
                       disabled={savingCredentials}
-                      className="w-full py-3.5 rounded-xl bg-[#df7b62] hover:bg-[#c5654e] text-white font-bold text-sm transition-colors mt-4 cursor-pointer hover:shadow-md disabled:opacity-55"
+                      className="w-full py-3.5 rounded-xl bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold text-sm transition-colors mt-4 cursor-pointer hover:shadow-md disabled:opacity-55"
                     >
                       {savingCredentials ? t.savingEncrypting : t.saveAndEncryptBtn}
                     </button>
@@ -1560,44 +1560,44 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           {/* Digital Signature Disclaimer Agreement Modal */}
           {isDisclaimerOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl animate-scale-up" dir={dir}>
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
-                  <h3 className="text-slate-900 dark:text-white font-bold text-base flex items-center gap-2">
-                    <i className="ph-bold ph-scroll text-[#df7b62]"></i>
+              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl animate-scale-up" dir={dir}>
+                <div className="border-b border-slate-100 dark:border-[#A7C7E7]/20 pb-3 flex justify-between items-center">
+                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base flex items-center gap-2">
+                    <i className="ph-bold ph-scroll text-[#8EB1D1]"></i>
                     {t.disclaimerModalTitle}
                   </h3>
                   <button 
                     onClick={() => setIsDisclaimerOpen(false)}
-                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer text-sm"
+                    className="text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white cursor-pointer text-sm"
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 p-4 rounded-xl text-xs md:text-sm text-slate-655 dark:text-slate-350 leading-relaxed max-h-60 overflow-y-auto">
+                <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 p-4 rounded-xl text-xs md:text-sm text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium leading-relaxed max-h-60 overflow-y-auto">
                   {t.disclaimerText}
                 </div>
 
                 <div className="space-y-4">
-                  <label className="flex items-start gap-2.5 text-xs text-slate-900 dark:text-white font-semibold cursor-pointer">
+                  <label className="flex items-start gap-2.5 text-xs text-[#E8ECEF] font-bold dark:text-white font-semibold cursor-pointer">
                     <input 
                       type="checkbox" 
                       checked={disclaimerAccepted}
                       onChange={(e) => setDisclaimerAccepted(e.target.checked)}
-                      className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-[#df7b62] focus:ring-[#df7b62]"
+                      className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-[#8EB1D1] focus:ring-[#8EB1D1]"
                     />
                     <span>{t.agreeCheckboxLabel}</span>
                   </label>
 
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-2">{t.signNameLabel}</label>
+                    <label className="block text-[10px] font-semibold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-2">{t.signNameLabel}</label>
                     <input 
                       type="text" 
                       value={disclaimerName}
                       onChange={(e) => setDisclaimerName(e.target.value)}
                       placeholder="علي محمد (ali.orca@outlook.sa)"
                       required
-                      className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none"
+                      className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-2.5 text-xs text-[#E8ECEF] font-bold dark:text-white focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1606,13 +1606,13 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                   <button 
                     onClick={handleSignDisclaimer}
                     disabled={!disclaimerAccepted || disclaimerName.trim().length < 3 || signingDisclaimer}
-                    className="bg-[#df7b62] hover:bg-[#c5654e] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                    className="bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                   >
                     {signingDisclaimer ? t.signing : t.signBtn}
                   </button>
                   <button 
                     onClick={() => setIsDisclaimerOpen(false)}
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-755 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+                    className="bg-slate-100 dark:bg-[#1C2B48] text-slate-755 dark:text-[#C4D8E5] font-medium text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer"
                   >
                     ✕ {isArabic ? "إلغاء" : "Cancel"}
                   </button>
@@ -1624,23 +1624,23 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
           {/* Smart Upgrade & Leasing Options Comparison Modal */}
           {showUpgradeCompareModal?.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="bg-[#151f32] border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl relative" dir={dir}>
+              <div className="bg-[#151f32] border border-[#A7C7E7]/20 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl relative" dir={dir}>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
                 
-                <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                <div className="border-b border-[#A7C7E7]/20 pb-3 flex justify-between items-center">
                   <h3 className="text-white font-extrabold text-base flex items-center gap-2">
-                    <i className="ph-bold ph-sparkle text-[#df7b62]"></i>
+                    <i className="ph-bold ph-sparkle text-[#8EB1D1]"></i>
                     {isArabic ? "خيارات الترقية والنمو الذكية" : "Smart Upgrade & Leasing Options"}
                   </h3>
                   <button 
                     onClick={() => setShowUpgradeCompareModal(null)}
-                    className="text-slate-400 hover:text-white cursor-pointer text-xs"
+                    className="text-[#C4D8E5] font-medium hover:text-white cursor-pointer text-xs"
                   >
                     ✕
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-[#C4D8E5] font-medium leading-relaxed">
                   {isArabic 
                     ? "قبل إتمام عملية ترقية باقة الاشتراك، نود تقديم الخيار الأمثل والأنسب لمتطلبات عملك وميزانيتك:"
                     : "Before completing your plan upgrade, choose the option that best fits your business needs and budget:"}
@@ -1648,13 +1648,13 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Option 1: Temporary leasing */}
-                  <div className="p-4 rounded-xl border border-slate-800 bg-[#0b1120]/40 flex flex-col justify-between space-y-4">
+                  <div className="p-4 rounded-xl border border-[#A7C7E7]/20 bg-[#1C2B48]/40 flex flex-col justify-between space-y-4">
                     <div>
-                      <h4 className="text-[#df7b62] text-xs font-black mb-1.5 flex items-center gap-1.5">
+                      <h4 className="text-[#8EB1D1] text-xs font-black mb-1.5 flex items-center gap-1.5">
                         <i className="ph-bold ph-hand-coins"></i>
                         {isArabic ? "استئجار وكيل عند الطلب" : "Lease On-Demand"}
                       </h4>
-                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                      <p className="text-[10px] text-[#C4D8E5] font-medium leading-relaxed">
                         {isArabic 
                           ? "استمر بباقتك الحالية وقم باستئجار وكلاء منفصلين (مثل بصير أو خبير) لحملاتك المؤقتة بقيمة 250 ر.س شهرياً للوكيل الواحد."
                           : "Stay on your current plan and lease individual agents (like Baseer or Khabeer) for temporary campaigns at 250 SAR/month."}
@@ -1664,7 +1664,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                     <button
                       onClick={() => {
                         setShowUpgradeCompareModal(null);
-                        window.location.href = '/operations?tab=growth';
+                        window.location.href = '/operations?tab=agents';
                       }}
                       className="w-full py-2 bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-[10px] rounded-lg cursor-pointer transition-all"
                     >
@@ -1679,7 +1679,7 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                         <i className="ph-bold ph-sparkle text-indigo-400"></i>
                         {isArabic ? "الترقية للباقة الماسية" : "Upgrade to Diamond"}
                       </h4>
-                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                      <p className="text-[10px] text-[#C4D8E5] font-medium leading-relaxed">
                         {isArabic 
                           ? "احصل على وصول دائم وغير محدود لكافة الوكلاء الخمسة (ساهر، سند، بصير، خبير، منصور) مع تكامل واتساب كامل وإدارة غير محدودة."
                           : "Unlock permanent, unlimited access to all 5 agents (Saher, Sanad, Baseer, Khabeer, Mansour) with full WhatsApp integration."}
@@ -1692,17 +1692,17 @@ export default function SettingsView({ tenant, users = [], currentUserRole = "RE
                         setShowUpgradeCompareModal(null);
                         handleUpgrade(targetPlan);
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-[#df7b62] to-[#c5654e] text-white font-bold text-[10px] rounded-lg cursor-pointer transition-all hover:shadow-[0_0_10px_rgba(223,123,98,0.25)]"
+                      className="w-full py-2 bg-gradient-to-r from-[#8EB1D1] to-[#A7C7E7] text-white font-bold text-[10px] rounded-lg cursor-pointer transition-all hover:shadow-[0_0_10px_rgba(223,123,98,0.25)]"
                     >
                       {isArabic ? "الترقية وتأكيد الدفع ➔" : "Upgrade & Confirm ➔"}
                     </button>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2 border-t border-slate-800">
+                <div className="flex justify-end pt-2 border-t border-[#A7C7E7]/20">
                   <button
                     onClick={() => setShowUpgradeCompareModal(null)}
-                    className="px-4 py-2 bg-slate-850 hover:bg-slate-850/80 text-slate-400 hover:text-slate-350 text-[10px] font-bold rounded-lg cursor-pointer"
+                    className="px-4 py-2 bg-slate-850 hover:bg-slate-850/80 text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium text-[10px] font-bold rounded-lg cursor-pointer"
                   >
                     {isArabic ? "إغلاق" : "Close"}
                   </button>

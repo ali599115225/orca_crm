@@ -9,10 +9,6 @@
         "jwt:generate": "node -e \"console.log('JWT_SECRET=\\\"' + require('crypto').randomBytes(64).toString('hex') + '\\\"')\""
     },
     "dependencies": {
-        "@dnd-kit/core": "^6.3.1",
-        "@dnd-kit/modifiers": "^9.0.0",
-        "@dnd-kit/sortable": "^10.0.0",
-        "@dnd-kit/utilities": "^3.2.2",
         "@google/generative-ai": "^0.24.1",
         "@neondatabase/serverless": "^1.1.0",
         "@prisma/adapter-neon": "^7.8.0",

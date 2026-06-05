@@ -7,10 +7,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', icon: Icon, ...props }) => {
-  const baseClass = "orca-focus px-4 py-2 rounded-lg font-medium orca-transition flex items-center gap-2";
+  const baseClass = "orca-focus px-4 py-2 rounded-lg font-medium orca-transition flex items-center gap-2 cursor-pointer";
   const variants = {
-    primary: "bg-[#df7b62] text-white hover:bg-[#c5654e] shadow-sm hover:shadow-[0_4px_14px_-4px_rgba(223,123,98,0.45)]",
-    secondary: "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm"
+    primary: "bg-brand-interactive text-[#1C2B48] hover:bg-brand-interactive-hover shadow-sm font-bold",
+    secondary: "bg-white dark:bg-[#151f32] border border-slate-350 dark:border-brand-border text-slate-700 dark:text-brand-text-secondary hover:bg-slate-50 dark:hover:bg-brand-bg shadow-sm"
   };
   return (
     <button className={`${baseClass} ${variants[variant]}`} {...props}>
@@ -39,14 +39,14 @@ export const DataTable: React.FC<{columns: any[], data: any[]}> = ({ columns, da
   <div className="overflow-x-auto">
     <table className="w-full text-right border-collapse">
       <thead>
-        <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-400 text-sm">
+        <tr className="border-b border-[#A7C7E7]/20 dark:border-slate-700 text-[#C4D8E5] font-medium text-sm">
           {columns.map((col, i) => <th key={i} className="pb-4 font-normal px-4">{col.header}</th>)}
         </tr>
       </thead>
       <tbody>
         {data.map((row, i) => (
-          <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 orca-transition">
-            {columns.map((col, j) => <td key={j} className="py-4 px-4 text-slate-800 dark:text-slate-200">{row[col.accessor]}</td>)}
+          <tr key={i} className="border-b border-slate-100 dark:border-[#A7C7E7]/20 hover:bg-slate-50 dark:hover:bg-[#1C2B48]/50 orca-transition">
+            {columns.map((col, j) => <td key={j} className="py-4 px-4 text-[#E8ECEF] font-bold dark:text-slate-200">{row[col.accessor]}</td>)}
           </tr>
         ))}
       </tbody>

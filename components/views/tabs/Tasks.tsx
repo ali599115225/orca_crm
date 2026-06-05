@@ -114,19 +114,19 @@ export default function Tasks() {
   const completedTasks = tasks.filter(t => t.status === "COMPLETED");
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-5 rounded-2xl">
+    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Task Creation */}
-        <div className="bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+        <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
           <h3 className="text-white font-bold text-sm mb-4">إضافة مهمة جديدة (Create Task)</h3>
           <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">اربط العميل المحتمل *</label>
+              <label className="text-[#C4D8E5] font-medium">اربط العميل المحتمل *</label>
               <select
                 value={leadId}
                 onChange={(e) => setLeadId(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               >
                 <option value="">-- اختر العميل --</option>
@@ -137,42 +137,42 @@ export default function Tasks() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">عنوان المهمة *</label>
+              <label className="text-[#C4D8E5] font-medium">عنوان المهمة *</label>
               <input
                 placeholder="مثال: الاتصال لمتابعة زيارة النرجس"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">وصف المهمة</label>
+              <label className="text-[#C4D8E5] font-medium">وصف المهمة</label>
               <textarea
                 placeholder="أدخل تفاصيل التذكير والمتابعة..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded p-2 text-white h-16 resize-none"
+                className="bg-[#1C2B48] border border-slate-700 rounded p-2 text-white h-16 resize-none"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">تاريخ الاستحقاق</label>
+              <label className="text-[#C4D8E5] font-medium">تاريخ الاستحقاق</label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white font-en"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">الأولوية</label>
+              <label className="text-[#C4D8E5] font-medium">الأولوية</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
               >
                 <option value="LOW">منخفضة</option>
                 <option value="MEDIUM">متوسطة</option>
@@ -183,7 +183,7 @@ export default function Tasks() {
             <button
               type="submit"
               disabled={btnLoading}
-              className="w-full bg-[#df7b62] hover:bg-[#c5654e] text-white rounded font-bold px-3 py-2 transition-all text-center"
+              className="w-full bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
             >
               حفظ المهمة
             </button>
@@ -194,34 +194,34 @@ export default function Tasks() {
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Pending Tasks Column */}
-          <div className="bg-[#042A44]/30 border border-slate-800 rounded-xl p-4 flex flex-col min-h-[400px]">
-            <div className="flex justify-between items-center pb-2 mb-3 border-b border-slate-800 text-xs font-bold text-white">
+          <div className="bg-[#1C2B48]/30 border border-[#A7C7E7]/20 rounded-xl p-4 flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[#A7C7E7]/20 text-xs font-bold text-white">
               <span>مهام معلقة (Pending)</span>
-              <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-en">{pendingTasks.length}</span>
+              <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full font-en">{pendingTasks.length}</span>
             </div>
 
             <div className="space-y-3 overflow-y-auto max-h-[360px] flex-1">
               {pendingTasks.map(task => (
-                <div key={task.id} className="p-3 bg-[#042A44] border border-slate-800 rounded-xl flex flex-col justify-between gap-2.5 shadow-sm">
+                <div key={task.id} className="p-4 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl flex flex-col justify-between gap-2 shadow-sm">
                   <div className="text-xs space-y-1">
                     <h4 className="text-white font-bold leading-snug">{task.title}</h4>
-                    {task.description && <p className="text-slate-400">{task.description}</p>}
+                    {task.description && <p className="text-[#C4D8E5] font-medium">{task.description}</p>}
                     {task.lead && (
-                      <p className="text-slate-500 text-[10px]">
-                        العميل: <span className="text-slate-300">{task.lead.firstName} {task.lead.lastName || ""}</span>
+                      <p className="text-[#C4D8E5] font-medium text-xs">
+                        العميل: <span className="text-[#C4D8E5] font-medium">{task.lead.firstName} {task.lead.lastName || ""}</span>
                       </p>
                     )}
                   </div>
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className={`px-1.5 py-0.5 rounded font-bold ${
-                      task.priority === "HIGH" ? "bg-rose-500/10 text-rose-400" : "bg-slate-700 text-slate-300"
+                  <div className="flex justify-between items-center text-xs">
+                    <span className={`px-2 py-1 rounded font-bold ${
+                      task.priority === "HIGH" ? "bg-rose-500/10 text-rose-400" : "bg-slate-700 text-[#C4D8E5] font-medium"
                     }`}>
                       {task.priority}
                     </span>
                     <button
                       onClick={() => handleCompleteTask(task.id)}
                       disabled={btnLoading}
-                      className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded font-bold"
+                      className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded font-bold"
                     >
                       إنجاز
                     </button>
@@ -229,25 +229,25 @@ export default function Tasks() {
                 </div>
               ))}
               {pendingTasks.length === 0 && (
-                <div className="py-12 text-center text-slate-500 text-[10px]">لا يوجد مهام معلقة. أضف مهمة جديدة.</div>
+                <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا يوجد مهام معلقة. أضف مهمة جديدة.</div>
               )}
             </div>
           </div>
 
           {/* Completed Tasks Column */}
-          <div className="bg-[#042A44]/30 border border-slate-800 rounded-xl p-4 flex flex-col min-h-[400px]">
-            <div className="flex justify-between items-center pb-2 mb-3 border-b border-slate-800 text-xs font-bold text-white">
+          <div className="bg-[#1C2B48]/30 border border-[#A7C7E7]/20 rounded-xl p-4 flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[#A7C7E7]/20 text-xs font-bold text-white">
               <span>مهام منجزة (Completed)</span>
-              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-en">{completedTasks.length}</span>
+              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full font-en">{completedTasks.length}</span>
             </div>
 
             <div className="space-y-3 overflow-y-auto max-h-[360px] flex-1">
               {completedTasks.map(task => (
-                <div key={task.id} className="p-3 bg-[#042A44]/40 border border-slate-900 rounded-xl opacity-75">
+                <div key={task.id} className="p-4 bg-[#1C2B48]/40 border border-slate-900 rounded-xl opacity-75">
                   <div className="text-xs space-y-1">
-                    <h4 className="text-slate-300 font-bold line-through leading-snug">{task.title}</h4>
+                    <h4 className="text-[#C4D8E5] font-medium font-bold line-through leading-snug">{task.title}</h4>
                     {task.lead && (
-                      <p className="text-slate-500 text-[10px]">
+                      <p className="text-[#C4D8E5] font-medium text-xs">
                         العميل: {task.lead.firstName} {task.lead.lastName || ""}
                       </p>
                     )}
@@ -255,7 +255,7 @@ export default function Tasks() {
                 </div>
               ))}
               {completedTasks.length === 0 && (
-                <div className="py-12 text-center text-slate-500 text-[10px]">لا توجد مهام مكتملة في السجل.</div>
+                <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا توجد مهام مكتملة في السجل.</div>
               )}
             </div>
           </div>

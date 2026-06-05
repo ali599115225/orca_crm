@@ -1,3 +1,0 @@
-﻿"use client";
-import PipelineView from "./Pipeline";
-export default function Pipeline() { return <PipelineView />; }

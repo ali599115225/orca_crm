@@ -14,7 +14,7 @@ export default function DashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#0b1120] text-white overflow-hidden font-sans" dir="rtl">
+    <div className="flex h-screen bg-brand-bg text-brand-text-primary overflow-hidden font-sans" dir="rtl">
 
       {/* ── Overlay للجوال ─────────────────────────────────────────────── */}
       {isMobileMenuOpen && (

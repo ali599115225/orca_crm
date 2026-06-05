@@ -119,19 +119,19 @@ export default function Offers() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-5 rounded-2xl">
+    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Creation Form */}
-        <div className="bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+        <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
           <h3 className="text-white font-bold text-sm mb-4">إنشاء وتقديم عرض سعر (Send Offer)</h3>
           <form onSubmit={handleCreateOffer} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">اختر الصفقة / الفرصة *</label>
+              <label className="text-[#C4D8E5] font-medium">اختر الصفقة / الفرصة *</label>
               <select
                 value={oppId}
                 onChange={(e) => setOppId(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               >
                 <option value="">-- اختر الفرصة --</option>
@@ -144,24 +144,24 @@ export default function Offers() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">سعر العرض المقدم (SAR) *</label>
+              <label className="text-[#C4D8E5] font-medium">سعر العرض المقدم (SAR) *</label>
               <input
                 type="number"
                 placeholder="السعر المقترح للمفاوضة"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">تاريخ انتهاء صلاحية العرض *</label>
+              <label className="text-[#C4D8E5] font-medium">تاريخ انتهاء صلاحية العرض *</label>
               <input
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white font-en"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
                 required
               />
             </div>
@@ -169,7 +169,7 @@ export default function Offers() {
             <button
               type="submit"
               disabled={btnLoading}
-              className="w-full bg-[#df7b62] hover:bg-[#c5654e] text-white rounded font-bold px-3 py-2 transition-all text-center"
+              className="w-full bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
             >
               {btnLoading ? "جاري الإنشاء..." : "إنشاء العرض"}
             </button>
@@ -177,25 +177,25 @@ export default function Offers() {
         </div>
 
         {/* Offers List Panel */}
-        <div className="lg:col-span-2 bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-3">العروض العقارية وحالاتها (Active Offers)</h3>
+        <div className="lg:col-span-2 bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <h3 className="text-white font-bold text-sm mb-4">العروض العقارية وحالاتها (Active Offers)</h3>
           {loading ? (
-            <div className="py-12 text-center text-slate-400 text-xs">جاري تحميل العروض...</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">جاري تحميل العروض...</div>
           ) : offers.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs">لا توجد عروض أسعار مسجلة حالياً.</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا توجد عروض أسعار مسجلة حالياً.</div>
           ) : (
             <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 scrollbar-fade">
               {offers.map((offer) => (
-                <div key={offer.id} className="p-3 bg-[#042A44] border border-slate-800 rounded-xl hover:border-[#df7b62]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div key={offer.id} className="p-4 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl hover:border-[#8EB1D1]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-white font-bold">{getOpportunityLeadName(offer.linkedOpportunityId)}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${
                         offer.status === "PENDING"
                           ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                           : offer.status === "ACCEPTED"
                           ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-slate-500/10 text-slate-400"
+                          : "bg-slate-500/10 text-[#C4D8E5] font-medium"
                       }`}>
                         {offer.status}
                       </span>
@@ -203,7 +203,7 @@ export default function Offers() {
                     <p className="text-slate-450">سعر المفاوضة: <span className="text-white font-semibold font-en">{Number(offer.price).toLocaleString()} ر.س</span></p>
                     <p className="text-slate-450 font-en">صلاحية العرض: <span className="text-indigo-400 font-semibold">{offer.validUntil.slice(0, 10)}</span></p>
                     {offer.documentUrl && (
-                      <a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-[10px] mt-1 font-en">
+                      <a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-xs mt-1 font-en">
                         📄 View Offer Document (PDF)
                       </a>
                     )}

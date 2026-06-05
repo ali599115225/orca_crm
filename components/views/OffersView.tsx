@@ -1,0 +1,1498 @@
+// components/views/OffersView.tsx
+'use client';
+
+import React, { useState, useEffect, useTransition } from 'react';
+import {
+  Megaphone, Plus, Search, Heart, Map, FileSpreadsheet, Eye,
+  Landmark, Calculator, Calendar, ArrowRight, UserCheck, MessageSquare,
+  AlertCircle, ShieldAlert, Bot, Trash2, CheckCircle2, Star, Sparkles
+} from 'lucide-react';
+import { DateField } from '../ui/DateField';
+
+// ─── Interfaces ─────────────────────────────────────────────────────────────
+interface PropertyOffer {
+  id: string;
+  title: string;
+  type: 'apartment' | 'villa' | 'land';
+  status: 'available' | 'reserved' | 'sold';
+  price: number;
+  beds: number;
+  area: number;
+  city: string;
+  district: string;
+  agent: string;
+  posted: string; // YYYY-MM-DD
+  coords: { lat: number; lng: number };
+  description: string;
+}
+
+// ─── Initial Mock Data ──────────────────────────────────────────────────────
+const initialProperties: PropertyOffer[] = [
+  {
+    id: 'P-001',
+    title: 'شقة فاخرة في العليا',
+    type: 'apartment',
+    status: 'available',
+    price: 950000,
+    beds: 3,
+    area: 145,
+    city: 'الرياض',
+    district: 'العليا',
+    agent: 'شركة النخبة العقارية',
+    posted: '2026-05-10',
+    coords: { lat: 24.7136, lng: 46.6753 },
+    description: 'شقة سكنية متكاملة الخدمات في أرقى مناطق العليا، تشطيب مودرن حديث، تكييف مركزي بالكامل، ومواقف سيارات خاصة مؤمنة على مدار الساعة.'
+  },
+  {
+    id: 'P-002',
+    title: 'فيلا مودرن في النخيل',
+    type: 'villa',
+    status: 'available',
+    price: 3200000,
+    beds: 5,
+    area: 420,
+    city: 'الرياض',
+    district: 'النخيل',
+    agent: 'شركة مطور الرياض العقاري',
+    posted: '2026-04-22',
+    coords: { lat: 24.725, lng: 46.68 },
+    description: 'فيلا مستقلة رائعة بتصميم معماري فريد يحتوي على واجهة زجاجية، مسبح دافئ خارجي، نظام المنزل الذكي بالكامل، وغرفة خادمة مستقلة.'
+  },
+  {
+    id: 'P-003',
+    title: 'أرض سكنية في حي النخبة',
+    type: 'land',
+    status: 'reserved',
+    price: 1200000,
+    beds: 0,
+    area: 600,
+    city: 'الرياض',
+    district: 'النخبة',
+    agent: 'مكتب سمسار الرياض العقاري',
+    posted: '2026-03-15',
+    coords: { lat: 24.72, lng: 46.69 },
+    description: 'أرض زاوية سكنية ممتازة على شارعين واسعين بطول ٢٠م لكل منهما، قريبة جداً من الخدمات والمدارس والمجمعات التجارية والجامعة.'
+  },
+  {
+    id: 'P-004',
+    title: 'شقة استثمارية قرب الجامعة',
+    type: 'apartment',
+    status: 'available',
+    price: 420000,
+    beds: 2,
+    area: 85,
+    city: 'الرياض',
+    district: 'الجامعة',
+    agent: 'شركة الاستثمار والتشغيل العقاري',
+    posted: '2026-05-28',
+    coords: { lat: 24.71, lng: 46.66 },
+    description: 'شقة مؤثثة بالكامل ومؤجرة حالياً بعائد استثماري سنوي ممتاز يصل لـ ٨.٥٪، قريبة جداً من محطة المترو والمدينة الجامعية.'
+  },
+  {
+    id: 'P-005',
+    title: 'فيلا فاخرة مع مسبح بالزهراء',
+    type: 'villa',
+    status: 'sold',
+    price: 4500000,
+    beds: 6,
+    area: 600,
+    city: 'الرياض',
+    district: 'الزهراء',
+    agent: 'مكتب المطور الفاخر للعقارات',
+    posted: '2026-01-10',
+    coords: { lat: 24.73, lng: 46.67 },
+    description: 'تحفة معمارية في حي الزهراء، مصاعد بانوراما داخلية، ملحق خارجي للضيافة، مجالس واسعة للرجال والنساء، ونظام حماية ومراقبة متكامل.'
+  }
+];
+
+export default function OffersView() {
+  const [properties, setProperties] = useState<PropertyOffer[]>(initialProperties);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [showMap, setShowMap] = useState(true);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+
+  // Filters State
+  const [searchVal, setSearchVal] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [minPrice, setMinPrice] = useState<number | ''>('');
+  const [maxPrice, setMaxPrice] = useState<number | ''>('');
+  const [bedsFilter, setBedsFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState<number | ''>('');
+  const [sortVal, setSortVal] = useState('relevance');
+
+  // New Listing Form State
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState<'apartment' | 'villa' | 'land'>('apartment');
+  const [newStatus, setNewStatus] = useState<'available' | 'reserved' | 'sold'>('available');
+  const [newPrice, setNewPrice] = useState<number | ''>('');
+  const [newBeds, setNewBeds] = useState<number>(0);
+  const [newArea, setNewArea] = useState<number | ''>('');
+  const [newCity, setNewCity] = useState('الرياض');
+  const [newDistrict, setNewDistrict] = useState('');
+  const [newAgent, setNewAgent] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+
+  // Global & Contextual Mortgage Prefills
+  const [mPrice, setMPrice] = useState(800000);
+  const [mDown, setMDown] = useState(20);
+  const [mTerm, setMTerm] = useState(25);
+  const [mRate, setMRate] = useState(4.5);
+  const [monthlyInstallment, setMonthlyInstallment] = useState<number | null>(null);
+
+  // Schedule Visit State
+  const [visitDate, setVisitDate] = useState(''); // YYYY-MM-DD
+  const [visitTime, setVisitTime] = useState('10:00');
+  const [visitName, setVisitName] = useState('');
+  const [visitPhone, setVisitPhone] = useState('');
+  const [visitNotes, setVisitNotes] = useState('');
+
+  // Contact Agent State
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactWhatsApp, setContactWhatsApp] = useState('');
+  const [contactNotes, setContactNotes] = useState('');
+
+  // RBAC permissions simulation
+  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
+
+  // Real-time telemetry log console
+  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([
+    {
+      id: 'evt_init',
+      type: 'offers.initialized',
+      timestamp: new Date().toISOString(),
+      actorId: 'system_core',
+      payload: { message: 'تهيئة نظام العروض العقارية ومحاكاة التمويل وقاعدة البيانات بنجاح' }
+    }
+  ]);
+
+  const addTelemetryEvent = (type: string, payload: any) => {
+    const newEvt = {
+      id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      type,
+      timestamp: new Date().toISOString(),
+      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      payload
+    };
+    setTelemetryLogs(prev => [newEvt, ...prev]);
+  };
+
+  const isAllowed = (action: string) => {
+    const roles: Record<string, string[]> = {
+      ADMIN:          ['VIEW', 'CREATE_OFFER', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT'],
+      rental_manager: ['VIEW', 'CALC_MORTGAGE', 'SCHEDULE_VISIT'],
+      accountant:     ['VIEW', 'CALC_MORTGAGE'],
+      owner:          ['VIEW']
+    };
+    return (roles[currentUserRole] || []).includes(action);
+  };
+
+  // Live filtering computation
+  const filteredProperties = properties.filter(p => {
+    const matchSearch = !searchVal || (p.title + ' ' + p.city + ' ' + p.district + ' ' + p.id).toLowerCase().includes(searchVal.toLowerCase());
+    const matchType = !typeFilter || p.type === typeFilter;
+    const matchStatus = !statusFilter || p.status === statusFilter;
+    const matchMinPrice = minPrice === '' || p.price >= minPrice;
+    const matchMaxPrice = maxPrice === '' || p.price <= maxPrice;
+    const matchBeds = !bedsFilter || p.beds >= Number(bedsFilter);
+    const matchArea = areaFilter === '' || p.area >= areaFilter;
+    return matchSearch && matchType && matchStatus && matchMinPrice && matchMaxPrice && matchBeds && matchArea;
+  });
+
+  // Sorting
+  if (sortVal === 'price_asc') {
+    filteredProperties.sort((a, b) => a.price - b.price);
+  } else if (sortVal === 'price_desc') {
+    filteredProperties.sort((a, b) => b.price - a.price);
+  } else if (sortVal === 'newest') {
+    filteredProperties.sort((a, b) => new Date(b.posted).getTime() - new Date(a.posted).getTime());
+  }
+
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => {
+      const exists = prev.includes(id);
+      let updated;
+      if (exists) {
+        updated = prev.filter(x => x !== id);
+        addTelemetryEvent('offer.favorite_removed', { propertyId: id });
+      } else {
+        updated = [...prev, id];
+        addTelemetryEvent('offer.favorite_added', { propertyId: id });
+      }
+      return updated;
+    });
+  };
+
+  const handleApplyFilters = () => {
+    addTelemetryEvent('offers.filters_applied', {
+      searchVal,
+      typeFilter,
+      statusFilter,
+      minPrice,
+      maxPrice,
+      bedsFilter,
+      areaFilter,
+      sortVal
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSearchVal('');
+    setTypeFilter('');
+    setStatusFilter('');
+    setMinPrice('');
+    setMaxPrice('');
+    setBedsFilter('');
+    setAreaFilter('');
+    setSortVal('relevance');
+    addTelemetryEvent('offers.filters_cleared', {});
+  };
+
+  const handleCreateListing = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAllowed('CREATE_OFFER')) {
+      alert('عذراً، لا تملك صلاحية إضافة عروض عقارية جديدة.');
+      return;
+    }
+
+    if (!newTitle || !newPrice || !newArea || !newDistrict || !newAgent) {
+      alert('يرجى تعبئة جميع الحقول المطلوبة لإنشاء العرض.');
+      return;
+    }
+
+    const newOfferId = `P-00${properties.length + 1}`;
+    const newOffer: PropertyOffer = {
+      id: newOfferId,
+      title: newTitle,
+      type: newType,
+      status: newStatus,
+      price: Number(newPrice),
+      beds: Number(newBeds),
+      area: Number(newArea),
+      city: newCity,
+      district: newDistrict,
+      agent: newAgent,
+      posted: new Date().toISOString().split('T')[0],
+      coords: { lat: 24.71 + Math.random() * 0.05, lng: 46.65 + Math.random() * 0.05 },
+      description: newDesc || 'تم إنشاء وصف افتراضي مناسب لهذا العرض السكني.'
+    };
+
+    setProperties(prev => [newOffer, ...prev]);
+    addTelemetryEvent('offer.created', newOffer);
+
+    // Reset fields
+    setNewTitle('');
+    setNewType('apartment');
+    setNewStatus('available');
+    setNewPrice('');
+    setNewBeds(0);
+    setNewArea('');
+    setNewDistrict('');
+    setNewAgent('');
+    setNewDesc('');
+    setActiveModal(null);
+
+    alert(`تم بنجاح تسجيل وإدراج العرض العقاري الجديد برقم: ${newOfferId}`);
+  };
+
+  // Perform mortgage calculation on form update
+  const calculateMortgageVal = (price: number, downPct: number, termYears: number, ratePercent: number) => {
+    const loanAmount = price * (1 - downPct / 100);
+    const totalMonths = termYears * 12;
+    const monthlyRate = ratePercent / 100 / 12;
+
+    let monthly = 0;
+    if (monthlyRate === 0) {
+      monthly = loanAmount / totalMonths;
+    } else {
+      monthly = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+    }
+    return Math.round(monthly);
+  };
+
+  const handleGlobalMortgageCalc = () => {
+    const monthly = calculateMortgageVal(mPrice, mDown, mTerm, mRate);
+    setMonthlyInstallment(monthly);
+    addTelemetryEvent('mortgage.calculated', {
+      propertyPrice: mPrice,
+      downPct: mDown,
+      termYears: mTerm,
+      ratePercent: mRate,
+      calculatedInstallment: monthly
+    });
+  };
+
+  const openMortgagePrefilled = (pId: string) => {
+    const p = properties.find(x => x.id === pId);
+    if (!p) return;
+    setMPrice(p.price);
+    setMDown(20);
+    setMTerm(25);
+    setMRate(4.5);
+    const monthly = calculateMortgageVal(p.price, 20, 25, 4.5);
+    setMonthlyInstallment(monthly);
+    setActiveModal('mortgage');
+    addTelemetryEvent('mortgage.modal_prefilled', { propertyId: pId, price: p.price });
+  };
+
+  const handleScheduleVisit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visitDate || !visitName || !visitPhone) {
+      alert('يرجى تحديد التاريخ والاسم ورقم الجوال لحجز الزيارة.');
+      return;
+    }
+
+    const visitPayload = {
+      propertyId: selectedPropertyId,
+      scheduledAt: visitDate,
+      time: visitTime,
+      visitorName: visitName,
+      visitorPhone: visitPhone,
+      notes: visitNotes
+    };
+
+    addTelemetryEvent('offer.visit_scheduled', visitPayload);
+    setActiveModal(null);
+    setVisitName('');
+    setVisitPhone('');
+    setVisitNotes('');
+    alert(`تم تأكيد موعد زيارة العقار بتاريخ ${visitDate.split('-').reverse().join('/')} في تمام الساعة ${visitTime}. سيقوم المستشار العقاري بالتواصل معك.`);
+  };
+
+  const handleContactAgent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName || !contactPhone) {
+      alert('يرجى إدخال اسمك ورقم الهاتف لإرسال طلب الاستفسار.');
+      return;
+    }
+
+    const contactPayload = {
+      propertyId: selectedPropertyId,
+      clientName: contactName,
+      clientPhone: contactPhone,
+      whatsApp: contactWhatsApp,
+      notes: contactNotes
+    };
+
+    addTelemetryEvent('offer.agent_contacted', contactPayload);
+    setActiveModal(null);
+    setContactName('');
+    setContactPhone('');
+    setContactWhatsApp('');
+    setContactNotes('');
+    alert('تم إرسال بيانات الاستفسار بنجاح إلى المستشار المسؤول عن هذا العرض.');
+  };
+
+  const handleCSVExport = () => {
+    const headers = 'ID,Title,City,District,Type,Price,Beds,Area,Status,Posted\n';
+    const rows = filteredProperties.map(p => 
+      `"${p.id}","${p.title}","${p.city}","${p.district}","${p.type}",${p.price},${p.beds},${p.area},"${p.status}","${p.posted}"`
+    ).join('\n');
+    
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ORCA_العروض_العقارية_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    addTelemetryEvent('offers.csv_exported', { count: filteredProperties.length });
+  };
+
+  const selectedProp = properties.find(x => x.id === selectedPropertyId);
+
+  // Helper date formatter
+  const formatDateToDDMMYYYY = (iso: string): string => {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  return (
+    <div className="orca-page orca-stack text-right" dir="rtl">
+      
+      {/* ─── الهيدر الرئيسي للمستأجر والعروض ────────────────────── */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1C2B48]/40 p-6 rounded-3xl border border-white/5 shadow-xl">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold">
+            <Sparkles size={13} className="animate-pulse" />
+            تحليلات العروض العقارية الحية · المبيعات
+          </div>
+          <h1 className="text-xl md:text-2xl font-black text-white">العروض العقارية</h1>
+          <p className="text-xs md:text-sm text-[#C4D8E5] font-medium">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-2 text-xs bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl px-3 py-2 text-[#C4D8E5] font-medium">
+            <span>الدور النشط:</span>
+            <select
+              value={currentUserRole}
+              onChange={(e) => setCurrentUserRole(e.target.value)}
+              className="bg-transparent text-white outline-none font-bold"
+            >
+              <option value="ADMIN">مدير النظام (Admin)</option>
+              <option value="rental_manager">مدير الإيجار</option>
+              <option value="accountant">المحاسب</option>
+              <option value="owner">المالك</option>
+            </select>
+          </div>
+          <button
+            onClick={() => {
+              setMPrice(800000);
+              setMDown(20);
+              setMTerm(25);
+              setMRate(4.5);
+              const monthly = calculateMortgageVal(800000, 20, 25, 4.5);
+              setMonthlyInstallment(monthly);
+              setActiveModal('mortgage');
+            }}
+            className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
+          >
+            <Calculator size={15} className="text-[#8EB1D1]" />
+            حاسبة التمويل
+          </button>
+          <button
+            onClick={() => setActiveModal('create_listing')}
+            className="flex items-center gap-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
+          >
+            <Plus size={15} />
+            أضف عرضاً
+          </button>
+        </div>
+      </div>
+
+      {/* ─── التخطيط الأساسي (Sidebar & Main Workspace) ───────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        
+        {/* الشريط الجانبي (Filters & Favorites) */}
+        <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
+          
+          {/* فلترة العروض */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
+            <h3 className="text-xs font-bold text-[#8EB1D1] border-b border-white/5 pb-2 flex justify-between items-center">
+              <span>فلترة وتصفية العروض</span>
+              <span className="text-[10px] text-[#C4D8E5] font-medium font-normal">بحث ذكي</span>
+            </h3>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">بحث</label>
+                <div className="relative flex items-center">
+                  <Search size={14} className="absolute right-3 text-[#C4D8E5] font-medium" />
+                  <input
+                    type="text"
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
+                    placeholder="مدينة، حي، رقم العرض..."
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl pr-9 pl-3 py-2 text-xs text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">النوع</label>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                  >
+                    <option value="">كل الأنواع</option>
+                    <option value="apartment">شقة</option>
+                    <option value="villa">فيلا</option>
+                    <option value="land">أرض</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">الحالة</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                  >
+                    <option value="">الكل</option>
+                    <option value="available">متاح</option>
+                    <option value="reserved">محجوز</option>
+                    <option value="sold">مباع</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">نطاق السعر (ر.س)</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="الحد الأدنى"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                  <span className="text-[#C4D8E5] font-medium">—</span>
+                  <input
+                    type="number"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="الحد الأقصى"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">غرف النوم</label>
+                  <select
+                    value={bedsFilter}
+                    onChange={(e) => setBedsFilter(e.target.value)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
+                  >
+                    <option value="">الكل</option>
+                    <option value="1">1+</option>
+                    <option value="2">2+</option>
+                    <option value="3">3+</option>
+                    <option value="4">4+</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">المساحة م²</label>
+                  <input
+                    type="number"
+                    value={areaFilter}
+                    onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="الحد الأدنى"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-white/5">
+                <button
+                  onClick={handleApplyFilters}
+                  className="flex-1 py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                >
+                  تطبيق الفلاتر
+                </button>
+                <button
+                  onClick={handleClearFilters}
+                  className="px-3 py-2 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-[#C4D8E5] font-medium hover:text-white rounded-xl transition-all"
+                >
+                  مسح
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* قائمة المفضلة */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
+            <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
+              <Heart size={14} className="text-rose-500 fill-rose-500 animate-pulse" />
+              <span>المفضلة الشخصية</span>
+            </h3>
+
+            <div className="space-y-2.5">
+              {favorites.length === 0 ? (
+                <p className="text-[11px] text-[#C4D8E5] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
+              ) : (
+                favorites.map(fid => {
+                  const p = properties.find(x => x.id === fid);
+                  if (!p) return null;
+                  return (
+                    <div
+                      key={fid}
+                      className="flex justify-between items-center p-2.5 bg-[#1C2B48]/40 rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
+                    >
+                      <div className="space-y-0.5 max-w-[150px]">
+                        <p className="font-bold text-white truncate">{p.title}</p>
+                        <p className="text-[10px] text-[#C4D8E5] font-medium">{p.city} · {p.district}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleFavorite(fid)}
+                        className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all"
+                        title="إزالة من المفضلة"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* خرائط ومناطق */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[#C4D8E5] font-medium">
+            <h4 className="font-bold text-white flex items-center gap-2">
+              <Map size={14} className="text-cyan-400" />
+              <span>نطاق التغطية</span>
+            </h4>
+            <p className="text-[11px] leading-relaxed">
+              اختر منطقة سكنية من لوحة التصفية لعرض العروض المتاحة، أو اضغط على العقار لاستعراض موقعه على الخريطة التفاعلية المقابلة.
+            </p>
+          </div>
+
+        </aside>
+
+        {/* المساحة الرئيسية (Topbar & Listings & Map Grid) */}
+        <main className="flex-1 w-full space-y-4">
+          
+          {/* شريط الإجراءات والتحكم */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[#1C2B48] border border-white/5 p-3 rounded-2xl shadow-md">
+            
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-[#C4D8E5] font-medium">عدد العروض:</span>
+              <strong className="text-white font-mono text-sm bg-[#1C2B48] px-2 py-0.5 rounded border border-white/5">
+                {filteredProperties.length}
+              </strong>
+              <span className="text-[#C4D8E5] font-medium">عرض متاح</span>
+
+              <select
+                value={sortVal}
+                onChange={(e) => {
+                  setSortVal(e.target.value);
+                  addTelemetryEvent('offers.sort_changed', { sortBy: e.target.value });
+                }}
+                className="bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-4"
+              >
+                <option value="relevance">الأكثر صلة</option>
+                <option value="price_asc">الأقل سعراً</option>
+                <option value="price_desc">الأعلى سعراً</option>
+                <option value="newest">الأحدث</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowMap(!showMap)}
+                className={`flex items-center gap-2 border px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                  showMap 
+                    ? 'bg-[#1C2B48] border-cyan-500/30 text-cyan-400' 
+                    : 'bg-[#1C2B48] border-white/10 hover:bg-[#1C2B48] text-[#C4D8E5] font-medium'
+                }`}
+              >
+                <Map size={14} />
+                {showMap ? 'إخفاء الخريطة' : 'إظهار الخريطة'}
+              </button>
+              <button
+                onClick={handleCSVExport}
+                className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-md"
+              >
+                <FileSpreadsheet size={14} className="text-emerald-500" />
+                تصدير CSV
+              </button>
+            </div>
+
+          </div>
+
+          {/* شبكة العروض واللوحة الجغرافية */}
+          <div className="flex flex-col xl:flex-row gap-6 items-start">
+            
+            {/* شبكة العقارات */}
+            <div className="flex-1 w-full">
+              {filteredProperties.length === 0 ? (
+                <div className="bg-[#1C2B48] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[#C4D8E5] font-medium space-y-2">
+                  <Megaphone size={30} className="mx-auto text-[#C4D8E5] font-medium animate-bounce" />
+                  <p className="font-bold">لا توجد عروض مطابقة للفلاتر النشطة</p>
+                  <p className="text-xs">جرب إعادة ضبط الفلاتر أو مسح خيارات البحث للوصول لنتائج أفضل.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredProperties.map(p => {
+                    const isFav = favorites.includes(p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          setSelectedPropertyId(p.id);
+                          setActiveModal('details');
+                          addTelemetryEvent('offer.clicked_detail', { propertyId: p.id });
+                        }}
+                        className="group bg-[#1C2B48] border border-white/5 rounded-2xl overflow-hidden hover:border-[#8EB1D1]/40 hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full"
+                      >
+                        
+                        {/* الجزء البصري */}
+                        <div className="h-40 bg-[#1C2B48] relative flex items-center justify-center overflow-hidden shrink-0">
+                          {/* التدرج اللوني */}
+                          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-900/60 z-10" />
+                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#8EB1D1_1px,transparent_1px)] [background-size:16px_16px]" />
+                          
+                          <span className="z-20 text-[#8EB1D1] bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase font-mono shadow-inner">
+                            {p.type === 'villa' ? 'فيلا سكنية' : p.type === 'apartment' ? 'شقة فاخرة' : 'أرض فضاء'}
+                          </span>
+
+                          <div className="absolute top-3 right-3 z-20">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase shadow-sm ${
+                              p.status === 'available' 
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                : p.status === 'reserved'
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
+                                : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                            }`}>
+                              {p.status === 'available' ? 'متاح' : p.status === 'reserved' ? 'محجوز' : 'مباع'}
+                            </span>
+                          </div>
+
+                          <div className="absolute top-3 left-3 z-20">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(p.id);
+                              }}
+                              className={`p-1.5 rounded-lg border transition-all shadow-sm ${
+                                isFav 
+                                  ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' 
+                                  : 'bg-[#1C2B48]/80 border-white/5 text-[#C4D8E5] font-medium hover:text-rose-400'
+                              }`}
+                              title={isFav ? "إزالة من المفضلة" : "حفظ في المفضلة"}
+                            >
+                              <Heart size={13} className={isFav ? "fill-rose-500" : ""} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* تفاصيل العقار */}
+                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-white group-hover:text-[#8EB1D1] transition-colors">{p.title}</h4>
+                            <p className="text-[11px] text-[#C4D8E5] font-medium flex items-center gap-1 font-semibold">
+                              <span>📍</span>
+                              <span>{p.city} · حي {p.district}</span>
+                            </p>
+                          </div>
+
+                          {/* الميتا */}
+                          <div className="grid grid-cols-3 gap-1 bg-[#1C2B48]/40 p-2 rounded-xl border border-white/5 text-center text-[10px] text-[#C4D8E5] font-medium">
+                            <div>
+                              <p className="text-[#C4D8E5] font-medium">المساحة</p>
+                              <p className="font-bold text-white font-mono">{p.area} م²</p>
+                            </div>
+                            <div>
+                              <p className="text-[#C4D8E5] font-medium">غرف النوم</p>
+                              <p className="font-bold text-white font-mono">{p.beds > 0 ? p.beds : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[#C4D8E5] font-medium">سعر المتر تقريباً</p>
+                              <p className="font-bold text-[#8EB1D1] font-mono">
+                                {Math.round(p.price / p.area).toLocaleString()} ر.س
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto shrink-0">
+                            <div>
+                              <p className="text-[9px] text-[#C4D8E5] font-medium">السعر الإجمالي المطلوب</p>
+                              <p className="font-black text-[#8EB1D1] text-sm font-mono">{p.price.toLocaleString()} ر.س</p>
+                            </div>
+
+                            {/* أزرار الإجراءات السريعة */}
+                            <div className="flex gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openMortgagePrefilled(p.id);
+                                }}
+                                className="px-2.5 py-1 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 hover:border-[#8EB1D1]/40 text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
+                                title="احسب التمويل البنكي"
+                              >
+                                تمويل
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedPropertyId(p.id);
+                                  setActiveModal('details');
+                                }}
+                                className="px-2.5 py-1 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1] border border-[#8EB1D1]/20 hover:text-white text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
+                              >
+                                تفاصيل
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* لوحة الخريطة الجغرافية */}
+            {showMap && (
+              <div className="w-full xl:w-[320px] bg-[#1C2B48] border border-white/5 rounded-2xl p-4 shadow-xl shrink-0 space-y-3 sticky top-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Map size={13} className="text-cyan-400" />
+                    <span>خريطة توزع العروض</span>
+                  </h4>
+                  <span className="text-[9px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-black">حي العليا</span>
+                </div>
+
+                {/* مجسم الخريطة */}
+                <div className="h-64 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#0f192b] opacity-40 bg-[linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:20px_20px]" />
+                  
+                  {/* نقاط معالم تجريبية */}
+                  {filteredProperties.slice(0, 3).map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="absolute z-20 group cursor-pointer"
+                      style={{
+                        top: `${35 + idx * 22}%`,
+                        right: `${40 + idx * 18}%`
+                      }}
+                      title={p.title}
+                      onClick={() => {
+                        setSelectedPropertyId(p.id);
+                        setActiveModal('details');
+                      }}
+                    >
+                      <div className="relative flex items-center justify-center">
+                        <span className="absolute inline-flex h-5 w-5 rounded-full bg-cyan-400 opacity-30 animate-ping" />
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-400 border border-white flex-shrink-0" />
+                        <span className="absolute top-4 bg-[#1C2B48] border border-white/10 text-[9px] text-white px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap font-mono">
+                          {p.id}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  <span className="z-10 text-[10px] text-[#C4D8E5] font-medium font-bold tracking-wider bg-[#1C2B48]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    محاكاة الخرائط النشطة
+                  </span>
+                </div>
+
+                <div className="bg-[#1C2B48]/60 p-2.5 rounded-xl border border-white/5 text-[10px] text-[#C4D8E5] font-medium leading-relaxed text-center font-semibold">
+                  تحمل الخريطة التوضيحية إحداثيات خطوط العرض والطول لكل عقار مع تتبع النقاط وتوجيه المستشارين.
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* ─── سجل أحداث العروض العقارية Console (Telemetry) ───────────────── */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <Bot size={14} className="text-[#8EB1D1]" />
+                <span>شاشة تتبع أحداث العروض العقارية الفورية (Event Telemetry Console)</span>
+              </h4>
+              <button
+                onClick={() => setTelemetryLogs([])}
+                className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
+              >
+                مسح السجل
+              </button>
+            </div>
+
+            <div className="h-32 bg-[#1C2B48] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[#C4D8E5] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
+              {telemetryLogs.length === 0 ? (
+                <div className="text-center text-[#C4D8E5] font-medium py-6">No telemetry events logged yet</div>
+              ) : (
+                telemetryLogs.map(log => (
+                  <div key={log.id} className="p-2 bg-[#1C2B48]/50 rounded border border-white/5 space-y-1">
+                    <div className="flex justify-between text-[#C4D8E5] font-medium border-b border-white/5 pb-1">
+                      <span className="text-[#8EB1D1] font-bold">{log.type}</span>
+                      <span>{log.timestamp}</span>
+                    </div>
+                    <pre className="text-[9px] text-[#C4D8E5] font-medium overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify({ actor: log.actorId, ...log.payload }, null, 2)}
+                    </pre>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </main>
+
+      </div>
+
+      {/* ─── Modals Root Control ───────────────────────────────────────────── */}
+      
+      {/* 1. تفاصيل العقار Modal */}
+      {activeModal === 'details' && selectedProp && (
+        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex justify-between items-start border-b border-white/5 pb-4">
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white">{selectedProp.title}</h3>
+                <p className="text-xs text-[#C4D8E5] font-medium flex items-center gap-1.5 font-bold">
+                  <span>📍</span>
+                  <span>{selectedProp.city} · حي {selectedProp.district} · {selectedProp.area} م²</span>
+                </p>
+              </div>
+              <div className="text-left space-y-1">
+                <p className="text-xs text-[#C4D8E5] font-medium">القيمة المطلوبة</p>
+                <p className="text-lg font-black text-[#8EB1D1] font-mono">{selectedProp.price.toLocaleString()} ر.س</p>
+              </div>
+            </div>
+
+            {/* مجسم الصور البصري */}
+            <div className="h-60 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
+              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#8EB1D1_1.5px,transparent_1.5px)] [background-size:24px_24px]" />
+              <div className="z-20 text-center space-y-2">
+                <Megaphone size={35} className="mx-auto text-[#C4D8E5] font-medium animate-pulse" />
+                <span className="inline-block text-xs text-[#C4D8E5] font-medium font-bold bg-[#1C2B48]/90 border border-white/5 px-3 py-1.5 rounded-full">
+                  معاينة وسائط ومخططات العقار البصرية المعتمده
+                </span>
+              </div>
+            </div>
+
+            {/* تفاصيل وهيكل */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs border-b border-white/5 pb-4">
+              <div className="space-y-3">
+                <h4 className="font-bold text-[#8EB1D1] border-b border-white/5 pb-1">مواصفات العرض العقاري</h4>
+                <ul className="space-y-2 text-[#C4D8E5] font-medium">
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">الرقم المرجعي (ID):</span>
+                    <span className="font-mono font-bold text-white">{selectedProp.id}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">نوع العقار:</span>
+                    <span className="font-bold text-white">
+                      {selectedProp.type === 'villa' ? 'فيلا مستقلة' : selectedProp.type === 'apartment' ? 'شقة' : 'أرض'}
+                    </span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">عدد غرف النوم:</span>
+                    <span className="font-mono font-bold text-white">{selectedProp.beds > 0 ? selectedProp.beds : '—'}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">المساحة الإجمالية:</span>
+                    <span className="font-mono font-bold text-white">{selectedProp.area} م²</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">الوكيل المسؤول:</span>
+                    <span className="font-bold text-white">{selectedProp.agent}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-[#C4D8E5] font-medium">تاريخ الإدراج والنشر:</span>
+                    <span className="font-mono font-bold text-white">{formatDateToDDMMYYYY(selectedProp.posted)}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-bold text-white border-b border-white/5 pb-1">إجراءات سياقية ذكية</h4>
+                <p className="text-[11px] text-[#C4D8E5] font-medium leading-relaxed mb-2">اختر أحد الإجراءات التالية لطلب التواصل أو تقديم عرض تمويل مباشر.</p>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setActiveModal('contact_agent')}
+                    className="w-full py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all shadow"
+                  >
+                    تواصل مع الوكيل
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMPrice(selectedProp.price);
+                      setMDown(20);
+                      setMTerm(25);
+                      setMRate(4.5);
+                      const monthly = calculateMortgageVal(selectedProp.price, 20, 25, 4.5);
+                      setMonthlyInstallment(monthly);
+                      setActiveModal('mortgage');
+                    }}
+                    className="w-full py-2.5 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-white text-xs font-bold rounded-xl transition-all"
+                  >
+                    تقديم طلب تمويل لهذا العرض
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVisitDate(new Date().toISOString().split('T')[0]);
+                      setActiveModal('schedule_visit');
+                    }}
+                    className="w-full py-2.5 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-cyan-400 text-xs font-bold rounded-xl transition-all"
+                  >
+                    حجز موعد زيارة العقار
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* الوصف المختصر */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-white">تفاصيل ووصف إضافي للعرض:</h4>
+              <p className="text-xs text-[#C4D8E5] font-medium leading-relaxed bg-[#1C2B48]/40 p-3.5 rounded-xl border border-white/5">
+                {selectedProp.description}
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setActiveModal(null)}
+                className="px-6 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium text-xs font-bold rounded-xl transition-all"
+              >
+                إغلاق
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 2. حاسبة التمويل السكني Modal */}
+      {activeModal === 'mortgage' && (
+        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+            
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Calculator size={16} className="text-[#8EB1D1]" />
+                <span>حاسبة التمويل السكني التفاعلية</span>
+              </h3>
+              <span className="text-[10px] bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] px-2 py-0.5 rounded font-bold font-mono">
+                PI Calc
+              </span>
+            </div>
+
+            <div className="space-y-3.5">
+              
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
+                <input
+                  type="number"
+                  value={mPrice}
+                  onChange={(e) => setMPrice(Number(e.target.value))}
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">الدفعة الأولى (%)</label>
+                  <input
+                    type="number"
+                    value={mDown}
+                    onChange={(e) => setMDown(Number(e.target.value))}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">مبلغ التمويل المتبقي</label>
+                  <div className="bg-[#1C2B48] border border-white/5 rounded-xl p-2.5 font-bold font-mono text-[#C4D8E5] font-medium leading-snug">
+                    {(mPrice * (1 - mDown / 100)).toLocaleString()} ر.س
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">مدة القرض (سنوات)</label>
+                  <input
+                    type="number"
+                    value={mTerm}
+                    onChange={(e) => setMTerm(Number(e.target.value))}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={mRate}
+                    onChange={(e) => setMRate(Number(e.target.value))}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleGlobalMortgageCalc}
+                className="w-full py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+              >
+                تحديث وحساب القسط الشهري
+              </button>
+
+              {monthlyInstallment !== null && (
+                <div className="bg-[#1C2B48] p-4 rounded-xl border border-white/5 text-center space-y-1 bg-gradient-to-b from-slate-950 to-slate-900 shadow-inner">
+                  <p className="text-[10px] text-[#C4D8E5] font-medium font-bold">القسط الشهري التقريبي (أصل وقروض)</p>
+                  <p className="text-lg font-black text-cyan-400 font-mono">
+                    {monthlyInstallment.toLocaleString()} ر.س / شهرياً
+                  </p>
+                  <p className="text-[9px] text-[#C4D8E5] font-medium leading-tight">هذه الحسبة تقديرية وتعتمد على الملف الائتماني والجهات التمويلية الشريكة.</p>
+                </div>
+              )}
+
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+              <button
+                onClick={() => {
+                  alert('تم تحويل طلب التمويل وقبول موافقة العميل الأولية (Consent) وإرساله للشركاء بنجاح.');
+                  setActiveModal(null);
+                }}
+                className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl transition-all"
+              >
+                تأكيد وإرسال للشركاء
+              </button>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إغلاق
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 3. إضافة عرض جديد Modal */}
+      {activeModal === 'create_listing' && (
+        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl text-right text-xs">
+            
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Megaphone size={16} className="text-[#8EB1D1]" />
+                <span>إدراج وتسجيل عرض عقاري جديد</span>
+              </h3>
+            </div>
+
+            <form onSubmit={handleCreateListing} className="space-y-3">
+              
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">العنوان التعريفي للعرض *</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="مثال: فيلا فاخرة مودرن حي الصحافة"
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">النوع *</label>
+                  <select
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value as any)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  >
+                    <option value="apartment">شقة سكنية</option>
+                    <option value="villa">فيلا مستقلة</option>
+                    <option value="land">أرض فضاء</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">الحالة *</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as any)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  >
+                    <option value="available">متاح</option>
+                    <option value="reserved">محجوز مؤقت</option>
+                    <option value="sold">مباع</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">القيمة (ر.س) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="مثال: 1200000"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">المساحة (م²) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newArea}
+                    onChange={(e) => setNewArea(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="مثال: 320"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">غرف النوم</label>
+                  <input
+                    type="number"
+                    value={newBeds}
+                    onChange={(e) => setNewBeds(Number(e.target.value))}
+                    placeholder="مثال: 4"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">المدينة *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">الحي *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newDistrict}
+                    onChange={(e) => setNewDistrict(e.target.value)}
+                    placeholder="مثال: الصحافة"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">الوكيل المسؤول أو المكتب *</label>
+                <input
+                  type="text"
+                  required
+                  value={newAgent}
+                  onChange={(e) => setNewAgent(e.target.value)}
+                  placeholder="مثال: شركة التطوير العقاري المعتمدة"
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">الوصف والتفاصيل</label>
+                <textarea
+                  rows={2}
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="تفاصيل إضافية عن الموقع والمميزات..."
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] text-xs resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  إدراج العرض ونشره
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* 4. حجز موعد زيارة Modal */}
+      {activeModal === 'schedule_visit' && (
+        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+            
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Calendar size={16} className="text-[#8EB1D1]" />
+                <span>حجز موعد زيارة عقار ميدانية</span>
+              </h3>
+            </div>
+
+            <form onSubmit={handleScheduleVisit} className="space-y-3.5">
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">التاريخ المطلوب *</label>
+                  <DateField
+                    value={visitDate}
+                    onChange={(val) => setVisitDate(val)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">الوقت المفضل *</label>
+                  <select
+                    value={visitTime}
+                    onChange={(e) => setVisitTime(e.target.value)}
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-center"
+                  >
+                    <option value="09:00">09:00 صباحاً</option>
+                    <option value="10:00">10:00 صباحاً</option>
+                    <option value="11:00">11:00 صباحاً</option>
+                    <option value="16:00">04:00 مساءً</option>
+                    <option value="17:00">05:00 مساءً</option>
+                    <option value="18:00">06:00 مساءً</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">اسم العميل بالكامل *</label>
+                <input
+                  type="text"
+                  required
+                  value={visitName}
+                  onChange={(e) => setVisitName(e.target.value)}
+                  placeholder="مثال: فهد الحربي"
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">رقم الجوال للتواصل *</label>
+                <input
+                  type="text"
+                  required
+                  value={visitPhone}
+                  onChange={(e) => setVisitPhone(e.target.value)}
+                  placeholder="مثال: 050XXXXXXX"
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">ملاحظات أو استفسارات خاصة</label>
+                <textarea
+                  rows={2}
+                  value={visitNotes}
+                  onChange={(e) => setVisitNotes(e.target.value)}
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  حجز الموعد وتأكيد الطلب
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('details')}
+                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                >
+                  العودة
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* 5. تواصل مع الوكيل Modal */}
+      {activeModal === 'contact_agent' && (
+        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+            
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <MessageSquare size={16} className="text-[#8EB1D1]" />
+                <span>إرسال استفسار مباشر للوكيل العقاري</span>
+              </h3>
+            </div>
+
+            <form onSubmit={handleContactAgent} className="space-y-3.5">
+              
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">اسم العميل *</label>
+                <input
+                  type="text"
+                  required
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="مثال: خالد المطيري"
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">رقم الجوال للتواصل *</label>
+                  <input
+                    type="text"
+                    required
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="050XXXXXXX"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#C4D8E5] font-medium font-bold">رقم الواتساب</label>
+                  <input
+                    type="text"
+                    value={contactWhatsApp}
+                    onChange={(e) => setContactWhatsApp(e.target.value)}
+                    placeholder="050XXXXXXX"
+                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#C4D8E5] font-medium font-bold">نص الاستفسار</label>
+                <textarea
+                  rows={2}
+                  value={contactNotes}
+                  onChange={(e) => setContactNotes(e.target.value)}
+                  placeholder="أنا مهتم بهذا العقار وأرغب في الحصول على تفاصيل إضافية..."
+                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  إرسال الطلب الآن
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('details')}
+                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                >
+                  العودة
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

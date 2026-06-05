@@ -47,7 +47,7 @@ export function OnboardingForm() {
       )}
 
       <div>
-        <label className="block text-xs font-bold text-slate-600 mb-1">الاسم الرسمي والكامل للمنشأة العقارية *</label>
+        <label className="block text-xs font-bold text-[#C4D8E5] font-medium mb-1">الاسم الرسمي والكامل للمنشأة العقارية *</label>
         <input 
           type="text" 
           name="companyName" 
@@ -59,7 +59,7 @@ export function OnboardingForm() {
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs font-bold text-slate-600 mb-1">المدينة (المقر الرئيسي) *</label>
+          <label className="block text-xs font-bold text-[#C4D8E5] font-medium mb-1">المدينة (المقر الرئيسي) *</label>
           <select name="city" className="w-full border rounded-lg p-2 text-xs">
             <option>الرياض</option>
             <option>جدة</option>
@@ -69,7 +69,7 @@ export function OnboardingForm() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-600 mb-1">هاتف التواصل الإداري *</label>
+          <label className="block text-xs font-bold text-[#C4D8E5] font-medium mb-1">هاتف التواصل الإداري *</label>
           <input 
             type="tel" 
             name="phone" 
@@ -81,7 +81,7 @@ export function OnboardingForm() {
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-slate-600 mb-1">رقم السجل التجاري أو وثيقة العمل الحر المعنية *</label>
+        <label className="block text-xs font-bold text-[#C4D8E5] font-medium mb-1">رقم السجل التجاري أو وثيقة العمل الحر المعنية *</label>
         <input 
           type="text" 
           name="documentNumber" 
@@ -94,7 +94,7 @@ export function OnboardingForm() {
       <button 
         type="submit" 
         disabled={loading}
-        className="w-full bg-slate-900 text-white hover:bg-slate-800 transition-colors p-2.5 rounded-lg text-xs font-bold cursor-pointer"
+        className="w-full bg-[#1C2B48] text-white hover:bg-[#1C2B48] transition-colors p-2.5 rounded-lg text-xs font-bold cursor-pointer"
       >
         {loading ? "جاري تفعيل وحفظ المنشأة..." : "تنشيط وتفعيل كامل لوحة التحكم"}
       </button>

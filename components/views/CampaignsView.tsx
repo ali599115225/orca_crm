@@ -58,13 +58,13 @@ export default function CampaignsView() {
       `}} />
 
       {/* الهيدر والمؤشر الإستراتيجي */}
-      <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-slate-950/60 backdrop-blur-xl campaign-neon-border' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`p-6 rounded-2xl border transition-all ${isDark ? 'bg-[#1C2B48]/60 backdrop-blur-xl campaign-neon-border' : 'bg-white border-[#A7C7E7]/20 shadow-sm'}`}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-xl font-black text-gradient-neon">
               {lang === 'AR' ? "مركز الحملات التسويقية المتكامل — Omni-Channel Marketing" : "AI Omni-Channel Campaign Matrix"}
             </h1>
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
+            <p className={`text-xs mt-1 ${isDark ? 'text-[#C4D8E5] font-medium' : 'text-[#C4D8E5] font-medium'}`}>
               {lang === 'AR' ? "مراقبة وإدارة حملات البريد الإلكتروني، إعلانات Snapchat، ومنصة X حياً، مع احتساب العائد المالي الفوري لكل قناة." : "Monitor and scale automated Email blasts, Snapchat Ads, and X Campaigns with live CPL and ROI matrix tracking."}
             </p>
           </div>
@@ -79,52 +79,52 @@ export default function CampaignsView() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* إحصائيات البريد الإلكتروني العائد الفخم */}
-        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-[#1C2B48]/30 border-[#A7C7E7]/20' : 'bg-slate-50 border-[#A7C7E7]/20'}`}>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'AR' ? "📨 النشرات والبريد الإلكتروني" : "📨 Email Blast Engine"}</span>
+            <span className="text-[10px] text-[#C4D8E5] font-medium font-bold uppercase tracking-wider">{lang === 'AR' ? "📨 النشرات والبريد الإلكتروني" : "📨 Email Blast Engine"}</span>
             <span className="bg-blue-500/10 text-blue-400 text-[9px] font-black px-2 py-0.5 rounded border border-blue-500/20">ROI 450%</span>
           </div>
           <div className="text-2xl font-black text-white font-inter">
-            {toArabicNumerals("94.2%")} <span className="text-xs font-medium text-slate-400">{lang === 'AR' ? "معدل تسليم" : "Delivery Rate"}</span>
+            {toArabicNumerals("94.2%")} <span className="text-xs font-medium text-[#C4D8E5] font-medium">{lang === 'AR' ? "معدل تسليم" : "Delivery Rate"}</span>
           </div>
-          <p className="text-[9px] text-slate-500 mt-1.5">{lang === 'AR' ? "تكلفة شبه معدومة مع أعلى استهداف للمستثمرين العقاريين." : "Near-zero overhead with pinpoint institutional real estate investor targets."}</p>
+          <p className="text-[9px] text-[#C4D8E5] font-medium mt-1.5">{lang === 'AR' ? "تكلفة شبه معدومة مع أعلى استهداف للمستثمرين العقاريين." : "Near-zero overhead with pinpoint institutional real estate investor targets."}</p>
         </div>
 
         {/* إحصائيات سناب شات العملاء المباشرين */}
-        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-[#1C2B48]/30 border-[#A7C7E7]/20' : 'bg-slate-50 border-[#A7C7E7]/20'}`}>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'AR' ? "👻 إعلانات Snapchat Ads" : "👻 Snapchat Pixel"}</span>
+            <span className="text-[10px] text-[#C4D8E5] font-medium font-bold uppercase tracking-wider">{lang === 'AR' ? "👻 إعلانات Snapchat Ads" : "👻 Snapchat Pixel"}</span>
             <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-black px-2 py-0.5 rounded border border-emerald-500/20">CPL {toArabicNumerals("16.8")} ر.س</span>
           </div>
           <div className="text-2xl font-black text-white font-inter">
-            {toArabicNumerals(890)} <span className="text-xs font-medium text-slate-400">{lang === 'AR' ? "عميل محتمل" : "Leads Generated"}</span>
+            {toArabicNumerals(890)} <span className="text-xs font-medium text-[#C4D8E5] font-medium">{lang === 'AR' ? "عميل محتمل" : "Leads Generated"}</span>
           </div>
-          <p className="text-[9px] text-slate-500 mt-1.5">{lang === 'AR' ? "القناة الأسرع لجمع بيانات المهتمين بالشراء السكني في المملكة." : "Fastest channel for capturing high-intent residential buyers in KSA."}</p>
+          <p className="text-[9px] text-[#C4D8E5] font-medium mt-1.5">{lang === 'AR' ? "القناة الأسرع لجمع بيانات المهتمين بالشراء السكني في المملكة." : "Fastest channel for capturing high-intent residential buyers in KSA."}</p>
         </div>
 
         {/* إحصائيات منصة إكس النخبة الاستثمارية */}
-        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-[#1C2B48]/30 border-[#A7C7E7]/20' : 'bg-slate-50 border-[#A7C7E7]/20'}`}>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'AR' ? "𝕏 إعلانات منصة X" : "𝕏 X Premium Ads"}</span>
+            <span className="text-[10px] text-[#C4D8E5] font-medium font-bold uppercase tracking-wider">{lang === 'AR' ? "𝕏 إعلانات منصة X" : "𝕏 X Premium Ads"}</span>
             <span className="bg-purple-500/10 text-purple-400 text-[9px] font-black px-2 py-0.5 rounded border border-purple-500/20">ROI 280%</span>
           </div>
           <div className="text-2xl font-black text-blue-500 font-inter">
-            {toArabicNumerals(310)} <span className="text-xs font-medium text-slate-400">{lang === 'AR' ? "مستثمر نخبة" : "Elite Investors"}</span>
+            {toArabicNumerals(310)} <span className="text-xs font-medium text-[#C4D8E5] font-medium">{lang === 'AR' ? "مستثمر نخبة" : "Elite Investors"}</span>
           </div>
-          <p className="text-[9px] text-slate-500 mt-1.5">{lang === 'AR' ? "مثالي لاستهداف صفقات الأراضي الاستثمارية والمكاتب التجارية." : "Ideal for capturing commercial buyers and premium scale property deals."}</p>
+          <p className="text-[9px] text-[#C4D8E5] font-medium mt-1.5">{lang === 'AR' ? "مثالي لاستهداف صفقات الأراضي الاستثمارية والمكاتب التجارية." : "Ideal for capturing commercial buyers and premium scale property deals."}</p>
         </div>
 
       </div>
 
       {/* جدول الفرز والمراقبة للأداء الإعلاني الجاري */}
-      <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-        <div className="p-4 border-b border-slate-800 bg-slate-900/20">
+      <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#1C2B48]/40 border-[#A7C7E7]/20' : 'bg-white border-[#A7C7E7]/20 shadow-sm'}`}>
+        <div className="p-4 border-b border-[#A7C7E7]/20 bg-[#1C2B48]/20">
           <h3 className="font-bold text-xs text-white">{lang === 'AR' ? "لوحة تحليل كفاءة الميزانيات والعائد الرقمي" : "Cross-Platform Performance & Spend Matrix"}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-right border-collapse">
             <thead>
-              <tr className={`border-b text-[10px] font-extrabold ${isDark ? 'bg-slate-950/80 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
+              <tr className={`border-b text-[10px] font-extrabold ${isDark ? 'bg-[#1C2B48]/80 text-[#C4D8E5] font-medium border-[#A7C7E7]/20' : 'bg-slate-50 text-[#C4D8E5] font-medium'} ${lang === 'AR' ? 'text-right' : 'text-left'}`}>
                 <th className="px-5 py-3">{lang === 'AR' ? "اسم الحملة" : "Campaign Name"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "المنصة" : "Platform"}</th>
                 <th className="px-4 py-3">{lang === 'AR' ? "العملاء المجلوبين" : "Leads"}</th>
@@ -137,13 +137,13 @@ export default function CampaignsView() {
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
               {campaigns.map((camp) => (
-                <tr key={camp.id} className={`transition-colors ${isDark ? 'hover:bg-slate-900/20 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                <tr key={camp.id} className={`transition-colors ${isDark ? 'hover:bg-[#1C2B48]/20 text-[#C4D8E5] font-medium' : 'hover:bg-slate-50 text-slate-700'}`}>
                   <td className="px-5 py-4 font-bold text-white">{camp.name}</td>
                   <td className="px-4 py-4">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
                       camp.platform === 'EMAIL' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                       camp.platform === 'SNAPCHAT' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                      'bg-slate-800 text-slate-300 border border-slate-700'
+                      'bg-[#1C2B48] text-[#C4D8E5] font-medium border border-slate-700'
                     }`}>
                       {camp.platform}
                     </span>

@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/app/context/AppContext';
+import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 
 // البنوك السعودية ونسب الأرباح الرسمية وعروضها الحصرية لعام 2026
 const BANK_DATA: Record<string, { name: string; apr: number; promo: string; promoEn: string }> = {
@@ -204,20 +205,13 @@ export default function CalculatorView() {
 
   // دالة تحويل الأرقام إلى الأرقام العربية الشرقية حسب اللغة النشطة
   const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (num === undefined || num === null) return "";
-    let str = num.toString();
-    if (!isArabic) return str;
-    const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str
-      .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
-      .replace(/%/g, "٪");
+    if (!isArabic) return num?.toString() ?? "";
+    return toArabicNumeralsImport(num);
   };
 
   // تنسيق العملة ديناميكياً حسب اللغة النشطة
   const formatCurrency = (val: number): string => {
-    const formatted = Math.round(val).toLocaleString('en-US');
-    if (!isArabic) return formatted + " SAR";
-    return toArabicNumerals(formatted) + " ر.س";
+    return formatCurrencyImport(val, isArabic ? 'AR' : 'EN');
   };
 
   // حساب العمر
@@ -279,13 +273,13 @@ export default function CalculatorView() {
       
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-semibold mb-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold mb-3">
           <i className="ph-bold ph-calculator"></i> {t.tag}
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+        <h1 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold mb-2">
           {t.title}
         </h1>
-        <p className="text-xs md:text-sm text-slate-550 dark:text-slate-400">
+        <p className="text-xs md:text-sm text-[#C4D8E5] font-medium">
           {t.desc}
         </p>
       </div>
@@ -293,48 +287,48 @@ export default function CalculatorView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         
         {/* Left Side: Inputs Panel */}
-        <div className="lg:col-span-7 bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-6">
-          <h3 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="lg:col-span-7 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm space-y-6">
+          <h3 className="text-[#E8ECEF] font-bold text-base border-b border-[#A7C7E7]/20 pb-3">
             {t.inputsTitle}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.priceLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.priceLabel}</label>
               <input 
                 type="number" 
                 value={propertyPrice} 
                 onChange={(e) => setPropertyPrice(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               />
             </div>
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.downpaymentLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.downpaymentLabel}</label>
               <input 
                 type="number" 
                 value={downPayment} 
                 onChange={(e) => setDownPayment(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.salaryLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.salaryLabel}</label>
               <input 
                 type="number" 
                 value={salary} 
                 onChange={(e) => setSalary(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               />
             </div>
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.employerLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.employerLabel}</label>
               <select 
                 value={employer} 
                 onChange={(e) => setEmployer(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               >
                 {Object.entries(EMPLOYER_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{isArabic ? v.label : v.labelEn}</option>
@@ -345,20 +339,20 @@ export default function CalculatorView() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.commitmentsLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.commitmentsLabel}</label>
               <input 
                 type="number" 
                 value={existingCommitments} 
                 onChange={(e) => setExistingCommitments(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               />
             </div>
             <div>
-              <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2">{t.tenureLabel}</label>
+              <label className="block text-[#C4D8E5] font-medium text-xs mb-2">{t.tenureLabel}</label>
               <select 
                 value={years} 
                 onChange={(e) => setYears(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#df7b62]"
+                className="w-full rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-4 py-3 text-sm text-[#E8ECEF] font-bold focus:outline-none focus:border-[#8EB1D1]"
               >
                 <option value={10}>{t.tenYears}</option>
                 <option value={15}>{t.fifteenYears}</option>
@@ -370,12 +364,12 @@ export default function CalculatorView() {
 
           {/* Birthday inputs */}
           <div>
-            <label className="block text-slate-500 dark:text-slate-400 text-xs font-semibold mb-3">{t.birthdayLabel}</label>
+            <label className="block text-[#C4D8E5] font-medium text-xs mb-3">{t.birthdayLabel}</label>
             <div className="grid grid-cols-3 gap-3">
               <select 
                 value={birthDay} 
                 onChange={(e) => setBirthDay(Number(e.target.value))}
-                className="rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none"
+                className="rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-3 py-2.5 text-xs text-[#E8ECEF] font-bold focus:outline-none"
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                   <option key={d} value={d}>{toArabicNumerals(d)}</option>
@@ -384,7 +378,7 @@ export default function CalculatorView() {
               <select 
                 value={birthMonth} 
                 onChange={(e) => setBirthMonth(Number(e.target.value))}
-                className="rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none"
+                className="rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-3 py-2.5 text-xs text-[#E8ECEF] font-bold focus:outline-none"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                   <option key={m} value={m}>{toArabicNumerals(m)}</option>
@@ -393,7 +387,7 @@ export default function CalculatorView() {
               <select 
                 value={birthYear} 
                 onChange={(e) => setBirthYear(Number(e.target.value))}
-                className="rounded-xl bg-slate-50 dark:bg-[#0b1120] border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none"
+                className="rounded-xl bg-[#1C2B48] border border-[#A7C7E7]/20 px-3 py-2.5 text-xs text-[#E8ECEF] font-bold focus:outline-none"
               >
                 {Array.from({ length: 50 }, (_, i) => 2006 - i).map(y => (
                   <option key={y} value={y}>{toArabicNumerals(y)}</option>
@@ -403,31 +397,31 @@ export default function CalculatorView() {
           </div>
 
           {/* Dynamic Checklist Switches */}
-          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-350 select-none">
+          <div className="space-y-3 pt-3 border-t border-[#A7C7E7]/20">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[#C4D8E5] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={salaryTransfer}
                 onChange={(e) => setSalaryTransfer(e.target.checked)}
-                className="w-4 h-4 rounded text-[#df7b62] focus:ring-[#df7b62] border-slate-300 bg-transparent"
+                className="w-4 h-4 rounded text-[#8EB1D1] focus:ring-[#8EB1D1] border-[#A7C7E7]/20 bg-transparent"
               />
               <span>{t.salaryTransferLabel}</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-350 select-none">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[#C4D8E5] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={developerOffer}
                 onChange={(e) => setDeveloperOffer(e.target.checked)}
-                className="w-4 h-4 rounded text-[#df7b62] focus:ring-[#df7b62] border-slate-300 bg-transparent"
+                className="w-4 h-4 rounded text-[#8EB1D1] focus:ring-[#8EB1D1] border-[#A7C7E7]/20 bg-transparent"
               />
               <span>{t.developerOfferLabel}</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-350 select-none">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[#C4D8E5] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={hasSakani}
                 onChange={(e) => setHasSakani(e.target.checked)}
-                className="w-4 h-4 rounded text-[#df7b62] focus:ring-[#df7b62] border-slate-300 bg-transparent"
+                className="w-4 h-4 rounded text-[#8EB1D1] focus:ring-[#8EB1D1] border-[#A7C7E7]/20 bg-transparent"
               />
               <span>{t.sakaniLabel}</span>
             </label>
@@ -438,47 +432,47 @@ export default function CalculatorView() {
         <div className="lg:col-span-5 space-y-6">
           
           {/* Card 1: Main installment results */}
-          <div className="bg-[#151f32] border border-slate-800 rounded-2xl p-6 shadow-sm text-white relative overflow-hidden flex flex-col gap-5">
-            <div className="absolute top-0 right-0 w-36 h-36 bg-[#df7b62]/10 rounded-full blur-[50px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+          <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm text-white relative overflow-hidden flex flex-col gap-5">
+            <div className="absolute top-0 right-0 w-36 h-36 bg-[#8EB1D1]/10 rounded-full blur-[50px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
             
             <div className="relative z-10 flex justify-between items-start">
               <div>
-                <p className="text-slate-400 text-xs font-semibold mb-1">{t.installmentBeforeSupport}</p>
-                <h4 className="text-lg font-bold text-slate-300 line-through opacity-70 font-en">
+                <p className="text-[#C4D8E5] font-medium text-xs mb-1">{t.installmentBeforeSupport}</p>
+                <h4 className="text-lg font-bold text-[#C4D8E5] font-medium line-through opacity-70 font-en">
                   {formatCurrency(monthlyInstallmentRaw)}
                 </h4>
               </div>
               <div className="text-right">
-                <p className="text-slate-400 text-[10px] font-semibold">{t.effectiveApr}</p>
-                <span className="bg-[#df7b62]/10 border border-[#df7b62]/20 text-[#df7b62] text-xs font-bold px-2 py-0.5 rounded-md font-en">
+                <p className="text-[#C4D8E5] font-medium text-[10px]">{t.effectiveApr}</p>
+                <span className="bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-bold px-2 py-0.5 rounded-md font-en">
                   {toArabicNumerals(finalApr.toFixed(2))}%
                 </span>
               </div>
             </div>
 
             <div className="relative z-10">
-              <p className="text-slate-300 text-xs font-bold mb-1">{t.netInstallmentTitle}</p>
-              <h2 className="text-3xl font-black text-[#df7b62] font-en">
+              <p className="text-[#C4D8E5] font-medium text-xs mb-1">{t.netInstallmentTitle}</p>
+              <h2 className="text-3xl font-black text-[#8EB1D1] font-en">
                 {formatCurrency(netMonthlyInstallment)}
-                <span className="text-xs text-slate-400 font-semibold block mt-1 font-sans">{t.netInstallmentSub}</span>
+                <span className="text-xs text-[#C4D8E5] font-medium block mt-1 font-sans">{t.netInstallmentSub}</span>
               </h2>
             </div>
 
-            <div className="relative z-10 border-t border-slate-800/80 pt-4 space-y-2 text-xs">
-              <div className="flex justify-between items-center text-slate-350">
+            <div className="relative z-10 border-t border-[#A7C7E7]/20 pt-4 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-[#C4D8E5] font-medium">
                 <span>{t.ageTitle}:</span>
                 <span className="font-bold text-white font-en">
                   {toArabicNumerals(ageDetails.years)} {t.ageYears}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-slate-350">
+              <div className="flex justify-between items-center text-[#C4D8E5] font-medium">
                 <span>{isArabic ? "الدعم السكني المقدر:" : "Est. Sakani Support:"}:</span>
-                <span className={`font-bold font-en ${hasSakani ? 'text-emerald-400' : 'text-slate-500'}`}>
+                <span className={`font-bold font-en ${hasSakani ? 'text-[#8EB1D1]' : 'text-[#C4D8E5] font-medium'}`}>
                   {hasSakani ? `${t.sakaniSupportActive} ${formatCurrency(monthlySakaniSupport)}` : t.sakaniSupportInactive}
                 </span>
               </div>
               {developerOffer && (
-                <div className="flex items-center gap-1.5 text-[#df7b62] font-semibold">
+                <div className="flex items-center gap-1.5 text-[#8EB1D1] font-semibold">
                   <i className="ph-fill ph-sparkle text-sm"></i>
                   <span>{t.developerDiscountActive}</span>
                 </div>
@@ -487,39 +481,39 @@ export default function CalculatorView() {
           </div>
 
           {/* Card 2: SAMA DSR limits compliance audit box */}
-          <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
-            <h4 className="text-slate-900 dark:text-white font-bold text-base border-b border-slate-100 dark:border-slate-800/80 pb-3 flex items-center gap-2">
-              <i className="ph-bold ph-shield-check text-[#df7b62]"></i>
+          <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm space-y-4">
+            <h4 className="text-[#E8ECEF] font-bold text-base border-b border-[#A7C7E7]/20 pb-3 flex items-center gap-2">
+              <i className="ph-bold ph-shield-check text-[#8EB1D1]"></i>
               {t.samaComplianceTitle}
             </h4>
 
-            <div className="space-y-2.5 text-xs text-slate-655 dark:text-slate-400">
+            <div className="space-y-2.5 text-xs text-[#C4D8E5] font-medium">
               <div className="flex justify-between">
                 <span>{t.propertyPriceCol}</span>
-                <span className="font-bold text-slate-900 dark:text-white font-en">{formatCurrency(propertyPrice)}</span>
+                <span className="font-bold text-[#E8ECEF] font-bold font-en">{formatCurrency(propertyPrice)}</span>
               </div>
               <div className="flex justify-between">
                 <span>{t.downpaymentCol}</span>
-                <span className="font-bold text-slate-900 dark:text-white font-en">{formatCurrency(downPayment)}</span>
+                <span className="font-bold text-[#E8ECEF] font-bold font-en">{formatCurrency(downPayment)}</span>
               </div>
               <div className="flex justify-between">
                 <span>{t.commitmentsCol}</span>
-                <span className="font-bold text-slate-900 dark:text-white font-en">{formatCurrency(existingCommitments)}</span>
+                <span className="font-bold text-[#E8ECEF] font-bold font-en">{formatCurrency(existingCommitments)}</span>
               </div>
-              <div className="flex justify-between border-t border-slate-100 dark:border-slate-800/50 pt-2.5">
+              <div className="flex justify-between border-t border-[#A7C7E7]/20 pt-2.5">
                 <span>{t.totalCostCol}</span>
-                <span className="font-bold text-slate-900 dark:text-white font-en">{formatCurrency(totalPropertyCost)}</span>
+                <span className="font-bold text-[#E8ECEF] font-bold font-en">{formatCurrency(totalPropertyCost)}</span>
               </div>
 
               {/* DSR Indicator progress bar */}
-              <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+              <div className="space-y-2 pt-3 border-t border-[#A7C7E7]/20">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold">{t.dsrLabel}</span>
                   <span className={`font-bold font-en text-sm ${isCompliant ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {toArabicNumerals(actualDsrPercentage.toFixed(1))}% / {toArabicNumerals(maxDsrLimit)}% ({t.samaCeiling})
                   </span>
                 </div>
-                <div className="h-2 w-full bg-slate-100 dark:bg-[#0b1120] rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-full overflow-hidden">
                   <div 
                     className={`h-full rounded-full transition-all duration-500 ${
                       actualDsrPercentage > maxDsrLimit 
@@ -537,8 +531,8 @@ export default function CalculatorView() {
             {/* Compliance message badge */}
             <div className={`p-3 rounded-xl border text-xs font-semibold leading-relaxed flex items-start gap-2 ${
               isCompliant 
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
-                : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
             }`}>
               <i className={`ph-bold ${isCompliant ? 'ph-check-circle' : 'ph-warning-octagon'} text-base shrink-0`}></i>
               <span>{isCompliant ? t.compliantMsg : t.nonCompliantMsg}</span>
@@ -549,16 +543,16 @@ export default function CalculatorView() {
       </div>
 
       {/* Comparison Matrix Table */}
-      <div className="bg-white dark:bg-[#151f32] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20">
-          <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.matrixTitle}</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.matrixSub}</p>
+      <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-[#A7C7E7]/20 bg-[#1C2B48]/30">
+          <h3 className="text-[#E8ECEF] font-bold text-base">{t.matrixTitle}</h3>
+          <p className="text-xs text-[#C4D8E5] font-medium mt-1">{t.matrixSub}</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0b1120]/30">
+              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium bg-[#1C2B48]/30">
                 <th className="p-4 font-semibold">{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
                 <th className="p-4 font-semibold">{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
                 <th className="p-4 font-semibold">{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
@@ -566,7 +560,7 @@ export default function CalculatorView() {
                 <th className="p-4 font-semibold">{isArabic ? 'الإجراء' : 'Action'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-350">
+            <tbody className="divide-y divide-[#A7C7E7]/25 text-[#C4D8E5] font-medium">
               {Object.entries(BANK_DATA).map(([key, data]) => {
                 const isActive = selectedBank === key;
                 
@@ -583,24 +577,24 @@ export default function CalculatorView() {
                   <tr 
                     key={key} 
                     onClick={() => setSelectedBank(key)}
-                    className={`hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors cursor-pointer ${
-                      isActive ? 'bg-[#df7b62]/5 dark:bg-[#df7b62]/5' : ''
+                    className={`hover:bg-[#8EB1D1]/5 transition-colors cursor-pointer ${
+                      isActive ? 'bg-[#8EB1D1]/10' : ''
                     }`}
                   >
-                    <td className="p-4 font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[#df7b62]' : 'bg-transparent'}`}></div>
+                    <td className="p-4 font-bold text-[#E8ECEF] font-bold flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[#8EB1D1]' : 'bg-transparent'}`}></div>
                       {data.name}
                     </td>
                     <td className="p-4 font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
                     <td className="p-4 text-xs max-w-xs truncate" title={isArabic ? data.promo : data.promoEn}>
                       {isArabic ? data.promo : data.promoEn}
                     </td>
-                    <td className="p-4 font-en font-black text-sm text-[#df7b62]">{formatCurrency(bNetInstallment)}</td>
+                    <td className="p-4 font-en font-black text-sm text-[#8EB1D1]">{formatCurrency(bNetInstallment)}</td>
                     <td className="p-4">
                       <span className={`text-xs font-bold transition-all px-3 py-1.5 rounded-lg border ${
                         isActive 
-                          ? 'bg-[#df7b62] text-white border-transparent' 
-                          : 'bg-[#df7b62]/10 text-[#df7b62] border-[#df7b62]/20 hover:bg-[#df7b62] hover:text-white'
+                          ? 'bg-[#8EB1D1] text-[#1C2B48] border-transparent' 
+                          : 'bg-[#8EB1D1]/10 text-[#8EB1D1] border-[#8EB1D1]/20 hover:bg-[#8EB1D1] hover:text-[#1C2B48]'
                       }`}>
                         {isActive ? t.bankSelected : t.bankSelectDetails}
                       </span>

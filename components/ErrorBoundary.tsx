@@ -38,7 +38,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-[80vh] w-full flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0b0f19] transition-colors duration-300">
-          <div className="max-w-md w-full p-8 rounded-2xl border border-rose-200 dark:border-rose-950/40 bg-white dark:bg-slate-900/60 shadow-xl text-center space-y-6">
+          <div className="max-w-md w-full p-8 rounded-2xl border border-rose-200 dark:border-rose-950/40 bg-white dark:bg-[#1C2B48]/60 shadow-xl text-center space-y-6">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 flex items-center justify-center text-3xl">
               ⚠️
             </div>
@@ -47,10 +47,10 @@ export default class ErrorBoundary extends Component<Props, State> {
               <h1 className="text-lg font-black text-rose-600 dark:text-rose-400">
                 عذراً، حدث خطأ غير متوقع في النظام
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium leading-relaxed">
                 رصدت دروع الحماية خطأً في معالجة هذه الصفحة. تم عزل الخطأ بأمان للحفاظ على سرية واستقرار البيانات.
               </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-550 font-mono mt-1 select-all overflow-hidden text-ellipsis whitespace-nowrap bg-slate-50 dark:bg-slate-950/30 p-2 rounded-lg border border-slate-100 dark:border-slate-800/40">
+              <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-mono mt-1 select-all overflow-hidden text-ellipsis whitespace-nowrap bg-slate-50 dark:bg-[#1C2B48]/30 p-2 rounded-lg border border-slate-100 dark:border-[#A7C7E7]/40">
                 {this.state.error?.message || "Unknown Runtime Error"}
               </p>
             </div>
@@ -67,7 +67,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 onClick={this.handleReset}
-                className="w-full py-3 px-4 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 active:scale-[0.98] transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl text-xs font-bold text-slate-700 dark:text-[#C4D8E5] font-medium bg-slate-100 dark:bg-[#1C2B48] hover:bg-slate-200 dark:hover:bg-slate-750 active:scale-[0.98] transition-all cursor-pointer"
               >
                 العودة للوحة القيادة
               </button>

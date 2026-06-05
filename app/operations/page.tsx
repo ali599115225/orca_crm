@@ -1,4 +1,6 @@
-﻿import RentalView from '@/components/views/RentalView';
-export default function Page() {
-  return <div className="min-h-screen bg-slate-950"><RentalView /></div>;
+// app/operations/page.tsx
+import { redirect } from "next/navigation";
+
+export default function OperationsPage() {
+  redirect("/operations/dashboard");
 }

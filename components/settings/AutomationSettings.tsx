@@ -7,7 +7,7 @@ export default function AutomationSettings() {
   const [autoFollowup, setAutoFollowup] = useState(true);
 
   return (
-    <div className="bg-[#032238]/30 border border-white/5 rounded-xl p-6">
+    <div className="bg-[#1C2B48]/30 border border-white/5 rounded-xl p-6">
       <h3 className="text-white font-semibold flex items-center gap-2 mb-6">
         <Settings size={18} className="text-cyan-400"/> إعدادات أتمتة العملاء
       </h3>

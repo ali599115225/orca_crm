@@ -1,4 +1,4 @@
-﻿const ar = {
+const ar = {
   appName: "Orca CRM",
   dashboard: "لوحة التحكم",
   leads: "العملاء المحتملين",
@@ -7,8 +7,7 @@
   rentalsAccounting: "الإيجارات والمحاسبة",
   propertyOffers: "العروض العقارية",
   propertyTours: "الجولات العقارية",
-  marketingCampaigns: "الحملات التسويقية",
-  growthMarketing: "النمو والتسويق",
+  marketingCampaigns: "الإعلان والتسويق",
   salesPerformance: "أداء المبيعات",
   smartAgents: "الوكلاء الذكيون",
   tasksReminders: "المهام والتذكيرات",

@@ -108,8 +108,8 @@ export default function TopBarClient({
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-md border-b flex flex-col w-full shrink-0 shadow-lg select-none transition-colors duration-300 ${
       isDark 
-        ? 'bg-[#0b0f19]/95 border-slate-800/80 text-white' 
-        : 'bg-white/95 border-slate-200 text-slate-900'
+        ? 'bg-[#0b0f19]/95 border-[#A7C7E7]/80 text-white' 
+        : 'bg-white/95 border-[#A7C7E7]/20 text-[#E8ECEF] font-bold'
     }`}>
       <style dangerouslySetInnerHTML={{ __html: `
         .hud-tooltip {
@@ -144,7 +144,7 @@ export default function TopBarClient({
             </div>
           </div>
           <div className="text-right">
-            <p className={`text-xs font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{displayName}</p>
+            <p className={`text-xs font-black leading-tight ${isDark ? 'text-white' : 'text-[#E8ECEF] font-bold'}`}>{displayName}</p>
             <p className={`text-[9px] font-extrabold mt-0.5 tracking-wide leading-none ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{initialRole}</p>
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function TopBarClient({
             onClick={toggleLang}
             className={`h-8 px-3 rounded-lg border text-[10px] font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-indigo-400/50 hover:text-indigo-400' 
+                ? 'border-slate-700 bg-[#1C2B48]/60 text-[#C4D8E5] font-medium hover:border-indigo-400/50 hover:text-indigo-400' 
                 : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-indigo-600/50 hover:text-indigo-600'
             }`}
           >
@@ -181,7 +181,7 @@ export default function TopBarClient({
             onClick={toggleTheme}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-slate-900/60 text-indigo-400 hover:border-indigo-400/50' 
+                ? 'border-slate-700 bg-[#1C2B48]/60 text-indigo-400 hover:border-indigo-400/50' 
                 : 'border-slate-300 bg-slate-50 text-indigo-600 hover:border-indigo-600/50'
             }`}
           >

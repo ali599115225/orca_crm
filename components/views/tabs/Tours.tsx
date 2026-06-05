@@ -116,19 +116,19 @@ export default function Tours() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-5 rounded-2xl">
+    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Scheduler Panel */}
-        <div className="bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+        <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
           <h3 className="text-white font-bold text-sm mb-4">حجز وتنسيق جولة عقارية (Schedule Tour)</h3>
           <form onSubmit={handleCreateTour} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">العميل المحتمل *</label>
+              <label className="text-[#C4D8E5] font-medium">العميل المحتمل *</label>
               <select
                 value={leadId}
                 onChange={(e) => setLeadId(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               >
                 <option value="">-- اختر العميل --</option>
@@ -139,23 +139,23 @@ export default function Tours() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">تاريخ ووقت المعاينة الميدانية *</label>
+              <label className="text-[#C4D8E5] font-medium">تاريخ ووقت المعاينة الميدانية *</label>
               <input
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white font-en"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
                 required
               >
               </input>
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">موقع الجولة / المشروع *</label>
+              <label className="text-[#C4D8E5] font-medium">موقع الجولة / المشروع *</label>
               <select
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               >
                 <option value="مشروع النرجس السكني">مشروع النرجس السكني</option>
@@ -166,29 +166,29 @@ export default function Tours() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">عدد المرافقين</label>
+              <label className="text-[#C4D8E5] font-medium">عدد المرافقين</label>
               <input
                 type="number"
                 value={attendees}
                 onChange={(e) => setAttendees(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded px-2.5 py-1.5 text-white"
+                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-slate-400">ملاحظات إضافية (أية تفاصيل خاصة)</label>
+              <label className="text-[#C4D8E5] font-medium">ملاحظات إضافية (أية تفاصيل خاصة)</label>
               <textarea
                 placeholder="أدخل ملاحظات خاصة بالزيارة..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="bg-[#042A44] border border-slate-700 rounded p-2 text-white h-16 resize-none"
+                className="bg-[#1C2B48] border border-slate-700 rounded p-2 text-white h-16 resize-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={btnLoading}
-              className="w-full bg-[#df7b62] hover:bg-[#c5654e] text-white rounded font-bold px-3 py-2 transition-all text-center"
+              className="w-full bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
             >
               {btnLoading ? "جاري الحفظ..." : "حفظ الجولة وجدولة التذكيرات"}
             </button>
@@ -196,12 +196,12 @@ export default function Tours() {
         </div>
 
         {/* Tours List Panel */}
-        <div className="lg:col-span-2 bg-[#042A44]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-3">الجولات العقارية المجدولة (Scheduled Tours)</h3>
+        <div className="lg:col-span-2 bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <h3 className="text-white font-bold text-sm mb-4">الجولات العقارية المجدولة (Scheduled Tours)</h3>
           {loading ? (
-            <div className="py-12 text-center text-slate-400 text-xs">جاري تحميل الجولات...</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">جاري تحميل الجولات...</div>
           ) : tours.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs">لا توجد جولات عقارية مجدولة حالياً.</div>
+            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا توجد جولات عقارية مجدولة حالياً.</div>
           ) : (
             <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 scrollbar-fade">
               {tours.map((tour) => {
@@ -210,23 +210,23 @@ export default function Tours() {
                   timeStyle: "short",
                 });
                 return (
-                  <div key={tour.id} className="p-3 bg-[#042A44] border border-slate-800 rounded-xl hover:border-[#df7b62]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                  <div key={tour.id} className="p-4 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl hover:border-[#8EB1D1]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-2">
                         <span className="text-white font-bold">{getLeadName(tour.leadId)}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${
                           tour.status === "SCHEDULED"
                             ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
                             : tour.status === "COMPLETED"
                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-slate-500/10 text-slate-400"
+                            : "bg-slate-500/10 text-[#C4D8E5] font-medium"
                         }`}>
                           {tour.status}
                         </span>
                       </div>
-                      <p className="text-slate-450">موقع الجولة: <span className="text-slate-300 font-semibold">{tour.location}</span></p>
+                      <p className="text-slate-450">موقع الجولة: <span className="text-[#C4D8E5] font-medium font-semibold">{tour.location}</span></p>
                       <p className="text-slate-450 font-en">التاريخ: <span className="text-indigo-400 font-semibold">{dateStr}</span></p>
-                      {tour.notes && <p className="text-slate-500 italic text-[11px]">ملاحظة: {tour.notes}</p>}
+                      {tour.notes && <p className="text-[#C4D8E5] font-medium italic text-xs">ملاحظة: {tour.notes}</p>}
                     </div>
 
                     {tour.status === "SCHEDULED" && (

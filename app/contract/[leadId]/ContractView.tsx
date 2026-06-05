@@ -30,17 +30,17 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
     <div className="min-h-screen bg-slate-100 py-6 px-4 md:px-0 print:bg-white print:py-0 text-right font-sans antialiased" dir="rtl">
       
       {/* هيدر التحكم العلوي - يختفي تلقائياً أثناء الطباعة والحفظ كـ PDF */}
-      <div className="max-w-3xl mx-auto mb-4 bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between shadow-lg print:hidden">
+      <div className="max-w-3xl mx-auto mb-4 bg-[#1C2B48] text-white p-4 rounded-xl flex items-center justify-between shadow-lg print:hidden">
         <div>
           <h3 className="text-xs font-black text-amber-500">وثيقة الحجوزات العقارية المعتمدة</h3>
-          <p className="text-[10px] text-slate-300 mt-0.5">تعديل بنود العقد وطباعة وحفظ الوثيقة بصفحة واحدة قياسية (A4)</p>
+          <p className="text-[10px] text-[#C4D8E5] font-medium mt-0.5">تعديل بنود العقد وطباعة وحفظ الوثيقة بصفحة واحدة قياسية (A4)</p>
         </div>
         
         <div className="flex gap-2">
           {isAdmin && (
             <button 
               onClick={() => setIsEditing(!isEditing)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer"
+              className="bg-[#1C2B48] hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer"
             >
               {isEditing ? 'إلغاء التعديل ✕' : '📝 تعديل بنود الشروط'}
             </button>
@@ -60,14 +60,14 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
         {/* هيدر الوثيقة الرسمي */}
         <div className="flex items-center justify-between border-b border-slate-900 pb-4">
           <div className="space-y-1">
-            <h1 className="text-base font-black text-slate-800">{tenant.companyName}</h1>
-            <p className="text-[10px] text-slate-500 font-bold">إدارة المبيعات والتسويق العقاري</p>
-            <p className="text-[9px] text-slate-400 font-semibold">تاريخ الإصدار: {new Date(lead.createdAt).toLocaleDateString('ar-SA')}</p>
+            <h1 className="text-base font-black text-[#E8ECEF] font-bold">{tenant.companyName}</h1>
+            <p className="text-[10px] text-[#C4D8E5] font-medium font-bold">إدارة المبيعات والتسويق العقاري</p>
+            <p className="text-[9px] text-[#C4D8E5] font-medium font-semibold">تاريخ الإصدار: {new Date(lead.createdAt).toLocaleDateString('ar-SA')}</p>
           </div>
           
           <div className="text-left space-y-1">
             <h2 className="text-base font-black text-amber-600">وثيقة حجز عقاري مبدئي</h2>
-            <p className="text-[9px] text-slate-500 font-bold">رقم المعاملة: #RE-{lead.id.substring(0, 8).toUpperCase()}</p>
+            <p className="text-[9px] text-[#C4D8E5] font-medium font-bold">رقم المعاملة: #RE-{lead.id.substring(0, 8).toUpperCase()}</p>
             <span className="inline-block text-[8px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded font-bold border border-emerald-200">
               حجز مؤكد ومستوفى
             </span>
@@ -75,21 +75,21 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
         </div>
 
         {/* تمهيد العقد */}
-        <div className="text-[11px] leading-relaxed text-slate-600">
+        <div className="text-[11px] leading-relaxed text-[#C4D8E5] font-medium">
           بناءً على رغبة الطرف الثاني المذكور أدناه في حجز وحدة سكنية ببرنامج البيع على الخارطة والجاهز، فقد تم الاتفاق والتوثيق المبدئي بين المنشأة العقارية والعميل على شروط الحجز المدرجة في هذه الوثيقة.
         </div>
 
         {/* 1. بيانات المطور والمشتري بالتناسق */}
         <div className="grid grid-cols-2 gap-4 text-[11px]">
           <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 border border-slate-100">
-            <h3 className="font-bold text-slate-800 border-b pb-1 mb-1.5">بيانات الطرف الأول (المطور):</h3>
+            <h3 className="font-bold text-[#E8ECEF] font-bold border-b pb-1 mb-1.5">بيانات الطرف الأول (المطور):</h3>
             <p>اسم المنشأة: <span className="font-bold text-slate-700">{tenant.companyName}</span></p>
             <p>مقر الشركة الرئيسي: <span className="font-bold text-slate-700">{lead.city}</span></p>
             <p>الحالة القانونية: <span className="font-bold text-slate-700">مطور عقاري مرخص</span></p>
           </div>
 
           <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 border border-slate-100">
-            <h3 className="font-bold text-slate-800 border-b pb-1 mb-1.5">بيانات الطرف الثاني (العميل):</h3>
+            <h3 className="font-bold text-[#E8ECEF] font-bold border-b pb-1 mb-1.5">بيانات الطرف الثاني (العميل):</h3>
             <p>اسم العميل: <span className="font-bold text-slate-700">{lead.firstName} {lead.lastName || ""}</span></p>
             <p>رقم الجوال: <span className="font-bold text-slate-700" dir="ltr">{lead.phone}</span></p>
             <p>المدينة: <span className="font-bold text-slate-700">{lead.city}</span></p>
@@ -99,10 +99,10 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
         {/* 2. تفاصيل الوحدة المحجوزة والأسعار */}
         {lead.project && (
           <div className="space-y-2">
-            <h3 className="text-xs font-bold text-slate-800 border-b pb-1">بيانات الوحدة العقارية والمالية:</h3>
+            <h3 className="text-xs font-bold text-[#E8ECEF] font-bold border-b pb-1">بيانات الوحدة العقارية والمالية:</h3>
             <div className="overflow-hidden border border-gray-100 rounded-xl">
               <table className="w-full text-[11px] text-right">
-                <thead className="bg-slate-50 text-slate-600">
+                <thead className="bg-slate-50 text-[#C4D8E5] font-medium">
                   <tr>
                     <th className="px-4 py-2">المشروع العقاري</th>
                     <th className="px-4 py-2">المدينة</th>
@@ -112,9 +112,9 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   <tr>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{lead.project.name}</td>
-                    <td className="px-4 py-2.5 text-slate-600">{lead.project.city}</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">
+                    <td className="px-4 py-2.5 font-bold text-[#E8ECEF] font-bold">{lead.project.name}</td>
+                    <td className="px-4 py-2.5 text-[#C4D8E5] font-medium">{lead.project.city}</td>
+                    <td className="px-4 py-2.5 font-bold text-[#E8ECEF] font-bold">
                       {lead.project.minPrice ? `${Number(lead.project.minPrice).toLocaleString('ar-SA')} ر.س` : 'غير محدد'}
                     </td>
                     <td className="px-4 py-2.5 font-bold text-emerald-600">5,000 ر.س</td>
@@ -127,7 +127,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
 
         {/* 3. الشروط والأحكام - تدعم التعديل الحي والمستمر للمدراء وسحبها سحابياً */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-800 border-b pb-1">الشروط والأحكام العامة للحجز:</h3>
+          <h3 className="text-xs font-bold text-[#E8ECEF] font-bold border-b pb-1">الشروط والأحكام العامة للحجز:</h3>
           
           {isEditing ? (
             /* نموذج التعديل الحي لمدير المنشأة */
@@ -149,7 +149,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
             </div>
           ) : (
             /* استعراض البنود من قاعدة البيانات المحدثة */
-            <ul className="text-[10px] text-slate-500 space-y-1.5 list-decimal list-inside leading-relaxed">
+            <ul className="text-[10px] text-[#C4D8E5] font-medium space-y-1.5 list-decimal list-inside leading-relaxed">
               {terms.split('\n').map((term: string, idx: number) => (
                 <li key={idx}>{term}</li>
               ))}
@@ -160,22 +160,22 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
         {/* 4. التوقيعات المعتمدة - منسقة لتظهر في نفس الصفحة */}
         <div className="grid grid-cols-2 gap-12 pt-6 text-[11px] border-t">
           <div className="space-y-4 text-center">
-            <p className="font-bold text-slate-800">توقيع ومصادقة الطرف الأول (المطور):</p>
-            <div className="h-12 flex items-center justify-center border-b border-dashed border-slate-300 max-w-[180px] mx-auto text-slate-300 font-semibold text-[10px]">
+            <p className="font-bold text-[#E8ECEF] font-bold">توقيع ومصادقة الطرف الأول (المطور):</p>
+            <div className="h-12 flex items-center justify-center border-b border-dashed border-slate-300 max-w-[180px] mx-auto text-[#C4D8E5] font-medium font-semibold text-[10px]">
               [ ختم المنشأة الإلكتروني ]
             </div>
-            <p className="text-[9px] text-slate-500 font-semibold">{tenant.companyName}</p>
+            <p className="text-[9px] text-[#C4D8E5] font-medium font-semibold">{tenant.companyName}</p>
           </div>
 
           <div className="space-y-4 text-center">
-            <p className="font-bold text-slate-800">توقيع ومصادقة الطرف الثاني (العميل):</p>
+            <p className="font-bold text-[#E8ECEF] font-bold">توقيع ومصادقة الطرف الثاني (العميل):</p>
             <div className="h-12 border-b border-dashed border-slate-300 max-w-[180px] mx-auto" />
-            <p className="text-[9px] text-slate-500 font-semibold">{lead.firstName} {lead.lastName || ""}</p>
+            <p className="text-[9px] text-[#C4D8E5] font-medium font-semibold">{lead.firstName} {lead.lastName || ""}</p>
           </div>
         </div>
 
         {/* الفوتر الجمالي */}
-        <div className="pt-4 border-t text-center text-[8px] text-slate-400">
+        <div className="pt-4 border-t text-center text-[8px] text-[#C4D8E5] font-medium">
           هذه الوثيقة تم توليدها آلياً بشكل مشفر من نظام ORCA العقاري المعتمد وتخضع للوائح الهيئة العامة للعقار بالمملكة العربية السعودية.
         </div>
 

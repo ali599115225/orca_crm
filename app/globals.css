@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-bg: #1C2B48;
+  --color-brand-panel: rgba(36, 54, 90, 0.4);
+  --color-brand-border: rgba(196, 216, 229, 0.15);
+  --color-brand-interactive: #8EB1D1;
+  --color-brand-interactive-hover: #A7C7E7;
+  --color-brand-text-primary: #E8ECEF;
+  --color-brand-text-secondary: #C4D8E5;
+  --color-brand-primary: #E8ECEF;
+  --color-brand-secondary: #C4D8E5;
+}
+
 /* ─── Base polish (readability & rhythm) ─────────────────────────────────── */
 html {
   scroll-behavior: smooth;
@@ -8,7 +20,7 @@ html {
 }
 
 ::selection {
-  background-color: rgba(223, 123, 98, 0.28);
+  background-color: rgba(142, 177, 209, 0.28);
   color: inherit;
 }
 
@@ -35,7 +47,7 @@ html {
 .scrollbar-fade:focus-within,
 .scrollbar-fade.scrollbar-fade--visible {
   scrollbar-width: thin;
-  scrollbar-color: rgba(71, 85, 105, 0.45) transparent;
+  scrollbar-color: rgba(142, 177, 209, 0.45) transparent;
 }
 
 .scrollbar-fade:hover::-webkit-scrollbar,
@@ -54,14 +66,14 @@ html {
 .scrollbar-fade:hover::-webkit-scrollbar-thumb,
 .scrollbar-fade:focus-within::-webkit-scrollbar-thumb,
 .scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb {
-  background-color: rgba(71, 85, 105, 0.42);
+  background-color: rgba(142, 177, 209, 0.42);
   border-radius: 999px;
   transition: background-color 0.35s ease;
 }
 
 .scrollbar-fade:hover::-webkit-scrollbar-thumb:hover,
 .scrollbar-fade.scrollbar-fade--visible::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(223, 123, 98, 0.6);
+  background-color: rgba(167, 199, 231, 0.6);
 }
 
 /* ─── Masks ──────────────────────────────────────────────────────────────── */
@@ -109,8 +121,8 @@ html {
 }
 
 .orca-panel {
-  background-color: rgba(21, 31, 50, 0.4);
-  border: 1px solid rgba(30, 41, 59, 0.85);
+  background-color: var(--color-brand-panel);
+  border: 1px solid var(--color-brand-border);
   border-radius: 1rem;
   backdrop-filter: blur(12px);
   box-shadow:
@@ -122,7 +134,7 @@ html {
 }
 
 .orca-panel:hover {
-  border-color: rgba(51, 65, 85, 0.95);
+  border-color: rgba(142, 177, 209, 0.4);
 }
 
 .orca-panel-light {
@@ -135,8 +147,8 @@ html {
 
 .dark .orca-panel-light,
 :where(.dark, [data-theme="dark"]) .orca-panel-light {
-  background-color: #151f32;
-  border-color: rgba(30, 41, 59, 0.85);
+  background-color: var(--color-brand-panel);
+  border-color: var(--color-brand-border);
   box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.35);
 }
 
@@ -144,7 +156,7 @@ html {
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--color-brand-border);
   backdrop-filter: blur(16px);
   box-shadow: 0 8px 40px -12px rgba(0, 0, 0, 0.55);
 }
@@ -195,27 +207,27 @@ html {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #02121F; /* خلفية داكنة مثل السيدر */
+  background: #1C2B48; /* خلفية داكنة من السمة الجديدة */
   border-radius: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #0EA5E9 0%, #0369A1 100%);
+  background: linear-gradient(180deg, #8EB1D1 0%, #24365A 100%);
   border-radius: 8px;
-  border: 1px solid #0EA5E9;
-  box-shadow: 0 0 6px rgba(14,165,233,0.4);
+  border: 1px solid #8EB1D1;
+  box-shadow: 0 0 6px rgba(142,177,209,0.4);
   transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #22D3EE 0%, #0EA5E9 100%);
-  box-shadow: 0 0 10px rgba(34,211,238,0.6);
+  background: linear-gradient(180deg, #A7C7E7 0%, #8EB1D1 100%);
+  box-shadow: 0 0 10px rgba(167,199,231,0.6);
 }
 
 /* دعم Firefox */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #0EA5E9 #02121F;
+  scrollbar-color: #8EB1D1 #1C2B48;
   transition: all 0.3s ease-in-out;
 }
 
@@ -352,7 +364,7 @@ html {
   justify-content: space-between;
   margin: 0;
   padding: 16px;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   transition: all 0.3s ease;
 }
@@ -475,7 +487,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -498,7 +510,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -516,7 +528,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -530,7 +542,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -571,7 +583,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -594,7 +606,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -613,7 +625,7 @@ html {
 }
 /* صفحة العملاء المحتملين – نفس هوية صفحة العمليات */
 .leads-page {
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   color: #FFFFFF;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
@@ -684,7 +696,7 @@ html {
 }
 .tab-active {
   background: linear-gradient(90deg,#0EA5E9,#22D3EE);
-  color: #02121F;
+  color: #1C2B48;
   box-shadow: 0 6px 18px rgba(14,165,233,0.18);
 }
 .tab-inactive {
@@ -708,7 +720,7 @@ html {
 .ai-card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
 .ai-name { font-weight:700; color:#0EA5E9; font-size:16px; }
 .ai-summary { color:#E6EEF6; font-size:13px; margin-top:6px; }
-.ai-score { background:linear-gradient(90deg,#0EA5E9,#22D3EE); color:#02121F; padding:6px 10px; border-radius:8px; font-weight:700; }
+.ai-score { background:linear-gradient(90deg,#0EA5E9,#22D3EE); color:#1C2B48; padding:6px 10px; border-radius:8px; font-weight:700; }
 .ai-sentiment { margin-top:10px; color:#94A3B8; }
 .sentiment.positive { color:#22C55E; font-weight:700; }
 .sentiment.neutral { color:#F59E0B; font-weight:700; }
@@ -720,7 +732,7 @@ html {
 /* Activities styles */
 .activity-list { display:flex; flex-direction:column; gap:10px; }
 .activity-item { display:flex; gap:12px; background: rgba(6,48,72,0.5); padding:12px; border-radius:10px; border:1px solid rgba(14,165,233,0.08); }
-.activity-type { width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#02121F; font-weight:700; }
+.activity-type { width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#1C2B48; font-weight:700; }
 .activity-type.call { background: linear-gradient(90deg,#0EA5E9,#22D3EE); }
 .activity-type.message { background: linear-gradient(90deg,#34D399,#10B981); }
 .activity-type.meeting { background: linear-gradient(90deg,#F59E0B,#F97316); }
@@ -801,7 +813,7 @@ html {
 /* تحسينات للأزرار داخل المودال */
 .modal-card .btn-primary {
   background: linear-gradient(90deg,#0EA5E9,#22D3EE);
-  color: #02121F;
+  color: #1C2B48;
   border-radius: 8px;
   padding: 10px 14px;
   font-weight: 700;
@@ -869,7 +881,7 @@ html {
 
 /* صفحة العملاء */
 .leads-page {
-  background: linear-gradient(180deg, #031C2E 0%, #02121F 100%);
+  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
   color: #FFFFFF;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   min-height: 100vh;
@@ -895,7 +907,7 @@ html {
 }
 .tab-active {
   background: linear-gradient(90deg,#0EA5E9,#22D3EE);
-  color: #02121F;
+  color: #1C2B48;
   box-shadow: 0 6px 18px rgba(14,165,233,0.18);
 }
 .tab-inactive {
@@ -1016,7 +1028,7 @@ html {
 /* Buttons */
 .btn-primary {
   background: linear-gradient(90deg,#0EA5E9,#22D3EE);
-  color: #02121F;
+  color: #1C2B48;
   border-radius: 8px;
   padding: 8px 12px;
   font-weight:700;
