@@ -156,6 +156,33 @@ export default function RentalPage() {
     }
   ]);
 
+  // API loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Fetch leases & invoices from API on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        setFetchError(null);
+        const [leasesRes, invoicesRes] = await Promise.all([
+          fetch('/api/v1/leases/'),
+          fetch('/api/v1/invoices/'),
+        ]);
+        if (leasesRes.ok) { const json = await leasesRes.json(); if (json.success) setLeases(json.leases); }
+        if (invoicesRes.ok) { const json = await invoicesRes.json(); if (json.success) setInvoices(json.invoices); }
+        addTelemetryEvent('api.data_loaded', { leases: true, invoices: true });
+      } catch (err: any) {
+        setFetchError(err.message);
+        addTelemetryEvent('api.error', { error: err.message });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     // Generate an idempotency key initially
@@ -207,7 +234,7 @@ export default function RentalPage() {
   const expiredLeasesCount = leases.filter(l => l.status === 'expired').length;
 
   // Event handlers
-  const handleCreateLease = (e: React.FormEvent) => {
+  const handleCreateLease = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_LEASE')) {
       alert('عذراً، لا تملك صلاحية إنشاء عقد جديد.');
@@ -223,25 +250,23 @@ export default function RentalPage() {
       addTelemetryEvent('compliance.check', { tenantName: newTenant, result: 'cleared' });
     }
 
-    const leaseId = 'L-' + Math.floor(1004 + Math.random() * 900);
-    const newL: Lease = {
-      id: leaseId,
-      unit: newUnit,
-      tenant: newTenant,
-      start: newStart,
-      end: newEnd,
-      rent: Number(newRent),
-      currency: 'SAR',
-      status: 'active',
-      deposit: Number(newDeposit),
-      financialRef: null
-    };
+    try {
+      const res = await fetch('/api/v1/leases/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit: newUnit, tenant: newTenant, start: newStart, end: newEnd, rent: newRent, deposit: newDeposit }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
 
-    setLeases(prev => [...prev, newL]);
-    
+      setLeases(prev => [...prev, json.lease]);
+    } catch (err: any) {
+      alert('خطأ في إنشاء العقد: ' + err.message);
+    }
+
     const newEv: EventLog = {
       id: `ev_${Date.now()}`,
-      contractId: leaseId,
+      contractId: 'new',
       type: 'lease.created',
       timestamp: new Date().toISOString(),
       note: `تم إنشاء العقد بنجاح للوحدة ${newUnit}`
@@ -249,7 +274,6 @@ export default function RentalPage() {
     setEvents(prev => [...prev, newEv]);
 
     addTelemetryEvent('lease.created', {
-      contractId: leaseId,
       unit: newUnit,
       tenant: newTenant,
       start: newStart,
@@ -269,11 +293,10 @@ export default function RentalPage() {
     setNewRent(1000);
     setNewDeposit(0);
     setActiveModal(null);
-    setSelectedLeaseId(leaseId);
-    alert(`تم تسجيل العقد الجديد ${leaseId} بنجاح!`);
+    alert('تم تسجيل العقد الجديد بنجاح!');
   };
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_INVOICE')) {
       alert('عذراً، لا تملك صلاحية إصدار فواتير.');
@@ -286,42 +309,43 @@ export default function RentalPage() {
       return;
     }
 
-    const isContractValid = leases.some(l => l.id === targetContractId);
-    if (!isContractValid) {
-      alert('معرف العقد المحدد غير موجود.');
-      return;
-    }
-
     let finalAmount = invoiceAmount;
     if (enableZakat) {
-      // Add VAT 15%
       finalAmount = Math.round(invoiceAmount * 1.15);
       addTelemetryEvent('zakat.tax_calculated', { invoiceAmount, vat: Math.round(invoiceAmount * 0.15), total: finalAmount });
     }
 
-    const invId = 'INV-' + Math.floor(9006 + Math.random() * 900);
-    const newInv: Invoice = {
-      id: invId,
-      contractId: targetContractId,
-      due: invoiceDue,
-      amount: finalAmount,
-      status: 'unpaid'
-    };
-
-    setInvoices(prev => [...prev, newInv]);
+    let newInvoiceId = 'unknown';
+    try {
+      const res = await fetch('/api/v1/invoices/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: targetContractId, due: invoiceDue, amount: finalAmount }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        newInvoiceId = json.invoice.id;
+        setInvoices(prev => [...prev, json.invoice]);
+      } else {
+        throw new Error(json.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في إصدار الفاتورة: ' + err.message);
+      return;
+    }
 
     const newEv: EventLog = {
       id: `ev_${Date.now()}`,
       contractId: targetContractId,
       type: 'invoice.issued',
       timestamp: new Date().toISOString(),
-      note: `تم إصدار الفاتورة رقم ${invId} بمبلغ ${finalAmount.toLocaleString()} ر.س`
+      note: `تم إصدار الفاتورة بمبلغ ${finalAmount.toLocaleString()} ر.س`
     };
     setEvents(prev => [...prev, newEv]);
 
     addTelemetryEvent('invoice.issued', {
       contractId: targetContractId,
-      invoiceId: invId,
+      invoiceId: newInvoiceId,
       actorId: `usr_${currentUserRole.toLowerCase()}`,
       timestamp: new Date().toISOString(),
       status: 'unpaid',
@@ -333,7 +357,7 @@ export default function RentalPage() {
     setInvoiceContractId('');
     setPrefilledContractId('');
     setActiveModal(null);
-    alert(`تم إصدار الفاتورة ${invId} بنجاح!`);
+    alert(`تم إصدار الفاتورة بنجاح!`);
   };
 
   const handleRegisterPayment = (e: React.FormEvent) => {

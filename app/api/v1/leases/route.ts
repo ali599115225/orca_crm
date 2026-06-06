@@ -1,34 +1,133 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { decrypt } from "@/lib/session";
+import { cookies } from "next/headers";
 
-// GET /api/v1/leases - Fetch all leases under tenant context
-export async function GET(request: Request) {
-  return NextResponse.json({
-    success: true,
-    leases: [
-      { id: 'L-1001', unit: 'A-101', tenant: 'محمد العلي', start: '2026-01-01', end: '2026-12-31', rent: 12000, currency: 'SAR', status: 'active', deposit: 3000 },
-      { id: 'L-1002', unit: 'B-201', tenant: 'سارة الأحمد', start: '2025-07-01', end: '2026-06-30', rent: 45000, currency: 'SAR', status: 'expired', deposit: 5000 },
-      { id: 'L-1003', unit: 'C-301', tenant: 'شركة النخبة', start: '2026-03-01', end: '2027-02-28', rent: 25000, currency: 'SAR', status: 'active', deposit: 5000 }
-    ]
-  });
+async function authenticateRequest(request: NextRequest) {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session_token")?.value;
+  if (sessionToken) {
+    const payload = await decrypt(sessionToken);
+    if (payload && payload.tenantId) return payload;
+  }
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    const payload = await decrypt(token);
+    if (payload && payload.tenantId) return payload;
+  }
+  return null;
 }
 
-// POST /api/v1/leases - Create a new lease contract
-export async function POST(request: Request) {
+export async function GET(request: NextRequest) {
+  const session = await authenticateRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  }
+
   try {
-    const body = await request.json();
-    const { unit, tenant, start, end, rent } = body;
+    const leases = await prisma.rentalLease.findMany({
+      where: { tenantId: session.tenantId },
+      include: { _count: { select: { invoices: true } } },
+      orderBy: { createdAt: "desc" },
+    });
 
-    if (!unit || !tenant || !start || !end || !rent) {
-      return NextResponse.json({ success: false, error: 'Missing required lease fields' }, { status: 400 });
-    }
-
-    const leaseId = 'L-' + Math.floor(1000 + Math.random() * 9000);
     return NextResponse.json({
       success: true,
-      message: 'Lease contract registered successfully',
-      lease: { id: leaseId, unit, tenant, start, end, rent, currency: 'SAR', status: 'active' }
+      leases: leases.map((l) => ({
+        id: l.id,
+        unit: l.unitName,
+        tenant: l.tenantName,
+        start: l.startDate.toISOString().split("T")[0],
+        end: l.endDate.toISOString().split("T")[0],
+        rent: Number(l.rentAmount),
+        currency: l.currency,
+        status: l.status,
+        deposit: Number(l.deposit),
+        financialRef: l.financialRef,
+        invoiceCount: l._count.invoices,
+      })),
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await authenticateRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { unit, tenant, start, end, rent, deposit } = body;
+    if (!unit || !tenant || !start || !end || !rent) {
+      return NextResponse.json({ success: false, error: "الحقول unit, tenant, start, end, rent إلزامية" }, { status: 400 });
+    }
+
+    const lease = await prisma.rentalLease.create({
+      data: {
+        tenantId: session.tenantId,
+        unitName: unit,
+        tenantName: tenant,
+        startDate: new Date(start),
+        endDate: new Date(end),
+        rentAmount: parseFloat(rent),
+        deposit: deposit ? parseFloat(deposit) : 0,
+        currency: "SAR",
+        status: "active",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "تم تسجيل عقد الإيجار",
+      lease: {
+        id: lease.id,
+        unit: lease.unitName,
+        tenant: lease.tenantName,
+        start: lease.startDate.toISOString().split("T")[0],
+        end: lease.endDate.toISOString().split("T")[0],
+        rent: Number(lease.rentAmount),
+        currency: lease.currency,
+        status: lease.status,
+        deposit: Number(lease.deposit),
+      },
     }, { status: 201 });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const session = await authenticateRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, status, financialRef } = body;
+    if (!id) {
+      return NextResponse.json({ success: false, error: "معرّف العقد (id) مطلوب" }, { status: 400 });
+    }
+
+    const existing = await prisma.rentalLease.findFirst({ where: { id, tenantId: session.tenantId } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "العقد غير موجود" }, { status: 404 });
+    }
+
+    const updated = await prisma.rentalLease.update({
+      where: { id },
+      data: {
+        status: status ?? undefined,
+        financialRef: financialRef ?? undefined,
+      },
+    });
+
+    return NextResponse.json({ success: true, lease: updated });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

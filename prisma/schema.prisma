@@ -200,6 +200,7 @@ model Tenant {
   offers                Offer[]
   automationWorkflows   AutomationWorkflow[]
   telemetryEvents       TelemetryEvent[]
+  rentalLeases          RentalLease[]
 
   @@map("tenants")
 }
@@ -315,6 +316,43 @@ model Installment {
   @@index([contractId], map: "idx_installments_contract_id")
   @@index([dueDate], map: "idx_installments_due_date")
   @@map("installments")
+}
+
+model RentalLease {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unitId         String?  @map("unit_id") @db.Uuid
+  unitName       String   @map("unit_name")
+  tenantName     String   @map("tenant_name")
+  startDate      DateTime @map("start_date") @db.Date
+  endDate        DateTime @map("end_date") @db.Date
+  rentAmount     Decimal  @map("rent_amount") @db.Decimal(12, 2)
+  deposit        Decimal  @default(0) @map("deposit") @db.Decimal(12, 2)
+  currency       String   @default("SAR")
+  status         String   @default("active")
+  financialRef   String?  @map("financial_ref")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  invoices       RentalInvoice[]
+
+  @@index([tenantId], map: "idx_rental_leases_tenant_id")
+  @@map("rental_leases")
+}
+
+model RentalInvoice {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leaseId        String      @map("lease_id") @db.Uuid
+  lease          RentalLease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  dueDate        DateTime    @map("due_date") @db.Date
+  amount         Decimal     @map("amount") @db.Decimal(12, 2)
+  status         String      @default("unpaid")
+  paidAt         DateTime?   @map("paid_at") @db.Timestamptz
+  paymentMethod  String?     @map("payment_method")
+  paymentRef     String?     @map("payment_ref")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([leaseId], map: "idx_rental_invoices_lease_id")
+  @@map("rental_invoices")
 }
 
 model AgentTelemetryLog {
