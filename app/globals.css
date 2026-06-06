@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-bg: #1C2B48;
+  --color-brand-bg: #05080F;
   --color-brand-panel: rgba(36, 54, 90, 0.4);
   --color-brand-border: rgba(196, 216, 229, 0.15);
   --color-brand-interactive: #8EB1D1;
@@ -10,6 +10,19 @@
   --color-brand-text-secondary: #C4D8E5;
   --color-brand-primary: #E8ECEF;
   --color-brand-secondary: #C4D8E5;
+
+  --color-void: #030712;
+  --color-lightBg: #F1F5F9;
+  --color-cyan-glow: #00E5FF;
+  --color-corporate-blue: #2563EB;
+
+  --font-sans: "Calibri", "Cairo", "Inter", sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+body, button, input, select, textarea {
+  font-family: var(--font-sans), "Calibri", "Cairo", "Inter", sans-serif;
 }
 
 /* ─── Base polish (readability & rhythm) ─────────────────────────────────── */
@@ -207,7 +220,7 @@ html {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #1C2B48; /* خلفية داكنة من السمة الجديدة */
+  background: transparent;
   border-radius: 8px;
 }
 
@@ -227,7 +240,7 @@ html {
 /* دعم Firefox */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #8EB1D1 #1C2B48;
+  scrollbar-color: #8EB1D1 transparent;
   transition: all 0.3s ease-in-out;
 }
 
@@ -364,7 +377,7 @@ html {
   justify-content: space-between;
   margin: 0;
   padding: 16px;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   transition: all 0.3s ease;
 }
@@ -487,7 +500,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -510,7 +523,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -528,7 +541,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -542,7 +555,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -583,7 +596,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -606,7 +619,7 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
+  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(14,165,233,0.3);
   transition: all 0.3s ease;
@@ -625,9 +638,9 @@ html {
 }
 /* صفحة العملاء المحتملين – نفس هوية صفحة العمليات */
 .leads-page {
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
-  color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-sans);
   min-height: 100vh;
   padding: 20px;
 }
@@ -881,9 +894,9 @@ html {
 
 /* صفحة العملاء */
 .leads-page {
-  background: linear-gradient(180deg, #1C2B48 0%, #1C2B48 100%);
-  color: #FFFFFF;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-sans);
   min-height: 100vh;
   padding: 20px;
 }
@@ -1039,4 +1052,11 @@ html {
 @media (max-width: 1024px) {
   .grid.grid-cols-6 { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .grid.grid-cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+
+/* Dark mode adjustments for stage-column to support Cyber-Glassmorphism */
+.dark .stage-column {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }

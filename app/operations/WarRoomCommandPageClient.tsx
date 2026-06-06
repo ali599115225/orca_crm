@@ -206,24 +206,24 @@ export default function WarRoomCommandPageClient({
       {/* ⚠️ Glassmorphic Growth Warning Modal (تحذير اقتراب سعة الباقة) */}
       {showGrowthAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg p-4 animate-fade-in">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#1e1c3a] to-slate-950 border-2 border-indigo-500/30 max-w-md w-full p-6 space-y-6 shadow-[0_0_30px_rgba(99,102,241,0.25)] text-center" dir={dir}>
-            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-interactive/10 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-slate-900/90 border border-slate-200/50 dark:border-white/10 max-w-md w-full p-6 space-y-6 shadow-2xl text-center" dir={dir}>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-corporate-blue/10 dark:bg-cyan-glow/5 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-corporate-blue/10 dark:bg-cyan-glow/5 rounded-full blur-[80px] pointer-events-none"></div>
 
             <div className="flex flex-col items-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-brand-interactive/20 border border-brand-interactive/40 flex items-center justify-center text-brand-interactive text-xl animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500 text-xl animate-pulse">
                 <i className="ph-bold ph-warning text-lg"></i>
               </div>
-              <h3 className="text-white font-extrabold text-base tracking-wide">
+              <h3 className="text-slate-900 dark:text-white font-extrabold text-base tracking-wide">
                 {lang === 'AR' ? "تحذير اقتراب السعة - ٨٠٪ مستهلك!" : "Capacity Warning - 80% Consumed!"}
               </h3>
             </div>
 
-            <div className="bg-[#1C2B48]/60 border border-slate-850 p-4 rounded-xl text-xs text-[#C4D8E5] font-medium leading-relaxed font-sans text-right" dir={dir}>
-              <p className="text-center font-bold text-brand-interactive mb-2">
+            <div className="bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-4 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium leading-relaxed font-sans text-right" dir={dir}>
+              <p className="text-center font-bold text-corporate-blue dark:text-cyan-glow mb-2">
                 {lang === 'AR' ? `نظام مراقبة النمو للوكيل منصور` : `Mansour Growth Intelligence Alert`}
               </p>
-              <p className="text-center text-[11px] leading-relaxed text-[#C4D8E5] font-medium">
+              <p className="text-center text-[11px] leading-relaxed text-slate-650 dark:text-slate-350">
                 {lang === 'AR' 
                   ? `أهلاً بك، لاحظت أننا استهلكنا 80% من سعة باقتك الحالية. لضمان استمرارية أداء حملاتك دون انقطاع وتجنب قفل سعة المقاعد أو العملاء، نقترح اتخاذ إجراء فوري.`
                   : `Welcome, we observed that you have consumed 80% of your current plan limits. To ensure uninterrupted flow and avoid capacity locks, we recommend action.`}
@@ -238,7 +238,7 @@ export default function WarRoomCommandPageClient({
                   window.history.pushState(null, '', `?tab=agents&action=renew-lease`);
                   window.dispatchEvent(new CustomEvent('popstate'));
                 }}
-                className="w-full bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all shadow-md"
+                className="w-full bg-corporate-blue dark:bg-cyan-glow text-white dark:text-slate-950 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all shadow-md hover:opacity-90"
               >
                 {lang === 'AR' ? "استئجار وكيل إضافي (٤٠٠ ر.س)" : "Lease Extra Agent (400 SAR)"}
               </button>
@@ -249,14 +249,14 @@ export default function WarRoomCommandPageClient({
                   window.history.pushState(null, '', `?tab=settings`);
                   window.dispatchEvent(new CustomEvent('popstate'));
                 }}
-                className="w-full bg-gradient-to-r from-brand-interactive to-brand-interactive-hover hover:shadow-[0_0_15px_rgba(142,177,209,0.3)] text-brand-bg text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all border border-brand-interactive/30 flex items-center justify-center gap-1.5"
+                className="w-full bg-slate-200/50 dark:bg-white/5 hover:bg-slate-300/50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-350 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all border border-slate-200/50 dark:border-white/10 flex items-center justify-center gap-1.5"
               >
                 <i className="ph-bold ph-sparkle"></i>
                 <span>{lang === 'AR' ? "ترقية الباقة الشاملة ➔" : "Upgrade Entire Plan ➔"}</span>
               </button>
               <button 
                 onClick={() => setShowGrowthAlert(false)}
-                className="w-full bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium text-[10px] font-bold py-2 rounded-xl cursor-pointer transition-all border border-slate-750"
+                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-medium text-[10px] font-bold py-2 rounded-xl cursor-pointer transition-all border border-slate-200/50 dark:border-white/10"
               >
                 {lang === 'AR' ? "تجاهل التنبيه مؤقتاً" : "Dismiss Alert"}
               </button>

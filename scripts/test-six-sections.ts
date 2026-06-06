@@ -14,6 +14,7 @@ export async function runSixSectionsTestSuite(tenantId: string, userId: string):
   // Variables for cleanup
   let ticketId = "";
   let taskId = "";
+  let createdLeadId = "";
 
   try {
     // 1. Test Agents state retrieval and toggling
@@ -61,10 +62,21 @@ export async function runSixSectionsTestSuite(tenantId: string, userId: string):
 
     // 2. Test Tasks API
     console.log("Testing Tasks creation and completion...");
-    // Find a lead to associate with the task
-    const dbLead = await prisma.lead.findFirst({ where: { tenantId } });
+    // Find a lead to associate with the task or create a temporary one
+    let dbLead = await prisma.lead.findFirst({ where: { tenantId } });
     if (!dbLead) {
-      throw new Error("No lead found to associate with task tests. Ensure seed data exists.");
+      dbLead = await prisma.lead.create({
+        data: {
+          tenantId,
+          firstName: "اختبار",
+          lastName: "مؤقت للمهام",
+          phone: "+966500000000",
+          city: "الرياض",
+          source: "نظام الاختبارات",
+          status: "NEW",
+        }
+      });
+      createdLeadId = dbLead.id;
     }
 
     const taskDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
@@ -118,7 +130,8 @@ export async function runSixSectionsTestSuite(tenantId: string, userId: string):
         name: 'مخطط كروكي تجريبي.png',
         type: 'BLUEPRINT',
         linkedTo: '1',
-        linkedType: 'PROPERTY'
+        linkedType: 'PROPERTY',
+        url: '/mock-documents/blueprint.png'
       })
     });
     const docPost = await docPostRes.json().catch(() => ({ success: false }));
@@ -353,6 +366,9 @@ export async function runSixSectionsTestSuite(tenantId: string, userId: string):
       }
       if (taskId) {
         await prisma.task.delete({ where: { id: taskId } }).catch(() => {});
+      }
+      if (createdLeadId) {
+        await prisma.lead.delete({ where: { id: createdLeadId } }).catch(() => {});
       }
     } catch (e) {
       console.error("Cleanup error in test script:", e);

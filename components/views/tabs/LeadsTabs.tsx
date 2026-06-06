@@ -17,13 +17,13 @@ export default function LeadsTabs() {
   const [active, setActive] = useState("pipeline");
 
   const tabs = [
-    { id: "pipeline", labelAr: "نظرة عامة Pipeline", labelEn: "Pipeline Overview" },
-    { id: "contacts", labelAr: "دفتر العملاء Contacts", labelEn: "Contacts Directory" },
-    { id: "opportunities", labelAr: "الفرص Opportunities", labelEn: "Opportunities" },
-    { id: "tours", labelAr: "الجولات Tours", labelEn: "Property Tours" },
-    { id: "offers", labelAr: "العروض Offers", labelEn: "Offers & Proposals" },
-    { id: "tasks", labelAr: "الأنشطة Tasks", labelEn: "Tasks & Activities" },
-    { id: "insights", labelAr: "الرؤى والأتمتة Insights", labelEn: "Insights & Automation" },
+    { id: "pipeline", labelAr: "متابعة الصفقات", labelEn: "Pipeline" },
+    { id: "contacts", labelAr: "دفتر العملاء", labelEn: "Contacts" },
+    { id: "opportunities", labelAr: "الفرص", labelEn: "Opportunities" },
+    { id: "tours", labelAr: "الجولات العقارية", labelEn: "Property Tours" },
+    { id: "offers", labelAr: "العروض", labelEn: "Offers" },
+    { id: "tasks", labelAr: "المهام والأنشطة", labelEn: "Tasks" },
+    { id: "insights", labelAr: "الرؤى والأتمتة", labelEn: "Insights" },
   ];
 
   return (

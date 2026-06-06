@@ -11,7 +11,7 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#1C2B48] text-[#C4D8E5] font-medium p-8 flex items-center justify-center" dir="rtl">
+    <div className="min-h-screen bg-lightBg dark:bg-void text-slate-900 dark:text-white p-8 flex items-center justify-center" dir="rtl">
       <span>جاري الانتقال لمركز العمليات...</span>
     </div>
   );

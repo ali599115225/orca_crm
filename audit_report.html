@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تقرير الجرد الفني والبرمجي لمشروع ORCA CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@350;400;600;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #030712;
+      --bg-panel: rgba(15, 23, 42, 0.75);
+      --border-color: rgba(142, 177, 209, 0.15);
+      --glow-cyan: #00E5FF;
+      --text-primary: #E8ECEF;
+      --text-secondary: #C4D8E5;
+      --accent-blue: #8EB1D1;
+      
+      --status-db: #10B981;
+      --status-json: #6366F1;
+      --status-mock: #F59E0B;
+      --status-static: #6B7280;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: 'Cairo', 'Outfit', sans-serif;
+      line-height: 1.6;
+      padding: 2rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header Styling */
+    header {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.5rem;
+      background: linear-gradient(135deg, #0b132b 0%, #151f32 100%);
+      border: 1px solid var(--border-color);
+      padding: 2.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: -100px;
+      width: 300px;
+      height: 300px;
+      background: rgba(0, 229, 255, 0.05);
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      border-radius: 50px;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      color: var(--glow-cyan);
+      font-size: 0.75rem;
+      font-weight: 700;
+      width: fit-content;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #FFFFFF 30%, var(--accent-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-cols: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .meta-item strong {
+      color: #FFFFFF;
+      display: block;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Executive Summary Dashboard */
+    .summary-dashboard {
+      display: grid;
+      grid-template-cols: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .summary-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .summary-card h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .summary-card .number {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 850;
+      color: #FFFFFF;
+    }
+
+    .summary-card .details {
+      font-size: 0.75rem;
+      color: var(--accent-blue);
+    }
+
+    /* Table Container Styling */
+    .table-container {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    .table-header {
+      padding: 1.5rem 2rem;
+      border-b: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-header h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1.2rem 1rem;
+      color: var(--text-secondary);
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 1.2rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: top;
+      color: var(--text-secondary);
+    }
+
+    tr:hover {
+      background: rgba(142, 177, 209, 0.03);
+    }
+
+    .section-name {
+      font-weight: 700;
+      color: #FFFFFF;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    /* Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge-db {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: var(--status-db);
+    }
+
+    .badge-json {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      color: var(--status-json);
+    }
+
+    .badge-mock {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      color: var(--status-mock);
+    }
+
+    .badge-static {
+      background: rgba(107, 114, 128, 0.1);
+      border: 1px solid rgba(107, 114, 128, 0.2);
+      color: var(--status-static);
+    }
+
+    /* List styling inside cells */
+    ul {
+      list-style-type: none;
+      padding-right: 0;
+    }
+
+    li {
+      position: relative;
+      padding-right: 0.85rem;
+      margin-bottom: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    li::before {
+      content: '•';
+      position: absolute;
+      right: 0;
+      color: var(--accent-blue);
+      font-weight: bold;
+    }
+
+    .code-file {
+      font-family: 'Outfit', monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      color: #94A3B8;
+      font-size: 0.75rem;
+      word-break: break-all;
+      display: inline-block;
+      margin-bottom: 0.25rem;
+    }
+
+    .notes-box {
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .notes-highlight {
+      color: var(--status-mock);
+      font-weight: 600;
+    }
+
+    .notes-ok {
+      color: var(--status-db);
+      font-weight: 600;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      th, td {
+        padding: 0.8rem 0.6rem;
+      }
+      body {
+        padding: 1rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- Header Section -->
+  <header>
+    <div class="header-content">
+      <div class="badge-top">
+        <span>⚙️</span> جرد شامل للواقع البرمجي الحالي (بدون افتراضات)
+      </div>
+      <h1>تقرير التدقيق الفني وتحليل الكود لـ ORCA CRM</h1>
+      <p style="color: var(--text-secondary); max-width: 800px; font-size: 0.95rem;">
+        بصفتك مستشاراً أولاً لهندسة البرمجيات، يوضح هذا التقرير الحيادي الجرد التفصيلي للواقع الفعلي لكود المشروع. تم تصنيف كافة الأقسام الـ 17 بناءً على ارتباطها بقاعدة البيانات والمنطق البرمجي الخلفي الفعلي، لتبيان مواضع التشغيل الحقيقي ومواضع النماذج التفاعلية والواجهات الثابتة.
+      </p>
+      
+      <div class="meta-grid">
+        <div class="meta-item">
+          <strong>تاريخ الفحص والتقرير</strong>
+          <span style="font-family: 'Outfit';">2026-06-06</span>
+        </div>
+        <div class="meta-item">
+          <strong>النظام الأساسي</strong>
+          <span>Next.js (App Router) & Tailwind CSS</span>
+        </div>
+        <div class="meta-item">
+          <strong>محرك قاعدة البيانات</strong>
+          <span>Prisma ORM & PostgreSQL</span>
+        </div>
+        <div class="meta-item">
+          <strong>حالة البناء الفني (Build)</strong>
+          <span style="color: var(--status-db);">✓ ناجح (تم التحقق محلياً)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Executive Summary Dashboard -->
+  <section class="summary-dashboard">
+    <div class="summary-card" style="border-right: 4px solid var(--status-db);">
+      <h3>أقسام متصلة بقاعدة البيانات (DB-Backed)</h3>
+      <div class="number">8</div>
+      <div class="details">تفاعل حي كامل مع PostgreSQL</div>
+    </div>
+    <div class="summary-card" style="border-right: 4px solid var(--status-json);">
+      <h3>أقسام بنماذج تفاعلية محلية (Local JSON)</h3>
+      <div class="number">1</div>
+      <div class="details">حفظ وتعديل فوري في ملفات الخادم المحلية</div>
+    </div>
+    <div class="summary-card" style="border-right: 4px solid var(--status-mock);">
+      <h3>أقسام بمحاكاة تفاعلية (Interactive Mock)</h3>
+      <div class="number">6</div>
+      <div class="details">منطق وتفاعلات برمجية محصورة بالذاكرة</div>
+    </div>
+    <div class="summary-card" style="border-right: 4px solid var(--status-static);">
+      <h3>واجهات عرض ثابتة (Static Views)</h3>
+      <div class="number">2</div>
+      <div class="details">تصاميم جمالية بدون ربط برمجي خلفي</div>
+    </div>
+  </section>
+
+  <!-- Detailed Audit Table -->
+  <div class="table-container">
+    <div class="table-header">
+      <h2>جرد الأقسام الـ 17 البرمجية للمشروع</h2>
+    </div>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 4%;">م</th>
+            <th style="width: 14%;">اسم القسم</th>
+            <th style="width: 15%;">الحالة التقنية</th>
+            <th style="width: 25%;">الملفات البرمجية ونقاط الدخول</th>
+            <th style="width: 18%;">الربط البرمجي وقاعدة البيانات</th>
+            <th style="width: 24%;">ملاحظات تقنية وتفاصيل الواقع الحالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <!-- 1. لوحة التحكم -->
+          <tr>
+            <td>1</td>
+            <td class="section-name">لوحة التحكم (Dashboard)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/dashboard/page.tsx</span>
+              <span class="code-file">app/operations/dashboard/DashboardView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">Lead</span>, <span class="code-file">Project</span>, <span class="code-file">Task</span>, <span class="code-file">Contract</span>, <span class="code-file">User</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> يجمع مؤشرات الأداء الأساسية (KPIs) ديناميكياً من الجداول. يضم نظام تنبيهات حية وحسابات مؤتمتة لتوقعات الـ AI (أوقات الاتصال الفضلى، المستشارين الذين يحتاجون للدعم) بناءً على خوارزميات محتسبة في كود الصفحة.
+            </td>
+          </tr>
+
+          <!-- 2. العملاء المحتملين -->
+          <tr>
+            <td>2</td>
+            <td class="section-name">العملاء المحتملين (Leads)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/leads/page.tsx</span>
+              <span class="code-file">components/views/tabs/LeadsTabs.tsx</span>
+              <span class="code-file">components/views/pipeline/Pipeline.tsx</span>
+              <span class="code-file">components/views/tabs/Contacts.tsx</span>
+              <span class="code-file">components/views/tabs/Opportunities.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">Lead</span>, <span class="code-file">Contact</span>, <span class="code-file">Opportunity</span>, <span class="code-file">Tour</span>, <span class="code-file">Offer</span>, <span class="code-file">Task</span>
+              <br>APIs:<br>
+              <span class="code-file">/api/v1/leads</span>, <span class="code-file">/api/v1/contacts</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> لوحة الصفقات (Pipeline) تفاعلية بنظام السحب والإفلات وتتصل بـ API لتحديث الحالة فوراً في قاعدة البيانات. دفتر جهات الاتصال وإدارة الفرص تدعم الحفظ والاسترجاع الفعلي عبر الجداول العلائقية.
+            </td>
+          </tr>
+
+          <!-- 3. المشاريع العقارية -->
+          <tr>
+            <td>3</td>
+            <td class="section-name">المشاريع العقارية (Projects)</td>
+            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td>
+              <span class="code-file">app/operations/projects/page.tsx</span>
+              <span class="code-file">components/views/ProjectsView.tsx</span>
+            </td>
+            <td>
+              لا يوجد (بيانات وهمية)<br>
+              <span class="code-file">initialProjects</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">محاكاة محلية.</span> الواجهة تفاعلية بالكامل وتسمح للمستخدم بالبحث وتصفية المشاريع وحجز الشقق وإضافة مشروع جديد، ولكن العمليات تتم في ذاكرة المتصفح (React State) فقط ولا يتم حفظها في قاعدة بيانات Prisma.
+            </td>
+          </tr>
+
+          <!-- 4. العقارات -->
+          <tr>
+            <td>4</td>
+            <td class="section-name">العقارات (Properties)</td>
+            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td>
+              <span class="code-file">app/operations/properties/page.tsx</span>
+              <span class="code-file">components/views/PropertiesView.tsx</span>
+            </td>
+            <td>
+              لا يوجد (بيانات وهمية)<br>
+              <span class="code-file">initialProperties</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">محاكاة محلية.</span> تتيح الواجهة إدارة وتتبع حالة الوحدات السكنية (حجز، بيع، تسليم) وحساب فروقات الأسعار للمشترين محلياً بالكامل. لا توجد قراءة أو كتابة من جدول الوحدات العقارية بقاعدة البيانات.
+            </td>
+          </tr>
+
+          <!-- 5. العقود والمدفوعات -->
+          <tr>
+            <td>5</td>
+            <td class="section-name">العقود والمدفوعات (Rental)</td>
+            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td>
+              <span class="code-file">app/operations/rental/page.tsx</span>
+            </td>
+            <td>
+              لا يوجد (بيانات وهمية)<br>
+              <span class="code-file">initialLeases</span>, <span class="code-file">initialInvoices</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">محاكاة بالكامل.</span> شاشة متقدمة تحاكي دورة حياة الإيجار وعقد إيجار الموحد. تشمل تسجيل عقود، توليد فواتير آلية، محاكاة الدفع، ومطابقة كشوف الحسابات البنكية (Reconciliation) برفع ملفات وهمية، وتوليد تسويات الملاك. كل التعديلات تزول عند التحديث.
+            </td>
+          </tr>
+
+          <!-- 6. حاسبة التمويل السكني -->
+          <tr>
+            <td>6</td>
+            <td class="section-name">حاسبة التمويل السكني</td>
+            <td><span class="status-badge badge-db">✓ مفعّل برمجياً بالكامل</span></td>
+            <td>
+              <span class="code-file">app/operations/calculator/page.tsx</span>
+              <span class="code-file">components/views/CalculatorView.tsx</span>
+            </td>
+            <td>
+              منطق حسابي محلي مستقل (Client-side)
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">مفعّل بالكامل.</span> حاسبة تمويل عقاري متطورة جداً تحاكي التمويل لأكثر من 10 بنوك سعودية، وتحسب الدعم السكني (سكني)، وتفحص مدى مطابقة التمويل لتعليمات مؤسسة النقد العربي السعودي (SAMA DSR). لا تحتاج للاتصال بقاعدة البيانات لعملها.
+            </td>
+          </tr>
+
+          <!-- 7. العروض العقارية -->
+          <tr>
+            <td>7</td>
+            <td class="section-name">العروض العقارية (Offers)</td>
+            <td><span class="status-badge badge-mock">نموذج تفاعلي متصل بـ API</span></td>
+            <td>
+              <span class="code-file">app/operations/offers/page.tsx</span>
+              <span class="code-file">components/views/OffersView.tsx</span>
+            </td>
+            <td>
+              APIs:<br>
+              <span class="code-file">/api/properties</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">بيانات API وهمية.</span> يقوم المكون بجلب قائمة الوحدات المتاحة لعرضها، ولكن ملف الـ API يرجع مصفوفة بيانات ثابتة من الذاكرة ولا يستعلم من جداول قاعدة البيانات. إرسال طلبات التواصل وحجز المعاينة تتم محاكاتها محلياً فقط.
+            </td>
+          </tr>
+
+          <!-- 8. الجولات العقارية -->
+          <tr>
+            <td>8</td>
+            <td class="section-name">الجولات العقارية (Tours)</td>
+            <td><span class="status-badge badge-mock">نموذج تفاعلي متصل بـ API</span></td>
+            <td>
+              <span class="code-file">app/operations/tours/page.tsx</span>
+              <span class="code-file">components/views/ToursView.tsx</span>
+            </td>
+            <td>
+              APIs:<br>
+              <span class="code-file">/api/properties</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">بيانات API وهمية.</span> يعرض العقارات التي تحتوي على جولات افتراضية مع تضمين مشغل 360 درجة وجدولة مواعيد للزيارات الميدانية. يستعلم من API العقارات الوهمي ولا يحفظ بيانات حجز الجولات بقاعدة البيانات.
+            </td>
+          </tr>
+
+          <!-- 9. الإعلان والتسويق -->
+          <tr>
+            <td>9</td>
+            <td class="section-name">الإعلان والتسويق (Marketing)</td>
+            <td><span class="status-badge badge-static">واجهة عرض ثابتة</span></td>
+            <td>
+              <span class="code-file">app/operations/marketing/page.tsx</span>
+              <span class="code-file">components/views/MarketingView.tsx</span>
+            </td>
+            <td>
+              لا يوجد
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">تصميم ثابت فقط.</span> يعرض بطاقات تشير إلى قنوات الربط الرقمي العقارية (Noon, Bayut, Property Finder) وإحصائيات إرشادية حول الإنفاق والاستحواذ. لا توجد أي وظائف تفاعلية أو حفظ للبيانات.
+            </td>
+          </tr>
+
+          <!-- 10. الحملات -->
+          <tr>
+            <td>10</td>
+            <td class="section-name">الحملات (Campaigns)</td>
+            <td><span class="status-badge badge-static">واجهة عرض ثابتة</span></td>
+            <td>
+              <span class="code-file">app/operations/campaigns/page.tsx</span>
+              <span class="code-file">components/views/CampaignsView.tsx</span>
+            </td>
+            <td>
+              لا يوجد
+            </td>
+            <td class="notes-box">
+              <span class="notes-highlight">تصميم ثابت فقط.</span> يعرض جدولاً يوضح أداء 4 حملات تسويقية افتراضية (ميزانية، عملاء، تكلفة الاستحواذ) مع بطاقات إرشادية للمؤشرات. لا يدعم المكون الحفظ أو التعديل أو استيراد البيانات الفعلية.
+            </td>
+          </tr>
+
+          <!-- 11. أداء المبيعات -->
+          <tr>
+            <td>11</td>
+            <td class="section-name">أداء المبيعات (Sales)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/sales/page.tsx</span>
+              <span class="code-file">components/views/SalesView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">User</span>, <span class="code-file">Lead</span>
+              <br>Server Actions:<br>
+              <span class="code-file">getSalesPerformanceAction()</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> يحسب أداء المستشارين العقاريين المسجلين في النظام ديناميكياً. يقوم بفرزهم تنازلياً في لوحة تميز المبيعات (Leaderboard) بناءً على معدل التحويل (العملاء المتوقع إغلاقهم أو الحجوزات الموقعة في جداول قاعدة البيانات).
+            </td>
+          </tr>
+
+          <!-- 12. الوكلاء الذكيون -->
+          <tr>
+            <td>12</td>
+            <td class="section-name">الوكلاء الذكيون (Smart Agents)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/agents/page.tsx</span>
+              <span class="code-file">components/views/AgentManagementView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">AgentLease</span>
+              <br>Server Actions:<br>
+              <span class="code-file">getAgentLeasesAction()</span>, <span class="code-file">leaseAgentAction()</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> لوحة تحكم متطورة توضح حالة 5 وكلاء ذكاء اصطناعي (ساهر، سند، بصير، خبير، منصور). يقرأ عقود استئجار الوكلاء المؤقتة من قاعدة البيانات ويسمح بطلب وتجديد استئجار الوكيل آلياً مع محاكاة الأسعار وحفظ التعاقد.
+            </td>
+          </tr>
+
+          <!-- 13. المهام والتذكيرات -->
+          <tr>
+            <td>13</td>
+            <td class="section-name">المهام والتذكيرات (Tasks)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/tasks/page.tsx</span>
+              <span class="code-file">components/views/TasksView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">Task</span>, <span class="code-file">Lead</span>
+              <br>Server Actions:<br>
+              <span class="code-file">getTasksAction()</span>, <span class="code-file">createTaskAction()</span>, <span class="code-file">toggleTaskStatusAction()</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> شاشة حية متصلة بجداول قاعدة البيانات لإنشاء مهام المتابعة العقارية، وتعيينها للعملاء والموظفين، وتغيير حالة المتابعة (قيد الانتظار أو مكتملة) وحفظ التغييرات فعلياً.
+            </td>
+          </tr>
+
+          <!-- 14. مستودع المستندات -->
+          <tr>
+            <td>14</td>
+            <td class="section-name">مستودع المستندات (Documents)</td>
+            <td><span class="status-badge badge-json">تفاعلي وحفظ JSON محلي</span></td>
+            <td>
+              <span class="code-file">app/operations/documents/page.tsx</span>
+              <span class="code-file">components/views/DocumentsView.tsx</span>
+            </td>
+            <td>
+              تخزين محلي في الخادم:<br>
+              <span class="code-file">scratch/documents.json</span>
+              <br>APIs:<br>
+              <span class="code-file">/api/v1/documents</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">تفاعلي.</span> يسمح بتصفح المجلدات والبحث ورفع مستندات جديدة ومحاكاة معاينتها. يتم تخزين قائمة الملفات ومواصفاتها محلياً في الخادم بملف JSON. لا تستخدم الجداول العلائقية في قاعدة البيانات.
+            </td>
+          </tr>
+
+          <!-- 15. قناة الواتساب -->
+          <tr>
+            <td>15</td>
+            <td class="section-name">قناة الواتساب (WhatsApp)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات (محدود)</span></td>
+            <td>
+              <span class="code-file">app/operations/whatsapp/page.tsx</span>
+              <span class="code-file">components/views/WhatsAppView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              تحديث حقل <span class="code-file">whatsappConnected</span> في جدول <span class="code-file">Tenant</span>
+              <br>Server Actions:<br>
+              <span class="code-file">toggleWhatsAppConnectionAction()</span>, <span class="code-file">sendMockWhatsAppMessageAction()</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> شاشة تحاكي المحادثات الحية للعملاء، وتتصل بقاعدة البيانات لتسجيل وتعديل حالة ربط القناة للشركة. الرسائل حية ويقوم محاكي الذكاء الاصطناعي في الخادم بالرد الفوري بناءً على الكلمات المفتاحية.
+            </td>
+          </tr>
+
+          <!-- 16. مركز الدعم -->
+          <tr>
+            <td>16</td>
+            <td class="section-name">مركز الدعم (Helpdesk)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/helpdesk/page.tsx</span>
+              <span class="code-file">components/views/HelpdeskView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">Ticket</span>
+              <br>Server Actions:<br>
+              <span class="code-file">getTicketsAction()</span>, <span class="code-file">createTicketAction()</span>, <span class="code-file">closeTicketAction()</span>
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> يسجل تذاكر الدعم الفني بقاعدة البيانات ويحاكي ردود وكيل الدعم الفني الذكي "مساعد" بشكل فوري عبر الخادم وحفظ الردود في جدول التذاكر. يسمح أيضاً بإغلاق التذاكر وتحديث حالتها في قاعدة البيانات.
+            </td>
+          </tr>
+
+          <!-- 17. الإعدادات -->
+          <tr>
+            <td>17</td>
+            <td class="section-name">الإعدادات (Settings)</td>
+            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td>
+              <span class="code-file">app/operations/settings/page.tsx</span>
+              <span class="code-file">components/views/SettingsView.tsx</span>
+            </td>
+            <td>
+              علاقات Prisma:<br>
+              <span class="code-file">Tenant</span>, <span class="code-file">User</span>, <span class="code-file">PlatformConnection</span>
+              <br>Server Actions:<br>
+              إجراءات الدفع، وإدارة المستخدمين، وحالة المطابقة القانونية
+            </td>
+            <td class="notes-box">
+              <span class="notes-ok">متصل بالكامل.</span> لوحة تحكم حية متطورة للغاية لإدارة الشركة (الاسم، الباقة، الفواتير، الترقية الفورية)، وإدارة مستخدمي وموظفي المنشأة العقارية (إنشاء، تعديل، حذف)، وإدارة إقرارات واتفاقيات الربط مع الجهات الحكومية ومطابقتها.
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Summary Conclusion -->
+  <footer style="margin-top: 1rem; padding: 1.5rem; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+    <p>
+      <strong>الخلاصة المعمارية:</strong> يظهر من فحص الكود المصدري وجود تباين برمجى واضح؛ فالنظام مجهز بالكامل من الناحية الإدارية والتحليلية وأدوات الحوكمة والذكاء الاصطناعي ومركز العملاء الأساسي والمهام وقنوات الاتصال والدعم وتذاكر الموظفين. بينما تظل النماذج والعمليات العقارية التفصيلية (المشاريع، العقارات، عقود الإيجار والفوترة، الجولات) في مستوى النموذج التفاعلي (Interactive Showcase Layers) بالاعتماد على منطق المتصفح أو خادم API وهمي مؤقت بدون إتمام دورة الربط الفعلي بقاعدة البيانات.
+    </p>
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/agentSlots";
 import { runSystemDiagnosticsAction } from "@/app/actions/sentinel";
 import { checkAndSuspendExpiredTenantsAction } from "@/app/actions/billingAgent";
+import SmartCard from "@/components/ui/SmartCard";
 
 interface AgentSlot {
   id: string;
@@ -217,39 +218,39 @@ export default function AgentsHudView({
   const capPercentage = maxSlots > 900000 ? 10 : Math.min(100, (activeCount / maxSlots) * 100);
 
   return (
-    <div className="space-y-8" dir="rtl" style={{ fontFamily: "'Calibri', 'Segoe UI', sans-serif" }}>
+    <div className="space-y-8" dir="rtl">
 
       {/* هيدر الصفحة */}
-      <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <SmartCard className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="text-[10px] bg-indigo-500/10 text-indigo-400 font-extrabold px-3 py-1.5 rounded-full border border-indigo-500/20">
+          <span className="text-[10px] bg-corporate-blue/10 dark:bg-cyan-glow/10 text-corporate-blue dark:text-cyan-glow font-extrabold px-3 py-1.5 rounded-full border border-corporate-blue/20 dark:border-cyan-glow/20">
             🤖 AI Agents Control Center — HUD
           </span>
-          <h1 className="text-2xl font-black text-white mt-2">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-2">
             مركز تحكم الوكلاء الذكيين
           </h1>
-          <p className="text-xs text-[#C4D8E5] font-medium mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
             إدارة مقاعد الوكلاء، تشغيل الصيانة الذاتية، ومراقبة مؤشرات الأداء الحقيقية
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <span className="bg-[#1C2B48] text-amber-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold">
+          <span className="bg-slate-200/50 dark:bg-white/5 text-amber-500 dark:text-amber-400 border border-slate-200/50 dark:border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold">
             الباقة: {PLAN_LABELS[plan] || plan}
           </span>
-          <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${isAtCap ? "bg-rose-950/30 text-rose-400 border-rose-900" : "bg-emerald-950/30 text-emerald-400 border-emerald-900"}`}>
+          <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${isAtCap ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
             {activeCount}/{maxSlots > 900000 ? "∞" : maxSlots} مقاعد
           </span>
         </div>
-      </div>
+      </SmartCard>
 
       {/* التنبيهات */}
       {error && (
-        <div className="bg-rose-950/40 border border-rose-800 text-rose-400 text-xs p-4 rounded-xl font-bold">
+        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs p-4 rounded-xl font-bold">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-emerald-950/40 border border-emerald-800 text-emerald-400 text-xs p-4 rounded-xl font-bold">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs p-4 rounded-xl font-bold">
           {success}
         </div>
       )}
@@ -258,60 +259,60 @@ export default function AgentsHudView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* لوحة إضافة مقعد */}
-        <div className="bg-[#1C2B48]/50 border border-[#A7C7E7]/20 rounded-2xl p-6 space-y-5">
-          <h2 className="text-xs font-black text-white border-b border-[#A7C7E7]/20 pb-3">
+        <SmartCard className="p-6 space-y-5">
+          <h2 className="text-xs font-black text-slate-900 dark:text-white border-b border-slate-200/50 dark:border-white/10 pb-3">
             إضافة مقعد وكيل جديد
           </h2>
 
           {/* شريط السعة */}
           <div className="space-y-2">
-            <div className="flex justify-between text-[10px] text-[#C4D8E5] font-medium">
+            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
               <span>السعة المستهلكة</span>
-              <span className="font-bold text-white">{activeCount} / {maxSlots > 900000 ? "∞" : maxSlots}</span>
+              <span className="font-bold text-slate-900 dark:text-white">{activeCount} / {maxSlots > 900000 ? "∞" : maxSlots}</span>
             </div>
-            <div className="w-full bg-[#1C2B48] h-3 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 dark:bg-white/10 h-3 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${isAtCap ? "bg-rose-500" : capPercentage > 70 ? "bg-amber-500" : "bg-emerald-500"}`}
                 style={{ width: `${capPercentage}%` }}
               />
             </div>
             {isAtCap && (
-              <p className="text-[9px] text-rose-400 font-bold">
+              <p className="text-[9px] text-rose-500 font-bold">
                 🔒 قفل السعة: تمت الاستفادة الكاملة من مقاعد الباقة {PLAN_LABELS[plan]}.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-[10px] text-[#C4D8E5] font-medium font-bold mb-1.5">نوع الوكيل</label>
+            <label className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold mb-1.5">نوع الوكيل</label>
             <select
               value={newAgentType}
               onChange={(e) => setNewAgentType(e.target.value)}
-              className="w-full bg-[#1C2B48] border border-slate-700 text-white text-xs rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+              className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-900 dark:text-white text-xs rounded-lg p-2.5 focus:outline-none focus:border-corporate-blue dark:focus:border-cyan-glow transition-all"
             >
-              <option value="CHAT_BOT">💬 وكيل المحادثة (Chat Bot)</option>
-              <option value="SAHER">🤖 ساهر الصيانة (Sentinel)</option>
-              <option value="SANAD">🤖 سند الفوترة (Billing)</option>
+              <option value="CHAT_BOT" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">💬 وكيل المحادثة (Chat Bot)</option>
+              <option value="SAHER" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">🤖 ساهر الصيانة (Sentinel)</option>
+              <option value="SANAD" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">🤖 سند الفوترة (Billing)</option>
             </select>
           </div>
 
           <button
             onClick={handleAddSlot}
             disabled={loadingAdd || isAtCap}
-            className={`w-full p-3 rounded-xl text-xs font-black transition-all cursor-pointer ${isAtCap ? "bg-[#1C2B48] text-[#C4D8E5] font-medium cursor-not-allowed" : "bg-amber-500 hover:bg-amber-600 text-slate-950"}`}
+            className={`w-full p-3 rounded-xl text-xs font-black transition-all cursor-pointer ${isAtCap ? "bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300/50 dark:border-white/5" : "bg-corporate-blue dark:bg-cyan-glow text-white dark:text-slate-950 hover:opacity-90 shadow-md"}`}
           >
             {loadingAdd ? "جاري الإضافة..." : isAtCap ? "🔒 قفل السعة مفعّل" : "+ إضافة مقعد وكيل"}
           </button>
-        </div>
+        </SmartCard>
 
         {/* قائمة المقاعد */}
-        <div className="lg:col-span-2 bg-[#1C2B48]/50 border border-[#A7C7E7]/20 rounded-2xl overflow-hidden">
-          <div className="p-5 border-b border-[#A7C7E7]/20">
-            <h2 className="text-xs font-black text-white">مقاعد الوكلاء المُفعَّلة</h2>
+        <SmartCard className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="p-5 border-b border-slate-200/50 dark:border-white/10">
+            <h2 className="text-xs font-black text-slate-900 dark:text-white">مقاعد الوكلاء المُفعَّلة</h2>
           </div>
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-slate-200/50 dark:divide-white/5">
             {slots.length === 0 ? (
-              <div className="p-8 text-center text-[#C4D8E5] font-medium text-xs">
+              <div className="p-8 text-center text-slate-500 dark:text-slate-400 font-medium text-xs">
                 لا توجد مقاعد وكلاء مفعّلة. أضف مقعدك الأول!
               </div>
             ) : (
@@ -325,19 +326,19 @@ export default function AgentsHudView({
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{typeInfo.icon}</span>
                       <div>
-                        <p className="text-xs font-bold text-white">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
                           {typeInfo.label}
-                          <span className="text-[9px] text-[#C4D8E5] font-medium mr-2">#{slot.slotNumber}</span>
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium mr-2">#{slot.slotNumber}</span>
                         </p>
                         {usage && (
                           <div className="flex items-center gap-2 mt-1">
-                            <div className="w-20 h-1.5 bg-[#1C2B48] rounded-full overflow-hidden">
+                            <div className="w-20 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${usagePct > 80 ? "bg-rose-500" : "bg-emerald-500"}`}
                                 style={{ width: `${usagePct}%` }}
                               />
                             </div>
-                            <span className="text-[9px] text-[#C4D8E5] font-medium">
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">
                               {usage.usageValue}/{usage.limitValue} {usage.metricType}
                             </span>
                           </div>
@@ -345,13 +346,13 @@ export default function AgentsHudView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${slot.isActive ? "bg-emerald-950 text-emerald-400" : "bg-[#1C2B48] text-[#C4D8E5] font-medium"}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${slot.isActive ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-white/10"}`}>
                         {slot.isActive ? "نشط" : "معطل"}
                       </span>
                       {slot.isActive && (
                         <button
                           onClick={() => handleDeactivateSlot(slot.id)}
-                          className="text-[9px] bg-rose-950/30 hover:bg-rose-900/40 text-rose-400 border border-rose-900 px-2 py-1 rounded cursor-pointer transition-all"
+                          className="text-[9px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-2 py-1 rounded cursor-pointer transition-all"
                         >
                           تعطيل
                         </button>
@@ -362,35 +363,35 @@ export default function AgentsHudView({
               })
             )}
           </div>
-        </div>
+        </SmartCard>
       </div>
 
       {/* ===== وكلاء التشغيل الفعلي: ساهر وسند ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ===== الوكيل ساهر ===== */}
-        <div className="bg-[#1C2B48]/60 border border-amber-900/40 rounded-3xl p-6 space-y-5 shadow-2xl relative overflow-hidden">
+        <SmartCard className="p-6 space-y-5 relative overflow-hidden border-amber-500/20 dark:border-amber-500/20">
           <div className="absolute top-0 left-0 w-48 h-48 bg-amber-500/5 blur-[60px] rounded-full pointer-events-none" />
 
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🤖</span>
               <div>
-                <h3 className="text-sm font-black text-white">ساهر — Sentinel Agent</h3>
-                <p className="text-[9px] text-[#C4D8E5] font-medium">فحص + صيانة ذاتية + Self-Healing</p>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">ساهر — Sentinel Agent</h3>
+                <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">فحص + صيانة ذاتية + Self-Healing</p>
               </div>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${saherStatus === "IDLE" ? "bg-[#1C2B48] text-[#C4D8E5] font-medium border-slate-700" : saherStatus === "RUNNING" ? "bg-amber-500/10 text-amber-400 border-amber-800 animate-pulse" : "bg-emerald-500/10 text-emerald-400 border-emerald-800"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${saherStatus === "IDLE" ? "bg-slate-500" : saherStatus === "RUNNING" ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${saherStatus === "IDLE" ? "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : saherStatus === "RUNNING" ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${saherStatus === "IDLE" ? "bg-slate-400 dark:bg-slate-500" : saherStatus === "RUNNING" ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
               {saherStatus === "IDLE" ? "IDLE" : saherStatus === "RUNNING" ? "يشغّل..." : "DONE"}
             </span>
           </div>
 
           {/* كونسول ساهر */}
-          <div ref={saherConsoleRef} className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 font-mono text-[9px] leading-6 min-h-[200px] max-h-[280px] overflow-y-auto relative">
-            <span className="absolute top-2 left-3 text-[8px] text-slate-700 select-none">sentinel.sh</span>
+          <div ref={saherConsoleRef} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 font-mono text-[9px] leading-6 min-h-[200px] max-h-[280px] overflow-y-auto relative">
+            <span className="absolute top-2 left-3 text-[8px] text-slate-600 select-none">sentinel.sh</span>
             {saherLogs.length === 0 ? (
-              <p className="text-slate-700">&gt; Sentinel is idle. Press run to start diagnostics...</p>
+              <p className="text-slate-600">&gt; Sentinel is idle. Press run to start diagnostics...</p>
             ) : (
               saherLogs.map((log, i) => (
                 <p key={i} className={`${log.includes("✅") ? "text-emerald-400" : log.includes("❌") ? "text-rose-400" : "text-amber-400/90"}`}>
@@ -399,7 +400,7 @@ export default function AgentsHudView({
               ))
             )}
             {saherStatus === "DONE" && saherOutput && (
-              <div className="border-t border-[#A7C7E7]/20 mt-2 pt-2 space-y-1 text-[#C4D8E5] font-medium">
+              <div className="border-t border-slate-800 mt-2 pt-2 space-y-1 text-slate-300 font-medium">
                 <p><strong className="text-amber-400">☁️ Vercel:</strong> {saherOutput.vercel?.latestDeploymentStatus}</p>
                 <p><strong className="text-amber-400">🗄️ DB:</strong> {saherOutput.database?.status} — {saherOutput.database?.latencyMs}ms</p>
                 <p><strong className="text-amber-400">📊 Rows:</strong> {saherOutput.database?.totalRows?.tenants} tenants | {saherOutput.database?.totalRows?.leads} leads</p>
@@ -411,35 +412,35 @@ export default function AgentsHudView({
           <button
             onClick={handleRunSaher}
             disabled={saherStatus === "RUNNING"}
-            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 p-3 rounded-xl text-xs font-black transition-all cursor-pointer"
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 p-3 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md"
           >
             {saherStatus === "RUNNING" ? "⏳ جاري الفحص..." : "⚡ اطلب من ساهر فحص النظام كاملاً"}
           </button>
-        </div>
+        </SmartCard>
 
         {/* ===== الوكيل سند ===== */}
-        <div className="bg-[#1C2B48]/60 border border-emerald-900/40 rounded-3xl p-6 space-y-5 shadow-2xl relative overflow-hidden">
+        <SmartCard className="p-6 space-y-5 relative overflow-hidden border-emerald-500/20 dark:border-emerald-500/20">
           <div className="absolute top-0 left-0 w-48 h-48 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none" />
 
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🤖</span>
               <div>
-                <h3 className="text-sm font-black text-white">سند — Billing & Failover Agent</h3>
-                <p className="text-[9px] text-[#C4D8E5] font-medium">فحص الاشتراكات + Failover Sentinel</p>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">سند — Billing & Failover Agent</h3>
+                <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">فحص الاشتراكات + Failover Sentinel</p>
               </div>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${sanadStatus === "IDLE" ? "bg-[#1C2B48] text-[#C4D8E5] font-medium border-slate-700" : sanadStatus === "RUNNING" ? "bg-emerald-500/10 text-emerald-400 border-emerald-800 animate-pulse" : "bg-emerald-500/10 text-emerald-400 border-emerald-800"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${sanadStatus === "IDLE" ? "bg-slate-500" : sanadStatus === "RUNNING" ? "bg-emerald-400 animate-ping" : "bg-emerald-400"}`} />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${sanadStatus === "IDLE" ? "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : sanadStatus === "RUNNING" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${sanadStatus === "IDLE" ? "bg-slate-400 dark:bg-slate-500" : sanadStatus === "RUNNING" ? "bg-emerald-400 animate-ping" : "bg-emerald-400"}`} />
               {sanadStatus === "IDLE" ? "IDLE" : sanadStatus === "RUNNING" ? "يشغّل..." : "DONE"}
             </span>
           </div>
 
           {/* كونسول سند */}
-          <div ref={sanadConsoleRef} className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 font-mono text-[9px] leading-6 min-h-[200px] max-h-[280px] overflow-y-auto relative">
-            <span className="absolute top-2 left-3 text-[8px] text-slate-700 select-none">billing_agent.sh</span>
+          <div ref={sanadConsoleRef} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 font-mono text-[9px] leading-6 min-h-[200px] max-h-[280px] overflow-y-auto relative">
+            <span className="absolute top-2 left-3 text-[8px] text-slate-600 select-none">billing_agent.sh</span>
             {sanadLogs.length === 0 ? (
-              <p className="text-slate-700">&gt; BillingAgent (سند) idle. Waiting for execution trigger...</p>
+              <p className="text-slate-600">&gt; BillingAgent (سند) idle. Waiting for execution trigger...</p>
             ) : (
               sanadLogs.map((log, i) => (
                 <p key={i} className={`${log.includes("✅") ? "text-emerald-400" : log.includes("❌") ? "text-rose-400" : "text-emerald-400/80"}`}>
@@ -452,19 +453,19 @@ export default function AgentsHudView({
           <button
             onClick={handleRunSanad}
             disabled={sanadStatus === "RUNNING"}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white p-3 rounded-xl text-xs font-black transition-all cursor-pointer"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white p-3 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md"
           >
             {sanadStatus === "RUNNING" ? "⏳ جاري المراجعة..." : "⚡ اطلب من سند مراجعة الاشتراكات كاملاً"}
           </button>
-        </div>
+        </SmartCard>
       </div>
 
       {/* ===== بطاقة تهيئة قاعدة البيانات ===== */}
-      <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-6">
-        <div className="flex items-center justify-between">
+      <SmartCard className="p-6 border-indigo-500/20 dark:border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-500/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-black text-white">🗄️ تهيئة قواعد البيانات والـ Triggers</h3>
-            <p className="text-[10px] text-[#C4D8E5] font-medium mt-1">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">🗄️ تهيئة قواعد البيانات والـ Triggers</h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               تشغيل SQL Triggers: Cap Lock + Round-Robin + WAF Sanitization على Neon PostgreSQL
             </p>
           </div>
@@ -484,12 +485,12 @@ export default function AgentsHudView({
                 setError(e.message);
               }
             }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all"
+            className="bg-corporate-blue dark:bg-cyan-glow text-white dark:text-slate-950 px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer hover:opacity-90 transition-all shadow-md shrink-0"
           >
             ⚡ تهيئة الـ Triggers الآن
           </button>
         </div>
-      </div>
+      </SmartCard>
 
     </div>
   );

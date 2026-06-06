@@ -108,8 +108,8 @@ export default function TopBarClient({
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-md border-b flex flex-col w-full shrink-0 shadow-lg select-none transition-colors duration-300 ${
       isDark 
-        ? 'bg-[#0b0f19]/95 border-[#A7C7E7]/80 text-white' 
-        : 'bg-white/95 border-[#A7C7E7]/20 text-[#E8ECEF] font-bold'
+        ? 'bg-white/70 dark:bg-white/5 backdrop-blur-xl border-slate-200/50 dark:border-white/10 text-slate-900 dark:text-white' 
+        : 'bg-white/70 backdrop-blur-xl border-slate-200/50 text-slate-900'
     }`}>
       <style dangerouslySetInnerHTML={{ __html: `
         .hud-tooltip {
@@ -169,8 +169,8 @@ export default function TopBarClient({
             onClick={toggleLang}
             className={`h-8 px-3 rounded-lg border text-[10px] font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-[#1C2B48]/60 text-[#C4D8E5] font-medium hover:border-indigo-400/50 hover:text-indigo-400' 
-                : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-indigo-600/50 hover:text-indigo-600'
+                ? 'border-white/10 bg-white/5 text-slate-300 hover:border-corporate-blue dark:hover:border-cyan-glow hover:text-corporate-blue dark:hover:text-cyan-glow' 
+                : 'border-slate-350 bg-slate-100 text-slate-700 hover:border-corporate-blue hover:text-corporate-blue'
             }`}
           >
             🌐 {lang === 'AR' ? 'EN' : 'عربي'}
@@ -181,8 +181,8 @@ export default function TopBarClient({
             onClick={toggleTheme}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
-                ? 'border-slate-700 bg-[#1C2B48]/60 text-indigo-400 hover:border-indigo-400/50' 
-                : 'border-slate-300 bg-slate-50 text-indigo-600 hover:border-indigo-600/50'
+                ? 'border-white/10 bg-white/5 text-amber-400 hover:border-corporate-blue dark:hover:border-cyan-glow' 
+                : 'border-slate-350 bg-slate-100 text-indigo-650 hover:border-corporate-blue'
             }`}
           >
             {isDark ? '☀️' : '🌙'}
