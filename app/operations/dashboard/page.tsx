@@ -3,10 +3,11 @@ import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
 import DashboardView from './DashboardView';
+import { getPipelineStatsAction, getTodayTasksAction } from '@/app/actions/dashboard';
 
 export const metadata = {
   title: 'النواة المركزية للعمليات - أوركا',
-  description: 'مراقبة حية للمبيعات وحجم مخزون الوحدات العقارية والتنبؤات الذكية',
+  description: 'مراقبة حية للمبيعات ومسار الصفقات وحجم مخزون الوحدات العقارية والتنبؤات الذكية',
 };
 
 export default async function DashboardPage() {
@@ -33,6 +34,8 @@ export default async function DashboardPage() {
     dailyToursCount,
     sentOffersCount,
     closedContractsCount,
+    pipelineStages,
+    todayTasks,
   ] = await Promise.all([
     // إجمالي العملاء
     prisma.lead.count({ where: { tenantId: tenant.id } }),
@@ -90,6 +93,10 @@ export default async function DashboardPage() {
         },
       },
     }),
+    // إحصائيات مسار الصفقات الحية (Pipeline Snapshot)
+    getPipelineStatsAction(),
+    // مهام اليوم العاجلة
+    getTodayTasksAction(),
   ]);
 
   const monthlySales = monthlySalesResult._sum.totalVolumeSar ? Number(monthlySalesResult._sum.totalVolumeSar) : 0;
@@ -392,6 +399,8 @@ export default async function DashboardPage() {
       leadSources={leadSources}
       systemAlerts={systemAlerts}
       aiPredictions={aiPredictions}
+      pipelineStages={pipelineStages}
+      todayTasks={todayTasks}
     />
   );
 }

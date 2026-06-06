@@ -1060,3 +1060,69 @@ html {
   background: rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* ===================================================
+   ORCA Dashboard - CSS Custom Properties
+   Light & Dark Mode Definitionen
+   =================================================== */
+
+:root {
+  --dashboard-bg: #F8FAFC;
+  --dashboard-card-bg: rgba(255, 255, 255, 0.85);
+  --dashboard-card-border: rgba(226, 232, 240, 0.8);
+  --dashboard-text-primary: #0F172A;
+  --dashboard-text-secondary: #64748B;
+  --dashboard-pipeline-inquiry: #3B82F6;
+  --dashboard-pipeline-tour: #F59E0B;
+  --dashboard-pipeline-offer: #8B5CF6;
+  --dashboard-pipeline-close: #10B981;
+  --dashboard-highlight: #2563EB;
+  --dashboard-danger: #EF4444;
+  --dashboard-success: #22C55E;
+  --dashboard-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.dark {
+  --dashboard-bg: transparent;
+  --dashboard-card-bg: rgba(255, 255, 255, 0.05);
+  --dashboard-card-border: rgba(255, 255, 255, 0.08);
+  --dashboard-text-primary: #E8ECEF;
+  --dashboard-text-secondary: #94A3B8;
+  --dashboard-highlight: #00E5FF;
+  --dashboard-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
+/* Utility classes for dashboard */
+.dashboard-pipeline-bar {
+  height: 6px;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dashboard-task-card {
+  transition: all 0.2s ease;
+}
+.dashboard-task-card:hover {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.dark .dashboard-task-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-pulse-dot {
+  animation: dashPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes dashPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Pipeline stage card entrance animation */
+.pipeline-stage-enter {
+  animation: stageEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes stageEnter {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

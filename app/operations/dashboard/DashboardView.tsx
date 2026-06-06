@@ -6,6 +6,7 @@ import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 import ContractWizard from '@/components/features/ContractWizard';
 import { SmartCard } from '@/components/ui/SmartCard';
+import type { PipelineStage, TodayTask } from '@/app/actions/dashboard';
 
 interface DashboardViewProps {
   tenant?: {
@@ -95,6 +96,8 @@ interface DashboardViewProps {
       reasonEn: string;
     }>;
   };
+  pipelineStages?: PipelineStage[];
+  todayTasks?: TodayTask[];
 }
 
 export default function DashboardView({
@@ -107,6 +110,8 @@ export default function DashboardView({
   leadSources = [],
   systemAlerts = [],
   aiPredictions,
+  pipelineStages = [],
+  todayTasks = [],
 }: DashboardViewProps) {
   const { theme, lang } = useApp();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -391,7 +396,171 @@ export default function DashboardView({
 
       </div>
 
-      {/* 3. Contract Issuance Drawer/Wizard Modal overlay */}
+      {/* 3. Pipeline Snapshot + Today's Tasks Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        {/* Pipeline Snapshot (col-span-2) */}
+        <SmartCard className="xl:col-span-2 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400">
+                <i className="ph-bold ph-flow-arrow text-base"></i>
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                  {lang === "AR" ? "مسار الصفقات الحية" : "Pipeline Snapshot"}
+                </h4>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px]">
+                  {lang === "AR" ? "توزيع العملاء حسب مرحلة البيع" : "Lead distribution by sales stage"}
+                </p>
+              </div>
+            </div>
+            {pipelineStages.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-500 border border-green-500/20">
+                {lang === "AR" ? "بيانات حية" : "Live"}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {pipelineStages.map((stage) => {
+              const total = pipelineStages.reduce((s, p) => s + p.count, 0);
+              const percent = total > 0 ? Math.round((stage.count / total) * 100) : 0;
+              return (
+                <div
+                  key={stage.key}
+                  className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-4 transition-all hover:scale-[1.03] hover:shadow-lg"
+                  style={{ borderTopColor: stage.color, borderTopWidth: 3 }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      {lang === "AR" ? stage.labelAr : stage.labelEn}
+                    </span>
+                    <span
+                      className="text-lg font-black"
+                      style={{ color: stage.color }}
+                    >
+                      {formatNum(stage.count)}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${percent}%`,
+                        backgroundColor: stage.color,
+                        boxShadow: `0 0 6px ${stage.color}66`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-1.5">
+                    {lang === "AR" ? `${percent}% من الإجمالي` : `${percent}% of total`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {pipelineStages.length === 0 && (
+            <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+              {lang === "AR" ? "لا توجد بيانات متاحة لعرض مسار الصفقات." : "No pipeline data available."}
+            </div>
+          )}
+        </SmartCard>
+
+        {/* Today's Urgent Tasks (col-span-1) */}
+        <SmartCard className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400">
+                <i className="ph-bold ph-clock-countdown text-base"></i>
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                  {lang === "AR" ? "مهام اليوم العاجلة" : "Today's Urgent Tasks"}
+                </h4>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px]">
+                  {lang === "AR"
+                    ? `${formatNum(todayTasks.length)} ${todayTasks.length === 1 ? "مهمة" : "مهام"} مستحقة اليوم`
+                    : `${todayTasks.length} task${todayTasks.length !== 1 ? "s" : ""} due today`}
+                </p>
+              </div>
+            </div>
+            {todayTasks.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 animate-pulse">
+                {formatNum(todayTasks.length)}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2 max-h-[320px] overflow-y-auto custom-scrollbar">
+            {todayTasks.map((task) => {
+              const priorityColor =
+                task.priority === "HIGH" ? "#EF4444" :
+                task.priority === "MEDIUM" ? "#F59E0B" : "#3B82F6";
+              const priorityLabel =
+                task.priority === "HIGH" ? (lang === "AR" ? "عالية" : "High") :
+                task.priority === "MEDIUM" ? (lang === "AR" ? "متوسطة" : "Medium") : (lang === "AR" ? "منخفضة" : "Low");
+
+              return (
+                <div
+                  key={task.id}
+                  className="rounded-xl bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-3 transition-all hover:border-amber-500/30 hover:shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug line-clamp-2">
+                      {task.title}
+                    </p>
+                    <span
+                      className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: priorityColor }}
+                    >
+                      {priorityLabel}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                    {task.leadName && (
+                      <span className="flex items-center gap-1">
+                        <i className="ph-bold ph-user text-[9px]"></i>
+                        {task.leadName}
+                      </span>
+                    )}
+                    {task.assignedName && (
+                      <span className="flex items-center gap-1">
+                        <i className="ph-bold ph-handshake text-[9px]"></i>
+                        {task.assignedName}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-1">
+                    {new Date(task.dueDate).toLocaleTimeString(lang === "AR" ? "ar-SA" : "en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              );
+            })}
+
+            {todayTasks.length === 0 && (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-3">
+                  <i className="ph-bold ph-check-circle text-green-400 text-xl"></i>
+                </div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
+                  {lang === "AR" ? "لا توجد مهام مستحقة اليوم" : "No tasks due today"}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-1">
+                  {lang === "AR" ? "جميع المهام منجزة في وقتها" : "All tasks are on schedule"}
+                </p>
+              </div>
+            )}
+          </div>
+        </SmartCard>
+
+      </div>
+
+      {/* 4. Contract Issuance Drawer/Wizard Modal overlay */}
       <ContractWizard
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
