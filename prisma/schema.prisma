@@ -262,14 +262,22 @@ model PayrollCommission {
 }
 
 model Unit {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  projectId     String   @map("project_id") @db.Uuid
-  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  unitNumber    String   @map("unit_number")
-  floorPosition Int      @map("floor_position")
-  priceSar      Decimal  @map("price_sar") @db.Decimal(12, 2)
-  status        String   @default("Available")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId     String     @map("project_id") @db.Uuid
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  unitNumber    String     @map("unit_number")
+  floorPosition Int        @map("floor_position")
+  priceSar      Decimal    @map("price_sar") @db.Decimal(12, 2)
+  type          String?    @default("شقة سكنية")
+  area          String?    @default("120 م²")
+  description   String?    @db.Text
+  media         Json?      @default("[]")
+  docs          Json?      @default("[]")
+  events        Json?      @default("[]")
+  handovers     Json?      @default("[]")
+  status        String     @default("Available")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   contract      Contract?
 
   @@unique([projectId, unitNumber], name: "uq_project_unit_number")

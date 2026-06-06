@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { 
   Home, Plus, Search, Calendar, Landmark, MapPin, Eye, 
   FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
@@ -150,6 +150,33 @@ export default function PropertiesView() {
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
 
+  // API loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Fetch properties from API on mount
+  useEffect(() => {
+    async function loadProperties() {
+      try {
+        setIsLoading(true);
+        setFetchError(null);
+        const res = await fetch('/api/properties/');
+        if (!res.ok) throw new Error('فشل تحميل العقارات من قاعدة البيانات');
+        const json = await res.json();
+        if (json.success && json.data) {
+          setProperties(json.data);
+          addTelemetryEvent('api.properties_loaded', { count: json.data.length });
+        }
+      } catch (err: any) {
+        setFetchError(err.message);
+        addTelemetryEvent('api.error', { error: err.message });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProperties();
+  }, []);
+
   // Telemetry event logging console
   const [telemetryLogs, setTelemetryLogs] = useState<any[]>([
     {
@@ -203,35 +230,48 @@ export default function PropertiesView() {
     return matchSearch && matchStatus && matchProject && matchDates;
   });
 
-  const handleCreateUnit = (e: React.FormEvent) => {
+  const handleCreateUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_UNIT')) {
       alert(`عذراً! دورك الحالي (${currentUserRole}) لا يملك الصلاحية لإضافة وحدات جديدة.`);
       return;
     }
 
-    const newU: PropertyUnit = {
-      id: properties.length + 1,
-      sku: newSku,
-      type: newType,
-      project: newProject,
-      area: newArea,
-      price: Number(newPrice),
-      priceStr: Number(newPrice).toLocaleString() + ' ر.س',
-      status: 'Available',
-      desc: 'وحدة سكنية مضافة حديثاً إلى مستودع العقارات، تتطابق مع شروط البناء والبلدية لشركة دار الأعمار.',
-      media: ['https://picsum.photos/seed/newunit/400/300'],
-      docs: ['مخطط_نموذج_إضافي.pdf'],
-      events: [
-        { id: `ev_new_${Date.now()}`, type: 'إدراج الوحدة', at: new Date().toISOString().split('T')[0], note: 'تم إدراج الوحدة بنجاح' }
-      ],
-      handovers: []
-    };
+    try {
+      const projRes = await fetch('/api/projects/');
+      const projJson = await projRes.json();
+      const firstProject = projJson.success && projJson.data?.[0];
+      if (!firstProject) {
+        alert('الرجاء إنشاء مشروع عقاري أولاً قبل إضافة وحدات.');
+        return;
+      }
 
-    setProperties(prev => [...prev, newU]);
-    addTelemetryEvent('unit.created', { unitId: newU.id, sku: newSku, price: newPrice });
+      const res = await fetch('/api/properties/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: firstProject.id,
+          unitNumber: newSku,
+          priceSar: newPrice,
+          type: newType,
+          area: newArea,
+          floorPosition: 0,
+          description: 'وحدة سكنية مضافة حديثاً إلى مستودع العقارات.',
+          status: 'Available',
+          events: [
+            { id: `ev_new_${Date.now()}`, type: 'إدراج الوحدة', at: new Date().toISOString().split('T')[0], note: 'تم إدراج الوحدة بنجاح' }
+          ],
+        })
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
 
-    // reset
+      setProperties(prev => [...prev, json.data]);
+      addTelemetryEvent('unit.created', { unitId: json.data.id, sku: newSku, price: newPrice });
+    } catch (err: any) {
+      alert('خطأ في إنشاء الوحدة: ' + err.message);
+    }
+
     setNewSku('');
     setNewPrice(1000000);
     setActiveModal(null);
@@ -513,6 +553,35 @@ export default function PropertiesView() {
               </div>
             </div>
 
+            {/* Loading / Error / Empty States */}
+            {isLoading && (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
+                <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
+              </div>
+            )}
+
+            {fetchError && !isLoading && (
+              <div className="py-8 text-center">
+                <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
+                  {fetchError}
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
+                >
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
+
+            {!isLoading && !fetchError && filteredProperties.length === 0 && (
+              <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
+                لا توجد وحدات عقارية مسجلة حالياً.
+              </div>
+            )}
+
+            {!isLoading && !fetchError && (
             <div className="overflow-x-auto">
               <table className="w-full text-right border-collapse">
                 <thead>
@@ -570,6 +639,7 @@ export default function PropertiesView() {
                 </tbody>
               </table>
             </div>
+            )}
 
           </div>
 

@@ -6,7 +6,7 @@ import {
   Droppable,
   Draggable,
   DropResult,
-} from "react-beautiful-dnd";
+} from "@hello-pangea/dnd";
 
 type Lead = { id: string; name: string; city?: string; score?: string };
 

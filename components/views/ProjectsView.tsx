@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { 
   Building2, Plus, Search, Calendar, Landmark, MapPin, Eye, 
   FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
@@ -158,6 +158,44 @@ export default function ProjectsView() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isPending, startTransition] = useTransition();
 
+  // API loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Fetch projects from API on mount
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        setIsLoading(true);
+        setFetchError(null);
+        const res = await fetch('/api/projects/');
+        if (!res.ok) throw new Error('فشل تحميل المشاريع من قاعدة البيانات');
+        const json = await res.json();
+        if (json.success && json.data) {
+          setProjectsList(json.data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            location: p.city,
+            status: p.status === 'COMPLETED' ? 'مكتمل' : p.status === 'PLANNING' ? 'مخطط له' : 'قيد الإنشاء',
+            unitsTotal: p.unitsTotal,
+            unitsSold: p.unitsSold,
+            progressPercent: Math.min(100, Math.round((p.unitsSold / (p.unitsTotal || 1)) * 100)),
+            description: p.description || '',
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+          })));
+          addTelemetryEvent('api.projects_loaded', 0, { count: json.data.length });
+        }
+      } catch (err: any) {
+        setFetchError(err.message);
+        addTelemetryEvent('api.error', 0, { error: err.message });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProjects();
+  }, []);
+
   // Telemetry Console log
   const [telemetryLogs, setTelemetryLogs] = useState<TelemetryEvent[]>([
     {
@@ -222,37 +260,56 @@ export default function ProjectsView() {
     setTelemetryLogs(prev => [newEvent, ...prev]);
   };
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_PROJECT')) {
       alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء مشروع عقاري.`);
       return;
     }
-    const newId = projectsList.length + 1;
-    const newProj = {
-      id: newId,
-      name: newProjName,
-      location: newProjLocation,
-      status: 'قيد الإنشاء',
-      unitsTotal: Number(newProjUnits),
-      unitsSold: 0,
-      progressPercent: 0,
-      description: newProjDesc,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    setProjectsList(prev => [...prev, newProj]);
-    setProjectPhases(prev => ({ ...prev, [newId]: [] }));
-    setProjectUnits(prev => ({ ...prev, [newId]: [] }));
-    setProjectReports(prev => ({ ...prev, [newId]: [] }));
-    setProjectDocs(prev => ({ ...prev, [newId]: [] }));
-    setProjectBookings(prev => ({ ...prev, [newId]: [] }));
-    setAccountingFinance(prev => ({ ...prev, [newId]: { contractsTotal: 0, collected: 0, outstanding: 0 } }));
 
-    addTelemetryEvent('project.created', newId, { name: newProjName, unitsTotal: newProjUnits });
-    
-    // reset form & close modal
+    try {
+      const res = await fetch('/api/projects/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newProjName,
+          city: newProjLocation,
+          status: 'UNDER_CONSTRUCTION',
+          unitsTotal: newProjUnits,
+          minPrice: null,
+          maxPrice: null,
+        })
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      const created = json.data;
+      const newProj = {
+        id: created.id,
+        name: created.name,
+        location: created.city,
+        status: 'قيد الإنشاء',
+        unitsTotal: created.unitsTotal,
+        unitsSold: 0,
+        progressPercent: 0,
+        description: newProjDesc,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      };
+
+      setProjectsList(prev => [...prev, newProj]);
+      setProjectPhases(prev => ({ ...prev, [created.id]: [] }));
+      setProjectUnits(prev => ({ ...prev, [created.id]: [] }));
+      setProjectReports(prev => ({ ...prev, [created.id]: [] }));
+      setProjectDocs(prev => ({ ...prev, [created.id]: [] }));
+      setProjectBookings(prev => ({ ...prev, [created.id]: [] }));
+      setAccountingFinance(prev => ({ ...prev, [created.id]: { contractsTotal: 0, collected: 0, outstanding: 0 } }));
+
+      addTelemetryEvent('project.created', created.id, { name: newProjName, unitsTotal: newProjUnits });
+    } catch (err: any) {
+      alert('خطأ في إنشاء المشروع: ' + err.message);
+    }
+
     setNewProjName('');
     setNewProjLocation('');
     setNewProjUnits(100);
@@ -509,7 +566,36 @@ export default function ProjectsView() {
                 </div>
               </div>
 
+              {/* Loading / Error / Empty States */}
+              {isLoading && (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
+                  <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل المشاريع من قاعدة البيانات...</span>
+                </div>
+              )}
+
+              {fetchError && !isLoading && (
+                <div className="py-8 text-center">
+                  <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
+                    {fetchError}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              )}
+
+              {!isLoading && !fetchError && filteredProjects.length === 0 && (
+                <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
+                  لا توجد مشاريع عقارية مسجلة حالياً.
+                </div>
+              )}
+
               {/* Projects Table Grid */}
+              {!isLoading && !fetchError && (
               <div className="overflow-x-auto">
                 <table className="w-full text-right border-collapse">
                   <thead>
@@ -576,9 +662,9 @@ export default function ProjectsView() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-
             </div>
+            )}
+          </div>
           ) : (
             
             // ─── View 2: Detailed Project View ───

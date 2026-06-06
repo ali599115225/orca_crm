@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
+        "@hello-pangea/dnd": "^18.0.1",
         "@neondatabase/serverless": "^1.1.0",
         "@prisma/adapter-neon": "^7.8.0",
         "@prisma/adapter-pg": "^7.8.0",
@@ -23,7 +24,6 @@
         "next": "latest",
         "pg": "^8.21.0",
         "react": "latest",
-        "react-beautiful-dnd": "^13.1.1",
         "react-dom": "latest",
         "resend": "^6.12.4",
         "typescript": "latest"
