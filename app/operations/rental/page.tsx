@@ -540,20 +540,20 @@ export default function RentalPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="ds-page ds-stack">
       
       {/* ── Role Selector Top Bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 rounded-2xl text-xs">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="text-[#8EB1D1] shrink-0" size={20} />
+      <div className="ds-row-between ds-p-md ds-card-glass">
+        <div className="ds-row ds-gap-sm">
+          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
-            <h4 className="font-bold text-slate-900 dark:text-white">التحكم بالصلاحيات والإعدادات التشغيلية</h4>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">محاكاة قيود الصلاحيات المطبقة على العقود والمدفوعات والمصالحة</p>
+            <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات والإعدادات التشغيلية</h4>
+            <p className="ds-muted">محاكاة قيود الصلاحيات المطبقة على العقود والمدفوعات والمصالحة</p>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-4 bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-lg border border-slate-200/50 dark:border-white/10">
+        <div className="ds-row ds-gap-md">
+          <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
             {[
               { id: 'ADMIN', name: 'مدير نظام (Admin)' },
               { id: 'accountant', name: 'المحاسب (Accountant)' },
@@ -566,11 +566,7 @@ export default function RentalPage() {
                   setCurrentUserRole(role.id);
                   addTelemetryEvent('system.role_changed', { newRole: role.id });
                 }}
-                className={`px-3 py-1 rounded font-bold transition-all ${
-                  currentUserRole === role.id 
-                    ? 'bg-[#8EB1D1] text-slate-900 dark:text-white shadow-sm' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white'
-                }`}
+                className={`ds-btn ds-btn-sm ${currentUserRole === role.id ? 'ds-btn-primary' : 'ds-btn-ghost'}`}
               >
                 {role.name}
               </button>
@@ -679,13 +675,13 @@ export default function RentalPage() {
       </div>
 
       {/* ── Sub-Tab Controller Bar ── */}
-      <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="ds-card-glass ds-p-md ds-row-between">
         <div>
-          <h3 className="text-base font-black text-slate-900 dark:text-white">إدارة العقود والمدفوعات (Contracts & Payments)</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
+          <h3 className="ds-h3">إدارة العقود والمدفوعات (Contracts & Payments)</h3>
+          <p className="ds-body-sm">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="ds-row ds-gap-xs">
           {[
             { id: 'leases', name: 'العقود' },
             { id: 'invoices', name: 'الفواتير' },
@@ -699,10 +695,8 @@ export default function RentalPage() {
                   setActivePane(t.id as any);
                 });
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activePane === t.id 
-                  ? 'bg-[#8EB1D1] text-slate-900 dark:text-white shadow-md' 
-                  : 'bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white border border-slate-200/50 dark:border-white/10'
+              className={`ds-btn ds-btn-sm ${
+                activePane === t.id ? 'ds-btn-primary' : 'ds-btn-ghost'
               }`}
             >
               {t.name}

@@ -450,19 +450,19 @@ export default function PropertiesView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="ds-page ds-stack">
       
       {/* ── Role Selector Top Bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#1C2B48]/60 backdrop-blur-md border border-white/5 rounded-2xl text-xs">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="text-[#8EB1D1] shrink-0" size={20} />
+      <div className="ds-row-between ds-p-md ds-card-glass">
+        <div className="ds-row ds-gap-sm">
+          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
-            <h4 className="font-bold text-white">التحكم بالصلاحيات (RBAC Check)</h4>
-            <p className="text-[10px] text-[#C4D8E5] font-medium mt-0.5">محاكاة قيود الصلاحيات المطبقة على العقارات وحقول التسليم والأسعار</p>
+            <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات (RBAC Check)</h4>
+            <p className="ds-muted">محاكاة قيود الصلاحيات المطبقة على العقارات وحقول التسليم والأسعار</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-[#1C2B48] p-1.5 rounded-lg border border-white/5">
+        <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
           {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
             <button
               key={role}
@@ -470,10 +470,8 @@ export default function PropertiesView() {
                 setCurrentUserRole(role);
                 addTelemetryEvent('system.role_changed', { newRole: role });
               }}
-              className={`px-3 py-1 rounded font-bold transition-all ${
-                currentUserRole === role 
-                  ? 'bg-[#8EB1D1] text-white shadow-sm' 
-                  : 'text-[#C4D8E5] font-medium hover:text-white'
+              className={`ds-btn ds-btn-sm ${
+                currentUserRole === role ? 'ds-btn-primary' : 'ds-btn-ghost'
               }`}
             >
               {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
@@ -507,30 +505,32 @@ export default function PropertiesView() {
         <div className="flex-1 w-full space-y-6">
           
           {/* Properties catalog card */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
+          <div className="ds-card ds-p-xl ds-stack">
             
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="ds-card-header">
               <div>
-                <h3 className="text-base font-black text-white">سجل الوحدات والعقارات (Inventory)</h3>
-                <p className="text-[11px] text-[#C4D8E5] font-medium mt-1">إجمالي العقود والوحدات المتاحة والمحجوزة</p>
+                <h3 className="ds-h3">سجل الوحدات والعقارات (Inventory)</h3>
+                <p className="ds-body-sm">إجمالي العقود والوحدات المتاحة والمحجوزة</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="ds-row ds-gap-sm">
                 <div className="relative">
-                  <Search className="absolute right-3 top-2 text-[#C4D8E5] font-medium" size={14} />
+                  <Search className="absolute right-3 top-2 text-[var(--ds-text-muted)]" size={14} />
                   <input
                     type="text"
                     placeholder="بحث برقم الوحدة أو المشروع..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-[#1C2B48]/80 border border-white/10 rounded-xl pr-8 pl-4 py-1.5 text-xs text-white outline-none w-52 focus:border-cyan-500/50 transition-colors"
+                    className="ds-card-glass !py-1.5 pr-8 pl-4 w-52"
+                    style={{ fontSize: '0.75rem', outline: 'none' }}
                   />
                 </div>
 
                 <select 
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-[#1C2B48]/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
+                  className="ds-card-glass !py-1.5 px-3"
+                  style={{ fontSize: '0.75rem', outline: 'none' }}
                 >
                   <option value="">كل الحالات</option>
                   <option value="Available">متاحة</option>

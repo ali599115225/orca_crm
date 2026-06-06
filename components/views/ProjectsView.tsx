@@ -492,19 +492,19 @@ export default function ProjectsView() {
   );
 
   return (
-    <div className="p-6 space-y-6 text-[#E6EEF6]" dir="rtl">
+    <div className="ds-page ds-stack text-[var(--ds-text-primary)]" dir="rtl">
       
       {/* ── Role and Integrity Top Bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#1C2B48]/60 backdrop-blur-md border border-white/5 rounded-2xl">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="text-[#8EB1D1] shrink-0" size={20} />
+      <div className="ds-row-between ds-p-md ds-card-glass">
+        <div className="ds-row ds-gap-sm">
+          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
-            <h4 className="text-xs text-[#C4D8E5] font-medium font-bold">صلاحيات محطة التحكم (RBAC)</h4>
-            <p className="text-[10px] text-[#C4D8E5] font-medium mt-0.5">يمكنك تغيير دور الموظف لمحاكاة التحقق من الصلاحيات</p>
+            <h4 className="ds-body-sm font-bold">صلاحيات محطة التحكم (RBAC)</h4>
+            <p className="ds-muted">يمكنك تغيير دور الموظف لمحاكاة التحقق من الصلاحيات</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-[#1C2B48] p-1.5 rounded-lg border border-white/5">
+        <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
           {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
             <button
               key={role}
@@ -512,10 +512,8 @@ export default function ProjectsView() {
                 setCurrentUserRole(role);
                 addTelemetryEvent('system.role_changed', 0, { newRole: role });
               }}
-              className={`px-3 py-1 text-xs rounded font-bold transition-all ${
-                currentUserRole === role 
-                  ? 'bg-[#8EB1D1] text-white shadow-sm' 
-                  : 'text-[#C4D8E5] font-medium hover:text-white'
+              className={`ds-btn ds-btn-sm ${
+                currentUserRole === role ? 'ds-btn-primary' : 'ds-btn-ghost'
               }`}
             >
               {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
@@ -532,23 +530,24 @@ export default function ProjectsView() {
 
           {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
           {!selectedProjectId ? (
-            <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl">
+            <div className="ds-card ds-p-xl">
               
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="ds-card-header">
                 <div>
-                  <h2 className="text-xl font-black text-white">إدارة المشاريع العقارية</h2>
-                  <p className="text-xs text-[#C4D8E5] font-medium mt-1">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+                  <h2 className="ds-h2">إدارة المشاريع العقارية</h2>
+                  <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="ds-row ds-gap-sm">
                   <div className="relative max-w-xs">
-                    <Search className="absolute right-3 top-2.5 text-[#C4D8E5] font-medium" size={16} />
+                    <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
                     <input 
                       type="text"
                       placeholder="بحث بالمشروع أو الحي..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="bg-[#1C2B48]/80 border border-white/10 rounded-xl pr-9 pl-4 py-2 text-xs text-white outline-none w-56 focus:border-cyan-500/50 transition-colors"
+                      className="ds-card-glass !py-2 pr-9 pl-4 w-56"
+                      style={{ fontSize: '0.75rem', outline: 'none' }}
                     />
                   </div>
                   <Button 
@@ -568,20 +567,20 @@ export default function ProjectsView() {
 
               {/* Loading / Error / Empty States */}
               {isLoading && (
-                <div className="py-12 flex flex-col items-center justify-center gap-3">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
-                  <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل المشاريع من قاعدة البيانات...</span>
+                <div className="ds-stack ds-row-center ds-py-xl">
+                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
+                  <span className="ds-muted">جاري تحميل المشاريع من قاعدة البيانات...</span>
                 </div>
               )}
 
               {fetchError && !isLoading && (
-                <div className="py-8 text-center">
-                  <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
+                <div className="ds-stack ds-row-center ds-py-lg">
+                  <p className="ds-body-sm ds-p-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', display: 'inline-block' }}>
                     {fetchError}
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
+                    className="ds-btn ds-btn-ghost ds-btn-sm"
                   >
                     إعادة المحاولة
                   </button>
@@ -589,8 +588,8 @@ export default function ProjectsView() {
               )}
 
               {!isLoading && !fetchError && filteredProjects.length === 0 && (
-                <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
-                  لا توجد مشاريع عقارية مسجلة حالياً.
+                <div className="ds-py-lg ds-row-center">
+                  <span className="ds-muted">لا توجد مشاريع عقارية مسجلة حالياً.</span>
                 </div>
               )}
 
