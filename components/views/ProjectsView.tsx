@@ -790,10 +790,10 @@ export default function ProjectsView() {
 
           {/* Projects Table Grid */}
           {!isLoading && !fetchError && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-right border-collapse">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                <tr className="sticky top-0 z-10 bg-[var(--nc-surface-strong)] border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
                   <th className="pb-3 px-4">اسم المشروع</th>
                   <th className="pb-3 px-4">الموقع</th>
                   <th className="pb-3 px-4">الحالة</th>
