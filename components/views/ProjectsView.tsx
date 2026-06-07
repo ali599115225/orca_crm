@@ -1442,7 +1442,7 @@ export default function ProjectsView() {
   );
 
   return (
-    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+    <>
       <LayoutContainer
         kpis={kpisContent}
         actions={actionsContent}
@@ -1796,6 +1796,6 @@ export default function ProjectsView() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
