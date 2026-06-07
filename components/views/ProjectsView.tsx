@@ -759,33 +759,6 @@ export default function ProjectsView() {
       {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
       {!selectedProjectId ? (
         <>
-          <h2 className="text-sm font-bold text-white mb-1">إدارة المشاريع العقارية</h2>
-          <p className="text-xs text-[var(--nc-text-dim)] font-medium mb-4">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="relative max-w-xs">
-              <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)] font-medium" size={16} />
-              <input 
-                type="text"
-                placeholder="بحث بالمشروع أو الحي..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 pr-9 pl-4 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
-              />
-            </div>
-            <Button 
-              icon={Plus}
-              onClick={() => {
-                if (!isAllowed('CREATE_PROJECT')) {
-                  alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
-                  return;
-                }
-                setActiveModal('new_project');
-              }}
-            >
-              مشروع جديد
-            </Button>
-          </div>
 
           {/* Loading / Error / Empty States */}
           {isLoading && (
@@ -1436,6 +1409,42 @@ export default function ProjectsView() {
 
   return (
     <>
+      {/* ── Page Header (above LayoutContainer) ── */}
+      {!selectedProjectId && (
+        <div className="px-6 md:px-8 pt-6 md:pt-8 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-white">إدارة المشاريع العقارية</h2>
+              <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)] font-medium" size={16} />
+                <input 
+                  type="text"
+                  placeholder="بحث بالمشروع أو الحي..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 pr-9 pl-4 text-xs text-white outline-none focus:border-[var(--nc-accent-border)] min-w-[220px]"
+                />
+              </div>
+              <Button 
+                icon={Plus}
+                onClick={() => {
+                  if (!isAllowed('CREATE_PROJECT')) {
+                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+                    return;
+                  }
+                  setActiveModal('new_project');
+                }}
+              >
+                مشروع جديد
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <LayoutContainer
         kpis={kpisContent}
         actions={actionsContent}
