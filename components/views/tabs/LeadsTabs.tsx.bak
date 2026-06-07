@@ -1,0 +1,77 @@
+// components/views/tabs/LeadsTabs.tsx
+"use client";
+
+import { useState } from "react";
+import { useApp } from "@/app/context/AppContext";
+import strings from "@/components/i18n/ar";
+import Pipeline from "../pipeline/Pipeline";
+import Contacts from "./Contacts";
+import Opportunities from "./Opportunities";
+import Tours from "./Tours";
+import Offers from "./Offers";
+import Tasks from "./Tasks";
+import InsightsAutomation from "./InsightsAutomation";
+
+export default function LeadsTabs() {
+  const { lang } = useApp();
+  const [active, setActive] = useState("pipeline");
+
+  const tabs = [
+    { id: "pipeline", labelAr: "متابعة الصفقات", labelEn: "Pipeline" },
+    { id: "contacts", labelAr: "دفتر العملاء", labelEn: "Contacts" },
+    { id: "opportunities", labelAr: "الفرص", labelEn: "Opportunities" },
+    { id: "tours", labelAr: "الجولات العقارية", labelEn: "Property Tours" },
+    { id: "offers", labelAr: "العروض", labelEn: "Offers" },
+    { id: "tasks", labelAr: "المهام والأنشطة", labelEn: "Tasks" },
+    { id: "insights", labelAr: "الرؤى والأتمتة", labelEn: "Insights" },
+  ];
+
+  return (
+    <div className="leads-page p-6" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">{lang === 'AR' ? 'إدارة علاقات العملاء' : 'Customer Relationship Management'}</div>
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
+            {lang === 'AR' ? 'مركز إدارة العملاء والصفقات — ORCA CRM' : 'Deals & Leads Hub — ORCA CRM'}
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <input 
+            placeholder={lang === 'AR' ? 'بحث شامل بالاسم أو الجوال...' : 'Global search leads...'} 
+            className="px-3 py-2 rounded-md bg-brand-panel border border-brand-border text-brand-text-primary text-xs outline-none focus:border-brand-interactive/50" 
+          />
+          <button className="bg-brand-interactive text-brand-bg hover:bg-brand-interactive-hover px-4 py-2 rounded-md text-xs font-bold transition-colors cursor-pointer">
+            {lang === 'AR' ? 'بحث' : 'Search'}
+          </button>
+        </div>
+      </div>
+
+      <div className="tabs-row flex flex-wrap gap-2 mb-6 border-b border-brand-border pb-3">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              active === t.id 
+                ? "bg-brand-interactive text-brand-bg" 
+                : "bg-brand-panel text-brand-text-secondary border border-brand-border hover:text-brand-text-primary hover:bg-brand-bg"
+            }`}
+          >
+            {lang === 'AR' ? t.labelAr : t.labelEn}
+          </button>
+        ))}
+      </div>
+
+      <div className="tab-area">
+        {active === "pipeline" && <Pipeline />}
+        {active === "contacts" && <Contacts />}
+        {active === "opportunities" && <Opportunities />}
+        {active === "tours" && <Tours />}
+        {active === "offers" && <Offers />}
+        {active === "tasks" && <Tasks />}
+        {active === "insights" && <InsightsAutomation />}
+      </div>
+    </div>
+  );
+}

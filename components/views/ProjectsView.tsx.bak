@@ -1,0 +1,1672 @@
+'use client';
+
+import React, { useState, useTransition, useEffect } from 'react';
+import { 
+  Building2, Plus, Search, Calendar, Landmark, MapPin, Eye, 
+  FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
+  FileCheck, Award, Bot, Clock, AlertTriangle, 
+  CloudUpload, ArrowRight, UserCheck, Trash2
+} from 'lucide-react';
+import { Button, Card, Badge } from '../ui/orca-components';
+import { DateField, DateRangeField } from '../ui/DateField';
+import { useAuth } from '@/app/context/AuthContext';
+import LayoutContainer from '../ui/LayoutContainer';
+import { 
+  getDetailedProjectsAction, 
+  createProjectActionDirect, 
+  getProjectUnitsAction, 
+  toggleUnitStatusAction 
+} from '@/app/actions/projects';
+
+// ─── Event Interface for Telemetry ──────────────────────────────────────────
+interface TelemetryEvent {
+  id: string;
+  type: string;
+  projectId: number | string;
+  timestamp: string;
+  actorId: string;
+  payload: any;
+}
+
+// ─── Initial Mock Data ──────────────────────────────────────────────────────
+const initialProjects = [
+  {
+    id: 1,
+    name: 'مشروع النخيل السكني',
+    location: 'المنار، الرياض',
+    status: 'قيد الإنشاء',
+    unitsTotal: 240,
+    unitsSold: 86,
+    progressPercent: 42,
+    description: 'مشروع سكني فاخر يضم 240 شقة سكنية مصممة بأحدث الطرز المعمارية مع توفير خدمات متكاملة كالمسطحات الخضراء، مواقف سيارات خاصة، ونادي رياضي متكامل.',
+    createdAt: '2026-01-10T08:00:00Z',
+    updatedAt: '2026-06-04T12:00:00Z',
+  },
+  {
+    id: 2,
+    name: 'واحة الخليج السكنية',
+    location: 'الملز، الرياض',
+    status: 'مكتمل',
+    unitsTotal: 180,
+    unitsSold: 180,
+    progressPercent: 100,
+    description: 'مشروع متكامل يضم فلل سكنية فاخرة بنظام ذكي وتأمين شامل. تم بيع كامل الوحدات وتسليمها للعملاء.',
+    createdAt: '2025-03-15T08:00:00Z',
+    updatedAt: '2026-05-20T14:30:00Z',
+  },
+  {
+    id: 3,
+    name: 'برج الأفق الاستثماري',
+    location: 'المركز المالي، الرياض',
+    status: 'قيد الإنشاء',
+    unitsTotal: 120,
+    unitsSold: 34,
+    progressPercent: 28,
+    description: 'برج تجاري وسكني فاخر يقع في قلب المركز المالي، يوفر وحدات مكاتب فاخرة وشقق بنتهاوس استثمارية.',
+    createdAt: '2026-02-01T09:00:00Z',
+    updatedAt: '2026-06-03T16:00:00Z',
+  }
+];
+
+const initialPhases: Record<number, any[]> = {
+  1: [
+    { id: 'ph_1', name: 'أعمال الحفر وتأسيس القواعد', startAt: '2026-01-15', endAt: '2026-03-30', status: 'مكتملة' },
+    { id: 'ph_2', name: 'أعمال الهيكل الخرساني والأسقف', startAt: '2026-04-01', endAt: '2026-08-30', status: 'قيد التنفيذ' },
+    { id: 'ph_3', name: 'أعمال التشطيبات الداخلية والكهرباء', startAt: '2026-09-01', endAt: '2026-12-31', status: 'مخطط لها' },
+  ],
+  2: [
+    { id: 'ph_4', name: 'الهيكل والخرسانة الأساسية', startAt: '2025-04-01', endAt: '2025-10-30', status: 'مكتملة' },
+    { id: 'ph_5', name: 'التشطيبات والتسليم النهائي', startAt: '2025-11-01', endAt: '2026-03-01', status: 'مكتملة' },
+  ],
+  3: [
+    { id: 'ph_6', name: 'الحفر والتأسيس الأولي', startAt: '2026-02-10', endAt: '2026-05-15', status: 'مكتملة' },
+    { id: 'ph_7', name: 'أعمال صب الأعمدة والهيكل', startAt: '2026-05-20', endAt: '2026-10-30', status: 'قيد التنفيذ' },
+  ]
+};
+
+const initialUnits: Record<number, any[]> = {
+  1: [
+    { id: 'unit_101', no: 'A-101', type: 'شقة', area: '120 م²', price: 1200000, status: 'Available' },
+    { id: 'unit_102', no: 'A-102', type: 'شقة', area: '95 م²', price: 950000, status: 'Hold' },
+    { id: 'unit_201', no: 'B-201', type: 'فيلا علوية', area: '160 م²', price: 1850000, status: 'Sold' },
+    { id: 'unit_202', no: 'B-202', type: 'شقة', area: '120 م²', price: 1250000, status: 'Available' },
+  ],
+  2: [
+    { id: 'unit_301', no: 'V-01', type: 'فيلا مستقلة', area: '340 م²', price: 4200000, status: 'Sold' },
+    { id: 'unit_302', no: 'V-02', type: 'فيلا مستقلة', area: '340 م²', price: 4200000, status: 'Sold' },
+  ],
+  3: [
+    { id: 'unit_401', no: 'O-11', type: 'مكتب تجاري', area: '210 م²', price: 3100000, status: 'Available' },
+    { id: 'unit_402', no: 'O-12', type: 'مكتب تجاري', area: '150 م²', price: 2200000, status: 'Sold' },
+  ]
+};
+
+const initialReports: Record<number, any[]> = {
+  1: [
+    { id: 'rep_1', phaseName: 'أعمال الحفر وتأسيس القواعد', progressPercent: 100, date: '2026-03-28', note: 'تم الانتهاء من صب كامل القواعد الخرسانية واختبار التربة بنجاح.' },
+    { id: 'rep_2', phaseName: 'أعمال الهيكل الخرساني والأسقف', progressPercent: 42, date: '2026-06-01', note: 'صب أعمدة الدور الثاني جاري العمل فيه، ومعدل التوريد طبيعي.' }
+  ],
+  2: [
+    { id: 'rep_3', phaseName: 'التشطيبات والتسليم النهائي', progressPercent: 100, date: '2026-03-01', note: 'اكتمال فحص واجهات المشروع ومطابقتها للمواصفات القياسية.' }
+  ],
+  3: [
+    { id: 'rep_4', phaseName: 'الحفر والتأسيس الأولي', progressPercent: 100, date: '2026-05-12', note: 'انتهاء أعمال الحفر والبدء المباشر في أعمال القواعد الحديدية.' }
+  ]
+};
+
+const initialDocuments: Record<number, any[]> = {
+  1: [
+    { id: 'doc_101', name: 'مخطط السلامة والبلدية المعتمد.pdf', category: 'مخططات هندسية', documentId: 'doc-abaad-0091' },
+    { id: 'doc_102', name: 'تصاميم الواجهات ثلاثية الأبعاد.zip', category: 'وسائط تصاميم', documentId: 'doc-abaad-0092' },
+  ],
+  2: [
+    { id: 'doc_201', name: 'شهادة إتمام البناء الرسمية.pdf', category: 'تراخيص بلدية', documentId: 'doc-abaad-0110' },
+  ],
+  3: [
+    { id: 'doc_301', name: 'مخططات الأحمال والكهرباء الأساسية.pdf', category: 'مخططات هندسية', documentId: 'doc-abaad-0220' },
+  ]
+};
+
+const initialBookings: Record<number, any[]> = {
+  1: [
+    { id: 'bk_1', unitNo: 'B-201', leadName: 'عبد الرحمن الشمري', price: 1850000, date: '2026-05-18', contractId: 'ct_101' }
+  ],
+  2: [
+    { id: 'bk_2', unitNo: 'V-01', leadName: 'خالد الفيصل', price: 4200000, date: '2025-11-20', contractId: 'ct_201' },
+    { id: 'bk_3', unitNo: 'V-02', leadName: 'فيصل السديري', price: 4200000, date: '2025-12-05', contractId: 'ct_202' }
+  ],
+  3: [
+    { id: 'bk_4', unitNo: 'O-12', leadName: 'شركة الحلول الذكية', price: 2200000, date: '2026-04-12', contractId: 'ct_301' }
+  ]
+};
+
+// ─── Simulated Accounting Service State ─────────────────────────────────────
+const accountingMockTotals: Record<number, { contractsTotal: number; collected: number; outstanding: number }> = {
+  1: { contractsTotal: 42500000, collected: 12300000, outstanding: 30200000 },
+  2: { contractsTotal: 75600000, collected: 75600000, outstanding: 0 },
+  3: { contractsTotal: 22400000, collected: 6200000, outstanding: 16200000 }
+};
+
+export default function ProjectsView() {
+  const { hasPermission } = useAuth();
+  const [selectedProjectId, setSelectedProjectId] = useState<number | string | null>(null);
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [projectPhases, setProjectPhases] = useState<Record<string | number, any[]>>(initialPhases);
+  const [projectUnits, setProjectUnits] = useState<Record<string | number, any[]>>({});
+  const [projectReports, setProjectReports] = useState<Record<string | number, any[]>>(initialReports);
+  const [projectDocs, setProjectDocs] = useState<Record<string | number, any[]>>(initialDocuments);
+  const [projectBookings, setProjectBookings] = useState<Record<string | number, any[]>>(initialBookings);
+  const [accountingFinance, setAccountingFinance] = useState<Record<string | number, any>>(accountingMockTotals);
+
+  // Search Filter
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Tab Controller
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isPending, startTransition] = useTransition();
+
+  // API loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Fetch projects from API on mount
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        setIsLoading(true);
+        setFetchError(null);
+        const data = await getDetailedProjectsAction();
+        if (data && data.length > 0) {
+          setProjectsList(data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            location: p.city,
+            status: p.status === 'COMPLETED' ? 'مكتمل' : p.status === 'PLANNING' ? 'مخطط له' : 'قيد الإنشاء',
+            unitsTotal: p.unitsTotal,
+            unitsSold: p.unitsSold,
+            progressPercent: p.progressPercent,
+            description: p.description || '',
+            createdAt: p.createdAt,
+            updatedAt: p.createdAt,
+          })));
+          addTelemetryEvent('api.projects_loaded', 0, { count: data.length });
+        } else {
+          setProjectsList(initialProjects);
+          addTelemetryEvent('api.projects_loaded_fallback', 0, { count: initialProjects.length });
+        }
+      } catch (err: any) {
+        setFetchError(err.message);
+        addTelemetryEvent('api.error', 0, { error: err.message });
+        setProjectsList(initialProjects);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProjects();
+  }, []);
+
+  // Telemetry Console log
+  const [telemetryLogs, setTelemetryLogs] = useState<TelemetryEvent[]>([
+    {
+      id: 'evt_init',
+      type: 'system.initialized',
+      projectId: 0,
+      timestamp: new Date().toISOString(),
+      actorId: 'system_core',
+      payload: { message: 'تهيئة منصة مراقبة المشاريع العقارية بنجاح' }
+    }
+  ]);
+
+  // Modals state
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  
+  // New project form state
+  const [newProjName, setNewProjName] = useState('');
+  const [newProjLocation, setNewProjLocation] = useState('');
+  const [newProjUnits, setNewProjUnits] = useState(100);
+  const [newProjDesc, setNewProjDesc] = useState('');
+
+  // New booking form state
+  const [bookingUnitId, setBookingUnitId] = useState('');
+  const [bookingLeadName, setBookingLeadName] = useState('');
+  const [bookingPrice, setBookingPrice] = useState('');
+
+  // New phase form state
+  const [phaseName, setPhaseName] = useState('');
+  const [phaseStart, setPhaseStart] = useState('');
+  const [phaseEnd, setPhaseEnd] = useState('');
+
+  // New progress report form state
+  const [reportPhaseId, setReportPhaseId] = useState('');
+  const [reportPercent, setReportPercent] = useState(30);
+  const [reportNote, setReportNote] = useState('');
+  const [reportMedia, setReportMedia] = useState('https://assets.orca.pro/const/img.jpg');
+
+  // Permission check — delegated to AuthContext
+  const isAllowed = (action: string) => hasPermission(action);
+
+  // Add event helper
+  const addTelemetryEvent = (type: string, projId: number | string, payload: any) => {
+    const newEvent: TelemetryEvent = {
+      id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      type,
+      projectId: projId,
+      timestamp: new Date().toISOString(),
+      actorId: 'usr_active',
+      payload
+    };
+    setTelemetryLogs(prev => [newEvent, ...prev]);
+  };
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAllowed('CREATE_PROJECT')) {
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+      return;
+    }
+
+    try {
+      const res = await createProjectActionDirect({
+        name: newProjName,
+        city: newProjLocation,
+        status: 'UNDER_CONSTRUCTION',
+        unitsTotal: newProjUnits,
+      });
+
+      if (!res.success || !res.data) throw new Error(res.error || 'حدث خطأ في قاعدة البيانات');
+
+      const created = res.data;
+      const newProj = {
+        id: created.id,
+        name: created.name,
+        location: created.city,
+        status: 'قيد الإنشاء',
+        unitsTotal: created.unitsTotal,
+        unitsSold: 0,
+        progressPercent: 0,
+        description: newProjDesc,
+        createdAt: created.createdAt,
+        updatedAt: created.createdAt,
+      };
+
+      setProjectsList(prev => [...prev, newProj]);
+      setProjectPhases(prev => ({ ...prev, [created.id]: [] }));
+      setProjectUnits(prev => ({ ...prev, [created.id]: [] }));
+      setProjectReports(prev => ({ ...prev, [created.id]: [] }));
+      setProjectDocs(prev => ({ ...prev, [created.id]: [] }));
+      setProjectBookings(prev => ({ ...prev, [created.id]: [] }));
+      setAccountingFinance(prev => ({ ...prev, [created.id]: { contractsTotal: 0, collected: 0, outstanding: 0 } }));
+
+      addTelemetryEvent('project.created', created.id, { name: newProjName, unitsTotal: newProjUnits });
+    } catch (err: any) {
+      alert('خطأ في إنشاء المشروع: ' + err.message);
+    }
+
+    setNewProjName('');
+    setNewProjLocation('');
+    setNewProjUnits(100);
+    setNewProjDesc('');
+    setActiveModal(null);
+  };
+
+  const handleCreateBooking = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjectId) return;
+    if (!isAllowed('CREATE_BOOKING')) {
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
+      return;
+    }
+
+    const unit = projectUnits[selectedProjectId]?.find(u => u.id === bookingUnitId);
+    if (!unit) return;
+
+    // 1. Create booking locally
+    const bkId = `bk_${Date.now()}`;
+    const newBk = {
+      id: bkId,
+      unitNo: unit.no,
+      leadName: bookingLeadName,
+      price: Number(bookingPrice),
+      date: new Date().toISOString().split('T')[0],
+      contractId: `ct_${Date.now()}`
+    };
+
+    setProjectBookings(prev => ({
+      ...prev,
+      [selectedProjectId]: [...(prev[selectedProjectId] || []), newBk]
+    }));
+
+    // 2. Change unit status to "Sold" or "Hold"
+    setProjectUnits(prev => ({
+      ...prev,
+      [selectedProjectId]: prev[selectedProjectId].map(u => u.id === unit.id ? { ...u, status: 'Sold' } : u)
+    }));
+
+    // 3. Emit telemetry
+    addTelemetryEvent('booking.created', selectedProjectId, {
+      bookingId: bkId,
+      unitId: unit.id,
+      leadName: bookingLeadName,
+      price: Number(bookingPrice)
+    });
+
+    // 4. Update Projects List counters
+    setProjectsList(prev => prev.map(p => p.id === selectedProjectId ? { ...p, unitsSold: p.unitsSold + 1 } : p));
+
+    // Reset and close
+    setBookingUnitId('');
+    setBookingLeadName('');
+    setBookingPrice('');
+    setActiveModal(null);
+  };
+
+  const handleAddPhase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjectId) return;
+    if (!isAllowed('ADD_PHASE')) {
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإضافة مراحل تخطيطية.');
+      return;
+    }
+
+    const newPh = {
+      id: `ph_${Date.now()}`,
+      name: phaseName,
+      startAt: phaseStart,
+      endAt: phaseEnd,
+      status: 'مخطط لها'
+    };
+
+    setProjectPhases(prev => ({
+      ...prev,
+      [selectedProjectId]: [...(prev[selectedProjectId] || []), newPh]
+    }));
+
+    addTelemetryEvent('phase.created', selectedProjectId, newPh);
+
+    setPhaseName('');
+    setPhaseStart('');
+    setPhaseEnd('');
+    setActiveModal(null);
+  };
+
+  const handlePostReport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjectId) return;
+    if (!isAllowed('POST_PROGRESS')) {
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع تقارير إنشائية.');
+      return;
+    }
+
+    const phase = projectPhases[selectedProjectId]?.find(p => p.id === reportPhaseId);
+    const phaseTitle = phase ? phase.name : 'مرحلة عامة';
+
+    const newRep = {
+      id: `rep_${Date.now()}`,
+      phaseName: phaseTitle,
+      progressPercent: Number(reportPercent),
+      date: new Date().toISOString().split('T')[0],
+      note: reportNote
+    };
+
+    setProjectReports(prev => ({
+      ...prev,
+      [selectedProjectId]: [newRep, ...(prev[selectedProjectId] || [])]
+    }));
+
+    // Update phase status if completed
+    if (Number(reportPercent) >= 100) {
+      setProjectPhases(prev => ({
+        ...prev,
+        [selectedProjectId]: prev[selectedProjectId].map(ph => ph.id === reportPhaseId ? { ...ph, status: 'مكتملة' } : ph)
+      }));
+    } else {
+      setProjectPhases(prev => ({
+        ...prev,
+        [selectedProjectId]: prev[selectedProjectId].map(ph => ph.id === reportPhaseId ? { ...ph, status: 'قيد التنفيذ' } : ph)
+      }));
+    }
+
+    // Sync project progress percent
+    setProjectsList(prev => prev.map(p => p.id === selectedProjectId ? { ...p, progressPercent: Math.max(p.progressPercent, Number(reportPercent)) } : p));
+
+    addTelemetryEvent('construction.reported', selectedProjectId, {
+      reportId: newRep.id,
+      progressPercent: reportPercent,
+      mediaUrls: [reportMedia]
+    });
+
+    setReportPhaseId('');
+    setReportPercent(30);
+    setReportNote('');
+    setActiveModal(null);
+  };
+
+  const triggerPaymentReceivedSimulation = () => {
+    if (!selectedProjectId) return;
+    
+    // Simulate Accounting system sending payment received webhook
+    const amount = 500000;
+    
+    // Update local finance state
+    setAccountingFinance(prev => {
+      const cur = prev[selectedProjectId];
+      return {
+        ...prev,
+        [selectedProjectId]: {
+          ...cur,
+          collected: cur.collected + amount,
+          outstanding: Math.max(0, cur.outstanding - amount)
+        }
+      };
+    });
+
+    addTelemetryEvent('payment.received', selectedProjectId, {
+      amountSar: amount,
+      paymentMethod: 'MADA',
+      contractId: 'ct_101',
+      description: 'دفعة سداد من العميل تم استلامها بالربط مع المحاسبة'
+    });
+
+    alert('تم استقبال إشعار مالي webhook بنجاح من المحاسبة! تم تحديث إجمالي المبالغ المحصلة بقيمة ٥٠٠,٠٠٠ ر.س.');
+  };
+
+  // Change tab function with transition spinner
+  const changeTab = (tabId: string) => {
+    startTransition(() => {
+      setActiveTab(tabId);
+    });
+  };
+
+  const project = projectsList.find(p => p.id === selectedProjectId);
+  const filteredProjects = projectsList.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.location.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+      
+      {/* ── Layout Wrapper ── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        
+        {/* ── Left/Main Content Column ── */}
+        <div className="flex-1 w-full space-y-6">
+
+          {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
+          {!selectedProjectId ? (
+            <div className="ds-card ds-p-xl">
+              
+              <div className="ds-card-header">
+                <div>
+                  <h2 className="ds-h2">إدارة المشاريع العقارية</h2>
+                  <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+                </div>
+                
+                <div className="nc-row">
+                  <div className="relative max-w-xs">
+                    <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
+                    <input 
+                      type="text"
+                      placeholder="بحث بالمشروع أو الحي..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="nc-glass !py-2 pr-9 pl-4 w-56"
+                      style={{ fontSize: '0.75rem', outline: 'none' }}
+                    />
+                  </div>
+                  <Button 
+                    icon={Plus}
+                    onClick={() => {
+                      if (!isAllowed('CREATE_PROJECT')) {
+                        alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+                        return;
+                      }
+                      setActiveModal('new_project');
+                    }}
+                  >
+                    مشروع جديد
+                  </Button>
+                </div>
+              </div>
+
+              {/* Loading / Error / Empty States */}
+              {isLoading && (
+                <div className="ds-stack ds-row-center ds-py-xl">
+                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
+                  <span className="ds-muted">جاري تحميل المشاريع من قاعدة البيانات...</span>
+                </div>
+              )}
+
+              {fetchError && !isLoading && (
+                <div className="ds-stack ds-row-center ds-py-lg">
+                  <p className="ds-body-sm ds-p-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', display: 'inline-block' }}>
+                    {fetchError}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="nc-btn nc-btn-ghost nc-btn-sm"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              )}
+
+              {!isLoading && !fetchError && filteredProjects.length === 0 && (
+                <div className="ds-py-lg ds-row-center">
+                  <span className="ds-muted">لا توجد مشاريع عقارية مسجلة حالياً.</span>
+                </div>
+              )}
+
+              {/* Projects Table Grid */}
+              {!isLoading && !fetchError && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                      <th className="pb-3 px-4">اسم المشروع</th>
+                      <th className="pb-3 px-4">الموقع</th>
+                      <th className="pb-3 px-4">الحالة</th>
+                      <th className="pb-3 px-4">مبيعات الوحدات</th>
+                      <th className="pb-3 px-4">تقدم التشييد</th>
+                      <th className="pb-3 px-4 text-center">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProjects.map((p) => (
+                      <tr 
+                        key={p.id} 
+                        className="border-b border-white/5 hover:bg-white/5 transition-colors group"
+                      >
+                        <td className="py-4 px-4 font-bold text-white text-sm">
+                          {p.name}
+                        </td>
+                        <td className="py-4 px-4 text-xs text-[#C4D8E5] font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin size={12} className="text-[#C4D8E5] font-medium" />
+                            {p.location}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            p.status === 'مكتمل' 
+                              ? 'bg-emerald-500/25 text-emerald-400' 
+                              : 'bg-amber-500/25 text-amber-400'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-xs">
+                          <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-[#1C2B48] rounded-full h-1.5 border border-white/5">
+                              <div 
+                                className="bg-[#8EB1D1] h-1.5 rounded-full" 
+                                style={{ width: `${p.progressPercent}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[11px] font-bold text-[#8EB1D1]">{p.progressPercent}%</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <button 
+                            onClick={async () => {
+                              setSelectedProjectId(p.id);
+                              addTelemetryEvent('project.opened', p.id, { name: p.name });
+                              try {
+                                const dbUnits = await getProjectUnitsAction(String(p.id));
+                                setProjectUnits(prev => ({
+                                  ...prev,
+                                  [p.id]: dbUnits
+                                }));
+                                addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
+                              } catch (err: any) {
+                                console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
+                                if (!projectUnits[p.id]) {
+                                  setProjectUnits(prev => ({
+                                    ...prev,
+                                    [p.id]: initialUnits[p.id as number] || []
+                                  }));
+                                }
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1C2B48] border border-white/5 hover:bg-[#8EB1D1]/20 hover:text-[#8EB1D1] hover:border-[#8EB1D1]/30 rounded-lg text-xs font-bold transition-all"
+                          >
+                            <Eye size={13} />
+                            استعراض
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+            </div>
+            )}
+          </div>
+          ) : (
+            
+            // ─── View 2: Detailed Project View ───
+            <div className="space-y-6">
+              
+              {/* Return link */}
+              <button 
+                onClick={() => setSelectedProjectId(null)}
+                className="flex items-center gap-1.5 text-xs text-[#8EB1D1] hover:text-[#A7C7E7] font-bold transition-colors cursor-pointer"
+              >
+                <ArrowRight size={14} />
+                العودة لقائمة المشاريع العقارية
+              </button>
+
+              {/* Project Hero Details Panel */}
+              <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 relative overflow-hidden shadow-xl">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-bl-full blur-3xl pointer-events-none"></div>
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-black text-white">{project?.name}</h2>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        project?.status === 'مكتمل' 
+                          ? 'bg-emerald-500/25 text-emerald-400' 
+                          : 'bg-amber-500/25 text-amber-400'
+                      }`}>
+                        {project?.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#C4D8E5] font-medium mt-1.5">الموقع: {project?.location} | الرقم التعريفي: PRJ-00{project?.id}</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button 
+                      icon={Plus} 
+                      onClick={() => {
+                        if (!isAllowed('CREATE_BOOKING')) {
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
+                          return;
+                        }
+                        setActiveModal('new_booking');
+                      }}
+                    >
+                      إنشاء حجز
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      icon={CloudUpload}
+                      onClick={() => {
+                        if (!isAllowed('UPLOAD_DOC')) {
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع مستندات.');
+                          return;
+                        }
+                        setActiveModal('upload_doc');
+                      }}
+                    >
+                      رفع مخطط هندسي
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs Section */}
+              <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl">
+                
+                {/* Tabs Bar */}
+                <div className="flex flex-wrap gap-2 border-b border-[#A7C7E7]/20 pb-3 mb-6">
+                  {[
+                    { id: 'overview', name: 'نظرة عامة' },
+                    { id: 'phases', name: 'المراحل والتخطيط' },
+                    { id: 'units', name: 'إدارة الوحدات' },
+                    { id: 'construction', name: 'تقدّم الإنشاء' },
+                    { id: 'handover', name: 'التسليم والاستلام' },
+                    { id: 'sales', name: 'المبيعات والحجوزات' },
+                    { id: 'documents', name: 'المستندات والوسائط' },
+                    { id: 'reports', name: 'التقارير ولوحات الأداء' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => changeTab(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === tab.id 
+                          ? 'bg-[#8EB1D1] text-white shadow-sm' 
+                          : 'bg-[#1C2B48]/50 text-[#C4D8E5] font-medium hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab Contents */}
+                {isPending ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-3">
+                    <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
+                    <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل بيانات التبويب...</span>
+                  </div>
+                ) : (
+                  <div className="tab-view-pane">
+                    
+                    {/* Tab 1: Overview */}
+                    {activeTab === 'overview' && (
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-sm font-bold text-white mb-2">نبذة تفصيلية عن المشروع</h3>
+                          <p className="text-xs text-[#C4D8E5] font-medium leading-relaxed bg-[#1C2B48]/45 p-4 rounded-xl border border-white/5">{project?.description}</p>
+                        </div>
+
+                        {/* Snapshot statistics */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">إجمالي الوحدات السكنية</span>
+                            <h2 className="text-2xl font-black text-white mt-1">{project?.unitsTotal} وحدة</h2>
+                          </Card>
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">الوحدات المحجوزة والمباعة</span>
+                            <h2 className="text-2xl font-black text-[#8EB1D1] mt-1">{project?.unitsSold} وحدة</h2>
+                          </Card>
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">نسبة تقدم التشييد المالي والخرساني</span>
+                            <h2 className="text-2xl font-black text-cyan-400 mt-1">{project?.progressPercent}%</h2>
+                          </Card>
+                        </div>
+
+                        {/* Telemetry notification */}
+                        <div className="flex items-start gap-3 bg-cyan-950/20 border border-cyan-500/20 p-4 rounded-2xl text-xs text-cyan-100">
+                          <Bot size={16} className="text-cyan-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold">رؤى AI منصور:</span>
+                            <p className="text-[11px] text-cyan-300/80 mt-1 leading-relaxed">
+                              يسير هذا المشروع بمعدل بيع متناسق (تبلغ نسبة الإشغال حالياً {Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}%). 
+                              يوصى بالبدء في التخطيط لإطلاق المرحلة الثانية من تشطيبات الواجهات الخارجية للتأكد من مواكبة تسليم الوحدات.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 2: Phases & Planning */}
+                    {activeTab === 'phases' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-white">مراحل التنفيذ والتخطيط الهندسي</h3>
+                          <button
+                            onClick={() => {
+                              if (!isAllowed('ADD_PHASE')) {
+                                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإضافة مراحل تخطيطية.');
+                                return;
+                              }
+                              setActiveModal('new_phase');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1]/20 border border-[#8EB1D1]/30 text-[#8EB1D1] text-xs font-bold rounded-lg transition-all"
+                          >
+                            <Plus size={14} />
+                            إضافة مرحلة تنفيذية
+                          </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right">
+                            <thead>
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                                <th className="pb-3">المرحلة</th>
+                                <th className="pb-3">تاريخ البداية</th>
+                                <th className="pb-3">تاريخ النهاية المتوقع</th>
+                                <th className="pb-3 text-left">الحالة</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(projectPhases[selectedProjectId] || []).map((ph, idx) => (
+                                <tr key={idx} className="border-b border-white/5 text-xs">
+                                  <td className="py-3 text-white font-bold">{ph.name}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{ph.startAt}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{ph.endAt}</td>
+                                  <td className="py-3 text-left">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      ph.status === 'مكتملة' 
+                                        ? 'bg-emerald-500/20 text-emerald-400' 
+                                        : ph.status === 'قيد التنفيذ' 
+                                          ? 'bg-amber-500/20 text-amber-400' 
+                                          : 'bg-[#1C2B48] text-[#C4D8E5] font-medium'
+                                    }`}>
+                                      {ph.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!projectPhases[selectedProjectId] || projectPhases[selectedProjectId].length === 0) && (
+                                <tr>
+                                  <td colSpan={4} className="py-6 text-center text-[#C4D8E5] font-medium">لا توجد مراحل تخطيطية مسجلة بعد.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 3: Unit Management */}
+                    {activeTab === 'units' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-white">سجل الوحدات (Inventory)</h3>
+                          <p className="text-xs text-[#C4D8E5] font-medium">إجمالي الوحدات المدرجة: {(projectUnits[selectedProjectId] || []).length} وحدات</p>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right">
+                            <thead>
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                                <th className="pb-3">رقم الوحدة</th>
+                                <th className="pb-3">نوع الوحدة</th>
+                                <th className="pb-3">المساحة الإجمالية</th>
+                                <th className="pb-3">السعر الافتراضي</th>
+                                <th className="pb-3">الحالة البيعية</th>
+                                <th className="pb-3 text-center">إجراءات</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(projectUnits[selectedProjectId] || []).map((u, idx) => (
+                                <tr key={idx} className="border-b border-white/5 text-xs hover:bg-white/5 transition-colors">
+                                  <td className="py-3 text-white font-bold">{u.no}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{u.type}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{u.area}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium font-bold">{u.price.toLocaleString()} ر.س</td>
+                                  <td className="py-3">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      u.status === 'Available' 
+                                        ? 'bg-emerald-500/20 text-emerald-400' 
+                                        : u.status === 'Hold' 
+                                          ? 'bg-amber-500/20 text-amber-400' 
+                                          : 'bg-rose-500/20 text-rose-400'
+                                    }`}>
+                                      {u.status === 'Available' ? 'متاحة' : u.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-center">
+                                    {u.status !== 'Sold' && (
+                                      <button
+                                        onClick={async () => {
+                                          if (!isAllowed('UPDATE_UNIT')) {
+                                            alert('عذراً! دورك الحالي لا يمتلك الصلاحية لتغيير حالة الوحدة.');
+                                            return;
+                                          }
+                                          try {
+                                            const res = await toggleUnitStatusAction(u.id, u.status);
+                                            if (res.success && res.status) {
+                                              setProjectUnits(prev => ({
+                                                ...prev,
+                                                [selectedProjectId]: prev[selectedProjectId].map(item => item.id === u.id ? { ...item, status: res.status } : item)
+                                              }));
+                                              addTelemetryEvent('unit.status_changed', selectedProjectId, { unitId: u.id, unitNo: u.no, previousStatus: u.status, newStatus: res.status });
+                                              
+                                              // Refresh projects list in background to update stats
+                                              const data = await getDetailedProjectsAction();
+                                              if (data && data.length > 0) {
+                                                setProjectsList(data.map((p: any) => ({
+                                                  id: p.id,
+                                                  name: p.name,
+                                                  location: p.city,
+                                                  status: p.status === 'COMPLETED' ? 'مكتمل' : p.status === 'PLANNING' ? 'مخطط له' : 'قيد الإنشاء',
+                                                  unitsTotal: p.unitsTotal,
+                                                  unitsSold: p.unitsSold,
+                                                  progressPercent: p.progressPercent,
+                                                  description: p.description || '',
+                                                  createdAt: p.createdAt,
+                                                  updatedAt: p.createdAt,
+                                                })));
+                                              }
+                                            } else {
+                                              alert('فشل تعديل حالة الوحدة في قاعدة البيانات: ' + (res.error || 'خطأ غير معروف'));
+                                            }
+                                          } catch (err: any) {
+                                            alert('خطأ أثناء تعديل حالة الوحدة: ' + err.message);
+                                          }
+                                        }}
+                                        className="px-2.5 py-1 bg-[#1C2B48] border border-white/10 hover:border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 rounded text-[10px] font-bold transition-all"
+                                      >
+                                        {u.status === 'Available' ? 'حجز مؤقت' : 'إلغاء الحجز'}
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!projectUnits[selectedProjectId] || projectUnits[selectedProjectId].length === 0) && (
+                                <tr>
+                                  <td colSpan={6} className="py-6 text-center text-[#C4D8E5] font-medium">لا توجد وحدات عقارية مدخلة لهذا المشروع.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 4: Construction Progress */}
+                    {activeTab === 'construction' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-white">تقارير الإنجاز الإنشائي الموقعية</h3>
+                          <button
+                            onClick={() => {
+                              if (!isAllowed('POST_PROGRESS')) {
+                                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع تقارير إنشائية.');
+                                return;
+                              }
+                              setActiveModal('new_report');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1]/20 border border-[#8EB1D1]/30 text-[#8EB1D1] text-xs font-bold rounded-lg transition-all"
+                          >
+                            <Plus size={14} />
+                            تسجيل تقرير موقعي
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {(projectReports[selectedProjectId] || []).map((rep, idx) => (
+                            <div key={idx} className="bg-[#1C2B48]/40 border border-white/5 p-4 rounded-2xl text-xs space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-[#8EB1D1]">{rep.phaseName}</span>
+                                <span className="text-[10px] text-[#C4D8E5] font-medium">{rep.date}</span>
+                              </div>
+                              <p className="text-[#C4D8E5] font-medium leading-relaxed">{rep.note}</p>
+                              <div className="flex items-center justify-between pt-1">
+                                <div className="flex items-center gap-1.5 text-[#C4D8E5] font-medium">
+                                  <Activity size={13} className="text-cyan-400" />
+                                  <span>نسبة الإنجاز:</span>
+                                  <span className="font-bold text-white">{rep.progressPercent}%</span>
+                                </div>
+                                <span className="text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-800/30 px-2 py-0.5 rounded">
+                                  صورة موثقة سحابياً
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {(!projectReports[selectedProjectId] || projectReports[selectedProjectId].length === 0) && (
+                            <div className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد تقارير موثقة للإنجاز الموقعي حالياً.</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 5: Delivery & Handover */}
+                    {activeTab === 'handover' && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-white mb-2">مواعيد تسليم الوحدات وجداول العيوب (Handover)</h3>
+                        <div className="bg-[#1C2B48]/45 p-4 rounded-xl border border-white/5 text-xs text-[#C4D8E5] font-medium space-y-3">
+                          <p>يتم هنا إدراج الوحدات التي اقترب موعد تسليمها للعميل ومراجعة العيوب وتسوية الاستلام النهائي.</p>
+                          <div className="border-t border-[#A7C7E7]/20 pt-3">
+                            <h4 className="font-bold text-white mb-2">جدول التسليم الحالي:</h4>
+                            <div className="p-3 bg-[#1C2B48]/60 rounded-xl border border-white/5 flex justify-between items-center">
+                              <div>
+                                <p className="font-bold text-slate-200">موعد معاينة الوحدة B-201 للعميل عبد الرحمن الشمري</p>
+                                <span className="text-[10px] text-[#C4D8E5] font-medium">التاريخ: 2026-07-01 · الوقت: 10:00 ص</span>
+                              </div>
+                              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[9px] font-bold">
+                                مجدول ومعتمد
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 6: Sales & Bookings */}
+                    {activeTab === 'sales' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-white">سجل المبيعات والعقود والملخصات</h3>
+                          <span className="text-[10px] text-cyan-400 font-bold bg-cyan-950/30 px-2 py-1 rounded border border-cyan-800/20">
+                            مؤمن بالكامل عبر خدمة المحاسبة (Accounting proxy)
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right">
+                            <thead>
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                                <th className="pb-3">رقم الوحدة</th>
+                                <th className="pb-3">اسم المشتري (Lead)</th>
+                                <th className="pb-3">قيمة التعاقد</th>
+                                <th className="pb-3">تاريخ الحجز</th>
+                                <th className="pb-3 text-center">مرجع العقد</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(projectBookings[selectedProjectId] || []).map((bk, idx) => (
+                                <tr key={idx} className="border-b border-white/5 text-xs">
+                                  <td className="py-3 text-white font-bold">{bk.unitNo}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{bk.leadName}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium font-bold">{bk.price.toLocaleString()} ر.س</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{bk.date}</td>
+                                  <td className="py-3 text-center text-cyan-400 font-mono text-[10px]">
+                                    {bk.contractId}
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!projectBookings[selectedProjectId] || projectBookings[selectedProjectId].length === 0) && (
+                                <tr>
+                                  <td colSpan={5} className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد عمليات بيع أو حجز مسجلة لهذا المشروع.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 7: Documents & Media */}
+                    {activeTab === 'documents' && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-white mb-2">مستندات وتراخيص المشروع المعتمدة</h3>
+                        
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right">
+                            <thead>
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                                <th className="pb-3">اسم الملف</th>
+                                <th className="pb-3">التصنيف</th>
+                                <th className="pb-3 text-center">الرقم المرجعي (documentId)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(projectDocs[selectedProjectId] || []).map((doc, idx) => (
+                                <tr key={idx} className="border-b border-white/5 text-xs">
+                                  <td className="py-3 text-white font-bold">{doc.name}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{doc.category}</td>
+                                  <td className="py-3 text-center text-[#8EB1D1] font-mono text-[10px]">
+                                    {doc.documentId}
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!projectDocs[selectedProjectId] || projectDocs[selectedProjectId].length === 0) && (
+                                <tr>
+                                  <td colSpan={3} className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد مستندات مرفوعة بعد.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 8: Reports & Performance */}
+                    {activeTab === 'reports' && (
+                      <div className="space-y-6">
+                        <h3 className="text-sm font-bold text-white">لوحة قياس الأداء المالي والتشغيلي (KPIs)</h3>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <Card className="bg-[#1C2B48]/40 border border-white/5 p-5 rounded-2xl text-xs space-y-4">
+                            <h4 className="font-bold text-[#C4D8E5] font-medium border-b border-[#A7C7E7]/20 pb-2">معدل الإشغال البيعي للمشروع</h4>
+                            <div className="flex items-center justify-between">
+                              <span>الوحدات المباعة:</span>
+                              <span className="font-bold text-[#8EB1D1]">{project?.unitsSold} وحدة</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>الوحدات المتاحة:</span>
+                              <span className="font-bold text-white">{(project?.unitsTotal || 0) - (project?.unitsSold || 0)} وحدة</span>
+                            </div>
+                            <div className="w-full bg-[#1C2B48] rounded-full h-2 border border-white/5">
+                              <div 
+                                className="bg-[#8EB1D1] h-2 rounded-full" 
+                                style={{ width: `${Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-[10px] text-[#C4D8E5] font-medium">تم بيع ما يقارب {Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}% من مخزون الوحدات الكلي للمشروع.</p>
+                          </Card>
+
+                          <Card className="bg-[#1C2B48]/40 border border-white/5 p-5 rounded-2xl text-xs space-y-4">
+                            <h4 className="font-bold text-[#C4D8E5] font-medium border-b border-[#A7C7E7]/20 pb-2">إجمالي التدفق المالي الافتراضي</h4>
+                            <div className="flex items-center justify-between">
+                              <span>إجمالي حجم التعاقدات:</span>
+                              <span className="font-bold text-white">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>التدفق المحصل (Collected):</span>
+                              <span className="font-bold text-emerald-400">{(accountingFinance[selectedProjectId]?.collected || 0).toLocaleString()} ر.س</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>المبالغ المعلقة (Outstanding):</span>
+                              <span className="font-bold text-amber-500">{(accountingFinance[selectedProjectId]?.outstanding || 0).toLocaleString()} ر.س</span>
+                            </div>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ── Telemetry Live Log Console ── */}
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+              <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
+                <Bot size={15} />
+                قناة الأحداث والتحليلات الفورية (Telemetry Event Bus Logs)
+              </h4>
+              <button 
+                onClick={() => setTelemetryLogs([])}
+                className="text-[10px] text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium border border-white/5 px-2 py-0.5 rounded"
+              >
+                مسح السجل
+              </button>
+            </div>
+            
+            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[11px] font-mono leading-relaxed">
+              {telemetryLogs.map((log) => (
+                <div key={log.id} className="p-2.5 bg-[#1C2B48]/60 rounded-xl border border-white/5 space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
+                    <span className="text-[#C4D8E5] font-medium">{log.timestamp}</span>
+                  </div>
+                  <div className="text-[#C4D8E5] font-medium">
+                    <span className="text-cyan-400">actor:</span> {log.actorId} | 
+                    <span className="text-cyan-400"> project:</span> {log.projectId || 'N/A'}
+                  </div>
+                  <pre className="text-[10px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-1.5 rounded overflow-x-auto">
+                    {JSON.stringify(log.payload, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── Sticky Right Column (Sidebar Summary Overlay) ── */}
+        <aside className="w-full lg:w-80 shrink-0 space-y-6">
+          
+          {/* Financial summary wrapper (reference accounting service) */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="border-b border-[#A7C7E7]/20 pb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Landmark size={16} className="text-[#8EB1D1]" />
+                الملخص المالي العام
+              </h4>
+              <p className="text-[10px] text-[#C4D8E5] font-medium mt-1">يعرض ملخصاً عرضياً مستخرجاً من نظام الحسابات المركزي</p>
+            </div>
+
+            {selectedProjectId ? (
+              <div className="space-y-3 text-xs">
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">إجمالي المبيعات والتعاقدات</span>
+                  <span className="font-bold text-white font-mono">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">المدفوعات والمبالغ المحصلة</span>
+                  <span className="font-bold text-emerald-400 font-mono">{(accountingFinance[selectedProjectId]?.collected || 0).toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">المطالبات والأقساط المستحقة</span>
+                  <span className="font-bold text-amber-500 font-mono">{(accountingFinance[selectedProjectId]?.outstanding || 0).toLocaleString()} ر.س</span>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={triggerPaymentReceivedSimulation}
+                    className="w-full py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                  >
+                    محاكاة استلام دفعة مالية (Webhook)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-[#C4D8E5] font-medium text-center py-3">الرجاء اختيار مشروع لاستعراض تفاصيله المالية العامة.</p>
+            )}
+          </div>
+
+          {/* Quick actions box */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">إجراءات سريعة</h4>
+            <div className="flex flex-col gap-2">
+              <button 
+                onClick={() => {
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
+                    return;
+                  }
+                  if (!isAllowed('CREATE_BOOKING')) {
+                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
+                    return;
+                  }
+                  setActiveModal('new_booking');
+                }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
+              >
+                <span>إنشاء حجز جديد</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
+                    return;
+                  }
+                  addTelemetryEvent('tour.scheduled', selectedProjectId, { 
+                    leadName: 'عميل مهتم سريع', 
+                    date: '2026-06-10', 
+                    notes: 'جولة موجهة بواسطة حجز فوري' 
+                  });
+                  alert('تمت جدولة الجولة العقارية وإدراج الحدث بنجاح.');
+                }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
+              >
+                <span>جدولة جولة عقارية سريعة</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
+                    return;
+                  }
+                  addTelemetryEvent('handover.scheduled', selectedProjectId, { 
+                    unitNo: 'A-101', 
+                    date: '2026-07-01'
+                  });
+                  alert('تمت جدولة تسليم الوحدة وإرسال الإشعار للعميل.');
+                }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
+              >
+                <span>تسجيل موعد استلام نهائي</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+            </div>
+          </div>
+
+          {/* Site alerts */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <Clock size={14} className="text-amber-500" />
+              تنبيهات ومواعيد موجهة
+            </h4>
+            <ul className="text-xs space-y-2 text-[#C4D8E5] font-medium">
+              <li className="flex items-start gap-1.5">
+                <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                <span>انحراف في خطة صب قواعد الهيكل للمرحلة الثانية.</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                <span>موعد تسليم وشيك لوحدة B-201 (١ يوليو ٢٠٢٦).</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Recent documents list */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">المستندات الأخيرة</h4>
+            <div className="space-y-2 text-xs">
+              {[
+                { id: 'doc_991', name: 'رخصة_الحفر_المعتمدة.pdf', ref: 'doc-ref-121' },
+                { id: 'doc_992', name: 'تقرير_سلامة_التربة.pdf', ref: 'doc-ref-122' }
+              ].map(doc => (
+                <div key={doc.id} className="p-2 bg-[#1C2B48]/40 rounded-lg border border-white/5 flex items-center justify-between">
+                  <div className="truncate pr-1">
+                    <p className="truncate text-slate-200 text-[11px]">{doc.name}</p>
+                    <span className="text-[9px] text-[#C4D8E5] font-medium">ID: {doc.ref}</span>
+                  </div>
+                  <FileCheck size={14} className="text-[#8EB1D1] shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+
+      {/* ── Modal 1: New Project Form ── */}
+      {activeModal === 'new_project' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <form 
+            onSubmit={handleCreateProject}
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+          >
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <Building2 size={18} />
+              إنشاء مشروع عقاري جديد
+            </h3>
+            
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">اسم المشروع:</label>
+              <input 
+                type="text"
+                required
+                value={newProjName}
+                onChange={(e) => setNewProjName(e.target.value)}
+                placeholder="مثال: مشروع مجمع النخيل 6"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">موقع المشروع (الحي، المدينة):</label>
+              <input 
+                type="text"
+                required
+                value={newProjLocation}
+                onChange={(e) => setNewProjLocation(e.target.value)}
+                placeholder="مثال: النرجس، الرياض"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">عدد الوحدات الإجمالي:</label>
+              <input 
+                type="number"
+                required
+                value={newProjUnits}
+                onChange={(e) => setNewProjUnits(Number(e.target.value))}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">وصف المشروع ومميزاته:</label>
+              <textarea 
+                rows={3}
+                value={newProjDesc}
+                onChange={(e) => setNewProjDesc(e.target.value)}
+                placeholder="تفاصيل ترويجية وهندسية..."
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                type="submit"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+              >
+                تأكيد الإنشاء
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Modal 2: New Booking Form ── */}
+      {activeModal === 'new_booking' && selectedProjectId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <form 
+            onSubmit={handleCreateBooking}
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+          >
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <FileCheck size={18} />
+              حجز وحدة سكنية جديدة
+            </h3>
+            
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">اختر الوحدة المتاحة:</label>
+              <select 
+                required
+                value={bookingUnitId}
+                onChange={(e) => {
+                  const uid = e.target.value;
+                  setBookingUnitId(uid);
+                  const unitObj = projectUnits[selectedProjectId]?.find(u => u.id === uid);
+                  if (unitObj) setBookingPrice(String(unitObj.price));
+                }}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              >
+                <option value="">-- اختر الوحدة --</option>
+                {(projectUnits[selectedProjectId] || [])
+                  .filter(u => u.status === 'Available')
+                  .map(u => (
+                    <option key={u.id} value={u.id}>{u.no} ({u.type} - {u.area})</option>
+                  ))
+                }
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">اسم المشتري (Lead):</label>
+              <input 
+                type="text"
+                required
+                value={bookingLeadName}
+                onChange={(e) => setBookingLeadName(e.target.value)}
+                placeholder="اسم العميل الرباعي..."
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">القيمة التعاقدية (ر.س):</label>
+              <input 
+                type="number"
+                required
+                value={bookingPrice}
+                onChange={(e) => setBookingPrice(e.target.value)}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                type="submit"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+              >
+                حفظ الحجز وإصدار العقد
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Modal 3: New Phase Form ── */}
+      {activeModal === 'new_phase' && selectedProjectId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <form 
+            onSubmit={handleAddPhase}
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+          >
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <Calendar size={18} />
+              إضافة مرحلة تنفيذية للمشروع
+            </h3>
+            
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">اسم المرحلة:</label>
+              <input 
+                type="text"
+                required
+                value={phaseName}
+                onChange={(e) => setPhaseName(e.target.value)}
+                placeholder="مثال: أعمال التمديدات والواجهات"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">تاريخ بداية التنفيذ:</label>
+              <input 
+                type="date"
+                required
+                value={phaseStart}
+                onChange={(e) => setPhaseStart(e.target.value)}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">تاريخ الانتهاء المتوقع:</label>
+              <input 
+                type="date"
+                required
+                value={phaseEnd}
+                onChange={(e) => setPhaseEnd(e.target.value)}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                type="submit"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+              >
+                حفظ المرحلة التنفيذية
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Modal 4: New Construction Progress Report ── */}
+      {activeModal === 'new_report' && selectedProjectId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <form 
+            onSubmit={handlePostReport}
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+          >
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <Activity size={18} />
+              تسجيل تقرير إنجاز موقعي
+            </h3>
+            
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">اختر المرحلة الجاري تنفيذها:</label>
+              <select 
+                required
+                value={reportPhaseId}
+                onChange={(e) => setReportPhaseId(e.target.value)}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              >
+                <option value="">-- اختر المرحلة --</option>
+                {(projectPhases[selectedProjectId] || [])
+                  .filter(ph => ph.status !== 'مكتملة')
+                  .map(ph => (
+                    <option key={ph.id} value={ph.id}>{ph.name} ({ph.status})</option>
+                  ))
+                }
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">نسبة تقدم الإنجاز (%):</label>
+              <input 
+                type="number"
+                min="0"
+                max="100"
+                required
+                value={reportPercent}
+                onChange={(e) => setReportPercent(Number(e.target.value))}
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#C4D8E5] font-medium block">ملاحظات التقرير والمطابقة:</label>
+              <textarea 
+                rows={3}
+                required
+                value={reportNote}
+                onChange={(e) => setReportNote(e.target.value)}
+                placeholder="ملاحظات مهندس الموقع العقاري والتوريد..."
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                type="submit"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+              >
+                تسجيل التقرير
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Modal 5: Upload Document Form ── */}
+      {activeModal === 'upload_doc' && selectedProjectId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <CloudUpload size={18} />
+              رفع مخطط / رخصة سحابية
+            </h3>
+            
+            <p className="text-[#C4D8E5] font-medium">سيتم رفع الملف المختار مباشرة لمستودع المستندات المركزي للشركة وإصدار رقم مرجعي (documentId) فريد لربطه بالمشروع الحالي.</p>
+            
+            <div className="p-6 bg-[#1C2B48] border-2 border-dashed border-white/10 hover:border-[#8EB1D1]/40 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors">
+              <CloudUpload size={24} className="text-[#8EB1D1]" />
+              <span className="text-[10px] text-[#C4D8E5] font-medium">اختر ملفاً بصيغة PDF, JPG, PNG أو ZIP لسحبه هنا</span>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => {
+                  const docId = `doc-ref-${Date.now().toString().slice(-4)}`;
+                  const newD = {
+                    id: `doc_${Date.now()}`,
+                    name: 'مخطط التوزيع الداخلي الجديد.pdf',
+                    category: 'مخططات هندسية',
+                    documentId: docId
+                  };
+                  setProjectDocs(prev => ({
+                    ...prev,
+                    [selectedProjectId]: [...(prev[selectedProjectId] || []), newD]
+                  }));
+                  addTelemetryEvent('document.uploaded', selectedProjectId, newD);
+                  alert(`تم رفع الملف بنجاح وإصدار المعرف السحابي الموحد: ${docId}`);
+                  setActiveModal(null);
+                }}
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+              >
+                محاكاة رفع ملف
+              </button>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
