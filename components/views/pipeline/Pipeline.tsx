@@ -30,6 +30,16 @@ const stages = [
   { id: "Closed", title: "مغلق Closed" },
 ];
 
+const stageAccent: Record<string, string> = {
+  "New": "#3B82F6",
+  "Contacted": "#0EA5E9",
+  "Qualified": "#8B5CF6",
+  "Tour Scheduled": "#F59E0B",
+  "Offer Sent": "#EC4899",
+  "Negotiation": "#F97316",
+  "Closed": "#22C55E",
+};
+
 export default function Pipeline() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
@@ -38,7 +48,6 @@ export default function Pipeline() {
   const [filterAgent, setFilterAgent] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Load leads from API
   const loadLeads = async () => {
     try {
       setLoading(true);
@@ -58,7 +67,6 @@ export default function Pipeline() {
     loadLeads();
   }, []);
 
-  // Apply filters client-side
   useEffect(() => {
     let result = leads;
     if (filterProject) {
@@ -73,13 +81,11 @@ export default function Pipeline() {
     setFilteredLeads(result);
   }, [leads, filterProject, filterSource, filterAgent]);
 
-  // Handle lead move
   const onDragEnd = async (result: any) => {
     const { source, destination, draggableId } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId) return;
 
-    // Update local state immediately for smooth UI transition
     const movedLead = leads.find(l => l.id === draggableId);
     if (!movedLead) return;
 
@@ -88,7 +94,6 @@ export default function Pipeline() {
       prev.map(l => (l.id === draggableId ? { ...l, stage: targetStage } : l))
     );
 
-    // Persist movement to DB
     try {
       await fetch(`/api/v1/leads/${draggableId}/move`, {
         method: "PATCH",
@@ -97,72 +102,84 @@ export default function Pipeline() {
       });
     } catch (e) {
       console.error("Failed to persist stage move:", e);
-      // Rollback on failure
       loadLeads();
     }
   };
 
-  // Group leads by stage for Kanban
   const getLeadsByStage = (stageId: string) => {
     return filteredLeads.filter(l => (l.stage || "New") === stageId);
   };
 
-  // Unique projects, sources, agents for filters
   const uniqueProjects = Array.from(new Set(leads.map(l => l.projectId).filter(Boolean)));
   const uniqueSources = Array.from(new Set(leads.map(l => l.source).filter(Boolean)));
   const uniqueAgents = Array.from(new Set(leads.map(l => l.assignedTo).filter(Boolean)));
 
-  return (
-    <div className="w-full bg-transparent mt-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h3 className="text-white font-bold text-lg mb-1">لوحة متابعة الصفقات Kanban Pipeline</h3>
-          <p className="text-[#C4D8E5] text-xs">سحب وإفلات لفرز العملاء عبر المراحل مع مزامنة فورية وسجلات تدقيق</p>
-        </div>
+  const filterSelectClass =
+    "bg-white/5 border border-[rgba(0,229,255,0.08)] rounded-[10px] px-2.5 py-2 text-[#E2EEF5] text-xs focus:border-[rgba(0,229,255,0.3)] focus:outline-none transition-all appearance-none";
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 text-xs">
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded px-2.5 py-2 text-slate-900 dark:text-white focus:border-corporate-blue dark:focus:border-cyan-glow focus:outline-none transition-all"
-          >
-            <option value="" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">كل المشاريع</option>
-            {uniqueProjects.map((p, idx) => (
-              <option key={idx} value={p as string} className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">مشروع {p}</option>
-            ))}
-          </select>
-          <select
-            value={filterSource}
-            onChange={(e) => setFilterSource(e.target.value)}
-            className="bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded px-2.5 py-2 text-slate-900 dark:text-white focus:border-corporate-blue dark:focus:border-cyan-glow focus:outline-none transition-all"
-          >
-            <option value="" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">كل القنوات</option>
-            {uniqueSources.map((s, idx) => (
-              <option key={idx} value={s as string} className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">{s}</option>
-            ))}
-          </select>
-          <select
-            value={filterAgent}
-            onChange={(e) => setFilterAgent(e.target.value)}
-            className="bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded px-2.5 py-2 text-slate-900 dark:text-white focus:border-corporate-blue dark:focus:border-cyan-glow focus:outline-none transition-all"
-          >
-            <option value="" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">كل الوكلاء</option>
-            {uniqueAgents.map((a, idx) => (
-              <option key={idx} value={a as string} className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">وكيل {a}</option>
-            ))}
-          </select>
-          <button onClick={loadLeads} className="bg-corporate-blue/10 dark:bg-cyan-glow/10 hover:bg-corporate-blue/20 dark:hover:bg-cyan-glow/20 text-corporate-blue dark:text-cyan-glow px-3 py-1 rounded border border-corporate-blue/20 dark:border-cyan-glow/20 cursor-pointer transition-colors">
-            تحديث
-          </button>
+  const scoreClass = (score: number) =>
+    score >= 75 ? "nc-badge nc-badge-danger" :
+    score >= 50 ? "nc-badge nc-badge-warning" :
+    "nc-badge nc-badge-accent";
+
+  return (
+    <div className="nc-page" style={{ paddingTop: 0 }}>
+      <div className="nc-header nc-enter">
+        <div className="nc-header-row">
+          <div>
+            <h1 className="nc-title">لوحة متابعة الصفقات Kanban Pipeline</h1>
+            <p className="nc-subtitle">سحب وإفلات لفرز العملاء عبر المراحل مع مزامنة فورية</p>
+          </div>
+          <div className="nc-row">
+            <select
+              value={filterProject}
+              onChange={(e) => setFilterProject(e.target.value)}
+              className={filterSelectClass}
+            >
+              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل المشاريع</option>
+              {uniqueProjects.map((p, idx) => (
+                <option key={idx} value={p as string} className="bg-[#0C1D2B] text-[#E2EEF5]">مشروع {p}</option>
+              ))}
+            </select>
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className={filterSelectClass}
+            >
+              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل القنوات</option>
+              {uniqueSources.map((s, idx) => (
+                <option key={idx} value={s as string} className="bg-[#0C1D2B] text-[#E2EEF5]">{s}</option>
+              ))}
+            </select>
+            <select
+              value={filterAgent}
+              onChange={(e) => setFilterAgent(e.target.value)}
+              className={filterSelectClass}
+            >
+              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل الوكلاء</option>
+              {uniqueAgents.map((a, idx) => (
+                <option key={idx} value={a as string} className="bg-[#0C1D2B] text-[#E2EEF5]">وكيل {a}</option>
+              ))}
+            </select>
+            <button
+              onClick={loadLeads}
+              className="nc-btn nc-btn-outline nc-btn-sm"
+            >
+              تحديث
+            </button>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-500 dark:text-slate-400 animate-pulse">جاري تحميل بيانات العملاء...</div>
+        <div className="nc-section">
+          <div className="py-16 text-center text-xs text-[#7BA3C0] animate-pulse font-mono">
+            جاري تحميل بيانات العملاء...
+          </div>
+        </div>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex flex-row overflow-x-auto gap-4 pb-4 items-stretch select-none">
+          <div className="nc-pipeline">
             {stages.map((stage) => {
               const stageLeads = getLeadsByStage(stage.id);
               return (
@@ -171,46 +188,40 @@ export default function Pipeline() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex flex-col bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded-xl w-[280px] shrink-0 p-4 transition-all ${
-                        snapshot.isDraggingOver ? "bg-corporate-blue/10 dark:bg-cyan-glow/10 border-corporate-blue/30 dark:border-cyan-glow/30" : ""
-                      }`}
+                      className={`nc-stage${snapshot.isDraggingOver ? " drag-over" : ""}`}
                     >
-                      <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200/50 dark:border-white/10 text-xs font-bold text-slate-900 dark:text-white">
-                        <span>{stage.title}</span>
-                        <span className="bg-corporate-blue/10 dark:bg-cyan-glow/10 text-corporate-blue dark:text-cyan-glow px-2 py-1 rounded-full font-en">
-                          {stageLeads.length}
+                      <div className="nc-stage-header">
+                        <span className="nc-stage-title" style={{ color: stageAccent[stage.id] || "#E2EEF5" }}>
+                          {stage.title}
                         </span>
+                        <span className="nc-stage-count">{stageLeads.length}</span>
                       </div>
 
-                      <div className="flex-1 space-y-3 min-h-[180px] lg:min-h-[380px] max-h-[500px] overflow-y-auto custom-scrollbar">
+                      <div className="flex-1 space-y-2 min-h-[180px] lg:min-h-[380px] max-h-[500px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
                         {stageLeads.map((lead, index) => (
                           <Draggable draggableId={lead.id} index={index} key={lead.id}>
-                            {(providedDraggable: any, snapshotDraggable: any) => (
+                            {(d: any, s: any) => (
                               <div
-                                ref={providedDraggable.innerRef}
-                                {...providedDraggable.draggableProps}
-                                {...providedDraggable.dragHandleProps}
-                                className={`backdrop-blur-xl bg-white/70 dark:bg-white/5 border border-slate-250/50 dark:border-white/10 rounded-xl p-4 shadow-md hover:border-corporate-blue/40 dark:hover:border-cyan-glow/40 hover:scale-[1.01] transition-all cursor-grab active:cursor-grabbing ${
-                                  snapshotDraggable.isDragging ? "shadow-2xl border-corporate-blue dark:border-cyan-glow bg-white/90 dark:bg-void/90" : ""
-                                }`}
+                                ref={d.innerRef}
+                                {...d.draggableProps}
+                                {...d.dragHandleProps}
+                                className={`nc-lead${s.isDragging ? " dragging" : ""}`}
+                                style={{
+                                  ...d.draggableProps.style,
+                                  "--stage-accent": stageAccent[lead.stage] || "#00E5FF",
+                                } as React.CSSProperties}
                               >
-                                <div className="flex justify-between items-start mb-2">
-                                  <h4 className="text-slate-900 dark:text-white text-xs font-bold">
+                                <div className="nc-content-between mb-1">
+                                  <span className="nc-lead-name">
                                     {lead.firstName} {lead.lastName || ""}
-                                  </h4>
-                                  <span className={`text-xs px-2 py-1 rounded font-bold font-en ${
-                                    lead.leadScore >= 75
-                                      ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                                      : lead.leadScore >= 50
-                                      ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                                      : "bg-slate-500/10 text-slate-500 dark:text-[#C4D8E5]"
-                                  }`}>
+                                  </span>
+                                  <span className={scoreClass(lead.leadScore)}>
                                     {lead.leadScore}%
                                   </span>
                                 </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                                  <div>المصدر: <span className="text-slate-900 dark:text-slate-200 font-semibold">{lead.source}</span></div>
-                                  {lead.city && <div>المدينة: <span className="text-slate-900 dark:text-slate-200 font-semibold">{lead.city}</span></div>}
+                                <div className="nc-lead-meta">
+                                  المصدر: <span className="nc-text-primary font-semibold">{lead.source}</span>
+                                  {lead.city && <> &middot; {lead.city}</>}
                                 </div>
                               </div>
                             )}
@@ -218,15 +229,13 @@ export default function Pipeline() {
                         ))}
                         {provided.placeholder}
                         {stageLeads.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-slate-200/50 dark:border-white/10 rounded-xl bg-white/20 dark:bg-white/5 select-none">
-                            <span className="text-xs text-slate-500 dark:text-slate-400 mb-2">لا يوجد عملاء</span>
+                          <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-[rgba(0,229,255,0.06)] rounded-xl select-none">
+                            <span className="text-xs text-[#7BA3C0] mb-2">لا يوجد عملاء</span>
                             <button
-                              onClick={() => {
-                                alert("إضافة عميل جديد إلى مرحلة " + stage.title);
-                              }}
-                              className="text-corporate-blue dark:text-cyan-glow hover:text-corporate-blue/80 dark:hover:text-cyan-glow/80 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer bg-white/70 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue/40 dark:hover:border-cyan-glow/40 px-2 py-1 rounded"
+                              onClick={() => alert("إضافة عميل جديد إلى مرحلة " + stage.title)}
+                              className="nc-btn nc-btn-ghost nc-btn-sm"
                             >
-                              <span>+ إضافة عميل</span>
+                              + إضافة عميل
                             </button>
                           </div>
                         )}
