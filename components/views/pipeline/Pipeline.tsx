@@ -123,8 +123,8 @@ export default function Pipeline() {
     "nc-badge nc-badge-accent";
 
   return (
-    <div className="nc-page" style={{ paddingTop: 0 }}>
-      <div className="nc-header nc-enter">
+    <div className="nc-pipeline-wrapper" style={{ width: '100%', overflow: 'hidden' }}>
+      <div className="nc-header nc-enter" style={{ padding: '0 0 var(--space-md)' }}>
         <div className="nc-header-row">
           <div>
             <h1 className="nc-title">لوحة متابعة الصفقات Kanban Pipeline</h1>

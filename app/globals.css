@@ -227,13 +227,18 @@ html { scroll-behavior: smooth; }
 /* ── Horizontal Pipeline ────────────────────── */
 .nc-pipeline {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: var(--space-md);
   overflow-x: auto;
-  padding-bottom: var(--space-sm);
+  overflow-y: hidden;
+  padding: var(--space-sm) var(--space-xs) var(--space-lg);
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 229, 255, 0.2) transparent;
+  width: 100%;
+  min-width: 0;
 }
 .nc-pipeline::-webkit-scrollbar {
   height: 4px;
@@ -252,6 +257,7 @@ html { scroll-behavior: smooth; }
 /* ── Pipeline Stage Column ──────────────────── */
 .nc-stage {
   flex: 0 0 280px;
+  min-width: 280px;
   min-height: 60vh;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--nc-glass-border);
