@@ -8,6 +8,7 @@ import {
   AlertCircle, Bot, Trash2, CheckCircle2, Star, Sparkles
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
+import { LayoutContainer } from '../ui/LayoutContainer';
 import { useAuth } from '@/app/context/AuthContext';
 import { getPropertiesAction } from '@/app/actions/properties';
 
@@ -444,69 +445,59 @@ export default function OffersView() {
   };
 
   return (
-    <div className="nc-page nc-stack text-right" dir="rtl">
-      
+    <>
       {/* ─── Loading / Error ───────────────────────────── */}
       {offersLoading && (
-        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
-          <span className="ds-muted">جاري تحميل العروض من قاعدة البيانات...</span>
+        <div className="nc-glass p-6 flex items-center justify-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+          <span className="text-sm text-slate-400">جاري تحميل العروض من قاعدة البيانات...</span>
         </div>
       )}
       {offersError && !offersLoading && (
-        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
-          <p className="ds-body-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{offersError}</p>
+        <div className="nc-glass p-6 flex items-center justify-center gap-3">
+          <p className="text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{offersError}</p>
           <button onClick={() => window.location.reload()} className="nc-btn nc-btn-ghost nc-btn-sm">إعادة المحاولة</button>
         </div>
       )}
 
-      {/* ─── الهيدر الرئيسي للمستأجر والعروض ────────────────────── */}
-      <div className="nc-glass ds-p-lg">
-        <div className="nc-content-between">
-          <div className="ds-stack ds-gap-sm">
-            <div className="nc-row ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
-              <Sparkles size={13} />
-              تحليلات العروض العقارية الحية · المبيعات
-            </div>
-            <h1 className="ds-h1">العروض العقارية</h1>
-            <p className="ds-body">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
-          </div>
-
-          <div className="nc-row">
-            <button
-              onClick={() => {
-                setMPrice(800000);
-                setMDown(20);
-                setMTerm(25);
-                setMRate(4.5);
-                const monthly = calculateMortgageVal(800000, 20, 25, 4.5);
-                setMonthlyInstallment(monthly);
-                setActiveModal('mortgage');
-              }}
-              className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
-            >
-              <Calculator size={15} className="text-[var(--nc-text-secondary)]" />
-              حاسبة التمويل
-            </button>
-            <button
-              onClick={() => setActiveModal('create_listing')}
-              className="flex items-center gap-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
-            >
-              <Plus size={15} />
-              أضف عرضاً
-            </button>
-          </div>
+      {/* ─── Page Header ───────────────────────────── */}
+      <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">العروض العقارية</h1>
+          <p className="text-sm text-slate-400 mt-1">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setMPrice(800000);
+              setMDown(20);
+              setMTerm(25);
+              setMRate(4.5);
+              const monthly = calculateMortgageVal(800000, 20, 25, 4.5);
+              setMonthlyInstallment(monthly);
+              setActiveModal('mortgage');
+            }}
+            className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
+          >
+            <Calculator size={15} className="text-[var(--nc-text-secondary)]" />
+            حاسبة التمويل
+          </button>
+          <button
+            onClick={() => setActiveModal('create_listing')}
+            className="flex items-center gap-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
+          >
+            <Plus size={15} />
+            أضف عرضاً
+          </button>
         </div>
       </div>
 
-      {/* ─── التخطيط الأساسي (Sidebar & Main Workspace) ───────────────── */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        
-        {/* الشريط الجانبي (Filters & Favorites) */}
-        <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
-          
-          {/* فلترة العروض */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
+      <LayoutContainer
+        kpis={null}
+        actions={
+          <div className="space-y-4">
+            {/* فلترة العروض */}
+            <div className="space-y-4">
             <h3 className="text-xs font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-2 flex justify-between items-center">
               <span>فلترة وتصفية العروض</span>
               <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-normal">بحث ذكي</span>
@@ -622,113 +613,106 @@ export default function OffersView() {
               </div>
             </div>
           </div>
-
-          {/* قائمة المفضلة */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
-            <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
-              <Heart size={14} className="text-rose-500 fill-rose-500 animate-pulse" />
-              <span>المفضلة الشخصية</span>
-            </h3>
-
-            <div className="space-y-2.5">
-              {favorites.length === 0 ? (
-                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
-              ) : (
-                favorites.map(fid => {
-                  const p = properties.find(x => x.id === fid);
-                  if (!p) return null;
-                  return (
-                    <div
-                      key={fid}
-                      className="flex justify-between items-center p-2.5 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
-                    >
-                      <div className="space-y-0.5 max-w-[150px]">
-                        <p className="font-bold text-white truncate">{p.title}</p>
-                        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">{p.city} · {p.district}</p>
-                      </div>
-                      <button
-                        onClick={() => toggleFavorite(fid)}
-                        className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all"
-                        title="إزالة من المفضلة"
+          </div>
+        }
+        insights={
+          <div className="space-y-4">
+            {/* المفضلة الشخصية */}
+            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
+              <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
+                <Heart size={14} className="text-rose-500 fill-rose-500 animate-pulse" />
+                <span>المفضلة الشخصية</span>
+              </h3>
+              <div className="space-y-2.5">
+                {favorites.length === 0 ? (
+                  <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
+                ) : (
+                  favorites.map(fid => {
+                    const p = properties.find(x => x.id === fid);
+                    if (!p) return null;
+                    return (
+                      <div
+                        key={fid}
+                        className="flex justify-between items-center p-2.5 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
                       >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* خرائط ومناطق */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[var(--nc-text-dim)] font-medium">
-            <h4 className="font-bold text-white flex items-center gap-2">
-              <Map size={14} className="text-cyan-400" />
-              <span>نطاق التغطية</span>
-            </h4>
-            <p className="text-[11px] leading-relaxed">
-              اختر منطقة سكنية من لوحة التصفية لعرض العروض المتاحة، أو اضغط على العقار لاستعراض موقعه على الخريطة التفاعلية المقابلة.
-            </p>
-          </div>
-
-        </aside>
-
-        {/* المساحة الرئيسية (Topbar & Listings & Map Grid) */}
-        <main className="flex-1 w-full space-y-4">
-          
-          {/* شريط الإجراءات والتحكم */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md">
-            
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-[var(--nc-text-dim)] font-medium">عدد العروض:</span>
-              <strong className="text-white font-mono text-sm bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5">
-                {filteredProperties.length}
-              </strong>
-              <span className="text-[var(--nc-text-dim)] font-medium">عرض متاح</span>
-
-              <select
-                value={sortVal}
-                onChange={(e) => {
-                  setSortVal(e.target.value);
-                  addTelemetryEvent('offers.sort_changed', { sortBy: e.target.value });
-                }}
-                className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-4"
-              >
-                <option value="relevance">الأكثر صلة</option>
-                <option value="price_asc">الأقل سعراً</option>
-                <option value="price_desc">الأعلى سعراً</option>
-                <option value="newest">الأحدث</option>
-              </select>
+                        <div className="space-y-0.5 max-w-[150px]">
+                          <p className="font-bold text-white truncate">{p.title}</p>
+                          <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">{p.city} · {p.district}</p>
+                        </div>
+                        <button
+                          onClick={() => toggleFavorite(fid)}
+                          className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all"
+                          title="إزالة من المفضلة"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowMap(!showMap)}
-                className={`flex items-center gap-2 border px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
-                  showMap 
-                    ? 'bg-[var(--nc-surface-solid)] border-cyan-500/30 text-cyan-400' 
-                    : 'bg-[var(--nc-surface-solid)] border-white/10 hover:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
-                }`}
-              >
-                <Map size={14} />
-                {showMap ? 'إخفاء الخريطة' : 'إظهار الخريطة'}
-              </button>
-              <button
-                onClick={handleCSVExport}
-                className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-md"
-              >
-                <FileSpreadsheet size={14} className="text-emerald-500" />
-                تصدير CSV
-              </button>
+            {/* نطاق التغطية */}
+            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[var(--nc-text-dim)] font-medium">
+              <h4 className="font-bold text-white flex items-center gap-2">
+                <Map size={14} className="text-cyan-400" />
+                <span>نطاق التغطية</span>
+              </h4>
+              <p className="text-[11px] leading-relaxed">
+                اختر منطقة سكنية من لوحة التصفية لعرض العروض المتاحة، أو اضغط على العقار لاستعراض موقعه على الخريطة التفاعلية المقابلة.
+              </p>
+            </div>
+          </div>
+        }
+        details={
+          <div className="space-y-6">
+            {/* شريط الإجراءات والتحكم */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[var(--nc-text-dim)] font-medium">عدد العروض:</span>
+                <strong className="text-white font-mono text-sm bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5">
+                  {filteredProperties.length}
+                </strong>
+                <span className="text-[var(--nc-text-dim)] font-medium">عرض متاح</span>
+                <select
+                  value={sortVal}
+                  onChange={(e) => {
+                    setSortVal(e.target.value);
+                    addTelemetryEvent('offers.sort_changed', { sortBy: e.target.value });
+                  }}
+                  className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-4"
+                >
+                  <option value="relevance">الأكثر صلة</option>
+                  <option value="price_asc">الأقل سعراً</option>
+                  <option value="price_desc">الأعلى سعراً</option>
+                  <option value="newest">الأحدث</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowMap(!showMap)}
+                  className={`flex items-center gap-2 border px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                    showMap 
+                      ? 'bg-[var(--nc-surface-solid)] border-cyan-500/30 text-cyan-400' 
+                      : 'bg-[var(--nc-surface-solid)] border-white/10 hover:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
+                  }`}
+                >
+                  <Map size={14} />
+                  {showMap ? 'إخفاء الخريطة' : 'إظهار الخريطة'}
+                </button>
+                <button
+                  onClick={handleCSVExport}
+                  className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-md"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-500" />
+                  تصدير CSV
+                </button>
+              </div>
             </div>
 
-          </div>
-
-          {/* شبكة العروض واللوحة الجغرافية */}
-          <div className="flex flex-col xl:flex-row gap-6 items-start">
-            
-            {/* شبكة العقارات */}
-            <div className="flex-1 w-full">
+            {/* شبكة العقارات مع تقييد التمدد */}
+            <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
               {filteredProperties.length === 0 ? (
                 <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium space-y-2">
                   <Megaphone size={30} className="mx-auto text-[var(--nc-text-dim)] font-medium animate-bounce" />
@@ -749,17 +733,13 @@ export default function OffersView() {
                         }}
                         className="group bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl overflow-hidden hover:border-[var(--nc-accent-border)]/40 hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full"
                       >
-                        
                         {/* الجزء البصري */}
                         <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
-                          {/* التدرج اللوني */}
                           <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-900/60 z-10" />
                           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
-                          
                           <span className="z-20 text-[var(--nc-text-secondary)] bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase font-mono shadow-inner">
                             {p.type === 'villa' ? 'فيلا سكنية' : p.type === 'apartment' ? 'شقة فاخرة' : 'أرض فضاء'}
                           </span>
-
                           <div className="absolute top-3 right-3 z-20">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase shadow-sm ${
                               p.status === 'available' 
@@ -771,7 +751,6 @@ export default function OffersView() {
                               {p.status === 'available' ? 'متاح' : p.status === 'reserved' ? 'محجوز' : 'مباع'}
                             </span>
                           </div>
-
                           <div className="absolute top-3 left-3 z-20">
                             <button
                               onClick={(e) => {
@@ -799,8 +778,6 @@ export default function OffersView() {
                               <span>{p.city} · حي {p.district}</span>
                             </p>
                           </div>
-
-                          {/* الميتا */}
                           <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[10px] text-[var(--nc-text-dim)] font-medium">
                             <div>
                               <p className="text-[var(--nc-text-dim)] font-medium">المساحة</p>
@@ -817,14 +794,11 @@ export default function OffersView() {
                               </p>
                             </div>
                           </div>
-
                           <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto shrink-0">
                             <div>
                               <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر الإجمالي المطلوب</p>
                               <p className="font-black text-[var(--nc-text-secondary)] text-sm font-mono">{p.price.toLocaleString()} ر.س</p>
                             </div>
-
-                            {/* أزرار الإجراءات السريعة */}
                             <div className="flex gap-1">
                               <button
                                 onClick={(e) => {
@@ -847,9 +821,7 @@ export default function OffersView() {
                               </button>
                             </div>
                           </div>
-
                         </div>
-
                       </div>
                     );
                   })}
@@ -857,9 +829,9 @@ export default function OffersView() {
               )}
             </div>
 
-            {/* لوحة الخريطة الجغرافية */}
+            {/* شبكة العروض واللوحة الجغرافية */}
             {showMap && (
-              <div className="w-full xl:w-[320px] bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl shrink-0 space-y-3 sticky top-4">
+              <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Map size={13} className="text-cyan-400" />
@@ -867,20 +839,13 @@ export default function OffersView() {
                   </h4>
                   <span className="text-[9px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-black">حي العليا</span>
                 </div>
-
-                {/* مجسم الخريطة */}
                 <div className="h-64 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
                   <div className="absolute inset-0 bg-[#0f192b] opacity-40 bg-[linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:20px_20px]" />
-                  
-                  {/* نقاط معالم تجريبية */}
                   {filteredProperties.slice(0, 3).map((p, idx) => (
                     <div
                       key={idx}
                       className="absolute z-20 group cursor-pointer"
-                      style={{
-                        top: `${35 + idx * 22}%`,
-                        right: `${40 + idx * 18}%`
-                      }}
+                      style={{ top: `${35 + idx * 22}%`, right: `${40 + idx * 18}%` }}
                       title={p.title}
                       onClick={() => {
                         setSelectedPropertyId(p.id);
@@ -890,63 +855,55 @@ export default function OffersView() {
                       <div className="relative flex items-center justify-center">
                         <span className="absolute inline-flex h-5 w-5 rounded-full bg-cyan-400 opacity-30 animate-ping" />
                         <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-400 border border-white flex-shrink-0" />
-                        <span className="absolute top-4 bg-[var(--nc-surface-solid)] border border-white/10 text-[9px] text-white px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap font-mono">
-                          {p.id}
-                        </span>
+                        <span className="absolute top-4 bg-[var(--nc-surface-solid)] border border-white/10 text-[9px] text-white px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap font-mono">{p.id}</span>
                       </div>
                     </div>
                   ))}
-
                   <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold tracking-wider bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
                     محاكاة الخرائط النشطة
                   </span>
                 </div>
-
                 <div className="bg-[var(--nc-surface-strong)] p-2.5 rounded-xl border border-white/5 text-[10px] text-[var(--nc-text-dim)] font-medium leading-relaxed text-center font-semibold">
                   تحمل الخريطة التوضيحية إحداثيات خطوط العرض والطول لكل عقار مع تتبع النقاط وتوجيه المستشارين.
                 </div>
               </div>
             )}
 
-          </div>
-
-          {/* ─── سجل أحداث العروض العقارية Console (Telemetry) ───────────────── */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Bot size={14} className="text-[var(--nc-text-secondary)]" />
-                <span>شاشة تتبع أحداث العروض العقارية الفورية (Event Telemetry Console)</span>
-              </h4>
-              <button
-                onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
-              >
-                مسح السجل
-              </button>
-            </div>
-
-            <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
-              {telemetryLogs.length === 0 ? (
-                <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged yet</div>
-              ) : (
-                telemetryLogs.map(log => (
-                  <div key={log.id} className="p-2 bg-[var(--nc-surface)] rounded border border-white/5 space-y-1">
-                    <div className="flex justify-between text-[var(--nc-text-dim)] font-medium border-b border-white/5 pb-1">
-                      <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
-                      <span>{log.timestamp}</span>
+            {/* ─── سجل أحداث العروض العقارية Console (Telemetry) ───────────────── */}
+            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <Bot size={14} className="text-[var(--nc-text-secondary)]" />
+                  <span>شاشة تتبع أحداث العروض العقارية الفورية (Event Telemetry Console)</span>
+                </h4>
+                <button
+                  onClick={() => setTelemetryLogs([])}
+                  className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
+                >
+                  مسح السجل
+                </button>
+              </div>
+              <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
+                {telemetryLogs.length === 0 ? (
+                  <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged yet</div>
+                ) : (
+                  telemetryLogs.map(log => (
+                    <div key={log.id} className="p-2 bg-[var(--nc-surface)] rounded border border-white/5 space-y-1">
+                      <div className="flex justify-between text-[var(--nc-text-dim)] font-medium border-b border-white/5 pb-1">
+                        <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
+                        <span>{log.timestamp}</span>
+                      </div>
+                      <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">
+                        {JSON.stringify({ actor: log.actorId, ...log.payload }, null, 2)}
+                      </pre>
                     </div>
-                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">
-                      {JSON.stringify({ actor: log.actorId, ...log.payload }, null, 2)}
-                    </pre>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
-
-        </main>
-
-      </div>
+        }
+      />
 
       {/* ─── Modals Root Control ───────────────────────────────────────────── */}
       
@@ -1527,6 +1484,6 @@ export default function OffersView() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }

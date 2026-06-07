@@ -8,6 +8,7 @@ import {
   Flame, Monitor, BookOpen
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
+import { LayoutContainer } from '../ui/LayoutContainer';
 import { TOURS_CONFIG, ToursConfigType } from '@/lib/tours-config';
 
 import { getPropertiesAction } from '@/app/actions/properties';
@@ -481,53 +482,44 @@ export default function ToursView() {
   const inlineProp = properties.find(x => x.id === inlinePropertyId);
 
   return (
-    <div className="nc-page nc-stack text-right" dir="rtl">
-      
+    <>
       {/* ─── Loading / Error ───────────────────────────── */}
       {toursLoading && (
-        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
-          <span className="ds-muted">جاري تحميل الجولات من قاعدة البيانات...</span>
+        <div className="nc-glass p-6 flex items-center justify-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+          <span className="text-sm text-slate-400">جاري تحميل الجولات من قاعدة البيانات...</span>
         </div>
       )}
       {toursError && !toursLoading && (
-        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
-          <p className="ds-body-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{toursError}</p>
+        <div className="nc-glass p-6 flex items-center justify-center gap-3">
+          <p className="text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{toursError}</p>
           <button onClick={() => window.location.reload()} className="nc-btn nc-btn-ghost nc-btn-sm">إعادة المحاولة</button>
         </div>
       )}
 
-      {/* ─── الهيدر الرئيسي للجولات ────────────────────── */}
-      <div className="nc-glass ds-p-lg">
-        <div className="nc-content-between">
-          <div className="ds-stack ds-gap-sm">
-            <div className="nc-row ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
-              <Sparkles size={13} />
-              جولات عقارية افتراضية (فيديو / 360)
-            </div>
-            <h1 className="ds-h1">الجولات العقارية</h1>
-            <p className="ds-body">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
-          </div>
-
-          <div className="nc-row">
-            <button
-              onClick={() => setActiveModal('settings_flag')}
-              className="nc-btn nc-btn-ghost nc-btn-sm"
-            >
-              <Settings size={15} />
-              قواعد العرض (Feature Flags)
-            </button>
-          </div>
+      {/* ─── Page Header ───────────────────────────── */}
+      <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">الجولات العقارية</h1>
+          <p className="text-sm text-slate-400 mt-1">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveModal('settings_flag')}
+            className="nc-btn nc-btn-ghost nc-btn-sm"
+          >
+            <Settings size={15} />
+            قواعد العرض (Feature Flags)
+          </button>
         </div>
       </div>
 
-      {/* ─── منطقة العمل الرئيسية ────────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        
-        {/* الشريط الجانبي - الفلاتر */}
-        <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
-          
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
+      <LayoutContainer
+        kpis={null}
+        actions={
+          <div className="space-y-4">
+            {/* البحث وتصفية الجولات */}
+            <div className="space-y-4">
             <h3 className="text-xs font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-2">البحث وتصفية الجولات</h3>
             
             <div className="space-y-3.5 text-xs">
@@ -649,308 +641,212 @@ export default function ToursView() {
               </div>
 
             </div>
-          </div>
-
-          {/* التبويبات والمفضلة */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-3">
-            <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2">الجولات المحفوظة</h3>
-            <div className="space-y-2">
-              {favorites.length === 0 ? (
-                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-1 text-center">لا توجد جولات محفوظة</p>
-              ) : (
-                favorites.map(fid => {
-                  const p = properties.find(x => x.id === fid);
-                  if (!p) return null;
-                  return (
-                    <div
-                      key={fid}
-                      onClick={() => handlePropertySelection(p)}
-                      className="flex justify-between items-center p-2 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-[var(--nc-accent-border)]/35 transition-all text-[11px] cursor-pointer"
-                    >
-                      <span className="text-white truncate max-w-[130px] font-semibold">{p.title}</span>
-                      <span className="text-rose-500 font-bold shrink-0">❤️</span>
-                    </div>
-                  );
-                })
-              )}
             </div>
           </div>
-
-        </aside>
-
-        {/* المساحة الرئيسية */}
-        <main className="flex-1 w-full space-y-4">
-          
-          {/* التحكم العلوي للشبكة */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[var(--nc-text-dim)] font-medium">الجولات المطابقة:</span>
-              <strong className="text-white bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
-                {filteredListings.length}
-              </strong>
-              <select
-                value={sortVal}
-                onChange={(e) => setSortVal(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-2"
-              >
-                <option value="relevance">الأكثر صلة</option>
-                <option value="price_asc">الأقل سعراً</option>
-                <option value="price_desc">الأعلى سعراً</option>
-                <option value="newest">الأحدث</option>
-              </select>
+        }
+        insights={
+          <div className="space-y-4">
+            {/* الجولات المحفوظة */}
+            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-3">
+              <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2">الجولات المحفوظة</h3>
+              <div className="space-y-2">
+                {favorites.length === 0 ? (
+                  <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-1 text-center">لا توجد جولات محفوظة</p>
+                ) : (
+                  favorites.map(fid => {
+                    const p = properties.find(x => x.id === fid);
+                    if (!p) return null;
+                    return (
+                      <div
+                        key={fid}
+                        onClick={() => handlePropertySelection(p)}
+                        className="flex justify-between items-center p-2 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-[var(--nc-accent-border)]/35 transition-all text-[11px] cursor-pointer"
+                      >
+                        <span className="text-white truncate max-w-[130px] font-semibold">{p.title}</span>
+                        <span className="text-rose-500 font-bold shrink-0">❤️</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
+          </div>
+        }
+        details={
+          <div className="space-y-6">
+            {/* التحكم العلوي للشبكة */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--nc-text-dim)] font-medium">الجولات المطابقة:</span>
+                <strong className="text-white bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
+                  {filteredListings.length}
+                </strong>
+                <select
+                  value={sortVal}
+                  onChange={(e) => setSortVal(e.target.value)}
+                  className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-2"
+                >
+                  <option value="relevance">الأكثر صلة</option>
+                  <option value="price_asc">الأقل سعراً</option>
+                  <option value="price_desc">الأعلى سعراً</option>
+                  <option value="newest">الأحدث</option>
+                </select>
+              </div>
 
-            <div className="text-[10px] text-[var(--nc-text-dim)] font-medium flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <div className="text-[10px] text-[var(--nc-text-dim)] font-medium flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <span>عرض Inline</span>
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 mr-2"></span>
               <span>عرض Modal (إلزامي للوحدات المحدودة/المنقوصة)</span>
             </div>
           </div>
 
-          <div className="flex flex-col xl:flex-row gap-6 items-start">
-            
-            {/* شبكة الجولات */}
-            <div className="flex-1 w-full">
-              {filteredListings.length === 0 ? (
-                <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium">
-                  لا توجد جولات مطابقة لشروط الفلترة الحالية.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredListings.map(p => {
-                    const isFav = favorites.includes(p.id);
-                    const mode = determineDisplayMode(p);
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => handlePropertySelection(p)}
-                        className={`group bg-[var(--nc-surface-solid)] border rounded-2xl overflow-hidden hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full ${
-                          inlinePropertyId === p.id 
-                            ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
-                            : 'border-white/5 hover:border-[var(--nc-accent-border)]/40'
-                        }`}
-                      >
-                        
-                        {/* الميديا */}
-                        <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
-                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
-
-                          {p.media && p.media.length > 0 ? (
-                            <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.media[0]})` }} />
-                          ) : (
-                            <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
-                          )}
-
-                          <div className="absolute top-3 right-3 z-20 flex gap-1.5">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-sm ${
-                              mode === 'inline' 
-                                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                                : 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400'
-                            }`}>
-                              {mode === 'inline' ? 'عرض تفصيلي Inline' : 'عرض منبثق Modal'}
-                            </span>
-                          </div>
-
-                          <div className="absolute top-3 left-3 z-20">
-                            <button
-                              onClick={(e) => handleToggleFavorite(p.id, e)}
-                              className={`p-1.5 rounded-lg border transition-all ${
-                                isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
-                              }`}
-                            >
-                              <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
-                            </button>
-                          </div>
-
-                          {p.tourType === '360' ? (
-                            <span className="absolute bottom-3 right-3 z-20 bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                              جولة 360°
-                            </span>
-                          ) : (
-                            <span className="absolute bottom-3 right-3 z-20 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                              فيديو HD
-                            </span>
-                          )}
+          {/* شبكة الجولات مع تقييد التمدد */}
+          <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+            {filteredListings.length === 0 ? (
+              <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium">
+                لا توجد جولات مطابقة لشروط الفلترة الحالية.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredListings.map(p => {
+                  const isFav = favorites.includes(p.id);
+                  const mode = determineDisplayMode(p);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handlePropertySelection(p)}
+                      className={`group bg-[var(--nc-surface-solid)] border rounded-2xl overflow-hidden hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full ${
+                        inlinePropertyId === p.id 
+                          ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                          : 'border-white/5 hover:border-[var(--nc-accent-border)]/40'
+                      }`}
+                    >
+                      {/* الميديا */}
+                      <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
+                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
+                        {p.media && p.media.length > 0 ? (
+                          <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.media[0]})` }} />
+                        ) : (
+                          <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
+                        )}
+                        <div className="absolute top-3 right-3 z-20 flex gap-1.5">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-sm ${
+                            mode === 'inline' 
+                              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                              : 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400'
+                          }`}>
+                            {mode === 'inline' ? 'عرض تفصيلي Inline' : 'عرض منبثق Modal'}
+                          </span>
                         </div>
-
-                        {/* معلومات الكارد */}
-                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                          <div className="space-y-1">
-                            <h4 className="font-bold text-white group-hover:text-[var(--nc-text-secondary)] transition-colors text-xs">{p.title}</h4>
-                            <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">📍 {p.city} · حي {p.district}</p>
-                          </div>
-
-                          {/* الميتا */}
-                          <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[9px] text-slate-450">
-                            <div>
-                              <p>المساحة</p>
-                              <p className="font-bold text-white font-mono">{p.area} م²</p>
-                            </div>
-                            <div>
-                              <p>الغرف</p>
-                              <p className="font-bold text-white font-mono">{p.beds > 0 ? p.beds : '—'}</p>
-                            </div>
-                            <div>
-                              <p>اكتمال البيانات</p>
-                              <p className={`font-bold font-mono ${p.dataCompleteness >= 0.8 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                {Math.round(p.dataCompleteness * 100)}%
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                            <div>
-                              <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر المطلوب</p>
-                              <p className="font-black text-[var(--nc-text-secondary)] text-xs font-mono">
-                                {p.price > 0 ? `${p.price.toLocaleString()} ر.س` : 'غير محدد'}
-                              </p>
-                            </div>
-
-                            <div className="flex gap-1">
-                              <button
-                                onClick={(e) => handleMortgagePrefill(p, e)}
-                                className="px-2 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
-                              >
-                                تمويل
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePropertySelection(p);
-                                }}
-                                className="px-2 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-text-secondary)] hover:text-white text-[10px] font-bold rounded-lg transition-all"
-                              >
-                                تفاصيل
-                              </button>
-                            </div>
-                          </div>
-
-                        </div>
-
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* تفاصيل العقار Inline */}
-            {inlineProp && (
-              <div className="w-full xl:w-[350px] bg-[var(--nc-surface-solid)] border border-emerald-500/20 rounded-2xl p-4 shadow-xl shrink-0 space-y-4 sticky top-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Monitor size={13} className="text-emerald-400 animate-pulse" />
-                    <span>تفاصيل الجولة (عرض Inline)</span>
-                  </h4>
-                  <button
-                    onClick={() => setInlinePropertyId(null)}
-                    className="text-[var(--nc-text-dim)] font-medium hover:text-white"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="space-y-3.5 text-xs">
-                  <h3 className="font-black text-white text-sm">{inlineProp.title}</h3>
-                  
-                  {/* مشغل الميديا المدمج */}
-                  <div className="h-44 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
-                    {inlineProp.tourType === 'video' ? (
-                      <video src={inlineProp.tourUrl} controls className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center space-y-1.5 p-3">
-                        <span className="text-[10px] bg-purple-500/10 border border-purple-500/25 text-purple-400 px-2 py-0.5 rounded-full font-bold">جولة 360° نشطة</span>
-                        <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">انقر لتشغيل البيئة الافتراضية والتحرك داخل الغرف</p>
-                        <a href={inlineProp.tourUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold">فتح الجولة في نافذة جديدة</a>
-                      </div>
-                    )}
-                  </div>
-
-                  <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium text-[11px] bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5">
-                    <li className="flex justify-between">
-                      <span className="text-[var(--nc-text-dim)] font-medium">الرقم المرجعي (ID):</span>
-                      <span className="font-mono text-white font-bold">{inlineProp.id}</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="text-[var(--nc-text-dim)] font-medium">المساحة:</span>
-                      <span className="font-mono text-white font-bold">{inlineProp.area} م²</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="text-[var(--nc-text-dim)] font-medium">السعر المطلـوب:</span>
-                      <span className="font-mono text-[var(--nc-text-secondary)] font-black">{inlineProp.price.toLocaleString()} ر.س</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="text-[var(--nc-text-dim)] font-medium">الوكيل المسؤول:</span>
-                      <span className="text-white font-bold">{inlineProp.agent}</span>
-                    </li>
-                  </ul>
-
-                  <div className="space-y-3">
-                    <h5 className="font-bold text-white border-b border-white/5 pb-1">نموذج حجز الجولة العقارية</h5>
-                    <form onSubmit={(e) => submitTourSchedule(e, inlineProp.id)} className="space-y-2.5 text-right">
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل بالكامل *</label>
-                        <input
-                          type="text"
-                          required
-                          value={visitName}
-                          onChange={(e) => setVisitName(e.target.value)}
-                          placeholder="الاسم"
-                          className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">رقم الجوال للتواصل *</label>
-                        <input
-                          type="text"
-                          required
-                          value={visitPhone}
-                          onChange={(e) => setVisitPhone(e.target.value)}
-                          placeholder="050XXXXXXX"
-                          className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
-                          dir="ltr"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">تاريخ الزيارة *</label>
-                          <DateField
-                            value={visitDate}
-                            onChange={(val) => setVisitDate(val)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">توقيت الزيارة</label>
-                          <select
-                            value={visitTime}
-                            onChange={(e) => setVisitTime(e.target.value)}
-                            className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
+                        <div className="absolute top-3 left-3 z-20">
+                          <button
+                            onClick={(e) => handleToggleFavorite(p.id, e)}
+                            className={`p-1.5 rounded-lg border transition-all ${
+                              isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
+                            }`}
                           >
-                            <option value="09:00">09:00 ص</option>
-                            <option value="11:00">11:00 ص</option>
-                            <option value="16:00">04:00 م</option>
-                            <option value="18:00">06:00 م</option>
-                          </select>
+                            <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
+                          </button>
                         </div>
+                        {p.tourType === '360' ? (
+                          <span className="absolute bottom-3 right-3 z-20 bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">جولة 360°</span>
+                        ) : (
+                          <span className="absolute bottom-3 right-3 z-20 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">فيديو HD</span>
+                        )}
                       </div>
 
-                      <button
-                        type="submit"
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all"
-                      >
-                        تأكيد حجز الجولة الميدانية
-                      </button>
-                    </form>
-                  </div>
-                </div>
+                      {/* معلومات الكارد */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-white group-hover:text-[var(--nc-text-secondary)] transition-colors text-xs">{p.title}</h4>
+                          <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">📍 {p.city} · حي {p.district}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[9px] text-slate-450">
+                          <div><p>المساحة</p><p className="font-bold text-white font-mono">{p.area} م²</p></div>
+                          <div><p>الغرف</p><p className="font-bold text-white font-mono">{p.beds > 0 ? p.beds : '—'}</p></div>
+                          <div><p>اكتمال البيانات</p><p className={`font-bold font-mono ${p.dataCompleteness >= 0.8 ? 'text-emerald-400' : 'text-amber-400'}`}>{Math.round(p.dataCompleteness * 100)}%</p></div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                          <div>
+                            <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر المطلوب</p>
+                            <p className="font-black text-[var(--nc-text-secondary)] text-xs font-mono">{p.price > 0 ? `${p.price.toLocaleString()} ر.س` : 'غير محدد'}</p>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={(e) => handleMortgagePrefill(p, e)} className="px-2 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all">تمويل</button>
+                            <button onClick={(e) => { e.stopPropagation(); handlePropertySelection(p); }} className="px-2 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-text-secondary)] hover:text-white text-[10px] font-bold rounded-lg transition-all">تفاصيل</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-
           </div>
+
+          {/* تفاصيل العقار Inline */}
+          {inlineProp && (
+            <div className="bg-[var(--nc-surface-solid)] border border-emerald-500/20 rounded-2xl p-4 shadow-xl space-y-4">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Monitor size={13} className="text-emerald-400 animate-pulse" />
+                  <span>تفاصيل الجولة (عرض Inline)</span>
+                </h4>
+                <button onClick={() => setInlinePropertyId(null)} className="text-[var(--nc-text-dim)] font-medium hover:text-white"><X size={14} /></button>
+              </div>
+              <div className="space-y-3.5 text-xs">
+                <h3 className="font-black text-white text-sm">{inlineProp.title}</h3>
+                <div className="h-44 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+                  {inlineProp.tourType === 'video' ? (
+                    <video src={inlineProp.tourUrl} controls className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center space-y-1.5 p-3">
+                      <span className="text-[10px] bg-purple-500/10 border border-purple-500/25 text-purple-400 px-2 py-0.5 rounded-full font-bold">جولة 360° نشطة</span>
+                      <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">انقر لتشغيل البيئة الافتراضية والتحرك داخل الغرف</p>
+                      <a href={inlineProp.tourUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold">فتح الجولة في نافذة جديدة</a>
+                    </div>
+                  )}
+                </div>
+                <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium text-[11px] bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5">
+                  <li className="flex justify-between"><span>الرقم المرجعي (ID):</span><span className="font-mono text-white font-bold">{inlineProp.id}</span></li>
+                  <li className="flex justify-between"><span>المساحة:</span><span className="font-mono text-white font-bold">{inlineProp.area} م²</span></li>
+                  <li className="flex justify-between"><span>السعر المطلـوب:</span><span className="font-mono text-[var(--nc-text-secondary)] font-black">{inlineProp.price.toLocaleString()} ر.س</span></li>
+                  <li className="flex justify-between"><span>الوكيل المسؤول:</span><span className="text-white font-bold">{inlineProp.agent}</span></li>
+                </ul>
+                <div className="space-y-3">
+                  <h5 className="font-bold text-white border-b border-white/5 pb-1">نموذج حجز الجولة العقارية</h5>
+                  <form onSubmit={(e) => submitTourSchedule(e, inlineProp.id)} className="space-y-2.5 text-right">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل بالكامل *</label>
+                      <input type="text" required value={visitName} onChange={(e) => setVisitName(e.target.value)} placeholder="الاسم" className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">رقم الجوال للتواصل *</label>
+                      <input type="text" required value={visitPhone} onChange={(e) => setVisitPhone(e.target.value)} placeholder="050XXXXXXX" className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono" dir="ltr" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">تاريخ الزيارة *</label>
+                        <DateField value={visitDate} onChange={(val) => setVisitDate(val)} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">توقيت الزيارة</label>
+                        <select value={visitTime} onChange={(e) => setVisitTime(e.target.value)} className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-center">
+                          <option value="09:00">09:00 ص</option>
+                          <option value="11:00">11:00 ص</option>
+                          <option value="16:00">04:00 م</option>
+                          <option value="18:00">06:00 م</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all">تأكيد حجز الجولة الميدانية</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* شاشة الأحداث الفورية Telemetry Logs */}
           <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
@@ -959,14 +855,8 @@ export default function ToursView() {
                 <Bot size={14} className="text-[var(--nc-text-secondary)]" />
                 <span>سجل تتبع أحداث الجولات الفورية (Tour Event Telemetry Console)</span>
               </h4>
-              <button
-                onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold"
-              >
-                مسح السجل
-              </button>
+              <button onClick={() => setTelemetryLogs([])} className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold">مسح السجل</button>
             </div>
-
             <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
               {telemetryLogs.length === 0 ? (
                 <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged</div>
@@ -977,21 +867,18 @@ export default function ToursView() {
                       <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
                       <span>{log.timestamp}</span>
                     </div>
-                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">
-                      {JSON.stringify(log.payload, null, 2)}
-                    </pre>
+                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">{JSON.stringify(log.payload, null, 2)}</pre>
                   </div>
                 ))
               )}
             </div>
           </div>
-
-        </main>
-
-      </div>
-
+          </div>
+        }
+      />
+      
       {/* ─── Modals Controller ────────────────────── */}
-
+      
       {/* 1. مودال تفاصيل العقار الغني */}
       {activeModal === 'details' && selectedProp && (
         <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1346,6 +1233,6 @@ export default function ToursView() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
