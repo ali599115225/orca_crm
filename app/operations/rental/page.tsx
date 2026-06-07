@@ -721,13 +721,7 @@ export default function RentalPage() {
   const detailsContent = (
     <div className="space-y-6">
       {/* ── Sub-Tab Controller Bar ── */}
-      <div className="nc-glass ds-p-md nc-content-between">
-        <div>
-          <h3 className="ds-h3">إدارة العقود والمدفوعات (Contracts & Payments)</h3>
-          <p className="ds-body-sm">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
-        </div>
-
-        <div className="ds-row ds-gap-xs">
+      <div className="flex flex-wrap items-center gap-2 p-4 bg-[var(--nc-surface)] border border-white/5 rounded-2xl">
           {[
             { id: 'leases', name: 'العقود' },
             { id: 'invoices', name: 'الفواتير' },
@@ -748,7 +742,6 @@ export default function RentalPage() {
               {t.name}
             </button>
           ))}
-        </div>
       </div>
 
       {/* ── Panes Render ── */}
@@ -808,10 +801,10 @@ export default function RentalPage() {
                   </select>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar">
                   <table className="w-full text-right border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200/50 dark:border-white/10 text-slate-700 dark:text-slate-350 font-bold">
+                      <tr className="sticky top-0 z-10 bg-[var(--nc-surface-strong)] border-b border-slate-200/50 dark:border-white/10 text-slate-700 dark:text-slate-350 font-bold">
                         <th className="pb-3 px-2">رقم العقد</th>
                         <th className="pb-3 px-2">الوحدة</th>
                         <th className="pb-3 px-2">المستأجر</th>
@@ -1426,7 +1419,30 @@ export default function RentalPage() {
   );
 
   return (
-    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+    <>
+      {/* Page Header */}
+      <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">العقود</h1>
+          <p className="text-sm text-slate-400 mt-1">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            icon={Plus}
+            onClick={() => setActiveModal('new_lease')}
+          >
+            عقد جديد
+          </Button>
+          <Button 
+            icon={FileText}
+            variant="secondary"
+            onClick={() => setActiveModal('create_invoice')}
+          >
+            إصدار فاتورة
+          </Button>
+        </div>
+      </div>
+
       <LayoutContainer
         kpis={kpisContent}
         actions={actionsContent}
@@ -1686,6 +1702,6 @@ export default function RentalPage() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }

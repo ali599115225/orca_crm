@@ -8,7 +8,7 @@ import {
   CloudUpload, ArrowRight, UserCheck, Trash2, Key, Users, Settings
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
-import { DateField, DateRangeField } from '../ui/DateField';
+import { DateField } from '../ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
 import LayoutContainer from '../ui/LayoutContainer';
 import { 
@@ -673,61 +673,9 @@ export default function PropertiesView() {
   );
 
   const detailsContent = (
-    <div className="space-y-6">
-      {/* Date Range Filter Form */}
-      <div className="p-4 bg-[var(--nc-surface)] border border-white/5 rounded-2xl space-y-3">
-        <h4 className="text-xs font-bold text-[var(--nc-text-dim)] font-medium">تصفية الوحدات حسب تاريخ الإدراج (DateRangeField)</h4>
-        <div className="max-w-md">
-          <DateRangeField
-            fromDate={filterFromDate}
-            toDate={filterToDate}
-            onChange={(from, to) => {
-              setFilterFromDate(from);
-              setFilterToDate(to);
-              addTelemetryEvent('filter.dates_changed', { from, to });
-            }}
-            labelFrom="تاريخ الإدراج من"
-            labelTo="تاريخ الإدراج إلى"
-          />
-        </div>
-      </div>
+    <>
 
-      {/* Inventory Catalog Card */}
-      <div className="nc-glass ds-p-xl ds-stack">
-        <div className="nc-glass-header">
-          <div>
-            <h3 className="ds-h3">سجل الوحدات والعقارات (Inventory)</h3>
-            <p className="ds-body-sm">إجمالي العقود والوحدات المتاحة والمحجوزة</p>
-          </div>
-
-          <div className="nc-row">
-            <div className="relative">
-              <Search className="absolute right-3 top-2 text-[var(--ds-text-muted)]" size={14} />
-              <input
-                type="text"
-                placeholder="بحث برقم الوحدة أو المشروع..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="nc-glass !py-1.5 pr-8 pl-4 w-52"
-                style={{ fontSize: '0.75rem', outline: 'none' }}
-              />
-            </div>
-
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="nc-glass !py-1.5 px-3"
-              style={{ fontSize: '0.75rem', outline: 'none' }}
-            >
-              <option value="">كل الحالات</option>
-              <option value="Available">متاحة</option>
-              <option value="Hold">محجوزة مؤقتاً</option>
-              <option value="Sold">مباعة</option>
-            </select>
-          </div>
-        </div>
-
-        {isLoading && (
+      {isLoading && (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
             <span className="text-xs text-[var(--nc-text-dim)] font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
@@ -756,10 +704,10 @@ export default function PropertiesView() {
         )}
 
         {!isLoading && !fetchError && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-right border-collapse">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                <tr className="sticky top-0 z-10 bg-[var(--nc-surface-strong)] border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
                   <th className="pb-3 px-4">رقم الوحدة</th>
                   <th className="pb-3 px-4">المشروع</th>
                   <th className="pb-3 px-4">المساحة</th>
@@ -810,7 +758,6 @@ export default function PropertiesView() {
             </table>
           </div>
         )}
-      </div>
 
       {/* Selected Unit Details (wide bento details content) */}
       {selectedUnit && (
@@ -1094,11 +1041,53 @@ export default function PropertiesView() {
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 
   return (
-    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+    <>
+      {/* Page Header */}
+      <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">العقارات</h1>
+          <p className="text-sm text-slate-400 mt-1">إدارة سجل الوحدات والعقارات المتاحة والمحجوزة</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)] font-medium" size={16} />
+            <input
+              type="text"
+              placeholder="بحث برقم الوحدة أو المشروع..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 pr-9 pl-4 text-xs text-white outline-none focus:border-[var(--nc-accent-border)] min-w-[200px]"
+            />
+          </div>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
+          >
+            <option value="">كل الحالات</option>
+            <option value="Available">متاحة</option>
+            <option value="Hold">محجوزة مؤقتاً</option>
+            <option value="Sold">مباعة</option>
+          </select>
+          <Button 
+            icon={Plus}
+            onClick={() => {
+              if (!isAllowed('CREATE_UNIT')) {
+                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإضافة وحدة عقارية.');
+                return;
+              }
+              setActiveModal('new_unit');
+            }}
+          >
+            إضافة وحدة
+          </Button>
+        </div>
+      </div>
+
       <LayoutContainer
         kpis={kpisContent}
         actions={actionsContent}
@@ -1348,6 +1337,6 @@ export default function PropertiesView() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
