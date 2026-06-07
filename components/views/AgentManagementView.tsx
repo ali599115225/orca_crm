@@ -204,7 +204,7 @@ export default function AgentManagementView({
   };
 
   return (
-    <div className="orca-page orca-stack" dir={dir}>
+    <div className="nc-page nc-stack" dir={dir}>
       
       {/* Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[#A7C7E7]/20 p-6 shadow-2xl backdrop-blur-xl">

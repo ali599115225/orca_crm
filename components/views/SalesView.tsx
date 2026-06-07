@@ -1,4 +1,4 @@
-﻿// components/views/SalesView.tsx
+// components/views/SalesView.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -119,7 +119,7 @@ export default function SalesView() {
   }
 
   return (
-    <div className="orca-page orca-stack" dir={dir}>
+    <div className="nc-page nc-stack" dir={dir}>
       
       {/* Header */}
       <div>

@@ -473,27 +473,27 @@ export default function ToursView() {
   const inlineProp = properties.find(x => x.id === inlinePropertyId);
 
   return (
-    <div className="ds-page ds-stack text-right" dir="rtl">
+    <div className="nc-page nc-stack text-right" dir="rtl">
       
       {/* ─── Loading / Error ───────────────────────────── */}
       {toursLoading && (
-        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
           <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
           <span className="ds-muted">جاري تحميل الجولات من قاعدة البيانات...</span>
         </div>
       )}
       {toursError && !toursLoading && (
-        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+        <div className="nc-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
           <p className="ds-body-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{toursError}</p>
-          <button onClick={() => window.location.reload()} className="ds-btn ds-btn-ghost ds-btn-sm">إعادة المحاولة</button>
+          <button onClick={() => window.location.reload()} className="nc-btn nc-btn-ghost nc-btn-sm">إعادة المحاولة</button>
         </div>
       )}
 
       {/* ─── الهيدر الرئيسي للجولات ────────────────────── */}
-      <div className="ds-card-glass ds-p-lg">
-        <div className="ds-row-between">
+      <div className="nc-glass ds-p-lg">
+        <div className="nc-content-between">
           <div className="ds-stack ds-gap-sm">
-            <div className="ds-row ds-gap-xs ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
+            <div className="nc-row ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
               <Sparkles size={13} />
               جولات عقارية افتراضية (فيديو / 360)
             </div>
@@ -501,10 +501,10 @@ export default function ToursView() {
             <p className="ds-body">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
           </div>
 
-          <div className="ds-row ds-gap-xs">
+          <div className="nc-row">
             <button
               onClick={() => setActiveModal('settings_flag')}
-              className="ds-btn ds-btn-ghost ds-btn-sm"
+              className="nc-btn nc-btn-ghost nc-btn-sm"
             >
               <Settings size={15} />
               قواعد العرض (Feature Flags)

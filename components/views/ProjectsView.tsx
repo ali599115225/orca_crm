@@ -492,11 +492,11 @@ export default function ProjectsView() {
   );
 
   return (
-    <div className="ds-page ds-stack text-[var(--ds-text-primary)]" dir="rtl">
+    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
       
       {/* ── Role and Integrity Top Bar ── */}
-      <div className="ds-row-between ds-p-md ds-card-glass">
-        <div className="ds-row ds-gap-sm">
+      <div className="nc-content-between ds-p-md nc-glass">
+        <div className="nc-row">
           <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
             <h4 className="ds-body-sm font-bold">صلاحيات محطة التحكم (RBAC)</h4>
@@ -504,7 +504,7 @@ export default function ProjectsView() {
           </div>
         </div>
         
-        <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
+        <div className="nc-row ds-p-xs nc-glass" style={{ padding: '4px' }}>
           {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
             <button
               key={role}
@@ -512,8 +512,8 @@ export default function ProjectsView() {
                 setCurrentUserRole(role);
                 addTelemetryEvent('system.role_changed', 0, { newRole: role });
               }}
-              className={`ds-btn ds-btn-sm ${
-                currentUserRole === role ? 'ds-btn-primary' : 'ds-btn-ghost'
+              className={`nc-btn nc-btn-sm ${
+                currentUserRole === role ? 'nc-btn-primary' : 'nc-btn-ghost'
               }`}
             >
               {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
@@ -538,7 +538,7 @@ export default function ProjectsView() {
                   <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
                 </div>
                 
-                <div className="ds-row ds-gap-sm">
+                <div className="nc-row">
                   <div className="relative max-w-xs">
                     <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
                     <input 
@@ -546,7 +546,7 @@ export default function ProjectsView() {
                       placeholder="بحث بالمشروع أو الحي..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="ds-card-glass !py-2 pr-9 pl-4 w-56"
+                      className="nc-glass !py-2 pr-9 pl-4 w-56"
                       style={{ fontSize: '0.75rem', outline: 'none' }}
                     />
                   </div>
@@ -580,7 +580,7 @@ export default function ProjectsView() {
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="ds-btn ds-btn-ghost ds-btn-sm"
+                    className="nc-btn nc-btn-ghost nc-btn-sm"
                   >
                     إعادة المحاولة
                   </button>

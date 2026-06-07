@@ -93,7 +93,7 @@ export default function LogsViewer() {
   });
 
   return (
-    <div className="orca-page orca-stack font-sans" dir={dir}>
+    <div className="nc-page nc-stack font-sans" dir={dir}>
       
       {/* Header card with glassmorphism */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[#A7C7E7]/20 p-6 shadow-2xl backdrop-blur-xl">

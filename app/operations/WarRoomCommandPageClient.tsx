@@ -92,7 +92,7 @@ export default function WarRoomCommandPageClient({
 
       {/* ── Case 1: Overview ──────────────────────────────────────────────── */}
       {show("analytics") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <DashboardView
             tenant={tenantInfo}
             stats={dashboardStats}
@@ -105,37 +105,37 @@ export default function WarRoomCommandPageClient({
 
       {/* ── Case 2: Operations — أصول + حاسبة + مبيعات + عملاء + مهام ───── */}
       {show("projects") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <ProjectsView />
         </div>
       )}
 
       {show("properties") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <PropertiesView />
         </div>
       )}
 
       {show("calculator") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <CalculatorView />
         </div>
       )}
 
       {show("sales") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <SalesView />
         </div>
       )}
 
       {show("leads") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <LeadsTabs />
         </div>
       )}
 
       {show("tasks") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <TasksView />
         </div>
       )}
@@ -144,21 +144,21 @@ export default function WarRoomCommandPageClient({
 
       {/* ── Case 4: WhatsApp ─────────────────────────────────────────────── */}
       {show("whatsapp") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <WhatsAppView initialChats={chats} tenant={whatsappTenant} />
         </div>
       )}
 
       {/* ── Case 5: Helpdesk ─────────────────────────────────────────────── */}
       {show("helpdesk") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <HelpdeskView initialTickets={helpdeskTickets} tenantName={companyName} />
         </div>
       )}
 
       {/* ── Case 6: Settings ─────────────────────────────────────────────── */}
       {show("settings") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <SettingsView
             tenant={tenantInfo}
             users={tenantUsers}
@@ -168,13 +168,13 @@ export default function WarRoomCommandPageClient({
       )}
 
       {show("rental") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <AdvancedErpView tenantPlan={tenantInfo.subscriptionPlan} initialTab="ijara" />
         </div>
       )}
 
       {show("agents") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <AgentManagementView 
             tenantPlan={tenantInfo.subscriptionPlan}
             totalLeads={dashboardStats.totalLeads}
@@ -185,13 +185,13 @@ export default function WarRoomCommandPageClient({
       )}
 
       {show("logs") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           <LogsViewer />
         </div>
       )}
 
       {show("monitor") && (
-        <div className="orca-view-enter">
+        <div className="nc-view-enter">
           {/* Platform Architect — لوحة المراقبة الكاملة */}
           <DashboardView
             tenant={tenantInfo}

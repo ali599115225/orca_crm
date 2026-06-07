@@ -450,11 +450,11 @@ export default function PropertiesView() {
   };
 
   return (
-    <div className="ds-page ds-stack">
+    <div className="nc-page nc-stack">
       
       {/* ── Role Selector Top Bar ── */}
-      <div className="ds-row-between ds-p-md ds-card-glass">
-        <div className="ds-row ds-gap-sm">
+      <div className="nc-content-between ds-p-md nc-glass">
+        <div className="nc-row">
           <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
             <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات (RBAC Check)</h4>
@@ -462,7 +462,7 @@ export default function PropertiesView() {
           </div>
         </div>
         
-        <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
+        <div className="nc-row ds-p-xs nc-glass" style={{ padding: '4px' }}>
           {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
             <button
               key={role}
@@ -470,8 +470,8 @@ export default function PropertiesView() {
                 setCurrentUserRole(role);
                 addTelemetryEvent('system.role_changed', { newRole: role });
               }}
-              className={`ds-btn ds-btn-sm ${
-                currentUserRole === role ? 'ds-btn-primary' : 'ds-btn-ghost'
+              className={`nc-btn nc-btn-sm ${
+                currentUserRole === role ? 'nc-btn-primary' : 'nc-btn-ghost'
               }`}
             >
               {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
@@ -505,15 +505,15 @@ export default function PropertiesView() {
         <div className="flex-1 w-full space-y-6">
           
           {/* Properties catalog card */}
-          <div className="ds-card ds-p-xl ds-stack">
+          <div className="nc-glass ds-p-xl ds-stack">
             
-            <div className="ds-card-header">
+            <div className="nc-glass-header">
               <div>
                 <h3 className="ds-h3">سجل الوحدات والعقارات (Inventory)</h3>
                 <p className="ds-body-sm">إجمالي العقود والوحدات المتاحة والمحجوزة</p>
               </div>
 
-              <div className="ds-row ds-gap-sm">
+              <div className="nc-row">
                 <div className="relative">
                   <Search className="absolute right-3 top-2 text-[var(--ds-text-muted)]" size={14} />
                   <input
@@ -521,7 +521,7 @@ export default function PropertiesView() {
                     placeholder="بحث برقم الوحدة أو المشروع..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="ds-card-glass !py-1.5 pr-8 pl-4 w-52"
+                    className="nc-glass !py-1.5 pr-8 pl-4 w-52"
                     style={{ fontSize: '0.75rem', outline: 'none' }}
                   />
                 </div>
@@ -529,7 +529,7 @@ export default function PropertiesView() {
                 <select 
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="ds-card-glass !py-1.5 px-3"
+                  className="nc-glass !py-1.5 px-3"
                   style={{ fontSize: '0.75rem', outline: 'none' }}
                 >
                   <option value="">كل الحالات</option>

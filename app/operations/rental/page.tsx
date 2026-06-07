@@ -540,11 +540,11 @@ export default function RentalPage() {
   });
 
   return (
-    <div className="ds-page ds-stack">
+    <div className="nc-page nc-stack">
       
       {/* ── Role Selector Top Bar ── */}
-      <div className="ds-row-between ds-p-md ds-card-glass">
-        <div className="ds-row ds-gap-sm">
+      <div className="nc-content-between ds-p-md nc-glass">
+        <div className="nc-row">
           <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
           <div>
             <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات والإعدادات التشغيلية</h4>
@@ -553,7 +553,7 @@ export default function RentalPage() {
         </div>
         
         <div className="ds-row ds-gap-md">
-          <div className="ds-row ds-gap-xs ds-p-xs ds-card-glass" style={{ padding: '4px' }}>
+          <div className="ds-row ds-gap-xs ds-p-xs nc-glass" style={{ padding: '4px' }}>
             {[
               { id: 'ADMIN', name: 'مدير نظام (Admin)' },
               { id: 'accountant', name: 'المحاسب (Accountant)' },
@@ -566,7 +566,7 @@ export default function RentalPage() {
                   setCurrentUserRole(role.id);
                   addTelemetryEvent('system.role_changed', { newRole: role.id });
                 }}
-                className={`ds-btn ds-btn-sm ${currentUserRole === role.id ? 'ds-btn-primary' : 'ds-btn-ghost'}`}
+                className={`nc-btn nc-btn-sm ${currentUserRole === role.id ? 'nc-btn-primary' : 'nc-btn-ghost'}`}
               >
                 {role.name}
               </button>
@@ -675,7 +675,7 @@ export default function RentalPage() {
       </div>
 
       {/* ── Sub-Tab Controller Bar ── */}
-      <div className="ds-card-glass ds-p-md ds-row-between">
+      <div className="nc-glass ds-p-md nc-content-between">
         <div>
           <h3 className="ds-h3">إدارة العقود والمدفوعات (Contracts & Payments)</h3>
           <p className="ds-body-sm">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
@@ -695,8 +695,8 @@ export default function RentalPage() {
                   setActivePane(t.id as any);
                 });
               }}
-              className={`ds-btn ds-btn-sm ${
-                activePane === t.id ? 'ds-btn-primary' : 'ds-btn-ghost'
+              className={`nc-btn nc-btn-sm ${
+                activePane === t.id ? 'nc-btn-primary' : 'nc-btn-ghost'
               }`}
             >
               {t.name}

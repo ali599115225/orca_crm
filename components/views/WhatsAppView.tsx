@@ -1,4 +1,4 @@
-﻿// components/views/WhatsAppView.tsx
+// components/views/WhatsAppView.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -199,7 +199,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
   };
 
   return (
-    <div className="orca-page orca-stack" dir={dir}>
+    <div className="nc-page nc-stack" dir={dir}>
       
       {/* Header */}
       <div>

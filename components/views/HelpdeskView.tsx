@@ -246,7 +246,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   };
 
   return (
-    <div className="orca-page orca-stack p-6" dir={dir}>
+    <div className="nc-page nc-stack p-6" dir={dir}>
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">

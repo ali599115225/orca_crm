@@ -18,7 +18,7 @@ export default function MarketingView() {
 
   return (
     <div className="w-full orca-view-enter" dir="rtl">
-      <div className="orca-page orca-stack p-6">
+      <div className="nc-page nc-stack p-6">
 
         {/* ── Page Header ────────────────────────────────────────────────── */}
         <div className="relative overflow-hidden rounded-2xl bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-5 md:p-6 flex flex-col gap-2 transition-all">

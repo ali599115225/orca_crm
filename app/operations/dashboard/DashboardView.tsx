@@ -141,7 +141,7 @@ export default function DashboardView({
   };
 
   return (
-    <div className="orca-page orca-stack" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
+    <div className="nc-page nc-stack" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
       {/* 1. Welcome Banner (البنر الترحيبي العام) */}
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl dark:shadow-none transition-all">
