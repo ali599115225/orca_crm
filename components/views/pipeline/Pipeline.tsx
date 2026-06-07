@@ -115,7 +115,7 @@ export default function Pipeline() {
   const uniqueAgents = Array.from(new Set(leads.map(l => l.assignedTo).filter(Boolean)));
 
   const filterSelectClass =
-    "bg-white/5 border border-[rgba(0,229,255,0.08)] rounded-[10px] px-2.5 py-2 text-[#E2EEF5] text-xs focus:border-[rgba(0,229,255,0.3)] focus:outline-none transition-all appearance-none";
+    "bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] rounded-[10px] px-2.5 py-2 text-[var(--nc-text-primary)] text-xs focus:border-[var(--nc-accent-border)] focus:outline-none transition-all appearance-none";
 
   const scoreClass = (score: number) =>
     score >= 75 ? "nc-badge nc-badge-danger" :
@@ -136,9 +136,9 @@ export default function Pipeline() {
               onChange={(e) => setFilterProject(e.target.value)}
               className={filterSelectClass}
             >
-              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل المشاريع</option>
+              <option value="" className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">كل المشاريع</option>
               {uniqueProjects.map((p, idx) => (
-                <option key={idx} value={p as string} className="bg-[#0C1D2B] text-[#E2EEF5]">مشروع {p}</option>
+                <option key={idx} value={p as string} className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">مشروع {p}</option>
               ))}
             </select>
             <select
@@ -146,9 +146,9 @@ export default function Pipeline() {
               onChange={(e) => setFilterSource(e.target.value)}
               className={filterSelectClass}
             >
-              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل القنوات</option>
+              <option value="" className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">كل القنوات</option>
               {uniqueSources.map((s, idx) => (
-                <option key={idx} value={s as string} className="bg-[#0C1D2B] text-[#E2EEF5]">{s}</option>
+                <option key={idx} value={s as string} className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">{s}</option>
               ))}
             </select>
             <select
@@ -156,9 +156,9 @@ export default function Pipeline() {
               onChange={(e) => setFilterAgent(e.target.value)}
               className={filterSelectClass}
             >
-              <option value="" className="bg-[#0C1D2B] text-[#E2EEF5]">كل الوكلاء</option>
+              <option value="" className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">كل الوكلاء</option>
               {uniqueAgents.map((a, idx) => (
-                <option key={idx} value={a as string} className="bg-[#0C1D2B] text-[#E2EEF5]">وكيل {a}</option>
+                <option key={idx} value={a as string} className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">وكيل {a}</option>
               ))}
             </select>
             <button
@@ -173,7 +173,7 @@ export default function Pipeline() {
 
       {loading ? (
         <div className="nc-section">
-          <div className="py-16 text-center text-xs text-[#7BA3C0] animate-pulse font-mono">
+          <div className="py-16 text-center text-xs text-[var(--nc-text-dim)] animate-pulse font-mono">
             جاري تحميل بيانات العملاء...
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function Pipeline() {
                       className={`nc-stage${snapshot.isDraggingOver ? " drag-over" : ""}`}
                     >
                       <div className="nc-stage-header">
-                        <span className="nc-stage-title" style={{ color: stageAccent[stage.id] || "#E2EEF5" }}>
+                        <span className="nc-stage-title" style={{ color: stageAccent[stage.id] || "var(--nc-text-primary)" }}>
                           {stage.title}
                         </span>
                         <span className="nc-stage-count">{stageLeads.length}</span>
@@ -208,7 +208,7 @@ export default function Pipeline() {
                                 className={`nc-lead${s.isDragging ? " dragging" : ""}`}
                                 style={{
                                   ...d.draggableProps.style,
-                                  "--stage-accent": stageAccent[lead.stage] || "#00E5FF",
+                                  "--stage-accent": stageAccent[lead.stage] || "var(--nc-accent)",
                                 } as React.CSSProperties}
                               >
                                 <div className="nc-content-between mb-1">
@@ -229,8 +229,8 @@ export default function Pipeline() {
                         ))}
                         {provided.placeholder}
                         {stageLeads.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-[rgba(0,229,255,0.06)] rounded-xl select-none">
-                            <span className="text-xs text-[#7BA3C0] mb-2">لا يوجد عملاء</span>
+                          <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-[var(--nc-glass-border)] rounded-xl select-none">
+                            <span className="text-xs text-[var(--nc-text-dim)] mb-2">لا يوجد عملاء</span>
                             <button
                               onClick={() => alert("إضافة عميل جديد إلى مرحلة " + stage.title)}
                               className="nc-btn nc-btn-ghost nc-btn-sm"

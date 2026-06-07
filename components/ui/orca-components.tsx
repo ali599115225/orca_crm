@@ -38,14 +38,14 @@ export const DataTable: React.FC<{columns: any[], data: any[]}> = ({ columns, da
   <div className="overflow-x-auto">
     <table className="w-full text-right border-collapse">
       <thead>
-        <tr className="border-b border-[rgba(0,229,255,0.08)] text-[#B0CCE0] font-medium text-sm">
-          {columns.map((col, i) => <th key={i} className="pb-4 font-normal px-4">{col.header}</th>)}
+        <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-secondary)] font-medium text-sm">
+          {columns.map((col, i) => <th key={i} className="pb-4 font-normal px-4 text-[var(--nc-text-dim)]">{col.header}</th>)}
         </tr>
       </thead>
       <tbody>
         {data.map((row, i) => (
-          <tr key={i} className="border-b border-[rgba(0,229,255,0.06)] hover:bg-white/[0.03] transition-colors">
-            {columns.map((col, j) => <td key={j} className="py-4 px-4 text-[#E2EEF5] font-bold">{row[col.accessor]}</td>)}
+          <tr key={i} className="border-b border-[var(--nc-glass-border)] hover:bg-[var(--nc-accent-soft)] transition-colors">
+            {columns.map((col, j) => <td key={j} className="py-4 px-4 text-[var(--nc-text-primary)] font-bold">{row[col.accessor]}</td>)}
           </tr>
         ))}
       </tbody>
