@@ -273,31 +273,31 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-ticket text-[var(--nc-accent)] text-lg"></i>
               <div>
-                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
+                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
                 <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{toArabicNumerals(tickets.length)}</p>
               </div>
             </SmartCard>
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-activity text-emerald-500 text-lg"></i>
               <div>
-                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
+                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
                 <p className="text-lg font-bold text-emerald-500 font-en">{toArabicNumerals(openTickets)}</p>
               </div>
             </SmartCard>
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-check-circle text-[var(--nc-foreground-muted)] text-lg"></i>
               <div>
-                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
+                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
                 <p className="text-lg font-bold text-[var(--nc-foreground-muted)] font-en">{toArabicNumerals(closedTickets)}</p>
               </div>
             </SmartCard>
           </div>
         }
         actions={
-          <SmartCard className="p-6 space-y-4">
+          <div className="bg-transparent border-none p-0 space-y-4">
             <div className="border-b border-[var(--nc-border)] pb-3">
               <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.openTicket}</h3>
-              <p className="text-[11px] text-[var(--nc-foreground-muted)] font-medium mt-0.5">{t.openTicketSub}</p>
+              <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium mt-0.5">{t.openTicketSub}</p>
             </div>
 
             {error && (
@@ -342,10 +342,10 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                 {loading ? t.submittingBtn : t.submitBtn}
               </button>
             </form>
-          </SmartCard>
+          </div>
         }
         insights={
-          <SmartCard className="p-6 space-y-4">
+          <div className="bg-transparent border-none p-0 space-y-4">
             <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
               <span>{t.ledgerTitle}</span>
               <span className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
@@ -372,7 +372,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     >
                       <div className="space-y-1">
                         <h5 className="font-bold text-xs text-[var(--nc-foreground)] line-clamp-1">{ticket.title}</h5>
-                        <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
+                        <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
                       </div>
                       
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -394,7 +394,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                 })
               )}
             </div>
-          </SmartCard>
+          </div>
         }
         details={
           selectedTicket ? (
@@ -404,7 +404,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               <div className="border-b border-[var(--nc-border)] pb-4 flex justify-between items-center gap-4">
                 <div>
                   <h3 className="text-[var(--nc-foreground)] font-bold text-lg">{selectedTicket.title}</h3>
-                  <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
+                  <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
                     {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', selectedTicket.id)}
                   </p>
                 </div>
@@ -430,7 +430,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
               {/* Inquiry description */}
               <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl">
-                <p className="text-[var(--nc-accent)] text-[10px] font-bold mb-1.5">{t.authorLabel}</p>
+                <p className="text-[var(--nc-accent)] text-xs text-slate-500 font-bold mb-1.5">{t.authorLabel}</p>
                 <p className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
               </div>
 
@@ -504,3 +504,5 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     </div>
   );
 }
+
+

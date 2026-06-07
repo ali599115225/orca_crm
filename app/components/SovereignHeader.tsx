@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { Menu, Search, Plus, Bell, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 
 interface SovereignHeaderProps {
@@ -69,7 +69,8 @@ function HeaderBreadcrumbs() {
 }
 
 export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
-  const { theme, toggleTheme, lang } = useApp();
+  const { theme, toggleTheme, lang, toggleLang } = useApp();
+  const router = useRouter();
 
   return (
     <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-white/70 dark:bg-white/5 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/10 shadow-lg dark:shadow-none z-40 w-full dir-rtl text-slate-900 dark:text-white transition-all">
@@ -119,7 +120,11 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         </div>
 
         {/* زر اللغة */}
-        <button className="hidden sm:flex items-center justify-center w-9 h-9 bg-white/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue dark:hover:border-cyan-glow rounded-lg transition-all shadow-inner" title="تغيير اللغة">
+        <button 
+          onClick={toggleLang}
+          className="hidden sm:flex items-center justify-center w-9 h-9 bg-white/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue dark:hover:border-cyan-glow rounded-lg transition-all shadow-inner" 
+          title="تغيير اللغة"
+        >
           <Globe size={18} />
         </button>
 
@@ -150,7 +155,15 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         </div>
 
         {/* زر تسجيل الخروج */}
-        <button className="flex items-center justify-center w-9 h-9 bg-red-500/10 text-red-650 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all shadow-sm" title="تسجيل الخروج">
+        <button 
+          onClick={() => {
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('token');
+            router.push('/');
+          }}
+          className="flex items-center justify-center w-9 h-9 bg-red-500/10 text-red-650 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all shadow-sm" 
+          title="تسجيل الخروج"
+        >
           <LogOut size={18} />
         </button>
 

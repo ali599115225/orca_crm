@@ -463,7 +463,7 @@ export default function OffersView() {
       {/* ─── Page Header ───────────────────────────── */}
       <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
         <div>
-          <h1 className="text-xl font-bold text-white">العروض العقارية</h1>
+          <h1 className="text-2xl font-semibold text-white text-lg">العروض العقارية</h1>
           <p className="text-sm text-slate-400 mt-1">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -498,9 +498,9 @@ export default function OffersView() {
           <div className="space-y-4">
             {/* فلترة العروض */}
             <div className="space-y-4">
-            <h3 className="text-xs font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-2 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-white border-b border-white/5 pb-2 flex justify-between items-center">
               <span>فلترة وتصفية العروض</span>
-              <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-normal">بحث ذكي</span>
+              <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-normal">بحث ذكي</span>
             </h3>
 
             <div className="space-y-3.5 text-xs">
@@ -618,14 +618,14 @@ export default function OffersView() {
         insights={
           <div className="space-y-4">
             {/* المفضلة الشخصية */}
-            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
-              <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
+            <div className="bg-transparent border-none p-0 space-y-3">
+              <h3 className="text-lg font-semibold text-white border-b border-white/5 pb-2 flex items-center gap-2">
                 <Heart size={14} className="text-rose-500 fill-rose-500 animate-pulse" />
                 <span>المفضلة الشخصية</span>
               </h3>
               <div className="space-y-2.5">
                 {favorites.length === 0 ? (
-                  <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
+                  <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
                 ) : (
                   favorites.map(fid => {
                     const p = properties.find(x => x.id === fid);
@@ -636,8 +636,8 @@ export default function OffersView() {
                         className="flex justify-between items-center p-2.5 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
                       >
                         <div className="space-y-0.5 max-w-[150px]">
-                          <p className="font-bold text-white truncate">{p.title}</p>
-                          <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">{p.city} · {p.district}</p>
+                          <p className="font-semibold text-white text-lg truncate">{p.title}</p>
+                          <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">{p.city} · {p.district}</p>
                         </div>
                         <button
                           onClick={() => toggleFavorite(fid)}
@@ -654,12 +654,12 @@ export default function OffersView() {
             </div>
 
             {/* نطاق التغطية */}
-            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[var(--nc-text-dim)] font-medium">
-              <h4 className="font-bold text-white flex items-center gap-2">
+            <div className="bg-transparent border-none p-0 space-y-2.5 text-xs text-slate-500 font-medium">
+              <h4 className="font-semibold text-white text-lg flex items-center gap-2">
                 <Map size={14} className="text-cyan-400" />
                 <span>نطاق التغطية</span>
               </h4>
-              <p className="text-[11px] leading-relaxed">
+              <p className="text-xs text-slate-500 leading-relaxed">
                 اختر منطقة سكنية من لوحة التصفية لعرض العروض المتاحة، أو اضغط على العقار لاستعراض موقعه على الخريطة التفاعلية المقابلة.
               </p>
             </div>
@@ -741,7 +741,7 @@ export default function OffersView() {
                             {p.type === 'villa' ? 'فيلا سكنية' : p.type === 'apartment' ? 'شقة فاخرة' : 'أرض فضاء'}
                           </span>
                           <div className="absolute top-3 right-3 z-20">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase shadow-sm ${
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs text-slate-500 font-black border uppercase shadow-sm ${
                               p.status === 'available' 
                                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                                 : p.status === 'reserved'
@@ -772,20 +772,20 @@ export default function OffersView() {
                         {/* تفاصيل العقار */}
                         <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
                           <div className="space-y-1">
-                            <h4 className="font-bold text-white group-hover:text-[var(--nc-text-secondary)] transition-colors">{p.title}</h4>
-                            <p className="text-[11px] text-[var(--nc-text-dim)] font-medium flex items-center gap-1 font-semibold">
+                            <h4 className="font-semibold text-white text-lg group-hover:text-[var(--nc-text-secondary)] transition-colors">{p.title}</h4>
+                            <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium flex items-center gap-1 font-semibold">
                               <span>📍</span>
                               <span>{p.city} · حي {p.district}</span>
                             </p>
                           </div>
-                          <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[10px] text-[var(--nc-text-dim)] font-medium">
+                          <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">
                             <div>
                               <p className="text-[var(--nc-text-dim)] font-medium">المساحة</p>
-                              <p className="font-bold text-white font-mono">{p.area} م²</p>
+                              <p className="font-semibold text-white text-lg font-mono">{p.area} م²</p>
                             </div>
                             <div>
                               <p className="text-[var(--nc-text-dim)] font-medium">غرف النوم</p>
-                              <p className="font-bold text-white font-mono">{p.beds > 0 ? p.beds : '—'}</p>
+                              <p className="font-semibold text-white text-lg font-mono">{p.beds > 0 ? p.beds : '—'}</p>
                             </div>
                             <div>
                               <p className="text-[var(--nc-text-dim)] font-medium">سعر المتر تقريباً</p>
@@ -805,7 +805,7 @@ export default function OffersView() {
                                   e.stopPropagation();
                                   openMortgagePrefilled(p.id);
                                 }}
-                                className="px-2.5 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2.5 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-xs text-slate-500 font-bold rounded-lg transition-all"
                                 title="احسب التمويل البنكي"
                               >
                                 تمويل
@@ -815,7 +815,7 @@ export default function OffersView() {
                                   setSelectedPropertyId(p.id);
                                   setActiveModal('details');
                                 }}
-                                className="px-2.5 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] border border-[var(--nc-accent-border)] hover:text-white text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2.5 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] border border-[var(--nc-accent-border)] hover:text-white text-[var(--nc-text-secondary)] text-xs text-slate-500 font-bold rounded-lg transition-all"
                               >
                                 تفاصيل
                               </button>
@@ -833,7 +833,7 @@ export default function OffersView() {
             {showMap && (
               <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <h4 className="text-lg font-semibold text-white flex items-center gap-1.5">
                     <Map size={13} className="text-cyan-400" />
                     <span>خريطة توزع العروض</span>
                   </h4>
@@ -859,11 +859,11 @@ export default function OffersView() {
                       </div>
                     </div>
                   ))}
-                  <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold tracking-wider bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                  <span className="z-10 text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-bold tracking-wider bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
                     محاكاة الخرائط النشطة
                   </span>
                 </div>
-                <div className="bg-[var(--nc-surface-strong)] p-2.5 rounded-xl border border-white/5 text-[10px] text-[var(--nc-text-dim)] font-medium leading-relaxed text-center font-semibold">
+                <div className="bg-[var(--nc-surface-strong)] p-2.5 rounded-xl border border-white/5 text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium leading-relaxed text-center font-semibold">
                   تحمل الخريطة التوضيحية إحداثيات خطوط العرض والطول لكل عقار مع تتبع النقاط وتوجيه المستشارين.
                 </div>
               </div>
@@ -872,18 +872,18 @@ export default function OffersView() {
             {/* ─── سجل أحداث العروض العقارية Console (Telemetry) ───────────────── */}
             <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
               <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <h4 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Bot size={14} className="text-[var(--nc-text-secondary)]" />
                   <span>شاشة تتبع أحداث العروض العقارية الفورية (Event Telemetry Console)</span>
                 </h4>
                 <button
                   onClick={() => setTelemetryLogs([])}
-                  className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors"
+                  className="text-xs text-slate-500 text-rose-400 hover:text-rose-300 font-semibold transition-colors"
                 >
                   مسح السجل
                 </button>
               </div>
-              <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
+              <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
                 {telemetryLogs.length === 0 ? (
                   <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged yet</div>
                 ) : (
@@ -915,13 +915,13 @@ export default function OffersView() {
             <div className="flex justify-between items-start border-b border-white/5 pb-4">
               <div className="space-y-1">
                 <h3 className="text-lg font-black text-white">{selectedProp.title}</h3>
-                <p className="text-xs text-[var(--nc-text-dim)] font-medium flex items-center gap-1.5 font-bold">
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 font-bold">
                   <span>📍</span>
                   <span>{selectedProp.city} · حي {selectedProp.district} · {selectedProp.area} م²</span>
                 </p>
               </div>
               <div className="text-left space-y-1">
-                <p className="text-xs text-[var(--nc-text-dim)] font-medium">القيمة المطلوبة</p>
+                <p className="text-xs text-slate-500 font-medium">القيمة المطلوبة</p>
                 <p className="text-lg font-black text-[var(--nc-text-secondary)] font-mono">{selectedProp.price.toLocaleString()} ر.س</p>
               </div>
             </div>
@@ -932,7 +932,7 @@ export default function OffersView() {
               <div className="absolute inset-0 opacity-15 bg-[radial-gradient(var(--nc-accent-border) 1.5px,transparent 1.5px)] [background-size:24px_24px]" />
               <div className="z-20 text-center space-y-2">
                 <Megaphone size={35} className="mx-auto text-[var(--nc-text-dim)] font-medium animate-pulse" />
-                <span className="inline-block text-xs text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full">
+                <span className="inline-block text-xs text-slate-500 font-medium font-bold bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full">
                   معاينة وسائط ومخططات العقار البصرية المعتمده
                 </span>
               </div>
@@ -945,36 +945,36 @@ export default function OffersView() {
                 <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium">
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">الرقم المرجعي (ID):</span>
-                    <span className="font-mono font-bold text-white">{selectedProp.id}</span>
+                    <span className="font-mono font-semibold text-white text-lg">{selectedProp.id}</span>
                   </li>
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">نوع العقار:</span>
-                    <span className="font-bold text-white">
+                    <span className="font-semibold text-white text-lg">
                       {selectedProp.type === 'villa' ? 'فيلا مستقلة' : selectedProp.type === 'apartment' ? 'شقة' : 'أرض'}
                     </span>
                   </li>
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">عدد غرف النوم:</span>
-                    <span className="font-mono font-bold text-white">{selectedProp.beds > 0 ? selectedProp.beds : '—'}</span>
+                    <span className="font-mono font-semibold text-white text-lg">{selectedProp.beds > 0 ? selectedProp.beds : '—'}</span>
                   </li>
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">المساحة الإجمالية:</span>
-                    <span className="font-mono font-bold text-white">{selectedProp.area} م²</span>
+                    <span className="font-mono font-semibold text-white text-lg">{selectedProp.area} م²</span>
                   </li>
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">الوكيل المسؤول:</span>
-                    <span className="font-bold text-white">{selectedProp.agent}</span>
+                    <span className="font-semibold text-white text-lg">{selectedProp.agent}</span>
                   </li>
                   <li className="flex justify-between">
                     <span className="text-[var(--nc-text-dim)] font-medium">تاريخ الإدراج والنشر:</span>
-                    <span className="font-mono font-bold text-white">{formatDateToDDMMYYYY(selectedProp.posted)}</span>
+                    <span className="font-mono font-semibold text-white text-lg">{formatDateToDDMMYYYY(selectedProp.posted)}</span>
                   </li>
                 </ul>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-white border-b border-white/5 pb-1">إجراءات سياقية ذكية</h4>
-                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium leading-relaxed mb-2">اختر أحد الإجراءات التالية لطلب التواصل أو تقديم عرض تمويل مباشر.</p>
+                <h4 className="font-semibold text-white text-lg border-b border-white/5 pb-1">إجراءات سياقية ذكية</h4>
+                <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium leading-relaxed mb-2">اختر أحد الإجراءات التالية لطلب التواصل أو تقديم عرض تمويل مباشر.</p>
                 <div className="flex flex-col gap-2">
                   <button
                     onClick={() => setActiveModal('contact_agent')}
@@ -1011,8 +1011,8 @@ export default function OffersView() {
 
             {/* الوصف المختصر */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white">تفاصيل ووصف إضافي للعرض:</h4>
-              <p className="text-xs text-[var(--nc-text-dim)] font-medium leading-relaxed bg-[var(--nc-surface)] p-3.5 rounded-xl border border-white/5">
+              <h4 className="text-lg font-semibold text-white">تفاصيل ووصف إضافي للعرض:</h4>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed bg-[var(--nc-surface)] p-3.5 rounded-xl border border-white/5">
                 {selectedProp.description}
               </p>
             </div>
@@ -1040,7 +1040,7 @@ export default function OffersView() {
                 <Calculator size={16} className="text-[var(--nc-text-secondary)]" />
                 <span>حاسبة التمويل السكني التفاعلية</span>
               </h3>
-              <span className="text-[10px] bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] px-2 py-0.5 rounded font-bold font-mono">
+              <span className="text-xs text-slate-500 bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] px-2 py-0.5 rounded font-bold font-mono">
                 PI Calc
               </span>
             </div>
@@ -1108,7 +1108,7 @@ export default function OffersView() {
 
               {monthlyInstallment !== null && (
                 <div className="bg-[var(--nc-surface-solid)] p-4 rounded-xl border border-white/5 text-center space-y-1 bg-gradient-to-b from-slate-950 to-slate-900 shadow-inner">
-                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">القسط الشهري التقريبي (أصل وقروض)</p>
+                  <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-bold">القسط الشهري التقريبي (أصل وقروض)</p>
                   <p className="text-lg font-black text-cyan-400 font-mono">
                     {monthlyInstallment.toLocaleString()} ر.س / شهرياً
                   </p>
@@ -1487,3 +1487,5 @@ export default function OffersView() {
     </>
   );
 }
+
+

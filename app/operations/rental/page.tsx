@@ -587,13 +587,13 @@ export default function RentalPage() {
   );
 
   const actionsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <div className="bg-transparent border-none p-0 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Settings size={16} className="text-[var(--nc-text-secondary)]" />
           الضوابط والعمليات السريعة
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">تفعيل ضريبة القيمة المضافة والتحقق من AML</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">تفعيل ضريبة القيمة المضافة والتحقق من AML</p>
       </div>
 
       <div className="space-y-4 flex-grow pt-2">
@@ -660,23 +660,23 @@ export default function RentalPage() {
   );
 
   const insightsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <div className="bg-transparent border-none p-0 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Bot size={16} className="text-cyan-400" />
           مساعد المحاسبة والتحصيل الذكي (AI Predictor)
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">تنبيهات المحاسبة التلقائية وتوصيات تحصيل الإيجارات</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">تنبيهات المحاسبة التلقائية وتوصيات تحصيل الإيجارات</p>
       </div>
 
       <div className="space-y-4 flex-grow pt-2 text-xs">
         {/* Alerts List */}
         <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1.5">
-          <h5 className="font-bold text-white flex items-center gap-1.5 text-[11px]">
+          <h5 className="font-semibold text-white text-lg flex items-center gap-1.5 text-xs text-slate-500">
             <AlertCircle className="text-rose-400" size={13} />
             تنبيهات عاجلة
           </h5>
-          <ul className="text-[10px] text-[var(--nc-text-dim)] font-medium space-y-1 list-disc list-inside">
+          <ul className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium space-y-1 list-disc list-inside">
             {overdueInvoicesCount > 0 && <li>يوجد {overdueInvoicesCount} فواتير معلقة متأخرة عن السداد.</li>}
             {expiredLeasesCount > 0 && <li>يوجد {expiredLeasesCount} عقود إيجارية منتهية الصلاحية معلقة.</li>}
             {leases.some(l => l.financialRef === null && l.status === 'expired') && <li>مطلوب تسوية مالي لعقد الإيجار المنتهي L-1002.</li>}
@@ -697,7 +697,7 @@ export default function RentalPage() {
               });
               alert(`تم إرسال رسائل تذكير عبر الواتساب والبريد الإلكتروني للـ ${overdueInvs.length} فواتير متأخرة بنجاح.`);
             }}
-            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
+            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-xs text-slate-500 font-bold rounded-lg transition-all"
           >
             إرسال تنبيهات سداد الفواتير المتأخرة
           </button>
@@ -709,7 +709,7 @@ export default function RentalPage() {
               });
               alert('تم التوجيه لتبويب المصالحة البنكية.');
             }}
-            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 text-[10px] font-bold rounded-lg transition-all"
+            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 text-xs text-slate-500 font-bold rounded-lg transition-all"
           >
             تشغيل مصالحة بنكية فورية
           </button>
@@ -770,7 +770,7 @@ export default function RentalPage() {
                         }
                         setActiveModal('new_lease');
                       }}
-                      className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-xs text-slate-500 font-black rounded-lg transition-colors flex items-center gap-1"
                     >
                       <Plus size={13} />
                       عقد جديد
@@ -829,7 +829,7 @@ export default function RentalPage() {
                           <td className="py-3.5 px-2 text-slate-500 dark:text-slate-400 font-mono">{l.unit}</td>
                           <td className="py-3.5 px-2 text-slate-500 dark:text-slate-400">{l.tenant}</td>
                           <td className="py-3.5 px-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                            <span className={`px-2 py-0.5 rounded-full text-xs text-slate-500 font-black ${
                               l.status === 'active' 
                                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                                 : l.status === 'expired'
@@ -862,7 +862,7 @@ export default function RentalPage() {
                       <div>
                         <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                           {selectedLease.id}
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs text-slate-500 font-black ${
                             selectedLease.status === 'active' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                               : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
@@ -870,7 +870,7 @@ export default function RentalPage() {
                             {selectedLease.status === 'active' ? 'عقد نشط' : 'عقد منتهي'}
                           </span>
                         </h3>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">الوحدة: {selectedLease.unit} | المستأجر: {selectedLease.tenant}</p>
+                        <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 mt-1">الوحدة: {selectedLease.unit} | المستأجر: {selectedLease.tenant}</p>
                       </div>
 
                       {/* Contextual Actions (only inside detail panel!) */}
@@ -885,7 +885,7 @@ export default function RentalPage() {
                             setInvoiceAmount(selectedLease.rent);
                             setActiveModal('create_invoice');
                           }}
-                          className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-all"
+                          className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-xs text-slate-500 font-black rounded-lg transition-all"
                         >
                           إصدار فاتورة للعقد
                         </button>
@@ -893,7 +893,7 @@ export default function RentalPage() {
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
                           <button
                             onClick={() => handleRequestSettlement(selectedLease.id, selectedLease.rent * 12)}
-                            className="px-3 py-1.5 bg-[#0081a7] hover:bg-[#007090] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-all"
+                            className="px-3 py-1.5 bg-[#0081a7] hover:bg-[#007090] text-slate-900 dark:text-white text-xs text-slate-500 font-black rounded-lg transition-all"
                           >
                             طلب تسوية المالك Payout
                           </button>
@@ -903,7 +903,7 @@ export default function RentalPage() {
                             addTelemetryEvent('lease.reminder_sent', { contractId: selectedLease.id });
                             alert('تم إرسال تذكير سياقي آلي للمستأجر بنجاح.');
                           }}
-                          className="px-3 py-1.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 hover:bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[11px] font-black rounded-lg border border-white/5 transition-all"
+                          className="px-3 py-1.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 hover:bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 text-xs text-slate-500 font-black rounded-lg border border-white/5 transition-all"
                         >
                           إرسال تذكير
                         </button>
@@ -923,7 +923,7 @@ export default function RentalPage() {
                         <button
                           key={tab.id}
                           onClick={() => setDetailActiveTab(tab.id)}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                          className={`px-3 py-1 rounded-lg text-xs text-slate-500 font-bold transition-all ${
                             detailActiveTab === tab.id 
                               ? 'bg-[var(--nc-accent)] text-slate-900 dark:text-white shadow-sm' 
                               : 'bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white border border-white/5'
@@ -942,22 +942,22 @@ export default function RentalPage() {
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="bg-slate-200/40 dark:bg-white/5 p-4 rounded-xl border border-white/5">
-                              <span className="text-[10px] text-slate-700 dark:text-slate-350 font-bold block">تاريخ صلاحية العقد</span>
+                              <span className="text-xs text-slate-500 text-slate-700 dark:text-slate-350 font-bold block">تاريخ صلاحية العقد</span>
                               <span className="font-bold text-slate-900 dark:text-white mt-1.5 block">
                                 {formatDateToDDMMYYYY(selectedLease.start)} — {formatDateToDDMMYYYY(selectedLease.end)}
                               </span>
                             </div>
                             <div className="bg-slate-200/40 dark:bg-white/5 p-4 rounded-xl border border-white/5">
-                              <span className="text-[10px] text-slate-700 dark:text-slate-350 font-bold block">القيمة الإيجارية الدورية</span>
+                              <span className="text-xs text-slate-500 text-slate-700 dark:text-slate-350 font-bold block">القيمة الإيجارية الدورية</span>
                               <span className="font-bold text-slate-900 dark:text-white mt-1.5 block">{selectedLease.rent.toLocaleString()} {selectedLease.currency}</span>
                             </div>
                             <div className="bg-slate-200/40 dark:bg-white/5 p-4 rounded-xl border border-white/5">
-                              <span className="text-[10px] text-slate-700 dark:text-slate-350 font-bold block">تأمين مسترد Locked</span>
+                              <span className="text-xs text-slate-500 text-slate-700 dark:text-slate-350 font-bold block">تأمين مسترد Locked</span>
                               <span className="font-bold text-slate-900 dark:text-white mt-1.5 block">{selectedLease.deposit.toLocaleString()} {selectedLease.currency}</span>
                             </div>
                           </div>
 
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-2 font-mono">
+                          <div className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-2 font-mono">
                             <span>المرجع المالي للتسوية:</span>
                             <span className="text-cyan-400 font-bold">{selectedLease.financialRef || 'N/A — لا توجد تسويات جارية للعقود النشطة'}</span>
                           </div>
@@ -1002,7 +1002,7 @@ export default function RentalPage() {
                                           setPayDate(new Date().toISOString().split('T')[0]);
                                           setActiveModal('register_payment');
                                         }}
-                                        className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-[10px] font-bold transition-all"
+                                        className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-xs text-slate-500 font-bold transition-all"
                                       >
                                         سداد الفاتورة
                                       </button>
@@ -1012,7 +1012,7 @@ export default function RentalPage() {
                                         addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
                                         alert(`تم إرسال تذكير سداد للفاتورة ${inv.id}.`);
                                       }}
-                                      className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white rounded text-[10px] font-bold transition-all ml-1"
+                                      className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white rounded text-xs text-slate-500 font-bold transition-all ml-1"
                                     >
                                       تذكير
                                     </button>
@@ -1066,15 +1066,15 @@ export default function RentalPage() {
                       {detailActiveTab === 'docs' && (
                         <div className="space-y-4">
                           <div className="bg-slate-200/40 dark:bg-white/5 p-4 rounded-xl border border-white/5 flex items-center justify-between gap-4">
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400">إضافة مستند أو ملف عقد مصدق:</span>
+                            <span className="text-xs text-slate-500 text-slate-500 dark:text-slate-400">إضافة مستند أو ملف عقد مصدق:</span>
                             <div className="flex gap-2">
-                              <input type="file" className="text-[10px] text-slate-500 dark:text-slate-400" />
+                              <input type="file" className="text-xs text-slate-500 text-slate-500 dark:text-slate-400" />
                               <button 
                                 onClick={() => {
                                   addTelemetryEvent('document.uploaded', { contractId: selectedLease.id, docType: 'lease_agreement' });
                                   alert('تم رفع مستند العقد بنجاح.');
                                 }}
-                                className="px-3 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 hover:bg-white/5 rounded text-[10px] text-slate-900 dark:text-white"
+                                className="px-3 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 hover:bg-white/5 rounded text-xs text-slate-500 text-slate-900 dark:text-white"
                               >
                                 رفع الملف
                               </button>
@@ -1138,11 +1138,11 @@ export default function RentalPage() {
                             {events.filter(e => e.contractId === selectedLease.id).map(evt => (
                               <div key={evt.id} className="relative">
                                 <div className="absolute right-[-21px] top-1 w-2 h-2 rounded-full bg-[var(--nc-accent)]"></div>
-                                <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400">
+                                <div className="flex justify-between items-center text-xs text-slate-500 text-slate-500 dark:text-slate-400">
                                   <span className="font-bold text-slate-200">[{evt.type}]</span>
                                   <span className="font-mono">{evt.timestamp}</span>
                                 </div>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{evt.note}</p>
+                                <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 mt-0.5">{evt.note}</p>
                               </div>
                             ))}
                           </div>
@@ -1163,7 +1163,7 @@ export default function RentalPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white">جدول جميع الفواتير الصادرة</h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">تصفية ومتابعة الفواتير المحصلة والمعلقة</p>
+                  <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 mt-1">تصفية ومتابعة الفواتير المحصلة والمعلقة</p>
                 </div>
                 
                 <div className="flex items-center gap-3">
@@ -1210,7 +1210,7 @@ export default function RentalPage() {
                         <td className="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400">{formatDateToDDMMYYYY(inv.due)}</td>
                         <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">{inv.amount.toLocaleString()} ر.س</td>
                         <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                          <span className={`px-2 py-0.5 rounded text-xs text-slate-500 font-bold ${
                             inv.status === 'paid' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                               : inv.status === 'overdue'
@@ -1228,7 +1228,7 @@ export default function RentalPage() {
                                 setPayDate(new Date().toISOString().split('T')[0]);
                                 setActiveModal('register_payment');
                               }}
-                              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-[10px] font-bold transition-all"
+                              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-xs text-slate-500 font-bold transition-all"
                             >
                               سداد
                             </button>
@@ -1238,7 +1238,7 @@ export default function RentalPage() {
                               addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
                               alert(`تم إرسال تذكير سداد للفاتورة ${inv.id}.`);
                             }}
-                            className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white rounded text-[10px] font-bold transition-all ml-1"
+                            className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white rounded text-xs text-slate-500 font-bold transition-all ml-1"
                           >
                             تذكير
                           </button>
@@ -1256,7 +1256,7 @@ export default function RentalPage() {
             <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">أداة المصالحة البنكية الفورية</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">تطابق وتدقيق الحسابات البنكية المرفوعة مع فواتير الإيجارات المستحقة</p>
+                <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 mt-1">تطابق وتدقيق الحسابات البنكية المرفوعة مع فواتير الإيجارات المستحقة</p>
               </div>
 
               {/* Upload file area */}
@@ -1266,7 +1266,7 @@ export default function RentalPage() {
                 <input 
                   type="file" 
                   onChange={handleBankFileUpload}
-                  className="mx-auto block text-xs text-slate-500 dark:text-slate-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 file:text-slate-500 dark:text-slate-400 file:cursor-pointer"
+                  className="mx-auto block text-xs text-slate-500 dark:text-slate-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs text-slate-500 file:font-semibold file:bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 file:text-slate-500 dark:text-slate-400 file:cursor-pointer"
                 />
               </div>
 
@@ -1286,19 +1286,19 @@ export default function RentalPage() {
                           <span>رقم المعاملة: {match.transactionId}</span>
                           <span className="text-emerald-400">{match.amount.toLocaleString()} SAR</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">{match.note}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs text-slate-500">{match.note}</p>
                         <div className="flex items-center justify-between pt-2 border-t border-slate-900">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">الفاتورة المقترحة: {match.invoiceId}</span>
+                          <span className="text-xs text-slate-500 text-slate-500 dark:text-slate-400">الفاتورة المقترحة: {match.invoiceId}</span>
                           <button
                             onClick={() => handleConfirmReconcileMatch(match)}
-                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-900 dark:text-white rounded text-[10px] font-bold transition-all"
+                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-900 dark:text-white rounded text-xs text-slate-500 font-bold transition-all"
                           >
                             تأكيد وتسوية المطابقة
                           </button>
                         </div>
                       </div>
                     ))}
-                    {reconcileMatches.length === 0 && <p className="text-[11px] text-slate-500 dark:text-slate-400">لا توجد مطابقات مقترحة معلقة.</p>}
+                    {reconcileMatches.length === 0 && <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400">لا توجد مطابقات مقترحة معلقة.</p>}
                   </div>
 
                   {/* Exceptions List */}
@@ -1314,21 +1314,21 @@ export default function RentalPage() {
                           <span>رقم المعاملة: {ex.transactionId}</span>
                           <span className="text-rose-400">{ex.amount.toLocaleString()} SAR</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">{ex.note}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs text-slate-500">{ex.note}</p>
                         <div className="flex justify-end pt-2 border-t border-slate-900">
                           <button
                             onClick={() => {
                               alert('تحويل المعاملة للفحص اليدوي من قبل قسم المالية.');
                               addTelemetryEvent('reconciliation.exception_checked', { transactionId: ex.transactionId });
                             }}
-                            className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 rounded text-[10px] font-bold transition-all"
+                            className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-700 hover:border-slate-500 text-slate-500 dark:text-slate-400 rounded text-xs text-slate-500 font-bold transition-all"
                           >
                             تحديد يدوي / فحص
                           </button>
                         </div>
                       </div>
                     ))}
-                    {reconcileExceptions.length === 0 && <p className="text-[11px] text-slate-500 dark:text-slate-400">قائمة الاستثناءات فارغة.</p>}
+                    {reconcileExceptions.length === 0 && <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400">قائمة الاستثناءات فارغة.</p>}
                   </div>
 
                 </div>
@@ -1341,7 +1341,7 @@ export default function RentalPage() {
             <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">سجل تسويات إيرادات الملاك (General Ledger Settlements)</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">تتبع الحوالات الموجهة لحسابات الملاك البنكية بعد استقطاع الرسوم</p>
+                <p className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 mt-1">تتبع الحوالات الموجهة لحسابات الملاك البنكية بعد استقطاع الرسوم</p>
               </div>
 
               <div className="overflow-x-auto">
@@ -1365,7 +1365,7 @@ export default function RentalPage() {
                         <td className="py-3.5 px-4 text-rose-400 font-mono">-{s.deductions.toLocaleString()} SAR</td>
                         <td className="py-3.5 px-4 text-emerald-400 font-bold">{s.net.toLocaleString()} SAR</td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs text-slate-500 font-black ${
                             s.status === 'completed' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                               : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
@@ -1390,13 +1390,13 @@ export default function RentalPage() {
               </h4>
               <button 
                 onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-500 dark:text-slate-400 border border-white/5 px-2 py-0.5 rounded"
+                className="text-xs text-slate-500 text-slate-500 dark:text-slate-400 hover:text-slate-500 dark:text-slate-400 border border-white/5 px-2 py-0.5 rounded"
               >
                 مسح السجل
               </button>
             </div>
             
-            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
+            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-slate-500 font-mono leading-relaxed">
               {telemetryLogs.map((log) => (
                 <div key={log.id} className="p-2.5 bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded-xl border border-white/5 space-y-1">
                   <div className="flex justify-between text-[9px]">
@@ -1423,7 +1423,7 @@ export default function RentalPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
         <div>
-          <h1 className="text-xl font-bold text-white">العقود</h1>
+          <h1 className="text-2xl font-semibold text-white text-lg">العقود</h1>
           <p className="text-sm text-slate-400 mt-1">تسجيل عقود الإيجار، إصدار فواتير الدفعات الدورية، وتتبع التسويات المالية المعتمدة للملاك</p>
         </div>
         <div className="flex items-center gap-3">
@@ -1675,7 +1675,7 @@ export default function RentalPage() {
                 type="text"
                 disabled
                 value={payIdempotencyKey}
-                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-500 dark:text-slate-400 outline-none font-mono text-[10px]"
+                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-500 dark:text-slate-400 outline-none font-mono text-xs text-slate-500"
               />
               <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-1">يمنع هذا المفتاح تكرار تسجيل عمليات السداد عند الضغط المتكرر.</p>
             </div>
@@ -1705,3 +1705,4 @@ export default function RentalPage() {
     </>
   );
 }
+

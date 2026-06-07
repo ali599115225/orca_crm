@@ -129,11 +129,11 @@ export default function LeadsTabs() {
   const actionsContent = (
     <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Settings size={16} className="text-[var(--nc-text-secondary)]" />
           إجراءات العملاء السريعة
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">البحث الشامل ومحاكاة الويب هوك للعملاء</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">البحث الشامل ومحاكاة الويب هوك للعملاء</p>
       </div>
 
       <div className="space-y-3 flex-grow pt-2">
@@ -173,24 +173,24 @@ export default function LeadsTabs() {
   const insightsContent = (
     <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Bot size={16} className="text-cyan-400" />
           مساعد أتمتة العملاء وتوقع الفوز (AI Predictor)
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">تقييم جودة العملاء (Lead Scoring) والرؤى الذكية والتوصيات</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">تقييم جودة العملاء (Lead Scoring) والرؤى الذكية والتوصيات</p>
       </div>
 
       <div className="space-y-4 flex-grow pt-2 text-xs">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1">
-            <span className="text-slate-400 block text-[10px]">العميل الأعلى اهتماماً متوقع</span>
-            <span className="font-bold text-white">خالد الفيصل (معدل فوز: 92%)</span>
-            <p className="text-[10px] text-emerald-400">التوصية: تم إرسال كتالوج مشروع النخيل، يرجى الاتصال هاتفياً اليوم.</p>
+            <span className="text-slate-400 block text-xs text-slate-500">العميل الأعلى اهتماماً متوقع</span>
+            <span className="font-semibold text-white text-lg">خالد الفيصل (معدل فوز: 92%)</span>
+            <p className="text-xs text-slate-500 text-emerald-400">التوصية: تم إرسال كتالوج مشروع النخيل، يرجى الاتصال هاتفياً اليوم.</p>
           </div>
           <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1">
-            <span className="text-slate-400 block text-[10px]">حالة المهام التلقائية</span>
-            <span className="font-bold text-white">تمت أتمتة 18 متابعة هذا اليوم</span>
-            <p className="text-[10px] text-[var(--nc-text-secondary)]">تنبيه: يوجد عميل واحد معلق لم يتم تعيينه منذ 4 ساعات.</p>
+            <span className="text-slate-400 block text-xs text-slate-500">حالة المهام التلقائية</span>
+            <span className="font-semibold text-white text-lg">تمت أتمتة 18 متابعة هذا اليوم</span>
+            <p className="text-xs text-slate-500 text-[var(--nc-text-secondary)]">تنبيه: يوجد عميل واحد معلق لم يتم تعيينه منذ 4 ساعات.</p>
           </div>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function LeadsTabs() {
         {isPending ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-            <span className="text-xs text-[var(--nc-text-dim)] font-medium">جاري الانتقال للقسم المحدد...</span>
+            <span className="text-xs text-slate-500 font-medium">جاري الانتقال للقسم المحدد...</span>
           </div>
         ) : (
           <>
@@ -248,13 +248,13 @@ export default function LeadsTabs() {
           <button 
             type="button"
             onClick={() => setTelemetryLogs([])}
-            className="text-[10px] text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
+            className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
           >
             مسح السجل
           </button>
         </div>
         
-        <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
+        <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-slate-500 font-mono leading-relaxed">
           {telemetryLogs.map((log) => (
             <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
               <div className="flex justify-between text-[9px]">
@@ -293,3 +293,4 @@ export default function LeadsTabs() {
     </div>
   );
 }
+

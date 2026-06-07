@@ -525,13 +525,13 @@ export default function PropertiesView() {
   );
 
   const actionsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <div className="bg-transparent border-none p-0 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Settings size={16} className="text-[var(--nc-text-secondary)]" />
           إجراءات سريعة
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">التحكم الفوري وجدولة الجولات العقارية</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">التحكم الفوري وجدولة الجولات العقارية</p>
       </div>
 
       <div className="space-y-3 flex-grow pt-2">
@@ -601,13 +601,13 @@ export default function PropertiesView() {
   );
 
   const insightsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <div className="bg-transparent border-none p-0 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Bot size={16} className="text-cyan-400" />
           مساعد التنبؤ العقاري والتحليل المالي (AI Predictor)
         </h4>
-        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">توقع فترات البيع ومحاكاة أسعار الوحدات وتوصيات المبيعات</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">توقع فترات البيع ومحاكاة أسعار الوحدات وتوصيات المبيعات</p>
       </div>
 
       <div className="space-y-4 flex-grow pt-2">
@@ -615,55 +615,55 @@ export default function PropertiesView() {
           <div className="space-y-4">
             {/* Sales Forecast */}
             <div className="bg-[var(--nc-surface)] p-3.5 rounded-xl border border-white/5 space-y-2">
-              <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <h5 className="text-lg font-semibold text-white flex items-center gap-1.5">
                 <Activity size={12} className="text-cyan-400" />
                 تحليل المبيعات المتوقع للوحدة ({selectedUnit.sku})
               </h5>
               {selectedUnit.status === 'Sold' ? (
-                <p className="text-xs text-[var(--nc-text-dim)] font-medium">الوحدة مباعة وموثقة بالفعل، لا يمكن تنبؤ فترة بقائها.</p>
+                <p className="text-xs text-slate-500 font-medium">الوحدة مباعة وموثقة بالفعل، لا يمكن تنبؤ فترة بقائها.</p>
               ) : (
-                <div className="text-[11px] text-[var(--nc-text-dim)] font-medium space-y-1">
+                <div className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium space-y-1">
                   <p>الوقت المتوقع للبيع: <span className="font-bold text-[var(--nc-text-secondary)]">45 - 60 يومًا</span> (نسبة الثقة: <span className="font-bold text-emerald-400">78%</span>)</p>
-                  <p className="text-[10px] text-slate-400">التوصية: إطلاق حملة ممولة مستهدفة في تويتر وسناب شات تستهدف الباحثين عن شقق بشمال الرياض.</p>
+                  <p className="text-xs text-slate-500 text-slate-400">التوصية: إطلاق حملة ممولة مستهدفة في تويتر وسناب شات تستهدف الباحثين عن شقق بشمال الرياض.</p>
                 </div>
               )}
             </div>
 
             {/* Financial Summary */}
             <div className="bg-[var(--nc-surface)] p-3.5 rounded-xl border border-white/5 space-y-2">
-              <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <h5 className="text-lg font-semibold text-white flex items-center gap-1.5">
                 <Landmark size={12} className="text-[var(--nc-text-secondary)]" />
                 الملخص المالي للعقد
               </h5>
-              <div className="text-[11px] space-y-1">
+              <div className="text-xs text-slate-500 space-y-1">
                 <div className="flex justify-between items-center py-1 border-b border-white/5">
                   <span className="text-[var(--nc-text-dim)] font-medium">الحالة المالية</span>
-                  <span className="font-bold text-white">
+                  <span className="font-semibold text-white text-lg">
                     {selectedUnit.status === 'Sold' ? 'مباعة بالكامل' : selectedUnit.status === 'Hold' ? 'محجوزة مؤقتاً' : 'متاحة للبيع'}
                   </span>
                 </div>
                 {selectedUnit.status === 'Sold' ? (
                   <div className="space-y-2 pt-1">
-                    <div className="flex justify-between items-center text-[10px]">
+                    <div className="flex justify-between items-center text-xs text-slate-500">
                       <span className="text-[var(--nc-text-dim)] font-medium">مرجع التسوية</span>
                       <span className="font-mono text-cyan-400">{selectedUnit.financialSettlementId || 'قيد المعالجة'}</span>
                     </div>
                     <button
                       type="button"
                       onClick={showFinancialSummary}
-                      className="w-full py-1.5 bg-[var(--nc-surface-solid)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
+                      className="w-full py-1.5 bg-[var(--nc-surface-solid)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-xs text-slate-500 font-bold rounded-lg transition-all"
                     >
                       تفاصيل تسوية الإيرادات ➔
                     </button>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium text-center">لا يوجد مرجع تسوية مالية بعد للوحدات المتاحة أو المحجوزة.</p>
+                  <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium text-center">لا يوجد مرجع تسوية مالية بعد للوحدات المتاحة أو المحجوزة.</p>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] rounded-xl border border-dashed border-white/10">
+          <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-slate-500 font-medium bg-[var(--nc-surface)] rounded-xl border border-dashed border-white/10">
             <Bot size={28} className="text-[var(--nc-text-secondary)]/40 mb-2" />
             <span>الرجاء اختيار وحدة عقارية من الجدول بالأسفل لتشغيل التنبؤات والتحليلات الذكية.</span>
           </div>
@@ -678,7 +678,7 @@ export default function PropertiesView() {
       {isLoading && (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-            <span className="text-xs text-[var(--nc-text-dim)] font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
+            <span className="text-xs text-slate-500 font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
           </div>
         )}
 
@@ -698,7 +698,7 @@ export default function PropertiesView() {
         )}
 
         {!isLoading && !fetchError && filteredProperties.length === 0 && (
-          <div className="py-8 text-center text-xs text-[var(--nc-text-dim)] font-medium">
+          <div className="py-8 text-center text-xs text-slate-500 font-medium">
             لا توجد وحدات عقارية مسجلة حالياً.
           </div>
         )}
@@ -722,10 +722,10 @@ export default function PropertiesView() {
                     key={u.id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors"
                   >
-                    <td className="py-3 px-4 font-bold text-white text-xs">{u.sku} — {u.type}</td>
-                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)] font-medium">{u.project}</td>
-                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)] font-medium">{u.area}</td>
-                    <td className="py-3 px-4 text-xs font-bold text-white">{u.price.toLocaleString()} ر.س</td>
+                    <td className="py-3 px-4 font-semibold text-white text-lg text-xs">{u.sku} — {u.type}</td>
+                    <td className="py-3 px-4 text-xs text-slate-500 font-medium">{u.project}</td>
+                    <td className="py-3 px-4 text-xs text-slate-500 font-medium">{u.area}</td>
+                    <td className="py-3 px-4 text-lg font-semibold text-white">{u.price.toLocaleString()} ر.س</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         u.status === 'Available' 
@@ -746,7 +746,7 @@ export default function PropertiesView() {
                           setPriceSimResult('');
                           addTelemetryEvent('unit.opened', { unitId: u.id, sku: u.sku });
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface-solid)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent-border)] rounded-lg text-[10px] font-bold transition-all"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface-solid)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent-border)] rounded-lg text-xs text-slate-500 font-bold transition-all"
                       >
                         <Eye size={12} />
                         تفاصيل
@@ -765,7 +765,7 @@ export default function PropertiesView() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--nc-glass-border)] pb-4">
             <div>
               <h3 className="text-base font-black text-white">{selectedUnit.sku} — {selectedUnit.type}</h3>
-              <p className="text-[11px] text-[var(--nc-text-dim)] font-medium mt-1">المشروع: {selectedUnit.project} | المساحة: {selectedUnit.area} | المرجع التعاقدي: {selectedUnit.contractId || 'لا يوجد'}</p>
+              <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">المشروع: {selectedUnit.project} | المساحة: {selectedUnit.area} | المرجع التعاقدي: {selectedUnit.contractId || 'لا يوجد'}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -824,12 +824,12 @@ export default function PropertiesView() {
                 <h4 className="text-xs font-bold text-[var(--nc-text-dim)] font-medium">مستندات وتراخيص الوحدة المرفقة:</h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedUnit.docs.map((doc, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5 text-[10px] text-[var(--nc-text-dim)] font-medium font-mono">
+                    <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5 text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-mono">
                       <FileText size={12} className="text-[var(--nc-text-secondary)]" />
                       {doc}
                     </div>
                   ))}
-                  {selectedUnit.docs.length === 0 && <span className="text-[10px] text-[var(--nc-text-dim)] font-medium">لا توجد مخططات مرفوعة للوحدة حالياً.</span>}
+                  {selectedUnit.docs.length === 0 && <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">لا توجد مخططات مرفوعة للوحدة حالياً.</span>}
                 </div>
               </div>
             </div>
@@ -840,7 +840,7 @@ export default function PropertiesView() {
                 {selectedUnit.media.map((src, idx) => (
                   <img key={idx} src={src} alt="unit" className="w-full h-24 rounded-lg object-cover border border-white/5 hover:border-cyan-500/30 transition-colors" />
                 ))}
-                {selectedUnit.media.length === 0 && <div className="col-span-2 py-8 bg-[var(--nc-surface)] border border-dashed border-white/10 rounded-xl flex items-center justify-center text-[10px] text-[var(--nc-text-dim)] font-medium">لا توجد صور متوفرة.</div>}
+                {selectedUnit.media.length === 0 && <div className="col-span-2 py-8 bg-[var(--nc-surface)] border border-dashed border-white/10 rounded-xl flex items-center justify-center text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">لا توجد صور متوفرة.</div>}
               </div>
             </div>
           </div>
@@ -862,7 +862,7 @@ export default function PropertiesView() {
                       setActiveTab(tab.id);
                     });
                   }}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`px-3 py-1 rounded-lg text-xs text-slate-500 font-bold transition-all ${
                     activeTab === tab.id 
                       ? 'bg-[var(--nc-accent)] text-white shadow-sm'
                       : 'bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium hover:text-white border border-white/5'
@@ -876,7 +876,7 @@ export default function PropertiesView() {
             {isPending ? (
               <div className="py-8 flex flex-col items-center justify-center gap-2">
                 <div className="w-6 h-6 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-                <span className="text-[10px] text-[var(--nc-text-dim)] font-medium">جاري تحميل بيانات التبويب...</span>
+                <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">جاري تحميل بيانات التبويب...</span>
               </div>
             ) : (
               <div className="tab-pane-content text-xs">
@@ -888,9 +888,9 @@ export default function PropertiesView() {
                           <div className="absolute right-[-21px] top-1.5 w-2 h-2 rounded-full bg-[var(--nc-accent)] border border-slate-900"></div>
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-slate-200">{ev.type}</span>
-                            <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-mono">{ev.at}</span>
+                            <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-mono">{ev.at}</span>
                           </div>
-                          <p className="text-[var(--nc-text-dim)] font-medium text-[11px]">{ev.note}</p>
+                          <p className="text-[var(--nc-text-dim)] font-medium text-xs text-slate-500">{ev.note}</p>
                           {ev.media && ev.media.length > 0 && (
                             <img src={ev.media[0]} className="w-24 h-16 rounded object-cover mt-2 border border-white/5" alt="event attachment" />
                           )}
@@ -905,7 +905,7 @@ export default function PropertiesView() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-[var(--nc-text-dim)] font-medium">السعر الأساسي المطلوب:</span>
-                        <span className="font-bold text-white">{selectedUnit.price.toLocaleString()} ر.س</span>
+                        <span className="font-semibold text-white text-lg">{selectedUnit.price.toLocaleString()} ر.س</span>
                       </div>
                       
                       <div className="space-y-1">
@@ -954,7 +954,7 @@ export default function PropertiesView() {
                     </div>
 
                     {priceSimResult && (
-                      <div className="mt-3 p-3 bg-[var(--nc-surface-solid)]/80 border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] font-medium rounded-xl text-[11px] leading-relaxed">
+                      <div className="mt-3 p-3 bg-[var(--nc-surface-solid)]/80 border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] font-medium rounded-xl text-xs text-slate-500 leading-relaxed">
                         {priceSimResult}
                       </div>
                     )}
@@ -963,7 +963,7 @@ export default function PropertiesView() {
 
                 {activeTab === 'prediction' && (
                   <div className="bg-[var(--nc-surface)] p-4 rounded-xl border border-white/5 space-y-4">
-                    <h4 className="font-bold text-white flex items-center gap-2">
+                    <h4 className="font-semibold text-white text-lg flex items-center gap-2">
                       <Bot size={15} className="text-cyan-400" />
                       مساعد التنبؤ الذكي (Predictive Analytics)
                     </h4>
@@ -989,13 +989,13 @@ export default function PropertiesView() {
                       {selectedUnit.handovers.map((h, idx) => (
                         <div key={idx} className="bg-[var(--nc-surface)] p-4 rounded-xl border border-white/5 space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="font-bold text-white">معرف محضر الاستلام: {h.id}</span>
+                            <span className="font-semibold text-white text-lg">معرف محضر الاستلام: {h.id}</span>
                             <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[9px] font-bold">مكتمل وموقع</span>
                           </div>
-                          <p className="text-[var(--nc-text-dim)] font-medium text-[11px]">تاريخ التسجيل: {h.scheduledAt}</p>
-                          <div className="border-t border-[var(--nc-glass-border)] pt-2 text-[11px] text-[var(--nc-text-dim)] font-medium space-y-1">
+                          <p className="text-[var(--nc-text-dim)] font-medium text-xs text-slate-500">تاريخ التسجيل: {h.scheduledAt}</p>
+                          <div className="border-t border-[var(--nc-glass-border)] pt-2 text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium space-y-1">
                             <p className="font-bold">قائمة فحص العيوب (Checklist):</p>
-                            <pre className="font-sans text-[11px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-2 rounded">{h.checklist}</pre>
+                            <pre className="font-sans text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-2 rounded">{h.checklist}</pre>
                           </div>
                         </div>
                       ))}
@@ -1021,13 +1021,13 @@ export default function PropertiesView() {
           <button 
             type="button"
             onClick={() => setTelemetryLogs([])}
-            className="text-[10px] text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
+            className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
           >
             مسح السجل
           </button>
         </div>
         
-        <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
+        <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-slate-500 font-mono leading-relaxed">
           {telemetryLogs.map((log) => (
             <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
               <div className="flex justify-between text-[9px]">
@@ -1049,7 +1049,7 @@ export default function PropertiesView() {
       {/* Page Header */}
       <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
         <div>
-          <h1 className="text-xl font-bold text-white">العقارات</h1>
+          <h1 className="text-2xl font-semibold text-white text-lg">العقارات</h1>
           <p className="text-sm text-slate-400 mt-1">إدارة سجل الوحدات والعقارات المتاحة والمحجوزة</p>
         </div>
         <div className="flex items-center gap-3">
@@ -1203,7 +1203,7 @@ export default function PropertiesView() {
             
             <div className="space-y-1">
               <label className="text-[var(--nc-text-dim)] font-medium block">الوحدة المحددة:</label>
-              <p className="font-bold text-white">{selectedUnit.sku} — {selectedUnit.type} ({selectedUnit.project})</p>
+              <p className="font-semibold text-white text-lg">{selectedUnit.sku} — {selectedUnit.type} ({selectedUnit.project})</p>
             </div>
 
             <div className="space-y-1">
@@ -1340,3 +1340,5 @@ export default function PropertiesView() {
     </>
   );
 }
+
+

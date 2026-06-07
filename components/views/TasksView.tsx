@@ -154,7 +154,7 @@ export default function TasksView() {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
         <div className="w-10 h-10 border-4 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm text-[var(--nc-text-dim)] font-medium dark:text-slate-450">{t.loading}</p>
+        <p className="text-sm text-slate-400 font-medium dark:text-slate-450">{t.loading}</p>
       </div>
     );
   }
@@ -170,7 +170,7 @@ export default function TasksView() {
         <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium">
+        <p className="text-xs md:text-sm text-slate-400 font-medium">
           {t.desc}
         </p>
       </div>
@@ -199,7 +199,7 @@ export default function TasksView() {
           </div>
         }
         insights={
-          <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="bg-transparent border-none p-0 space-y-5">
             <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white text-base border-b border-[var(--nc-border)] pb-3 flex items-center gap-2">
               <i className="ph-bold ph-calendar-plus text-[var(--nc-text-secondary)]"></i>
               {t.formTitle}
@@ -333,13 +333,13 @@ export default function TasksView() {
                         {task.title}
                       </h4>
                       {task.lead && (
-                        <p className="text-xs text-[var(--nc-text-dim)] font-medium">
+                        <p className="text-xs text-slate-500 font-medium">
                           {isArabic ? "العميل المستهدف: " : "Target Prospect: "}
                           <span className="font-semibold text-[var(--nc-foreground-muted)]">{task.lead.firstName} {task.lead.lastName || ''}</span>
                         </p>
                       )}
                       {task.notes && (
-                        <p className="text-[11px] text-[var(--nc-foreground-muted)] italic mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] italic mt-1 leading-relaxed">
                           {task.notes}
                         </p>
                       )}
@@ -355,7 +355,7 @@ export default function TasksView() {
                       }`}>
                         {isHigh ? t.priorityHigh : isMedium ? t.priorityMedium : t.priorityLow}
                       </span>
-                      <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-en font-semibold">
+                      <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-en font-semibold">
                         {formatTaskDate(task.dueDate)}
                       </span>
                     </div>
@@ -370,3 +370,5 @@ export default function TasksView() {
     </div>
   );
 }
+
+
