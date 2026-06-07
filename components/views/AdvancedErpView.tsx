@@ -567,25 +567,25 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
       {/* Header view */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
             <i className="ph-bold ph-scales"></i> {isArabic ? "الامتثال والتحصيل المالي" : "Financial Compliance & Ledger"}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white mb-2">
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
             {t.title}
           </h1>
-          <p className="text-xs md:text-sm text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+          <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
             {t.subtitle}
           </p>
         </div>
 
         {/* Tab switch buttons */}
-        <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-xl border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 shrink-0">
+        <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] shrink-0">
           <button 
             onClick={() => setActiveTab('ijara')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'ijara' 
-                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
-                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
+                ? 'bg-white dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] font-bold dark:text-white shadow-sm' 
+                : 'text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-primary)] font-bold dark:hover:text-white'
             }`}
           >
             {t.ijaraTab}
@@ -594,8 +594,8 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
             onClick={() => setActiveTab('accounting')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'accounting' 
-                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
-                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
+                ? 'bg-white dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] font-bold dark:text-white shadow-sm' 
+                : 'text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-primary)] font-bold dark:hover:text-white'
             }`}
           >
             {t.accountingTab}
@@ -604,8 +604,8 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
             onClick={() => setActiveTab('zataka')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
               activeTab === 'zataka' 
-                ? 'bg-white dark:bg-[#1C2B48] text-[#E8ECEF] font-bold dark:text-white shadow-sm' 
-                : 'text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium hover:text-[#E8ECEF] font-bold dark:hover:text-white'
+                ? 'bg-white dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] font-bold dark:text-white shadow-sm' 
+                : 'text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-primary)] font-bold dark:hover:text-white'
             }`}
           >
             {t.zakatab}
@@ -615,20 +615,20 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
 
       {/* Dynamic Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.activeContracts}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white font-en">{toArabicNumerals(stats.activeContractsCount)}</h3>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.activeContracts}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white font-en">{toArabicNumerals(stats.activeContractsCount)}</h3>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.totalCollected}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.totalCollected}</p>
           <h3 className="text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stats.totalCollected)}</h3>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.totalArrears}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.totalArrears}</p>
           <h3 className="text-xl md:text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(stats.totalArrears)}</h3>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.complianceRate}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.complianceRate}</p>
           <h3 className="text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 font-en">{toArabicNumerals(stats.complianceRate)}%</h3>
         </div>
       </div>
@@ -641,8 +641,8 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               <i className="ph-fill ph-lock-key"></i>
             </div>
             <div>
-              <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-2">{t.lockTitle}</h3>
-              <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs md:text-sm max-w-2xl leading-relaxed">{t.lockDesc}</p>
+              <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-2">{t.lockTitle}</h3>
+              <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs md:text-sm max-w-2xl leading-relaxed">{t.lockDesc}</p>
             </div>
           </div>
           <button className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow cursor-pointer whitespace-nowrap">
@@ -665,55 +665,55 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Lease Creation Form Card */}
-                <div className="lg:col-span-5 bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm h-fit">
-                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
-                    <i className="ph ph-file-plus text-[#8EB1D1]"></i>
+                <div className="lg:col-span-5 bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm h-fit">
+                  <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
+                    <i className="ph ph-file-plus text-[var(--nc-text-secondary)]"></i>
                     {t.newContractTitle}
                   </h3>
                   
                   <form onSubmit={handleContractFormSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.unitNumber} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.unitNumber} *</label>
                         <input 
                           type="text" 
                           placeholder="e.g. A-501" 
                           required
                           value={contractForm.unit}
                           onChange={(e) => setContractForm(prev => ({ ...prev, unit: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.tenantName} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.tenantName} *</label>
                         <input 
                           type="text" 
                           placeholder={isArabic ? "محمد العتيبي" : "Fahad Al-Dossari"} 
                           required
                           value={contractForm.tenant}
                           onChange={(e) => setContractForm(prev => ({ ...prev, tenant: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.monthlyRentVal} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.monthlyRentVal} *</label>
                         <input 
                           type="number" 
                           required
                           value={contractForm.rent}
                           onChange={(e) => setContractForm(prev => ({ ...prev, rent: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.contractMonths} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.contractMonths} *</label>
                         <select 
                           value={contractForm.months}
                           onChange={(e) => setContractForm(prev => ({ ...prev, months: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         >
                           <option value="12">{isArabic ? "١٢ شهراً" : "12 Months"}</option>
                           <option value="24">{isArabic ? "٢٤ شهراً" : "24 Months"}</option>
@@ -724,23 +724,23 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.startDate} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.startDate} *</label>
                         <input 
                           type="date" 
                           required
                           value={contractForm.startDate}
                           onChange={(e) => setContractForm(prev => ({ ...prev, startDate: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.endDate} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.endDate} *</label>
                         <input 
                           type="date" 
                           required
                           value={contractForm.endDate}
                           onChange={(e) => setContractForm(prev => ({ ...prev, endDate: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                     </div>
@@ -751,7 +751,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                         <span className="bg-indigo-500 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wide">ZATCA</span>
                         {t.zatcaAutoSendText}
                       </div>
-                      <ul className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium list-disc list-inside space-y-1">
+                      <ul className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium list-disc list-inside space-y-1">
                         <li>{t.zatcaRegisterInstant}</li>
                         <li>{t.zatcaCertAutoSent}</li>
                       </ul>
@@ -761,7 +761,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="submit"
                         disabled={contractSubmitting}
-                        className="flex-1 bg-[#8EB1D1] hover:bg-[#8EB1D1]/90 disabled:opacity-50 text-white font-bold text-sm py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                        className="flex-1 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)]/90 disabled:opacity-50 text-white font-bold text-sm py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {contractSubmitting ? (
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -774,7 +774,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "تم حفظ مسودة العقد بنجاح!" : "Draft contract saved successfully!", "info")}
-                        className="bg-slate-100 dark:bg-[#1C2B48] text-slate-700 dark:text-[#C4D8E5] font-medium font-bold text-sm py-3 px-4 rounded-xl transition-all hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer"
+                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-sm py-3 px-4 rounded-xl transition-all hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer"
                       >
                         {t.saveDraft}
                       </button>
@@ -784,17 +784,17 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
 
                 {/* Contracts Table List Card */}
                 <div className="lg:col-span-7 space-y-6">
-                  <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 dark:bg-[#1C2B48]/10">
-                      <h2 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg">{t.activeContractsTitle}</h2>
-                      <div className="flex items-center border border-slate-250 dark:border-[#A7C7E7]/20 rounded-full px-3 py-1.5 transition-all bg-slate-50 dark:bg-[#1C2B48] focus-within:border-[#8EB1D1]">
-                        <i className="ph ph-magnifying-glass text-[#C4D8E5] font-medium text-sm ml-2"></i>
+                  <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/10">
+                      <h2 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg">{t.activeContractsTitle}</h2>
+                      <div className="flex items-center border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-full px-3 py-1.5 transition-all bg-slate-50 dark:bg-[var(--nc-surface-solid)] focus-within:border-[var(--nc-accent-border)]">
+                        <i className="ph ph-magnifying-glass text-[var(--nc-text-dim)] font-medium text-sm ml-2"></i>
                         <input 
                           type="text" 
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                           placeholder={t.searchPlaceholder} 
-                          className="bg-transparent border-none outline-none text-xs w-48 text-[#E8ECEF] font-bold dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
+                          className="bg-transparent border-none outline-none text-xs w-48 text-[var(--nc-text-primary)] font-bold dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
                         />
                       </div>
                     </div>
@@ -802,7 +802,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                     <div className="overflow-x-auto no-scrollbar">
                       <table className="w-full text-right border-collapse text-xs md:text-sm">
                         <thead>
-                          <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30 font-semibold">
+                          <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)] font-semibold">
                             <th className="p-4">{t.colUnit}</th>
                             <th className="p-4">{t.colTenant}</th>
                             <th className="p-4">{t.colRent}</th>
@@ -812,10 +812,10 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                             <th className="p-4 text-center">{t.colActions}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
                           {filteredContracts.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="p-8 text-center text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+                              <td colSpan={7} className="p-8 text-center text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
                                 {isArabic ? "لا توجد عقود إيجار مسجلة" : "No lease agreements found."}
                               </td>
                             </tr>
@@ -824,12 +824,12 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                               const status = c.status;
                               const invStatus = invoiceStatusMap[c.id] || "IDLE";
                               return (
-                                <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
-                                  <td className="p-4 font-bold text-[#E8ECEF] font-bold dark:text-white">{c.unit}</td>
+                                <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
+                                  <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold dark:text-white">{c.unit}</td>
                                   <td className="p-4">{c.tenant}</td>
                                   <td className="p-4 font-en font-semibold">{formatCurrency(c.rent)}</td>
                                   <td className="p-4 font-en font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.paid)}</td>
-                                  <td className="p-4 font-en text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs">{toArabicNumerals(c.due)}</td>
+                                  <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(c.due)}</td>
                                   <td className="p-4">
                                     <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] px-2 py-0.5 rounded-full font-bold">
                                       <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
@@ -843,11 +843,11 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                                       className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 ${
                                         invStatus === "SUCCESS"
                                           ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                          : 'bg-[#8EB1D1]/10 text-[#8EB1D1] border border-[#8EB1D1]/20 hover:bg-[#8EB1D1] hover:text-white'
+                                          : 'bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)] border border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-hover)] hover:text-white'
                                       }`}
                                     >
                                       {invStatus === "IDLE" && <i className="ph ph-receipt"></i>}
-                                      {invStatus === "PROCESSING" && <div className="w-3 h-3 border-2 border-[#8EB1D1] border-t-transparent rounded-full animate-spin"></div>}
+                                      {invStatus === "PROCESSING" && <div className="w-3 h-3 border-2 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin"></div>}
                                       {invStatus === "SUCCESS" && <i className="ph ph-check-circle"></i>}
                                       <span>
                                         {invStatus === "IDLE" ? t.invoiceBtn : invStatus === "PROCESSING" ? t.invoiceProcessing : t.invoiceSuccess}
@@ -864,27 +864,27 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   </div>
 
                   {/* ZATCA Compliance Analytics widget */}
-                  <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                    <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base mb-3">{t.zatcaComplianceTitle}</h3>
+                  <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                    <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base mb-3">{t.zatcaComplianceTitle}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                       <div className="bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10 text-center">
                         <strong className="text-emerald-500 text-lg md:text-xl block font-bold">{toArabicNumerals(245)}</strong>
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-[10px] md:text-xs font-semibold">{t.regInZatcaCount}</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] md:text-xs font-semibold">{t.regInZatcaCount}</span>
                       </div>
                       <div className="bg-amber-500/5 p-3 rounded-xl border border-amber-500/10 text-center">
                         <strong className="text-amber-500 text-lg md:text-xl block font-bold">{toArabicNumerals(3)}</strong>
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-[10px] md:text-xs font-semibold">{t.pendingInZatcaCount}</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] md:text-xs font-semibold">{t.pendingInZatcaCount}</span>
                       </div>
                       <div className="bg-indigo-500/5 p-3 rounded-xl border border-indigo-500/10 text-center">
                         <strong className="text-indigo-500 text-lg md:text-xl block font-bold">{toArabicNumerals(98)}%</strong>
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-[10px] md:text-xs font-semibold">{t.successRate}</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] md:text-xs font-semibold">{t.successRate}</span>
                       </div>
-                      <div className="bg-slate-100/50 dark:bg-[#1C2B48]/30 p-3 rounded-xl border border-slate-250 dark:border-[#A7C7E7]/80 text-center">
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-[10px] block font-semibold mb-1">{t.lastUpdateText}</span>
-                        <strong className="text-[#E8ECEF] font-bold dark:text-slate-200 text-xs font-bold block">{t.lastUpdateVal}</strong>
+                      <div className="bg-slate-100/50 dark:bg-[var(--nc-surface)] p-3 rounded-xl border border-slate-250 dark:border-[var(--nc-glass-border)] text-center">
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] block font-semibold mb-1">{t.lastUpdateText}</span>
+                        <strong className="text-[var(--nc-text-primary)] font-bold dark:text-slate-200 text-xs font-bold block">{t.lastUpdateVal}</strong>
                       </div>
                     </div>
-                    <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs mt-4 leading-relaxed bg-slate-50 dark:bg-[#1C2B48]/30 p-3.5 rounded-xl border border-slate-100 dark:border-[#A7C7E7]/50">
+                    <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs mt-4 leading-relaxed bg-slate-50 dark:bg-[var(--nc-surface)] p-3.5 rounded-xl border border-slate-100 dark:border-[var(--nc-glass-border)]">
                       {t.zatcaAutoSyncDesc}
                     </p>
                   </div>
@@ -907,15 +907,15 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* SVG Revenue Chart */}
-                <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-2 flex items-center gap-2">
+                <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                  <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-2 flex items-center gap-2">
                     <i className="ph ph-chart-bar text-emerald-500"></i>
                     {t.financialOverviewTitle}
                   </h3>
-                  <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-4">{t.financialOverviewDesc}</p>
+                  <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mb-4">{t.financialOverviewDesc}</p>
                   
                   {/* SVG Chart Drawing */}
-                  <div className="bg-[#1C2B48]/40 dark:bg-[#1C2B48]/60 border border-slate-250 dark:border-[#A7C7E7]/80 rounded-xl p-4 flex flex-col justify-center items-center">
+                  <div className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-strong)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl p-4 flex flex-col justify-center items-center">
                     <svg viewBox="0 0 500 200" className="w-full h-[180px]">
                       {/* Grid Lines */}
                       <line x1="40" y1="30" x2="480" y2="30" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.8" />
@@ -961,27 +961,27 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <circle cx="125" cy="15" r="4" fill="#ef4444" />
                       <text x="135" y="18" fill="#64748b" fontSize="9" className="font-bold">{isArabic ? "المصروفات" : "Expenses"}</text>
                     </svg>
-                    <span className="text-[10px] text-[#C4D8E5] font-medium mt-2 font-semibold">{t.janJun2026}</span>
+                    <span className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-2 font-semibold">{t.janJun2026}</span>
                   </div>
                 </div>
 
                 {/* Revenue Source breakdown distribution progress bars */}
-                <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
                   <div>
-                    <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-2 flex items-center gap-2">
+                    <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-2 flex items-center gap-2">
                       <i className="ph ph-folders text-indigo-500"></i>
                       {t.revDistTitle}
                     </h3>
-                    <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-6">{isArabic ? "تفصيل توزيع مصادر السيولة الواردة" : "Detailed source classification of inward cashflow"}</p>
+                    <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mb-6">{isArabic ? "تفصيل توزيع مصادر السيولة الواردة" : "Detailed source classification of inward cashflow"}</p>
                     
                     <div className="space-y-4">
                       {/* Sale revenue */}
                       <div>
                         <div className="flex justify-between text-xs mb-1.5">
-                          <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-semibold">{t.saleRev}</span>
+                          <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.saleRev}</span>
                           <strong className="text-emerald-500 font-bold">{toArabicNumerals("65%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[#1C2B48] rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
                           <div className="h-full bg-emerald-500 rounded-full" style={{ width: "65%" }}></div>
                         </div>
                       </div>
@@ -989,28 +989,28 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       {/* Rent revenue */}
                       <div>
                         <div className="flex justify-between text-xs mb-1.5">
-                          <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-semibold">{t.rentRev}</span>
-                          <strong className="text-[#8EB1D1] font-bold">{toArabicNumerals("25%")}</strong>
+                          <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.rentRev}</span>
+                          <strong className="text-[var(--nc-text-secondary)] font-bold">{toArabicNumerals("25%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[#1C2B48] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#8EB1D1] rounded-full" style={{ width: "25%" }}></div>
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
+                          <div className="h-full bg-[var(--nc-accent)] rounded-full" style={{ width: "25%" }}></div>
                         </div>
                       </div>
 
                       {/* Other revenue */}
                       <div>
                         <div className="flex justify-between text-xs mb-1.5">
-                          <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-semibold">{t.otherRev}</span>
+                          <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.otherRev}</span>
                           <strong className="text-amber-500 font-bold">{toArabicNumerals("10%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[#1C2B48] rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
                           <div className="h-full bg-amber-500 rounded-full" style={{ width: "10%" }}></div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-[#C4D8E5] font-medium leading-relaxed border-t border-slate-100 dark:border-[#A7C7E7]/20 pt-4 mt-6">
+                  <p className="text-[11px] text-[var(--nc-text-dim)] font-medium leading-relaxed border-t border-slate-100 dark:border-[var(--nc-glass-border)] pt-4 mt-6">
                     {isArabic 
                       ? "✓ يتم تحديث تصنيف الموازنة تلقائياً بناءً على إدخال قيود الإيجار ونظام الفواتير المزدوج."
                       : "✓ Budget classification automatically updates based on double-entry rentals and ledger postings."}
@@ -1023,53 +1023,53 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Create Invoice Form Card */}
-                <div className="lg:col-span-5 bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm h-fit">
-                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
-                    <i className="ph ph-receipt-bold text-[#8EB1D1]"></i>
+                <div className="lg:col-span-5 bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm h-fit">
+                  <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
+                    <i className="ph ph-receipt-bold text-[var(--nc-text-secondary)]"></i>
                     {t.createInvoiceTitle}
                   </h3>
 
                   <form onSubmit={handleInvoiceFormSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.invoiceNo}</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.invoiceNo}</label>
                         <input 
                           type="text" 
                           value="INV-2026-001235" 
                           disabled 
-                          className="bg-slate-100 dark:bg-[#1C2B48] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80 rounded-xl px-3 py-2.5 text-sm text-[#C4D8E5] font-medium opacity-60 outline-none"
+                          className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--nc-text-dim)] font-medium opacity-60 outline-none"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.clientName} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.clientName} *</label>
                         <input 
                           type="text" 
                           placeholder={isArabic ? "محمد الدعيع" : "Ali Al-Dossari"} 
                           required
                           value={invoiceForm.client}
                           onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.invoiceValue} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.invoiceValue} *</label>
                         <input 
                           type="number" 
                           required
                           value={invoiceForm.amount}
                           onChange={(e) => setInvoiceForm(prev => ({ ...prev, amount: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.invoiceType} *</label>
+                        <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.invoiceType} *</label>
                         <select 
                           value={invoiceForm.type}
                           onChange={(e) => setInvoiceForm(prev => ({ ...prev, type: e.target.value }))}
-                          className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                          className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                         >
                           <option value="قسط بيع وحدة">{isArabic ? "قسط بيع وحدة" : "Unit Installment"}</option>
                           <option value="إيجار شهري">{isArabic ? "إيجار شهري" : "Monthly Rent"}</option>
@@ -1079,23 +1079,23 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.dueDate} *</label>
+                      <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.dueDate} *</label>
                       <input 
                         type="date" 
                         required
                         value={invoiceForm.dueDate}
                         onChange={(e) => setInvoiceForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                        className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white"
+                        className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white"
                       />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.notes}</label>
+                      <label className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.notes}</label>
                       <textarea 
                         placeholder={isArabic ? "أضف ملاحظات الفاتورة هنا..." : "Write invoice details..."}
                         value={invoiceForm.notes}
                         onChange={(e) => setInvoiceForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="bg-slate-50 dark:bg-[#1C2B48] border border-slate-250 dark:border-[#A7C7E7]/20 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#8EB1D1] text-[#E8ECEF] font-bold dark:text-white h-20 resize-none"
+                        className="bg-slate-50 dark:bg-[var(--nc-surface-solid)] border border-slate-250 dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--nc-accent-border)] text-[var(--nc-text-primary)] font-bold dark:text-white h-20 resize-none"
                       />
                     </div>
 
@@ -1107,7 +1107,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="submit"
                         disabled={invoiceSubmitting}
-                        className="flex-1 bg-[#8EB1D1] hover:bg-[#8EB1D1]/90 disabled:opacity-50 text-white font-bold text-xs py-3 px-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)]/90 disabled:opacity-50 text-white font-bold text-xs py-3 px-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         {invoiceSubmitting ? (
                           <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -1120,7 +1120,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "تم إرسال الفاتورة عبر البريد بنجاح!" : "Invoice sent via email!", "info")}
-                        className="bg-slate-100 dark:bg-[#1C2B48] text-slate-700 dark:text-[#C4D8E5] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
+                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
                       >
                         {t.sendToClient}
                       </button>
@@ -1128,7 +1128,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "جاري تهيئة الطباعة..." : "Preparing print spool...", "info")}
-                        className="bg-slate-100 dark:bg-[#1C2B48] text-slate-700 dark:text-[#C4D8E5] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
+                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
                       >
                         {t.printBtn}
                       </button>
@@ -1140,15 +1140,15 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                 <div className="lg:col-span-7 space-y-6">
                   
                   {/* General Invoices Ledger */}
-                  <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 bg-slate-50/50 dark:bg-[#1C2B48]/10 flex justify-between items-center">
-                      <h2 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg">{t.recentInvoicesTitle}</h2>
+                  <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/10 flex justify-between items-center">
+                      <h2 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg">{t.recentInvoicesTitle}</h2>
                     </div>
 
                     <div className="overflow-x-auto no-scrollbar">
                       <table className="w-full text-right border-collapse text-xs md:text-sm">
                         <thead>
-                          <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30 font-semibold">
+                          <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)] font-semibold">
                             <th className="p-4">{t.colInvoiceNo}</th>
                             <th className="p-4">{t.colClient}</th>
                             <th className="p-4">{t.colValue}</th>
@@ -1158,17 +1158,17 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                             <th className="p-4 text-center">{t.colActions}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
                           {invoices.map((inv, index) => {
                             const isPaid = inv.status === "مدفوعة";
                             const isPending = inv.status === "قيد التحصيل";
                             return (
-                              <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
-                                <td className="p-4 font-bold text-[#E8ECEF] font-bold dark:text-white">{inv.id}</td>
+                              <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
+                                <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold dark:text-white">{inv.id}</td>
                                 <td className="p-4 font-medium">{inv.client}</td>
-                                <td className="p-4 font-en font-bold text-[#8EB1D1]">{formatCurrency(inv.value)}</td>
-                                <td className="p-4 font-en text-[#C4D8E5] font-medium text-xs">{toArabicNumerals(inv.issueDate)}</td>
-                                <td className="p-4 font-en text-[#C4D8E5] font-medium text-xs">{toArabicNumerals(inv.dueDate)}</td>
+                                <td className="p-4 font-en font-bold text-[var(--nc-text-secondary)]">{formatCurrency(inv.value)}</td>
+                                <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(inv.issueDate)}</td>
+                                <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(inv.dueDate)}</td>
                                 <td className="p-4">
                                   <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
                                     isPaid 
@@ -1183,7 +1183,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                                 <td className="p-4 text-center">
                                   <button 
                                     onClick={() => showToast(`${t.actionShow} ${inv.id}`, "info")}
-                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-100 dark:bg-[#1C2B48] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[#A7C7E7]/20 dark:border-slate-700/80"
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-100 dark:bg-[var(--nc-surface-solid)] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
                                   >
                                     {isPaid ? t.actionShow : t.actionRemind}
                                   </button>
@@ -1197,19 +1197,19 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   </div>
 
                   {/* Profitability Analysis Card */}
-                  <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                    <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base mb-3">{t.profitAnalysisTitle}</h3>
+                  <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                    <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base mb-3">{t.profitAnalysisTitle}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
                         <strong className="text-emerald-500 text-lg md:text-xl font-bold font-en block">{formatCurrency(2450000)}</strong>
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.actualProfit}</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.actualProfit}</span>
                       </div>
                       <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-4">
                         <strong className="text-indigo-500 text-lg md:text-xl font-bold font-en block">{formatCurrency(2850000)}</strong>
-                        <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{t.expectedProfit}</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{t.expectedProfit}</span>
                       </div>
                     </div>
-                    <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mt-4 text-center md:text-right">
+                    <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mt-4 text-center md:text-right">
                       {t.collectionRateText}
                     </p>
                   </div>
@@ -1225,28 +1225,28 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
             <>
               {/* Stats overview boxes */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 p-5 rounded-2xl text-center shadow-sm">
+                <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] p-5 rounded-2xl text-center shadow-sm">
                   <span className="text-2xl font-black text-emerald-500 block font-en">{toArabicNumerals(245)}</span>
-                  <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{isArabic ? "عقود معتمدة و مسجلة" : "Contracts Approved & Sync"}</span>
+                  <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{isArabic ? "عقود معتمدة و مسجلة" : "Contracts Approved & Sync"}</span>
                 </div>
-                <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 p-5 rounded-2xl text-center shadow-sm">
+                <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] p-5 rounded-2xl text-center shadow-sm">
                   <span className="text-2xl font-black text-amber-500 block font-en">{toArabicNumerals(3)}</span>
-                  <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{isArabic ? "قيد التدقيق الفوري" : "Under Active Validation"}</span>
+                  <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{isArabic ? "قيد التدقيق الفوري" : "Under Active Validation"}</span>
                 </div>
-                <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 p-5 rounded-2xl text-center shadow-sm">
-                  <span className="text-2xl font-black text-[#8EB1D1] block font-en">{toArabicNumerals(98)}%</span>
-                  <span className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold">{isArabic ? "معدل سلامة المطابقة" : "Compliance Safety Score"}</span>
+                <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] p-5 rounded-2xl text-center shadow-sm">
+                  <span className="text-2xl font-black text-[var(--nc-text-secondary)] block font-en">{toArabicNumerals(98)}%</span>
+                  <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold">{isArabic ? "معدل سلامة المطابقة" : "Compliance Safety Score"}</span>
                 </div>
               </div>
 
               {/* ZATCA Telemetry Dashboard Box */}
-              <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-3">
-                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-lg flex items-center gap-2">
+                  <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-lg flex items-center gap-2">
                     <i className="ph-fill ph-seal-check text-indigo-500"></i>
                     {t.zatcaPortalTitle}
                   </h3>
-                  <div className="space-y-1 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-sm">
+                  <div className="space-y-1 text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-sm">
                     <p className="flex items-center gap-2">
                       <span className="font-semibold">{t.zatcaStatus}</span>
                       <span className="text-emerald-500 font-bold flex items-center gap-1">
@@ -1280,51 +1280,51 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               </div>
 
               {/* How it works pipeline diagram widget */}
-              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
                   <i className="ph ph-network text-indigo-500"></i>
                   {t.howItWorksTitle}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                   
-                  <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 p-4 rounded-xl text-center shadow-inner">
-                    <strong className="text-[#8EB1D1] text-xl block mb-1">1</strong>
-                    <span className="text-xs text-slate-700 dark:text-[#C4D8E5] font-medium font-semibold">{t.howItWorksStep1}</span>
+                  <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-4 rounded-xl text-center shadow-inner">
+                    <strong className="text-[var(--nc-text-secondary)] text-xl block mb-1">1</strong>
+                    <span className="text-xs text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.howItWorksStep1}</span>
                   </div>
 
-                  <div className="hidden md:flex justify-center text-[#8EB1D1] text-2xl font-bold">
+                  <div className="hidden md:flex justify-center text-[var(--nc-text-secondary)] text-2xl font-bold">
                     <i className={`ph ${isArabic ? 'ph-arrow-left' : 'ph-arrow-right'}`}></i>
                   </div>
 
-                  <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 p-4 rounded-xl text-center shadow-inner">
-                    <strong className="text-[#8EB1D1] text-xl block mb-1">2</strong>
-                    <span className="text-xs text-slate-700 dark:text-[#C4D8E5] font-medium font-semibold">{t.howItWorksStep2}</span>
+                  <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-4 rounded-xl text-center shadow-inner">
+                    <strong className="text-[var(--nc-text-secondary)] text-xl block mb-1">2</strong>
+                    <span className="text-xs text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.howItWorksStep2}</span>
                   </div>
 
-                  <div className="hidden md:flex justify-center text-[#8EB1D1] text-2xl font-bold">
+                  <div className="hidden md:flex justify-center text-[var(--nc-text-secondary)] text-2xl font-bold">
                     <i className={`ph ${isArabic ? 'ph-arrow-left' : 'ph-arrow-right'}`}></i>
                   </div>
 
                   <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl text-center shadow-md">
                     <strong className="text-emerald-500 text-xl block mb-1">3</strong>
                     <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold block">{t.howItWorksStep3}</span>
-                    <span className="text-[10px] text-[#C4D8E5] font-medium font-medium block mt-1">{t.howItWorksStep3Desc}</span>
+                    <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-medium block mt-1">{t.howItWorksStep3Desc}</span>
                   </div>
 
                 </div>
               </div>
 
               {/* ZATCA Telemetry Console log */}
-              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-                <h4 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base flex items-center gap-2">
-                  <i className="ph-fill ph-terminal text-[#8EB1D1]"></i>
+              <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+                <h4 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base flex items-center gap-2">
+                  <i className="ph-fill ph-terminal text-[var(--nc-text-secondary)]"></i>
                   {t.zatcaTelemetry}
                 </h4>
-                <div className="bg-[#1C2B48] text-[#C4D8E5] font-medium font-mono text-xs rounded-xl p-4 space-y-2 h-[200px] overflow-y-auto no-scrollbar border border-slate-900 leading-relaxed text-left" dir="ltr">
+                <div className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium font-mono text-xs rounded-xl p-4 space-y-2 h-[200px] overflow-y-auto no-scrollbar border border-slate-900 leading-relaxed text-left" dir="ltr">
                   <p className="text-indigo-400">INFO: [2026-05-31 22:15:02] Connected to ZATCA SandBox API endpoint.</p>
                   <p className="text-emerald-400">SUCCESS: [2026-05-31 22:15:05] Cryptographic CSID certificate verified. (Expires 2027-05-31)</p>
-                  <p className="text-[#8EB1D1]">AGENT: [Sanad] Initialized automatic daily audit log scan.</p>
-                  <p className="text-[#C4D8E5] font-medium">DEBUG: Loading collected payments since last transaction cycle...</p>
+                  <p className="text-[var(--nc-text-secondary)]">AGENT: [Sanad] Initialized automatic daily audit log scan.</p>
+                  <p className="text-[var(--nc-text-dim)] font-medium">DEBUG: Loading collected payments since last transaction cycle...</p>
                   <p className="text-emerald-400">SUCCESS: [2026-05-31 22:20:00] Signed payload verified by ZATCA gateway. E-invoice hash generated successfully.</p>
                   {zatkaStatus === "PROCESSING" && (
                     <p className="text-amber-400 animate-pulse">&gt;&gt;&gt; Transmitting batch ledger reporting payload. Waiting for response...</p>
@@ -1339,14 +1339,14 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               </div>
 
               {/* Recent ZATCA registration certificate hashes */}
-              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-5 bg-slate-50/50 dark:bg-[#1C2B48]/10 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20">
-                  <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg">{t.recentZatcaRegistrations}</h3>
+              <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-5 bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/10 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)]">
+                  <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg">{t.recentZatcaRegistrations}</h3>
                 </div>
                 <div className="overflow-x-auto no-scrollbar">
                   <table className="w-full text-right border-collapse text-xs md:text-sm">
                     <thead>
-                      <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30 font-semibold">
+                      <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)] font-semibold">
                         <th className="p-4">{t.colUnit}</th>
                         <th className="p-4">{t.colTenant}</th>
                         <th className="p-4">{isArabic ? "تاريخ التوثيق" : "Documentation Date"}</th>
@@ -1355,14 +1355,14 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                         <th className="p-4 text-center">{t.colActions}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
                       {zatcaRegistrations.map((z, index) => {
                         const isReg = z.status === "مسجل";
                         return (
-                          <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
-                            <td className="p-4 font-bold text-[#E8ECEF] font-bold dark:text-white">{z.unit}</td>
+                          <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
+                            <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold dark:text-white">{z.unit}</td>
                             <td className="p-4 font-medium">{z.tenant}</td>
-                            <td className="p-4 font-en text-[#C4D8E5] font-medium text-xs">{toArabicNumerals(z.date)}</td>
+                            <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(z.date)}</td>
                             <td className="p-4 font-en text-indigo-500 font-semibold">{z.cert}</td>
                             <td className="p-4">
                               <span className={`inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
@@ -1376,7 +1376,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                             <td className="p-4 text-center">
                               <button 
                                 onClick={() => showToast(isArabic ? "جاري تنزيل ملف PDF المشفر..." : "Downloading signed ZATCA PDF...", "info")}
-                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-100 dark:bg-[#1C2B48] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[#A7C7E7]/20 dark:border-slate-700/80"
+                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-100 dark:bg-[var(--nc-surface-solid)] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
                               >
                                 {isArabic ? "تنزيل الشهادة" : "Download CSID"}
                               </button>
@@ -1390,16 +1390,16 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               </div>
 
               {/* Compliance matrices: guidelines grid */}
-              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
                   <i className="ph ph-notebook text-indigo-500"></i>
                   {t.complianceInfoTitle}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
                   
-                  <div className="bg-slate-50 dark:bg-[#1C2B48]/30 border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-xl p-4 space-y-3">
-                    <h4 className="text-[#8EB1D1] font-bold text-sm border-b border-slate-250 dark:border-[#A7C7E7]/80 pb-2">{t.basicRequirements}</h4>
-                    <ul className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium space-y-2 list-none">
+                  <div className="bg-slate-50 dark:bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-xl p-4 space-y-3">
+                    <h4 className="text-[var(--nc-text-secondary)] font-bold text-sm border-b border-slate-250 dark:border-[var(--nc-glass-border)] pb-2">{t.basicRequirements}</h4>
+                    <ul className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium space-y-2 list-none">
                       <li className="flex items-center gap-2">
                         <i className="ph ph-check text-emerald-500 font-bold"></i>
                         {t.req1}
@@ -1419,9 +1419,9 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                     </ul>
                   </div>
 
-                  <div className="bg-slate-50 dark:bg-[#1C2B48]/30 border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-xl p-4 space-y-3">
-                    <h4 className="text-[#8EB1D1] font-bold text-sm border-b border-slate-250 dark:border-[#A7C7E7]/80 pb-2">{t.benefits}</h4>
-                    <ul className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium space-y-2 list-none">
+                  <div className="bg-slate-50 dark:bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-xl p-4 space-y-3">
+                    <h4 className="text-[var(--nc-text-secondary)] font-bold text-sm border-b border-slate-250 dark:border-[var(--nc-glass-border)] pb-2">{t.benefits}</h4>
+                    <ul className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium space-y-2 list-none">
                       <li className="flex items-center gap-2">
                         <i className="ph ph-star-bold text-amber-500"></i>
                         {t.benefit1}
@@ -1445,9 +1445,9 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
               </div>
 
               {/* FAQ Section with accordion toggles */}
-              <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl p-5 md:p-6 shadow-sm">
-                <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
-                  <i className="ph ph-question text-[#8EB1D1]"></i>
+              <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl p-5 md:p-6 shadow-sm">
+                <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg mb-4 flex items-center gap-2">
+                  <i className="ph ph-question text-[var(--nc-text-secondary)]"></i>
                   {t.faqTitle}
                 </h3>
                 <div className="divide-y divide-slate-200 dark:divide-slate-850 mt-2">
@@ -1456,13 +1456,13 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   <div className="py-4">
                     <button 
                       onClick={() => setFaqOpenIndex(faqOpenIndex === 0 ? null : 0)}
-                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[#E8ECEF] font-bold dark:text-white hover:text-[#8EB1D1] transition-colors cursor-pointer"
+                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[var(--nc-text-primary)] font-bold dark:text-white hover:text-[var(--nc-text-secondary)] transition-colors cursor-pointer"
                     >
                       <span>{t.faq1Q}</span>
-                      <i className={`ph ${faqOpenIndex === 0 ? 'ph-caret-up' : 'ph-caret-down'} text-[#C4D8E5] font-medium`}></i>
+                      <i className={`ph ${faqOpenIndex === 0 ? 'ph-caret-up' : 'ph-caret-down'} text-[var(--nc-text-dim)] font-medium`}></i>
                     </button>
                     {faqOpenIndex === 0 && (
-                      <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[#1C2B48]/25 p-3 rounded-xl border border-[#A7C7E7]/50 dark:border-[#A7C7E7]/55">
+                      <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[var(--nc-surface-solid)]/25 p-3 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)]">
                         {t.faq1A}
                       </p>
                     )}
@@ -1472,13 +1472,13 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   <div className="py-4">
                     <button 
                       onClick={() => setFaqOpenIndex(faqOpenIndex === 1 ? null : 1)}
-                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[#E8ECEF] font-bold dark:text-white hover:text-[#8EB1D1] transition-colors cursor-pointer"
+                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[var(--nc-text-primary)] font-bold dark:text-white hover:text-[var(--nc-text-secondary)] transition-colors cursor-pointer"
                     >
                       <span>{t.faq2Q}</span>
-                      <i className={`ph ${faqOpenIndex === 1 ? 'ph-caret-up' : 'ph-caret-down'} text-[#C4D8E5] font-medium`}></i>
+                      <i className={`ph ${faqOpenIndex === 1 ? 'ph-caret-up' : 'ph-caret-down'} text-[var(--nc-text-dim)] font-medium`}></i>
                     </button>
                     {faqOpenIndex === 1 && (
-                      <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[#1C2B48]/25 p-3 rounded-xl border border-[#A7C7E7]/50 dark:border-[#A7C7E7]/55">
+                      <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[var(--nc-surface-solid)]/25 p-3 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)]">
                         {t.faq2A}
                       </p>
                     )}
@@ -1488,13 +1488,13 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   <div className="py-4">
                     <button 
                       onClick={() => setFaqOpenIndex(faqOpenIndex === 2 ? null : 2)}
-                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[#E8ECEF] font-bold dark:text-white hover:text-[#8EB1D1] transition-colors cursor-pointer"
+                      className="w-full flex justify-between items-center text-right font-bold text-xs md:text-sm text-[var(--nc-text-primary)] font-bold dark:text-white hover:text-[var(--nc-text-secondary)] transition-colors cursor-pointer"
                     >
                       <span>{t.faq3Q}</span>
-                      <i className={`ph ${faqOpenIndex === 2 ? 'ph-caret-up' : 'ph-caret-down'} text-[#C4D8E5] font-medium`}></i>
+                      <i className={`ph ${faqOpenIndex === 2 ? 'ph-caret-up' : 'ph-caret-down'} text-[var(--nc-text-dim)] font-medium`}></i>
                     </button>
                     {faqOpenIndex === 2 && (
-                      <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[#1C2B48]/25 p-3 rounded-xl border border-[#A7C7E7]/50 dark:border-[#A7C7E7]/55">
+                      <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mt-2 leading-relaxed bg-slate-50 dark:bg-[var(--nc-surface-solid)]/25 p-3 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)]">
                         {t.faq3A}
                       </p>
                     )}
@@ -1510,14 +1510,14 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
 
       {/* Double entry ledger entries log list table (rendered globally below context depending on page) */}
       {activeTab === 'accounting' && !isLocked && (
-        <div className="bg-white dark:bg-[#151f32] border border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden mt-8">
-          <div className="p-5 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 bg-slate-50/50 dark:bg-[#1C2B48]/10 flex items-center justify-between">
-            <h2 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base md:text-lg">{t.ledgerTitle}</h2>
+        <div className="bg-white dark:bg-[#151f32] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden mt-8">
+          <div className="p-5 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/10 flex items-center justify-between">
+            <h2 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base md:text-lg">{t.ledgerTitle}</h2>
           </div>
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-right border-collapse text-xs md:text-sm">
               <thead>
-                <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30 font-semibold">
+                <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)] font-semibold">
                   <th className="p-4">{t.colDate}</th>
                   <th className="p-4">{t.colCat}</th>
                   <th className="p-4">{t.colDesc}</th>
@@ -1525,10 +1525,10 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   <th className="p-4">{t.colAmount}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
                 {ledger.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+                    <td colSpan={5} className="p-8 text-center text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
                       {isArabic ? "لا توجد قيود مسجلة حالياً." : "No registered ledger entries found."}
                     </td>
                   </tr>
@@ -1536,14 +1536,14 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                   ledger.map((l, index) => {
                     const isRev = l.type === "إيراد" || l.type === "Revenue";
                     return (
-                      <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
-                        <td className="p-4 font-en text-[#C4D8E5] font-medium text-xs">{toArabicNumerals(l.date)}</td>
+                      <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
+                        <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(l.date)}</td>
                         <td className="p-4">
-                          <span className="bg-slate-100 dark:bg-[#1C2B48] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium border border-[#A7C7E7]/80 dark:border-slate-700/80 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                          <span className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium border border-[var(--nc-glass-border)] dark:border-slate-700/80 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
                             {l.cat === "إيجار" || l.cat === "Rent" ? t.rentCat : t.payrollCat}
                           </span>
                         </td>
-                        <td className="p-4 font-semibold text-[#E8ECEF] font-bold dark:text-slate-100">{l.desc}</td>
+                        <td className="p-4 font-semibold text-[var(--nc-text-primary)] font-bold dark:text-slate-100">{l.desc}</td>
                         <td className="p-4 font-semibold">
                           <span className={`inline-flex items-center gap-1.5 ${isRev ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isRev ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
@@ -1564,7 +1564,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
       )}
 
       {/* Footer copyright mock details */}
-      <div className="text-center text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium border-t border-[#A7C7E7]/20 dark:border-slate-850 pt-6 mt-12 text-xs">
+      <div className="text-center text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium border-t border-[var(--nc-glass-border)] dark:border-slate-850 pt-6 mt-12 text-xs">
         <p className="font-semibold">ORCA CRM — {isArabic ? "منصة حوكمة التطوير العقاري المتكاملة" : "Integrated Real Estate Governance ERP System"} © ٢٠٢٦</p>
       </div>
 

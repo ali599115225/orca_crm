@@ -123,15 +123,15 @@ export default function Offers() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Creation Form */}
-        <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
           <h3 className="text-white font-bold text-sm mb-4">إنشاء وتقديم عرض سعر (Send Offer)</h3>
           <form onSubmit={handleCreateOffer} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
-              <label className="text-[#C4D8E5] font-medium">اختر الصفقة / الفرصة *</label>
+              <label className="text-[var(--nc-text-dim)] font-medium">اختر الصفقة / الفرصة *</label>
               <select
                 value={oppId}
                 onChange={(e) => setOppId(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               >
                 <option value="">-- اختر الفرصة --</option>
@@ -144,24 +144,24 @@ export default function Offers() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[#C4D8E5] font-medium">سعر العرض المقدم (SAR) *</label>
+              <label className="text-[var(--nc-text-dim)] font-medium">سعر العرض المقدم (SAR) *</label>
               <input
                 type="number"
                 placeholder="السعر المقترح للمفاوضة"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[#C4D8E5] font-medium">تاريخ انتهاء صلاحية العرض *</label>
+              <label className="text-[var(--nc-text-dim)] font-medium">تاريخ انتهاء صلاحية العرض *</label>
               <input
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
                 required
               />
             </div>
@@ -169,7 +169,7 @@ export default function Offers() {
             <button
               type="submit"
               disabled={btnLoading}
-              className="w-full bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
+              className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center"
             >
               {btnLoading ? "جاري الإنشاء..." : "إنشاء العرض"}
             </button>
@@ -177,16 +177,16 @@ export default function Offers() {
         </div>
 
         {/* Offers List Panel */}
-        <div className="lg:col-span-2 bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+        <div className="lg:col-span-2 bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
           <h3 className="text-white font-bold text-sm mb-4">العروض العقارية وحالاتها (Active Offers)</h3>
           {loading ? (
-            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">جاري تحميل العروض...</div>
+            <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل العروض...</div>
           ) : offers.length === 0 ? (
-            <div className="py-12 text-center text-[#C4D8E5] font-medium text-xs">لا توجد عروض أسعار مسجلة حالياً.</div>
+            <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا توجد عروض أسعار مسجلة حالياً.</div>
           ) : (
             <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 scrollbar-fade">
               {offers.map((offer) => (
-                <div key={offer.id} className="p-4 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl hover:border-[#8EB1D1]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div key={offer.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl hover:border-[var(--nc-accent-border)]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-white font-bold">{getOpportunityLeadName(offer.linkedOpportunityId)}</span>
@@ -195,7 +195,7 @@ export default function Offers() {
                           ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                           : offer.status === "ACCEPTED"
                           ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-slate-500/10 text-[#C4D8E5] font-medium"
+                          : "bg-slate-500/10 text-[var(--nc-text-dim)] font-medium"
                       }`}>
                         {offer.status}
                       </span>

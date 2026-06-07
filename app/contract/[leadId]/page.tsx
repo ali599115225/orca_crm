@@ -33,7 +33,7 @@ export default async function ContractPage({ params }: { params: Promise<{ leadI
 
   if (!lead) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-xs font-bold text-[#C4D8E5] font-medium">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-xs font-bold text-[var(--nc-text-dim)] font-medium">
         عذراً، لم يتم العثور على وثيقة العقد لهذا العميل أو أنك لا تملك صلاحية الوصول إليها.
       </div>
     );

@@ -75,29 +75,29 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
       <div className="flex items-center justify-center gap-4">
         <span className={`text-xs font-bold transition-colors ${
           !isYearly 
-            ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
-            : (theme === "dark" ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium")
+            ? (theme === "dark" ? "text-pricing-gold-soft" : "text-pricing-bronze-soft") 
+            : (theme === "dark" ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium")
         }`}>
           الدفع الشهري
         </span>
         <button
           onClick={() => setIsYearly(!isYearly)}
           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            theme === "dark" ? "bg-[#0b0f19] ring-1 ring-white/10" : "bg-slate-200 ring-1 ring-slate-300"
+            theme === "dark" ? "bg-[var(--nc-bg)] ring-1 ring-white/10" : "bg-slate-200 ring-1 ring-slate-300"
           }`}
           role="switch"
           aria-checked={isYearly}
         >
           <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#e5c158] shadow ring-0 transition duration-200 ease-in-out ${
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-pricing-gold-soft shadow ring-0 transition duration-200 ease-in-out ${
               isYearly ? "-translate-x-5" : "translate-x-0"
             }`}
           />
         </button>
         <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${
           isYearly 
-            ? (theme === "dark" ? "text-[#e5c158]" : "text-[#735334]") 
-            : (theme === "dark" ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium")
+            ? (theme === "dark" ? "text-pricing-gold-soft" : "text-pricing-bronze-soft") 
+            : (theme === "dark" ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium")
         }`}>
           الدفع السنوي
         </span>
@@ -119,13 +119,13 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
           if (idx === 0) {
             cardStyle = isCardDark 
               ? "border-slate-700/50 bg-white/5 hover:border-slate-500/80 text-white" 
-              : "border-[#A7C7E7]/20 bg-white/70 text-[#0b0f19] shadow-sm hover:border-[#e5c158]/50 shadow-slate-200/50";
+              : "border-[var(--nc-glass-border)] bg-white/70 text-[var(--nc-text-primary)] shadow-sm hover:border-pricing-gold-soft/50 shadow-slate-200/50";
           } else if (idx === 1) {
             cardStyle = isCardDark
-              ? "border-[#cd7f32] shadow-[0_0_30px_rgba(205,127,50,0.25)] bg-[#cd7f32]/5 hover:border-[#d4af37] scale-105 text-white"
-              : "border-[#cd7f32] shadow-sm shadow-[#cd7f32]/20 bg-white/70 hover:border-[#d4af37] scale-105 text-[#0b0f19]";
+              ? "border-pricing-bronze shadow-[0_0_30px_var(--color-pricing-bronze)] bg-pricing-bronze/5 hover:border-pricing-gold scale-105 text-white"
+              : "border-pricing-bronze shadow-sm shadow-pricing-bronze/20 bg-white/70 hover:border-pricing-gold scale-105 text-[var(--nc-text-primary)]";
           } else {
-            cardStyle = "border-[#e5e4e2] bg-[#070a12] text-white shadow-xl shadow-[#e5e4e2]/5 hover:border-white";
+            cardStyle = "border-pricing-silver bg-[var(--nc-bg)] text-white shadow-xl shadow-pricing-silver/5 hover:border-white";
           }
 
           return (
@@ -138,24 +138,24 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                 <div className="flex items-center justify-between">
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${
                     plan.isPopular 
-                      ? (isCardDark ? "bg-[#cd7f32]/10 text-[#e5c158] border-[#cd7f32]/30" : "bg-[#735334]/10 text-[#735334] border-[#735334]/20")
-                      : idx === 2 ? "bg-white/5 text-[#e5e4e2] border-[#e5e4e2]/20" : (isCardDark ? "bg-white/5 text-[#C4D8E5] font-medium border-white/10" : "bg-slate-100 text-[#C4D8E5] font-medium border-slate-300")
+                      ? (isCardDark ? "bg-pricing-bronze/10 text-pricing-gold-soft border-pricing-bronze/30" : "bg-pricing-bronze-soft/10 text-pricing-bronze-soft border-pricing-bronze-soft/20")
+                      : idx === 2 ? "bg-white/5 text-pricing-silver border-pricing-silver/20" : (isCardDark ? "bg-white/5 text-[var(--nc-text-dim)] font-medium border-white/10" : "bg-slate-100 text-[var(--nc-text-dim)] font-medium border-slate-300")
                   }`}>
                     {plan.badge}
                   </span>
-                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>ORCA CRM</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium"}`}>ORCA CRM</span>
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className={`text-xl font-black drop-shadow-sm ${isCardDark ? "text-white" : "text-[#0b0f19]"}`}>{plan.name}</h3>
-                  <p className={`text-[11px] leading-relaxed min-h-[36px] font-semibold ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>
+                  <h3 className={`text-xl font-black drop-shadow-sm ${isCardDark ? "text-white" : "text-[var(--nc-text-primary)]"}`}>{plan.name}</h3>
+                  <p className={`text-[11px] leading-relaxed min-h-[36px] font-semibold ${isCardDark ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium"}`}>
                     {plan.description}
                   </p>
                   {plan.subtext && (
                     <p className={`text-[10px] font-bold ${
-                      idx === 0 ? (isCardDark ? 'text-[#C4D8E5] font-medium italic' : 'text-[#C4D8E5] font-medium italic') 
-                      : idx === 1 ? 'text-[#cd7f32]' 
-                      : 'text-[#e5e4e2]'
+                      idx === 0 ? (isCardDark ? 'text-[var(--nc-text-dim)] font-medium italic' : 'text-[var(--nc-text-dim)] font-medium italic') 
+                      : idx === 1 ? 'text-pricing-bronze' 
+                      : 'text-pricing-silver'
                     }`}>
                       {plan.subtext}
                     </p>
@@ -163,21 +163,21 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                 </div>
 
                 {/* السعر */}
-                <div className={`py-6 border-y flex items-baseline gap-1.5 min-h-[80px] relative ${isCardDark ? "border-white/5" : "border-[#A7C7E7]/20"}`}>
+                <div className={`py-6 border-y flex items-baseline gap-1.5 min-h-[80px] relative ${isCardDark ? "border-white/5" : "border-[var(--nc-glass-border)]"}`}>
                   {plan.isBespoke ? (
-                    <span className={`text-2xl font-black drop-shadow-sm ${isCardDark ? "text-[#e5e4e2]" : "text-[#0b0f19]"}`}>
+                    <span className={`text-2xl font-black drop-shadow-sm ${isCardDark ? "text-pricing-silver" : "text-[var(--nc-text-primary)]"}`}>
                       Custom / اتصل بنا
                     </span>
                   ) : (
                     <>
-                      <span className={`text-4xl font-black ${idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>
+                      <span className={`text-4xl font-black ${idx === 1 ? (isCardDark ? 'text-pricing-gold-soft' : 'text-pricing-bronze-soft') : (isCardDark ? 'text-white' : 'text-[var(--nc-text-primary)]')}`}>
                         {formatNumber(displayPrice)}
                       </span>
-                      <span className={`text-xs font-bold ${isCardDark ? "text-[#C4D8E5] font-medium" : "text-[#C4D8E5] font-medium"}`}>
+                      <span className={`text-xs font-bold ${isCardDark ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium"}`}>
                         {lang === 'AR' ? 'ر.س / شهر' : 'SAR / month'}
                       </span>
                       {isYearly && price && (
-                        <span className="text-[9px] text-[#e5c158] font-bold block mt-1 absolute bottom-1 right-0">
+                        <span className="text-[9px] text-pricing-gold-soft font-bold block mt-1 absolute bottom-1 right-0">
                           {lang === 'AR' ? `(فاتورة سنوية: ${formatNumber(price)} ر.س)` : `(Billed annually: ${formatNumber(price)} SAR)`}
                         </span>
                       )}
@@ -187,22 +187,22 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
 
                 {/* الوكلاء */}
                 <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-                  idx === 2 ? 'bg-[#0b0f19] border-[#e5e4e2]/25' : (isCardDark ? 'bg-[#0b0f19] border-white/5' : 'bg-slate-50 border-[#A7C7E7]/20')
+                  idx === 2 ? 'bg-[var(--nc-bg)] border-pricing-silver/25' : (isCardDark ? 'bg-[var(--nc-bg)] border-white/5' : 'bg-slate-50 border-[var(--nc-glass-border)]')
                 }`}>
                   <span className="text-xl">🤖</span>
                   <div>
-                    <p className={`text-[9px] font-bold mb-0.5 ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-[#C4D8E5] font-medium'}`}>السعة المضمنة للوكلاء الذكيين</p>
-                    <p className={`text-xs font-black ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : (isCardDark ? 'text-white' : 'text-[#0b0f19]')}`}>{plan.agentsCount}</p>
+                    <p className={`text-[9px] font-bold mb-0.5 ${isCardDark ? 'text-[var(--nc-text-dim)] font-medium' : 'text-[var(--nc-text-dim)] font-medium'}`}>السعة المضمنة للوكلاء الذكيين</p>
+                    <p className={`text-xs font-black ${idx === 2 ? 'text-pricing-silver' : idx === 1 ? (isCardDark ? 'text-pricing-gold-soft' : 'text-pricing-bronze-soft') : (isCardDark ? 'text-white' : 'text-[var(--nc-text-primary)]')}`}>{plan.agentsCount}</p>
                   </div>
                 </div>
 
                 {/* الميزات */}
                 <div className="space-y-4 pt-4">
-                  <p className={`text-[10px] font-bold ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-[#C4D8E5] font-medium'}`}>القدرات والخصائص المضمنة:</p>
+                  <p className={`text-[10px] font-bold ${isCardDark ? 'text-[var(--nc-text-dim)] font-medium' : 'text-[var(--nc-text-dim)] font-medium'}`}>القدرات والخصائص المضمنة:</p>
                   <ul className="space-y-3">
                     {plan.features.map((feature, fIdx) => (
-                      <li key={fIdx} className={`flex items-start gap-2 text-[11px] font-semibold ${isCardDark ? 'text-[#C4D8E5] font-medium' : 'text-slate-700'}`}>
-                        <span className={`shrink-0 mt-0.5 text-[10px] ${idx === 2 ? 'text-[#e5e4e2]' : idx === 1 ? (isCardDark ? 'text-[#e5c158]' : 'text-[#735334]') : 'text-emerald-500'}`}>✓</span>
+                      <li key={fIdx} className={`flex items-start gap-2 text-[11px] font-semibold ${isCardDark ? 'text-[var(--nc-text-dim)] font-medium' : 'text-slate-700'}`}>
+                        <span className={`shrink-0 mt-0.5 text-[10px] ${idx === 2 ? 'text-pricing-silver' : idx === 1 ? (isCardDark ? 'text-pricing-gold-soft' : 'text-pricing-bronze-soft') : 'text-emerald-500'}`}>✓</span>
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -216,10 +216,10 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                   href="#register-interest"
                   className={`block w-full text-center p-4 rounded-xl text-xs font-black transition-all active:scale-[0.99] ${
                     plan.isPopular
-                      ? "bg-[#e5c158] hover:bg-[#d4af37] text-[#0b0f19] shadow-[0_0_20px_rgba(229,193,88,0.3)]"
+                      ? "bg-pricing-gold-soft hover:bg-pricing-gold text-[var(--nc-text-primary)] shadow-[0_0_20px_var(--color-pricing-gold-soft)]"
                       : (isCardDark 
                           ? "bg-white/10 hover:bg-white/15 text-white border border-white/5" 
-                          : "bg-slate-100 hover:bg-slate-200 text-[#0b0f19] border border-[#A7C7E7]/20 shadow-sm")
+                          : "bg-slate-100 hover:bg-slate-200 text-[var(--nc-text-primary)] border border-[var(--nc-glass-border)] shadow-sm")
                   }`}
                 >
                   اختيار الباقة والتفعيل ➔

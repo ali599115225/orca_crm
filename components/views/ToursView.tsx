@@ -10,6 +10,9 @@ import {
 import { DateField } from '../ui/DateField';
 import { TOURS_CONFIG, ToursConfigType } from '@/lib/tours-config';
 
+import { getPropertiesAction } from '@/app/actions/properties';
+import { scheduleTourActionDirect } from '@/app/actions/tours';
+
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface PropertyTour {
   id: string;
@@ -186,12 +189,12 @@ export default function ToursView() {
   const [toursError, setToursError] = useState<string | null>(null);
 
   useEffect(() => {
-    setToursLoading(true);
-    fetch('/api/properties/')
-      .then(r => r.json())
-      .then(res => {
-        if (res.success && Array.isArray(res.data)) {
-          const mapped: PropertyTour[] = res.data.map((u: any) => ({
+    async function loadTours() {
+      setToursLoading(true);
+      try {
+        const data = await getPropertiesAction();
+        if (data && data.length > 0) {
+          const mapped: PropertyTour[] = data.map((u: any) => ({
             id: u.id,
             title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
             type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',
@@ -202,7 +205,7 @@ export default function ToursView() {
             city: u.city || 'الرياض',
             district: u.district || 'غير محدد',
             agent: u.agentName || 'غير معين',
-            posted: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
+            posted: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '2026-01-01',
             coords: { lat: u.lat || 24.7, lng: u.lng || 46.7 },
             description: u.desc || '',
             media: u.media?.length ? u.media : ['https://picsum.photos/seed/tour/400/300'],
@@ -215,13 +218,14 @@ export default function ToursView() {
         } else {
           setProperties(initialProperties);
         }
-        setToursLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
         setToursError('تعذر تحميل الجولات من قاعدة البيانات');
         setProperties(initialProperties);
+      } finally {
         setToursLoading(false);
-      });
+      }
+    }
+    loadTours();
   }, []);
 
   // Dynamic Rule Threshold Flags
@@ -416,20 +420,22 @@ export default function ToursView() {
     });
   };
 
-  const submitTourSchedule = (e: React.FormEvent, propId: string) => {
+  const submitTourSchedule = async (e: React.FormEvent, propId: string) => {
     e.preventDefault();
     if (!visitName || !visitPhone || !visitDate) {
       alert('يرجى ملء جميع حقول الحجز المطلوبة.');
       return;
     }
 
-    fetch(`/api/properties/${propId}/schedule-visit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userName: visitName, phone: visitPhone, datetime: `${visitDate}T${visitTime}` })
-    })
-      .then(res => res.json())
-      .then(data => {
+    try {
+      const res = await scheduleTourActionDirect({
+        propertyId: propId,
+        userName: visitName,
+        phone: visitPhone,
+        datetime: `${visitDate}T${visitTime}`
+      });
+
+      if (res.success) {
         addTelemetryEvent('tour.requested', {
           propertyId: propId,
           userName: visitName,
@@ -441,11 +447,13 @@ export default function ToursView() {
         setActiveModal(null);
         setVisitName('');
         setVisitPhone('');
-      })
-      .catch(err => {
-        console.error(err);
-        alert('حدث خطأ في عملية الإرسال.');
-      });
+      } else {
+        alert('فشل حجز الجولة: ' + res.error);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('حدث خطأ في عملية الإرسال: ' + err.message);
+    }
   };
 
   // Filter listings
@@ -519,29 +527,29 @@ export default function ToursView() {
         {/* الشريط الجانبي - الفلاتر */}
         <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
           
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
-            <h3 className="text-xs font-bold text-[#8EB1D1] border-b border-white/5 pb-2">البحث وتصفية الجولات</h3>
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
+            <h3 className="text-xs font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-2">البحث وتصفية الجولات</h3>
             
             <div className="space-y-3.5 text-xs">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">بحث</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">بحث</label>
                 <input
                   type="text"
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
                   placeholder="ابحث بحي، مدينة، أو ID..."
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">النوع</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">النوع</label>
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
                   >
                     <option value="">كل الأنواع</option>
                     <option value="apartment">شقة</option>
@@ -551,11 +559,11 @@ export default function ToursView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الحالة</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحالة</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
                   >
                     <option value="">الكل</option>
                     <option value="available">متاح</option>
@@ -566,33 +574,33 @@ export default function ToursView() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">نطاق السعر (ر.س)</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">نطاق السعر (ر.س)</label>
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="من"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
                   />
-                  <span className="text-[#C4D8E5] font-medium">—</span>
+                  <span className="text-[var(--nc-text-dim)] font-medium">—</span>
                   <input
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="إلى"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">غرف النوم</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">غرف النوم</label>
                   <select
                     value={bedsFilter}
                     onChange={(e) => setBedsFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
                   >
                     <option value="">الكل</option>
                     <option value="1">1+</option>
@@ -603,13 +611,13 @@ export default function ToursView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الحد الأدنى م²</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحد الأدنى م²</label>
                   <input
                     type="number"
                     value={areaFilter}
                     onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="مثال: 150"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
                   />
                 </div>
               </div>
@@ -619,7 +627,7 @@ export default function ToursView() {
                   onClick={() => {
                     addTelemetryEvent('tours.filters_applied', { searchVal, typeFilter, statusFilter, minPrice, maxPrice });
                   }}
-                  className="flex-1 py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                  className="flex-1 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
                 >
                   تطبيق الفلاتر
                 </button>
@@ -634,7 +642,7 @@ export default function ToursView() {
                     setAreaFilter('');
                     addTelemetryEvent('tours.filters_cleared', {});
                   }}
-                  className="px-3 py-2 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                  className="px-3 py-2 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
                 >
                   مسح
                 </button>
@@ -644,11 +652,11 @@ export default function ToursView() {
           </div>
 
           {/* التبويبات والمفضلة */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 space-y-3">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-3">
             <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2">الجولات المحفوظة</h3>
             <div className="space-y-2">
               {favorites.length === 0 ? (
-                <p className="text-[11px] text-[#C4D8E5] font-medium py-1 text-center">لا توجد جولات محفوظة</p>
+                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-1 text-center">لا توجد جولات محفوظة</p>
               ) : (
                 favorites.map(fid => {
                   const p = properties.find(x => x.id === fid);
@@ -657,7 +665,7 @@ export default function ToursView() {
                     <div
                       key={fid}
                       onClick={() => handlePropertySelection(p)}
-                      className="flex justify-between items-center p-2 bg-[#1C2B48]/40 rounded-xl border border-white/5 hover:border-[#8EB1D1]/35 transition-all text-[11px] cursor-pointer"
+                      className="flex justify-between items-center p-2 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-[var(--nc-accent-border)]/35 transition-all text-[11px] cursor-pointer"
                     >
                       <span className="text-white truncate max-w-[130px] font-semibold">{p.title}</span>
                       <span className="text-rose-500 font-bold shrink-0">❤️</span>
@@ -674,16 +682,16 @@ export default function ToursView() {
         <main className="flex-1 w-full space-y-4">
           
           {/* التحكم العلوي للشبكة */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[#1C2B48] border border-white/5 p-3 rounded-2xl shadow-md text-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-[#C4D8E5] font-medium">الجولات المطابقة:</span>
-              <strong className="text-white bg-[#1C2B48] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
+              <span className="text-[var(--nc-text-dim)] font-medium">الجولات المطابقة:</span>
+              <strong className="text-white bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
                 {filteredListings.length}
               </strong>
               <select
                 value={sortVal}
                 onChange={(e) => setSortVal(e.target.value)}
-                className="bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-2"
+                className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-2"
               >
                 <option value="relevance">الأكثر صلة</option>
                 <option value="price_asc">الأقل سعراً</option>
@@ -692,7 +700,7 @@ export default function ToursView() {
               </select>
             </div>
 
-            <div className="text-[10px] text-[#C4D8E5] font-medium flex items-center gap-1">
+            <div className="text-[10px] text-[var(--nc-text-dim)] font-medium flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <span>عرض Inline</span>
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 mr-2"></span>
@@ -705,7 +713,7 @@ export default function ToursView() {
             {/* شبكة الجولات */}
             <div className="flex-1 w-full">
               {filteredListings.length === 0 ? (
-                <div className="bg-[#1C2B48] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[#C4D8E5] font-medium">
+                <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium">
                   لا توجد جولات مطابقة لشروط الفلترة الحالية.
                 </div>
               ) : (
@@ -717,22 +725,22 @@ export default function ToursView() {
                       <div
                         key={p.id}
                         onClick={() => handlePropertySelection(p)}
-                        className={`group bg-[#1C2B48] border rounded-2xl overflow-hidden hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full ${
+                        className={`group bg-[var(--nc-surface-solid)] border rounded-2xl overflow-hidden hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full ${
                           inlinePropertyId === p.id 
                             ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
-                            : 'border-white/5 hover:border-[#8EB1D1]/40'
+                            : 'border-white/5 hover:border-[var(--nc-accent-border)]/40'
                         }`}
                       >
                         
                         {/* الميديا */}
-                        <div className="h-40 bg-[#1C2B48] relative flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
-                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#8EB1D1_1px,transparent_1px)] [background-size:16px_16px]" />
+                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
 
                           {p.media && p.media.length > 0 ? (
                             <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.media[0]})` }} />
                           ) : (
-                            <span className="z-10 text-[10px] text-[#C4D8E5] font-medium font-bold bg-[#1C2B48] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
+                            <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
                           )}
 
                           <div className="absolute top-3 right-3 z-20 flex gap-1.5">
@@ -749,7 +757,7 @@ export default function ToursView() {
                             <button
                               onClick={(e) => handleToggleFavorite(p.id, e)}
                               className={`p-1.5 rounded-lg border transition-all ${
-                                isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[#1C2B48]/80 border-white/5 text-[#C4D8E5] font-medium hover:text-rose-400'
+                                isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
                               }`}
                             >
                               <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
@@ -770,12 +778,12 @@ export default function ToursView() {
                         {/* معلومات الكارد */}
                         <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                           <div className="space-y-1">
-                            <h4 className="font-bold text-white group-hover:text-[#8EB1D1] transition-colors text-xs">{p.title}</h4>
-                            <p className="text-[10px] text-[#C4D8E5] font-medium">📍 {p.city} · حي {p.district}</p>
+                            <h4 className="font-bold text-white group-hover:text-[var(--nc-text-secondary)] transition-colors text-xs">{p.title}</h4>
+                            <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">📍 {p.city} · حي {p.district}</p>
                           </div>
 
                           {/* الميتا */}
-                          <div className="grid grid-cols-3 gap-1 bg-[#1C2B48]/40 p-2 rounded-xl border border-white/5 text-center text-[9px] text-slate-450">
+                          <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[9px] text-slate-450">
                             <div>
                               <p>المساحة</p>
                               <p className="font-bold text-white font-mono">{p.area} م²</p>
@@ -794,8 +802,8 @@ export default function ToursView() {
 
                           <div className="flex justify-between items-center pt-2 border-t border-white/5">
                             <div>
-                              <p className="text-[9px] text-[#C4D8E5] font-medium">السعر المطلوب</p>
-                              <p className="font-black text-[#8EB1D1] text-xs font-mono">
+                              <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر المطلوب</p>
+                              <p className="font-black text-[var(--nc-text-secondary)] text-xs font-mono">
                                 {p.price > 0 ? `${p.price.toLocaleString()} ر.س` : 'غير محدد'}
                               </p>
                             </div>
@@ -803,7 +811,7 @@ export default function ToursView() {
                             <div className="flex gap-1">
                               <button
                                 onClick={(e) => handleMortgagePrefill(p, e)}
-                                className="px-2 py-1 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
                               >
                                 تمويل
                               </button>
@@ -812,7 +820,7 @@ export default function ToursView() {
                                   e.stopPropagation();
                                   handlePropertySelection(p);
                                 }}
-                                className="px-2 py-1 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1] text-[#8EB1D1] hover:text-white text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-text-secondary)] hover:text-white text-[10px] font-bold rounded-lg transition-all"
                               >
                                 تفاصيل
                               </button>
@@ -830,7 +838,7 @@ export default function ToursView() {
 
             {/* تفاصيل العقار Inline */}
             {inlineProp && (
-              <div className="w-full xl:w-[350px] bg-[#1C2B48] border border-emerald-500/20 rounded-2xl p-4 shadow-xl shrink-0 space-y-4 sticky top-4">
+              <div className="w-full xl:w-[350px] bg-[var(--nc-surface-solid)] border border-emerald-500/20 rounded-2xl p-4 shadow-xl shrink-0 space-y-4 sticky top-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Monitor size={13} className="text-emerald-400 animate-pulse" />
@@ -838,7 +846,7 @@ export default function ToursView() {
                   </h4>
                   <button
                     onClick={() => setInlinePropertyId(null)}
-                    className="text-[#C4D8E5] font-medium hover:text-white"
+                    className="text-[var(--nc-text-dim)] font-medium hover:text-white"
                   >
                     <X size={14} />
                   </button>
@@ -848,33 +856,33 @@ export default function ToursView() {
                   <h3 className="font-black text-white text-sm">{inlineProp.title}</h3>
                   
                   {/* مشغل الميديا المدمج */}
-                  <div className="h-44 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+                  <div className="h-44 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
                     {inlineProp.tourType === 'video' ? (
                       <video src={inlineProp.tourUrl} controls className="w-full h-full object-cover" />
                     ) : (
                       <div className="text-center space-y-1.5 p-3">
                         <span className="text-[10px] bg-purple-500/10 border border-purple-500/25 text-purple-400 px-2 py-0.5 rounded-full font-bold">جولة 360° نشطة</span>
-                        <p className="text-[9px] text-[#C4D8E5] font-medium">انقر لتشغيل البيئة الافتراضية والتحرك داخل الغرف</p>
+                        <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">انقر لتشغيل البيئة الافتراضية والتحرك داخل الغرف</p>
                         <a href={inlineProp.tourUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold">فتح الجولة في نافذة جديدة</a>
                       </div>
                     )}
                   </div>
 
-                  <ul className="space-y-2 text-[#C4D8E5] font-medium text-[11px] bg-[#1C2B48]/40 p-3 rounded-xl border border-white/5">
+                  <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium text-[11px] bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5">
                     <li className="flex justify-between">
-                      <span className="text-[#C4D8E5] font-medium">الرقم المرجعي (ID):</span>
+                      <span className="text-[var(--nc-text-dim)] font-medium">الرقم المرجعي (ID):</span>
                       <span className="font-mono text-white font-bold">{inlineProp.id}</span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-[#C4D8E5] font-medium">المساحة:</span>
+                      <span className="text-[var(--nc-text-dim)] font-medium">المساحة:</span>
                       <span className="font-mono text-white font-bold">{inlineProp.area} م²</span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-[#C4D8E5] font-medium">السعر المطلـوب:</span>
-                      <span className="font-mono text-[#8EB1D1] font-black">{inlineProp.price.toLocaleString()} ر.س</span>
+                      <span className="text-[var(--nc-text-dim)] font-medium">السعر المطلـوب:</span>
+                      <span className="font-mono text-[var(--nc-text-secondary)] font-black">{inlineProp.price.toLocaleString()} ر.س</span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-[#C4D8E5] font-medium">الوكيل المسؤول:</span>
+                      <span className="text-[var(--nc-text-dim)] font-medium">الوكيل المسؤول:</span>
                       <span className="text-white font-bold">{inlineProp.agent}</span>
                     </li>
                   </ul>
@@ -883,44 +891,44 @@ export default function ToursView() {
                     <h5 className="font-bold text-white border-b border-white/5 pb-1">نموذج حجز الجولة العقارية</h5>
                     <form onSubmit={(e) => submitTourSchedule(e, inlineProp.id)} className="space-y-2.5 text-right">
                       <div className="space-y-1">
-                        <label className="text-[10px] text-[#C4D8E5] font-medium font-bold">اسم العميل بالكامل *</label>
+                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل بالكامل *</label>
                         <input
                           type="text"
                           required
                           value={visitName}
                           onChange={(e) => setVisitName(e.target.value)}
                           placeholder="الاسم"
-                          className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none"
+                          className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none"
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] text-[#C4D8E5] font-medium font-bold">رقم الجوال للتواصل *</label>
+                        <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">رقم الجوال للتواصل *</label>
                         <input
                           type="text"
                           required
                           value={visitPhone}
                           onChange={(e) => setVisitPhone(e.target.value)}
                           placeholder="050XXXXXXX"
-                          className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
+                          className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
                           dir="ltr"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-[10px] text-[#C4D8E5] font-medium font-bold">تاريخ الزيارة *</label>
+                          <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">تاريخ الزيارة *</label>
                           <DateField
                             value={visitDate}
                             onChange={(val) => setVisitDate(val)}
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] text-[#C4D8E5] font-medium font-bold">توقيت الزيارة</label>
+                          <label className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">توقيت الزيارة</label>
                           <select
                             value={visitTime}
                             onChange={(e) => setVisitTime(e.target.value)}
-                            className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
+                            className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
                           >
                             <option value="09:00">09:00 ص</option>
                             <option value="11:00">11:00 ص</option>
@@ -945,10 +953,10 @@ export default function ToursView() {
           </div>
 
           {/* شاشة الأحداث الفورية Telemetry Logs */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Bot size={14} className="text-[#8EB1D1]" />
+                <Bot size={14} className="text-[var(--nc-text-secondary)]" />
                 <span>سجل تتبع أحداث الجولات الفورية (Tour Event Telemetry Console)</span>
               </h4>
               <button
@@ -959,17 +967,17 @@ export default function ToursView() {
               </button>
             </div>
 
-            <div className="h-32 bg-[#1C2B48] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[#C4D8E5] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
+            <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
               {telemetryLogs.length === 0 ? (
-                <div className="text-center text-[#C4D8E5] font-medium py-6">No telemetry events logged</div>
+                <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged</div>
               ) : (
                 telemetryLogs.map(log => (
-                  <div key={log.id} className="p-2 bg-[#1C2B48]/50 rounded border border-white/5 space-y-1">
-                    <div className="flex justify-between text-[#C4D8E5] font-medium border-b border-white/5 pb-1">
-                      <span className="text-[#8EB1D1] font-bold">{log.type}</span>
+                  <div key={log.id} className="p-2 bg-[var(--nc-surface)] rounded border border-white/5 space-y-1">
+                    <div className="flex justify-between text-[var(--nc-text-dim)] font-medium border-b border-white/5 pb-1">
+                      <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
                       <span>{log.timestamp}</span>
                     </div>
-                    <pre className="text-[9px] text-[#C4D8E5] font-medium overflow-x-auto whitespace-pre-wrap">
+                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">
                       {JSON.stringify(log.payload, null, 2)}
                     </pre>
                   </div>
@@ -986,36 +994,36 @@ export default function ToursView() {
 
       {/* 1. مودال تفاصيل العقار الغني */}
       {activeModal === 'details' && selectedProp && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-start border-b border-white/5 pb-3">
               <div className="space-y-1">
                 <h3 className="text-base font-black text-white">{selectedProp.title}</h3>
-                <p className="text-[11px] text-[#C4D8E5] font-medium">📍 {selectedProp.city} · حي {selectedProp.district} · {selectedProp.area} م²</p>
+                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium">📍 {selectedProp.city} · حي {selectedProp.district} · {selectedProp.area} م²</p>
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-[#C4D8E5] font-medium hover:text-white"
+                className="text-[var(--nc-text-dim)] font-medium hover:text-white"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* مشغل الميديا المدمج بالمودال */}
-            <div className="h-64 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+            <div className="h-64 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
               {selectedProp.media && selectedProp.media.length > 0 ? (
                 selectedProp.tourType === 'video' ? (
                   <video src={selectedProp.tourUrl} controls className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center space-y-1.5 p-4 z-20">
                     <span className="text-[10px] bg-purple-500/10 border border-purple-500/25 text-purple-400 px-2 py-0.5 rounded-full font-bold">جولة 360° نشطة بالمنظار</span>
-                    <p className="text-[11px] text-[#C4D8E5] font-medium">انقر للتنقل الافتراضي داخل الغرف واستعراض المساحات والمرافق.</p>
+                    <p className="text-[11px] text-[var(--nc-text-dim)] font-medium">انقر للتنقل الافتراضي داخل الغرف واستعراض المساحات والمرافق.</p>
                     <a href={selectedProp.tourUrl} target="_blank" rel="noreferrer" className="inline-block mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all">فتح معارض المنظار ثلاثي الأبعاد 3D</a>
                   </div>
                 )
               ) : (
-                <div className="text-center p-4 text-[#C4D8E5] font-medium">
+                <div className="text-center p-4 text-[var(--nc-text-dim)] font-medium">
                   <AlertCircle size={30} className="mx-auto text-amber-500 mb-1.5" />
                   <p className="font-bold text-xs">لا توجد وسائط أو جولات مسجلة لهذه الوحدة</p>
                   <p className="text-[10px]">يمكنك حجز جولة ميدانية لمشاهدة العقار على أرض الواقع.</p>
@@ -1025,28 +1033,28 @@ export default function ToursView() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs border-b border-white/5 pb-3">
               <div className="space-y-2">
-                <h4 className="font-bold text-[#8EB1D1] border-b border-white/5 pb-1">المعلومات الأساسية للعقار</h4>
-                <ul className="space-y-1.5 text-[#C4D8E5] font-medium text-[11px]">
+                <h4 className="font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-1">المعلومات الأساسية للعقار</h4>
+                <ul className="space-y-1.5 text-[var(--nc-text-dim)] font-medium text-[11px]">
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">الرقم المرجعي (ID):</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">الرقم المرجعي (ID):</span>
                     <span className="font-mono text-white font-bold">{selectedProp.id}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">المساحة الإجمالية:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">المساحة الإجمالية:</span>
                     <span className="font-mono text-white font-bold">{selectedProp.area} م²</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">عدد غرف النوم:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">عدد غرف النوم:</span>
                     <span className="font-mono text-white font-bold">{selectedProp.beds > 0 ? selectedProp.beds : '—'}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">السعر المطلوب:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">السعر المطلوب:</span>
                     <span className="font-mono text-white font-bold">
                       {selectedProp.price > 0 ? `${selectedProp.price.toLocaleString()} ر.س` : 'غير محدد'}
                     </span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">الوكيل المسؤول:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">الوكيل المسؤول:</span>
                     <span className="text-white font-bold">{selectedProp.agent}</span>
                   </li>
                 </ul>
@@ -1062,7 +1070,7 @@ export default function ToursView() {
                       value={visitName}
                       onChange={(e) => setVisitName(e.target.value)}
                       placeholder="اسم العميل"
-                      className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none"
+                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none"
                     />
                     <input
                       type="text"
@@ -1070,7 +1078,7 @@ export default function ToursView() {
                       value={visitPhone}
                       onChange={(e) => setVisitPhone(e.target.value)}
                       placeholder="رقم الهاتف"
-                      className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
+                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
                       dir="ltr"
                     />
                   </div>
@@ -1083,7 +1091,7 @@ export default function ToursView() {
                     <select
                       value={visitTime}
                       onChange={(e) => setVisitTime(e.target.value)}
-                      className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
+                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
                     >
                       <option value="09:00">09:00 صباحاً</option>
                       <option value="11:00">11:00 صباحاً</option>
@@ -1104,7 +1112,7 @@ export default function ToursView() {
 
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-white">نبذة عن العرض</h4>
-              <p className="text-xs text-[#C4D8E5] font-medium bg-[#1C2B48]/40 p-3 rounded-xl border border-white/5">
+              <p className="text-xs text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5">
                 {selectedProp.description}
               </p>
             </div>
@@ -1113,7 +1121,7 @@ export default function ToursView() {
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleMortgagePrefill(selectedProp, e)}
-                  className="px-4 py-2 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-[#8EB1D1] text-xs font-bold rounded-xl transition-all"
+                  className="px-4 py-2 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-secondary)] text-xs font-bold rounded-xl transition-all"
                 >
                   احسب تمويل العقار
                 </button>
@@ -1125,7 +1133,7 @@ export default function ToursView() {
                   className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all ${
                     favorites.includes(selectedProp.id)
                       ? 'bg-rose-500/20 border-rose-500/30 text-rose-400'
-                      : 'bg-[#1C2B48] border-white/10 text-[#C4D8E5] font-medium'
+                      : 'bg-[var(--nc-surface-solid)] border-white/10 text-[var(--nc-text-dim)] font-medium'
                   }`}
                 >
                   {favorites.includes(selectedProp.id) ? 'محفوظ ❤️' : 'حفظ بالمفضلة'}
@@ -1133,7 +1141,7 @@ export default function ToursView() {
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-6 py-2 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl font-bold"
+                className="px-6 py-2 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl font-bold"
               >
                 إغلاق
               </button>
@@ -1145,17 +1153,17 @@ export default function ToursView() {
 
       {/* 2. حاسبة التمويل السكني التلقائية */}
       {activeModal === 'mortgage' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-                <Calculator size={15} className="text-[#8EB1D1]" />
+                <Calculator size={15} className="text-[var(--nc-text-secondary)]" />
                 <span>حاسبة التمويل السكني (حساب فوري محلي)</span>
               </h3>
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-[#C4D8E5] font-medium hover:text-white"
+                className="text-[var(--nc-text-dim)] font-medium hover:text-white"
               >
                 <X size={15} />
               </button>
@@ -1164,29 +1172,29 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
                 <input
                   type="number"
                   value={mortgagePrice}
                   onChange={(e) => setMortgagePrice(Number(e.target.value))}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono text-sm"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الدفعة الأولى المقترحة (%)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الدفعة الأولى المقترحة (%)</label>
                   <input
                     type="number"
                     value={mortgageDownPct}
                     onChange={(e) => setMortgageDownPct(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold font-semibold">مبلغ التمويل المقدر</label>
-                  <div className="bg-[#1C2B48] border border-white/5 rounded-xl p-2.5 font-bold font-mono text-[#C4D8E5] font-medium leading-snug">
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold font-semibold">مبلغ التمويل المقدر</label>
+                  <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-xl p-2.5 font-bold font-mono text-[var(--nc-text-dim)] font-medium leading-snug">
                     {(mortgagePrice * (1 - mortgageDownPct / 100)).toLocaleString()} ر.س
                   </div>
                 </div>
@@ -1194,41 +1202,41 @@ export default function ToursView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">فترة السداد (سنوات)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">فترة السداد (سنوات)</label>
                   <input
                     type="number"
                     value={mortgageTermYears}
                     onChange={(e) => setMortgageTermYears(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={mortgageRatePct}
                     onChange={(e) => setMortgageRatePct(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
               </div>
 
               <button
                 onClick={updateCalculations}
-                className="w-full py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                className="w-full py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
               >
                 تحديث الحساب التقديري
               </button>
 
               {calculatedInstallment !== null && (
-                <div className="bg-[#1C2B48] p-4 rounded-xl border border-white/5 text-center space-y-1">
-                  <p className="text-[10px] text-[#C4D8E5] font-medium font-bold">القسط الشهري التقريبي (أصل وفوائد)</p>
+                <div className="bg-[var(--nc-surface-solid)] p-4 rounded-xl border border-white/5 text-center space-y-1">
+                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">القسط الشهري التقريبي (أصل وفوائد)</p>
                   <p className="text-lg font-black text-cyan-400 font-mono">
                     {calculatedInstallment.toLocaleString()} ر.س / شهرياً
                   </p>
-                  <p className="text-[9px] text-[#C4D8E5] font-medium">القسط محسوب بناءً على معايير الفائدة الثابتة المحددة محلياً.</p>
+                  <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">القسط محسوب بناءً على معايير الفائدة الثابتة المحددة محلياً.</p>
                 </div>
               )}
 
@@ -1260,7 +1268,7 @@ export default function ToursView() {
               </button>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
               >
                 إغلاق
               </button>
@@ -1272,15 +1280,15 @@ export default function ToursView() {
 
       {/* 3. مودال Feature Flags لتغيير القواعد */}
       {activeModal === 'settings_flag' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
                 <Settings size={15} className="text-cyan-400" />
                 <span>Feature Flags & Thresholds</span>
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-[#C4D8E5] font-medium hover:text-white">
+              <button onClick={() => setActiveModal(null)} className="text-[var(--nc-text-dim)] font-medium hover:text-white">
                 <X size={15} />
               </button>
             </div>
@@ -1288,7 +1296,7 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1296,27 +1304,27 @@ export default function ToursView() {
                   max="1.0"
                   value={config.minDataCompleteness}
                   onChange={(e) => setConfig(prev => ({ ...prev, minDataCompleteness: Number(e.target.value) }))}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white font-mono"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white font-mono"
                 />
-                <span className="text-[10px] text-[#C4D8E5] font-medium">الجولات التي تقل نسبة اكتمال بياناتها عن هذا التخمين ستفتح في Modal إجبارياً.</span>
+                <span className="text-[10px] text-[var(--nc-text-dim)] font-medium">الجولات التي تقل نسبة اكتمال بياناتها عن هذا التخمين ستفتح في Modal إجبارياً.</span>
               </div>
 
               <div className="flex items-center justify-between py-2 border-t border-b border-white/5">
-                <label className="text-[#C4D8E5] font-medium font-bold">فرض المودال عند غياب الميديا</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">فرض المودال عند غياب الميديا</label>
                 <input
                   type="checkbox"
                   checked={config.requireMedia}
                   onChange={(e) => setConfig(prev => ({ ...prev, requireMedia: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-[#8EB1D1]"
+                  className="w-4 h-4 rounded accent-[var(--nc-accent)]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">الحالات الإلزامية للمودال (Force Modal Statuses)</label>
-                <div className="bg-[#1C2B48] p-2.5 rounded-xl border border-white/5 text-[10px] font-mono text-cyan-300">
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحالات الإلزامية للمودال (Force Modal Statuses)</label>
+                <div className="bg-[var(--nc-surface-solid)] p-2.5 rounded-xl border border-white/5 text-[10px] font-mono text-cyan-300">
                   {JSON.stringify(config.forceModalStatuses)}
                 </div>
-                <span className="text-[9px] text-[#C4D8E5] font-medium">تشمل الحالات الافتراضية المحجوزة وقيد المراجعة لحماية الخصوصية.</span>
+                <span className="text-[9px] text-[var(--nc-text-dim)] font-medium">تشمل الحالات الافتراضية المحجوزة وقيد المراجعة لحماية الخصوصية.</span>
               </div>
 
             </div>
@@ -1328,7 +1336,7 @@ export default function ToursView() {
                   setActiveModal(null);
                   alert('تم حفظ وتحديث قواعد ومعايير فتح الجولات بنجاح.');
                 }}
-                className="w-full py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                className="w-full py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
               >
                 تحديث وحفظ الإعدادات
               </button>

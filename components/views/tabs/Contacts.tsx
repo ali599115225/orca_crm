@@ -120,62 +120,62 @@ export default function Contacts() {
         
         {/* Contact Directory / Creation */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
             <h3 className="text-white font-bold text-sm mb-4">إنشاء جهة اتصال جديدة (Create Contact)</h3>
             <form onSubmit={handleCreateContact} className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <input
                 placeholder="الاسم بالكامل *"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               />
               <input
                 placeholder="رقم الجوال *"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
                 required
               />
               <input
                 placeholder="البريد الإلكتروني"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
               />
               <input
                 placeholder="الوقت المفضل للتواصل"
                 value={prefTime}
                 onChange={(e) => setPrefTime(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
               />
               <input
                 placeholder="نطاق الميزانية"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
-                className="bg-[#1C2B48] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
               />
               <button
                 type="submit"
                 disabled={btnLoading}
-                className="bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold transition-all px-3 py-2"
+                className="bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold transition-all px-3 py-2"
               >
                 {btnLoading ? "جاري الإضافة..." : "حفظ جهة الاتصال"}
               </button>
             </form>
           </div>
 
-          <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4">
+          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
             <h3 className="text-white font-bold text-sm mb-4">دفتر جهات الاتصال (Contacts Directory)</h3>
             {loading ? (
-              <div className="py-8 text-center text-[#C4D8E5] font-medium text-xs">جاري تحميل جهات الاتصال...</div>
+              <div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل جهات الاتصال...</div>
             ) : contacts.length === 0 ? (
-              <div className="py-8 text-center text-[#C4D8E5] font-medium text-xs">لا يوجد جهات اتصال مسجلة.</div>
+              <div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا يوجد جهات اتصال مسجلة.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-right border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium font-semibold">
+                    <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium font-semibold">
                       <th className="py-2 px-1">الاسم</th>
                       <th className="py-2 px-1">رقم الهاتف</th>
                       <th className="py-2 px-1">نطاق الميزانية</th>
@@ -185,7 +185,7 @@ export default function Contacts() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-200">
                     {contacts.map((contact) => (
-                      <tr key={contact.id} className="hover:bg-[#1C2B48]/60 transition-colors">
+                      <tr key={contact.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors">
                         <td className="py-2 px-1 font-bold text-white">{contact.name}</td>
                         <td className="py-2 px-1 font-en">{contact.phone}</td>
                         <td className="py-2 px-1">{contact.budgetRange || "—"}</td>
@@ -209,7 +209,7 @@ export default function Contacts() {
 
         {/* Selected Contact / Notes Timeline */}
         <div className="space-y-6">
-          <div className="bg-[#1C2B48]/40 border border-[#0ea5e9]/5 rounded-xl p-4 min-h-[400px] flex flex-col justify-between">
+          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4 min-h-[400px] flex flex-col justify-between">
             <div>
               <h3 className="text-white font-bold text-sm mb-4 border-b border-slate-850 pb-2 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -220,27 +220,27 @@ export default function Contacts() {
                 <div className="space-y-4">
                   <div className="text-xs">
                     <p className="text-white font-bold text-sm mb-1">{selectedContact.name}</p>
-                    <p className="text-[#C4D8E5] font-medium font-en">{selectedContact.phone}</p>
+                    <p className="text-[var(--nc-text-dim)] font-medium font-en">{selectedContact.phone}</p>
                     {selectedContact.preferredContactTime && (
-                      <p className="text-[#C4D8E5] font-medium mt-1">الوقت المفضل: <span className="text-white">{selectedContact.preferredContactTime}</span></p>
+                      <p className="text-[var(--nc-text-dim)] font-medium mt-1">الوقت المفضل: <span className="text-white">{selectedContact.preferredContactTime}</span></p>
                     )}
                   </div>
 
                   {/* Notes Timeline feed */}
                   <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                     {getTimelineItems(selectedContact.notes).map((item, idx) => (
-                      <div key={idx} className="bg-[#1C2B48] border border-[#A7C7E7]/20 p-2.5 rounded-xl text-xs text-[#C4D8E5] font-medium leading-relaxed shadow-sm">
+                      <div key={idx} className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-2.5 rounded-xl text-xs text-[var(--nc-text-dim)] font-medium leading-relaxed shadow-sm">
                         {item}
                       </div>
                     ))}
                     {getTimelineItems(selectedContact.notes).length === 0 && (
-                      <div className="text-center py-6 text-[#C4D8E5] font-medium text-xs">لا يوجد سجل تواصل مسجل للعميل.</div>
+                      <div className="text-center py-6 text-[var(--nc-text-dim)] font-medium text-xs">لا يوجد سجل تواصل مسجل للعميل.</div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center text-[#C4D8E5] font-medium">
-                  <i className="ph ph-chat-circle-dots text-3xl mb-2 text-[#C4D8E5] font-medium"></i>
+                <div className="flex flex-col items-center justify-center py-16 text-center text-[var(--nc-text-dim)] font-medium">
+                  <i className="ph ph-chat-circle-dots text-3xl mb-2 text-[var(--nc-text-dim)] font-medium"></i>
                   <p className="text-xs">اختر جهة اتصال من الجدول لعرض سجل وتفاصيل التواصل والرفع.</p>
                 </div>
               )}
@@ -252,14 +252,14 @@ export default function Contacts() {
                   placeholder="أدخل ملاحظة جديدة (اتصال، مراسلة واتساب، إلخ)..."
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  className="w-full bg-[#1C2B48] border border-slate-700 rounded-lg p-2 text-white h-16 resize-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-slate-700 rounded-lg p-2 text-white h-16 resize-none"
                   required
                 />
                 <div className="flex gap-2">
                   <button
                     type="submit"
                     disabled={btnLoading}
-                    className="flex-1 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded font-bold px-3 py-2 transition-all text-center"
+                    className="flex-1 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center"
                   >
                     إضافة ملاحظة
                   </button>

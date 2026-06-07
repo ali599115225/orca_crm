@@ -144,7 +144,7 @@ export default function TopBarClient({
             </div>
           </div>
           <div className="text-right">
-            <p className={`text-xs font-black leading-tight ${isDark ? 'text-white' : 'text-[#E8ECEF] font-bold'}`}>{displayName}</p>
+            <p className={`text-xs font-black leading-tight ${isDark ? 'text-white' : 'text-[var(--nc-text-primary)] font-bold'}`}>{displayName}</p>
             <p className={`text-[9px] font-extrabold mt-0.5 tracking-wide leading-none ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{initialRole}</p>
           </div>
         </div>

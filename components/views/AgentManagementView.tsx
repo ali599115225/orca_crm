@@ -207,7 +207,7 @@ export default function AgentManagementView({
     <div className="nc-page nc-stack" dir={dir}>
       
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[#A7C7E7]/20 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[var(--nc-glass-border)] p-6 shadow-2xl backdrop-blur-xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-brand-interactive/10 rounded-full blur-[100px] pointer-events-none"></div>
         
@@ -220,7 +220,7 @@ export default function AgentManagementView({
             <h1 className="text-xl md:text-3xl font-black text-white tracking-wide">
               {isArabic ? "إدارة الوكلاء وعقود الاستئجار" : "Virtual Agents Console"}
             </h1>
-            <p className="text-xs md:text-sm text-[#C4D8E5] font-medium mt-2 font-medium">
+            <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium mt-2 font-medium">
               {isArabic 
                 ? "إدارة رخص تشغيل الوكلاء الأذكياء ومراقبة حالة عقود الاستئجار المؤقتة وتوسيع كفاءة المبيعات والحوكمة."
                 : "Manage smart agent execution licenses, monitor temporary campaign leases, and scale productivity."}
@@ -303,7 +303,7 @@ export default function AgentManagementView({
           const statusInfo = getAgentStatus(ag.id);
           const tick = countdownTicks[ag.id];
           
-          let badgeColor = "bg-slate-500/10 border-slate-500/20 text-[#C4D8E5] font-medium";
+          let badgeColor = "bg-slate-500/10 border-slate-500/20 text-[var(--nc-text-dim)] font-medium";
           if (statusInfo.status === 'ACTIVE') badgeColor = "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
           else if (statusInfo.status === 'LEASED') badgeColor = "bg-indigo-500/10 border-indigo-500/20 text-indigo-400 animate-pulse";
           else if (statusInfo.status === 'EXPIRED') badgeColor = "bg-amber-500/10 border-amber-500/20 text-amber-400";
@@ -315,7 +315,7 @@ export default function AgentManagementView({
             >
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#1C2B48]/50 border border-[#A7C7E7]/20 flex items-center justify-center text-white text-lg">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] flex items-center justify-center text-white text-lg">
                     <i className={`ph-fill ${ag.icon}`}></i>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase ${badgeColor}`}>
@@ -327,7 +327,7 @@ export default function AgentManagementView({
                   {isArabic ? ag.nameAr : ag.nameEn}
                 </h3>
                 
-                <p className="text-[10px] md:text-xs text-[#C4D8E5] font-medium leading-relaxed font-sans">
+                <p className="text-[10px] md:text-xs text-[var(--nc-text-dim)] font-medium leading-relaxed font-sans">
                   {isArabic ? ag.descAr : ag.descEn}
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function AgentManagementView({
                     {(plan === 'basic' || plan === 'pro' || plan === 'professional' || plan === 'silver') && (
                       <a
                         href="/operations?tab=settings"
-                        className="px-3 py-2 rounded-xl bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium font-bold text-[10px] text-center cursor-pointer transition-colors"
+                        className="px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium font-bold text-[10px] text-center cursor-pointer transition-colors"
                       >
                         {isArabic ? "ترقية الباقة" : "Upgrade"}
                       </a>
@@ -376,8 +376,8 @@ export default function AgentManagementView({
       {leasingModal?.isOpen && (() => {
         const calc = getComparisonCalculator(leasingModal.agentId);
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1C2B48]/80 backdrop-blur-md">
-            <div className="relative w-full max-w-xl overflow-hidden rounded-2xl bg-gradient-to-b from-[#151f32] to-[#1C2B48] border border-slate-850 p-6 shadow-2xl animate-scale-up">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface-solid)]/80 backdrop-blur-md">
+            <div className="relative w-full max-w-xl overflow-hidden rounded-2xl bg-gradient-to-b from-[var(--nc-surface-solid)] to-[var(--nc-surface-solid)] border border-slate-850 p-6 shadow-2xl animate-scale-up">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
               
               <h3 className="text-white font-extrabold text-base flex items-center gap-2 border-b border-slate-850 pb-3 mb-4">
@@ -388,7 +388,7 @@ export default function AgentManagementView({
               </h3>
 
               <div className="space-y-4">
-                <p className="text-[#C4D8E5] font-medium text-xs leading-relaxed">
+                <p className="text-[var(--nc-text-dim)] font-medium text-xs leading-relaxed">
                   {isArabic 
                     ? `استئجار وكيل مخصص لتشغيل خدماتك وتجاوز قيود الباقة الحالية دون الحاجة لتحديث اشتراكك بالكامل.`
                     : `Lease this virtual agent to scale campaign throughput without committing to a full subscription tier change.`}
@@ -396,12 +396,12 @@ export default function AgentManagementView({
 
                 {/* Pricing summary */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[#1C2B48]/60 border border-[#A7C7E7]/80">
-                    <span className="block text-[9px] font-bold text-[#C4D8E5] font-medium uppercase">{isArabic ? "التكلفة (٣٠ يوماً)" : "Cost (30 Days)"}</span>
+                  <div className="p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)]">
+                    <span className="block text-[9px] font-bold text-[var(--nc-text-dim)] font-medium uppercase">{isArabic ? "التكلفة (٣٠ يوماً)" : "Cost (30 Days)"}</span>
                     <span className="block text-white font-black text-base mt-1 price-tag">{formatCurrency(calc.leasePrice)}</span>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-[#1C2B48]/60 border border-[#A7C7E7]/80">
-                    <span className="block text-[9px] font-bold text-[#C4D8E5] font-medium uppercase">{isArabic ? "حالة المعاملة" : "Transaction"}</span>
+                  <div className="p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)]">
+                    <span className="block text-[9px] font-bold text-[var(--nc-text-dim)] font-medium uppercase">{isArabic ? "حالة المعاملة" : "Transaction"}</span>
                     <span className="block text-indigo-400 font-bold text-xs mt-1">
                       {calc.leasePrice === 800 
                         ? (isArabic ? "تجديد / تمديد" : "Lease Renewal") 
@@ -443,10 +443,10 @@ export default function AgentManagementView({
                 </div>
 
                 {/* Auto Renewal */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#1C2B48]/60 border border-slate-850">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-slate-850">
                   <div>
                     <span className="block text-[10px] font-bold text-white">{isArabic ? "التجديد التلقائي للوكيل" : "Auto-Renewal"}</span>
-                    <span className="block text-[9px] text-[#C4D8E5] font-medium mt-0.5">
+                    <span className="block text-[9px] text-[var(--nc-text-dim)] font-medium mt-0.5">
                       {isArabic ? "تجديد العقد تلقائياً كل شهر بسعر التجديد." : "Lease will renew and charge automatically."}
                     </span>
                   </div>
@@ -454,7 +454,7 @@ export default function AgentManagementView({
                     type="checkbox"
                     checked={autoRenewalOption}
                     onChange={(e) => setAutoRenewalOption(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#A7C7E7]/20 bg-[#1C2B48] text-brand-interactive focus:ring-0 cursor-pointer"
+                    className="w-4 h-4 rounded border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] text-brand-interactive focus:ring-0 cursor-pointer"
                   />
                 </div>
               </div>
@@ -464,7 +464,7 @@ export default function AgentManagementView({
                 <button
                   type="button"
                   onClick={() => setLeasingModal(null)}
-                  className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium text-xs font-bold rounded-xl cursor-pointer transition-colors border border-slate-750"
+                  className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium text-xs font-bold rounded-xl cursor-pointer transition-colors border border-slate-750"
                 >
                   {isArabic ? "إلغاء" : "Cancel"}
                 </button>

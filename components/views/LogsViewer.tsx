@@ -96,7 +96,7 @@ export default function LogsViewer() {
     <div className="nc-page nc-stack font-sans" dir={dir}>
       
       {/* Header card with glassmorphism */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[#A7C7E7]/20 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-[#151f32] to-slate-900 border border-[var(--nc-glass-border)] p-6 shadow-2xl backdrop-blur-xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         
@@ -109,7 +109,7 @@ export default function LogsViewer() {
             <h1 className="text-xl md:text-3xl font-black text-white tracking-wide">
               {isArabic ? "الصندوق الأسود - مراقبة الأخطاء" : "System Log Viewer"}
             </h1>
-            <p className="text-xs md:text-sm text-[#C4D8E5] font-medium mt-2 font-medium">
+            <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium mt-2 font-medium">
               {isArabic 
                 ? "مراقبة الاستثناءات والأخطاء التشغيلية في البيئة الحية وسرعة معالجة الاختناقات الأمنية."
                 : "Real-time auditing of system exceptions, telemetry metrics, and platform bottlenecks."}
@@ -128,7 +128,7 @@ export default function LogsViewer() {
             <button
               onClick={handleClearLogs}
               disabled={clearingLogs || loading || logs.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
             >
               <i className="ph-bold ph-trash text-sm"></i>
               <span>{isArabic ? "مسح السجلات" : "Clear Log File"}</span>
@@ -152,24 +152,24 @@ export default function LogsViewer() {
       )}
 
       {/* Controls & Filter bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#1C2B48]/40 dark:bg-[#151f32]/40 border border-[#A7C7E7]/20 p-4 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[var(--nc-surface)] dark:bg-[#151f32]/40 border border-[var(--nc-glass-border)] p-4 rounded-2xl backdrop-blur-md">
         <div className="flex items-center gap-2 w-full md:w-auto relative">
-          <i className="ph-bold ph-magnifying-glass absolute right-3 text-[#C4D8E5] font-medium text-sm"></i>
+          <i className="ph-bold ph-magnifying-glass absolute right-3 text-[var(--nc-text-dim)] font-medium text-sm"></i>
           <input
             type="text"
             placeholder={isArabic ? "ابحث بالرسالة، الساب دومين، أو الإجراء..." : "Search logs by message, subdomain, path..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-96 pr-9 pl-3 py-2 text-xs bg-[#1C2B48]/80 border border-slate-850 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-right"
+            className="w-full md:w-96 pr-9 pl-3 py-2 text-xs bg-[var(--nc-surface-solid)]/80 border border-slate-850 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-right"
             dir={dir}
           />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <span className="text-[11px] text-[#C4D8E5] font-medium font-bold">
+          <span className="text-[11px] text-[var(--nc-text-dim)] font-medium font-bold">
             {isArabic ? "تصفية حسب المستوى:" : "Filter Level:"}
           </span>
-          <div className="flex bg-[#1C2B48] rounded-xl p-1 border border-slate-850">
+          <div className="flex bg-[var(--nc-surface-solid)] rounded-xl p-1 border border-slate-850">
             {['ALL', 'INFO', 'WARN', 'ERROR'].map(lvl => (
               <button
                 key={lvl}
@@ -177,7 +177,7 @@ export default function LogsViewer() {
                 className={`px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
                   filterLevel === lvl 
                     ? 'bg-indigo-650 text-white shadow-md' 
-                    : 'text-[#C4D8E5] font-medium hover:text-slate-200'
+                    : 'text-[var(--nc-text-dim)] font-medium hover:text-slate-200'
                 }`}
               >
                 {lvl}
@@ -188,24 +188,24 @@ export default function LogsViewer() {
       </div>
 
       {/* Logs List Container */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#1C2B48]/40 dark:bg-[#151f32]/40 border border-[#A7C7E7]/20 shadow-2xl backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl bg-[var(--nc-surface)] dark:bg-[#151f32]/40 border border-[var(--nc-glass-border)] shadow-2xl backdrop-blur-md">
         
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-3">
             <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-            <p className="text-xs text-[#C4D8E5] font-medium font-medium">
+            <p className="text-xs text-[var(--nc-text-dim)] font-medium font-medium">
               {isArabic ? "جاري سحب السجلات من الخادم..." : "Fetching logs from system repository..."}
             </p>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#1C2B48] flex items-center justify-center text-[#C4D8E5] font-medium text-lg">
+            <div className="w-12 h-12 rounded-full bg-[var(--nc-surface-solid)] flex items-center justify-center text-[var(--nc-text-dim)] font-medium text-lg">
               <i className="ph-bold ph-notebook"></i>
             </div>
             <h3 className="text-sm font-bold text-white">
               {isArabic ? "لا توجد سجلات مطابقة" : "No logs found"}
             </h3>
-            <p className="text-xs text-[#C4D8E5] font-medium max-w-sm">
+            <p className="text-xs text-[var(--nc-text-dim)] font-medium max-w-sm">
               {isArabic 
                 ? "قاعدة البيانات نظيفة أو لا يوجد حالياً سجلات تطابق عوامل التصفية المدخلة."
                 : "No matching records recorded in system.log or matching the active filters."}
@@ -228,7 +228,7 @@ export default function LogsViewer() {
               return (
                 <div 
                   key={idx} 
-                  className={`transition-all hover:bg-[#1C2B48]/30 ${isExpanded ? 'bg-[#1C2B48]/40' : ''}`}
+                  className={`transition-all hover:bg-[var(--nc-surface)] ${isExpanded ? 'bg-[var(--nc-surface)]' : ''}`}
                 >
                   {/* Summary row */}
                   <div 
@@ -251,46 +251,46 @@ export default function LogsViewer() {
                             </span>
                           )}
                           {log.action && (
-                            <span className="text-[9px] font-mono text-[#C4D8E5] font-medium bg-[#1C2B48] px-1.5 py-0.5 rounded">
+                            <span className="text-[9px] font-mono text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] px-1.5 py-0.5 rounded">
                               {log.action}
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-[#C4D8E5] font-medium mt-1 flex items-center gap-3">
+                        <div className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1 flex items-center gap-3">
                           <span>{dateStr}</span>
-                          {log.path && <span className="font-mono text-[#C4D8E5] font-medium text-[9px]">{log.path}</span>}
+                          {log.path && <span className="font-mono text-[var(--nc-text-dim)] font-medium text-[9px]">{log.path}</span>}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-[10px] font-mono text-[#C4D8E5] font-medium bg-[#1C2B48] px-2 py-0.5 rounded border border-slate-850">
+                      <span className="text-[10px] font-mono text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-slate-850">
                         {log.system?.memory || 'N/A'}
                       </span>
-                      <i className={`ph-bold ph-caret-down text-[#C4D8E5] font-medium transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}></i>
+                      <i className={`ph-bold ph-caret-down text-[var(--nc-text-dim)] font-medium transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}></i>
                     </div>
                   </div>
 
                   {/* Expanded metadata card */}
                   {isExpanded && (
-                    <div className="p-4 bg-[#1C2B48]/80 border-t border-slate-900 font-mono text-[11px] leading-relaxed text-[#C4D8E5] font-medium space-y-4">
+                    <div className="p-4 bg-[var(--nc-surface-solid)]/80 border-t border-slate-900 font-mono text-[11px] leading-relaxed text-[var(--nc-text-dim)] font-medium space-y-4">
                       
                       {/* Grid info */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-[#1C2B48]/30 p-3.5 rounded-xl border border-slate-850/50">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-[var(--nc-surface)] p-3.5 rounded-xl border border-slate-850/50">
                         <div>
-                          <div className="text-[9px] text-[#C4D8E5] font-medium uppercase tracking-wider">{isArabic ? "المعرف المشترك" : "Tenant ID"}</div>
-                          <div className="text-[#C4D8E5] font-medium font-bold select-all truncate">{log.tenantId}</div>
+                          <div className="text-[9px] text-[var(--nc-text-dim)] font-medium uppercase tracking-wider">{isArabic ? "المعرف المشترك" : "Tenant ID"}</div>
+                          <div className="text-[var(--nc-text-dim)] font-medium font-bold select-all truncate">{log.tenantId}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] text-[#C4D8E5] font-medium uppercase tracking-wider">{isArabic ? "النطاق الفرعي" : "Subdomain"}</div>
+                          <div className="text-[9px] text-[var(--nc-text-dim)] font-medium uppercase tracking-wider">{isArabic ? "النطاق الفرعي" : "Subdomain"}</div>
                           <div className="text-indigo-300 font-bold">{log.subdomain}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] text-[#C4D8E5] font-medium uppercase tracking-wider">{isArabic ? "معرف الموظف" : "User ID"}</div>
-                          <div className="text-[#C4D8E5] font-medium select-all truncate">{log.userId}</div>
+                          <div className="text-[9px] text-[var(--nc-text-dim)] font-medium uppercase tracking-wider">{isArabic ? "معرف الموظف" : "User ID"}</div>
+                          <div className="text-[var(--nc-text-dim)] font-medium select-all truncate">{log.userId}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] text-[#C4D8E5] font-medium uppercase tracking-wider">{isArabic ? "المسار" : "API Route"}</div>
+                          <div className="text-[9px] text-[var(--nc-text-dim)] font-medium uppercase tracking-wider">{isArabic ? "المسار" : "API Route"}</div>
                           <div className="text-emerald-400 select-all truncate">{log.path || 'N/A'}</div>
                         </div>
                       </div>
@@ -304,7 +304,7 @@ export default function LogsViewer() {
                           </div>
                           <div className="text-rose-300 font-bold">{log.error.name}: {log.error.message}</div>
                           {log.error.stack && (
-                            <pre className="text-[10px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-3 rounded-lg border border-slate-900 overflow-x-auto whitespace-pre leading-relaxed select-all">
+                            <pre className="text-[10px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-3 rounded-lg border border-slate-900 overflow-x-auto whitespace-pre leading-relaxed select-all">
                               {log.error.stack}
                             </pre>
                           )}
@@ -313,18 +313,18 @@ export default function LogsViewer() {
 
                       {/* Context metadata (if exists) */}
                       {log.context && (
-                        <div className="bg-[#1C2B48]/30 border border-slate-850 p-4 rounded-xl space-y-2">
+                        <div className="bg-[var(--nc-surface)] border border-slate-850 p-4 rounded-xl space-y-2">
                           <div className="text-indigo-400 font-bold text-xs">{isArabic ? "سياق العملية (Context):" : "Operation parameters context:"}</div>
-                          <pre className="text-[10px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-3 rounded-lg border border-slate-900 overflow-x-auto select-all">
+                          <pre className="text-[10px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-3 rounded-lg border border-slate-900 overflow-x-auto select-all">
                             {JSON.stringify(log.context, null, 2)}
                           </pre>
                         </div>
                       )}
 
                       {/* System stats */}
-                      <div className="flex items-center gap-2 text-[#C4D8E5] font-medium text-[10px]">
+                      <div className="flex items-center gap-2 text-[var(--nc-text-dim)] font-medium text-[10px]">
                         <i className="ph-bold ph-cpu"></i>
-                        <span>{isArabic ? "الذاكرة المخصصة للعملية:" : "Process heap memory allocated:"} <strong className="text-[#C4D8E5] font-medium">{log.system?.memory}</strong></span>
+                        <span>{isArabic ? "الذاكرة المخصصة للعملية:" : "Process heap memory allocated:"} <strong className="text-[var(--nc-text-dim)] font-medium">{log.system?.memory}</strong></span>
                       </div>
                     </div>
                   )}

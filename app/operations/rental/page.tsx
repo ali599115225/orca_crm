@@ -4,10 +4,13 @@ import React, { useState, useTransition, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Calculator, Megaphone, Plus, Search, Eye,
   Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
-  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2
+  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2,
+  Activity, DollarSign, Sparkles
 } from 'lucide-react';
 import { DateField } from '@/components/ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
+import { Button, Card, Badge } from '@/components/ui/orca-components';
+import LayoutContainer from '@/components/ui/LayoutContainer';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -533,13 +536,69 @@ export default function RentalPage() {
     return matchSearch && matchStatus;
   });
 
-  return (
-    <div className="nc-page nc-stack">
-      
-      {/* ── Feature Flags Bar ── */}
-      <div className="nc-content-between ds-p-md nc-glass">
-        <div className="flex items-center gap-3 bg-slate-200/50 dark:bg-white/5 p-2 rounded-lg border border-slate-200/50 dark:border-white/10">
-          <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer">
+  // ─── Bento Grid Unification Layout Elements ───
+  const kpisContent = (
+    <>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي المستحقات المفوترة</p>
+            <h3 className="text-2xl font-black text-white">{totalReceivables.toLocaleString()} SAR</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
+            <DollarSign size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">مبالغ متأخرة عن السداد</p>
+            <h3 className="text-2xl font-black text-rose-500">{totalOverdue.toLocaleString()} SAR</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
+            <AlertCircle size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">دفعات محصلة هذا الشهر</p>
+            <h3 className="text-2xl font-black text-emerald-500">{collectedThisMonth.toLocaleString()} SAR</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">طلبات تسوية معلقة للملاك</p>
+            <h3 className="text-2xl font-black text-cyan-400">{pendingSettlementsCount} طلبات</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+            <Activity size={18} />
+          </div>
+        </div>
+      </Card>
+    </>
+  );
+
+  const actionsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+          <Settings size={16} className="text-[var(--nc-text-secondary)]" />
+          الضوابط والعمليات السريعة
+        </h4>
+        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">تفعيل ضريبة القيمة المضافة والتحقق من AML</p>
+      </div>
+
+      <div className="space-y-4 flex-grow pt-2">
+        <div className="flex flex-col gap-3 p-3 bg-[var(--nc-surface-solid)]/45 rounded-xl border border-white/5 text-xs">
+          <label className="flex items-center gap-2 text-[var(--nc-text-dim)] font-bold cursor-pointer">
             <input 
               type="checkbox" 
               checked={enableZakat} 
@@ -547,11 +606,11 @@ export default function RentalPage() {
                 setEnableZakat(e.target.checked);
                 addTelemetryEvent('system.feature_flag_changed', { flag: 'enableZakat', value: e.target.checked });
               }} 
-              className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
+              className="rounded bg-white/5 border border-white/10 text-[var(--nc-text-secondary)]"
             />
             <span>تفعيل VAT (15%)</span>
           </label>
-          <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer border-r border-slate-200/50 dark:border-white/10 pr-3">
+          <label className="flex items-center gap-2 text-[var(--nc-text-dim)] font-bold cursor-pointer border-t border-white/5 pt-2">
             <input 
               type="checkbox" 
               checked={enableCompliance} 
@@ -559,85 +618,108 @@ export default function RentalPage() {
                 setEnableCompliance(e.target.checked);
                 addTelemetryEvent('system.feature_flag_changed', { flag: 'enableCompliance', value: e.target.checked });
               }} 
-              className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
+              className="rounded bg-white/5 border border-white/10 text-[var(--nc-text-secondary)]"
             />
             <span>تفعيل AML Check</span>
           </label>
         </div>
+
+        <div className="border-t border-white/5 pt-3 space-y-2">
+          <button 
+            type="button"
+            onClick={() => {
+              if (!isAllowed('CREATE_LEASE')) {
+                alert('عذراً، لا تملك الصلاحية لإضافة عقد جديد.');
+                return;
+              }
+              setActiveModal('new_lease');
+            }}
+            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-[var(--nc-accent-border)] rounded-xl hover:text-white transition-all flex items-center justify-between"
+          >
+            <span>تسجيل عقد إيجار جديد</span>
+            <ChevronRight size={14} className="opacity-50" />
+          </button>
+          
+          <button 
+            type="button"
+            onClick={() => {
+              if (!isAllowed('CREATE_INVOICE')) {
+                alert('عذراً، لا تملك صلاحية إصدار فواتير.');
+                return;
+              }
+              setActiveModal('create_invoice');
+            }}
+            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-[var(--nc-accent-border)] rounded-xl hover:text-white transition-all flex items-center justify-between"
+          >
+            <span>إصدار فاتورة إيجارية</span>
+            <ChevronRight size={14} className="opacity-50" />
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+
+  const insightsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+          <Bot size={16} className="text-cyan-400" />
+          مساعد المحاسبة والتحصيل الذكي (AI Predictor)
+        </h4>
+        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-1">تنبيهات المحاسبة التلقائية وتوصيات تحصيل الإيجارات</p>
       </div>
 
-      {/* ── Dashboard KPIs Pane ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-          <span className="text-xs text-slate-700 dark:text-slate-350 font-bold">إجمالي المستحقات المفوترة</span>
-          <span className="text-xl font-black text-slate-900 dark:text-white mt-2">{totalReceivables.toLocaleString()} SAR</span>
-        </div>
-        <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-          <div className="flex justify-between items-center w-full">
-            <span className="text-xs text-slate-700 dark:text-slate-350 font-bold">مبالغ متأخرة عن السداد</span>
-            {overdueInvoicesCount > 0 && <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-black px-1.5 py-0.5 rounded-full shrink-0">تنبيه متأخرات</span>}
-          </div>
-          <span className="text-xl font-black text-rose-400 mt-2">{totalOverdue.toLocaleString()} SAR</span>
-        </div>
-        <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-          <span className="text-xs text-slate-700 dark:text-slate-350 font-bold">دفعات محصلة هذا الشهر</span>
-          <span className="text-xl font-black text-emerald-400 mt-2">{collectedThisMonth.toLocaleString()} SAR</span>
-        </div>
-        <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-          <span className="text-xs text-slate-700 dark:text-slate-350 font-bold">طلبات تسوية معلقة للملاك</span>
-          <span className="text-xl font-black text-cyan-400 mt-2">{pendingSettlementsCount} طلبات</span>
-        </div>
-      </div>
-
-      {/* ── Alerts & Intelligent Assistant ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-4 rounded-2xl space-y-2">
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-            <AlertCircle className="text-[#8EB1D1]" size={14} />
-            إشعارات وتنبيهات عاجلة
-          </h4>
-          <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5 pr-2 list-disc list-inside">
-            {overdueInvoicesCount > 0 && <li>يوجد {overdueInvoicesCount} فواتير معلقة متأخرة عن السداد تجاوزت تاريخ الاستحقاق.</li>}
-            {expiredLeasesCount > 0 && <li>يوجد {expiredLeasesCount} عقود إيجارية منتهية الصلاحية معلقة وتطلب تسوية المالك أو التجديد.</li>}
+      <div className="space-y-4 flex-grow pt-2 text-xs">
+        {/* Alerts List */}
+        <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1.5">
+          <h5 className="font-bold text-white flex items-center gap-1.5 text-[11px]">
+            <AlertCircle className="text-rose-400" size={13} />
+            تنبيهات عاجلة
+          </h5>
+          <ul className="text-[10px] text-[var(--nc-text-dim)] font-medium space-y-1 list-disc list-inside">
+            {overdueInvoicesCount > 0 && <li>يوجد {overdueInvoicesCount} فواتير معلقة متأخرة عن السداد.</li>}
+            {expiredLeasesCount > 0 && <li>يوجد {expiredLeasesCount} عقود إيجارية منتهية الصلاحية معلقة.</li>}
             {leases.some(l => l.financialRef === null && l.status === 'expired') && <li>مطلوب تسوية مالي لعقد الإيجار المنتهي L-1002.</li>}
           </ul>
         </div>
 
-        <div className="bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-4 rounded-2xl space-y-2">
-          <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-            <Bot size={14} />
-            إجراءات المحاسبة الذكية المقترحة (AI Agent)
-          </h4>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button 
-              onClick={() => {
-                const overdueInvs = invoices.filter(i => i.status === 'overdue');
-                if (overdueInvs.length === 0) {
-                  alert('لا يوجد فواتير متأخرة لإرسال تذكيرات.');
-                  return;
-                }
-                overdueInvs.forEach(inv => {
-                  addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
-                });
-                alert(`تم إرسال رسائل تذكير عبر الواتساب والبريد الإلكتروني للـ ${overdueInvs.length} فواتير متأخرة بنجاح.`);
-              }}
-              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
-            >
-              إرسال تنبيهات سداد الفواتير المتأخرة
-            </button>
-            <button 
-              onClick={() => {
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button 
+            type="button"
+            onClick={() => {
+              const overdueInvs = invoices.filter(i => i.status === 'overdue');
+              if (overdueInvs.length === 0) {
+                alert('لا يوجد فواتير متأخرة لإرسال تذكيرات.');
+                return;
+              }
+              overdueInvs.forEach(inv => {
+                addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
+              });
+              alert(`تم إرسال رسائل تذكير عبر الواتساب والبريد الإلكتروني للـ ${overdueInvs.length} فواتير متأخرة بنجاح.`);
+            }}
+            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
+          >
+            إرسال تنبيهات سداد الفواتير المتأخرة
+          </button>
+          <button 
+            type="button"
+            onClick={() => {
+              startTransition(() => {
                 setActivePane('reconciliation');
-                alert('توجيه لتبويب المصالحة البنكية.');
-              }}
-              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 text-[10px] font-bold rounded-lg transition-all"
-            >
-              تشغيل مصالحة بنكية فورية
-            </button>
-          </div>
+              });
+              alert('تم التوجيه لتبويب المصالحة البنكية.');
+            }}
+            className="px-2.5 py-1.5 bg-[var(--nc-surface-solid)] border border-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 text-[10px] font-bold rounded-lg transition-all"
+          >
+            تشغيل مصالحة بنكية فورية
+          </button>
         </div>
       </div>
+    </Card>
+  );
 
+  const detailsContent = (
+    <div className="space-y-6">
       {/* ── Sub-Tab Controller Bar ── */}
       <div className="nc-glass ds-p-md nc-content-between">
         <div>
@@ -672,7 +754,7 @@ export default function RentalPage() {
       {/* ── Panes Render ── */}
       {isPending ? (
         <div className="py-20 flex flex-col items-center justify-center gap-2">
-          <div className="w-8 h-8 rounded-full border-3 border-[#8EB1D1] border-t-transparent animate-spin"></div>
+          <div className="w-8 h-8 rounded-full border-3 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
           <span className="text-xs text-slate-700 dark:text-slate-350 font-bold">جاري تحميل بيانات القسم...</span>
         </div>
       ) : (
@@ -695,7 +777,7 @@ export default function RentalPage() {
                         }
                         setActiveModal('new_lease');
                       }}
-                      className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
                     >
                       <Plus size={13} />
                       عقد جديد
@@ -747,7 +829,7 @@ export default function RentalPage() {
                              addTelemetryEvent('lease.opened', { contractId: l.id, status: l.status });
                            }}
                            className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
-                             selectedLeaseId === l.id ? 'bg-[#8EB1D1]/10 border-r-4 border-[#8EB1D1]' : ''
+                             selectedLeaseId === l.id ? 'bg-[var(--nc-accent-soft)] border-r-4 border-[var(--nc-accent-border)]' : ''
                            }`}
                         >
                           <td className="py-3.5 px-2 font-bold text-slate-900 dark:text-white">{l.id}</td>
@@ -810,7 +892,7 @@ export default function RentalPage() {
                             setInvoiceAmount(selectedLease.rent);
                             setActiveModal('create_invoice');
                           }}
-                          className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-all"
+                          className="px-3 py-1.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white text-[11px] font-black rounded-lg transition-all"
                         >
                           إصدار فاتورة للعقد
                         </button>
@@ -850,7 +932,7 @@ export default function RentalPage() {
                           onClick={() => setDetailActiveTab(tab.id)}
                           className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                             detailActiveTab === tab.id 
-                              ? 'bg-[#8EB1D1] text-slate-900 dark:text-white shadow-sm' 
+                              ? 'bg-[var(--nc-accent)] text-slate-900 dark:text-white shadow-sm' 
                               : 'bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white border border-white/5'
                           }`}
                         >
@@ -927,7 +1009,7 @@ export default function RentalPage() {
                                           setPayDate(new Date().toISOString().split('T')[0]);
                                           setActiveModal('register_payment');
                                         }}
-                                        className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
+                                        className="px-2 py-0.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-[10px] font-bold transition-all"
                                       >
                                         سداد الفاتورة
                                       </button>
@@ -1062,7 +1144,7 @@ export default function RentalPage() {
                           <div className="border-r-2 border-slate-200/50 dark:border-white/10 pr-4 space-y-3">
                             {events.filter(e => e.contractId === selectedLease.id).map(evt => (
                               <div key={evt.id} className="relative">
-                                <div className="absolute right-[-21px] top-1 w-2 h-2 rounded-full bg-[#8EB1D1]"></div>
+                                <div className="absolute right-[-21px] top-1 w-2 h-2 rounded-full bg-[var(--nc-accent)]"></div>
                                 <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400">
                                   <span className="font-bold text-slate-200">[{evt.type}]</span>
                                   <span className="font-mono">{evt.timestamp}</span>
@@ -1099,7 +1181,7 @@ export default function RentalPage() {
                       placeholder="بحث برقم الفاتورة أو العقد..."
                       value={invoiceSearch}
                       onChange={(e) => setInvoiceSearch(e.target.value)}
-                      className="bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl pr-8 pl-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none w-52 focus:border-[#8EB1D1]/40"
+                      className="bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl pr-8 pl-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none w-52 focus:border-[var(--nc-accent-border)]/40"
                     />
                   </div>
                   <select
@@ -1153,7 +1235,7 @@ export default function RentalPage() {
                                 setPayDate(new Date().toISOString().split('T')[0]);
                                 setActiveModal('register_payment');
                               }}
-                              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
+                              className="px-2.5 py-1 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] rounded text-[10px] font-bold transition-all"
                             >
                               سداد
                             </button>
@@ -1186,7 +1268,7 @@ export default function RentalPage() {
 
               {/* Upload file area */}
               <div className="border border-dashed border-white/10 p-8 rounded-2xl text-center space-y-3 bg-slate-200/40 dark:bg-white/5">
-                <CloudUpload className="mx-auto text-[#8EB1D1]/70" size={32} />
+                <CloudUpload className="mx-auto text-[var(--nc-text-secondary)]/70" size={32} />
                 <div className="text-xs text-slate-500 dark:text-slate-400">قم برفع ملف الحساب البنكي (.csv / .xls) للمطابقة</div>
                 <input 
                   type="file" 
@@ -1325,7 +1407,7 @@ export default function RentalPage() {
               {telemetryLogs.map((log) => (
                 <div key={log.id} className="p-2.5 bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded-xl border border-white/5 space-y-1">
                   <div className="flex justify-between text-[9px]">
-                    <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
+                    <span className="text-[var(--nc-text-secondary)] font-bold">[{log.type.toUpperCase()}]</span>
                     <span className="text-slate-500 dark:text-slate-400">{log.timestamp}</span>
                   </div>
                   <pre className="text-[9px] text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-1.5 rounded overflow-x-auto">
@@ -1339,6 +1421,18 @@ export default function RentalPage() {
         </div>
       )}
 
+
+    </div>
+  );
+
+  return (
+    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+      <LayoutContainer
+        kpis={kpisContent}
+        actions={actionsContent}
+        insights={insightsContent}
+        details={detailsContent}
+      />
       {/* ── Modal 1: New Lease Form ── */}
       {activeModal === 'new_lease' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1347,7 +1441,7 @@ export default function RentalPage() {
             onSubmit={handleCreateLease}
             className="relative bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
               <Plus size={18} />
               إضافة عقد إيجار جديد
             </h3>
@@ -1360,7 +1454,7 @@ export default function RentalPage() {
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder="مثال: A-101"
-                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
               />
             </div>
 
@@ -1372,7 +1466,7 @@ export default function RentalPage() {
                 value={newTenant}
                 onChange={(e) => setNewTenant(e.target.value)}
                 placeholder="الاسم الكامل للمستأجر..."
-                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
               />
             </div>
 
@@ -1401,7 +1495,7 @@ export default function RentalPage() {
                   required
                   value={newRent}
                   onChange={(e) => setNewRent(Number(e.target.value))}
-                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
               <div className="space-y-1">
@@ -1411,7 +1505,7 @@ export default function RentalPage() {
                   required
                   value={newDeposit}
                   onChange={(e) => setNewDeposit(Number(e.target.value))}
-                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
             </div>
@@ -1419,7 +1513,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
               >
                 تأكيد وتسجيل العقد
               </button>
@@ -1443,7 +1537,7 @@ export default function RentalPage() {
             onSubmit={handleCreateInvoice}
             className="relative bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
               <FileCheck size={18} />
               إصدار فاتورة إيجارية
             </h3>
@@ -1457,7 +1551,7 @@ export default function RentalPage() {
                 value={prefilledContractId || invoiceContractId}
                 onChange={(e) => setInvoiceContractId(e.target.value)}
                 placeholder="مثال: L-1001"
-                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1] disabled:opacity-50 font-mono"
+                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-50 font-mono"
               />
             </div>
 
@@ -1468,7 +1562,7 @@ export default function RentalPage() {
                 required
                 value={invoiceAmount}
                 onChange={(e) => setInvoiceAmount(Number(e.target.value))}
-                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
               />
             </div>
 
@@ -1483,7 +1577,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
               >
                 إصدار الفاتورة وتنبيه العميل
               </button>
@@ -1510,7 +1604,7 @@ export default function RentalPage() {
             onSubmit={handleRegisterPayment}
             className="relative bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-slate-200/50 dark:border-white/10 pb-2 flex items-center gap-2">
               <Key size={18} />
               تسجيل تحصيل سداد الفاتورة
             </h3>
@@ -1532,7 +1626,7 @@ export default function RentalPage() {
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
                 >
                   <option value="bank">تحويل بنكي مباشر</option>
                   <option value="card">بطاقة مدى / ائتمانية</option>
@@ -1546,7 +1640,7 @@ export default function RentalPage() {
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   placeholder="رقم الحوالة البنكية..."
-                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-white/10 rounded-xl p-2.5 text-slate-900 dark:text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
             </div>
@@ -1573,7 +1667,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-900 dark:text-white font-bold rounded-xl transition-all"
               >
                 تأكيد التحصيل والتسوية
               </button>

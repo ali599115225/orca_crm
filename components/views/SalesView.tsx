@@ -112,8 +112,8 @@ export default function SalesView() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
-        <div className="w-10 h-10 border-4 border-[#8EB1D1] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm text-[#C4D8E5] font-medium dark:text-slate-450">{t.loading}</p>
+        <div className="w-10 h-10 border-4 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm text-[var(--nc-text-dim)] font-medium dark:text-slate-450">{t.loading}</p>
       </div>
     );
   }
@@ -123,57 +123,57 @@ export default function SalesView() {
       
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold mb-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
           <i className="ph-bold ph-trend-up"></i> {t.tag}
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white mb-2">
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className="text-xs md:text-sm text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
           {t.desc}
         </p>
       </div>
 
       {/* Aggregate Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.card1_title}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white font-en">{toArabicNumerals(totalLeads)}</h3>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card1_title}</p>
+          <h3 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white font-en">{toArabicNumerals(totalLeads)}</h3>
           <span className="text-[10px] text-slate-450 block mt-1">{t.card1_sub}</span>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.card2_title}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card2_title}</p>
           <h3 className="text-xl md:text-2xl font-bold text-amber-500">{toArabicNumerals(totalBookings)}</h3>
           <span className="text-[10px] text-slate-450 block mt-1">{t.card2_sub}</span>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.card3_title}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card3_title}</p>
           <h3 className="text-xl md:text-2xl font-bold text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
           <span className="text-[10px] text-slate-450 block mt-1">{t.card3_sub}</span>
         </div>
-        <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm">
-          <p className="text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-xs font-semibold mb-1">{t.card4_title}</p>
+        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
+          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card4_title}</p>
           <h3 className="text-xl md:text-2xl font-bold text-indigo-500 dark:text-indigo-400 font-en">{formatPercentage(avgCR)}</h3>
           <span className="text-[10px] text-slate-450 block mt-1">{t.card4_sub}</span>
         </div>
       </div>
 
       {/* Main Leaderboard Panel */}
-      <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80 bg-slate-50/50 dark:bg-[#1C2B48]/20">
-          <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.tableTitle}</h3>
-          <p className="text-xs text-[#C4D8E5] font-medium dark:text-slate-450 mt-1">{t.tableSub}</p>
+      <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/20">
+          <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base">{t.tableTitle}</h3>
+          <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-slate-450 mt-1">{t.tableSub}</p>
         </div>
 
         {salesReps.length === 0 ? (
-          <div className="p-8 text-center text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium text-sm">
+          <div className="p-8 text-center text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-sm">
             {t.noData}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-sm">
               <thead>
-                <tr className="border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/80 text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium bg-slate-50 dark:bg-[#1C2B48]/30">
+                <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)]">
                   <th className="p-4 font-semibold text-center w-24">{t.tableRank}</th>
                   <th className="p-4 font-semibold">{t.tableRep}</th>
                   <th className="p-4 font-semibold text-center">{t.tableLeads}</th>
@@ -183,50 +183,50 @@ export default function SalesView() {
                   <th className="p-4 font-semibold w-64">{t.tableTarget}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[#C4D8E5] font-medium">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
                 {salesReps.map((rep, idx) => {
                   const rank = idx + 1;
                   return (
-                    <tr key={rep.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1C2B48]/30 transition-colors">
+                    <tr key={rep.id} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
                       <td className="p-4 text-center">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
                           rank === 1 
                             ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30 font-black' 
                             : rank === 2 
-                            ? 'bg-slate-400/20 text-[#C4D8E5] font-medium border border-slate-400/30 font-black'
+                            ? 'bg-slate-400/20 text-[var(--nc-text-dim)] font-medium border border-slate-400/30 font-black'
                             : rank === 3
-                            ? 'bg-[#8EB1D1]/20 text-[#8EB1D1]/90 border border-[#8EB1D1]/30 font-bold'
-                            : 'bg-slate-100 dark:bg-[#1C2B48] text-[#C4D8E5] font-medium'
+                            ? 'bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)]/90 border border-[var(--nc-accent-border)] font-bold'
+                            : 'bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
                         }`}>
                           {toArabicNumerals(rank)}
                         </span>
                       </td>
-                      <td className="p-4 font-bold text-[#E8ECEF] font-bold dark:text-white">
+                      <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold dark:text-white">
                         {rep.name}
-                        <span className="text-[10px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium block font-normal mt-0.5">{rep.email}</span>
+                        <span className="text-[10px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium block font-normal mt-0.5">{rep.email}</span>
                       </td>
                       <td className="p-4 text-center font-en">{toArabicNumerals(rep.leadsCount)}{t.leadSuffix}</td>
                       <td className="p-4 text-center text-xs">{toArabicNumerals(rep.responseTime)}</td>
-                      <td className="p-4 text-center font-en font-bold text-[#8EB1D1]">{formatPercentage(rep.conversionRate)}</td>
+                      <td className="p-4 text-center font-en font-bold text-[var(--nc-text-secondary)]">{formatPercentage(rep.conversionRate)}</td>
                       <td className="p-4 text-center text-xs font-en">
                         <span className="text-amber-500 font-semibold">{toArabicNumerals(rep.bookings)}{t.bookingSuffix}</span>
-                        <span className="text-[#C4D8E5] font-medium mx-1">/</span>
+                        <span className="text-[var(--nc-text-dim)] font-medium mx-1">/</span>
                         <span className="text-emerald-500 font-semibold">{toArabicNumerals(rep.contracts)}{t.contractSuffix}</span>
                       </td>
                       <td className="p-4">
                         <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[10px] font-semibold text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+                          <div className="flex justify-between items-center text-[10px] font-semibold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
                             <span>{isArabic ? "نسبة الإنجاز:" : "Achieved:"}</span>
                             <span className="font-en">{formatPercentage(rep.targetAchieved)}</span>
                           </div>
-                          <div className="h-1.5 w-full bg-slate-100 dark:bg-[#1C2B48]/80 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-slate-100 dark:bg-[var(--nc-surface-solid)]/80 rounded-full overflow-hidden">
                             <div 
                               className={`h-full rounded-full transition-all duration-500 ${
                                 rep.targetAchieved >= 90 
                                   ? 'bg-emerald-500' 
                                   : rep.targetAchieved >= 50 
                                   ? 'bg-amber-500' 
-                                  : 'bg-[#8EB1D1]'
+                                  : 'bg-[var(--nc-accent)]'
                               }`}
                               style={{ width: `${rep.targetAchieved}%` }}
                             ></div>

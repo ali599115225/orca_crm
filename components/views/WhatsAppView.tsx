@@ -203,28 +203,28 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
       
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold mb-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
           <i className="ph-bold ph-whatsapp-logo"></i> {t.activeChannelBadge}
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[#E8ECEF] font-bold dark:text-white mb-2">
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className="text-xs md:text-sm text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium">
+        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
           {t.subtitle.replace('{companyName}', tenant.companyName)}
         </p>
       </div>
 
       {/* Connection Panel */}
-      <div className="bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-6 shadow-sm flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6">
+      <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6">
         <div className="space-y-3 lg:max-w-2xl">
-          <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base flex items-center gap-2">
-            <i className={`ph-fill ph-circle text-xs ${connected ? 'text-emerald-500 animate-pulse' : 'text-[#C4D8E5] font-medium'}`}></i>
+          <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base flex items-center gap-2">
+            <i className={`ph-fill ph-circle text-xs ${connected ? 'text-emerald-500 animate-pulse' : 'text-[var(--nc-text-dim)] font-medium'}`}></i>
             {t.pairingTitle}
           </h3>
-          <p className="text-xs text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium leading-relaxed">{t.pairingDesc}</p>
+          <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium leading-relaxed">{t.pairingDesc}</p>
           
           {connected && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-100 dark:border-[#A7C7E7]/60 text-[#C4D8E5] font-medium dark:text-slate-450">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-100 dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-slate-450">
               <p><span className="font-semibold">{t.connectedDevice}</span> <span className="font-bold text-slate-850 dark:text-white">iPhone 15 Pro</span></p>
               <p><span className="font-semibold">{t.connectedPhone}</span> <span className="font-bold text-slate-850 dark:text-white font-en">+966 50 111 2222</span></p>
               <p><span className="font-semibold">{t.activeAgentLabel}</span> <span className="font-bold text-indigo-500">{t.aiAgentBadge}</span></p>
@@ -235,11 +235,11 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
         <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0 justify-center">
           {/* Simulated QR placeholder */}
           {!connected && (
-            <div className="flex items-center gap-3 bg-[#1C2B48] border border-[#A7C7E7]/20 p-3 rounded-xl">
-              <div className="w-14 h-14 bg-[#1C2B48] dark:bg-slate-700 flex items-center justify-center rounded-lg border border-slate-600 shrink-0">
+            <div className="flex items-center gap-3 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-3 rounded-xl">
+              <div className="w-14 h-14 bg-[var(--nc-surface-solid)] dark:bg-slate-700 flex items-center justify-center rounded-lg border border-slate-600 shrink-0">
                 <i className="ph ph-qr-code text-white text-3xl opacity-80"></i>
               </div>
-              <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium leading-snug">{t.pairingQrDesc}</p>
+              <p className="text-[10px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium leading-snug">{t.pairingQrDesc}</p>
             </div>
           )}
 
@@ -262,10 +262,10 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[500px]">
           
           {/* Left panel: chats list (4 cols) */}
-          <div className="lg:col-span-4 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+          <div className="lg:col-span-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm flex flex-col gap-4">
             <div>
-              <h3 className="text-[#E8ECEF] font-bold dark:text-white font-bold text-base">{t.conversationsTitle}</h3>
-              <p className="text-[11px] text-slate-450 dark:text-[#C4D8E5] font-medium mt-0.5">{t.conversationsDesc}</p>
+              <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base">{t.conversationsTitle}</h3>
+              <p className="text-[11px] text-slate-450 dark:text-[var(--nc-text-dim)] font-medium mt-0.5">{t.conversationsDesc}</p>
             </div>
 
             <div className="space-y-2 overflow-y-auto max-h-[400px] scrollbar-fade flex-grow">
@@ -277,19 +277,19 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                     onClick={() => handleSelectChat(chat.id)}
                     className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start ${
                       isActive 
-                        ? 'bg-[#8EB1D1]/5 border-[#8EB1D1]/40 shadow-sm' 
-                        : 'bg-slate-50 dark:bg-[#1C2B48] border-[#A7C7E7]/20 dark:border-slate-850 hover:border-slate-350 dark:hover:border-[#A7C7E7]/20'
+                        ? 'bg-[var(--nc-accent)]/5 border-[var(--nc-accent-border)]/40 shadow-sm' 
+                        : 'bg-slate-50 dark:bg-[var(--nc-surface-solid)] border-[var(--nc-glass-border)] dark:border-slate-850 hover:border-slate-350 dark:hover:border-[var(--nc-glass-border)]'
                     }`}
                   >
                     <div className="space-y-1.5 flex-1 min-w-0 pr-1">
                       <div className="flex items-center justify-between w-full">
-                        <h4 className="font-bold text-xs text-[#E8ECEF] font-bold dark:text-white truncate">{chat.contactName}</h4>
-                        <span className="text-[9px] text-[#C4D8E5] font-medium font-en shrink-0">{formatTimestamp(chat.time)}</span>
+                        <h4 className="font-bold text-xs text-[var(--nc-text-primary)] font-bold dark:text-white truncate">{chat.contactName}</h4>
+                        <span className="text-[9px] text-[var(--nc-text-dim)] font-medium font-en shrink-0">{formatTimestamp(chat.time)}</span>
                       </div>
-                      <p className="text-[11px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium truncate leading-snug">{chat.lastMessage}</p>
+                      <p className="text-[11px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium truncate leading-snug">{chat.lastMessage}</p>
                     </div>
                     {chat.unread && (
-                      <div className="w-2.5 h-2.5 bg-[#8EB1D1] rounded-full shrink-0 ml-2 mt-1"></div>
+                      <div className="w-2.5 h-2.5 bg-[var(--nc-accent)] rounded-full shrink-0 ml-2 mt-1"></div>
                     )}
                   </div>
                 );
@@ -298,14 +298,14 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
           </div>
 
           {/* Right panel: chat dialogue message pane (8 cols) */}
-          <div className="lg:col-span-8 bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-2xl shadow-sm flex flex-col overflow-hidden min-h-[450px]">
+          <div className="lg:col-span-8 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl shadow-sm flex flex-col overflow-hidden min-h-[450px]">
             {activeChat ? (
               <>
                 {/* Chat header */}
-                <div className="p-4 border-b border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 bg-slate-50/50 dark:bg-[#1C2B48]/10 flex items-center justify-between gap-4">
+                <div className="p-4 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/10 flex items-center justify-between gap-4">
                   <div>
-                    <h4 className="font-bold text-[#E8ECEF] font-bold dark:text-white text-sm">{activeChat.contactName}</h4>
-                    <p className="text-[10px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium font-mono tracking-wider">{activeChat.contactPhone}</p>
+                    <h4 className="font-bold text-[var(--nc-text-primary)] font-bold dark:text-white text-sm">{activeChat.contactName}</h4>
+                    <p className="text-[10px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-mono tracking-wider">{activeChat.contactPhone}</p>
                   </div>
                   <span className="text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
                     {t.aiAgentBadge}
@@ -313,7 +313,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                 </div>
 
                 {/* Messages dialogue */}
-                <div className="p-4 space-y-4 overflow-y-auto max-h-[350px] flex-grow scrollbar-fade bg-slate-50/20 dark:bg-[#1C2B48]/10 flex flex-col">
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[350px] flex-grow scrollbar-fade bg-slate-50/20 dark:bg-[var(--nc-surface-solid)]/10 flex flex-col">
                   {activeChat.messages.map((m, idx) => {
                     const isAgent = m.sender === "agent";
                     return (
@@ -327,12 +327,12 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                       >
                         <div className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
                           isAgent 
-                            ? 'bg-slate-100 dark:bg-[#1C2B48] text-slate-850 dark:text-slate-200 rounded-br-none' 
-                            : 'bg-[#8EB1D1] text-white rounded-bl-none shadow-sm'
+                            ? 'bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-850 dark:text-slate-200 rounded-br-none' 
+                            : 'bg-[var(--nc-accent)] text-white rounded-bl-none shadow-sm'
                         }`}>
                           {m.text}
                         </div>
-                        <span className="text-[9px] text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium px-1 font-en">{formatTimestamp(m.time)}</span>
+                        <span className="text-[9px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium px-1 font-en">{formatTimestamp(m.time)}</span>
                       </div>
                     );
                   })}
@@ -340,7 +340,7 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                   {/* Typing simulation */}
                   {isTyping && (
                     <div className="self-start flex flex-col items-start space-y-1">
-                      <div className="bg-slate-100 dark:bg-[#1C2B48] text-slate-450 dark:text-slate-450 p-2.5 rounded-2xl rounded-br-none text-xs flex items-center gap-1">
+                      <div className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-450 dark:text-slate-450 p-2.5 rounded-2xl rounded-br-none text-xs flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-100"></span>
                         <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-200"></span>
                         <span className="w-1.5 h-1.5 bg-slate-450 rounded-full animate-bounce delay-300"></span>
@@ -352,19 +352,19 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
                 </div>
 
                 {/* Input area */}
-                <form onSubmit={handleSendMessage} className="p-3 border-t border-[#A7C7E7]/20 dark:border-[#A7C7E7]/20 flex gap-3 bg-slate-50/40 dark:bg-[#151f32]">
+                <form onSubmit={handleSendMessage} className="p-3 border-t border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] flex gap-3 bg-slate-50/40 dark:bg-[#151f32]">
                   <input 
                     type="text"
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     disabled={isTyping}
                     placeholder={t.inputPlaceholder}
-                    className="flex-grow rounded-xl bg-white dark:bg-[#1C2B48] border border-[#A7C7E7]/20 dark:border-slate-850 px-4 py-3 text-xs text-[#E8ECEF] font-bold dark:text-white placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:border-[#8EB1D1]"
+                    className="flex-grow rounded-xl bg-white dark:bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] dark:border-slate-850 px-4 py-3 text-xs text-[var(--nc-text-primary)] font-bold dark:text-white placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:border-[var(--nc-accent-border)]"
                   />
                   <button 
                     type="submit"
                     disabled={!messageInput.trim() || isTyping}
-                    className="bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white px-5 py-3 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                    className="bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white px-5 py-3 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer disabled:opacity-50"
                   >
                     {t.sendBtn}
                   </button>
@@ -372,8 +372,8 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <i className="ph ph-chat-circle-dots text-4xl text-[#C4D8E5] font-medium dark:text-[#C4D8E5] font-medium mb-2"></i>
-                <p className="text-slate-450 dark:text-[#C4D8E5] font-medium text-sm">{t.selectConversation}</p>
+                <i className="ph ph-chat-circle-dots text-4xl text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mb-2"></i>
+                <p className="text-slate-450 dark:text-[var(--nc-text-dim)] font-medium text-sm">{t.selectConversation}</p>
               </div>
             )}
           </div>

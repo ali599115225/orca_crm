@@ -399,7 +399,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               </div>
 
               <div className="pt-4">
-                <button type="submit" disabled={loading} className="w-full bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none">
+                <button type="submit" disabled={loading} className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none">
                   {loading ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...") : (lang === 'AR' ? "تسجيل الدخول" : "Log In")}
                 </button>
               </div>
@@ -409,16 +409,16 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       </main>
 
       {/* Footer المحدّث بروابط Next.js الديناميكية */}
-      <footer className="w-full p-6 text-center text-xs md:text-sm text-[#C4D8E5] font-medium flex items-center justify-center gap-4 z-10 relative">
-        <Link href="/privacy-policy" className={`transition-colors ${isDarkMode ? 'hover:text-[#C4D8E5] font-medium' : 'hover:text-slate-700'}`}>
+      <footer className="w-full p-6 text-center text-xs md:text-sm text-[var(--nc-text-dim)] font-medium flex items-center justify-center gap-4 z-10 relative">
+        <Link href="/privacy-policy" className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
         </Link>
         <span>|</span>
-        <Link href="/disclaimer" className={`transition-colors ${isDarkMode ? 'hover:text-[#C4D8E5] font-medium' : 'hover:text-slate-700'}`}>
+        <Link href="/disclaimer" className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
         </Link>
         <span>|</span>
-        <Link href="/terms-and-conditions" className={`transition-colors ${isDarkMode ? 'hover:text-[#C4D8E5] font-medium' : 'hover:text-slate-700'}`}>
+        <Link href="/terms-and-conditions" className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-700'}`}>
           {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
         </Link>
       </footer>

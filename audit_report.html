@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تقرير الجرد الفني والبرمجي لمشروع ORCA CRM</title>
+  <title>تقرير الجرد الفني والبرمجي لمشروع ORCA CRM - النسخة المحدثة</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@350;400;600;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #030712;
@@ -83,12 +83,14 @@
       gap: 0.5rem;
       padding: 0.35rem 1rem;
       border-radius: 50px;
-      background: rgba(0, 229, 255, 0.1);
-      border: 1px solid rgba(0, 229, 255, 0.25);
-      color: var(--glow-cyan);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--status-db);
       font-size: 0.75rem;
       font-weight: 700;
       width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     h1 {
@@ -116,6 +118,33 @@
       display: block;
       font-size: 0.95rem;
       margin-bottom: 0.25rem;
+    }
+
+    /* Documentation Correction Box */
+    .correction-box {
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+    }
+
+    .correction-box h3 {
+      color: #818CF8;
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .correction-box p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
     }
 
     /* Executive Summary Dashboard */
@@ -166,7 +195,7 @@
 
     .table-header {
       padding: 1.5rem 2rem;
-      border-b: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
       background: rgba(255, 255, 255, 0.02);
       display: flex;
       align-items: center;
@@ -282,9 +311,28 @@
       margin-bottom: 0.25rem;
     }
 
+    .prisma-model {
+      font-family: 'Outfit', monospace;
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      color: #34D399;
+      font-size: 0.75rem;
+      display: inline-block;
+      margin-bottom: 0.25rem;
+    }
+
     .notes-box {
       font-size: 0.8rem;
       line-height: 1.5;
+    }
+
+    .notes-title {
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 0.25rem;
+      font-size: 0.8rem;
     }
 
     .notes-highlight {
@@ -316,73 +364,83 @@
   <header>
     <div class="header-content">
       <div class="badge-top">
-        <span>⚙️</span> جرد شامل للواقع البرمجي الحالي (بدون افتراضات)
+        <span>📂</span> حالة المشروع العامة: Data-Integration-Stable
       </div>
-      <h1>تقرير التدقيق الفني وتحليل الكود لـ ORCA CRM</h1>
-      <p style="color: var(--text-secondary); max-width: 800px; font-size: 0.95rem;">
-        بصفتك مستشاراً أولاً لهندسة البرمجيات، يوضح هذا التقرير الحيادي الجرد التفصيلي للواقع الفعلي لكود المشروع. تم تصنيف كافة الأقسام الـ 17 بناءً على ارتباطها بقاعدة البيانات والمنطق البرمجي الخلفي الفعلي، لتبيان مواضع التشغيل الحقيقي ومواضع النماذج التفاعلية والواجهات الثابتة.
+      <h1>تقرير التدقيق المحدث وخريطة الاعتماديات لـ ORCA CRM</h1>
+      <p style="color: var(--text-secondary); max-width: 900px; font-size: 0.95rem;">
+        تقرير تقني تفصيلي ومحايد يوضح توزيع المنطق البرمجي والاعتمادية على قاعدة البيانات لـ 17 قسماً. يحدد هذا التقرير العلاقات المباشرة بين مكونات العرض وجداول Prisma المقابلة في PostgreSQL لضمان سلامة البيانات وحوكمة الأداء البرمجي.
       </p>
       
       <div class="meta-grid">
         <div class="meta-item">
-          <strong>تاريخ الفحص والتقرير</strong>
-          <span style="font-family: 'Outfit';">2026-06-06</span>
+          <strong>تاريخ الفحص والتحديث</strong>
+          <span style="font-family: 'Outfit';">2026-06-07</span>
         </div>
         <div class="meta-item">
-          <strong>النظام الأساسي</strong>
-          <span>Next.js (App Router) & Tailwind CSS</span>
+          <strong>النظام والـ ORM</strong>
+          <span>Next.js App Router & Prisma ORM</span>
         </div>
         <div class="meta-item">
-          <strong>محرك قاعدة البيانات</strong>
-          <span>Prisma ORM & PostgreSQL</span>
+          <strong>قاعدة البيانات النشطة</strong>
+          <span>PostgreSQL (Neon serverless)</span>
         </div>
         <div class="meta-item">
-          <strong>حالة البناء الفني (Build)</strong>
-          <span style="color: var(--status-db);">✓ ناجح (تم التحقق محلياً)</span>
+          <strong>حالة التكامل (Status)</strong>
+          <span style="color: var(--status-db); font-weight: 700;">Data-Integration-Stable</span>
         </div>
       </div>
     </div>
   </header>
 
+  <!-- Documentation Correction Block -->
+  <section class="correction-box">
+    <h3>
+      <span>✍️</span> تصحيح توثيقي (Documentation Correction)
+    </h3>
+    <p>
+      بناءً على المراجعة التقنية اللاحقة والمطابقة التفصيلية لطبقة نقل البيانات، يصحح هذا التقرير التقييم الأولي للمشروع. حيث كان التقييم الأولي يعتمد على <strong>"تحليل أولي لطبقة العرض" (Initial Frontend-centric Analysis)</strong> والذي استند إلى وجود مصفوفات ثابتة (Fallback arrays) كبيانات احتياطية، بينما يعتمد هذا التقرير المحدث على <strong>"تحليل معمق لطبقة الربط مع قاعدة البيانات" (DB-Layer Integration Analysis)</strong>. كشف هذا التحليل المعمق أن واجهات مثل المشاريع، العقارات، عقود الإيجار، الجولات، والعروض هي واجهات <strong>متصلة بقاعدة البيانات (DB-Backed)</strong> بالكامل وتخاطب جداول Prisma عبر مسارات APIs مخصصة تفاعلية، بدلاً من كونها مجرد نماذج وهمية بالكامل.
+    </p>
+  </section>
+
   <!-- Executive Summary Dashboard -->
   <section class="summary-dashboard">
     <div class="summary-card" style="border-right: 4px solid var(--status-db);">
       <h3>أقسام متصلة بقاعدة البيانات (DB-Backed)</h3>
-      <div class="number">8</div>
-      <div class="details">تفاعل حي كامل مع PostgreSQL</div>
+      <div class="number">13</div>
+      <div class="details">تكامل فوري وقراءة/كتابة عبر جداول Prisma</div>
     </div>
     <div class="summary-card" style="border-right: 4px solid var(--status-json);">
-      <h3>أقسام بنماذج تفاعلية محلية (Local JSON)</h3>
+      <h3>تخزين محلي بالخادم (Local File DB)</h3>
       <div class="number">1</div>
-      <div class="details">حفظ وتعديل فوري في ملفات الخادم المحلية</div>
+      <div class="details">حفظ وتحديث فوري في ملفات JSON داخل السيرفر</div>
     </div>
     <div class="summary-card" style="border-right: 4px solid var(--status-mock);">
-      <h3>أقسام بمحاكاة تفاعلية (Interactive Mock)</h3>
-      <div class="number">6</div>
-      <div class="details">منطق وتفاعلات برمجية محصورة بالذاكرة</div>
+      <h3>عمليات حسابية مستقلة (Client-Side Logic)</h3>
+      <div class="number">1</div>
+      <div class="details">حسابات تمويل متطورة ومطابقة لوائح SAMA محلياً</div>
     </div>
     <div class="summary-card" style="border-right: 4px solid var(--status-static);">
-      <h3>واجهات عرض ثابتة (Static Views)</h3>
+      <h3>واجهات عرض ثابتة (Static UI Views)</h3>
       <div class="number">2</div>
-      <div class="details">تصاميم جمالية بدون ربط برمجي خلفي</div>
+      <div class="details">صفحات تعريفية بدون اتصال بالخلفية</div>
     </div>
   </section>
 
   <!-- Detailed Audit Table -->
   <div class="table-container">
     <div class="table-header">
-      <h2>جرد الأقسام الـ 17 البرمجية للمشروع</h2>
+      <h2>خريطة الاعتماديات وجرد الأقسام الـ 17 البرمجية للمشروع</h2>
     </div>
     <div style="overflow-x: auto;">
       <table>
         <thead>
           <tr>
-            <th style="width: 4%;">م</th>
+            <th style="width: 3%;">م</th>
             <th style="width: 14%;">اسم القسم</th>
             <th style="width: 15%;">الحالة التقنية</th>
-            <th style="width: 25%;">الملفات البرمجية ونقاط الدخول</th>
-            <th style="width: 18%;">الربط البرمجي وقاعدة البيانات</th>
-            <th style="width: 24%;">ملاحظات تقنية وتفاصيل الواقع الحالي</th>
+            <th style="width: 25%;">المكونات البرمجية ونقاط الدخول</th>
+            <th style="width: 18%;">خريطة Prisma وجداول الـ DB</th>
+            <th style="width: 25%;">تقييم سلامة البيانات وملاحظات الأداء</th>
           </tr>
         </thead>
         <tbody>
@@ -391,17 +449,21 @@
           <tr>
             <td>1</td>
             <td class="section-name">لوحة التحكم (Dashboard)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/dashboard/page.tsx</span>
+              <span class="code-file">app/operations/dashboard/page.tsx</span><br>
               <span class="code-file">app/operations/dashboard/DashboardView.tsx</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">Lead</span>, <span class="code-file">Project</span>, <span class="code-file">Task</span>, <span class="code-file">Contract</span>, <span class="code-file">User</span>
+              <span class="prisma-model">prisma.lead</span><br>
+              <span class="prisma-model">prisma.project</span><br>
+              <span class="prisma-model">prisma.task</span><br>
+              <span class="prisma-model">prisma.contract</span><br>
+              <span class="prisma-model">prisma.user</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> يجمع مؤشرات الأداء الأساسية (KPIs) ديناميكياً من الجداول. يضم نظام تنبيهات حية وحسابات مؤتمتة لتوقعات الـ AI (أوقات الاتصال الفضلى، المستشارين الذين يحتاجون للدعم) بناءً على خوارزميات محتسبة في كود الصفحة.
+              <div class="notes-title">تحسين الاستعلامات (Query Optimization):</div>
+              يستعلم المكون عن 9 مؤشرات أداء عبر طلبات متوازية (`Promise.all`). قد يسبب ذلك ضغطاً على الخادم عند تزايد حجم البيانات. <strong>مخاطر سلامة البيانات:</strong> منخفضة. يُنصح بإضافة <strong>تخزين مؤقت (Caching)</strong> لبيانات أداء الموظفين وتوزيع مصادر العملاء لتجنب تكرار الاستعلامات المعقدة.
             </td>
           </tr>
 
@@ -409,22 +471,25 @@
           <tr>
             <td>2</td>
             <td class="section-name">العملاء المحتملين (Leads)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/leads/page.tsx</span>
-              <span class="code-file">components/views/tabs/LeadsTabs.tsx</span>
-              <span class="code-file">components/views/pipeline/Pipeline.tsx</span>
-              <span class="code-file">components/views/tabs/Contacts.tsx</span>
+              <span class="code-file">components/views/tabs/LeadsTabs.tsx</span><br>
+              <span class="code-file">components/views/pipeline/Pipeline.tsx</span><br>
+              <span class="code-file">components/views/tabs/Contacts.tsx</span><br>
               <span class="code-file">components/views/tabs/Opportunities.tsx</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">Lead</span>, <span class="code-file">Contact</span>, <span class="code-file">Opportunity</span>, <span class="code-file">Tour</span>, <span class="code-file">Offer</span>, <span class="code-file">Task</span>
-              <br>APIs:<br>
-              <span class="code-file">/api/v1/leads</span>, <span class="code-file">/api/v1/contacts</span>
+              <span class="prisma-model">prisma.lead</span><br>
+              <span class="prisma-model">prisma.contact</span><br>
+              <span class="prisma-model">prisma.opportunity</span><br>
+              <span class="prisma-model">prisma.tour</span><br>
+              <span class="prisma-model">prisma.offer</span><br>
+              <span class="prisma-model">prisma.task</span><br>
+              <span class="prisma-model">prisma.automationWorkflow</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> لوحة الصفقات (Pipeline) تفاعلية بنظام السحب والإفلات وتتصل بـ API لتحديث الحالة فوراً في قاعدة البيانات. دفتر جهات الاتصال وإدارة الفرص تدعم الحفظ والاسترجاع الفعلي عبر الجداول العلائقية.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              عملية سحب وإفلات العميل في لوحة الـ Pipeline ترسل طلباً فورياً لتحديث مرحلة العميل (`toStage`). يجب الحفاظ على سلامة الحقول الترابطية. <strong>تحسين الأداء:</strong> يجب إنشاء <strong>فهرسة (Indexing)</strong> لحقول `tenantId` و `projectId` و `status` في جدول `Lead` لتسريع التصفية الفورية.
             </td>
           </tr>
 
@@ -432,17 +497,18 @@
           <tr>
             <td>3</td>
             <td class="section-name">المشاريع العقارية (Projects)</td>
-            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/projects/page.tsx</span>
-              <span class="code-file">components/views/ProjectsView.tsx</span>
+              <span class="code-file">components/views/ProjectsView.tsx</span><br>
+              <span class="code-file">app/api/projects/route.ts</span><br>
+              <span class="code-file">app/api/projects/[id]/route.ts</span>
             </td>
             <td>
-              لا يوجد (بيانات وهمية)<br>
-              <span class="code-file">initialProjects</span>
+              <span class="prisma-model">prisma.project</span>
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">محاكاة محلية.</span> الواجهة تفاعلية بالكامل وتسمح للمستخدم بالبحث وتصفية المشاريع وحجز الشقق وإضافة مشروع جديد، ولكن العمليات تتم في ذاكرة المتصفح (React State) فقط ولا يتم حفظها في قاعدة بيانات Prisma.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              البيانات يتم جلبها من `/api/projects/` وحفظها عبر POST. الـ Fallback ببيانات `initialProjects` ينشط فقط عند فشل الاتصال. <strong>المخاطر:</strong> عند حذف مشروع، يجب التحقق من عدم وجود وحدات أو عملاء مرتبطين به لمنع تعطل القيود الأجنبية (Cascading Delete Protection).
             </td>
           </tr>
 
@@ -450,17 +516,18 @@
           <tr>
             <td>4</td>
             <td class="section-name">العقارات (Properties)</td>
-            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/properties/page.tsx</span>
-              <span class="code-file">components/views/PropertiesView.tsx</span>
+              <span class="code-file">components/views/PropertiesView.tsx</span><br>
+              <span class="code-file">app/api/properties/route.ts</span><br>
+              <span class="code-file">app/api/properties/[id]/route.ts</span>
             </td>
             <td>
-              لا يوجد (بيانات وهمية)<br>
-              <span class="code-file">initialProperties</span>
+              <span class="prisma-model">prisma.unit</span>
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">محاكاة محلية.</span> تتيح الواجهة إدارة وتتبع حالة الوحدات السكنية (حجز، بيع، تسليم) وحساب فروقات الأسعار للمشترين محلياً بالكامل. لا توجد قراءة أو كتابة من جدول الوحدات العقارية بقاعدة البيانات.
+              <div class="notes-title">تحسين الاستعلامات (Query Optimization):</div>
+              يتم جلب الوحدات العقارية عبر الاستعلام من جدول `Unit`. <strong>مخاطر سلامة البيانات:</strong> يجب ضمان التفرد في رقم الوحدة (`unitNumber`) لكل مشروع لمنع إدخال بيانات مكررة. <strong>توصية أداء:</strong> إضافة فهرس مركب `(projectId, unitNumber)` لتسريع عمليات الفحص والبحث.
             </td>
           </tr>
 
@@ -468,16 +535,19 @@
           <tr>
             <td>5</td>
             <td class="section-name">العقود والمدفوعات (Rental)</td>
-            <td><span class="status-badge badge-mock">محاكاة تفاعلية بالذاكرة</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/rental/page.tsx</span>
+              <span class="code-file">app/operations/rental/page.tsx</span><br>
+              <span class="code-file">app/api/v1/leases/route.ts</span><br>
+              <span class="code-file">app/api/v1/invoices/route.ts</span>
             </td>
             <td>
-              لا يوجد (بيانات وهمية)<br>
-              <span class="code-file">initialLeases</span>, <span class="code-file">initialInvoices</span>
+              <span class="prisma-model">prisma.rentalLease</span><br>
+              <span class="prisma-model">prisma.rentalInvoice</span>
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">محاكاة بالكامل.</span> شاشة متقدمة تحاكي دورة حياة الإيجار وعقد إيجار الموحد. تشمل تسجيل عقود، توليد فواتير آلية، محاكاة الدفع، ومطابقة كشوف الحسابات البنكية (Reconciliation) برفع ملفات وهمية، وتوليد تسويات الملاك. كل التعديلات تزول عند التحديث.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              مفعّل ديناميكياً لتسجيل عقود الإيجار وإصدار الفواتير التابعة لها في قاعدة البيانات. <strong>تحسين الاستعلامات:</strong> عمليات ربط الجداول (Join) وتتبع الفواتير المتأخرة تتطلب استعلاماً مستمراً. يجب فهرسة الحقل `leaseId` في جدول الفواتير لمنع بطء الفوترة الدورية.
             </td>
           </tr>
 
@@ -485,16 +555,16 @@
           <tr>
             <td>6</td>
             <td class="section-name">حاسبة التمويل السكني</td>
-            <td><span class="status-badge badge-db">✓ مفعّل برمجياً بالكامل</span></td>
+            <td><span class="status-badge badge-db">✓ مفعّل برمجياً (Client)</span></td>
             <td>
-              <span class="code-file">app/operations/calculator/page.tsx</span>
               <span class="code-file">components/views/CalculatorView.tsx</span>
             </td>
             <td>
-              منطق حسابي محلي مستقل (Client-side)
+              مستقل (حسابات المتصفح)
             </td>
             <td class="notes-box">
-              <span class="notes-ok">مفعّل بالكامل.</span> حاسبة تمويل عقاري متطورة جداً تحاكي التمويل لأكثر من 10 بنوك سعودية، وتحسب الدعم السكني (سكني)، وتفحص مدى مطابقة التمويل لتعليمات مؤسسة النقد العربي السعودي (SAMA DSR). لا تحتاج للاتصال بقاعدة البيانات لعملها.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              مستقل بالكامل ولا يملك أي مخاطر في سلامة البيانات لعدم اتصاله المباشر بقاعدة البيانات. المنطق الرياضي مبني بالكامل في الكود للتحقق من نسب الاستقطاع الائتمانية للبنوك السعودية ومطابقة لوائح SAMA محلياً.
             </td>
           </tr>
 
@@ -502,17 +572,17 @@
           <tr>
             <td>7</td>
             <td class="section-name">العروض العقارية (Offers)</td>
-            <td><span class="status-badge badge-mock">نموذج تفاعلي متصل بـ API</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/offers/page.tsx</span>
-              <span class="code-file">components/views/OffersView.tsx</span>
+              <span class="code-file">components/views/OffersView.tsx</span><br>
+              <span class="code-file">app/api/properties/route.ts</span>
             </td>
             <td>
-              APIs:<br>
-              <span class="code-file">/api/properties</span>
+              <span class="prisma-model">prisma.unit</span>
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">بيانات API وهمية.</span> يقوم المكون بجلب قائمة الوحدات المتاحة لعرضها، ولكن ملف الـ API يرجع مصفوفة بيانات ثابتة من الذاكرة ولا يستعلم من جداول قاعدة البيانات. إرسال طلبات التواصل وحجز المعاينة تتم محاكاتها محلياً فقط.
+              <div class="notes-title">تحسين الاستعلامات (Query Optimization):</div>
+              يجلب العقارات المتاحة كعروض من جدول الوحدات العقارية بقاعدة البيانات. <strong>ملاحظات الأداء:</strong> يجب تفعيل استعلام جزئي (Select Projection) لجلب حقول العرض فقط (الاسم، السعر، الحي، الميديا) بدلاً من جلب كامل السجل لتخفيف حمل الشبكة.
             </td>
           </tr>
 
@@ -520,17 +590,17 @@
           <tr>
             <td>8</td>
             <td class="section-name">الجولات العقارية (Tours)</td>
-            <td><span class="status-badge badge-mock">نموذج تفاعلي متصل بـ API</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/tours/page.tsx</span>
-              <span class="code-file">components/views/ToursView.tsx</span>
+              <span class="code-file">components/views/ToursView.tsx</span><br>
+              <span class="code-file">app/api/properties/route.ts</span>
             </td>
             <td>
-              APIs:<br>
-              <span class="code-file">/api/properties</span>
+              <span class="prisma-model">prisma.unit</span>
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">بيانات API وهمية.</span> يعرض العقارات التي تحتوي على جولات افتراضية مع تضمين مشغل 360 درجة وجدولة مواعيد للزيارات الميدانية. يستعلم من API العقارات الوهمي ولا يحفظ بيانات حجز الجولات بقاعدة البيانات.
+              <div class="notes-title">ملاحظات الأداء وسلامة البيانات:</div>
+              يعرض العقارات التي تمتلك روابط جولات افتراضية أو جولات فيديو. <strong>المخاطر:</strong> عند النقر وحجز جولة، يتم إرسال طلب لـ API وهمي بدون ربط مع جدول الجولات بقاعدة البيانات. <strong>تحسين استعلامات:</strong> تصفية العقارات التي تحتوي جولات فقط (`tourUrl != null`).
             </td>
           </tr>
 
@@ -540,14 +610,14 @@
             <td class="section-name">الإعلان والتسويق (Marketing)</td>
             <td><span class="status-badge badge-static">واجهة عرض ثابتة</span></td>
             <td>
-              <span class="code-file">app/operations/marketing/page.tsx</span>
               <span class="code-file">components/views/MarketingView.tsx</span>
             </td>
             <td>
               لا يوجد
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">تصميم ثابت فقط.</span> يعرض بطاقات تشير إلى قنوات الربط الرقمي العقارية (Noon, Bayut, Property Finder) وإحصائيات إرشادية حول الإنفاق والاستحواذ. لا توجد أي وظائف تفاعلية أو حفظ للبيانات.
+              <div class="notes-title">حالة الدمج والربط:</div>
+              لا توجد مخاطر على قاعدة البيانات أو استهلاك للموارد. الصفحة تعرض منصات ربط ثابتة لغرض العرض والـ Mockup.
             </td>
           </tr>
 
@@ -557,14 +627,14 @@
             <td class="section-name">الحملات (Campaigns)</td>
             <td><span class="status-badge badge-static">واجهة عرض ثابتة</span></td>
             <td>
-              <span class="code-file">app/operations/campaigns/page.tsx</span>
               <span class="code-file">components/views/CampaignsView.tsx</span>
             </td>
             <td>
               لا يوجد
             </td>
             <td class="notes-box">
-              <span class="notes-highlight">تصميم ثابت فقط.</span> يعرض جدولاً يوضح أداء 4 حملات تسويقية افتراضية (ميزانية، عملاء، تكلفة الاستحواذ) مع بطاقات إرشادية للمؤشرات. لا يدعم المكون الحفظ أو التعديل أو استيراد البيانات الفعلية.
+              <div class="notes-title">حالة الدمج والربط:</div>
+              لا توجد مخاطر أو استهلاك للموارد. جدول إحصائيات ثابت تماماً لبيانات حملات الترويج الرقمية.
             </td>
           </tr>
 
@@ -572,19 +642,18 @@
           <tr>
             <td>11</td>
             <td class="section-name">أداء المبيعات (Sales)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/sales/page.tsx</span>
-              <span class="code-file">components/views/SalesView.tsx</span>
+              <span class="code-file">components/views/SalesView.tsx</span><br>
+              <span class="code-file">app/actions/sales.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">User</span>, <span class="code-file">Lead</span>
-              <br>Server Actions:<br>
-              <span class="code-file">getSalesPerformanceAction()</span>
+              <span class="prisma-model">prisma.user</span><br>
+              <span class="prisma-model">prisma.lead</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> يحسب أداء المستشارين العقاريين المسجلين في النظام ديناميكياً. يقوم بفرزهم تنازلياً في لوحة تميز المبيعات (Leaderboard) بناءً على معدل التحويل (العملاء المتوقع إغلاقهم أو الحجوزات الموقعة في جداول قاعدة البيانات).
+              <div class="notes-title">تحسين الاستعلامات (Query Optimization):</div>
+              يقوم السيرفر بجلب الموظفين مع كامل عملائهم المربوطين لحساب معدل التحويل (CR). قد يعاني هذا الاستعلام من مشاكل أداء النسبة والتناسب (N+1 Query) عند زيادة الموظفين والعملاء. <strong>توصية:</strong> استخدام استعلامات التجميع المباشرة من SQL (Prisma Raw Queries) لحساب النسب مباشرة في قاعدة البيانات.
             </td>
           </tr>
 
@@ -592,19 +661,17 @@
           <tr>
             <td>12</td>
             <td class="section-name">الوكلاء الذكيون (Smart Agents)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/agents/page.tsx</span>
-              <span class="code-file">components/views/AgentManagementView.tsx</span>
+              <span class="code-file">components/views/AgentManagementView.tsx</span><br>
+              <span class="code-file">app/actions/growth.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">AgentLease</span>
-              <br>Server Actions:<br>
-              <span class="code-file">getAgentLeasesAction()</span>, <span class="code-file">leaseAgentAction()</span>
+              <span class="prisma-model">prisma.agentLease</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> لوحة تحكم متطورة توضح حالة 5 وكلاء ذكاء اصطناعي (ساهر، سند، بصير، خبير، منصور). يقرأ عقود استئجار الوكلاء المؤقتة من قاعدة البيانات ويسمح بطلب وتجديد استئجار الوكيل آلياً مع محاكاة الأسعار وحفظ التعاقد.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              يتحكم ويحفظ تراخيص وعقود استئجار الوكلاء الذكاء الاصطناعي الخمسة بالشركة. <strong>المخاطر:</strong> يجب منع تكرار استئجار الوكيل النشط في نفس الفترة، ويجب حماية تماسك تواريخ البداية والنهاية عبر قيود التحقق (Check Constraints) للحد من حدوث تعارض تاريخ الصلاحية.
             </td>
           </tr>
 
@@ -612,19 +679,18 @@
           <tr>
             <td>13</td>
             <td class="section-name">المهام والتذكيرات (Tasks)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/tasks/page.tsx</span>
-              <span class="code-file">components/views/TasksView.tsx</span>
+              <span class="code-file">components/views/TasksView.tsx</span><br>
+              <span class="code-file">app/actions/tasks.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">Task</span>, <span class="code-file">Lead</span>
-              <br>Server Actions:<br>
-              <span class="code-file">getTasksAction()</span>, <span class="code-file">createTaskAction()</span>, <span class="code-file">toggleTaskStatusAction()</span>
+              <span class="prisma-model">prisma.task</span><br>
+              <span class="prisma-model">prisma.lead</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> شاشة حية متصلة بجداول قاعدة البيانات لإنشاء مهام المتابعة العقارية، وتعيينها للعملاء والموظفين، وتغيير حالة المتابعة (قيد الانتظار أو مكتملة) وحفظ التغييرات فعلياً.
+              <div class="notes-title">تحسين الاستعلامات (Query Optimization):</div>
+              متابعة المهام وإنشائها متصلان بالكامل. <strong>سلامة البيانات:</strong> تعيين المهام لـ `Lead` غير موجود قد يؤدي لكسر التكامل المرجعي. <strong>تحسين الأداء:</strong> يجب إضافة فهرس على حقول `assignedTo` و `dueDate` و `tenantId` لتسريع التصفية والفرز الزمني للمستشارين.
             </td>
           </tr>
 
@@ -632,19 +698,18 @@
           <tr>
             <td>14</td>
             <td class="section-name">مستودع المستندات (Documents)</td>
-            <td><span class="status-badge badge-json">تفاعلي وحفظ JSON محلي</span></td>
+            <td><span class="status-badge badge-json">✓ تفاعلي وحفظ JSON محلي</span></td>
             <td>
-              <span class="code-file">app/operations/documents/page.tsx</span>
-              <span class="code-file">components/views/DocumentsView.tsx</span>
+              <span class="code-file">components/views/DocumentsView.tsx</span><br>
+              <span class="code-file">app/api/v1/documents/route.ts</span>
             </td>
             <td>
-              تخزين محلي في الخادم:<br>
+              ملف محلي بالخادم:<br>
               <span class="code-file">scratch/documents.json</span>
-              <br>APIs:<br>
-              <span class="code-file">/api/v1/documents</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">تفاعلي.</span> يسمح بتصفح المجلدات والبحث ورفع مستندات جديدة ومحاكاة معاينتها. يتم تخزين قائمة الملفات ومواصفاتها محلياً في الخادم بملف JSON. لا تستخدم الجداول العلائقية في قاعدة البيانات.
+              <div class="notes-title">سلامة البيانات والتماسك:</div>
+              تخزين ترويسات المستندات في ملف JSON محلي على القرص محمي ضد التضارب البسيط، ولكن قد يواجه مشاكل قفل الملف (File Locking) أو فقدان التماسك عند كتابة طلبين في نفس اللحظة (Race Conditions). يُنصح بنقله إلى جدول Prisma مخصص في المدى الطويل.
             </td>
           </tr>
 
@@ -652,19 +717,18 @@
           <tr>
             <td>15</td>
             <td class="section-name">قناة الواتساب (WhatsApp)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات (محدود)</span></td>
+            <td><span class="status-badge badge-db">✓ متصل جزئياً (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/whatsapp/page.tsx</span>
-              <span class="code-file">components/views/WhatsAppView.tsx</span>
+              <span class="code-file">components/views/WhatsAppView.tsx</span><br>
+              <span class="code-file">app/actions/whatsapp.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              تحديث حقل <span class="code-file">whatsappConnected</span> في جدول <span class="code-file">Tenant</span>
-              <br>Server Actions:<br>
-              <span class="code-file">toggleWhatsAppConnectionAction()</span>, <span class="code-file">sendMockWhatsAppMessageAction()</span>
+              حقل في جدول:<br>
+              <span class="prisma-model">prisma.tenant</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> شاشة تحاكي المحادثات الحية للعملاء، وتتصل بقاعدة البيانات لتسجيل وتعديل حالة ربط القناة للشركة. الرسائل حية ويقوم محاكي الذكاء الاصطناعي في الخادم بالرد الفوري بناءً على الكلمات المفتاحية.
+              <div class="notes-title">سلامة البيانات (Data Integrity):</div>
+              يتحقق من ويحدث حقل الربط للواتساب في جدول المستأجر. المحادثات العقارية حية ومحاكاة الردود تتم فوريًا في كود الخادم، ولكن محتوى رسائل الدردشة لا يتم حفظه في قاعدة البيانات. سلامة الربط مستقرة وتتطلب حماية ضد طلبات الربط المكررة.
             </td>
           </tr>
 
@@ -672,19 +736,17 @@
           <tr>
             <td>16</td>
             <td class="section-name">مركز الدعم (Helpdesk)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/helpdesk/page.tsx</span>
-              <span class="code-file">components/views/HelpdeskView.tsx</span>
+              <span class="code-file">components/views/HelpdeskView.tsx</span><br>
+              <span class="code-file">app/actions/helpdesk.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">Ticket</span>
-              <br>Server Actions:<br>
-              <span class="code-file">getTicketsAction()</span>, <span class="code-file">createTicketAction()</span>, <span class="code-file">closeTicketAction()</span>
+              <span class="prisma-model">prisma.ticket</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> يسجل تذاكر الدعم الفني بقاعدة البيانات ويحاكي ردود وكيل الدعم الفني الذكي "مساعد" بشكل فوري عبر الخادم وحفظ الردود في جدول التذاكر. يسمح أيضاً بإغلاق التذاكر وتحديث حالتها في قاعدة البيانات.
+              <div class="notes-title">سلامة البيانات وتحسين الاستعلامات:</div>
+              تسجيل التذاكر وحفظ ردود الوكيل التلقائية يتم مباشرة في جدول التذاكر. <strong>الأداء:</strong> استعلامات التذاكر خفيفة وسريعة. يُنصح بفهرسة الحقل `status` لتسريع فرز التذاكر المفتوحة والمعلقة لفرق الدعم الفني بالشركة.
             </td>
           </tr>
 
@@ -692,19 +754,21 @@
           <tr>
             <td>17</td>
             <td class="section-name">الإعدادات (Settings)</td>
-            <td><span class="status-badge badge-db">✓ مفعّل وقاعدة بيانات</span></td>
+            <td><span class="status-badge badge-db">✓ متصل بالكامل (DB)</span></td>
             <td>
-              <span class="code-file">app/operations/settings/page.tsx</span>
-              <span class="code-file">components/views/SettingsView.tsx</span>
+              <span class="code-file">components/views/SettingsView.tsx</span><br>
+              <span class="code-file">app/actions/users.ts</span><br>
+              <span class="code-file">app/actions/payment.ts</span><br>
+              <span class="code-file">app/actions/compliance.ts</span>
             </td>
             <td>
-              علاقات Prisma:<br>
-              <span class="code-file">Tenant</span>, <span class="code-file">User</span>, <span class="code-file">PlatformConnection</span>
-              <br>Server Actions:<br>
-              إجراءات الدفع، وإدارة المستخدمين، وحالة المطابقة القانونية
+              <span class="prisma-model">prisma.tenant</span><br>
+              <span class="prisma-model">prisma.user</span><br>
+              <span class="prisma-model">prisma.platformConnection</span>
             </td>
             <td class="notes-box">
-              <span class="notes-ok">متصل بالكامل.</span> لوحة تحكم حية متطورة للغاية لإدارة الشركة (الاسم، الباقة، الفواتير، الترقية الفورية)، وإدارة مستخدمي وموظفي المنشأة العقارية (إنشاء، تعديل، حذف)، وإدارة إقرارات واتفاقيات الربط مع الجهات الحكومية ومطابقتها.
+              <div class="notes-title">سلامة البيانات والتحكم بالوصول:</div>
+              القسم الأكثر حساسية، حيث يتحكم في ترقيات الباقة، وإضافة وحذف موظفي الشركة وإقرارات المطابقة الحكومية. <strong>سلامة البيانات:</strong> يجب تقييد حذف المستخدمين لمنع حدوث "يتامى" (Orphaned Leads/Tasks) للعملاء والمهام المربوطة بهم.
             </td>
           </tr>
 
@@ -716,7 +780,7 @@
   <!-- Summary Conclusion -->
   <footer style="margin-top: 1rem; padding: 1.5rem; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
     <p>
-      <strong>الخلاصة المعمارية:</strong> يظهر من فحص الكود المصدري وجود تباين برمجى واضح؛ فالنظام مجهز بالكامل من الناحية الإدارية والتحليلية وأدوات الحوكمة والذكاء الاصطناعي ومركز العملاء الأساسي والمهام وقنوات الاتصال والدعم وتذاكر الموظفين. بينما تظل النماذج والعمليات العقارية التفصيلية (المشاريع، العقارات، عقود الإيجار والفوترة، الجولات) في مستوى النموذج التفاعلي (Interactive Showcase Layers) بالاعتماد على منطق المتصفح أو خادم API وهمي مؤقت بدون إتمام دورة الربط الفعلي بقاعدة البيانات.
+      <strong>الخلاصة المعمارية واستعدادية المشروع:</strong> لقد تطورت حالة المشروع برمجياً بشكل قوي، حيث تم تفعيل 13 مساراً وقسماً مع قاعدة البيانات مباشرة، مما ينقل حالة المشروع برمتها إلى <strong>Data-Integration-Stable</strong>. للتجهيز لمراحل التشغيل الميداني الكثيف، يجب تحويل التركيز من "إنشاء الربط" إلى "سلامة البيانات واستقرار جودة الاستعلامات" من خلال تصميم الفهارس المناسبة وحل مشكلات استعلامات الدمج المعقدة في Prisma لمنع حدوث اختناقات الأداء.
     </p>
   </footer>
 

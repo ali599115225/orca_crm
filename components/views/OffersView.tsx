@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
+import { getPropertiesAction } from '@/app/actions/properties';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface PropertyOffer {
@@ -117,12 +118,12 @@ export default function OffersView() {
   const [offersError, setOffersError] = useState<string | null>(null);
 
   useEffect(() => {
-    setOffersLoading(true);
-    fetch('/api/properties/')
-      .then(r => r.json())
-      .then(res => {
-        if (res.success && Array.isArray(res.data)) {
-          const mapped: PropertyOffer[] = res.data.map((u: any) => ({
+    async function loadOffers() {
+      setOffersLoading(true);
+      try {
+        const data = await getPropertiesAction();
+        if (data && data.length > 0) {
+          const mapped: PropertyOffer[] = data.map((u: any) => ({
             id: u.id,
             title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
             type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',
@@ -133,7 +134,7 @@ export default function OffersView() {
             city: u.city || 'الرياض',
             district: u.district || 'غير محدد',
             agent: u.agentName || 'غير معين',
-            posted: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
+            posted: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '2026-01-01',
             coords: { lat: u.lat || 24.7, lng: u.lng || 46.7 },
             description: u.desc || '',
           }));
@@ -141,13 +142,14 @@ export default function OffersView() {
         } else {
           setProperties(initialProperties);
         }
-        setOffersLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
         setOffersError('تعذر تحميل العروض من قاعدة البيانات');
         setProperties(initialProperties);
+      } finally {
         setOffersLoading(false);
-      });
+      }
+    }
+    loadOffers();
   }, []);
 
   // Filters State
@@ -481,14 +483,14 @@ export default function OffersView() {
                 setMonthlyInstallment(monthly);
                 setActiveModal('mortgage');
               }}
-              className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
+              className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
             >
-              <Calculator size={15} className="text-[#8EB1D1]" />
+              <Calculator size={15} className="text-[var(--nc-text-secondary)]" />
               حاسبة التمويل
             </button>
             <button
               onClick={() => setActiveModal('create_listing')}
-              className="flex items-center gap-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
+              className="flex items-center gap-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
             >
               <Plus size={15} />
               أضف عرضاً
@@ -504,34 +506,34 @@ export default function OffersView() {
         <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
           
           {/* فلترة العروض */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
-            <h3 className="text-xs font-bold text-[#8EB1D1] border-b border-white/5 pb-2 flex justify-between items-center">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-4 shadow-xl">
+            <h3 className="text-xs font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-2 flex justify-between items-center">
               <span>فلترة وتصفية العروض</span>
-              <span className="text-[10px] text-[#C4D8E5] font-medium font-normal">بحث ذكي</span>
+              <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-normal">بحث ذكي</span>
             </h3>
 
             <div className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">بحث</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">بحث</label>
                 <div className="relative flex items-center">
-                  <Search size={14} className="absolute right-3 text-[#C4D8E5] font-medium" />
+                  <Search size={14} className="absolute right-3 text-[var(--nc-text-dim)] font-medium" />
                   <input
                     type="text"
                     value={searchVal}
                     onChange={(e) => setSearchVal(e.target.value)}
                     placeholder="مدينة، حي، رقم العرض..."
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl pr-9 pl-3 py-2 text-xs text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl pr-9 pl-3 py-2 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">النوع</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">النوع</label>
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
                   >
                     <option value="">كل الأنواع</option>
                     <option value="apartment">شقة</option>
@@ -541,11 +543,11 @@ export default function OffersView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الحالة</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحالة</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
                   >
                     <option value="">الكل</option>
                     <option value="available">متاح</option>
@@ -556,33 +558,33 @@ export default function OffersView() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">نطاق السعر (ر.س)</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">نطاق السعر (ر.س)</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="الحد الأدنى"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
-                  <span className="text-[#C4D8E5] font-medium">—</span>
+                  <span className="text-[var(--nc-text-dim)] font-medium">—</span>
                   <input
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="الحد الأقصى"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">غرف النوم</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">غرف النوم</label>
                   <select
                     value={bedsFilter}
                     onChange={(e) => setBedsFilter(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
                   >
                     <option value="">الكل</option>
                     <option value="1">1+</option>
@@ -593,13 +595,13 @@ export default function OffersView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">المساحة م²</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">المساحة م²</label>
                   <input
                     type="number"
                     value={areaFilter}
                     onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="الحد الأدنى"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
               </div>
@@ -607,13 +609,13 @@ export default function OffersView() {
               <div className="flex gap-2 pt-2 border-t border-white/5">
                 <button
                   onClick={handleApplyFilters}
-                  className="flex-1 py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                  className="flex-1 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
                 >
                   تطبيق الفلاتر
                 </button>
                 <button
                   onClick={handleClearFilters}
-                  className="px-3 py-2 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-[#C4D8E5] font-medium hover:text-white rounded-xl transition-all"
+                  className="px-3 py-2 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-dim)] font-medium hover:text-white rounded-xl transition-all"
                 >
                   مسح
                 </button>
@@ -622,7 +624,7 @@ export default function OffersView() {
           </div>
 
           {/* قائمة المفضلة */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
             <h3 className="text-xs font-bold text-white border-b border-white/5 pb-2 flex items-center gap-2">
               <Heart size={14} className="text-rose-500 fill-rose-500 animate-pulse" />
               <span>المفضلة الشخصية</span>
@@ -630,7 +632,7 @@ export default function OffersView() {
 
             <div className="space-y-2.5">
               {favorites.length === 0 ? (
-                <p className="text-[11px] text-[#C4D8E5] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
+                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium py-2 text-center">لا توجد عناصر محفوظة حالياً</p>
               ) : (
                 favorites.map(fid => {
                   const p = properties.find(x => x.id === fid);
@@ -638,11 +640,11 @@ export default function OffersView() {
                   return (
                     <div
                       key={fid}
-                      className="flex justify-between items-center p-2.5 bg-[#1C2B48]/40 rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
+                      className="flex justify-between items-center p-2.5 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-rose-500/20 transition-all text-xs"
                     >
                       <div className="space-y-0.5 max-w-[150px]">
                         <p className="font-bold text-white truncate">{p.title}</p>
-                        <p className="text-[10px] text-[#C4D8E5] font-medium">{p.city} · {p.district}</p>
+                        <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">{p.city} · {p.district}</p>
                       </div>
                       <button
                         onClick={() => toggleFavorite(fid)}
@@ -659,7 +661,7 @@ export default function OffersView() {
           </div>
 
           {/* خرائط ومناطق */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[#C4D8E5] font-medium">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 shadow-xl space-y-2.5 text-xs text-[var(--nc-text-dim)] font-medium">
             <h4 className="font-bold text-white flex items-center gap-2">
               <Map size={14} className="text-cyan-400" />
               <span>نطاق التغطية</span>
@@ -675,14 +677,14 @@ export default function OffersView() {
         <main className="flex-1 w-full space-y-4">
           
           {/* شريط الإجراءات والتحكم */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[#1C2B48] border border-white/5 p-3 rounded-2xl shadow-md">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--nc-surface-solid)] border border-white/5 p-3 rounded-2xl shadow-md">
             
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-[#C4D8E5] font-medium">عدد العروض:</span>
-              <strong className="text-white font-mono text-sm bg-[#1C2B48] px-2 py-0.5 rounded border border-white/5">
+              <span className="text-[var(--nc-text-dim)] font-medium">عدد العروض:</span>
+              <strong className="text-white font-mono text-sm bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5">
                 {filteredProperties.length}
               </strong>
-              <span className="text-[#C4D8E5] font-medium">عرض متاح</span>
+              <span className="text-[var(--nc-text-dim)] font-medium">عرض متاح</span>
 
               <select
                 value={sortVal}
@@ -690,7 +692,7 @@ export default function OffersView() {
                   setSortVal(e.target.value);
                   addTelemetryEvent('offers.sort_changed', { sortBy: e.target.value });
                 }}
-                className="bg-[#1C2B48] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-4"
+                className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-4"
               >
                 <option value="relevance">الأكثر صلة</option>
                 <option value="price_asc">الأقل سعراً</option>
@@ -704,8 +706,8 @@ export default function OffersView() {
                 onClick={() => setShowMap(!showMap)}
                 className={`flex items-center gap-2 border px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
                   showMap 
-                    ? 'bg-[#1C2B48] border-cyan-500/30 text-cyan-400' 
-                    : 'bg-[#1C2B48] border-white/10 hover:bg-[#1C2B48] text-[#C4D8E5] font-medium'
+                    ? 'bg-[var(--nc-surface-solid)] border-cyan-500/30 text-cyan-400' 
+                    : 'bg-[var(--nc-surface-solid)] border-white/10 hover:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
                 }`}
               >
                 <Map size={14} />
@@ -713,7 +715,7 @@ export default function OffersView() {
               </button>
               <button
                 onClick={handleCSVExport}
-                className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-md"
+                className="flex items-center gap-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:bg-[var(--nc-surface-solid)] text-white rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-md"
               >
                 <FileSpreadsheet size={14} className="text-emerald-500" />
                 تصدير CSV
@@ -728,8 +730,8 @@ export default function OffersView() {
             {/* شبكة العقارات */}
             <div className="flex-1 w-full">
               {filteredProperties.length === 0 ? (
-                <div className="bg-[#1C2B48] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[#C4D8E5] font-medium space-y-2">
-                  <Megaphone size={30} className="mx-auto text-[#C4D8E5] font-medium animate-bounce" />
+                <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium space-y-2">
+                  <Megaphone size={30} className="mx-auto text-[var(--nc-text-dim)] font-medium animate-bounce" />
                   <p className="font-bold">لا توجد عروض مطابقة للفلاتر النشطة</p>
                   <p className="text-xs">جرب إعادة ضبط الفلاتر أو مسح خيارات البحث للوصول لنتائج أفضل.</p>
                 </div>
@@ -745,16 +747,16 @@ export default function OffersView() {
                           setActiveModal('details');
                           addTelemetryEvent('offer.clicked_detail', { propertyId: p.id });
                         }}
-                        className="group bg-[#1C2B48] border border-white/5 rounded-2xl overflow-hidden hover:border-[#8EB1D1]/40 hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full"
+                        className="group bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl overflow-hidden hover:border-[var(--nc-accent-border)]/40 hover:-translate-y-1 transform transition-all duration-300 cursor-pointer shadow-lg flex flex-col h-full"
                       >
                         
                         {/* الجزء البصري */}
-                        <div className="h-40 bg-[#1C2B48] relative flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
                           {/* التدرج اللوني */}
                           <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-900/60 z-10" />
-                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#8EB1D1_1px,transparent_1px)] [background-size:16px_16px]" />
+                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
                           
-                          <span className="z-20 text-[#8EB1D1] bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase font-mono shadow-inner">
+                          <span className="z-20 text-[var(--nc-text-secondary)] bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] px-3 py-1.5 rounded-full text-xs font-black tracking-wider uppercase font-mono shadow-inner">
                             {p.type === 'villa' ? 'فيلا سكنية' : p.type === 'apartment' ? 'شقة فاخرة' : 'أرض فضاء'}
                           </span>
 
@@ -779,7 +781,7 @@ export default function OffersView() {
                               className={`p-1.5 rounded-lg border transition-all shadow-sm ${
                                 isFav 
                                   ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' 
-                                  : 'bg-[#1C2B48]/80 border-white/5 text-[#C4D8E5] font-medium hover:text-rose-400'
+                                  : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
                               }`}
                               title={isFav ? "إزالة من المفضلة" : "حفظ في المفضلة"}
                             >
@@ -791,26 +793,26 @@ export default function OffersView() {
                         {/* تفاصيل العقار */}
                         <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
                           <div className="space-y-1">
-                            <h4 className="font-bold text-white group-hover:text-[#8EB1D1] transition-colors">{p.title}</h4>
-                            <p className="text-[11px] text-[#C4D8E5] font-medium flex items-center gap-1 font-semibold">
+                            <h4 className="font-bold text-white group-hover:text-[var(--nc-text-secondary)] transition-colors">{p.title}</h4>
+                            <p className="text-[11px] text-[var(--nc-text-dim)] font-medium flex items-center gap-1 font-semibold">
                               <span>📍</span>
                               <span>{p.city} · حي {p.district}</span>
                             </p>
                           </div>
 
                           {/* الميتا */}
-                          <div className="grid grid-cols-3 gap-1 bg-[#1C2B48]/40 p-2 rounded-xl border border-white/5 text-center text-[10px] text-[#C4D8E5] font-medium">
+                          <div className="grid grid-cols-3 gap-1 bg-[var(--nc-surface)] p-2 rounded-xl border border-white/5 text-center text-[10px] text-[var(--nc-text-dim)] font-medium">
                             <div>
-                              <p className="text-[#C4D8E5] font-medium">المساحة</p>
+                              <p className="text-[var(--nc-text-dim)] font-medium">المساحة</p>
                               <p className="font-bold text-white font-mono">{p.area} م²</p>
                             </div>
                             <div>
-                              <p className="text-[#C4D8E5] font-medium">غرف النوم</p>
+                              <p className="text-[var(--nc-text-dim)] font-medium">غرف النوم</p>
                               <p className="font-bold text-white font-mono">{p.beds > 0 ? p.beds : '—'}</p>
                             </div>
                             <div>
-                              <p className="text-[#C4D8E5] font-medium">سعر المتر تقريباً</p>
-                              <p className="font-bold text-[#8EB1D1] font-mono">
+                              <p className="text-[var(--nc-text-dim)] font-medium">سعر المتر تقريباً</p>
+                              <p className="font-bold text-[var(--nc-text-secondary)] font-mono">
                                 {Math.round(p.price / p.area).toLocaleString()} ر.س
                               </p>
                             </div>
@@ -818,8 +820,8 @@ export default function OffersView() {
 
                           <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto shrink-0">
                             <div>
-                              <p className="text-[9px] text-[#C4D8E5] font-medium">السعر الإجمالي المطلوب</p>
-                              <p className="font-black text-[#8EB1D1] text-sm font-mono">{p.price.toLocaleString()} ر.س</p>
+                              <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر الإجمالي المطلوب</p>
+                              <p className="font-black text-[var(--nc-text-secondary)] text-sm font-mono">{p.price.toLocaleString()} ر.س</p>
                             </div>
 
                             {/* أزرار الإجراءات السريعة */}
@@ -829,7 +831,7 @@ export default function OffersView() {
                                   e.stopPropagation();
                                   openMortgagePrefilled(p.id);
                                 }}
-                                className="px-2.5 py-1 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 hover:border-[#8EB1D1]/40 text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2.5 py-1 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
                                 title="احسب التمويل البنكي"
                               >
                                 تمويل
@@ -839,7 +841,7 @@ export default function OffersView() {
                                   setSelectedPropertyId(p.id);
                                   setActiveModal('details');
                                 }}
-                                className="px-2.5 py-1 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1] border border-[#8EB1D1]/20 hover:text-white text-[#8EB1D1] text-[10px] font-bold rounded-lg transition-all"
+                                className="px-2.5 py-1 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-hover)] border border-[var(--nc-accent-border)] hover:text-white text-[var(--nc-text-secondary)] text-[10px] font-bold rounded-lg transition-all"
                               >
                                 تفاصيل
                               </button>
@@ -857,7 +859,7 @@ export default function OffersView() {
 
             {/* لوحة الخريطة الجغرافية */}
             {showMap && (
-              <div className="w-full xl:w-[320px] bg-[#1C2B48] border border-white/5 rounded-2xl p-4 shadow-xl shrink-0 space-y-3 sticky top-4">
+              <div className="w-full xl:w-[320px] bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl shrink-0 space-y-3 sticky top-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Map size={13} className="text-cyan-400" />
@@ -867,7 +869,7 @@ export default function OffersView() {
                 </div>
 
                 {/* مجسم الخريطة */}
-                <div className="h-64 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+                <div className="h-64 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
                   <div className="absolute inset-0 bg-[#0f192b] opacity-40 bg-[linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:20px_20px]" />
                   
                   {/* نقاط معالم تجريبية */}
@@ -888,19 +890,19 @@ export default function OffersView() {
                       <div className="relative flex items-center justify-center">
                         <span className="absolute inline-flex h-5 w-5 rounded-full bg-cyan-400 opacity-30 animate-ping" />
                         <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-400 border border-white flex-shrink-0" />
-                        <span className="absolute top-4 bg-[#1C2B48] border border-white/10 text-[9px] text-white px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap font-mono">
+                        <span className="absolute top-4 bg-[var(--nc-surface-solid)] border border-white/10 text-[9px] text-white px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap font-mono">
                           {p.id}
                         </span>
                       </div>
                     </div>
                   ))}
 
-                  <span className="z-10 text-[10px] text-[#C4D8E5] font-medium font-bold tracking-wider bg-[#1C2B48]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                  <span className="z-10 text-[10px] text-[var(--nc-text-dim)] font-medium font-bold tracking-wider bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full backdrop-blur-sm">
                     محاكاة الخرائط النشطة
                   </span>
                 </div>
 
-                <div className="bg-[#1C2B48]/60 p-2.5 rounded-xl border border-white/5 text-[10px] text-[#C4D8E5] font-medium leading-relaxed text-center font-semibold">
+                <div className="bg-[var(--nc-surface-strong)] p-2.5 rounded-xl border border-white/5 text-[10px] text-[var(--nc-text-dim)] font-medium leading-relaxed text-center font-semibold">
                   تحمل الخريطة التوضيحية إحداثيات خطوط العرض والطول لكل عقار مع تتبع النقاط وتوجيه المستشارين.
                 </div>
               </div>
@@ -909,10 +911,10 @@ export default function OffersView() {
           </div>
 
           {/* ─── سجل أحداث العروض العقارية Console (Telemetry) ───────────────── */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Bot size={14} className="text-[#8EB1D1]" />
+                <Bot size={14} className="text-[var(--nc-text-secondary)]" />
                 <span>شاشة تتبع أحداث العروض العقارية الفورية (Event Telemetry Console)</span>
               </h4>
               <button
@@ -923,17 +925,17 @@ export default function OffersView() {
               </button>
             </div>
 
-            <div className="h-32 bg-[#1C2B48] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[#C4D8E5] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
+            <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-[10px] text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
               {telemetryLogs.length === 0 ? (
-                <div className="text-center text-[#C4D8E5] font-medium py-6">No telemetry events logged yet</div>
+                <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged yet</div>
               ) : (
                 telemetryLogs.map(log => (
-                  <div key={log.id} className="p-2 bg-[#1C2B48]/50 rounded border border-white/5 space-y-1">
-                    <div className="flex justify-between text-[#C4D8E5] font-medium border-b border-white/5 pb-1">
-                      <span className="text-[#8EB1D1] font-bold">{log.type}</span>
+                  <div key={log.id} className="p-2 bg-[var(--nc-surface)] rounded border border-white/5 space-y-1">
+                    <div className="flex justify-between text-[var(--nc-text-dim)] font-medium border-b border-white/5 pb-1">
+                      <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
                       <span>{log.timestamp}</span>
                     </div>
-                    <pre className="text-[9px] text-[#C4D8E5] font-medium overflow-x-auto whitespace-pre-wrap">
+                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">
                       {JSON.stringify({ actor: log.actorId, ...log.payload }, null, 2)}
                     </pre>
                   </div>
@@ -950,30 +952,30 @@ export default function OffersView() {
       
       {/* 1. تفاصيل العقار Modal */}
       {activeModal === 'details' && selectedProp && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-start border-b border-white/5 pb-4">
               <div className="space-y-1">
                 <h3 className="text-lg font-black text-white">{selectedProp.title}</h3>
-                <p className="text-xs text-[#C4D8E5] font-medium flex items-center gap-1.5 font-bold">
+                <p className="text-xs text-[var(--nc-text-dim)] font-medium flex items-center gap-1.5 font-bold">
                   <span>📍</span>
                   <span>{selectedProp.city} · حي {selectedProp.district} · {selectedProp.area} م²</span>
                 </p>
               </div>
               <div className="text-left space-y-1">
-                <p className="text-xs text-[#C4D8E5] font-medium">القيمة المطلوبة</p>
-                <p className="text-lg font-black text-[#8EB1D1] font-mono">{selectedProp.price.toLocaleString()} ر.س</p>
+                <p className="text-xs text-[var(--nc-text-dim)] font-medium">القيمة المطلوبة</p>
+                <p className="text-lg font-black text-[var(--nc-text-secondary)] font-mono">{selectedProp.price.toLocaleString()} ر.س</p>
               </div>
             </div>
 
             {/* مجسم الصور البصري */}
-            <div className="h-60 bg-[#1C2B48] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+            <div className="h-60 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
-              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#8EB1D1_1.5px,transparent_1.5px)] [background-size:24px_24px]" />
+              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(var(--nc-accent-border) 1.5px,transparent 1.5px)] [background-size:24px_24px]" />
               <div className="z-20 text-center space-y-2">
-                <Megaphone size={35} className="mx-auto text-[#C4D8E5] font-medium animate-pulse" />
-                <span className="inline-block text-xs text-[#C4D8E5] font-medium font-bold bg-[#1C2B48]/90 border border-white/5 px-3 py-1.5 rounded-full">
+                <Megaphone size={35} className="mx-auto text-[var(--nc-text-dim)] font-medium animate-pulse" />
+                <span className="inline-block text-xs text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)]/90 border border-white/5 px-3 py-1.5 rounded-full">
                   معاينة وسائط ومخططات العقار البصرية المعتمده
                 </span>
               </div>
@@ -982,32 +984,32 @@ export default function OffersView() {
             {/* تفاصيل وهيكل */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs border-b border-white/5 pb-4">
               <div className="space-y-3">
-                <h4 className="font-bold text-[#8EB1D1] border-b border-white/5 pb-1">مواصفات العرض العقاري</h4>
-                <ul className="space-y-2 text-[#C4D8E5] font-medium">
+                <h4 className="font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-1">مواصفات العرض العقاري</h4>
+                <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium">
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">الرقم المرجعي (ID):</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">الرقم المرجعي (ID):</span>
                     <span className="font-mono font-bold text-white">{selectedProp.id}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">نوع العقار:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">نوع العقار:</span>
                     <span className="font-bold text-white">
                       {selectedProp.type === 'villa' ? 'فيلا مستقلة' : selectedProp.type === 'apartment' ? 'شقة' : 'أرض'}
                     </span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">عدد غرف النوم:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">عدد غرف النوم:</span>
                     <span className="font-mono font-bold text-white">{selectedProp.beds > 0 ? selectedProp.beds : '—'}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">المساحة الإجمالية:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">المساحة الإجمالية:</span>
                     <span className="font-mono font-bold text-white">{selectedProp.area} م²</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">الوكيل المسؤول:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">الوكيل المسؤول:</span>
                     <span className="font-bold text-white">{selectedProp.agent}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span className="text-[#C4D8E5] font-medium">تاريخ الإدراج والنشر:</span>
+                    <span className="text-[var(--nc-text-dim)] font-medium">تاريخ الإدراج والنشر:</span>
                     <span className="font-mono font-bold text-white">{formatDateToDDMMYYYY(selectedProp.posted)}</span>
                   </li>
                 </ul>
@@ -1015,11 +1017,11 @@ export default function OffersView() {
 
               <div className="space-y-3">
                 <h4 className="font-bold text-white border-b border-white/5 pb-1">إجراءات سياقية ذكية</h4>
-                <p className="text-[11px] text-[#C4D8E5] font-medium leading-relaxed mb-2">اختر أحد الإجراءات التالية لطلب التواصل أو تقديم عرض تمويل مباشر.</p>
+                <p className="text-[11px] text-[var(--nc-text-dim)] font-medium leading-relaxed mb-2">اختر أحد الإجراءات التالية لطلب التواصل أو تقديم عرض تمويل مباشر.</p>
                 <div className="flex flex-col gap-2">
                   <button
                     onClick={() => setActiveModal('contact_agent')}
-                    className="w-full py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all shadow"
+                    className="w-full py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all shadow"
                   >
                     تواصل مع الوكيل
                   </button>
@@ -1033,7 +1035,7 @@ export default function OffersView() {
                       setMonthlyInstallment(monthly);
                       setActiveModal('mortgage');
                     }}
-                    className="w-full py-2.5 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-white text-xs font-bold rounded-xl transition-all"
+                    className="w-full py-2.5 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs font-bold rounded-xl transition-all"
                   >
                     تقديم طلب تمويل لهذا العرض
                   </button>
@@ -1042,7 +1044,7 @@ export default function OffersView() {
                       setVisitDate(new Date().toISOString().split('T')[0]);
                       setActiveModal('schedule_visit');
                     }}
-                    className="w-full py-2.5 bg-[#1C2B48] hover:bg-[#1C2B48] border border-white/10 text-cyan-400 text-xs font-bold rounded-xl transition-all"
+                    className="w-full py-2.5 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-cyan-400 text-xs font-bold rounded-xl transition-all"
                   >
                     حجز موعد زيارة العقار
                   </button>
@@ -1053,7 +1055,7 @@ export default function OffersView() {
             {/* الوصف المختصر */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-white">تفاصيل ووصف إضافي للعرض:</h4>
-              <p className="text-xs text-[#C4D8E5] font-medium leading-relaxed bg-[#1C2B48]/40 p-3.5 rounded-xl border border-white/5">
+              <p className="text-xs text-[var(--nc-text-dim)] font-medium leading-relaxed bg-[var(--nc-surface)] p-3.5 rounded-xl border border-white/5">
                 {selectedProp.description}
               </p>
             </div>
@@ -1061,7 +1063,7 @@ export default function OffersView() {
             <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-6 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium text-xs font-bold rounded-xl transition-all"
+                className="px-6 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium text-xs font-bold rounded-xl transition-all"
               >
                 إغلاق
               </button>
@@ -1073,15 +1075,15 @@ export default function OffersView() {
 
       {/* 2. حاسبة التمويل السكني Modal */}
       {activeModal === 'mortgage' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
-                <Calculator size={16} className="text-[#8EB1D1]" />
+                <Calculator size={16} className="text-[var(--nc-text-secondary)]" />
                 <span>حاسبة التمويل السكني التفاعلية</span>
               </h3>
-              <span className="text-[10px] bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] px-2 py-0.5 rounded font-bold font-mono">
+              <span className="text-[10px] bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] px-2 py-0.5 rounded font-bold font-mono">
                 PI Calc
               </span>
             </div>
@@ -1089,29 +1091,29 @@ export default function OffersView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
                 <input
                   type="number"
                   value={mPrice}
                   onChange={(e) => setMPrice(Number(e.target.value))}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono text-sm"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الدفعة الأولى (%)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الدفعة الأولى (%)</label>
                   <input
                     type="number"
                     value={mDown}
                     onChange={(e) => setMDown(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">مبلغ التمويل المتبقي</label>
-                  <div className="bg-[#1C2B48] border border-white/5 rounded-xl p-2.5 font-bold font-mono text-[#C4D8E5] font-medium leading-snug">
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">مبلغ التمويل المتبقي</label>
+                  <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-xl p-2.5 font-bold font-mono text-[var(--nc-text-dim)] font-medium leading-snug">
                     {(mPrice * (1 - mDown / 100)).toLocaleString()} ر.س
                   </div>
                 </div>
@@ -1119,41 +1121,41 @@ export default function OffersView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">مدة القرض (سنوات)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">مدة القرض (سنوات)</label>
                   <input
                     type="number"
                     value={mTerm}
                     onChange={(e) => setMTerm(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={mRate}
                     onChange={(e) => setMRate(Number(e.target.value))}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
               </div>
 
               <button
                 onClick={handleGlobalMortgageCalc}
-                className="w-full py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                className="w-full py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
               >
                 تحديث وحساب القسط الشهري
               </button>
 
               {monthlyInstallment !== null && (
-                <div className="bg-[#1C2B48] p-4 rounded-xl border border-white/5 text-center space-y-1 bg-gradient-to-b from-slate-950 to-slate-900 shadow-inner">
-                  <p className="text-[10px] text-[#C4D8E5] font-medium font-bold">القسط الشهري التقريبي (أصل وقروض)</p>
+                <div className="bg-[var(--nc-surface-solid)] p-4 rounded-xl border border-white/5 text-center space-y-1 bg-gradient-to-b from-slate-950 to-slate-900 shadow-inner">
+                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium font-bold">القسط الشهري التقريبي (أصل وقروض)</p>
                   <p className="text-lg font-black text-cyan-400 font-mono">
                     {monthlyInstallment.toLocaleString()} ر.س / شهرياً
                   </p>
-                  <p className="text-[9px] text-[#C4D8E5] font-medium leading-tight">هذه الحسبة تقديرية وتعتمد على الملف الائتماني والجهات التمويلية الشريكة.</p>
+                  <p className="text-[9px] text-[var(--nc-text-dim)] font-medium leading-tight">هذه الحسبة تقديرية وتعتمد على الملف الائتماني والجهات التمويلية الشريكة.</p>
                 </div>
               )}
 
@@ -1171,7 +1173,7 @@ export default function OffersView() {
               </button>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
               >
                 إغلاق
               </button>
@@ -1183,12 +1185,12 @@ export default function OffersView() {
 
       {/* 3. إضافة عرض جديد Modal */}
       {activeModal === 'create_listing' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
-                <Megaphone size={16} className="text-[#8EB1D1]" />
+                <Megaphone size={16} className="text-[var(--nc-text-secondary)]" />
                 <span>إدراج وتسجيل عرض عقاري جديد</span>
               </h3>
             </div>
@@ -1196,24 +1198,24 @@ export default function OffersView() {
             <form onSubmit={handleCreateListing} className="space-y-3">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">العنوان التعريفي للعرض *</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">العنوان التعريفي للعرض *</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="مثال: فيلا فاخرة مودرن حي الصحافة"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">النوع *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">النوع *</label>
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value as any)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                   >
                     <option value="apartment">شقة سكنية</option>
                     <option value="villa">فيلا مستقلة</option>
@@ -1222,11 +1224,11 @@ export default function OffersView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الحالة *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحالة *</label>
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as any)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                   >
                     <option value="available">متاح</option>
                     <option value="reserved">محجوز مؤقت</option>
@@ -1237,100 +1239,100 @@ export default function OffersView() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">القيمة (ر.س) *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">القيمة (ر.س) *</label>
                   <input
                     type="number"
                     required
                     value={newPrice}
                     onChange={(e) => setNewPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="مثال: 1200000"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">المساحة (م²) *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">المساحة (م²) *</label>
                   <input
                     type="number"
                     required
                     value={newArea}
                     onChange={(e) => setNewArea(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="مثال: 320"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">غرف النوم</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">غرف النوم</label>
                   <input
                     type="number"
                     value={newBeds}
                     onChange={(e) => setNewBeds(Number(e.target.value))}
                     placeholder="مثال: 4"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">المدينة *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">المدينة *</label>
                   <input
                     type="text"
                     required
                     value={newCity}
                     onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الحي *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحي *</label>
                   <input
                     type="text"
                     required
                     value={newDistrict}
                     onChange={(e) => setNewDistrict(e.target.value)}
                     placeholder="مثال: الصحافة"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">الوكيل المسؤول أو المكتب *</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">الوكيل المسؤول أو المكتب *</label>
                 <input
                   type="text"
                   required
                   value={newAgent}
                   onChange={(e) => setNewAgent(e.target.value)}
                   placeholder="مثال: شركة التطوير العقاري المعتمدة"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">الوصف والتفاصيل</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">الوصف والتفاصيل</label>
                 <textarea
                   rows={2}
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                   placeholder="تفاصيل إضافية عن الموقع والمميزات..."
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] text-xs resize-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] text-xs resize-none"
                 />
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
                 >
                   إدراج العرض ونشره
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                  className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
                 >
                   إلغاء
                 </button>
@@ -1344,12 +1346,12 @@ export default function OffersView() {
 
       {/* 4. حجز موعد زيارة Modal */}
       {activeModal === 'schedule_visit' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
-                <Calendar size={16} className="text-[#8EB1D1]" />
+                <Calendar size={16} className="text-[var(--nc-text-secondary)]" />
                 <span>حجز موعد زيارة عقار ميدانية</span>
               </h3>
             </div>
@@ -1358,7 +1360,7 @@ export default function OffersView() {
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">التاريخ المطلوب *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">التاريخ المطلوب *</label>
                   <DateField
                     value={visitDate}
                     onChange={(val) => setVisitDate(val)}
@@ -1366,11 +1368,11 @@ export default function OffersView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">الوقت المفضل *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الوقت المفضل *</label>
                   <select
                     value={visitTime}
                     onChange={(e) => setVisitTime(e.target.value)}
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-center"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-center"
                   >
                     <option value="09:00">09:00 صباحاً</option>
                     <option value="10:00">10:00 صباحاً</option>
@@ -1383,51 +1385,51 @@ export default function OffersView() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">اسم العميل بالكامل *</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل بالكامل *</label>
                 <input
                   type="text"
                   required
                   value={visitName}
                   onChange={(e) => setVisitName(e.target.value)}
                   placeholder="مثال: فهد الحربي"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">رقم الجوال للتواصل *</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">رقم الجوال للتواصل *</label>
                 <input
                   type="text"
                   required
                   value={visitPhone}
                   onChange={(e) => setVisitPhone(e.target.value)}
                   placeholder="مثال: 050XXXXXXX"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
                   dir="ltr"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">ملاحظات أو استفسارات خاصة</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">ملاحظات أو استفسارات خاصة</label>
                 <textarea
                   rows={2}
                   value={visitNotes}
                   onChange={(e) => setVisitNotes(e.target.value)}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
                 />
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
                 >
                   حجز الموعد وتأكيد الطلب
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveModal('details')}
-                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                  className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
                 >
                   العودة
                 </button>
@@ -1441,12 +1443,12 @@ export default function OffersView() {
 
       {/* 5. تواصل مع الوكيل Modal */}
       {activeModal === 'contact_agent' && (
-        <div className="fixed inset-0 bg-[#1C2B48]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
-                <MessageSquare size={16} className="text-[#8EB1D1]" />
+                <MessageSquare size={16} className="text-[var(--nc-text-secondary)]" />
                 <span>إرسال استفسار مباشر للوكيل العقاري</span>
               </h3>
             </div>
@@ -1454,66 +1456,66 @@ export default function OffersView() {
             <form onSubmit={handleContactAgent} className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">اسم العميل *</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل *</label>
                 <input
                   type="text"
                   required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="مثال: خالد المطيري"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">رقم الجوال للتواصل *</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">رقم الجوال للتواصل *</label>
                   <input
                     type="text"
                     required
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
                     placeholder="050XXXXXXX"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
                     dir="ltr"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#C4D8E5] font-medium font-bold">رقم الواتساب</label>
+                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">رقم الواتساب</label>
                   <input
                     type="text"
                     value={contactWhatsApp}
                     onChange={(e) => setContactWhatsApp(e.target.value)}
                     placeholder="050XXXXXXX"
-                    className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
+                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none text-left font-mono"
                     dir="ltr"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium font-bold">نص الاستفسار</label>
+                <label className="text-[var(--nc-text-dim)] font-medium font-bold">نص الاستفسار</label>
                 <textarea
                   rows={2}
                   value={contactNotes}
                   onChange={(e) => setContactNotes(e.target.value)}
                   placeholder="أنا مهتم بهذا العقار وأرغب في الحصول على تفاصيل إضافية..."
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none text-xs resize-none"
                 />
               </div>
 
               <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all"
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
                 >
                   إرسال الطلب الآن
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveModal('details')}
-                  className="px-4 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                  className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
                 >
                   العودة
                 </button>

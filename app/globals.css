@@ -70,6 +70,7 @@
 :root {
   --nc-bg: #f8fafc;
   --nc-surface: rgba(255, 255, 255, 0.5);
+  --nc-surface-strong: rgba(255, 255, 255, 0.7);
   --nc-surface-solid: #ffffff;
   --nc-glass: rgba(255, 255, 255, 0.3);
   --nc-glass-strong: rgba(255, 255, 255, 0.5);
@@ -92,6 +93,7 @@
 .dark {
   --nc-bg: #0b1120;
   --nc-surface: rgba(21, 31, 50, 0.6);
+  --nc-surface-strong: rgba(21, 31, 50, 0.8);
   --nc-surface-solid: #151f32;
   --nc-glass: rgba(255, 255, 255, 0.03);
   --nc-glass-strong: rgba(255, 255, 255, 0.06);

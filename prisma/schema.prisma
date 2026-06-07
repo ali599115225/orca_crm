@@ -302,6 +302,8 @@ model Contract {
   buyerPhone     String        @map("buyer_phone")
   totalVolumeSar Decimal       @map("total_volume_sar") @db.Decimal(12, 2)
   signedAt       DateTime      @default(now()) @map("signed_at") @db.Timestamptz
+  endDate        DateTime?     @map("end_date") @db.Timestamptz
+  status         String        @default("Active") @map("status")
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
   installments   Installment[]
 

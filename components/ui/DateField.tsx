@@ -156,7 +156,7 @@ export const DateField: React.FC<DateFieldProps> = ({
 
   return (
     <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-      {label && <label className="text-xs text-[#C4D8E5] font-medium font-bold">{label}</label>}
+      {label && <label className="text-xs text-[var(--nc-text-dim)] font-medium font-bold">{label}</label>}
       
       <div className="relative flex items-center w-full">
         {/* Visible Text Field */}
@@ -167,10 +167,10 @@ export const DateField: React.FC<DateFieldProps> = ({
           onBlur={handleBlur}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full bg-[#1C2B48]/60 border rounded-xl py-2 px-3 pl-10 text-xs text-white outline-none transition-all text-center font-mono tracking-wider ${
+          className={`w-full bg-[var(--nc-surface-strong)] border rounded-xl py-2 px-3 pl-10 text-xs text-white outline-none transition-all text-center font-mono tracking-wider ${
             error || customError
               ? 'border-rose-500 focus:border-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.25)]'
-              : 'border-white/10 focus:border-[#8EB1D1]/50'
+              : 'border-white/10 focus:border-[var(--nc-accent-border)]/50'
           }`}
           dir="ltr"
         />
@@ -192,7 +192,7 @@ export const DateField: React.FC<DateFieldProps> = ({
           type="button"
           onClick={openNativePicker}
           disabled={disabled}
-          className="absolute left-3.5 top-2.5 text-[#C4D8E5] font-medium hover:text-white transition-colors cursor-pointer"
+          className="absolute left-3.5 top-2.5 text-[var(--nc-text-dim)] font-medium hover:text-white transition-colors cursor-pointer"
           aria-label="فتح التقويم"
         >
           <Calendar size={15} />

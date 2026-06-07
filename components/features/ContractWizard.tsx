@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { getContractWizardDataAction, issueContractActionDirect } from '@/app/actions/contract';
 
 interface Client {
   id: string;
@@ -50,8 +51,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
 
     const loadData = async () => {
       try {
-        const res = await fetch('/api/v1/contracts/issue');
-        const data = await res.json();
+        const data = await getContractWizardDataAction();
         
         if (data.success) {
           setClients(data.clients || []);
@@ -103,19 +103,11 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/v1/contracts/issue', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientId,
-          propertyId,
-          amount: Number(amount),
-        }),
+      const result = await issueContractActionDirect({
+        clientId,
+        propertyId,
+        amount: Number(amount),
       });
-
-      const result = await res.json();
 
       if (result.success) {
         setSuccessMsg('🎉 تم إصدار وتوقيع عقد المبيعات الجديد بنظام أوركا وتحديث حالة المخزون بنجاح!');
@@ -146,12 +138,12 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1C2B48]/80 backdrop-blur-md" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface-solid)]/80 backdrop-blur-md" dir="rtl">
       {/* Backdrop click close */}
       <div className="absolute inset-0 cursor-default" onClick={() => !isSubmitting && onClose()}></div>
       
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-gradient-to-b from-[#151f32] to-[#1C2B48] border border-[#A7C7E7]/25 p-6 shadow-2xl animate-scale-up flex flex-col">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-gradient-to-b from-[var(--nc-surface-solid)] to-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-6 shadow-2xl animate-scale-up flex flex-col">
         
         {/* Header */}
         <div className="flex justify-between items-center border-b border-brand-border pb-4 mb-5 shrink-0">
@@ -161,13 +153,13 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
             </div>
             <div>
               <h3 className="text-white font-extrabold text-base leading-tight">معالج إصدار العقود الذكي</h3>
-              <p className="text-[#C4D8E5] text-[10px] mt-0.5">تسجيل عمليات البيع الفوري وإصدار العقود والتحكم التلقائي بالمخزون</p>
+              <p className="text-[var(--nc-text-dim)] text-[10px] mt-0.5">تسجيل عمليات البيع الفوري وإصدار العقود والتحكم التلقائي بالمخزون</p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="text-[#C4D8E5] hover:text-white text-base bg-[#1C2B48]/50 hover:bg-[#1C2B48] w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+            className="text-[var(--nc-text-dim)] hover:text-white text-base bg-[var(--nc-surface)] hover:bg-[var(--nc-surface-solid)] w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
           >
             ✕
           </button>
@@ -192,19 +184,19 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
         {isLoadingData ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 border-4 border-brand-interactive/20 border-t-brand-interactive rounded-full animate-spin"></div>
-            <p className="text-xs text-[#C4D8E5]">{isSubmitting ? 'جاري تنفيذ المعاملة العقارية...' : 'جاري سحب قائمة العملاء والوحدات المتاحة...'}</p>
+            <p className="text-xs text-[var(--nc-text-dim)]">{isSubmitting ? 'جاري تنفيذ المعاملة العقارية...' : 'جاري سحب قائمة العملاء والوحدات المتاحة...'}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* 1. Client Select */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#C4D8E5]">اختيار العميل</label>
+              <label className="text-xs font-bold text-[var(--nc-text-dim)]">اختيار العميل</label>
               <select
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full bg-[#1C2B48]/60 border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
+                className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
               >
                 <option value="" className="bg-[#151f32]">{clients.length === 0 ? 'لا يوجد عملاء نشطين متاحين' : 'اختر العميل المشتري...'}</option>
                 {clients.map((client) => (
@@ -217,12 +209,12 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
 
             {/* 2. Property Select */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#C4D8E5]">اختيار العقار/المشروع</label>
+              <label className="text-xs font-bold text-[var(--nc-text-dim)]">اختيار العقار/المشروع</label>
               <select
                 value={propertyId}
                 onChange={(e) => handlePropertyChange(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full bg-[#1C2B48]/60 border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
+                className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
               >
                 <option value="" className="bg-[#151f32]">{properties.length === 0 ? 'لا توجد وحدات شاغرة متاحة حالياً' : 'اختر الوحدة العقارية المتاحة للبيع...'}</option>
                 {properties.map((prop) => (
@@ -235,7 +227,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
 
             {/* 3. Amount Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#C4D8E5]">قيمة العقد الإجمالية (ريال سعودي)</label>
+              <label className="text-xs font-bold text-[var(--nc-text-dim)]">قيمة العقد الإجمالية (ريال سعودي)</label>
               <div className="relative">
                 <input
                   type="number"
@@ -243,11 +235,11 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full bg-[#1C2B48]/60 border border-brand-border rounded-xl pr-4 pl-12 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all disabled:opacity-50 text-right"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl pr-4 pl-12 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all disabled:opacity-50 text-right"
                 />
-                <span className="absolute left-4 top-2.5 text-[#C4D8E5] text-[10px] font-bold">ر.س</span>
+                <span className="absolute left-4 top-2.5 text-[var(--nc-text-dim)] text-[10px] font-bold">ر.س</span>
               </div>
-              <p className="text-[10px] text-[#C4D8E5]/70">تتم تعبئة القيمة تلقائياً بسعر الوحدة المسجل، ويمكنك تعديلها بناءً على الخصم الممنوح للعميل.</p>
+              <p className="text-[10px] text-[var(--nc-text-dim)]/70">تتم تعبئة القيمة تلقائياً بسعر الوحدة المسجل، ويمكنك تعديلها بناءً على الخصم الممنوح للعميل.</p>
             </div>
 
             {/* Actions */}
@@ -274,7 +266,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
               >
                 إلغاء الأمر
               </button>
