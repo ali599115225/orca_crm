@@ -48,6 +48,12 @@ export async function GET(
       floorPosition: unit.floorPosition,
       type: unit.type || "شقة سكنية",
       area: unit.area || "120 م²",
+      beds: unit.beds,
+      city: unit.city,
+      district: unit.district,
+      lat: unit.lat,
+      lng: unit.lng,
+      agentName: unit.agentName,
       price: Number(unit.priceSar),
       priceStr: Number(unit.priceSar).toLocaleString() + " ر.س",
       status: unit.status,
@@ -56,6 +62,8 @@ export async function GET(
       docs: unit.docs || [],
       events: unit.events || [],
       handovers: unit.handovers || [],
+      tourType: unit.tourType,
+      tourUrl: unit.tourUrl,
       project: unit.project?.name || "",
       projectId: unit.projectId,
       contractId: null as string | null,
@@ -96,11 +104,19 @@ export async function PUT(
     if (body.priceSar !== undefined) updateData.priceSar = parseFloat(body.priceSar);
     if (body.type !== undefined) updateData.type = body.type;
     if (body.area !== undefined) updateData.area = body.area;
+    if (body.beds !== undefined) updateData.beds = body.beds;
+    if (body.city !== undefined) updateData.city = body.city;
+    if (body.district !== undefined) updateData.district = body.district;
+    if (body.lat !== undefined) updateData.lat = parseFloat(body.lat);
+    if (body.lng !== undefined) updateData.lng = parseFloat(body.lng);
+    if (body.agentName !== undefined) updateData.agentName = body.agentName;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.media !== undefined) updateData.media = body.media;
     if (body.docs !== undefined) updateData.docs = body.docs;
     if (body.events !== undefined) updateData.events = body.events;
     if (body.handovers !== undefined) updateData.handovers = body.handovers;
+    if (body.tourType !== undefined) updateData.tourType = body.tourType;
+    if (body.tourUrl !== undefined) updateData.tourUrl = body.tourUrl;
     if (body.status !== undefined) updateData.status = body.status;
 
     const updated = await prisma.unit.update({

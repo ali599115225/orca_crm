@@ -106,11 +106,47 @@ const initialProperties: PropertyOffer[] = [
 ];
 
 export default function OffersView() {
-  const [properties, setProperties] = useState<PropertyOffer[]>(initialProperties);
+  const [properties, setProperties] = useState<PropertyOffer[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showMap, setShowMap] = useState(true);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [offersLoading, setOffersLoading] = useState(true);
+  const [offersError, setOffersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOffersLoading(true);
+    fetch('/api/properties/')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: PropertyOffer[] = res.data.map((u: any) => ({
+            id: u.id,
+            title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
+            type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',
+            status: (u.status === 'Available' ? 'available' : u.status === 'Sold' ? 'sold' : 'reserved') as any,
+            price: u.price,
+            beds: u.beds || 3,
+            area: parseInt(u.area) || 100,
+            city: u.city || 'الرياض',
+            district: u.district || 'غير محدد',
+            agent: u.agentName || 'غير معين',
+            posted: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
+            coords: { lat: u.lat || 24.7, lng: u.lng || 46.7 },
+            description: u.desc || '',
+          }));
+          setProperties(mapped);
+        } else {
+          setProperties(initialProperties);
+        }
+        setOffersLoading(false);
+      })
+      .catch(() => {
+        setOffersError('تعذر تحميل العروض من قاعدة البيانات');
+        setProperties(initialProperties);
+        setOffersLoading(false);
+      });
+  }, []);
 
   // Filters State
   const [searchVal, setSearchVal] = useState('');
@@ -413,55 +449,72 @@ export default function OffersView() {
   };
 
   return (
-    <div className="orca-page orca-stack text-right" dir="rtl">
+    <div className="ds-page ds-stack text-right" dir="rtl">
       
-      {/* ─── الهيدر الرئيسي للمستأجر والعروض ────────────────────── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1C2B48]/40 p-6 rounded-3xl border border-white/5 shadow-xl">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold">
-            <Sparkles size={13} className="animate-pulse" />
-            تحليلات العروض العقارية الحية · المبيعات
-          </div>
-          <h1 className="text-xl md:text-2xl font-black text-white">العروض العقارية</h1>
-          <p className="text-xs md:text-sm text-[#C4D8E5] font-medium">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
+      {/* ─── Loading / Error ───────────────────────────── */}
+      {offersLoading && (
+        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
+          <span className="ds-muted">جاري تحميل العروض من قاعدة البيانات...</span>
         </div>
+      )}
+      {offersError && !offersLoading && (
+        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+          <p className="ds-body-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{offersError}</p>
+          <button onClick={() => window.location.reload()} className="ds-btn ds-btn-ghost ds-btn-sm">إعادة المحاولة</button>
+        </div>
+      )}
 
-        <div className="flex gap-2 items-center">
-          <div className="flex items-center gap-2 text-xs bg-[#1C2B48] border border-[#A7C7E7]/20 rounded-xl px-3 py-2 text-[#C4D8E5] font-medium">
-            <span>الدور النشط:</span>
-            <select
-              value={currentUserRole}
-              onChange={(e) => setCurrentUserRole(e.target.value)}
-              className="bg-transparent text-white outline-none font-bold"
-            >
-              <option value="ADMIN">مدير النظام (Admin)</option>
-              <option value="rental_manager">مدير الإيجار</option>
-              <option value="accountant">المحاسب</option>
-              <option value="owner">المالك</option>
-            </select>
+      {/* ─── الهيدر الرئيسي للمستأجر والعروض ────────────────────── */}
+      <div className="ds-card-glass ds-p-lg">
+        <div className="ds-row-between">
+          <div className="ds-stack ds-gap-sm">
+            <div className="ds-row ds-gap-xs ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
+              <Sparkles size={13} />
+              تحليلات العروض العقارية الحية · المبيعات
+            </div>
+            <h1 className="ds-h1">العروض العقارية</h1>
+            <p className="ds-body">إدارة وتسويق العروض السكنية، حاسبة التموايل، وتوثيق حجوزات العملاء المتكاملة.</p>
           </div>
-          <button
-            onClick={() => {
-              setMPrice(800000);
-              setMDown(20);
-              setMTerm(25);
-              setMRate(4.5);
-              const monthly = calculateMortgageVal(800000, 20, 25, 4.5);
-              setMonthlyInstallment(monthly);
-              setActiveModal('mortgage');
-            }}
-            className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
-          >
-            <Calculator size={15} className="text-[#8EB1D1]" />
-            حاسبة التمويل
-          </button>
-          <button
-            onClick={() => setActiveModal('create_listing')}
-            className="flex items-center gap-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
-          >
-            <Plus size={15} />
-            أضف عرضاً
-          </button>
+
+          <div className="ds-row ds-gap-sm">
+            <div className="ds-row ds-gap-xs ds-card-glass ds-p-xs" style={{ padding: '4px 8px' }}>
+              <span className="ds-label">الدور النشط:</span>
+              <select
+                value={currentUserRole}
+                onChange={(e) => setCurrentUserRole(e.target.value)}
+                className="bg-transparent outline-none ds-body"
+                style={{ border: 'none' }}
+              >
+                <option value="ADMIN">مدير النظام (Admin)</option>
+                <option value="rental_manager">مدير الإيجار</option>
+                <option value="accountant">المحاسب</option>
+                <option value="owner">المالك</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                setMPrice(800000);
+                setMDown(20);
+                setMTerm(25);
+                setMRate(4.5);
+                const monthly = calculateMortgageVal(800000, 20, 25, 4.5);
+                setMonthlyInstallment(monthly);
+                setActiveModal('mortgage');
+              }}
+              className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
+            >
+              <Calculator size={15} className="text-[#8EB1D1]" />
+              حاسبة التمويل
+            </button>
+            <button
+              onClick={() => setActiveModal('create_listing')}
+              className="flex items-center gap-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded-xl px-4 py-2.5 text-xs font-black transition-all shadow-[0_4px_14px_-4px_rgba(223,123,98,0.4)]"
+            >
+              <Plus size={15} />
+              أضف عرضاً
+            </button>
+          </div>
         </div>
       </div>
 

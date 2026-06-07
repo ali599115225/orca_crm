@@ -177,11 +177,52 @@ const initialProperties: PropertyTour[] = [
 ];
 
 export default function ToursView() {
-  const [properties, setProperties] = useState<PropertyTour[]>(initialProperties);
+  const [properties, setProperties] = useState<PropertyTour[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [inlinePropertyId, setInlinePropertyId] = useState<string | null>(null);
+  const [toursLoading, setToursLoading] = useState(true);
+  const [toursError, setToursError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToursLoading(true);
+    fetch('/api/properties/')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: PropertyTour[] = res.data.map((u: any) => ({
+            id: u.id,
+            title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
+            type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',
+            status: (u.status === 'Available' ? 'available' : u.status === 'Sold' ? 'sold' : u.status === 'Hold' ? 'reserved' : 'under_review') as any,
+            price: u.price,
+            beds: u.beds || 3,
+            area: parseInt(u.area) || 100,
+            city: u.city || 'الرياض',
+            district: u.district || 'غير محدد',
+            agent: u.agentName || 'غير معين',
+            posted: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
+            coords: { lat: u.lat || 24.7, lng: u.lng || 46.7 },
+            description: u.desc || '',
+            media: u.media?.length ? u.media : ['https://picsum.photos/seed/tour/400/300'],
+            needsDetailedView: false,
+            dataCompleteness: 0.9,
+            tourType: (u.tourType === 'video' ? 'video' : '360') as 'video' | '360',
+            tourUrl: u.tourUrl || '',
+          }));
+          setProperties(mapped);
+        } else {
+          setProperties(initialProperties);
+        }
+        setToursLoading(false);
+      })
+      .catch(() => {
+        setToursError('تعذر تحميل الجولات من قاعدة البيانات');
+        setProperties(initialProperties);
+        setToursLoading(false);
+      });
+  }, []);
 
   // Dynamic Rule Threshold Flags
   const [config, setConfig] = useState<ToursConfigType>(TOURS_CONFIG);
@@ -432,27 +473,43 @@ export default function ToursView() {
   const inlineProp = properties.find(x => x.id === inlinePropertyId);
 
   return (
-    <div className="orca-page orca-stack text-right" dir="rtl">
+    <div className="ds-page ds-stack text-right" dir="rtl">
       
-      {/* ─── الهيدر الرئيسي للجولات ────────────────────── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#1C2B48]/40 p-6 rounded-3xl border border-white/5 shadow-xl">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB1D1]/10 border border-[#8EB1D1]/20 text-[#8EB1D1] text-xs font-semibold">
-            <Sparkles size={13} className="animate-pulse" />
-            جولات عقارية افتراضية (فيديو / 360)
-          </div>
-          <h1 className="text-xl md:text-2xl font-black text-white">الجولات العقارية</h1>
-          <p className="text-xs md:text-sm text-[#C4D8E5] font-medium">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
+      {/* ─── Loading / Error ───────────────────────────── */}
+      {toursLoading && (
+        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
+          <span className="ds-muted">جاري تحميل الجولات من قاعدة البيانات...</span>
         </div>
+      )}
+      {toursError && !toursLoading && (
+        <div className="ds-card-glass ds-p-lg ds-row-center ds-stack ds-gap-sm">
+          <p className="ds-body-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px' }}>{toursError}</p>
+          <button onClick={() => window.location.reload()} className="ds-btn ds-btn-ghost ds-btn-sm">إعادة المحاولة</button>
+        </div>
+      )}
 
-        <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => setActiveModal('settings_flag')}
-            className="flex items-center gap-2 bg-[#1C2B48] border border-white/10 hover:bg-[#1C2B48] text-white rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md"
-          >
-            <Settings size={15} className="text-cyan-400" />
-            قواعد العرض (Feature Flags)
-          </button>
+      {/* ─── الهيدر الرئيسي للجولات ────────────────────── */}
+      <div className="ds-card-glass ds-p-lg">
+        <div className="ds-row-between">
+          <div className="ds-stack ds-gap-sm">
+            <div className="ds-row ds-gap-xs ds-badge-info ds-px-sm ds-py-xs" style={{ display: 'inline-flex', width: 'auto' }}>
+              <Sparkles size={13} />
+              جولات عقارية افتراضية (فيديو / 360)
+            </div>
+            <h1 className="ds-h1">الجولات العقارية</h1>
+            <p className="ds-body">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
+          </div>
+
+          <div className="ds-row ds-gap-xs">
+            <button
+              onClick={() => setActiveModal('settings_flag')}
+              className="ds-btn ds-btn-ghost ds-btn-sm"
+            >
+              <Settings size={15} />
+              قواعد العرض (Feature Flags)
+            </button>
+          </div>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, rawPrisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
+import { rateLimit } from "@/lib/rate-limit";
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || "orca_crm_super_secret_key_2026_saudi_real_estate"
@@ -12,6 +13,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
+
+    const rl = rateLimit(`login:${request.headers.get("x-forwarded-for") || "unknown"}`);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "طلبات تسجيل دخول كثيرة. حاول بعد 30 ثانية.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
+    }
 
     if (!email || !password) {
       return NextResponse.json(

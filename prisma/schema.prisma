@@ -271,11 +271,19 @@ model Unit {
   priceSar      Decimal    @map("price_sar") @db.Decimal(12, 2)
   type          String?    @default("شقة سكنية")
   area          String?    @default("120 م²")
+  beds          Int?
+  city          String?
+  district      String?
+  lat           Float?
+  lng           Float?
+  agentName     String?    @map("agent_name")
   description   String?    @db.Text
   media         Json?      @default("[]")
   docs          Json?      @default("[]")
   events        Json?      @default("[]")
   handovers     Json?      @default("[]")
+  tourType      String?    @map("tour_type")
+  tourUrl       String?    @map("tour_url")
   status        String     @default("Available")
   createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

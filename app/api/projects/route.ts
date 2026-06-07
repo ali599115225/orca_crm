@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { rateLimit } from "@/lib/rate-limit";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
   const session = await authenticateRequest(request);
   if (!session) {
     return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`projects:${session.tenantId}`);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "طلبات كثيرة جداً. حاول لاحقاً.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
   }
 
   try {

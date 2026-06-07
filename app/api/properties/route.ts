@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { rateLimit } from "@/lib/rate-limit";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -29,6 +30,12 @@ function formatUnit(unit: any) {
     floorPosition: unit.floorPosition,
     type: unit.type || "شقة سكنية",
     area: unit.area || "120 م²",
+    beds: unit.beds,
+    city: unit.city,
+    district: unit.district,
+    lat: unit.lat,
+    lng: unit.lng,
+    agentName: unit.agentName,
     price: Number(unit.priceSar),
     priceStr: Number(unit.priceSar).toLocaleString() + " ر.س",
     status: unit.status,
@@ -37,6 +44,8 @@ function formatUnit(unit: any) {
     docs: unit.docs || [],
     events: unit.events || [],
     handovers: unit.handovers || [],
+    tourType: unit.tourType,
+    tourUrl: unit.tourUrl,
     project: unit.project?.name || "",
     projectId: unit.projectId,
     contractId: null as string | null,
@@ -49,6 +58,11 @@ export async function GET(request: NextRequest) {
   const session = await authenticateRequest(request);
   if (!session) {
     return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`properties:${session.tenantId}`);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "طلبات كثيرة جداً. حاول لاحقاً.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
   }
 
   try {
@@ -96,7 +110,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { projectId, unitNumber, floorPosition, priceSar, type, area, description, media, docs, events, handovers, status } = body;
+    const { projectId, unitNumber, floorPosition, priceSar, type, area, beds, city, district, lat, lng, agentName, description, media, docs, events, handovers, tourType, tourUrl, status } = body;
 
     if (!projectId || !unitNumber || !priceSar) {
       return NextResponse.json({ success: false, error: "حقل projectId, unitNumber, priceSar إلزامية" }, { status: 400 });
@@ -117,11 +131,19 @@ export async function POST(request: NextRequest) {
         priceSar: parseFloat(priceSar),
         type: type || "شقة سكنية",
         area: area || "120 م²",
+        beds: beds || null,
+        city: city || null,
+        district: district || null,
+        lat: lat ? parseFloat(lat) : null,
+        lng: lng ? parseFloat(lng) : null,
+        agentName: agentName || null,
         description: description || null,
         media: media || [],
         docs: docs || [],
         events: events || [],
         handovers: handovers || [],
+        tourType: tourType || null,
+        tourUrl: tourUrl || null,
         status: status || "Available",
       },
       include: { project: { select: { id: true, name: true } } },
