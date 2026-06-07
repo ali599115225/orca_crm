@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTasksAction, getLeadsListAction, toggleTaskStatusAction, createTaskAction } from '@/app/actions/tasks';
 import { useApp } from '@/app/context/AppContext';
+import { LayoutContainer } from '../ui/LayoutContainer';
 
 const TRANSLATIONS = {
   AR: {
@@ -159,121 +160,47 @@ export default function TasksView() {
   }
 
   return (
-    <div className="nc-page nc-stack" dir={dir}>
+    <div className="nc-page nc-stack p-6" dir={dir}>
       
       {/* Header */}
-      <div>
+      <div className="mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
           <i className="ph-bold ph-calendar-check"></i> {t.tag}
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] dark:text-white mb-2">
           {t.title}
         </h1>
-        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
+        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium">
           {t.desc}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        
-        {/* Left Column: Task List (7 cols) */}
-        <div className="lg:col-span-7 space-y-4 flex flex-col">
-          <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)] border border-[var(--nc-accent-border)] px-2.5 py-1 rounded-full">
-                {t.counterPending}{toArabicNumerals(pendingTasks)}
-              </span>
-              <span className="text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                {t.counterCompleted}{toArabicNumerals(completedTasks)}
-              </span>
-            </div>
-
-            <div className={`flex items-center border rounded-full px-4 py-2 transition-all ${theme === 'dark' ? 'bg-[var(--nc-surface-solid)] border-slate-850 focus-within:border-[var(--nc-accent-border)]' : 'bg-slate-50 border-slate-300 focus-within:border-[var(--nc-accent-border)]'}`}>
-              <i className="ph ph-magnifying-glass text-[var(--nc-text-dim)] font-medium text-base ml-2"></i>
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isArabic ? "ابحث عن مهمة..." : "Search tasks..."} 
-                className="bg-transparent border-none outline-none text-xs w-40 text-[var(--nc-text-primary)] font-bold dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
-              />
-            </div>
+      <LayoutContainer
+        kpis={
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)] border border-[var(--nc-accent-border)] px-2.5 py-1 rounded-full">
+              {t.counterPending}{toArabicNumerals(pendingTasks)}
+            </span>
+            <span className="text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+              {t.counterCompleted}{toArabicNumerals(completedTasks)}
+            </span>
           </div>
-
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] scrollbar-fade">
-            {filteredTasks.length === 0 ? (
-              <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-12 text-center">
-                <i className="ph ph-calendar-x text-4xl text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium mb-3 block"></i>
-                <h4 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base mb-1">{t.emptyTitle}</h4>
-                <p className="text-[var(--nc-text-dim)] font-medium text-xs">{t.emptySub}</p>
-              </div>
-            ) : (
-              filteredTasks.map((task) => {
-                const isCompleted = task.status === "COMPLETED";
-                const isHigh = task.priority === "HIGH";
-                const isMedium = task.priority === "MEDIUM";
-
-                return (
-                  <div 
-                    key={task.id} 
-                    className={`bg-white dark:bg-[#151f32] border ${
-                      isCompleted 
-                        ? 'border-emerald-500/20 bg-emerald-500/5' 
-                        : 'border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)]'
-                    } p-4 rounded-xl shadow-sm hover:border-[var(--nc-accent-border)]/40 transition-all flex items-start gap-4 cursor-pointer`}
-                    onClick={() => handleToggle(task.id, task.status)}
-                  >
-                    <input 
-                      type="checkbox" 
-                      checked={isCompleted}
-                      onChange={() => {}} // toggled via parent div click
-                      className="w-5 h-5 rounded-md border-slate-300 dark:border-slate-700 text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] shrink-0 mt-0.5"
-                    />
-                    
-                    <div className="flex-grow space-y-1">
-                      <h4 className={`text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-sm leading-tight transition-all ${
-                        isCompleted ? 'line-through text-slate-450 dark:text-[var(--nc-text-dim)] font-medium' : ''
-                      }`}>
-                        {task.title}
-                      </h4>
-                      {task.lead && (
-                        <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
-                          {isArabic ? "العميل المستهدف: " : "Target Prospect: "}
-                          <span className="font-semibold text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">{task.lead.firstName} {task.lead.lastName || ''}</span>
-                        </p>
-                      )}
-                      {task.notes && (
-                        <p className="text-[11px] text-slate-450 dark:text-[var(--nc-text-dim)] font-medium italic mt-1 leading-relaxed">
-                          {task.notes}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
-                        isHigh 
-                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' 
-                          : isMedium 
-                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' 
-                          : 'bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium border-[var(--nc-glass-border)] dark:border-slate-700'
-                      }`}>
-                        {isHigh ? t.priorityHigh : isMedium ? t.priorityMedium : t.priorityLow}
-                      </span>
-                      <span className="text-[10px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-en font-semibold">
-                        {formatTaskDate(task.dueDate)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+        }
+        actions={
+          <div className="flex items-center border rounded-full px-4 py-2 transition-all bg-[var(--nc-surface-strong)] border-[var(--nc-border)] focus-within:border-[var(--nc-accent)] w-full">
+            <i className="ph ph-magnifying-glass text-[var(--nc-foreground-muted)] text-base ml-2"></i>
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isArabic ? "ابحث عن مهمة..." : "Search tasks..."} 
+              className="bg-transparent border-none outline-none text-xs w-full text-[var(--nc-foreground)] placeholder-[var(--nc-foreground-muted)]" 
+            />
           </div>
-        </div>
-
-        {/* Right Column: Create Task Form (5 cols) */}
-        <div className="lg:col-span-5">
+        }
+        insights={
           <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm space-y-5">
-            <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base border-b border-slate-100 dark:border-[var(--nc-glass-border)] pb-3 flex items-center gap-2">
+            <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white text-base border-b border-[var(--nc-border)] pb-3 flex items-center gap-2">
               <i className="ph-bold ph-calendar-plus text-[var(--nc-text-secondary)]"></i>
               {t.formTitle}
             </h3>
@@ -291,22 +218,22 @@ export default function TasksView() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.taskTitleLabel}</label>
+                <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.taskTitleLabel}</label>
                 <input 
                   type="text" 
                   name="title" 
                   required 
                   placeholder={t.taskTitlePlaceholder}
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.leadLabel}</label>
+                <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.leadLabel}</label>
                 <select 
                   name="leadId" 
                   required 
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 >
                   <option value="">{t.leadPlaceholder}</option>
                   {leads.map(l => (
@@ -317,31 +244,31 @@ export default function TasksView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.dueDateLabel}</label>
+                  <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.dueDateLabel}</label>
                   <input 
                     type="date" 
                     name="dueDateOnly" 
                     required 
-                    className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                    className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.dueTimeLabel}</label>
+                  <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.dueTimeLabel}</label>
                   <input 
                     type="time" 
                     name="dueTimeOnly" 
                     required 
-                    className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                    className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.priorityLabel}</label>
+                <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.priorityLabel}</label>
                 <select 
                   name="priority" 
                   required
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 >
                   <option value="HIGH">{t.priorityHigh}</option>
                   <option value="MEDIUM">{t.priorityMedium}</option>
@@ -350,12 +277,12 @@ export default function TasksView() {
               </div>
 
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.notesLabel}</label>
+                <label className="block text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">{t.notesLabel}</label>
                 <textarea 
                   name="description" 
                   rows={3}
                   placeholder={t.notesPlaceholder}
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 />
               </div>
 
@@ -367,9 +294,78 @@ export default function TasksView() {
               </button>
             </form>
           </div>
-        </div>
+        }
+        details={
+          <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+            {filteredTasks.length === 0 ? (
+              <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-12 text-center">
+                <i className="ph ph-calendar-x text-4xl text-[var(--nc-text-dim)] font-medium mb-3 block"></i>
+                <h4 className="text-[var(--nc-text-primary)] font-bold dark:text-white text-base mb-1">{t.emptyTitle}</h4>
+                <p className="text-[var(--nc-text-dim)] font-medium text-xs">{t.emptySub}</p>
+              </div>
+            ) : (
+              filteredTasks.map((task) => {
+                const isCompleted = task.status === "COMPLETED";
+                const isHigh = task.priority === "HIGH";
+                const isMedium = task.priority === "MEDIUM";
 
-      </div>
+                return (
+                  <div 
+                    key={task.id} 
+                    className={`bg-[var(--nc-surface-solid)] border ${
+                      isCompleted 
+                        ? 'border-emerald-500/20 bg-emerald-500/5' 
+                        : 'border-[var(--nc-glass-border)]'
+                    } p-4 rounded-xl shadow-sm hover:border-[var(--nc-accent-border)]/40 transition-all flex items-start gap-4 cursor-pointer`}
+                    onClick={() => handleToggle(task.id, task.status)}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={isCompleted}
+                      onChange={() => {}}
+                      className="w-5 h-5 rounded-md border-[var(--nc-border)] text-[var(--nc-accent)] focus:ring-[var(--nc-accent)] shrink-0 mt-0.5"
+                    />
+                    
+                    <div className="flex-grow space-y-1">
+                      <h4 className={`text-[var(--nc-foreground)] font-bold text-sm leading-tight transition-all ${
+                        isCompleted ? 'line-through text-[var(--nc-foreground-muted)]' : ''
+                      }`}>
+                        {task.title}
+                      </h4>
+                      {task.lead && (
+                        <p className="text-xs text-[var(--nc-text-dim)] font-medium">
+                          {isArabic ? "العميل المستهدف: " : "Target Prospect: "}
+                          <span className="font-semibold text-[var(--nc-foreground-muted)]">{task.lead.firstName} {task.lead.lastName || ''}</span>
+                        </p>
+                      )}
+                      {task.notes && (
+                        <p className="text-[11px] text-[var(--nc-foreground-muted)] italic mt-1 leading-relaxed">
+                          {task.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                        isHigh 
+                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' 
+                          : isMedium 
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' 
+                          : 'bg-[var(--nc-surface-soft)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]'
+                      }`}>
+                        {isHigh ? t.priorityHigh : isMedium ? t.priorityMedium : t.priorityLow}
+                      </span>
+                      <span className="text-[10px] text-[var(--nc-text-dim)] font-medium font-en font-semibold">
+                        {formatTaskDate(task.dueDate)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        }
+      />
 
     </div>
   );

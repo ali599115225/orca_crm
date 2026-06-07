@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { createTicketAction, closeTicketAction } from '@/app/actions/helpdesk';
 import { useApp } from '@/app/context/AppContext';
 import { SmartCard } from '@/components/ui/SmartCard';
+import { LayoutContainer } from '@/components/ui/LayoutContainer';
 
 interface Ticket {
   id: string;
@@ -245,37 +246,62 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     }
   };
 
+  const openTickets = tickets.filter(t => t.status === 'OPEN').length;
+  const closedTickets = tickets.filter(t => t.status === 'CLOSED').length;
+
   return (
     <div className="nc-page nc-stack p-6" dir={dir}>
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 text-corporate-blue dark:text-cyan-glow text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent)] text-xs font-semibold mb-3">
             <i className="ph-bold ph-headset"></i> {t.badgeText}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-foreground)] mb-2">
             {t.title}
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
+          <p className="text-xs md:text-sm text-[var(--nc-foreground-muted)] font-medium max-w-2xl leading-relaxed">
             {t.subtitle}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-        {/* Left Side: Creation Form & Ticket List (5 cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Create ticket form */}
+      <LayoutContainer
+        kpis={
+          <div className="flex items-center gap-4 flex-wrap">
+            <SmartCard className="px-4 py-3 flex items-center gap-3">
+              <i className="ph-bold ph-ticket text-[var(--nc-accent)] text-lg"></i>
+              <div>
+                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
+                <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{toArabicNumerals(tickets.length)}</p>
+              </div>
+            </SmartCard>
+            <SmartCard className="px-4 py-3 flex items-center gap-3">
+              <i className="ph-bold ph-activity text-emerald-500 text-lg"></i>
+              <div>
+                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
+                <p className="text-lg font-bold text-emerald-500 font-en">{toArabicNumerals(openTickets)}</p>
+              </div>
+            </SmartCard>
+            <SmartCard className="px-4 py-3 flex items-center gap-3">
+              <i className="ph-bold ph-check-circle text-[var(--nc-foreground-muted)] text-lg"></i>
+              <div>
+                <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
+                <p className="text-lg font-bold text-[var(--nc-foreground-muted)] font-en">{toArabicNumerals(closedTickets)}</p>
+              </div>
+            </SmartCard>
+          </div>
+        }
+        actions={
           <SmartCard className="p-6 space-y-4">
-            <div className="border-b border-slate-200/50 dark:border-white/10 pb-3">
-              <h3 className="text-slate-900 dark:text-white font-bold text-base">{t.openTicket}</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{t.openTicketSub}</p>
+            <div className="border-b border-[var(--nc-border)] pb-3">
+              <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.openTicket}</h3>
+              <p className="text-[11px] text-[var(--nc-foreground-muted)] font-medium mt-0.5">{t.openTicketSub}</p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-550 text-xs font-semibold">
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold">
                 {error}
               </div>
             )}
@@ -287,47 +313,47 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium text-xs font-semibold mb-2">{t.subjectLabel}</label>
+                <label className="block text-[var(--nc-foreground-muted)] font-medium text-xs font-semibold mb-2">{t.subjectLabel}</label>
                 <input 
                   type="text" 
                   name="title" 
                   required 
                   placeholder={t.subjectPlaceholder}
-                  className="w-full rounded-xl bg-white/50 dark:bg-void/50 border border-slate-200/50 dark:border-white/10 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-corporate-blue dark:focus:border-cyan-glow focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow transition-all"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium text-xs font-semibold mb-2">{t.detailsLabel}</label>
+                <label className="block text-[var(--nc-foreground-muted)] font-medium text-xs font-semibold mb-2">{t.detailsLabel}</label>
                 <textarea 
                   name="description" 
                   rows={4} 
                   required 
                   placeholder={t.detailsPlaceholder}
-                  className="w-full rounded-xl bg-white/50 dark:bg-void/50 border border-slate-200/50 dark:border-white/10 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-corporate-blue dark:focus:border-cyan-glow focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow transition-all"
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                 />
               </div>
 
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-corporate-blue dark:bg-gradient-to-r dark:from-indigo-650 dark:to-indigo-500 hover:scale-[1.01] text-white font-bold text-sm transition-all cursor-pointer disabled:opacity-55 shadow-md"
+                className="w-full py-3 rounded-xl bg-[var(--nc-accent)] hover:scale-[1.01] text-white font-bold text-sm transition-all cursor-pointer disabled:opacity-55 shadow-md"
               >
                 {loading ? t.submittingBtn : t.submitBtn}
               </button>
             </form>
           </SmartCard>
-
-          {/* Ticket list ledger */}
+        }
+        insights={
           <SmartCard className="p-6 space-y-4">
-            <h4 className="text-slate-900 dark:text-white font-bold text-sm border-b border-slate-200/50 dark:border-white/10 pb-3 flex justify-between items-center">
+            <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
               <span>{t.ledgerTitle}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium font-normal">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
+              <span className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
             </h4>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-fade">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
               {tickets.length === 0 ? (
-                <div className="py-6 text-center text-slate-500 dark:text-slate-400 font-medium text-xs">
+                <div className="py-6 text-center text-[var(--nc-foreground-muted)] font-medium text-xs">
                   {t.emptyStateLeft}
                 </div>
               ) : (
@@ -340,13 +366,13 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                       onClick={() => setSelectedTicket(ticket)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-start ${
                         isActive 
-                          ? 'bg-corporate-blue/10 dark:bg-cyan-glow/10 border-corporate-blue/40 dark:border-cyan-glow/40' 
-                          : 'bg-white/50 dark:bg-void/50 border-slate-200/50 dark:border-white/10 hover:border-corporate-blue/40 dark:hover:border-cyan-glow/40'
+                          ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)]' 
+                          : 'bg-[var(--nc-surface-soft)] border-[var(--nc-border)] hover:border-[var(--nc-accent-border)]'
                       }`}
                     >
                       <div className="space-y-1">
-                        <h5 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">{ticket.title}</h5>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
+                        <h5 className="font-bold text-xs text-[var(--nc-foreground)] line-clamp-1">{ticket.title}</h5>
+                        <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
                       </div>
                       
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -358,7 +384,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                           isOpen 
                             ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-300 dark:border-slate-700'
+                            : 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)]'
                         }`}>
                           {isOpen ? t.statusActive : t.statusClosed}
                         </span>
@@ -369,18 +395,16 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               )}
             </div>
           </SmartCard>
-        </div>
-
-        {/* Right Side: Selected Ticket view (7 cols) */}
-        <div className="lg:col-span-7">
-          {selectedTicket ? (
+        }
+        details={
+          selectedTicket ? (
             <SmartCard className="p-6 space-y-6">
               
               {/* Detail header */}
-              <div className="border-b border-slate-200/50 dark:border-white/10 pb-4 flex justify-between items-center gap-4">
+              <div className="border-b border-[var(--nc-border)] pb-4 flex justify-between items-center gap-4">
                 <div>
-                  <h3 className="text-slate-900 dark:text-white font-bold text-lg">{selectedTicket.title}</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1 font-en">
+                  <h3 className="text-[var(--nc-foreground)] font-bold text-lg">{selectedTicket.title}</h3>
+                  <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
                     {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', selectedTicket.id)}
                   </p>
                 </div>
@@ -405,9 +429,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               )}
 
               {/* Inquiry description */}
-              <div className="bg-white/50 dark:bg-void/50 border border-slate-200/50 dark:border-white/10 p-4 rounded-xl">
-                <p className="text-corporate-blue dark:text-cyan-glow text-[10px] font-bold mb-1.5">{t.authorLabel}</p>
-                <p className="text-slate-700 dark:text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
+              <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl">
+                <p className="text-[var(--nc-accent)] text-[10px] font-bold mb-1.5">{t.authorLabel}</p>
+                <p className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
               </div>
 
               {/* AI response box */}
@@ -420,7 +444,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     <h5 className="text-indigo-500 dark:text-indigo-400 font-bold text-xs">{t.aiAgentLabel}</h5>
                   </div>
                   
-                  <div className="text-slate-700 dark:text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap relative z-10">
+                  <div className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap relative z-10">
                     {selectedTicket.aiResponse}
                   </div>
                 </div>
@@ -428,19 +452,19 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
               {/* Replies Timeline */}
               <div className="space-y-4">
-                <h4 className="text-slate-900 dark:text-white font-bold text-xs border-b border-slate-200/50 dark:border-white/10 pb-2">
+                <h4 className="text-[var(--nc-foreground)] font-bold text-xs border-b border-[var(--nc-border)] pb-2">
                   {isArabic ? 'سجل متابعة تذاكر الدعم والردود' : 'Support Follow-ups Timeline'}
                 </h4>
                 
-                <div className="space-y-3 max-h-[220px] overflow-y-auto scrollbar-fade">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-fade">
                   {replies.map(rep => {
                     const isClient = rep.sender === 'CLIENT';
                     return (
                       <div key={rep.id} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'} space-y-1`}>
-                        <div className={`p-3 rounded-xl text-xs leading-normal max-w-[85%] ${isClient ? 'bg-corporate-blue text-white rounded-br-none' : 'bg-white/50 dark:bg-void/50 text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-white/10 rounded-bl-none'}`}>
+                        <div className={`p-3 rounded-xl text-xs leading-normal max-w-[85%] ${isClient ? 'bg-[var(--nc-accent)] text-white rounded-br-none' : 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] rounded-bl-none'}`}>
                           {rep.message}
                         </div>
-                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium font-en px-1">{new Date(rep.createdAt).toLocaleTimeString()}</span>
+                        <span className="text-[9px] text-[var(--nc-foreground-muted)] font-medium font-en px-1">{new Date(rep.createdAt).toLocaleTimeString()}</span>
                       </div>
                     );
                   })}
@@ -453,12 +477,12 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                       value={replyInput}
                       onChange={(e) => setReplyInput(e.target.value)}
                       placeholder={t.replyPlaceholder}
-                      className="flex-grow rounded-xl bg-white/50 dark:bg-void/50 border border-slate-200/50 dark:border-white/10 px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-corporate-blue dark:focus:border-cyan-glow focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow transition-all"
+                      className="flex-grow rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-2.5 text-xs text-[var(--nc-foreground)] placeholder-[var(--nc-foreground-muted)] focus:outline-none focus:border-[var(--nc-accent)] focus:ring-1 focus:ring-[var(--nc-accent)] transition-all"
                     />
                     <button
                       type="submit"
                       disabled={submittingReply || !replyInput.trim()}
-                      className="bg-corporate-blue dark:bg-gradient-to-r dark:from-indigo-650 dark:to-indigo-500 hover:scale-[1.02] text-white px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-colors disabled:opacity-50 shrink-0 shadow-sm"
+                      className="bg-[var(--nc-accent)] hover:scale-[1.02] text-white px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-colors disabled:opacity-50 shrink-0 shadow-sm"
                     >
                       {submittingReply ? '...' : t.sendReplyBtn}
                     </button>
@@ -469,13 +493,13 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
             </SmartCard>
           ) : (
             <SmartCard className="p-16 text-center">
-              <i className="ph ph-article-ny-times text-5xl text-slate-400 mb-4 block"></i>
-              <h3 className="text-slate-900 dark:text-white font-bold text-base mb-1">{t.emptyStateRightTitle}</h3>
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-xs">{t.emptyStateRightDesc}</p>
+              <i className="ph ph-article-ny-times text-5xl text-[var(--nc-foreground-muted)] mb-4 block"></i>
+              <h3 className="text-[var(--nc-foreground)] font-bold text-base mb-1">{t.emptyStateRightTitle}</h3>
+              <p className="text-[var(--nc-foreground-muted)] font-medium text-xs">{t.emptyStateRightDesc}</p>
             </SmartCard>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
     </div>
   );
