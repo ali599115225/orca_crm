@@ -1,33 +1,18 @@
-// components/views/pipeline/Pipeline.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-} from "@hello-pangea/dnd";
-
-type Lead = {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  city: string;
-  source: string;
-  leadScore: number;
-  stage: string;
-  projectId: string | null;
-  assignedTo: string | null;
-};
+import { DragDropContext } from "@hello-pangea/dnd";
+import KanbanColumn from "./KanbanColumn";
+import type { LeadItem } from "./KanbanCard";
 
 const stages = [
-  { id: "New", title: "جديد New" },
-  { id: "Contacted", title: "تم التواصل Contacted" },
-  { id: "Qualified", title: "مؤهل Qualified" },
-  { id: "Tour Scheduled", title: "مجدول للزيارة Tour Scheduled" },
-  { id: "Offer Sent", title: "أرسل العرض Offer Sent" },
-  { id: "Negotiation", title: "تفاوض Negotiation" },
-  { id: "Closed", title: "مغلق Closed" },
+  { id: "New", title: "جديد" },
+  { id: "Contacted", title: "تم التواصل" },
+  { id: "Qualified", title: "مؤهل" },
+  { id: "Tour Scheduled", title: "مجدول للزيارة" },
+  { id: "Offer Sent", title: "أرسل العرض" },
+  { id: "Negotiation", title: "تفاوض" },
+  { id: "Closed", title: "مغلق" },
 ];
 
 const stageAccent: Record<string, string> = {
@@ -41,8 +26,8 @@ const stageAccent: Record<string, string> = {
 };
 
 export default function Pipeline() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadItem[]>([]);
+  const [filteredLeads, setFilteredLeads] = useState<LeadItem[]>([]);
   const [filterProject, setFilterProject] = useState("");
   const [filterSource, setFilterSource] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
@@ -117,18 +102,13 @@ export default function Pipeline() {
   const filterSelectClass =
     "bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] rounded-[10px] px-2.5 py-2 text-[var(--nc-text-primary)] text-xs focus:border-[var(--nc-accent-border)] focus:outline-none transition-all appearance-none";
 
-  const scoreClass = (score: number) =>
-    score >= 75 ? "nc-badge nc-badge-danger" :
-    score >= 50 ? "nc-badge nc-badge-warning" :
-    "nc-badge nc-badge-accent";
-
   return (
-    <div className="nc-pipeline-wrapper" style={{ width: '100%', overflow: 'hidden' }}>
+    <div className="nc-pipeline-wrapper">
       <div className="nc-header nc-enter" style={{ padding: '0 0 var(--space-md)' }}>
         <div className="nc-header-row">
           <div>
-            <h1 className="nc-title">لوحة متابعة الصفقات Kanban Pipeline</h1>
-            <p className="nc-subtitle">سحب وإفلات لفرز العملاء عبر المراحل مع مزامنة فورية</p>
+            <h1 className="nc-title">لوحة متابعة الصفقات</h1>
+            <p className="nc-subtitle">سحب وإفلات لفرز العملاء عبر المراحل</p>
           </div>
           <div className="nc-row">
             <select
@@ -161,10 +141,7 @@ export default function Pipeline() {
                 <option key={idx} value={a as string} className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]">وكيل {a}</option>
               ))}
             </select>
-            <button
-              onClick={loadLeads}
-              className="nc-btn nc-btn-outline nc-btn-sm"
-            >
+            <button onClick={loadLeads} className="nc-btn nc-btn-outline nc-btn-sm">
               تحديث
             </button>
           </div>
@@ -183,66 +160,12 @@ export default function Pipeline() {
             {stages.map((stage) => {
               const stageLeads = getLeadsByStage(stage.id);
               return (
-                <Droppable droppableId={stage.id} key={stage.id}>
-                  {(provided: any, snapshot: any) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`nc-stage${snapshot.isDraggingOver ? " drag-over" : ""}`}
-                    >
-                      <div className="nc-stage-header">
-                        <span className="nc-stage-title" style={{ color: stageAccent[stage.id] || "var(--nc-text-primary)" }}>
-                          {stage.title}
-                        </span>
-                        <span className="nc-stage-count">{stageLeads.length}</span>
-                      </div>
-
-                      <div className="flex-1 space-y-2 min-h-[180px] lg:min-h-[380px] max-h-[500px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-                        {stageLeads.map((lead, index) => (
-                          <Draggable draggableId={lead.id} index={index} key={lead.id}>
-                            {(d: any, s: any) => (
-                              <div
-                                ref={d.innerRef}
-                                {...d.draggableProps}
-                                {...d.dragHandleProps}
-                                className={`nc-lead${s.isDragging ? " dragging" : ""}`}
-                                style={{
-                                  ...d.draggableProps.style,
-                                  "--stage-accent": stageAccent[lead.stage] || "var(--nc-accent)",
-                                } as React.CSSProperties}
-                              >
-                                <div className="nc-content-between mb-1">
-                                  <span className="nc-lead-name">
-                                    {lead.firstName} {lead.lastName || ""}
-                                  </span>
-                                  <span className={scoreClass(lead.leadScore)}>
-                                    {lead.leadScore}%
-                                  </span>
-                                </div>
-                                <div className="nc-lead-meta">
-                                  المصدر: <span className="nc-text-primary font-semibold">{lead.source}</span>
-                                  {lead.city && <> &middot; {lead.city}</>}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {stageLeads.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-[var(--nc-glass-border)] rounded-xl select-none">
-                            <span className="text-xs text-[var(--nc-text-dim)] mb-2">لا يوجد عملاء</span>
-                            <button
-                              onClick={() => alert("إضافة عميل جديد إلى مرحلة " + stage.title)}
-                              className="nc-btn nc-btn-ghost nc-btn-sm"
-                            >
-                              + إضافة عميل
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </Droppable>
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  leads={stageLeads}
+                  accentColor={stageAccent[stage.id] || "var(--nc-accent)"}
+                />
               );
             })}
           </div>

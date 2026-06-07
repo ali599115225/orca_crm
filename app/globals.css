@@ -246,6 +246,27 @@ html { scroll-behavior: smooth; }
 .nc-lead-meta { font-size: 0.6875rem; color: var(--nc-text-dim); margin-top: 2px; }
 .nc-lead-score { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--nc-accent); font-weight: 600; }
 
+.nc-lead-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.nc-lead-source { font-weight: 600; color: var(--nc-text-secondary); }
+.nc-lead-sep { margin: 0 4px; color: var(--nc-text-dim); }
+.nc-lead-footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--nc-glass-border); }
+.nc-lead-agent { font-size: 0.625rem; color: var(--nc-text-dim); display: flex; align-items: center; gap: 4px; }
+.nc-lead-agent::before { content: '👤'; font-size: 0.5625rem; }
+
+.nc-stage-title-row { display: flex; align-items: center; gap: 6px; }
+.nc-stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.nc-stage-body { flex: 1; overflow-y: auto; min-height: 120px; padding: 2px 0; }
+.nc-stage-body::-webkit-scrollbar { width: 3px; }
+.nc-stage-body::-webkit-scrollbar-thumb { background: var(--nc-glass-border); border-radius: var(--radius-full); }
+
+.nc-stage-empty { display: flex; align-items: center; justify-content: center; padding: 24px 8px; border: 1px dashed var(--nc-glass-border); border-radius: var(--radius-lg); margin-top: 4px; }
+.nc-stage-empty-text { font-size: 0.6875rem; color: var(--nc-text-dim); }
+
+.nc-stage-footer { margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--nc-glass-border); }
+.nc-stage-add-btn { width: 100%; padding: 8px; border-radius: var(--radius-md); border: 1px dashed var(--nc-glass-border); background: transparent; color: var(--nc-text-dim); font-size: 0.6875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.nc-stage-add-btn:hover { border-color: var(--nc-accent-border); color: var(--nc-accent); background: var(--nc-accent-soft); }
+
 /* ════════════════════════════════════════════════════════════
    GLASS CARD SYSTEM
    ════════════════════════════════════════════════════════════ */

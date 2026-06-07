@@ -3,10 +3,11 @@
 import React, { useState, useTransition, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Calculator, Megaphone, Plus, Search, Eye,
-  ShieldAlert, Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
+  Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
   UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2
 } from 'lucide-react';
 import { DateField } from '@/components/ui/DateField';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -135,8 +136,9 @@ export default function RentalPage() {
   const [reconcileMatches, setReconcileMatches] = useState<any[]>([]);
   const [reconcileExceptions, setReconcileExceptions] = useState<any[]>([]);
 
-  // RBAC checks
-  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
+  const { hasPermission } = useAuth();
+  // Permission check — delegated to AuthContext
+  const isAllowed = (action: string) => hasPermission(action);
 
   // Feature Flags
   const [enableZakat, setEnableZakat] = useState(false);
@@ -196,21 +198,13 @@ export default function RentalPage() {
       id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       type,
       timestamp: new Date().toISOString(),
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       payload
     };
     setTelemetryLogs(prev => [newEvt, ...prev]);
   };
 
-  const isAllowed = (action: string) => {
-    const roles: Record<string, string[]> = {
-      ADMIN:              ['VIEW', 'CREATE_LEASE', 'CREATE_INVOICE', 'PAY_INVOICE', 'MANAGE_RECONCILE', 'REQUEST_SETTLEMENT'],
-      accountant:         ['VIEW', 'CREATE_INVOICE', 'PAY_INVOICE', 'MANAGE_RECONCILE'],
-      rental_manager:     ['VIEW', 'CREATE_LEASE', 'CREATE_INVOICE', 'REQUEST_SETTLEMENT'],
-      owner:              ['VIEW', 'REQUEST_SETTLEMENT']
-    };
-    return (roles[currentUserRole] || []).includes(action);
-  };
+  // isAllowed defined above via useAuth
 
   // Utility helpers
   const formatDateToDDMMYYYY = (iso: string): string => {
@@ -280,7 +274,7 @@ export default function RentalPage() {
       end: newEnd,
       rent: newRent,
       deposit: newDeposit,
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       timestamp: new Date().toISOString(),
       status: 'active'
     });
@@ -346,7 +340,7 @@ export default function RentalPage() {
     addTelemetryEvent('invoice.issued', {
       contractId: targetContractId,
       invoiceId: newInvoiceId,
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       timestamp: new Date().toISOString(),
       status: 'unpaid',
       payload: { due: invoiceDue, amount: finalAmount, currency: 'SAR' }
@@ -399,7 +393,7 @@ export default function RentalPage() {
       contractId: selectedInvoice.contractId,
       invoiceId: selectedInvoice.id,
       paymentId: payId,
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       timestamp: new Date().toISOString(),
       status: 'paid',
       idempotencyKey: payIdempotencyKey,
@@ -441,7 +435,7 @@ export default function RentalPage() {
     addTelemetryEvent('settlement.requested', {
       contractId,
       settlementId: settleId,
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       timestamp: new Date().toISOString(),
       status: 'pending',
       payload: { gross, deductions, net }
@@ -542,63 +536,33 @@ export default function RentalPage() {
   return (
     <div className="nc-page nc-stack">
       
-      {/* ── Role Selector Top Bar ── */}
+      {/* ── Feature Flags Bar ── */}
       <div className="nc-content-between ds-p-md nc-glass">
-        <div className="nc-row">
-          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
-          <div>
-            <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات والإعدادات التشغيلية</h4>
-            <p className="ds-muted">محاكاة قيود الصلاحيات المطبقة على العقود والمدفوعات والمصالحة</p>
-          </div>
-        </div>
-        
-        <div className="ds-row ds-gap-md">
-          <div className="ds-row ds-gap-xs ds-p-xs nc-glass" style={{ padding: '4px' }}>
-            {[
-              { id: 'ADMIN', name: 'مدير نظام (Admin)' },
-              { id: 'accountant', name: 'المحاسب (Accountant)' },
-              { id: 'rental_manager', name: 'مدير الإيجار' },
-              { id: 'owner', name: 'المالك' }
-            ].map(role => (
-              <button
-                key={role.id}
-                onClick={() => {
-                  setCurrentUserRole(role.id);
-                  addTelemetryEvent('system.role_changed', { newRole: role.id });
-                }}
-                className={`nc-btn nc-btn-sm ${currentUserRole === role.id ? 'nc-btn-primary' : 'nc-btn-ghost'}`}
-              >
-                {role.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-200/50 dark:bg-white/5 p-2 rounded-lg border border-slate-200/50 dark:border-white/10">
-            <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={enableZakat} 
-                onChange={(e) => {
-                  setEnableZakat(e.target.checked);
-                  addTelemetryEvent('system.feature_flag_changed', { flag: 'enableZakat', value: e.target.checked });
-                }} 
-                className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
-              />
-              <span>تفعيل VAT (15%)</span>
-            </label>
-            <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer border-r border-slate-200/50 dark:border-white/10 pr-3">
-              <input 
-                type="checkbox" 
-                checked={enableCompliance} 
-                onChange={(e) => {
-                  setEnableCompliance(e.target.checked);
-                  addTelemetryEvent('system.feature_flag_changed', { flag: 'enableCompliance', value: e.target.checked });
-                }} 
-                className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
-              />
-              <span>تفعيل AML Check</span>
-            </label>
-          </div>
+        <div className="flex items-center gap-3 bg-slate-200/50 dark:bg-white/5 p-2 rounded-lg border border-slate-200/50 dark:border-white/10">
+          <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={enableZakat} 
+              onChange={(e) => {
+                setEnableZakat(e.target.checked);
+                addTelemetryEvent('system.feature_flag_changed', { flag: 'enableZakat', value: e.target.checked });
+              }} 
+              className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
+            />
+            <span>تفعيل VAT (15%)</span>
+          </label>
+          <label className="flex items-center gap-1.5 text-slate-700 dark:text-slate-350 font-bold cursor-pointer border-r border-slate-200/50 dark:border-white/10 pr-3">
+            <input 
+              type="checkbox" 
+              checked={enableCompliance} 
+              onChange={(e) => {
+                setEnableCompliance(e.target.checked);
+                addTelemetryEvent('system.feature_flag_changed', { flag: 'enableCompliance', value: e.target.checked });
+              }} 
+              className="rounded bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-[#8EB1D1]"
+            />
+            <span>تفعيل AML Check</span>
+          </label>
         </div>
       </div>
 

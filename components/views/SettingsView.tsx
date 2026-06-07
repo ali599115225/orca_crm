@@ -7,6 +7,7 @@ import { initiateSubscriptionPaymentAction, initiateAddonPaymentAction } from '@
 import { createTenantUserAction, updateTenantUserAction, deleteTenantUserAction } from '@/app/actions/users';
 import { getAgentLeasesAction } from '@/app/actions/growth';
 import { useApp } from '@/app/context/AppContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { 
   checkComplianceReadinessAction, 
   updateTenantComplianceDetailsAction, 
@@ -33,7 +34,6 @@ interface SettingsViewProps {
     extraAgents: number;
   };
   users?: User[];
-  currentUserRole?: string;
 }
 
 const PLAN_LIMITS: Record<string, number> = {
@@ -326,11 +326,12 @@ const TRANSLATIONS = {
   }
 };
 
-export default function SettingsView({ tenant, users = [], currentUserRole = "READ_ONLY" }: SettingsViewProps) {
+export default function SettingsView({ tenant, users = [] }: SettingsViewProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
   const { theme, lang } = useApp();
+  const { role: currentUserRole } = useAuth();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === 'AR';
   const dir = isArabic ? 'rtl' : 'ltr';

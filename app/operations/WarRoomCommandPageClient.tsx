@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
+import { useAuth } from "@/app/context/AuthContext";
 
 import WhatsAppView  from "@/components/views/WhatsAppView";
 import HelpdeskView  from "@/components/views/HelpdeskView";
@@ -32,7 +33,6 @@ interface Props {
   recentLeads: any[];
   recentTasks: any[];
   tenantUsers: any[];
-  currentUserRole: string;
 }
 
 const ROLE_ALLOWED: Record<string, string[]> = {
@@ -47,9 +47,10 @@ const ROLE_ALLOWED: Record<string, string[]> = {
 export default function WarRoomCommandPageClient({
   initialTab, projects, tickets, tenants, chats, whatsappTenant,
   helpdeskTickets, companyName, tenantInfo, dashboardStats,
-  recentLeads, recentTasks, tenantUsers, currentUserRole,
+  recentLeads, recentTasks, tenantUsers,
 }: Props) {
   const { theme, lang } = useApp();
+  const { role: currentUserRole } = useAuth();
   const isDark = theme === "dark";
   const isArabic = lang === "AR";
 
@@ -162,7 +163,6 @@ export default function WarRoomCommandPageClient({
           <SettingsView
             tenant={tenantInfo}
             users={tenantUsers}
-            currentUserRole={currentUserRole}
           />
         </div>
       )}

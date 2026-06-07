@@ -5,9 +5,10 @@ import React, { useState, useEffect, useTransition } from 'react';
 import {
   Megaphone, Plus, Search, Heart, Map, FileSpreadsheet, Eye,
   Landmark, Calculator, Calendar, ArrowRight, UserCheck, MessageSquare,
-  AlertCircle, ShieldAlert, Bot, Trash2, CheckCircle2, Star, Sparkles
+  AlertCircle, Bot, Trash2, CheckCircle2, Star, Sparkles
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface PropertyOffer {
@@ -106,6 +107,7 @@ const initialProperties: PropertyOffer[] = [
 ];
 
 export default function OffersView() {
+  const { hasPermission } = useAuth();
   const [properties, setProperties] = useState<PropertyOffer[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showMap, setShowMap] = useState(true);
@@ -190,8 +192,7 @@ export default function OffersView() {
   const [contactWhatsApp, setContactWhatsApp] = useState('');
   const [contactNotes, setContactNotes] = useState('');
 
-  // RBAC permissions simulation
-  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
+  // RBAC permissions — delegated to AuthContext
 
   // Real-time telemetry log console
   const [telemetryLogs, setTelemetryLogs] = useState<any[]>([
@@ -209,21 +210,13 @@ export default function OffersView() {
       id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       type,
       timestamp: new Date().toISOString(),
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       payload
     };
     setTelemetryLogs(prev => [newEvt, ...prev]);
   };
 
-  const isAllowed = (action: string) => {
-    const roles: Record<string, string[]> = {
-      ADMIN:          ['VIEW', 'CREATE_OFFER', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT'],
-      rental_manager: ['VIEW', 'CALC_MORTGAGE', 'SCHEDULE_VISIT'],
-      accountant:     ['VIEW', 'CALC_MORTGAGE'],
-      owner:          ['VIEW']
-    };
-    return (roles[currentUserRole] || []).includes(action);
-  };
+  const isAllowed = (action: string) => hasPermission(action);
 
   // Live filtering computation
   const filteredProperties = properties.filter(p => {
@@ -478,20 +471,6 @@ export default function OffersView() {
           </div>
 
           <div className="nc-row">
-            <div className="nc-row nc-glass ds-p-xs" style={{ padding: '4px 8px' }}>
-              <span className="ds-label">الدور النشط:</span>
-              <select
-                value={currentUserRole}
-                onChange={(e) => setCurrentUserRole(e.target.value)}
-                className="bg-transparent outline-none ds-body"
-                style={{ border: 'none' }}
-              >
-                <option value="ADMIN">مدير النظام (Admin)</option>
-                <option value="rental_manager">مدير الإيجار</option>
-                <option value="accountant">المحاسب</option>
-                <option value="owner">المالك</option>
-              </select>
-            </div>
             <button
               onClick={() => {
                 setMPrice(800000);

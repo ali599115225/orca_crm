@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
+import { AuthProvider } from "@/app/context/AuthContext";
 import { UIBusProvider } from "@/app/context/UIBusContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -33,11 +34,13 @@ export default function RootLayout({
         <div className="relative z-10 min-h-screen flex flex-col">
           <LanguageProvider>
             <ThemeProvider>
-              <UIBusProvider>
-                <ErrorBoundary>
-                  {children}
-                </ErrorBoundary>
-              </UIBusProvider>
+              <AuthProvider>
+                <UIBusProvider>
+                  <ErrorBoundary>
+                    {children}
+                  </ErrorBoundary>
+                </UIBusProvider>
+              </AuthProvider>
             </ThemeProvider>
           </LanguageProvider>
         </div>

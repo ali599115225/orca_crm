@@ -37,7 +37,7 @@ export default async function OperationsLayout({
   const userRoleKey = session.role as string || "READ_ONLY";
 
   return (
-    <DashboardLayout currentUserRole={userRoleKey}>
+    <DashboardLayout>
       {children}
     </DashboardLayout>
   );

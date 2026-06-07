@@ -4,11 +4,12 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { 
   Home, Plus, Search, Calendar, Landmark, MapPin, Eye, 
   FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
-  FileCheck, ShieldAlert, Award, Bot, Clock, AlertTriangle, 
+  FileCheck, Award, Bot, Clock, AlertTriangle, 
   CloudUpload, ArrowRight, UserCheck, Trash2, Key, Users
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
 import { DateField, DateRangeField } from '../ui/DateField';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface UnitEvent {
@@ -108,14 +109,12 @@ const initialProperties: PropertyUnit[] = [
 ];
 
 export default function PropertiesView() {
+  const { hasPermission } = useAuth();
   const [properties, setProperties] = useState<PropertyUnit[]>(initialProperties);
   const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
-  
-  // Active User Role (RBAC simulation)
-  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
 
   // Tabs Controller
   const [activeTab, setActiveTab] = useState('events');
@@ -188,25 +187,15 @@ export default function PropertiesView() {
     }
   ]);
 
-  // RBAC Permission check
-  const isAllowed = (action: string) => {
-    const roles: Record<string, string[]> = {
-      PLATFORM_ARCHITECT: ['VIEW', 'CREATE_UNIT', 'BOOK_UNIT', 'START_HANDOVER', 'UPDATE_STATUS', 'VIEW_FINANCE'],
-      ADMIN:              ['VIEW', 'CREATE_UNIT', 'BOOK_UNIT', 'START_HANDOVER', 'UPDATE_STATUS', 'VIEW_FINANCE'],
-      SALES_MANAGER:      ['VIEW', 'BOOK_UNIT', 'UPDATE_STATUS'],
-      SALES_EMPLOYEE:     ['VIEW', 'BOOK_UNIT'],
-      MARKETING:          ['VIEW'],
-      READ_ONLY:          ['VIEW']
-    };
-    return (roles[currentUserRole] || []).includes(action);
-  };
+  // Permission check — delegated to AuthContext
+  const isAllowed = (action: string) => hasPermission(action);
 
   const addTelemetryEvent = (type: string, payload: any) => {
     const newEvt = {
       id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       type,
       timestamp: new Date().toISOString(),
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       payload
     };
     setTelemetryLogs(prev => [newEvt, ...prev]);
@@ -233,7 +222,7 @@ export default function PropertiesView() {
   const handleCreateUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_UNIT')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يملك الصلاحية لإضافة وحدات جديدة.`);
+      alert('عذراً! دورك الحالي لا يملك الصلاحية لإضافة وحدات جديدة.');
       return;
     }
 
@@ -281,7 +270,7 @@ export default function PropertiesView() {
     e.preventDefault();
     if (!selectedUnit) return;
     if (!isAllowed('BOOK_UNIT')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء حجز.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
       return;
     }
 
@@ -332,7 +321,7 @@ export default function PropertiesView() {
     e.preventDefault();
     if (!selectedUnit) return;
     if (!isAllowed('START_HANDOVER')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لبدء التسليم.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لبدء التسليم.');
       return;
     }
 
@@ -428,7 +417,7 @@ export default function PropertiesView() {
   const showFinancialSummary = () => {
     if (!selectedUnit) return;
     if (!isAllowed('VIEW_FINANCE')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك صلاحية استعراض البيانات المالية التفصيلية.`);
+      alert('عذراً! دورك الحالي لا يمتلك صلاحية استعراض البيانات المالية التفصيلية.');
       return;
     }
 
@@ -452,34 +441,6 @@ export default function PropertiesView() {
   return (
     <div className="nc-page nc-stack">
       
-      {/* ── Role Selector Top Bar ── */}
-      <div className="nc-content-between ds-p-md nc-glass">
-        <div className="nc-row">
-          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
-          <div>
-            <h4 className="ds-body-sm font-bold">التحكم بالصلاحيات (RBAC Check)</h4>
-            <p className="ds-muted">محاكاة قيود الصلاحيات المطبقة على العقارات وحقول التسليم والأسعار</p>
-          </div>
-        </div>
-        
-        <div className="nc-row ds-p-xs nc-glass" style={{ padding: '4px' }}>
-          {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
-            <button
-              key={role}
-              onClick={() => {
-                setCurrentUserRole(role);
-                addTelemetryEvent('system.role_changed', { newRole: role });
-              }}
-              className={`nc-btn nc-btn-sm ${
-                currentUserRole === role ? 'nc-btn-primary' : 'nc-btn-ghost'
-              }`}
-            >
-              {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Date Range Filter Form (Sprint 1 DateRangeField Demo) ── */}
       <div className="p-4 bg-[#1C2B48]/40 border border-white/5 rounded-2xl space-y-3">
         <h4 className="text-xs font-bold text-[#C4D8E5] font-medium">تصفية الوحدات حسب تاريخ الإدراج (DateRangeField)</h4>
@@ -542,7 +503,7 @@ export default function PropertiesView() {
                   icon={Plus}
                   onClick={() => {
                     if (!isAllowed('CREATE_UNIT')) {
-                      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء وحدة.`);
+                      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
                       return;
                     }
                     setActiveModal('new_unit');
@@ -658,7 +619,7 @@ export default function PropertiesView() {
                     <Button 
                       onClick={() => {
                         if (!isAllowed('BOOK_UNIT')) {
-                          alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء حجز.`);
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
                           return;
                         }
                         setBookingOfferPrice(selectedUnit.price);
@@ -674,7 +635,7 @@ export default function PropertiesView() {
                       variant="secondary"
                       onClick={() => {
                         if (!isAllowed('START_HANDOVER')) {
-                          alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لبدء تسليم الوحدة.`);
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لبدء تسليم الوحدة.');
                           return;
                         }
                         setActiveModal('handover_assistant');
@@ -996,7 +957,7 @@ export default function PropertiesView() {
                     return;
                   }
                   if (!isAllowed('UPDATE_STATUS')) {
-                    alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لتعديل حالة الوحدات.`);
+                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لتعديل حالة الوحدات.');
                     return;
                   }
                   setProperties(prev => prev.map(u => u.id === selectedUnitId ? { ...u, status: 'Hold' } : u));

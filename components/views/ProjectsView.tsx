@@ -4,10 +4,11 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { 
   Building2, Plus, Search, Calendar, Landmark, MapPin, Eye, 
   FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
-  FileCheck, ShieldAlert, Award, Bot, Clock, AlertTriangle, 
+  FileCheck, Award, Bot, Clock, AlertTriangle, 
   CloudUpload, ArrowRight, UserCheck, Trash2
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ─── Event Interface for Telemetry ──────────────────────────────────────────
 interface TelemetryEvent {
@@ -139,6 +140,7 @@ const accountingMockTotals: Record<number, { contractsTotal: number; collected: 
 };
 
 export default function ProjectsView() {
+  const { hasPermission } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [projectsList, setProjectsList] = useState(initialProjects);
   const [projectPhases, setProjectPhases] = useState(initialPhases);
@@ -147,9 +149,6 @@ export default function ProjectsView() {
   const [projectDocs, setProjectDocs] = useState(initialDocuments);
   const [projectBookings, setProjectBookings] = useState(initialBookings);
   const [accountingFinance, setAccountingFinance] = useState(accountingMockTotals);
-
-  // Active user role for RBAC simulation
-  const [currentUserRole, setCurrentUserRole] = useState<string>('ADMIN');
 
   // Search Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -233,19 +232,8 @@ export default function ProjectsView() {
   const [reportNote, setReportNote] = useState('');
   const [reportMedia, setReportMedia] = useState('https://assets.orca.pro/const/img.jpg');
 
-  // RBAC permissions helper
-  const isAllowed = (action: string) => {
-    const roles: Record<string, string[]> = {
-      PLATFORM_ARCHITECT: ['VIEW', 'CREATE_PROJECT', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'POST_PROGRESS', 'UPLOAD_DOC'],
-      ADMIN:              ['VIEW', 'CREATE_PROJECT', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'POST_PROGRESS', 'UPLOAD_DOC'],
-      SALES_MANAGER:      ['VIEW', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'UPLOAD_DOC'],
-      SALES_EMPLOYEE:     ['VIEW', 'UPDATE_UNIT', 'CREATE_BOOKING', 'UPLOAD_DOC'],
-      MARKETING:          ['VIEW', 'UPLOAD_DOC'],
-      READ_ONLY:          ['VIEW']
-    };
-    const allowedActions = roles[currentUserRole] || [];
-    return allowedActions.includes(action);
-  };
+  // Permission check — delegated to AuthContext
+  const isAllowed = (action: string) => hasPermission(action);
 
   // Add event helper
   const addTelemetryEvent = (type: string, projId: number, payload: any) => {
@@ -254,7 +242,7 @@ export default function ProjectsView() {
       type,
       projectId: projId,
       timestamp: new Date().toISOString(),
-      actorId: `usr_${currentUserRole.toLowerCase()}`,
+      actorId: 'usr_active',
       payload
     };
     setTelemetryLogs(prev => [newEvent, ...prev]);
@@ -263,7 +251,7 @@ export default function ProjectsView() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_PROJECT')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء مشروع عقاري.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
       return;
     }
 
@@ -321,7 +309,7 @@ export default function ProjectsView() {
     e.preventDefault();
     if (!selectedProjectId) return;
     if (!isAllowed('CREATE_BOOKING')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء حجز.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
       return;
     }
 
@@ -372,7 +360,7 @@ export default function ProjectsView() {
     e.preventDefault();
     if (!selectedProjectId) return;
     if (!isAllowed('ADD_PHASE')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإضافة مراحل تخطيطية.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإضافة مراحل تخطيطية.');
       return;
     }
 
@@ -401,7 +389,7 @@ export default function ProjectsView() {
     e.preventDefault();
     if (!selectedProjectId) return;
     if (!isAllowed('POST_PROGRESS')) {
-      alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لرفع تقارير إنشائية.`);
+      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع تقارير إنشائية.');
       return;
     }
 
@@ -494,34 +482,6 @@ export default function ProjectsView() {
   return (
     <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
       
-      {/* ── Role and Integrity Top Bar ── */}
-      <div className="nc-content-between ds-p-md nc-glass">
-        <div className="nc-row">
-          <ShieldAlert className="text-[var(--ds-accent)] shrink-0" size={20} />
-          <div>
-            <h4 className="ds-body-sm font-bold">صلاحيات محطة التحكم (RBAC)</h4>
-            <p className="ds-muted">يمكنك تغيير دور الموظف لمحاكاة التحقق من الصلاحيات</p>
-          </div>
-        </div>
-        
-        <div className="nc-row ds-p-xs nc-glass" style={{ padding: '4px' }}>
-          {['ADMIN', 'SALES_EMPLOYEE', 'READ_ONLY'].map(role => (
-            <button
-              key={role}
-              onClick={() => {
-                setCurrentUserRole(role);
-                addTelemetryEvent('system.role_changed', 0, { newRole: role });
-              }}
-              className={`nc-btn nc-btn-sm ${
-                currentUserRole === role ? 'nc-btn-primary' : 'nc-btn-ghost'
-              }`}
-            >
-              {role === 'ADMIN' ? 'مدير نظام (Admin)' : role === 'SALES_EMPLOYEE' ? 'موظف مبيعات' : 'مشاهد فقط'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Layout Wrapper ── */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         
@@ -554,7 +514,7 @@ export default function ProjectsView() {
                     icon={Plus}
                     onClick={() => {
                       if (!isAllowed('CREATE_PROJECT')) {
-                        alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء مشروع عقاري.`);
+                        alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
                         return;
                       }
                       setActiveModal('new_project');
@@ -702,7 +662,7 @@ export default function ProjectsView() {
                       icon={Plus} 
                       onClick={() => {
                         if (!isAllowed('CREATE_BOOKING')) {
-                          alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء حجز.`);
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
                           return;
                         }
                         setActiveModal('new_booking');
@@ -715,7 +675,7 @@ export default function ProjectsView() {
                       icon={CloudUpload}
                       onClick={() => {
                         if (!isAllowed('UPLOAD_DOC')) {
-                          alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لرفع مستندات.`);
+                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع مستندات.');
                           return;
                         }
                         setActiveModal('upload_doc');
@@ -811,7 +771,7 @@ export default function ProjectsView() {
                           <button
                             onClick={() => {
                               if (!isAllowed('ADD_PHASE')) {
-                                alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإضافة مراحل تخطيطية.`);
+                                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإضافة مراحل تخطيطية.');
                                 return;
                               }
                               setActiveModal('new_phase');
@@ -906,7 +866,7 @@ export default function ProjectsView() {
                                       <button
                                         onClick={() => {
                                           if (!isAllowed('UPDATE_UNIT')) {
-                                            alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لتغيير حالة الوحدة.`);
+                                            alert('عذراً! دورك الحالي لا يمتلك الصلاحية لتغيير حالة الوحدة.');
                                             return;
                                           }
                                           const nextStatus = u.status === 'Available' ? 'Hold' : 'Available';
@@ -943,7 +903,7 @@ export default function ProjectsView() {
                           <button
                             onClick={() => {
                               if (!isAllowed('POST_PROGRESS')) {
-                                alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لرفع تقارير إنشائية.`);
+                                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لرفع تقارير إنشائية.');
                                 return;
                               }
                               setActiveModal('new_report');
@@ -1224,7 +1184,7 @@ export default function ProjectsView() {
                     return;
                   }
                   if (!isAllowed('CREATE_BOOKING')) {
-                    alert(`عذراً! دورك الحالي (${currentUserRole}) لا يمتلك الصلاحية لإنشاء حجز.`);
+                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
                     return;
                   }
                   setActiveModal('new_booking');

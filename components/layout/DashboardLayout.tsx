@@ -6,10 +6,8 @@ import SovereignSidebar from '../../app/components/SovereignSidebar';
 
 export default function DashboardLayout({
   children,
-  currentUserRole,
 }: {
   children: React.ReactNode;
-  currentUserRole?: string;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 

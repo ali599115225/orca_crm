@@ -16,16 +16,10 @@ export default async function SettingsPage() {
     growthWarning: false,
   };
   let users: any[] = [];
-  let currentUserRole = 'READ_ONLY';
-
   try {
     const activeTenant = await getActiveTenant();
     const session = await getSession();
     
-    if (session) {
-      currentUserRole = session.role || 'READ_ONLY';
-    }
-
     // Fetch tenant details from DB
     const dbTenant = await prisma.tenant.findUnique({
       where: { id: activeTenant.id },
@@ -77,7 +71,6 @@ export default async function SettingsPage() {
     <SettingsView 
       tenant={tenant} 
       users={users} 
-      currentUserRole={currentUserRole} 
     />
   );
 }
