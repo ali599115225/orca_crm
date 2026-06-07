@@ -1,11 +1,12 @@
 'use client';
+import { toast } from '@/app/context/ToastContext';
 
 import React, { useState, useTransition, useEffect } from 'react';
 import { 
-  Building2, Plus, Search, Calendar, Landmark, MapPin, Eye, Home,
+  Building2, Plus, Search, Calendar, Landmark, MapPin, Eye, 
   FileText, CheckCircle2, ChevronRight, Activity, DollarSign, 
   FileCheck, Award, Bot, Clock, AlertTriangle, 
-  CloudUpload, ArrowRight, UserCheck, Trash2, Sparkles, Settings
+  CloudUpload, ArrowRight, UserCheck, Trash2
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
 import { DateField, DateRangeField } from '../ui/DateField';
@@ -483,399 +484,168 @@ export default function ProjectsView() {
     p.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  
-  // ─── Bento Grid Unification Layout Elements ───
-  const kpisContent = (
-    <>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي المشاريع</p>
-            <h3 className="text-2xl font-black text-white">{projectsList.length}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
-            <Landmark size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">المشاريع النشطة</p>
-            <h3 className="text-2xl font-black text-amber-500">
-              {projectsList.filter(p => p.status !== 'مكتمل').length}
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
-            <Activity size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي الوحدات المدرجة</p>
-            <h3 className="text-2xl font-black text-emerald-500">
-              {projectsList.reduce((acc, p) => acc + p.unitsTotal, 0)}
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-            <Home size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">متوسط تقدم التشييد</p>
-            <h3 className="text-2xl font-black text-cyan-400">
-              {projectsList.length > 0 ? Math.round(projectsList.reduce((acc, p) => acc + p.progressPercent, 0) / projectsList.length) : 0}%
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-            <Sparkles size={18} />
-          </div>
-        </div>
-      </Card>
-    </>
-  );
+  return (
+    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
+      
+      {/* ── Layout Wrapper ── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        
+        {/* ── Left/Main Content Column ── */}
+        <div className="flex-1 w-full space-y-6">
 
-  const actionsContent = (
-    <div className="bg-transparent border-none p-0 space-y-4 h-full flex flex-col justify-between">
-      <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Settings size={16} className="text-[var(--nc-text-secondary)]" />
-          إجراءات المشروع السريعة
-        </h4>
-        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">التحكم الفوري وعمليات المحاكاة والويب هوك</p>
-      </div>
-
-      <div className="space-y-3 flex-grow pt-2">
-        {!selectedProjectId ? (
-          <Button
-            className="w-full justify-center"
-            icon={Plus}
-            onClick={() => {
-              if (!isAllowed('CREATE_PROJECT')) {
-                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
-                return;
-              }
-              setActiveModal('new_project');
-            }}
-          >
-            إضافة مشروع جديد
-          </Button>
-        ) : (
-          <div className="space-y-2">
-            <Button
-              className="w-full justify-center"
-              icon={Plus}
-              onClick={() => {
-                if (!isAllowed('UPDATE_CONSTRUCTION')) {
-                  alert('عذراً! دورك الحالي لا يمتلك الصلاحية لتسجيل تقدم التشييد.');
-                  return;
-                }
-                setActiveModal('report_progress');
-              }}
-            >
-              تسجيل تقدم التشييد
-            </Button>
-            
-            <button
-              onClick={triggerPaymentReceivedSimulation}
-              className="w-full py-2 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] hover:border-[var(--nc-accent-border)]/40 text-[var(--nc-text-secondary)] text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
-            >
-              <DollarSign size={13} />
-              محاكاة استلام دفعة (Webhook)
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2 pt-2 border-t border-[var(--nc-glass-border)] mt-2">
-          <button 
-            onClick={() => {
-              if (!selectedProjectId) {
-                alert('الرجاء اختيار مشروع أولاً.');
-                return;
-              }
-              if (!isAllowed('CREATE_BOOKING')) {
-                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
-                return;
-              }
-              setActiveModal('new_booking');
-            }}
-            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-          >
-            <span>إنشاء حجز جديد</span>
-            <ChevronRight size={14} className="opacity-50" />
-          </button>
-
-          <button 
-            onClick={() => {
-              if (!selectedProjectId) {
-                alert('الرجاء اختيار مشروع أولاً.');
-                return;
-              }
-              addTelemetryEvent('tour.scheduled', selectedProjectId, { 
-                leadName: 'عميل مهتم سريع', 
-                date: '2026-06-10', 
-                notes: 'جولة موجهة بواسطة حجز فوري' 
-              });
-              alert('تمت جدولة الجولة العقارية وإدراج الحدث بنجاح.');
-            }}
-            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-          >
-            <span>جدولة جولة عقارية سريعة</span>
-            <ChevronRight size={14} className="opacity-50" />
-          </button>
-
-          <button 
-            onClick={() => {
-              if (!selectedProjectId) {
-                alert('الرجاء اختيار مشروع أولاً.');
-                return;
-              }
-              addTelemetryEvent('handover.scheduled', selectedProjectId, { 
-                unitNo: 'A-101', 
-                date: '2026-07-01'
-              });
-              alert('تمت جدولة تسليم الوحدة وإرسال الإشعار للعميل.');
-            }}
-            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-          >
-            <span>تسجيل موعد استلام نهائي</span>
-            <ChevronRight size={14} className="opacity-50" />
-          </button>
-        </div>
-      </div>
-
-      {selectedProjectId && (
-        <div className="pt-3 border-t border-[var(--nc-glass-border)]">
-          <button
-            onClick={() => setSelectedProjectId(null)}
-            className="w-full py-2 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] hover:text-white text-xs font-bold rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-1.5"
-          >
-            <ArrowRight size={13} />
-            العودة لقائمة المشاريع
-          </button>
-        </div>
-      )}
-    </Card>
-  );
-
-  const insightsContent = (
-    <Card className="p-5 space-y-4 h-full">
-      <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Landmark size={16} className="text-[var(--nc-text-secondary)]" />
-          الملخص المالي والتحليلي
-        </h4>
-        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">يستعلم من خدمة الحسابات المركزية ورؤى الذكاء الاصطناعي</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        {/* Financial info */}
-        <div className="space-y-2.5 text-xs bg-[var(--nc-surface)] p-3.5 rounded-2xl border border-white/5">
-          <span className="text-xs text-slate-500 font-bold text-[var(--nc-text-secondary)] block mb-1">الوضع المالي للمشروع</span>
-          {selectedProjectId ? (
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center py-1 border-b border-white/5">
-                <span className="text-[var(--nc-text-dim)] font-medium">إجمالي المبيعات:</span>
-                <span className="font-semibold text-white text-lg font-mono">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-white/5">
-                <span className="text-[var(--nc-text-dim)] font-medium">المبالغ المحصلة:</span>
-                <span className="font-bold text-emerald-400 font-mono">{(accountingFinance[selectedProjectId]?.collected || 0).toLocaleString()} ر.س</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-[var(--nc-text-dim)] font-medium">الأقساط المستحقة:</span>
-                <span className="font-bold text-amber-500 font-mono">{(accountingFinance[selectedProjectId]?.outstanding || 0).toLocaleString()} ر.س</span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium text-center py-4">الرجاء تحديد مشروع عقاري لعرض الملخص المالي.</p>
-          )}
-        </div>
-
-        {/* AI Insight info */}
-        <div className="space-y-2.5 text-xs bg-[var(--nc-surface)] p-3.5 rounded-2xl border border-white/5">
-          <span className="text-xs text-slate-500 font-bold text-cyan-400 block mb-1 flex items-center gap-1">
-            <Bot size={13} />
-            رؤى AI منصور
-          </span>
-          {selectedProjectId ? (
-            <p className="text-xs text-slate-500 text-cyan-100/90 leading-relaxed">
-              يسير هذا المشروع بمعدل بيع متناسق (تبلغ نسبة الإشغال حالياً {project ? Math.round((project.unitsSold || 0) / (project.unitsTotal || 1) * 100) : 0}%). 
-              يوصى بالبدء في التخطيط لإطلاق المرحلة الثانية من تشطيبات الواجهات الخارجية للتأكد من مواكبة تسليم الوحدات.
-            </p>
-          ) : (
-            <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium leading-relaxed">
-              مرحبًا بك في بوابة ذكاء العمليات. حدد أي مشروع عقاري نشط لاستخراج توصيات الذكاء الاصطناعي الفورية وإحصائيات التحليل المستقبلي للبناء والتشييد.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/5">
-        {/* Site alerts */}
-        <div className="space-y-2 text-xs">
-          <span className="text-xs text-slate-500 font-bold text-amber-500 block mb-1 flex items-center gap-1">
-            <Clock size={13} />
-            تنبيهات ومواعيد موجهة
-          </span>
-          <ul className="text-xs text-slate-500 space-y-1.5 text-[var(--nc-text-dim)] font-medium">
-            <li className="flex items-start gap-1">
-              <AlertTriangle size={11} className="text-amber-500 shrink-0 mt-0.5" />
-              <span>انحراف في خطة قواعد المرحلة الثانية.</span>
-            </li>
-            <li className="flex items-start gap-1">
-              <CheckCircle2 size={11} className="text-emerald-500 shrink-0 mt-0.5" />
-              <span>موعد تسليم وشيك لوحدة B-201 (١ يوليو).</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Recent documents list */}
-        <div className="space-y-2 text-xs">
-          <span className="text-xs text-slate-500 font-bold text-[var(--nc-text-secondary)] block mb-1">المستندات الأخيرة</span>
-          <div className="space-y-1">
-            {[
-              { id: 'doc_991', name: 'رخصة_الحفر_المعتمدة.pdf', ref: 'doc-ref-121' },
-              { id: 'doc_992', name: 'تقرير_سلامة_التربة.pdf', ref: 'doc-ref-122' }
-            ].map(doc => (
-              <div key={doc.id} className="p-1 px-2 bg-[var(--nc-surface)] rounded-lg border border-white/5 flex items-center justify-between">
-                <span className="truncate text-slate-200 text-xs text-slate-500">{doc.name}</span>
-                <FileCheck size={12} className="text-[var(--nc-text-secondary)] shrink-0" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-
-  const detailsContent = (
-    <>
-      {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
-      {!selectedProjectId ? (
-        <>
-
-          {/* Loading / Error / Empty States */}
-          {isLoading && (
-            <div className="flex items-center justify-center gap-3 py-8">
-              <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-              <span className="text-xs text-slate-500 font-medium">جاري تحميل المشاريع من قاعدة البيانات...</span>
-            </div>
-          )}
-
-          {fetchError && !isLoading && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <p className="text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px', display: 'inline-block' }}>
-                {fetchError}
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="text-xs text-[var(--nc-accent)] hover:text-[var(--nc-accent-hover)] font-bold transition-colors"
-              >
-                إعادة المحاولة
-              </button>
-            </div>
-          )}
-
-          {!isLoading && !fetchError && filteredProjects.length === 0 && (
-            <div className="py-8 text-center">
-              <span className="text-xs text-slate-500 font-medium">لا توجد مشاريع عقارية مسجلة حالياً.</span>
-            </div>
-          )}
-
-          {/* Projects Table Grid */}
-          {!isLoading && !fetchError && (
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
-            <table className="w-full text-right border-collapse">
-              <thead>
-                <tr className="sticky top-0 z-10 bg-[var(--nc-surface-strong)] border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
-                  <th className="pb-3 px-4">اسم المشروع</th>
-                  <th className="pb-3 px-4">الموقع</th>
-                  <th className="pb-3 px-4">الحالة</th>
-                  <th className="pb-3 px-4">مبيعات الوحدات</th>
-                  <th className="pb-3 px-4">تقدم التشييد</th>
-                  <th className="pb-3 px-4 text-center">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((p) => (
-                  <tr 
-                    key={p.id} 
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors group"
+          {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
+          {!selectedProjectId ? (
+            <div className="ds-card ds-p-xl">
+              
+              <div className="ds-card-header">
+                <div>
+                  <h2 className="ds-h2">إدارة المشاريع العقارية</h2>
+                  <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+                </div>
+                
+                <div className="nc-row">
+                  <div className="relative max-w-xs">
+                    <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
+                    <input 
+                      type="text"
+                      placeholder="بحث بالمشروع أو الحي..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="nc-glass !py-2 pr-9 pl-4 w-56"
+                      style={{ fontSize: '0.75rem', outline: 'none' }}
+                    />
+                  </div>
+                  <Button 
+                    icon={Plus}
+                    onClick={() => {
+                      if (!isAllowed('CREATE_PROJECT')) {
+                        alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+                        return;
+                      }
+                      setActiveModal('new_project');
+                    }}
                   >
-                    <td className="py-4 px-4 font-semibold text-white text-lg text-sm">
-                      {p.name}
-                    </td>
-                    <td className="py-4 px-4 text-xs text-slate-500 font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={12} className="text-[var(--nc-text-dim)] font-medium" />
-                        {p.location}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs text-slate-500 font-bold ${
-                        p.status === 'مكتمل' 
-                          ? 'bg-emerald-500/25 text-emerald-400' 
-                          : 'bg-amber-500/25 text-amber-400'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-xs">
-                      <span className="font-semibold text-white text-lg">{p.unitsSold}</span> / {p.unitsTotal} وحدة
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5 border border-white/5">
-                          <div 
-                            className="bg-[var(--nc-accent)] h-1.5 rounded-full" 
-                            style={{ width: `${p.progressPercent}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-xs text-slate-500 font-bold text-[var(--nc-text-secondary)]">{p.progressPercent}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <button 
-                        onClick={async () => {
-                          setSelectedProjectId(p.id);
-                          addTelemetryEvent('project.opened', p.id, { name: p.name });
-                          try {
-                            const dbUnits = await getProjectUnitsAction(String(p.id));
-                            setProjectUnits(prev => ({
-                              ...prev,
-                              [p.id]: dbUnits
-                            }));
-                            addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
-                          } catch (err: any) {
-                            console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
-                            if (!projectUnits[p.id]) {
-                              setProjectUnits(prev => ({
-                                ...prev,
-                                [p.id]: initialUnits[p.id as number] || []
-                              }));
-                            }
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--nc-surface-solid)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent-border)] rounded-lg text-xs font-bold transition-all"
+                    مشروع جديد
+                  </Button>
+                </div>
+              </div>
+
+              {/* Loading / Error / Empty States */}
+              {isLoading && (
+                <div className="ds-stack ds-row-center ds-py-xl">
+                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
+                  <span className="ds-muted">جاري تحميل المشاريع من قاعدة البيانات...</span>
+                </div>
+              )}
+
+              {fetchError && !isLoading && (
+                <div className="ds-stack ds-row-center ds-py-lg">
+                  <p className="ds-body-sm ds-p-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', display: 'inline-block' }}>
+                    {fetchError}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="nc-btn nc-btn-ghost nc-btn-sm"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              )}
+
+              {!isLoading && !fetchError && filteredProjects.length === 0 && (
+                <div className="ds-py-lg ds-row-center">
+                  <span className="ds-muted">لا توجد مشاريع عقارية مسجلة حالياً.</span>
+                </div>
+              )}
+
+              {/* Projects Table Grid */}
+              {!isLoading && !fetchError && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
+                      <th className="pb-3 px-4">اسم المشروع</th>
+                      <th className="pb-3 px-4">الموقع</th>
+                      <th className="pb-3 px-4">الحالة</th>
+                      <th className="pb-3 px-4">مبيعات الوحدات</th>
+                      <th className="pb-3 px-4">تقدم التشييد</th>
+                      <th className="pb-3 px-4 text-center">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProjects.map((p) => (
+                      <tr 
+                        key={p.id} 
+                        className="border-b border-white/5 hover:bg-white/5 transition-colors group"
                       >
-                        <Eye size={13} />
-                        استعراض
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-        </div>
-        )}
-      </>
-      ) : (
+                        <td className="py-4 px-4 font-bold text-white text-sm">
+                          {p.name}
+                        </td>
+                        <td className="py-4 px-4 text-xs text-[#C4D8E5] font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin size={12} className="text-[#C4D8E5] font-medium" />
+                            {p.location}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            p.status === 'مكتمل' 
+                              ? 'bg-emerald-500/25 text-emerald-400' 
+                              : 'bg-amber-500/25 text-amber-400'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-xs">
+                          <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-[#1C2B48] rounded-full h-1.5 border border-white/5">
+                              <div 
+                                className="bg-[#8EB1D1] h-1.5 rounded-full" 
+                                style={{ width: `${p.progressPercent}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[11px] font-bold text-[#8EB1D1]">{p.progressPercent}%</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <button 
+                            onClick={async () => {
+                              setSelectedProjectId(p.id);
+                              addTelemetryEvent('project.opened', p.id, { name: p.name });
+                              try {
+                                const dbUnits = await getProjectUnitsAction(String(p.id));
+                                setProjectUnits(prev => ({
+                                  ...prev,
+                                  [p.id]: dbUnits
+                                }));
+                                addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
+                              } catch (err: any) {
+                                console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
+                                if (!projectUnits[p.id]) {
+                                  setProjectUnits(prev => ({
+                                    ...prev,
+                                    [p.id]: initialUnits[p.id as number] || []
+                                  }));
+                                }
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1C2B48] border border-white/5 hover:bg-[#8EB1D1]/20 hover:text-[#8EB1D1] hover:border-[#8EB1D1]/30 rounded-lg text-xs font-bold transition-all"
+                          >
+                            <Eye size={13} />
+                            استعراض
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+            </div>
+            )}
+          </div>
+          ) : (
             
             // ─── View 2: Detailed Project View ───
             <div className="space-y-6">
@@ -883,21 +653,21 @@ export default function ProjectsView() {
               {/* Return link */}
               <button 
                 onClick={() => setSelectedProjectId(null)}
-                className="flex items-center gap-1.5 text-xs text-[var(--nc-text-secondary)] hover:text-[var(--nc-text-secondary)] font-bold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-[#8EB1D1] hover:text-[#A7C7E7] font-bold transition-colors cursor-pointer"
               >
                 <ArrowRight size={14} />
                 العودة لقائمة المشاريع العقارية
               </button>
 
               {/* Project Hero Details Panel */}
-              <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-3xl p-6 relative overflow-hidden shadow-xl">
+              <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 relative overflow-hidden shadow-xl">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-bl-full blur-3xl pointer-events-none"></div>
                 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                   <div>
                     <div className="flex items-center gap-3">
                       <h2 className="text-2xl font-black text-white">{project?.name}</h2>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs text-slate-500 font-bold ${
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         project?.status === 'مكتمل' 
                           ? 'bg-emerald-500/25 text-emerald-400' 
                           : 'bg-amber-500/25 text-amber-400'
@@ -905,7 +675,7 @@ export default function ProjectsView() {
                         {project?.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 font-medium mt-1.5">الموقع: {project?.location} | الرقم التعريفي: PRJ-00{project?.id}</p>
+                    <p className="text-xs text-[#C4D8E5] font-medium mt-1.5">الموقع: {project?.location} | الرقم التعريفي: PRJ-00{project?.id}</p>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3">
@@ -939,10 +709,10 @@ export default function ProjectsView() {
               </div>
 
               {/* Tabs Section */}
-              <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-3xl p-6 shadow-xl">
+              <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl">
                 
                 {/* Tabs Bar */}
-                <div className="flex flex-wrap gap-2 border-b border-[var(--nc-glass-border)] pb-3 mb-6">
+                <div className="flex flex-wrap gap-2 border-b border-[#A7C7E7]/20 pb-3 mb-6">
                   {[
                     { id: 'overview', name: 'نظرة عامة' },
                     { id: 'phases', name: 'المراحل والتخطيط' },
@@ -958,8 +728,8 @@ export default function ProjectsView() {
                       onClick={() => changeTab(tab.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                         activeTab === tab.id 
-                          ? 'bg-[var(--nc-accent)] text-white shadow-sm' 
-                          : 'bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium hover:text-white border border-white/5'
+                          ? 'bg-[#8EB1D1] text-white shadow-sm' 
+                          : 'bg-[#1C2B48]/50 text-[#C4D8E5] font-medium hover:text-white border border-white/5'
                       }`}
                     >
                       {tab.name}
@@ -970,8 +740,8 @@ export default function ProjectsView() {
                 {/* Tab Contents */}
                 {isPending ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-3">
-                    <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-                    <span className="text-xs text-slate-500 font-medium">جاري تحميل بيانات التبويب...</span>
+                    <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
+                    <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل بيانات التبويب...</span>
                   </div>
                 ) : (
                   <div className="tab-view-pane">
@@ -980,22 +750,22 @@ export default function ProjectsView() {
                     {activeTab === 'overview' && (
                       <div className="space-y-6">
                         <div>
-                          <h3 className="text-lg font-semibold text-white mb-2">نبذة تفصيلية عن المشروع</h3>
-                          <p className="text-xs text-slate-500 font-medium leading-relaxed bg-[var(--nc-surface-solid)]/45 p-4 rounded-xl border border-white/5">{project?.description}</p>
+                          <h3 className="text-sm font-bold text-white mb-2">نبذة تفصيلية عن المشروع</h3>
+                          <p className="text-xs text-[#C4D8E5] font-medium leading-relaxed bg-[#1C2B48]/45 p-4 rounded-xl border border-white/5">{project?.description}</p>
                         </div>
 
                         {/* Snapshot statistics */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <Card className="bg-[var(--nc-surface)] border border-white/5 p-4 rounded-2xl">
-                            <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">إجمالي الوحدات السكنية</span>
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">إجمالي الوحدات السكنية</span>
                             <h2 className="text-2xl font-black text-white mt-1">{project?.unitsTotal} وحدة</h2>
                           </Card>
-                          <Card className="bg-[var(--nc-surface)] border border-white/5 p-4 rounded-2xl">
-                            <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">الوحدات المحجوزة والمباعة</span>
-                            <h2 className="text-2xl font-black text-[var(--nc-text-secondary)] mt-1">{project?.unitsSold} وحدة</h2>
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">الوحدات المحجوزة والمباعة</span>
+                            <h2 className="text-2xl font-black text-[#8EB1D1] mt-1">{project?.unitsSold} وحدة</h2>
                           </Card>
-                          <Card className="bg-[var(--nc-surface)] border border-white/5 p-4 rounded-2xl">
-                            <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">نسبة تقدم التشييد المالي والخرساني</span>
+                          <Card className="bg-[#1C2B48]/50 border border-white/5 p-4 rounded-2xl">
+                            <span className="text-[11px] text-[#C4D8E5] font-medium">نسبة تقدم التشييد المالي والخرساني</span>
                             <h2 className="text-2xl font-black text-cyan-400 mt-1">{project?.progressPercent}%</h2>
                           </Card>
                         </div>
@@ -1005,7 +775,7 @@ export default function ProjectsView() {
                           <Bot size={16} className="text-cyan-400 shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold">رؤى AI منصور:</span>
-                            <p className="text-xs text-slate-500 text-cyan-300/80 mt-1 leading-relaxed">
+                            <p className="text-[11px] text-cyan-300/80 mt-1 leading-relaxed">
                               يسير هذا المشروع بمعدل بيع متناسق (تبلغ نسبة الإشغال حالياً {Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}%). 
                               يوصى بالبدء في التخطيط لإطلاق المرحلة الثانية من تشطيبات الواجهات الخارجية للتأكد من مواكبة تسليم الوحدات.
                             </p>
@@ -1018,7 +788,7 @@ export default function ProjectsView() {
                     {activeTab === 'phases' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-white">مراحل التنفيذ والتخطيط الهندسي</h3>
+                          <h3 className="text-sm font-bold text-white">مراحل التنفيذ والتخطيط الهندسي</h3>
                           <button
                             onClick={() => {
                               if (!isAllowed('ADD_PHASE')) {
@@ -1027,7 +797,7 @@ export default function ProjectsView() {
                               }
                               setActiveModal('new_phase');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-bold rounded-lg transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1]/20 border border-[#8EB1D1]/30 text-[#8EB1D1] text-xs font-bold rounded-lg transition-all"
                           >
                             <Plus size={14} />
                             إضافة مرحلة تنفيذية
@@ -1037,7 +807,7 @@ export default function ProjectsView() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-right">
                             <thead>
-                              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
                                 <th className="pb-3">المرحلة</th>
                                 <th className="pb-3">تاريخ البداية</th>
                                 <th className="pb-3">تاريخ النهاية المتوقع</th>
@@ -1048,15 +818,15 @@ export default function ProjectsView() {
                               {(projectPhases[selectedProjectId] || []).map((ph, idx) => (
                                 <tr key={idx} className="border-b border-white/5 text-xs">
                                   <td className="py-3 text-white font-bold">{ph.name}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{ph.startAt}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{ph.endAt}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{ph.startAt}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{ph.endAt}</td>
                                   <td className="py-3 text-left">
-                                    <span className={`px-2 py-0.5 rounded text-xs text-slate-500 font-bold ${
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                       ph.status === 'مكتملة' 
                                         ? 'bg-emerald-500/20 text-emerald-400' 
                                         : ph.status === 'قيد التنفيذ' 
                                           ? 'bg-amber-500/20 text-amber-400' 
-                                          : 'bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
+                                          : 'bg-[#1C2B48] text-[#C4D8E5] font-medium'
                                     }`}>
                                       {ph.status}
                                     </span>
@@ -1065,7 +835,7 @@ export default function ProjectsView() {
                               ))}
                               {(!projectPhases[selectedProjectId] || projectPhases[selectedProjectId].length === 0) && (
                                 <tr>
-                                  <td colSpan={4} className="py-6 text-center text-[var(--nc-text-dim)] font-medium">لا توجد مراحل تخطيطية مسجلة بعد.</td>
+                                  <td colSpan={4} className="py-6 text-center text-[#C4D8E5] font-medium">لا توجد مراحل تخطيطية مسجلة بعد.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -1078,14 +848,14 @@ export default function ProjectsView() {
                     {activeTab === 'units' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-white">سجل الوحدات (Inventory)</h3>
-                          <p className="text-xs text-slate-500 font-medium">إجمالي الوحدات المدرجة: {(projectUnits[selectedProjectId] || []).length} وحدات</p>
+                          <h3 className="text-sm font-bold text-white">سجل الوحدات (Inventory)</h3>
+                          <p className="text-xs text-[#C4D8E5] font-medium">إجمالي الوحدات المدرجة: {(projectUnits[selectedProjectId] || []).length} وحدات</p>
                         </div>
 
                         <div className="overflow-x-auto">
                           <table className="w-full text-right">
                             <thead>
-                              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
                                 <th className="pb-3">رقم الوحدة</th>
                                 <th className="pb-3">نوع الوحدة</th>
                                 <th className="pb-3">المساحة الإجمالية</th>
@@ -1098,11 +868,11 @@ export default function ProjectsView() {
                               {(projectUnits[selectedProjectId] || []).map((u, idx) => (
                                 <tr key={idx} className="border-b border-white/5 text-xs hover:bg-white/5 transition-colors">
                                   <td className="py-3 text-white font-bold">{u.no}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{u.type}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{u.area}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium font-bold">{u.price.toLocaleString()} ر.س</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{u.type}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{u.area}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium font-bold">{u.price.toLocaleString()} ر.س</td>
                                   <td className="py-3">
-                                    <span className={`px-2 py-0.5 rounded text-xs text-slate-500 font-bold ${
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                       u.status === 'Available' 
                                         ? 'bg-emerald-500/20 text-emerald-400' 
                                         : u.status === 'Hold' 
@@ -1152,7 +922,7 @@ export default function ProjectsView() {
                                             alert('خطأ أثناء تعديل حالة الوحدة: ' + err.message);
                                           }
                                         }}
-                                        className="px-2.5 py-1 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 rounded text-xs text-slate-500 font-bold transition-all"
+                                        className="px-2.5 py-1 bg-[#1C2B48] border border-white/10 hover:border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 rounded text-[10px] font-bold transition-all"
                                       >
                                         {u.status === 'Available' ? 'حجز مؤقت' : 'إلغاء الحجز'}
                                       </button>
@@ -1162,7 +932,7 @@ export default function ProjectsView() {
                               ))}
                               {(!projectUnits[selectedProjectId] || projectUnits[selectedProjectId].length === 0) && (
                                 <tr>
-                                  <td colSpan={6} className="py-6 text-center text-[var(--nc-text-dim)] font-medium">لا توجد وحدات عقارية مدخلة لهذا المشروع.</td>
+                                  <td colSpan={6} className="py-6 text-center text-[#C4D8E5] font-medium">لا توجد وحدات عقارية مدخلة لهذا المشروع.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -1175,7 +945,7 @@ export default function ProjectsView() {
                     {activeTab === 'construction' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-white">تقارير الإنجاز الإنشائي الموقعية</h3>
+                          <h3 className="text-sm font-bold text-white">تقارير الإنجاز الإنشائي الموقعية</h3>
                           <button
                             onClick={() => {
                               if (!isAllowed('POST_PROGRESS')) {
@@ -1184,7 +954,7 @@ export default function ProjectsView() {
                               }
                               setActiveModal('new_report');
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--nc-accent-soft)] hover:bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-bold rounded-lg transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8EB1D1]/10 hover:bg-[#8EB1D1]/20 border border-[#8EB1D1]/30 text-[#8EB1D1] text-xs font-bold rounded-lg transition-all"
                           >
                             <Plus size={14} />
                             تسجيل تقرير موقعي
@@ -1193,26 +963,26 @@ export default function ProjectsView() {
 
                         <div className="space-y-4">
                           {(projectReports[selectedProjectId] || []).map((rep, idx) => (
-                            <div key={idx} className="bg-[var(--nc-surface)] border border-white/5 p-4 rounded-2xl text-xs space-y-2">
+                            <div key={idx} className="bg-[#1C2B48]/40 border border-white/5 p-4 rounded-2xl text-xs space-y-2">
                               <div className="flex justify-between items-center">
-                                <span className="font-bold text-[var(--nc-text-secondary)]">{rep.phaseName}</span>
-                                <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">{rep.date}</span>
+                                <span className="font-bold text-[#8EB1D1]">{rep.phaseName}</span>
+                                <span className="text-[10px] text-[#C4D8E5] font-medium">{rep.date}</span>
                               </div>
-                              <p className="text-[var(--nc-text-dim)] font-medium leading-relaxed">{rep.note}</p>
+                              <p className="text-[#C4D8E5] font-medium leading-relaxed">{rep.note}</p>
                               <div className="flex items-center justify-between pt-1">
-                                <div className="flex items-center gap-1.5 text-[var(--nc-text-dim)] font-medium">
+                                <div className="flex items-center gap-1.5 text-[#C4D8E5] font-medium">
                                   <Activity size={13} className="text-cyan-400" />
                                   <span>نسبة الإنجاز:</span>
-                                  <span className="font-semibold text-white text-lg">{rep.progressPercent}%</span>
+                                  <span className="font-bold text-white">{rep.progressPercent}%</span>
                                 </div>
-                                <span className="text-xs text-slate-500 text-cyan-400 bg-cyan-950/40 border border-cyan-800/30 px-2 py-0.5 rounded">
+                                <span className="text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-800/30 px-2 py-0.5 rounded">
                                   صورة موثقة سحابياً
                                 </span>
                               </div>
                             </div>
                           ))}
                           {(!projectReports[selectedProjectId] || projectReports[selectedProjectId].length === 0) && (
-                            <div className="py-6 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا توجد تقارير موثقة للإنجاز الموقعي حالياً.</div>
+                            <div className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد تقارير موثقة للإنجاز الموقعي حالياً.</div>
                           )}
                         </div>
                       </div>
@@ -1221,15 +991,15 @@ export default function ProjectsView() {
                     {/* Tab 5: Delivery & Handover */}
                     {activeTab === 'handover' && (
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-white mb-2">مواعيد تسليم الوحدات وجداول العيوب (Handover)</h3>
-                        <div className="bg-[var(--nc-surface-solid)]/45 p-4 rounded-xl border border-white/5 text-xs text-slate-500 font-medium space-y-3">
+                        <h3 className="text-sm font-bold text-white mb-2">مواعيد تسليم الوحدات وجداول العيوب (Handover)</h3>
+                        <div className="bg-[#1C2B48]/45 p-4 rounded-xl border border-white/5 text-xs text-[#C4D8E5] font-medium space-y-3">
                           <p>يتم هنا إدراج الوحدات التي اقترب موعد تسليمها للعميل ومراجعة العيوب وتسوية الاستلام النهائي.</p>
-                          <div className="border-t border-[var(--nc-glass-border)] pt-3">
-                            <h4 className="font-semibold text-white text-lg mb-2">جدول التسليم الحالي:</h4>
-                            <div className="p-3 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 flex justify-between items-center">
+                          <div className="border-t border-[#A7C7E7]/20 pt-3">
+                            <h4 className="font-bold text-white mb-2">جدول التسليم الحالي:</h4>
+                            <div className="p-3 bg-[#1C2B48]/60 rounded-xl border border-white/5 flex justify-between items-center">
                               <div>
                                 <p className="font-bold text-slate-200">موعد معاينة الوحدة B-201 للعميل عبد الرحمن الشمري</p>
-                                <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">التاريخ: 2026-07-01 · الوقت: 10:00 ص</span>
+                                <span className="text-[10px] text-[#C4D8E5] font-medium">التاريخ: 2026-07-01 · الوقت: 10:00 ص</span>
                               </div>
                               <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[9px] font-bold">
                                 مجدول ومعتمد
@@ -1244,8 +1014,8 @@ export default function ProjectsView() {
                     {activeTab === 'sales' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-white">سجل المبيعات والعقود والملخصات</h3>
-                          <span className="text-xs text-slate-500 text-cyan-400 font-bold bg-cyan-950/30 px-2 py-1 rounded border border-cyan-800/20">
+                          <h3 className="text-sm font-bold text-white">سجل المبيعات والعقود والملخصات</h3>
+                          <span className="text-[10px] text-cyan-400 font-bold bg-cyan-950/30 px-2 py-1 rounded border border-cyan-800/20">
                             مؤمن بالكامل عبر خدمة المحاسبة (Accounting proxy)
                           </span>
                         </div>
@@ -1253,7 +1023,7 @@ export default function ProjectsView() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-right">
                             <thead>
-                              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
                                 <th className="pb-3">رقم الوحدة</th>
                                 <th className="pb-3">اسم المشتري (Lead)</th>
                                 <th className="pb-3">قيمة التعاقد</th>
@@ -1265,17 +1035,17 @@ export default function ProjectsView() {
                               {(projectBookings[selectedProjectId] || []).map((bk, idx) => (
                                 <tr key={idx} className="border-b border-white/5 text-xs">
                                   <td className="py-3 text-white font-bold">{bk.unitNo}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{bk.leadName}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium font-bold">{bk.price.toLocaleString()} ر.س</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{bk.date}</td>
-                                  <td className="py-3 text-center text-cyan-400 font-mono text-xs text-slate-500">
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{bk.leadName}</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium font-bold">{bk.price.toLocaleString()} ر.س</td>
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{bk.date}</td>
+                                  <td className="py-3 text-center text-cyan-400 font-mono text-[10px]">
                                     {bk.contractId}
                                   </td>
                                 </tr>
                               ))}
                               {(!projectBookings[selectedProjectId] || projectBookings[selectedProjectId].length === 0) && (
                                 <tr>
-                                  <td colSpan={5} className="py-6 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا توجد عمليات بيع أو حجز مسجلة لهذا المشروع.</td>
+                                  <td colSpan={5} className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد عمليات بيع أو حجز مسجلة لهذا المشروع.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -1287,12 +1057,12 @@ export default function ProjectsView() {
                     {/* Tab 7: Documents & Media */}
                     {activeTab === 'documents' && (
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-white mb-2">مستندات وتراخيص المشروع المعتمدة</h3>
+                        <h3 className="text-sm font-bold text-white mb-2">مستندات وتراخيص المشروع المعتمدة</h3>
                         
                         <div className="overflow-x-auto">
                           <table className="w-full text-right">
                             <thead>
-                              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                              <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
                                 <th className="pb-3">اسم الملف</th>
                                 <th className="pb-3">التصنيف</th>
                                 <th className="pb-3 text-center">الرقم المرجعي (documentId)</th>
@@ -1302,15 +1072,15 @@ export default function ProjectsView() {
                               {(projectDocs[selectedProjectId] || []).map((doc, idx) => (
                                 <tr key={idx} className="border-b border-white/5 text-xs">
                                   <td className="py-3 text-white font-bold">{doc.name}</td>
-                                  <td className="py-3 text-[var(--nc-text-dim)] font-medium">{doc.category}</td>
-                                  <td className="py-3 text-center text-[var(--nc-text-secondary)] font-mono text-xs text-slate-500">
+                                  <td className="py-3 text-[#C4D8E5] font-medium">{doc.category}</td>
+                                  <td className="py-3 text-center text-[#8EB1D1] font-mono text-[10px]">
                                     {doc.documentId}
                                   </td>
                                 </tr>
                               ))}
                               {(!projectDocs[selectedProjectId] || projectDocs[selectedProjectId].length === 0) && (
                                 <tr>
-                                  <td colSpan={3} className="py-6 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا توجد مستندات مرفوعة بعد.</td>
+                                  <td colSpan={3} className="py-6 text-center text-[#C4D8E5] font-medium text-xs">لا توجد مستندات مرفوعة بعد.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -1322,33 +1092,33 @@ export default function ProjectsView() {
                     {/* Tab 8: Reports & Performance */}
                     {activeTab === 'reports' && (
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-white">لوحة قياس الأداء المالي والتشغيلي (KPIs)</h3>
+                        <h3 className="text-sm font-bold text-white">لوحة قياس الأداء المالي والتشغيلي (KPIs)</h3>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <Card className="bg-[var(--nc-surface)] border border-white/5 p-5 rounded-2xl text-xs space-y-4">
-                            <h4 className="font-bold text-[var(--nc-text-dim)] font-medium border-b border-[var(--nc-glass-border)] pb-2">معدل الإشغال البيعي للمشروع</h4>
+                          <Card className="bg-[#1C2B48]/40 border border-white/5 p-5 rounded-2xl text-xs space-y-4">
+                            <h4 className="font-bold text-[#C4D8E5] font-medium border-b border-[#A7C7E7]/20 pb-2">معدل الإشغال البيعي للمشروع</h4>
                             <div className="flex items-center justify-between">
                               <span>الوحدات المباعة:</span>
-                              <span className="font-bold text-[var(--nc-text-secondary)]">{project?.unitsSold} وحدة</span>
+                              <span className="font-bold text-[#8EB1D1]">{project?.unitsSold} وحدة</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span>الوحدات المتاحة:</span>
-                              <span className="font-semibold text-white text-lg">{(project?.unitsTotal || 0) - (project?.unitsSold || 0)} وحدة</span>
+                              <span className="font-bold text-white">{(project?.unitsTotal || 0) - (project?.unitsSold || 0)} وحدة</span>
                             </div>
-                            <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-2 border border-white/5">
+                            <div className="w-full bg-[#1C2B48] rounded-full h-2 border border-white/5">
                               <div 
-                                className="bg-[var(--nc-accent)] h-2 rounded-full" 
+                                className="bg-[#8EB1D1] h-2 rounded-full" 
                                 style={{ width: `${Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}%` }}
                               ></div>
                             </div>
-                            <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">تم بيع ما يقارب {Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}% من مخزون الوحدات الكلي للمشروع.</p>
+                            <p className="text-[10px] text-[#C4D8E5] font-medium">تم بيع ما يقارب {Math.round((project?.unitsSold || 0) / (project?.unitsTotal || 1) * 100)}% من مخزون الوحدات الكلي للمشروع.</p>
                           </Card>
 
-                          <Card className="bg-[var(--nc-surface)] border border-white/5 p-5 rounded-2xl text-xs space-y-4">
-                            <h4 className="font-bold text-[var(--nc-text-dim)] font-medium border-b border-[var(--nc-glass-border)] pb-2">إجمالي التدفق المالي الافتراضي</h4>
+                          <Card className="bg-[#1C2B48]/40 border border-white/5 p-5 rounded-2xl text-xs space-y-4">
+                            <h4 className="font-bold text-[#C4D8E5] font-medium border-b border-[#A7C7E7]/20 pb-2">إجمالي التدفق المالي الافتراضي</h4>
                             <div className="flex items-center justify-between">
                               <span>إجمالي حجم التعاقدات:</span>
-                              <span className="font-semibold text-white text-lg">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
+                              <span className="font-bold text-white">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span>التدفق المحصل (Collected):</span>
@@ -1372,7 +1142,7 @@ export default function ProjectsView() {
           )}
 
           {/* ── Telemetry Live Log Console ── */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
+          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
               <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
                 <Bot size={15} />
@@ -1380,147 +1150,247 @@ export default function ProjectsView() {
               </h4>
               <button 
                 onClick={() => setTelemetryLogs([])}
-                className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
+                className="text-[10px] text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium border border-white/5 px-2 py-0.5 rounded"
               >
                 مسح السجل
               </button>
             </div>
             
-            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-slate-500 font-mono leading-relaxed">
+            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[11px] font-mono leading-relaxed">
               {telemetryLogs.map((log) => (
-                <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span className="text-[var(--nc-text-secondary)] font-bold">[{log.type.toUpperCase()}]</span>
-                    <span className="text-[var(--nc-text-dim)] font-medium">{log.timestamp}</span>
+                <div key={log.id} className="p-2.5 bg-[#1C2B48]/60 rounded-xl border border-white/5 space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
+                    <span className="text-[#C4D8E5] font-medium">{log.timestamp}</span>
                   </div>
-                  <div className="text-[var(--nc-text-dim)] font-medium">
+                  <div className="text-[#C4D8E5] font-medium">
                     <span className="text-cyan-400">actor:</span> {log.actorId} | 
                     <span className="text-cyan-400"> project:</span> {log.projectId || 'N/A'}
                   </div>
-                  <pre className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-1.5 rounded overflow-x-auto">
+                  <pre className="text-[10px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-1.5 rounded overflow-x-auto">
                     {JSON.stringify(log.payload, null, 2)}
                   </pre>
                 </div>
               ))}
             </div>
           </div>
-    </>
-  );
 
-  return (
-    <>
-      {/* ── Page Header (above LayoutContainer) ── */}
-      {!selectedProjectId && (
-        <div className="px-6 md:px-8 pt-6 md:pt-8 pb-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-white">إدارة المشاريع العقارية</h2>
-              <p className="text-xs text-slate-500 font-medium mt-1">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+        </div>
+
+        {/* ── Sticky Right Column (Sidebar Summary Overlay) ── */}
+        <aside className="w-full lg:w-80 shrink-0 space-y-6">
+          
+          {/* Financial summary wrapper (reference accounting service) */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="border-b border-[#A7C7E7]/20 pb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Landmark size={16} className="text-[#8EB1D1]" />
+                الملخص المالي العام
+              </h4>
+              <p className="text-[10px] text-[#C4D8E5] font-medium mt-1">يعرض ملخصاً عرضياً مستخرجاً من نظام الحسابات المركزي</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)] font-medium" size={16} />
-                <input 
-                  type="text"
-                  placeholder="بحث بالمشروع أو الحي..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 pr-9 pl-4 text-xs text-white outline-none focus:border-[var(--nc-accent-border)] min-w-[220px]"
-                />
+
+            {selectedProjectId ? (
+              <div className="space-y-3 text-xs">
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">إجمالي المبيعات والتعاقدات</span>
+                  <span className="font-bold text-white font-mono">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">المدفوعات والمبالغ المحصلة</span>
+                  <span className="font-bold text-emerald-400 font-mono">{(accountingFinance[selectedProjectId]?.collected || 0).toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
+                  <span className="text-[#C4D8E5] font-medium">المطالبات والأقساط المستحقة</span>
+                  <span className="font-bold text-amber-500 font-mono">{(accountingFinance[selectedProjectId]?.outstanding || 0).toLocaleString()} ر.س</span>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={triggerPaymentReceivedSimulation}
+                    className="w-full py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                  >
+                    محاكاة استلام دفعة مالية (Webhook)
+                  </button>
+                </div>
               </div>
-              <Button 
-                icon={Plus}
+            ) : (
+              <p className="text-xs text-[#C4D8E5] font-medium text-center py-3">الرجاء اختيار مشروع لاستعراض تفاصيله المالية العامة.</p>
+            )}
+          </div>
+
+          {/* Quick actions box */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">إجراءات سريعة</h4>
+            <div className="flex flex-col gap-2">
+              <button 
                 onClick={() => {
-                  if (!isAllowed('CREATE_PROJECT')) {
-                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
                     return;
                   }
-                  setActiveModal('new_project');
+                  if (!isAllowed('CREATE_BOOKING')) {
+                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
+                    return;
+                  }
+                  setActiveModal('new_booking');
                 }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
               >
-                مشروع جديد
-              </Button>
+                <span>إنشاء حجز جديد</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
+                    return;
+                  }
+                  addTelemetryEvent('tour.scheduled', selectedProjectId, { 
+                    leadName: 'عميل مهتم سريع', 
+                    date: '2026-06-10', 
+                    notes: 'جولة موجهة بواسطة حجز فوري' 
+                  });
+                  alert('تمت جدولة الجولة العقارية وإدراج الحدث بنجاح.');
+                }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
+              >
+                <span>جدولة جولة عقارية سريعة</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (!selectedProjectId) {
+                    alert('الرجاء اختيار مشروع أولاً.');
+                    return;
+                  }
+                  addTelemetryEvent('handover.scheduled', selectedProjectId, { 
+                    unitNo: 'A-101', 
+                    date: '2026-07-01'
+                  });
+                  alert('تمت جدولة تسليم الوحدة وإرسال الإشعار للعميل.');
+                }}
+                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
+              >
+                <span>تسجيل موعد استلام نهائي</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
             </div>
           </div>
-        </div>
-      )}
 
-      <LayoutContainer
-        kpis={kpisContent}
-        actions={actionsContent}
-        insights={insightsContent}
-        details={detailsContent}
-      />
+          {/* Site alerts */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+              <Clock size={14} className="text-amber-500" />
+              تنبيهات ومواعيد موجهة
+            </h4>
+            <ul className="text-xs space-y-2 text-[#C4D8E5] font-medium">
+              <li className="flex items-start gap-1.5">
+                <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                <span>انحراف في خطة صب قواعد الهيكل للمرحلة الثانية.</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                <span>موعد تسليم وشيك لوحدة B-201 (١ يوليو ٢٠٢٦).</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Recent documents list */}
+          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
+            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">المستندات الأخيرة</h4>
+            <div className="space-y-2 text-xs">
+              {[
+                { id: 'doc_991', name: 'رخصة_الحفر_المعتمدة.pdf', ref: 'doc-ref-121' },
+                { id: 'doc_992', name: 'تقرير_سلامة_التربة.pdf', ref: 'doc-ref-122' }
+              ].map(doc => (
+                <div key={doc.id} className="p-2 bg-[#1C2B48]/40 rounded-lg border border-white/5 flex items-center justify-between">
+                  <div className="truncate pr-1">
+                    <p className="truncate text-slate-200 text-[11px]">{doc.name}</p>
+                    <span className="text-[9px] text-[#C4D8E5] font-medium">ID: {doc.ref}</span>
+                  </div>
+                  <FileCheck size={14} className="text-[#8EB1D1] shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+
       {/* ── Modal 1: New Project Form ── */}
       {activeModal === 'new_project' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleCreateProject}
-            className="relative bg-[var(--nc-surface-solid)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-[var(--nc-glass-border)] pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <Building2 size={18} />
               إنشاء مشروع عقاري جديد
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">اسم المشروع:</label>
+              <label className="text-[#C4D8E5] font-medium block">اسم المشروع:</label>
               <input 
                 type="text"
                 required
                 value={newProjName}
                 onChange={(e) => setNewProjName(e.target.value)}
                 placeholder="مثال: مشروع مجمع النخيل 6"
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">موقع المشروع (الحي، المدينة):</label>
+              <label className="text-[#C4D8E5] font-medium block">موقع المشروع (الحي، المدينة):</label>
               <input 
                 type="text"
                 required
                 value={newProjLocation}
                 onChange={(e) => setNewProjLocation(e.target.value)}
                 placeholder="مثال: النرجس، الرياض"
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">عدد الوحدات الإجمالي:</label>
+              <label className="text-[#C4D8E5] font-medium block">عدد الوحدات الإجمالي:</label>
               <input 
                 type="number"
                 required
                 value={newProjUnits}
                 onChange={(e) => setNewProjUnits(Number(e.target.value))}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">وصف المشروع ومميزاته:</label>
+              <label className="text-[#C4D8E5] font-medium block">وصف المشروع ومميزاته:</label>
               <textarea 
                 rows={3}
                 value={newProjDesc}
                 onChange={(e) => setNewProjDesc(e.target.value)}
                 placeholder="تفاصيل ترويجية وهندسية..."
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
                 تأكيد الإنشاء
               </button>
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1535,15 +1405,15 @@ export default function ProjectsView() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleCreateBooking}
-            className="relative bg-[var(--nc-surface-solid)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-[var(--nc-glass-border)] pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <FileCheck size={18} />
               حجز وحدة سكنية جديدة
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">اختر الوحدة المتاحة:</label>
+              <label className="text-[#C4D8E5] font-medium block">اختر الوحدة المتاحة:</label>
               <select 
                 required
                 value={bookingUnitId}
@@ -1553,7 +1423,7 @@ export default function ProjectsView() {
                   const unitObj = projectUnits[selectedProjectId]?.find(u => u.id === uid);
                   if (unitObj) setBookingPrice(String(unitObj.price));
                 }}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               >
                 <option value="">-- اختر الوحدة --</option>
                 {(projectUnits[selectedProjectId] || [])
@@ -1566,39 +1436,39 @@ export default function ProjectsView() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">اسم المشتري (Lead):</label>
+              <label className="text-[#C4D8E5] font-medium block">اسم المشتري (Lead):</label>
               <input 
                 type="text"
                 required
                 value={bookingLeadName}
                 onChange={(e) => setBookingLeadName(e.target.value)}
                 placeholder="اسم العميل الرباعي..."
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">القيمة التعاقدية (ر.س):</label>
+              <label className="text-[#C4D8E5] font-medium block">القيمة التعاقدية (ر.س):</label>
               <input 
                 type="number"
                 required
                 value={bookingPrice}
                 onChange={(e) => setBookingPrice(e.target.value)}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
                 حفظ الحجز وإصدار العقد
               </button>
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1613,58 +1483,58 @@ export default function ProjectsView() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleAddPhase}
-            className="relative bg-[var(--nc-surface-solid)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-[var(--nc-glass-border)] pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <Calendar size={18} />
               إضافة مرحلة تنفيذية للمشروع
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">اسم المرحلة:</label>
+              <label className="text-[#C4D8E5] font-medium block">اسم المرحلة:</label>
               <input 
                 type="text"
                 required
                 value={phaseName}
                 onChange={(e) => setPhaseName(e.target.value)}
                 placeholder="مثال: أعمال التمديدات والواجهات"
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">تاريخ بداية التنفيذ:</label>
+              <label className="text-[#C4D8E5] font-medium block">تاريخ بداية التنفيذ:</label>
               <input 
                 type="date"
                 required
                 value={phaseStart}
                 onChange={(e) => setPhaseStart(e.target.value)}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">تاريخ الانتهاء المتوقع:</label>
+              <label className="text-[#C4D8E5] font-medium block">تاريخ الانتهاء المتوقع:</label>
               <input 
                 type="date"
                 required
                 value={phaseEnd}
                 onChange={(e) => setPhaseEnd(e.target.value)}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
                 حفظ المرحلة التنفيذية
               </button>
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1679,20 +1549,20 @@ export default function ProjectsView() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handlePostReport}
-            className="relative bg-[var(--nc-surface-solid)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-[var(--nc-glass-border)] pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <Activity size={18} />
               تسجيل تقرير إنجاز موقعي
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">اختر المرحلة الجاري تنفيذها:</label>
+              <label className="text-[#C4D8E5] font-medium block">اختر المرحلة الجاري تنفيذها:</label>
               <select 
                 required
                 value={reportPhaseId}
                 onChange={(e) => setReportPhaseId(e.target.value)}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               >
                 <option value="">-- اختر المرحلة --</option>
                 {(projectPhases[selectedProjectId] || [])
@@ -1705,7 +1575,7 @@ export default function ProjectsView() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">نسبة تقدم الإنجاز (%):</label>
+              <label className="text-[#C4D8E5] font-medium block">نسبة تقدم الإنجاز (%):</label>
               <input 
                 type="number"
                 min="0"
@@ -1713,33 +1583,33 @@ export default function ProjectsView() {
                 required
                 value={reportPercent}
                 onChange={(e) => setReportPercent(Number(e.target.value))}
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] font-medium block">ملاحظات التقرير والمطابقة:</label>
+              <label className="text-[#C4D8E5] font-medium block">ملاحظات التقرير والمطابقة:</label>
               <textarea 
                 rows={3}
                 required
                 value={reportNote}
                 onChange={(e) => setReportNote(e.target.value)}
                 placeholder="ملاحظات مهندس الموقع العقاري والتوريد..."
-                className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)]"
+                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
                 تسجيل التقرير
               </button>
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1752,17 +1622,17 @@ export default function ProjectsView() {
       {activeModal === 'upload_doc' && selectedProjectId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <div className="relative bg-[var(--nc-surface-solid)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
-            <h3 className="text-base font-extrabold text-[var(--nc-text-secondary)] border-b border-[var(--nc-glass-border)] pb-2 flex items-center gap-2">
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <CloudUpload size={18} />
               رفع مخطط / رخصة سحابية
             </h3>
             
-            <p className="text-[var(--nc-text-dim)] font-medium">سيتم رفع الملف المختار مباشرة لمستودع المستندات المركزي للشركة وإصدار رقم مرجعي (documentId) فريد لربطه بالمشروع الحالي.</p>
+            <p className="text-[#C4D8E5] font-medium">سيتم رفع الملف المختار مباشرة لمستودع المستندات المركزي للشركة وإصدار رقم مرجعي (documentId) فريد لربطه بالمشروع الحالي.</p>
             
-            <div className="p-6 bg-[var(--nc-surface-solid)] border-2 border-dashed border-white/10 hover:border-[var(--nc-accent-border)]/40 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors">
-              <CloudUpload size={24} className="text-[var(--nc-text-secondary)]" />
-              <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">اختر ملفاً بصيغة PDF, JPG, PNG أو ZIP لسحبه هنا</span>
+            <div className="p-6 bg-[#1C2B48] border-2 border-dashed border-white/10 hover:border-[#8EB1D1]/40 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors">
+              <CloudUpload size={24} className="text-[#8EB1D1]" />
+              <span className="text-[10px] text-[#C4D8E5] font-medium">اختر ملفاً بصيغة PDF, JPG, PNG أو ZIP لسحبه هنا</span>
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -1783,13 +1653,13 @@ export default function ProjectsView() {
                   alert(`تم رفع الملف بنجاح وإصدار المعرف السحابي الموحد: ${docId}`);
                   setActiveModal(null);
                 }}
-                className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
                 محاكاة رفع ملف
               </button>
               <button 
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1798,8 +1668,10 @@ export default function ProjectsView() {
         </div>
       )}
 
-    </>
+    </div>
   );
 }
+
+
 
 

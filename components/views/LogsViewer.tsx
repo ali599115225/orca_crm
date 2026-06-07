@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/app/context/AppContext';
+import { toast } from '@/app/context/ToastContext';
 import { getSystemLogsAction, clearSystemLogsAction, triggerMockErrorAction } from '@/app/actions/logs';
 
 interface SystemLog {
@@ -65,7 +66,7 @@ export default function LogsViewer() {
       setLogs([]);
       setExpandedLogIdx(null);
     } else if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
     }
   };
 
@@ -77,7 +78,7 @@ export default function LogsViewer() {
       fetchLogs();
       setExpandedLogIdx(0); // Auto-expand the newly created error log
     } else if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
     }
   };
 
@@ -338,3 +339,9 @@ export default function LogsViewer() {
     </div>
   );
 }
+
+
+
+
+
+

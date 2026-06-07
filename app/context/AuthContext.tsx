@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-export type UserRole = 'PLATFORM_ARCHITECT' | 'ADMIN' | 'SALES_MANAGER' | 'SALES_EMPLOYEE' | 'MARKETING' | 'READ_ONLY' | 'rental_manager' | 'accountant' | 'owner';
+export type UserRole = 'SUPER_ADMIN' | 'PLATFORM_ARCHITECT' | 'ADMIN' | 'SALES_MANAGER' | 'SALES_EMPLOYEE' | 'MARKETING' | 'READ_ONLY' | 'rental_manager' | 'accountant' | 'owner';
 
 export const PERMISSIONS: Record<UserRole, string[]> = {
+  SUPER_ADMIN: ['CREATE_UNIT', 'BOOK_UNIT', 'START_HANDOVER', 'UPDATE_STATUS', 'VIEW_FINANCE', 'CREATE_PROJECT', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'POST_PROGRESS', 'UPLOAD_DOC', 'CREATE_OFFER', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT', 'CREATE_LEASE', 'CREATE_INVOICE', 'PAY_INVOICE', 'REQUEST_SETTLEMENT', 'MANAGE_RECONCILE'],
   PLATFORM_ARCHITECT: ['CREATE_UNIT', 'BOOK_UNIT', 'START_HANDOVER', 'UPDATE_STATUS', 'VIEW_FINANCE', 'CREATE_PROJECT', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'POST_PROGRESS', 'UPLOAD_DOC', 'CREATE_OFFER', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT', 'CREATE_LEASE', 'CREATE_INVOICE', 'PAY_INVOICE', 'REQUEST_SETTLEMENT', 'MANAGE_RECONCILE'],
   ADMIN: ['CREATE_UNIT', 'BOOK_UNIT', 'START_HANDOVER', 'UPDATE_STATUS', 'VIEW_FINANCE', 'CREATE_PROJECT', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'POST_PROGRESS', 'UPLOAD_DOC', 'CREATE_OFFER', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT', 'CREATE_LEASE', 'CREATE_INVOICE', 'PAY_INVOICE', 'REQUEST_SETTLEMENT', 'MANAGE_RECONCILE'],
   SALES_MANAGER: ['BOOK_UNIT', 'UPDATE_STATUS', 'ADD_PHASE', 'UPDATE_UNIT', 'CREATE_BOOKING', 'UPLOAD_DOC', 'CALC_MORTGAGE', 'SCHEDULE_VISIT', 'CONTACT_AGENT'],
@@ -25,7 +26,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole>('READ_ONLY');
+  const [role, setRole] = useState<UserRole>('SUPER_ADMIN');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,3 +63,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+

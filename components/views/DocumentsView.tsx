@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/app/context/AppContext';
+import { toast } from '@/app/context/ToastContext';
 import { getDocumentsAction, createDocumentActionDirect, deleteDocumentActionDirect } from '@/app/actions/documents';
 
 interface DocumentItem {
@@ -504,7 +505,7 @@ export default function DocumentsView() {
                   download={previewDoc.name}
                   onClick={(e) => {
                     e.preventDefault();
-                    alert(isArabic ? `تنزيل المستند: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
+                    toast.error(isArabic ? `تنزيل المستند: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
                   }}
                   className="px-5 py-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
                 >
@@ -519,3 +520,7 @@ export default function DocumentsView() {
     </div>
   );
 }
+
+
+
+

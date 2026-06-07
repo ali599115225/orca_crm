@@ -1,7 +1,7 @@
 // components/views/tabs/Contacts.tsx
 "use client";
-
-import { useState, useEffect } from "react";
+import { toast } from '@/app/context/ToastContext';
+import React, { useState, useEffect } from 'react';
 
 type Contact = {
   id: string;
@@ -265,7 +265,7 @@ export default function Contacts() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("تم محاكاة رفع ملف المستند (PDF/Image) بنجاح وحفظ الرابط في السجل.")}
+                    onClick={() => toast.success('')}
                     className="bg-[#0ea5e9]/20 hover:bg-[#0ea5e9]/35 text-[#0ea5e9] rounded px-3 py-2 text-center font-bold"
                   >
                     رفع مستند
@@ -280,3 +280,6 @@ export default function Contacts() {
     </div>
   );
 }
+
+
+

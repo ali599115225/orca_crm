@@ -10,6 +10,7 @@ import {
 import { DateField } from '../ui/DateField';
 import { LayoutContainer } from '../ui/LayoutContainer';
 import { useAuth } from '@/app/context/AuthContext';
+import { toast } from '@/app/context/ToastContext';
 import { getPropertiesAction } from '@/app/actions/properties';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
@@ -285,12 +286,12 @@ export default function OffersView() {
   const handleCreateListing = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_OFFER')) {
-      alert('عذراً، لا تملك صلاحية إضافة عروض عقارية جديدة.');
+      toast.error('عذراً، لا تملك صلاحية إضافة عروض عقارية جديدة.');
       return;
     }
 
     if (!newTitle || !newPrice || !newArea || !newDistrict || !newAgent) {
-      alert('يرجى تعبئة جميع الحقول المطلوبة لإنشاء العرض.');
+      toast.error('يرجى تعبئة جميع الحقول المطلوبة لإنشاء العرض.');
       return;
     }
 
@@ -326,7 +327,7 @@ export default function OffersView() {
     setNewDesc('');
     setActiveModal(null);
 
-    alert(`تم بنجاح تسجيل وإدراج العرض العقاري الجديد برقم: ${newOfferId}`);
+    toast.error(`تم بنجاح تسجيل وإدراج العرض العقاري الجديد برقم: ${newOfferId}`);
   };
 
   // Perform mortgage calculation on form update
@@ -372,7 +373,7 @@ export default function OffersView() {
   const handleScheduleVisit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitDate || !visitName || !visitPhone) {
-      alert('يرجى تحديد التاريخ والاسم ورقم الجوال لحجز الزيارة.');
+      toast.error('يرجى تحديد التاريخ والاسم ورقم الجوال لحجز الزيارة.');
       return;
     }
 
@@ -390,13 +391,13 @@ export default function OffersView() {
     setVisitName('');
     setVisitPhone('');
     setVisitNotes('');
-    alert(`تم تأكيد موعد زيارة العقار بتاريخ ${visitDate.split('-').reverse().join('/')} في تمام الساعة ${visitTime}. سيقوم المستشار العقاري بالتواصل معك.`);
+    toast.error(`تم تأكيد موعد زيارة العقار بتاريخ ${visitDate.split('-').reverse().join('/')} في تمام الساعة ${visitTime}. سيقوم المستشار العقاري بالتواصل معك.`);
   };
 
   const handleContactAgent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactName || !contactPhone) {
-      alert('يرجى إدخال اسمك ورقم الهاتف لإرسال طلب الاستفسار.');
+      toast.error('يرجى إدخال اسمك ورقم الهاتف لإرسال طلب الاستفسار.');
       return;
     }
 
@@ -414,7 +415,7 @@ export default function OffersView() {
     setContactPhone('');
     setContactWhatsApp('');
     setContactNotes('');
-    alert('تم إرسال بيانات الاستفسار بنجاح إلى المستشار المسؤول عن هذا العرض.');
+    toast.success('');
   };
 
   const handleCSVExport = () => {
@@ -909,8 +910,9 @@ export default function OffersView() {
       
       {/* 1. تفاصيل العقار Modal */}
       {activeModal === 'details' && selectedProp && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-2xl w-full space-y-5 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-start border-b border-white/5 pb-4">
               <div className="space-y-1">
@@ -1032,8 +1034,9 @@ export default function OffersView() {
 
       {/* 2. حاسبة التمويل السكني Modal */}
       {activeModal === 'mortgage' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
@@ -1121,7 +1124,7 @@ export default function OffersView() {
             <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
               <button
                 onClick={() => {
-                  alert('تم تحويل طلب التمويل وقبول موافقة العميل الأولية (Consent) وإرساله للشركاء بنجاح.');
+                  toast.success('');
                   setActiveModal(null);
                 }}
                 className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl transition-all"
@@ -1142,8 +1145,9 @@ export default function OffersView() {
 
       {/* 3. إضافة عرض جديد Modal */}
       {activeModal === 'create_listing' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-lg w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
@@ -1303,8 +1307,9 @@ export default function OffersView() {
 
       {/* 4. حجز موعد زيارة Modal */}
       {activeModal === 'schedule_visit' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
@@ -1400,8 +1405,9 @@ export default function OffersView() {
 
       {/* 5. تواصل مع الوكيل Modal */}
       {activeModal === 'contact_agent' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
@@ -1487,5 +1493,9 @@ export default function OffersView() {
     </>
   );
 }
+
+
+
+
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Droppable } from "@hello-pangea/dnd";
+import { toast } from '@/app/context/ToastContext';
 import KanbanCard, { type LeadItem } from "./KanbanCard";
 
 interface StageDef {
@@ -47,7 +48,7 @@ export default function KanbanColumn({ stage, leads, accentColor }: Props) {
 
           <div className="nc-stage-footer">
             <button
-              onClick={() => alert("إضافة عميل جديد إلى مرحلة " + stage.title)}
+              onClick={() => toast.error("إضافة عميل جديد إلى مرحلة " + stage.title)}
               className="nc-stage-add-btn"
             >
               + إضافة عميل
@@ -58,3 +59,6 @@ export default function KanbanColumn({ stage, leads, accentColor }: Props) {
     </Droppable>
   );
 }
+
+
+

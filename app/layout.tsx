@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { UIBusProvider } from "@/app/context/UIBusContext";
+import { ToastProvider } from "@/app/context/ToastContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
@@ -36,9 +37,11 @@ export default function RootLayout({
             <ThemeProvider>
               <AuthProvider>
                 <UIBusProvider>
-                  <ErrorBoundary>
+                  <ToastProvider>
+                    <ErrorBoundary>
                     {children}
                   </ErrorBoundary>
+                  </ToastProvider>
                 </UIBusProvider>
               </AuthProvider>
             </ThemeProvider>
@@ -48,3 +51,4 @@ export default function RootLayout({
     </html>
   )
 }
+

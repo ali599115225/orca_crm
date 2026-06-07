@@ -1,7 +1,7 @@
 // components/views/tabs/InsightsAutomation.tsx
 "use client";
-
-import { useState, useEffect } from "react";
+import { toast } from '@/app/context/ToastContext';
+import React, { useState, useEffect } from 'react';
 
 type Workflow = {
   id: string;
@@ -70,7 +70,7 @@ export default function InsightsAutomation() {
       if (json.success) {
         setName("");
         loadData();
-        alert("تم إنشاء مسار الأتمتة والـ Playbook بنجاح.");
+        toast.success('');
       }
     } catch (err) {
       console.error(err);
@@ -247,4 +247,7 @@ export default function InsightsAutomation() {
     </div>
   );
 }
+
+
+
 

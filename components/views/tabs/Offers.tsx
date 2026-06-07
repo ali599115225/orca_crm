@@ -1,7 +1,7 @@
 // components/views/tabs/Offers.tsx
 "use client";
-
-import { useState, useEffect } from "react";
+import { toast } from '@/app/context/ToastContext';
+import React, { useState, useEffect } from 'react';
 
 type Offer = {
   id: string;
@@ -83,7 +83,7 @@ export default function Offers() {
         setPrice("");
         setValidUntil("");
         loadData();
-        alert("تم إنشاء عرض السعر بنجاح وجاهز للإرسال.");
+        toast.success('');
       }
     } catch (err) {
       console.error(err);
@@ -102,7 +102,7 @@ export default function Offers() {
       const json = await res.json();
       if (json.success) {
         loadData();
-        alert("تهانينا! تم قبول العرض بنجاح، وترقية الليد إلى عقد مغلق، وصياغة مسودة العقد تلقائياً في السجل.");
+        toast.error("تهانينا! تم قبول العرض بنجاح، وترقية الليد إلى عقد مغلق، وصياغة مسودة العقد تلقائياً في السجل.");
       }
     } catch (err) {
       console.error(err);
@@ -228,3 +228,6 @@ export default function Offers() {
     </div>
   );
 }
+
+
+

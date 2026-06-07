@@ -1,7 +1,7 @@
 // components/views/tabs/Tours.tsx
 "use client";
-
-import { useState, useEffect } from "react";
+import { toast } from '@/app/context/ToastContext';
+import React, { useState, useEffect } from 'react';
 
 type Tour = {
   id: string;
@@ -79,7 +79,7 @@ export default function Tours() {
         setStartAt("");
         setNotes("");
         loadData();
-        alert("تم إنشاء الجولة وجدولة إرسال رسائل تذكير تلقائية عبر الواتساب بنجاح.");
+        toast.success('');
       }
     } catch (err) {
       console.error(err);
@@ -100,7 +100,7 @@ export default function Tours() {
       if (json.success) {
         loadData();
         if (toStatus === "COMPLETED") {
-          alert("تم إتمام الزيارة بنجاح وجدولة مهمة متابعة تلقائية للفريق الميداني.");
+          toast.success('');
         }
       }
     } catch (err) {
@@ -258,3 +258,6 @@ export default function Tours() {
     </div>
   );
 }
+
+
+

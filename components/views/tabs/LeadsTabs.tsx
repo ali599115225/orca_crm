@@ -1,6 +1,6 @@
 // components/views/tabs/LeadsTabs.tsx
 "use client";
-
+import { toast } from '@/app/context/ToastContext';
 import { useState, useTransition } from "react";
 import { useApp } from "@/app/context/AppContext";
 import Pipeline from "../pipeline/Pipeline";
@@ -16,7 +16,7 @@ import {
   Settings, Bot, Sparkles, ChevronRight
 } from "lucide-react";
 import { Card, Button } from "../../ui/orca-components";
-import LayoutContainer from "../../ui/LayoutContainer";
+import { LayoutContainer } from '../../ui/LayoutContainer';
 
 export default function LeadsTabs() {
   const { lang } = useApp();
@@ -56,7 +56,7 @@ export default function LeadsTabs() {
       aiScore: score,
       status: "Unassigned"
     });
-    alert(`[WEBHOOK SIMULATOR SUCCESS]\nتم تلقي بيانات عميل جديد بنجاح من Facebook Ads:\nالاسم: ${randomName}\nالجوال: ${phone}\nالتقييم الأولي للـ AI: ${score}%`);
+    toast.error(`[WEBHOOK SIMULATOR SUCCESS]\nتم تلقي بيانات عميل جديد بنجاح من Facebook Ads:\nالاسم: ${randomName}\nالجوال: ${phone}\nالتقييم الأولي للـ AI: ${score}%`);
   };
 
   const tabs = [
@@ -147,7 +147,7 @@ export default function LeadsTabs() {
           <Button 
             onClick={() => {
               addTelemetryEvent("leads.search", { query: searchTerm });
-              alert(`تم تشغيل البحث الشامل عن: ${searchTerm}`);
+              toast.error(`تم تشغيل البحث الشامل عن: ${searchTerm}`);
             }}
             className="px-4 py-2 text-xs font-bold"
           >
@@ -293,4 +293,12 @@ export default function LeadsTabs() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 

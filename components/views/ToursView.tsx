@@ -1,5 +1,6 @@
 // components/views/ToursView.tsx
 'use client';
+import { toast } from '@/app/context/ToastContext';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -9,9 +10,9 @@ import {
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
 import { LayoutContainer } from '../ui/LayoutContainer';
-import { TOURS_CONFIG, ToursConfigType } from '@/lib/tours-config';
 
 import { getPropertiesAction } from '@/app/actions/properties';
+import { ToursConfigType, TOURS_CONFIG } from '@/lib/tours-config';
 import { scheduleTourActionDirect } from '@/app/actions/tours';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
@@ -424,7 +425,7 @@ export default function ToursView() {
   const submitTourSchedule = async (e: React.FormEvent, propId: string) => {
     e.preventDefault();
     if (!visitName || !visitPhone || !visitDate) {
-      alert('يرجى ملء جميع حقول الحجز المطلوبة.');
+      toast.error('يرجى ملء جميع حقول الحجز المطلوبة.');
       return;
     }
 
@@ -444,16 +445,16 @@ export default function ToursView() {
           datetime: `${visitDate}T${visitTime}`
         });
 
-        alert(`تم تأكيد حجز الجولة بنجاح!\nالموعد: ${visitDate.split('-').reverse().join('/')} الساعة ${visitTime}\nسيصلك إشعار بالرسائل الموحدة قريباً.`);
+        toast.error(`تم تأكيد حجز الجولة بنجاح!\nالموعد: ${visitDate.split('-').reverse().join('/')} الساعة ${visitTime}\nسيصلك إشعار بالرسائل الموحدة قريباً.`);
         setActiveModal(null);
         setVisitName('');
         setVisitPhone('');
       } else {
-        alert('فشل حجز الجولة: ' + res.error);
+        toast.error('فشل حجز الجولة: ' + res.error);
       }
     } catch (err: any) {
       console.error(err);
-      alert('حدث خطأ في عملية الإرسال: ' + err.message);
+      toast.error('حدث خطأ في عملية الإرسال: ' + err.message);
     }
   };
 
@@ -881,8 +882,9 @@ export default function ToursView() {
       
       {/* 1. مودال تفاصيل العقار الغني */}
       {activeModal === 'details' && selectedProp && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-start border-b border-white/5 pb-3">
               <div className="space-y-1">
@@ -1040,8 +1042,9 @@ export default function ToursView() {
 
       {/* 2. حاسبة التمويل السكني التلقائية */}
       {activeModal === 'mortgage' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
@@ -1144,10 +1147,10 @@ export default function ToursView() {
                     .then(res => res.json())
                     .then(() => {
                       addTelemetryEvent('tour.finance_requested', { propertyId: selectedPropertyId });
-                      alert('تم تقديم طلب التمويـل المبدئي وإرساله للمشرف العقاري بنجاح.');
+                      toast.success('');
                       setActiveModal(null);
                     })
-                    .catch(() => alert('حدث خطأ في معالجة طلب التمويل.'));
+                    .catch(() => toast.error('حدث خطأ في معالجة طلب التمويل.'));
                 }}
                 className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all text-center"
               >
@@ -1167,8 +1170,9 @@ export default function ToursView() {
 
       {/* 3. مودال Feature Flags لتغيير القواعد */}
       {activeModal === 'settings_flag' && (
-        <div className="fixed inset-0 bg-[var(--nc-surface-strong)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
@@ -1221,7 +1225,7 @@ export default function ToursView() {
                 onClick={() => {
                   addTelemetryEvent('tours.config_updated', config);
                   setActiveModal(null);
-                  alert('تم حفظ وتحديث قواعد ومعايير فتح الجولات بنجاح.');
+                  toast.success('');
                 }}
                 className="w-full py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold rounded-xl transition-all"
               >
@@ -1236,4 +1240,13 @@ export default function ToursView() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
 
