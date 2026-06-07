@@ -755,161 +755,154 @@ export default function ProjectsView() {
   );
 
   const detailsContent = (
-    <div className="space-y-6 w-full">
-      {/* ── Inner Details ── */}
+    <>
       {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
-          {!selectedProjectId ? (
-            <div className="ds-card ds-p-xl">
-              
-              <div className="ds-card-header">
-                <div>
-                  <h2 className="ds-h2">إدارة المشاريع العقارية</h2>
-                  <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
-                </div>
-                
-                <div className="nc-row">
-                  <div className="relative max-w-xs">
-                    <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
-                    <input 
-                      type="text"
-                      placeholder="بحث بالمشروع أو الحي..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="nc-glass !py-2 pr-9 pl-4 w-56"
-                      style={{ fontSize: '0.75rem', outline: 'none' }}
-                    />
-                  </div>
-                  <Button 
-                    icon={Plus}
-                    onClick={() => {
-                      if (!isAllowed('CREATE_PROJECT')) {
-                        alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
-                        return;
-                      }
-                      setActiveModal('new_project');
-                    }}
-                  >
-                    مشروع جديد
-                  </Button>
-                </div>
-              </div>
+      {!selectedProjectId ? (
+        <>
+          <h2 className="text-sm font-bold text-white mb-1">إدارة المشاريع العقارية</h2>
+          <p className="text-xs text-[var(--nc-text-dim)] font-medium mb-4">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
 
-              {/* Loading / Error / Empty States */}
-              {isLoading && (
-                <div className="ds-stack ds-row-center ds-py-xl">
-                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
-                  <span className="ds-muted">جاري تحميل المشاريع من قاعدة البيانات...</span>
-                </div>
-              )}
-
-              {fetchError && !isLoading && (
-                <div className="ds-stack ds-row-center ds-py-lg">
-                  <p className="ds-body-sm ds-p-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', display: 'inline-block' }}>
-                    {fetchError}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="nc-btn nc-btn-ghost nc-btn-sm"
-                  >
-                    إعادة المحاولة
-                  </button>
-                </div>
-              )}
-
-              {!isLoading && !fetchError && filteredProjects.length === 0 && (
-                <div className="ds-py-lg ds-row-center">
-                  <span className="ds-muted">لا توجد مشاريع عقارية مسجلة حالياً.</span>
-                </div>
-              )}
-
-              {/* Projects Table Grid */}
-              {!isLoading && !fetchError && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
-                      <th className="pb-3 px-4">اسم المشروع</th>
-                      <th className="pb-3 px-4">الموقع</th>
-                      <th className="pb-3 px-4">الحالة</th>
-                      <th className="pb-3 px-4">مبيعات الوحدات</th>
-                      <th className="pb-3 px-4">تقدم التشييد</th>
-                      <th className="pb-3 px-4 text-center">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredProjects.map((p) => (
-                      <tr 
-                        key={p.id} 
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors group"
-                      >
-                        <td className="py-4 px-4 font-bold text-white text-sm">
-                          {p.name}
-                        </td>
-                        <td className="py-4 px-4 text-xs text-[var(--nc-text-dim)] font-medium">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin size={12} className="text-[var(--nc-text-dim)] font-medium" />
-                            {p.location}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            p.status === 'مكتمل' 
-                              ? 'bg-emerald-500/25 text-emerald-400' 
-                              : 'bg-amber-500/25 text-amber-400'
-                          }`}>
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-xs">
-                          <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5 border border-white/5">
-                              <div 
-                                className="bg-[var(--nc-accent)] h-1.5 rounded-full" 
-                                style={{ width: `${p.progressPercent}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-[11px] font-bold text-[var(--nc-text-secondary)]">{p.progressPercent}%</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <button 
-                            onClick={async () => {
-                              setSelectedProjectId(p.id);
-                              addTelemetryEvent('project.opened', p.id, { name: p.name });
-                              try {
-                                const dbUnits = await getProjectUnitsAction(String(p.id));
-                                setProjectUnits(prev => ({
-                                  ...prev,
-                                  [p.id]: dbUnits
-                                }));
-                                addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
-                              } catch (err: any) {
-                                console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
-                                if (!projectUnits[p.id]) {
-                                  setProjectUnits(prev => ({
-                                    ...prev,
-                                    [p.id]: initialUnits[p.id as number] || []
-                                  }));
-                                }
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--nc-surface-solid)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent-border)] rounded-lg text-xs font-bold transition-all"
-                          >
-                            <Eye size={13} />
-                            استعراض
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="relative max-w-xs">
+              <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)] font-medium" size={16} />
+              <input 
+                type="text"
+                placeholder="بحث بالمشروع أو الحي..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-xl py-2 pr-9 pl-4 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
+              />
             </div>
-            )}
+            <Button 
+              icon={Plus}
+              onClick={() => {
+                if (!isAllowed('CREATE_PROJECT')) {
+                  alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
+                  return;
+                }
+                setActiveModal('new_project');
+              }}
+            >
+              مشروع جديد
+            </Button>
           </div>
-          ) : (
+
+          {/* Loading / Error / Empty States */}
+          {isLoading && (
+            <div className="flex items-center justify-center gap-3 py-8">
+              <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+              <span className="text-xs text-[var(--nc-text-dim)] font-medium">جاري تحميل المشاريع من قاعدة البيانات...</span>
+            </div>
+          )}
+
+          {fetchError && !isLoading && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <p className="text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', padding: '8px 16px', display: 'inline-block' }}>
+                {fetchError}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-xs text-[var(--nc-accent)] hover:text-[var(--nc-accent-hover)] font-bold transition-colors"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !fetchError && filteredProjects.length === 0 && (
+            <div className="py-8 text-center">
+              <span className="text-xs text-[var(--nc-text-dim)] font-medium">لا توجد مشاريع عقارية مسجلة حالياً.</span>
+            </div>
+          )}
+
+          {/* Projects Table Grid */}
+          {!isLoading && !fetchError && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium text-xs font-bold">
+                  <th className="pb-3 px-4">اسم المشروع</th>
+                  <th className="pb-3 px-4">الموقع</th>
+                  <th className="pb-3 px-4">الحالة</th>
+                  <th className="pb-3 px-4">مبيعات الوحدات</th>
+                  <th className="pb-3 px-4">تقدم التشييد</th>
+                  <th className="pb-3 px-4 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProjects.map((p) => (
+                  <tr 
+                    key={p.id} 
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors group"
+                  >
+                    <td className="py-4 px-4 font-bold text-white text-sm">
+                      {p.name}
+                    </td>
+                    <td className="py-4 px-4 text-xs text-[var(--nc-text-dim)] font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={12} className="text-[var(--nc-text-dim)] font-medium" />
+                        {p.location}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        p.status === 'مكتمل' 
+                          ? 'bg-emerald-500/25 text-emerald-400' 
+                          : 'bg-amber-500/25 text-amber-400'
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-xs">
+                      <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5 border border-white/5">
+                          <div 
+                            className="bg-[var(--nc-accent)] h-1.5 rounded-full" 
+                            style={{ width: `${p.progressPercent}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[11px] font-bold text-[var(--nc-text-secondary)]">{p.progressPercent}%</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <button 
+                        onClick={async () => {
+                          setSelectedProjectId(p.id);
+                          addTelemetryEvent('project.opened', p.id, { name: p.name });
+                          try {
+                            const dbUnits = await getProjectUnitsAction(String(p.id));
+                            setProjectUnits(prev => ({
+                              ...prev,
+                              [p.id]: dbUnits
+                            }));
+                            addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
+                          } catch (err: any) {
+                            console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
+                            if (!projectUnits[p.id]) {
+                              setProjectUnits(prev => ({
+                                ...prev,
+                                [p.id]: initialUnits[p.id as number] || []
+                              }));
+                            }
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--nc-surface-solid)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent-border)] rounded-lg text-xs font-bold transition-all"
+                      >
+                        <Eye size={13} />
+                        استعراض
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+        </div>
+        )}
+      </>
+      ) : (
             
             // ─── View 2: Detailed Project View ───
             <div className="space-y-6">
@@ -1438,7 +1431,7 @@ export default function ProjectsView() {
               ))}
             </div>
           </div>
-    </div>
+    </>
   );
 
   return (
