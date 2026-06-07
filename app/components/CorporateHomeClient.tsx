@@ -134,13 +134,54 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     : DEFAULT_PROJECTS.map(p => ({ id: p.id, name: lang === 'AR' ? p.nameAr : p.nameEn, city: lang === 'AR' ? p.cityAr : p.cityEn, price: p.minPrice, status: p.status, layout: lang === 'AR' ? p.layoutAr : p.layoutEn, thumb: p.thumb }));
 
   // ─── Design tokens ─────────────────────────────────────────────────────────
-  // الخلفية: #111111 (أسود فحمي سيبراني)
-  // التدرج الحاكم: #C0C0C0 (فضي) → #007BFF (أزرق حيوي) → #C0C0C0 (فضي)
-  // الأخضر الزمردي: حصري لإشارات سلامة النظام فقط
-  // الأزرق النيوني: للأزرار النشطة والـ hover والشعار
+  // Palette: Cold Misty (sky blues) + Deep Sea (navy) + Emerald (status)
+  // All colors defined via --ch-* CSS variables in .corporate-home scope
 
   const CSS = `
-    
+    /* ═══ Cold Misty / Deep Sea palette ══════════════════════════════════ */
+    .corporate-home {
+      --ch-bg: #0b1120;
+      --ch-surface: #0f172a;
+      --ch-surface-strong: rgba(15, 23, 42, 0.92);
+      --ch-surface-card: rgba(15, 23, 42, 0.78);
+      --ch-foreground: #f1f5f9;
+      --ch-foreground-muted: #64748b;
+      --ch-text-dim: #475569;
+      --ch-accent: #0ea5e9;
+      --ch-accent-strong: #0284c7;
+      --ch-accent-muted: #38bdf8;
+      --ch-accent-soft: rgba(14, 165, 233, 0.08);
+      --ch-accent-soft-hover: rgba(14, 165, 233, 0.18);
+      --ch-accent-border: rgba(14, 165, 233, 0.25);
+      --ch-accent-border-hover: rgba(14, 165, 233, 0.60);
+      --ch-accent-glow: rgba(14, 165, 233, 0.10);
+      --ch-accent-glow-strong: rgba(14, 165, 233, 0.45);
+      --ch-green: #22c55e;
+      --ch-green-soft: rgba(34, 197, 94, 0.08);
+      --ch-green-glow: rgba(34, 197, 94, 0.5);
+      --ch-silver: #94a3b8;
+      --ch-border: rgba(255, 255, 255, 0.06);
+      --ch-border-light: rgba(255, 255, 255, 0.08);
+      --ch-border-subtle: rgba(255, 255, 255, 0.05);
+      --ch-border-input: rgba(255, 255, 255, 0.03);
+      --ch-border-icon: rgba(255, 255, 255, 0.04);
+      --ch-border-soft: rgba(255, 255, 255, 0.07);
+      --ch-overlay: rgba(0, 0, 0, 0.5);
+      --ch-overlay-strong: rgba(0, 0, 0, 0.85);
+      --ch-hud-surface: rgba(10, 14, 23, 0.92);
+      --ch-hud-surface-card: rgba(10, 14, 23, 0.88);
+      --ch-hud-title: rgba(0, 0, 0, 0.4);
+      --ch-error: #ef4444;
+      --ch-error-soft: rgba(239, 68, 68, 0.08);
+      --ch-error-border: rgba(239, 68, 68, 0.2);
+      --ch-green-border: rgba(34, 197, 94, 0.2);
+      --ch-green-bg: rgba(34, 197, 94, 0.07);
+      --ch-green-msg: rgba(34, 197, 94, 0.08);
+      --ch-silver-glow: rgba(192, 192, 192, 0.04);
+      --ch-dot-red: #ff5f57;
+      --ch-dot-yellow: #febc2e;
+      --ch-dot-green: #28c840;
+    }
 
     *, *::before, *::after {
       font-family: 'Calibri', 'Segoe UI', sans-serif !important;
@@ -150,14 +191,14 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     /* ═══ Blueprint Grid الهندسي ═══════════════════════════════════════════ */
     .bp-grid {
       background-image:
-        linear-gradient(to right,  rgba(255,255,255,0.018) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.018) 1px, transparent 1px);
+        linear-gradient(to right,  var(--ch-border) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--ch-border) 1px, transparent 1px);
       background-size: 48px 48px;
     }
 
-    /* ═══ التدرج المعدني الثلاثي: فضي → أزرق حيوي → فضي (متحرك) ════════ */
+    /* ═══ التدرج المعدني الثلاثي: فضي → أزرق جليدي → فضي (متحرك) ════════ */
     .metal-gradient {
-      background: linear-gradient(90deg, #C0C0C0 0%, #007BFF 50%, #C0C0C0 100%);
+      background: linear-gradient(90deg, var(--ch-silver) 0%, var(--ch-accent) 50%, var(--ch-silver) 100%);
       background-size: 200% auto;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -173,42 +214,42 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
 
     /* ═══ Frosted Glass Dark Layer ══════════════════════════════════════════ */
     .glass {
-      background: rgba(22, 22, 28, 0.78) !important;
+      background: var(--ch-surface-card) !important;
       backdrop-filter: blur(20px) !important;
       -webkit-backdrop-filter: blur(20px) !important;
-      border: 1px solid rgba(255,255,255,0.06) !important;
+      border: 1px solid var(--ch-border) !important;
       transition: border-color 0.25s, box-shadow 0.25s !important;
     }
     .glass:hover {
-      border-color: rgba(0,123,255,0.40) !important;
-      box-shadow: 0 0 28px rgba(0,123,255,0.10) !important;
+      border-color: var(--ch-accent-border) !important;
+      box-shadow: 0 0 28px var(--ch-accent-glow) !important;
     }
 
-    /* ═══ أزرار CTA الرئيسية (أزرق صلب) ════════════════════════════════════ */
+    /* ═══ أزرار CTA الرئيسية (أزرق جليدي) ════════════════════════════════ */
     .btn-blue {
-      background: linear-gradient(135deg, #0066dd 0%, #007BFF 60%, #1a88ff 100%);
-      color: #ffffff;
+      background: linear-gradient(135deg, var(--ch-accent-strong) 0%, var(--ch-accent) 60%, var(--ch-accent-muted) 100%);
+      color: var(--ch-foreground);
       font-weight: 900;
       border: none;
       transition: all 0.25s ease;
     }
     .btn-blue:hover {
-      box-shadow: 0 0 32px rgba(0,123,255,0.45);
+      box-shadow: 0 0 32px var(--ch-accent-glow-strong);
       transform: translateY(-1px);
       filter: brightness(1.1);
     }
 
     /* ═══ أزرار ثانوية (حدود أزرق فاتح) ════════════════════════════════════ */
     .btn-outline {
-      background: rgba(0,123,255,0.07);
-      border: 1px solid rgba(0,123,255,0.30);
-      color: #5aabff;
+      background: var(--ch-accent-soft);
+      border: 1px solid var(--ch-accent-border);
+      color: var(--ch-accent-muted);
       transition: all 0.25s ease;
     }
     .btn-outline:hover {
-      background: rgba(0,123,255,0.18);
-      border-color: rgba(0,123,255,0.60);
-      box-shadow: 0 0 18px rgba(0,123,255,0.20);
+      background: var(--ch-accent-soft-hover);
+      border-color: var(--ch-accent-border-hover);
+      box-shadow: 0 0 18px var(--ch-accent-glow);
       transform: translateY(-1px);
     }
 
@@ -217,8 +258,8 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       animation: pulseEmerald 2s ease-in-out infinite;
     }
     @keyframes pulseEmerald {
-      0%,100% { box-shadow: 0 0 0 0   rgba(34,197,94,0.5); }
-      50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0);   }
+      0%,100% { box-shadow: 0 0 0 0   var(--ch-green-glow); }
+      50%      { box-shadow: 0 0 0 5px var(--ch-green-soft); }
     }
 
     /* ═══ Hover card lift ════════════════════════════════════════════════════ */
@@ -234,9 +275,9 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
 
     /* ═══ Scrollbar ══════════════════════════════════════════════════════════ */
     ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #181818; }
-    ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(0,123,255,0.45); }
+    ::-webkit-scrollbar-track { background: var(--ch-surface); }
+    ::-webkit-scrollbar-thumb { background: var(--ch-text-dim); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--ch-accent); }
 
     /* ═══ انعكاس مرآتي لشعار الهيدر ════════════════════════════════════════ */
     .logo-wrap { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
@@ -245,8 +286,8 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       background: url('/logo.png') center top / contain no-repeat;
       transform: scaleY(-1);
       opacity: 0.15;
-      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, var(--ch-overlay) 0%, transparent 100%);
+      mask-image: linear-gradient(to bottom, var(--ch-overlay) 0%, transparent 100%);
       filter: blur(0.6px);
       pointer-events: none;
     }
@@ -254,18 +295,18 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
     /* ═══ Input focus ════════════════════════════════════════════════════════ */
     .orca-input {
       width: 100%; padding: 12px 14px; border-radius: 10px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: #f1f5f9; font-size: 12px; font-weight: 600;
+      background: var(--ch-border-input);
+      border: 1px solid var(--ch-border-light);
+      color: var(--ch-foreground); font-size: 12px; font-weight: 600;
       outline: none; transition: border-color 0.2s;
     }
-    .orca-input:focus { border-color: rgba(0,123,255,0.50); }
+    .orca-input:focus { border-color: var(--ch-accent); }
   `;
 
   const dir = lang === 'AR' ? 'rtl' : 'ltr';
 
   return (
-    <div dir={dir} style={{ minHeight: '100vh', background: '#111111', color: '#e2e8f0', fontFamily: "'Calibri', 'Segoe UI', sans-serif", direction: dir, position: 'relative', WebkitFontSmoothing: 'antialiased' }}>
+    <div dir={dir} className="corporate-home" style={{ minHeight: '100vh', background: 'var(--ch-bg)', color: 'var(--ch-foreground)', fontFamily: "'Calibri', 'Segoe UI', sans-serif", direction: dir, position: 'relative', WebkitFontSmoothing: 'antialiased' }}>
 
 
 
@@ -274,38 +315,38 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           HEADER — الشريط العلوي
       ══════════════════════════════════════════════════════════ */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--ch-surface-strong)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid var(--ch-border-subtle)' }}>
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 
           {/* ── الشعار مع الانعكاس المرآتي ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div className="logo-wrap" style={{ width: 42, height: 52 }}>
-              <img src="/logo.png" alt="ORCA" style={{ width: 42, height: 42, objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(0,123,255,0.4)) drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }} />
+              <img src="/logo.png" alt="ORCA" style={{ width: 42, height: 42, objectFit: 'contain', filter: 'drop-shadow(0 0 10px var(--ch-accent-glow-strong)) drop-shadow(0 2px 4px var(--ch-overlay-strong))' }} />
               <div className="logo-mirror" style={{ width: 42 }} />
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: 1.5 }}>
                 <span className="metal-gradient">ORCA CRM</span>
               </div>
-              <div style={{ fontSize: 8, color: '#5aabff', fontWeight: 700, letterSpacing: 0.5 }} dir="ltr">Real Estate Cloud</div>
+              <div style={{ fontSize: 8, color: 'var(--ch-accent-muted)', fontWeight: 700, letterSpacing: 0.5 }} dir="ltr">Real Estate Cloud</div>
             </div>
           </div>
 
           {/* ── روابط التنقل ── */}
           <nav className="hidden md:flex" style={{ gap: 32, fontSize: 11, fontWeight: 700 }}>
             {([['#features', t.navFeatures],['#workflow', t.navWorkflow],['#properties', t.navProperties],['#pricing', t.navPricing]] as [string,string][]).map(([h,l]) => (
-              <a key={h} href={h} style={{ color: '#64748b', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#5aabff')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>{l}</a>
+              <a key={h} href={h} style={{ color: 'var(--ch-foreground-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ch-accent-muted)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ch-foreground-muted)')}>{l}</a>
             ))}
           </nav>
 
           {/* ── أدوات التحكم ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={toggleLang} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={toggleLang} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ch-border-light)', background: 'var(--ch-accent-soft)', color: 'var(--ch-foreground-muted)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
               🌐 {lang === 'AR' ? 'EN' : 'عربي'}
             </button>
-            <button onClick={toggleTheme} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={toggleTheme} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--ch-border-light)', background: 'var(--ch-accent-soft)', color: 'var(--ch-foreground-muted)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               ☀
             </button>
             <a href="/login" className="btn-outline" style={{ height: 32, padding: '0 14px', borderRadius: 8, textDecoration: 'none', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center' }}>
@@ -324,8 +365,8 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       <section style={{ position: 'relative', minHeight: '90vh', display: 'flex', alignItems: 'center', zIndex: 1, overflow: 'hidden' }}>
         <div className="bp-grid" style={{ position: 'absolute', inset: 0, opacity: 0.6 }} />
         {/* Glow orbs */}
-        <div style={{ position: 'absolute', top: '15%', right: '10%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(0,123,255,0.06) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '10%', left: '5%', width: 380, height: 380, background: 'radial-gradient(circle, rgba(192,192,192,0.04) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '15%', right: '10%', width: 500, height: 500, background: 'radial-gradient(circle, var(--ch-accent-glow) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '10%', left: '5%', width: 380, height: 380, background: 'radial-gradient(circle, var(--ch-silver-glow) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
         <div className="max-w-7xl mx-auto w-full" style={{ padding: '80px 40px', position: 'relative', zIndex: 10 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 80, alignItems: 'center' }}>
@@ -334,12 +375,12 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             <div className="fade-up" style={{ textAlign: dir === 'rtl' ? 'right' : 'left' }}>
               {/* شارات الحالة */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, border: '1px solid rgba(0,123,255,0.25)', background: 'rgba(0,123,255,0.08)', color: '#5aabff', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, border: '1px solid var(--ch-accent-border)', background: 'var(--ch-accent-soft)', color: 'var(--ch-accent-muted)', fontSize: 10, fontWeight: 700 }}>
                   {/* نبضة خضراء — إشارة سلامة النظام */}
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} className="pulse-emerald" />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ch-green)', display: 'inline-block' }} className="pulse-emerald" />
                   {t.heroBadge}
                 </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', color: '#64748b', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, border: '1px solid var(--ch-border-soft)', background: 'var(--ch-border-input)', color: 'var(--ch-foreground-muted)', fontSize: 10, fontWeight: 700 }}>
                   🔒 {t.cloudStatus}
                 </span>
               </div>
@@ -349,7 +390,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
                 <span className="metal-gradient">{t.heroTitle}</span>
               </h1>
 
-              <p style={{ fontSize: 14, lineHeight: 1.85, color: '#64748b', fontWeight: 600, maxWidth: 520, marginBottom: 40 }}>
+              <p style={{ fontSize: 14, lineHeight: 1.85, color: 'var(--ch-foreground-muted)', fontWeight: 600, maxWidth: 520, marginBottom: 40 }}>
                 {t.heroSub}
               </p>
 
@@ -364,15 +405,15 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
               </div>
 
               {/* إحصاءات —ألوان مميزة لكل رقم */}
-              <div style={{ display: 'flex', gap: 32, marginTop: 48, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', gap: 32, marginTop: 48, paddingTop: 32, borderTop: '1px solid var(--ch-border-subtle)' }}>
                 {[
-                  { val: '420+', lbl: lang === 'AR' ? 'وحدة مباعة'   : 'Units Sold',    color: '#007BFF' },
-                  { val: '98%',  lbl: lang === 'AR' ? 'رضا العملاء'  : 'Satisfaction',  color: '#C0C0C0' },
-                  { val: '24/7', lbl: lang === 'AR' ? 'وكيل ذكي نشط' : 'AI Agent Live', color: '#22c55e' },
+                  { val: '420+', lbl: lang === 'AR' ? 'وحدة مباعة'   : 'Units Sold',    color: 'var(--ch-accent)' },
+                  { val: '98%',  lbl: lang === 'AR' ? 'رضا العملاء'  : 'Satisfaction',  color: 'var(--ch-silver)' },
+                  { val: '24/7', lbl: lang === 'AR' ? 'وكيل ذكي نشط' : 'AI Agent Live', color: 'var(--ch-green)' },
                 ].map(s => (
                   <div key={s.val}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: s.color, marginBottom: 4 }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>{s.lbl}</div>
+                    <div style={{ fontSize: 10, color: 'var(--ch-text-dim)', fontWeight: 600 }}>{s.lbl}</div>
                   </div>
                 ))}
               </div>
@@ -380,17 +421,17 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
 
             {/* ── لوحة HUD ── */}
             <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(0,123,255,0.06) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
-              <div style={{ width: '100%', maxWidth: 460, borderRadius: 8, border: '1px solid rgba(0,123,255,0.12)', background: 'rgba(22,22,28,0.92)', overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,123,255,0.06)' }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, var(--ch-accent-glow) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ width: '100%', maxWidth: 460, borderRadius: 8, border: '1px solid var(--ch-accent-glow-strong)', background: 'var(--ch-hud-surface)', overflow: 'hidden', boxShadow: '0 30px 80px var(--ch-hud-title), 0 0 0 1px var(--ch-accent-glow)' }}>
 
                 {/* شريط العنوان */}
-                <div style={{ height: 44, background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+                <div style={{ height: 44, background: 'var(--ch-hud-title)', borderBottom: '1px solid var(--ch-border-subtle)', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {['#ff5f57','#febc2e','#28c840'].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.75 }} />)}
+                    {['var(--ch-dot-red)','var(--ch-dot-yellow)','var(--ch-dot-green)'].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.75 }} />)}
                   </div>
                   {/* نبضة خادم الرياض — أخضر حصري */}
-                  <div style={{ fontSize: 9, color: '#22c55e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }} dir="ltr">
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} className="pulse-emerald" />
+                  <div style={{ fontSize: 9, color: 'var(--ch-green)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }} dir="ltr">
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ch-green)' }} className="pulse-emerald" />
                     {t.serverRiyadh}
                   </div>
                 </div>
@@ -401,45 +442,45 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
 
                     {/* شارة الدرع */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-                      <span style={{ padding: '4px 10px', borderRadius: 99, background: 'rgba(0,123,255,0.1)', border: '1px solid rgba(0,123,255,0.25)', color: '#5aabff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--ch-accent-glow)', border: '1px solid var(--ch-accent-border)', color: 'var(--ch-accent-muted)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
                         🛡️ {t.cyberShield}
                       </span>
                     </div>
 
                     {/* الدائرة الإحصائية */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, marginBottom: 24 }}>
-                      <div style={{ width: 130, height: 130, borderRadius: '50%', border: '3px solid rgba(0,123,255,0.15)', background: '#161620', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 0 30px rgba(0,123,255,0.12) inset' }}>
-                        <div style={{ position: 'absolute', inset: 0, background: '#22c55e',    clipPath: 'polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 70%)' }} />
-                        <div style={{ position: 'absolute', inset: 0, background: '#3b82f6',    clipPath: 'polygon(50% 50%, 0 70%, 0 0, 30% 0)' }} />
-                        <div style={{ position: 'absolute', inset: 0, background: '#007BFF',    clipPath: 'polygon(50% 50%, 30% 0, 100% 0)', opacity: 0.7 }} />
-                        <div style={{ width: 78, height: 78, background: '#161620', borderRadius: '50%', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,123,255,0.1)' }}>
-                          <span style={{ fontSize: 18, fontWeight: 900, color: '#f1f5f9' }}>{toAr("85")}%</span>
-                          <span style={{ fontSize: 7, color: '#475569', fontWeight: 600 }}>{t.fromPortfolio}</span>
+                      <div style={{ width: 130, height: 130, borderRadius: '50%', border: '3px solid var(--ch-accent-soft)', background: 'var(--ch-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 0 30px var(--ch-accent-glow-strong) inset' }}>
+                        <div style={{ position: 'absolute', inset: 0, background: 'var(--ch-green)',    clipPath: 'polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 70%)' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'var(--ch-accent)',    clipPath: 'polygon(50% 50%, 0 70%, 0 0, 30% 0)' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'var(--ch-accent)',    clipPath: 'polygon(50% 50%, 30% 0, 100% 0)', opacity: 0.7 }} />
+                        <div style={{ width: 78, height: 78, background: 'var(--ch-surface)', borderRadius: '50%', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--ch-accent-glow)' }}>
+                          <span style={{ fontSize: 18, fontWeight: 900, color: 'var(--ch-foreground)' }}>{toAr("85")}%</span>
+                          <span style={{ fontSize: 7, color: 'var(--ch-text-dim)', fontWeight: 600 }}>{t.fromPortfolio}</span>
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {[['#22c55e', t.soldUnits, '420'], ['#3b82f6', t.availUnits, '150'], ['#007BFF', t.bookedUnits, '85']].map(([c,l,v]) => (
+                        {[['var(--ch-green)', t.soldUnits, '420'], ['var(--ch-accent)', t.availUnits, '150'], ['var(--ch-accent)', t.bookedUnits, '85']].map(([c,l,v]) => (
                           <div key={l as string} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                             <div style={{ width: 9, height: 9, borderRadius: '50%', background: c as string, boxShadow: `0 0 8px ${c}60` }} />
-                            <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>{l}: {toAr(v)}</span>
+                            <span style={{ fontSize: 9, color: 'var(--ch-silver)', fontWeight: 600 }}>{l}: {toAr(v)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* شريط التدفق النقدي */}
-                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,123,255,0.1)', borderRadius: 8, padding: '10px 14px' }}>
-                      <div style={{ fontSize: 8, color: '#5aabff', fontWeight: 700, marginBottom: 6 }}>{toAr(t.netFlows)}</div>
+                    <div style={{ background: 'var(--ch-border-input)', border: '1px solid var(--ch-accent-glow)', borderRadius: 8, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 8, color: 'var(--ch-accent-muted)', fontWeight: 700, marginBottom: 6 }}>{toAr(t.netFlows)}</div>
                       <svg width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id="fg" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%"   stopColor="#C0C0C0" stopOpacity="0.5" />
-                            <stop offset="50%"  stopColor="#007BFF" stopOpacity="0.9" />
-                            <stop offset="100%" stopColor="#C0C0C0" stopOpacity="0.5" />
+<stop offset="0%"   stopColor="var(--ch-silver)" stopOpacity="0.5" />
+<stop offset="50%"  stopColor="var(--ch-accent)" stopOpacity="0.9" />
+<stop offset="100%" stopColor="var(--ch-silver)" stopOpacity="0.5" />
                           </linearGradient>
                         </defs>
                         <path d="M0 35 L30 25 L60 30 L90 10 L120 20 L150 5 L180 15 L200 2" stroke="url(#fg)" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke" />
-                        <path d="M0 35 L30 25 L60 30 L90 10 L120 20 L150 5 L180 15 L200 2 L200 40 L0 40 Z" fill="rgba(0,123,255,0.06)" />
+                        <path d="M0 35 L30 25 L60 30 L90 10 L120 20 L150 5 L180 15 L200 2 L200 40 L0 40 Z" fill="var(--ch-accent-glow)" />
                       </svg>
                     </div>
                   </div>
@@ -454,37 +495,37 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           2. WORKFLOW — الوكلاء الرقميون
       ══════════════════════════════════════════════════════════ */}
-      <section id="workflow" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
+      <section id="workflow" style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <span style={{ display: 'inline-block', padding: '5px 16px', borderRadius: 99, border: '1px solid rgba(0,123,255,0.25)', background: 'rgba(0,123,255,0.08)', color: '#5aabff', fontSize: 10, fontWeight: 700, marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>
+            <span style={{ display: 'inline-block', padding: '5px 16px', borderRadius: 99, border: '1px solid var(--ch-accent-border)', background: 'var(--ch-accent-soft)', color: 'var(--ch-accent-muted)', fontSize: 10, fontWeight: 700, marginBottom: 16, letterSpacing: 1, textTransform: 'uppercase' }}>
               {t.digitalEmployees}
             </span>
             <h2 style={{ fontSize: 'clamp(20px,2.8vw,32px)', fontWeight: 900, marginBottom: 12 }}>
               <span className="metal-gradient">{t.workflowTitle}</span>
             </h2>
-            <p style={{ fontSize: 13, color: '#475569', fontWeight: 600, maxWidth: 480, margin: '0 auto' }}>{t.workflowSub}</p>
+            <p style={{ fontSize: 13, color: 'var(--ch-text-dim)', fontWeight: 600, maxWidth: 480, margin: '0 auto' }}>{t.workflowSub}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr]" style={{ gap: 24, alignItems: 'center', maxWidth: 860, margin: '0 auto' }}>
 
             {/* ساهر */}
             <div className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(0,123,255,0.08)', border: '1px solid rgba(0,123,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid var(--ch-border-subtle)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ch-accent-soft)', border: '1px solid var(--ch-accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
                   🤖
                   {/* نبضة الاتصال — أخضر حصري */}
-                  <span style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: '#22c55e', border: '2px solid #111111' }} className="pulse-emerald" />
+                  <span style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: 'var(--ch-green)', border: '2px solid var(--ch-bg)' }} className="pulse-emerald" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9' }}>{t.agentSaher}</div>
-                  <div style={{ fontSize: 9, color: '#5aabff', fontWeight: 700 }}>{t.saherRole}</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--ch-foreground)' }}>{t.agentSaher}</div>
+                  <div style={{ fontSize: 9, color: 'var(--ch-accent-muted)', fontWeight: 700 }}>{t.saherRole}</div>
                 </div>
               </div>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {t.saherBullets.map((b,i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: '#64748b', fontWeight: 600 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#007BFF', marginTop: 5, flexShrink: 0 }} />
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: 'var(--ch-foreground-muted)', fontWeight: 600 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ch-accent)', marginTop: 5, flexShrink: 0 }} />
                     {b}
                   </li>
                 ))}
@@ -492,24 +533,24 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             </div>
 
             {/* سهم */}
-            <div className="hidden md:block" style={{ fontSize: 22, color: 'rgba(0,123,255,0.4)', textAlign: 'center', transform: lang === 'AR' ? 'rotate(180deg)' : 'none' }}>→</div>
+            <div className="hidden md:block" style={{ fontSize: 22, color: 'var(--ch-accent-border-hover)', textAlign: 'center', transform: lang === 'AR' ? 'rotate(180deg)' : 'none' }}>→</div>
 
             {/* سند */}
             <div className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid var(--ch-border-subtle)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ch-green-bg)', border: '1px solid var(--ch-green-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, position: 'relative' }}>
                   💳
-                  <span style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: '#22c55e', border: '2px solid #111111' }} className="pulse-emerald" />
+                  <span style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: 'var(--ch-green)', border: '2px solid var(--ch-bg)' }} className="pulse-emerald" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9' }}>{t.agentSanad}</div>
-                  <div style={{ fontSize: 9, color: '#22c55e', fontWeight: 700 }}>{t.sanadRole}</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--ch-foreground)' }}>{t.agentSanad}</div>
+                  <div style={{ fontSize: 9, color: 'var(--ch-green)', fontWeight: 700 }}>{t.sanadRole}</div>
                 </div>
               </div>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {t.sanadBullets.map((b,i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: '#64748b', fontWeight: 600 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', marginTop: 5, flexShrink: 0 }} />
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: 'var(--ch-foreground-muted)', fontWeight: 600 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ch-green)', marginTop: 5, flexShrink: 0 }} />
                     {b}
                   </li>
                 ))}
@@ -523,19 +564,19 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           3. FEATURES — بطاقات المميزات
       ══════════════════════════════════════════════════════════ */}
-      <section id="features" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
+      <section id="features" style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '80px 0', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
         <div className="bp-grid" style={{ position: 'absolute', inset: 0, opacity: 0.2 }} />
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px', position: 'relative', zIndex: 10 }}>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 24, maxWidth: 900, margin: '0 auto' }}>
             {[
-              { icon: '📊', t: t.f1t, d: t.f1d, c: '#007BFF' },
-              { icon: '🤝', t: t.f2t, d: t.f2d, c: '#C0C0C0' },
-              { icon: '🛡️', t: t.f3t, d: t.f3d, c: '#22c55e' },
+              { icon: '📊', t: t.f1t, d: t.f1d, c: 'var(--ch-accent)' },
+              { icon: '🤝', t: t.f2t, d: t.f2d, c: 'var(--ch-silver)' },
+              { icon: '🛡️', t: t.f3t, d: t.f3d, c: 'var(--ch-green)' },
             ].map(f => (
               <div key={f.t} className="glass card-lift" style={{ borderRadius: 8, padding: 28 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 18 }}>{f.icon}</div>
+                <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--ch-border-icon)', border: '1px solid var(--ch-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 18 }}>{f.icon}</div>
                 <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 10, color: f.c }}>{f.t}</h3>
-                <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.8, fontWeight: 600 }}>{f.d}</p>
+                <p style={{ fontSize: 11, color: 'var(--ch-text-dim)', lineHeight: 1.8, fontWeight: 600 }}>{f.d}</p>
               </div>
             ))}
           </div>
@@ -545,29 +586,29 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           4. PROPERTIES — معرض الأصول
       ══════════════════════════════════════════════════════════ */}
-      <section id="properties" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
+      <section id="properties" style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <h2 style={{ fontSize: 'clamp(20px,2.5vw,30px)', fontWeight: 900, marginBottom: 12 }}>
               <span className="metal-gradient">{t.galleryTitle}</span>
             </h2>
-            <p style={{ fontSize: 12, color: '#475569', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>{t.gallerySub}</p>
+            <p style={{ fontSize: 12, color: 'var(--ch-text-dim)', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>{t.gallerySub}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 20, maxWidth: 900, margin: '0 auto' }}>
             {projects.map(p => (
-              <div key={p.id} className="card-lift" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(22,22,28,0.88)', backdropFilter: 'blur(12px)' }}>
+              <div key={p.id} className="card-lift" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--ch-border)', background: 'var(--ch-hud-surface-card)', backdropFilter: 'blur(12px)' }}>
                 <div style={{ position: 'relative', height: 180, overflow: 'hidden' }}>
                   <img src={p.thumb} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} />
-                  <span style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(17,17,17,0.85)', backdropFilter: 'blur(8px)', color: '#94a3b8', fontSize: 9, fontWeight: 700, padding: '4px 10px', borderRadius: 99, border: '1px solid rgba(255,255,255,0.07)' }}>📍 {p.city}</span>
-                  <span style={{ position: 'absolute', bottom: 12, right: 12, background: 'rgba(17,17,17,0.85)', backdropFilter: 'blur(8px)', color: '#5aabff', fontSize: 8, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(0,123,255,0.2)' }}>{statusLabel(p.status)}</span>
+                  <span style={{ position: 'absolute', top: 12, right: 12, background: 'var(--ch-overlay-strong)', backdropFilter: 'blur(8px)', color: 'var(--ch-silver)', fontSize: 9, fontWeight: 700, padding: '4px 10px', borderRadius: 99, border: '1px solid var(--ch-border-soft)' }}>📍 {p.city}</span>
+                  <span style={{ position: 'absolute', bottom: 12, right: 12, background: 'var(--ch-overlay-strong)', backdropFilter: 'blur(8px)', color: 'var(--ch-accent-muted)', fontSize: 8, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: '1px solid var(--ch-accent-border)' }}>{statusLabel(p.status)}</span>
                 </div>
                 <div style={{ padding: '18px 20px' }}>
-                  <h3 style={{ fontSize: 12, fontWeight: 900, color: '#f1f5f9', marginBottom: 6 }}>{p.name}</h3>
-                  <p style={{ fontSize: 9, color: '#475569', fontWeight: 600, marginBottom: 14 }}>🏡 {p.layout}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontSize: 9, color: '#334155', fontWeight: 600 }}>{t.pricingStarts}</span>
+                  <h3 style={{ fontSize: 12, fontWeight: 900, color: 'var(--ch-foreground)', marginBottom: 6 }}>{p.name}</h3>
+                  <p style={{ fontSize: 9, color: 'var(--ch-text-dim)', fontWeight: 600, marginBottom: 14 }}>🏡 {p.layout}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid var(--ch-border-subtle)' }}>
+                    <span style={{ fontSize: 9, color: 'var(--ch-text-dim)', fontWeight: 600 }}>{t.pricingStarts}</span>
                     <span style={{ fontSize: 12, fontWeight: 900 }}><span className="metal-gradient">{fmtPrice(p.price)} {t.sar}</span></span>
                   </div>
                 </div>
@@ -580,14 +621,14 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           5. PRICING
       ══════════════════════════════════════════════════════════ */}
-      <section id="pricing" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', zIndex: 1, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translateX(-50%)', width: 600, height: 400, background: 'radial-gradient(ellipse, rgba(0,123,255,0.04) 0%, transparent 65%)', pointerEvents: 'none' }} />
+      <section id="pricing" style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '80px 0', zIndex: 1, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translateX(-50%)', width: 600, height: 400, background: 'radial-gradient(ellipse, var(--ch-accent-soft) 0%, transparent 65%)', pointerEvents: 'none' }} />
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px', position: 'relative', zIndex: 10 }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <h2 style={{ fontSize: 'clamp(20px,2.5vw,30px)', fontWeight: 900, marginBottom: 12 }}>
               <span className="metal-gradient">{t.pricingTitle}</span>
             </h2>
-            <p style={{ fontSize: 12, color: '#475569', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>{t.pricingSub}</p>
+            <p style={{ fontSize: 12, color: 'var(--ch-text-dim)', fontWeight: 600, maxWidth: 440, margin: '0 auto' }}>{t.pricingSub}</p>
           </div>
           <PricingGrid theme="dark" />
         </div>
@@ -596,20 +637,20 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           6. INVESTOR FORM
       ══════════════════════════════════════════════════════════ */}
-      <section id="register-interest" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
+      <section id="register-interest" style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '80px 0', zIndex: 1, position: 'relative' }}>
         <div className="max-w-4xl mx-auto" style={{ padding: '0 40px' }}>
-          <div className="glass" style={{ borderRadius: 8, padding: '48px 52px', position: 'relative', overflow: 'hidden', boxShadow: '0 0 60px rgba(0,123,255,0.05)' }}>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 300, height: 300, background: 'radial-gradient(circle, rgba(0,123,255,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+          <div className="glass" style={{ borderRadius: 8, padding: '48px 52px', position: 'relative', overflow: 'hidden', boxShadow: '0 0 60px var(--ch-accent-soft)' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 300, height: 300, background: 'radial-gradient(circle, var(--ch-accent-soft) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
             <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 10 }}>
               <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 10 }}>
                 <span className="metal-gradient">{t.investorTitle}</span>
               </h2>
-              <p style={{ fontSize: 11, color: '#475569', fontWeight: 600, lineHeight: 1.7 }}>{t.investorSub}</p>
+              <p style={{ fontSize: 11, color: 'var(--ch-text-dim)', fontWeight: 600, lineHeight: 1.7 }}>{t.investorSub}</p>
             </div>
 
             {formStatus && (
-              <div style={{ marginBottom: 24, padding: '14px 20px', borderRadius: 8, background: formStatus.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${formStatus.ok ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, color: formStatus.ok ? '#22c55e' : '#ef4444', fontSize: 12, fontWeight: 700, textAlign: 'center', position: 'relative', zIndex: 10 }}>
+              <div style={{ marginBottom: 24, padding: '14px 20px', borderRadius: 8, background: formStatus.ok ? 'var(--ch-green-msg)' : 'var(--ch-error-soft)', border: `1px solid ${formStatus.ok ? 'var(--ch-green-border)' : 'var(--ch-error-border)'}`, color: formStatus.ok ? 'var(--ch-green)' : 'var(--ch-error)', fontSize: 12, fontWeight: 700, textAlign: 'center', position: 'relative', zIndex: 10 }}>
                 {formStatus.msg}
               </div>
             )}
@@ -617,17 +658,17 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', zIndex: 10 }}>
               <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>{t.nameLabel}</label>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ch-foreground-muted)', marginBottom: 6 }}>{t.nameLabel}</label>
                   <input name="name" type="text" required placeholder={t.namePH} className="orca-input" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>{t.phoneLabel}</label>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ch-foreground-muted)', marginBottom: 6 }}>{t.phoneLabel}</label>
                   <input name="phone" type="tel" required placeholder={t.phonePH} className="orca-input" />
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>{t.projLabel}</label>
-                <select name="projectId" className="orca-input" style={{ appearance: 'none', color: '#94a3b8' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ch-foreground-muted)', marginBottom: 6 }}>{t.projLabel}</label>
+                <select name="projectId" className="orca-input" style={{ appearance: 'none', color: 'var(--ch-silver)' }}>
                   <option value="">{t.projPH}</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
@@ -643,23 +684,23 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
       {/* ══════════════════════════════════════════════════════════
           FOOTER
       ══════════════════════════════════════════════════════════ */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '40px 0 28px', zIndex: 1, position: 'relative' }}>
+      <footer style={{ borderTop: '1px solid var(--ch-border-subtle)', padding: '40px 0 28px', zIndex: 1, position: 'relative' }}>
         <div className="max-w-7xl mx-auto" style={{ padding: '0 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 4 }}><span className="metal-gradient">ORCA CRM</span></div>
-            <div style={{ fontSize: 10, color: '#334155', fontWeight: 600 }}>{t.allRights}</div>
+            <div style={{ fontSize: 10, color: 'var(--ch-text-dim)', fontWeight: 600 }}>{t.allRights}</div>
           </div>
           <div style={{ display: 'flex', gap: 28 }}>
             {[[t.supportTitle, t.whatsapp],[t.security, t.secDesc]].map(([title, sub]) => (
               <div key={title}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 2 }}>{title}</div>
-                <div style={{ fontSize: 9, color: '#334155', fontWeight: 600 }}>{sub}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ch-foreground-muted)', marginBottom: 2 }}>{title}</div>
+                <div style={{ fontSize: 9, color: 'var(--ch-text-dim)', fontWeight: 600 }}>{sub}</div>
               </div>
             ))}
           </div>
           {/* نبضة خادم الرياض — أخضر حصري */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: '#22c55e', fontWeight: 700 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} className="pulse-emerald" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--ch-green)', fontWeight: 700 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ch-green)' }} className="pulse-emerald" />
             {t.serverRiyadh}
           </div>
         </div>
