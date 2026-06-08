@@ -774,7 +774,7 @@ export default function RentalPage() {
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               
               {/* Leases List (Master) */}
-              <div className="w-full lg:w-[45%] bg-[var(--nc-surface-strong)] border border-white/5 rounded-2xl overflow-hidden fade-in-up">
+              <div className="w-full lg:w-[45%] bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up">
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 bg-[var(--nc-surface-solid)]">
                   <span className="text-sm font-bold text-white">قائمة عقود الإيجار</span>
                   <div className="flex gap-2">
@@ -864,7 +864,7 @@ export default function RentalPage() {
               </div>
 
               {/* Lease Detail Panel (Detail) */}
-              <div className="flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/5 rounded-2xl overflow-hidden min-h-[460px] fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden min-h-[460px] fade-in-up" style={{ animationDelay: '100ms' }}>
               <div className="p-6">
                 {!selectedLease ? (
                   <div className="h-full flex flex-col items-center justify-center text-[var(--nc-text-dim)] text-xs py-20">
@@ -902,7 +902,7 @@ export default function RentalPage() {
                             setInvoiceAmount(selectedLease.rent);
                             setActiveModal('create_invoice');
                           }}
-                          className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all"
+                          className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
                         >
                           إصدار فاتورة للعقد
                         </button>
@@ -910,7 +910,7 @@ export default function RentalPage() {
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
                           <button
                             onClick={() => handleRequestSettlement(selectedLease.id, selectedLease.rent * 12)}
-                            className="px-3 py-1.5 bg-[#0081a7] hover:bg-[#007090] text-white text-[11px] font-black rounded-lg transition-all"
+                            className="px-3 py-1.5 bg-[#0081a7] hover:bg-[#007090] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
                           >
                             طلب تسوية المالك Payout
                           </button>
@@ -920,7 +920,7 @@ export default function RentalPage() {
                             addTelemetryEvent('lease.reminder_sent', { contractId: selectedLease.id });
                             alert('تم إرسال تذكير سياقي آلي للمستأجر بنجاح.');
                           }}
-                          className="px-3 py-1.5 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-surface)] border border-white/5 text-[var(--nc-text-dim)] text-[11px] font-black rounded-lg border border-white/5 transition-all"
+                          className="px-3 py-1.5 bg-[var(--nc-surface)] border border-white/10 hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] text-[11px] font-black rounded-lg transition-all"
                         >
                           إرسال تذكير
                         </button>
@@ -943,7 +943,7 @@ export default function RentalPage() {
                           className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                             detailActiveTab === tab.id 
                               ? 'bg-[#8EB1D1] text-white shadow-sm' 
-                              : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/5 text-[var(--nc-text-dim)] hover:text-white border border-white/5'
+                              : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:text-white'
                           }`}
                         >
                           {tab.name}
@@ -958,17 +958,17 @@ export default function RentalPage() {
                       {detailActiveTab === 'summary' && (
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">تاريخ صلاحية العقد</span>
                               <span className="font-bold text-white mt-1.5 block">
                                 {formatDateToDDMMYYYY(selectedLease.start)} — {formatDateToDDMMYYYY(selectedLease.end)}
                               </span>
                             </div>
-                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">القيمة الإيجارية الدورية</span>
                               <span className="font-bold text-white mt-1.5 block">{selectedLease.rent.toLocaleString()} {selectedLease.currency}</span>
                             </div>
-                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">تأمين مسترد Locked</span>
                               <span className="font-bold text-white mt-1.5 block">{selectedLease.deposit.toLocaleString()} {selectedLease.currency}</span>
                             </div>

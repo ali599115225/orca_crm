@@ -29,7 +29,7 @@ export default function DashboardLayout({
           md:translate-x-0 md:static md:z-auto shrink-0
         `}
       >
-        <SovereignSidebar />
+        <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} />
       </div>
 
       {/* ── المحتوى الرئيسي ─────────────────────────────────────────────── */}

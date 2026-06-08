@@ -42,7 +42,7 @@ const menu = [
   { label: "الإعدادات",              icon: Settings,        path: "/operations/settings",   tab: "settings"   },
 ];
 
-function SidebarNav() {
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const searchParams = useSearchParams();
   const pathname     = usePathname();
   const currentTab   = searchParams.get("tab") || "analytics";
@@ -64,6 +64,7 @@ function SidebarNav() {
               <Link
                 href={item.path}
                 title={tooltip}
+                onClick={() => onNavigate?.()}
                 className={[
                   "flex items-center justify-start gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
                   isActive
@@ -94,9 +95,9 @@ function SidebarNav() {
   );
 }
 
-export default function SovereignSidebar() {
+export default function SovereignSidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   return (
-    <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/90 backdrop-blur-xl flex flex-col transition-all duration-300">
+    <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/90 backdrop-blur-xl border border-white/10 flex flex-col transition-all duration-300">
       {/* Logo / Brand */}
       <div className="h-16 flex items-center justify-center lg:justify-start px-5 border-b border-[var(--nc-border)] shrink-0">
         <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase md:hidden lg:inline">
@@ -116,7 +117,7 @@ export default function SovereignSidebar() {
           </div>
         }
       >
-        <SidebarNav />
+        <SidebarNav onNavigate={onLinkClick} />
       </Suspense>
     </aside>
   );
