@@ -166,6 +166,7 @@ export async function issueContractActionDirect(data: {
       // أ. إنشاء سجل العقد الجديد
       prisma.contract.create({
         data: {
+          tenantId: tenant.id,
           unitId: propertyId,
           buyerName,
           buyerPhone,

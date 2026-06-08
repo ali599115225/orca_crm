@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       }
 
       await prisma.unit.createMany({
-        data: unitsData,
+        data: unitsData.map(u => ({ ...u, tenantId: companyId })),
       });
 
       units = await prisma.unit.findMany({

@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
 
     const newUnit = await prisma.unit.create({
       data: {
+        tenantId: session.tenantId as string,
         projectId,
         unitNumber,
         floorPosition: floorPosition || 0,

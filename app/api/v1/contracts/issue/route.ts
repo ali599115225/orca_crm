@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
       // أ. إنشاء سجل العقد الجديد
       prisma.contract.create({
         data: {
+          tenantId,
           unitId: propertyId,
           buyerName,
           buyerPhone,

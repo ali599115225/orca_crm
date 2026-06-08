@@ -105,6 +105,7 @@ export async function createUnitActionDirect(data: {
 
     const newUnit = await prisma.unit.create({
       data: {
+        tenantId: tenant.id,
         projectId: data.projectId,
         unitNumber: data.unitNumber,
         floorPosition: 0,
@@ -224,6 +225,7 @@ export async function bookUnitActionDirect(data: {
       // 1. إنشاء سجل العقد الجديد مع ربطه بالوحدة
       prisma.contract.create({
         data: {
+          tenantId: tenant.id,
           unitId: data.unitId,
           buyerName,
           buyerPhone,

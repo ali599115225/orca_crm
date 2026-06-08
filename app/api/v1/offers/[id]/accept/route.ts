@@ -88,6 +88,7 @@ export async function POST(
         if (!existingContract) {
           await prisma.contract.create({
             data: {
+              tenantId,
               unitId,
               buyerName: `${lead.firstName} ${lead.lastName || ""}`.trim(),
               buyerPhone: lead.phone,
