@@ -1,4 +1,5 @@
 // app/operations/settings/page.tsx
+import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
 import SettingsView from '@/components/views/SettingsView';
 import { getActiveTenant } from '@/lib/tenant';
@@ -68,9 +69,17 @@ export default async function SettingsPage() {
   }
 
   return (
-    <SettingsView 
-      tenant={tenant} 
-      users={users} 
-    />
+    <Suspense fallback={
+      <div className="flex-1 py-3 space-y-4 px-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-2xl bg-[var(--nc-surface)] dark:bg-white/5 animate-pulse" />
+        ))}
+      </div>
+    }>
+      <SettingsView 
+        tenant={tenant} 
+        users={users} 
+      />
+    </Suspense>
   );
 }

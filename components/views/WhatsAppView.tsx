@@ -6,6 +6,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toggleWhatsAppConnectionAction, sendMockWhatsAppMessageAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
+import { toArabicNumerals } from '@/lib/formatters';
 
 interface Message {
   sender: string;
@@ -98,21 +99,18 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
   const [loadingAction, setLoadingAction] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChat?.messages, isTyping]);
 
-  const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (num === undefined || num === null) return "";
-    let str = num.toString();
-    if (!isArabic) return str;
-    const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str
-      .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
-      .replace(/%/g, "٪");
-  };
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
 
   const formatTimestamp = (timeStr: string) => {
     if (!timeStr) return "";
@@ -150,7 +148,8 @@ export default function WhatsAppView({ initialChats, tenant }: WhatsAppViewProps
     );
 
     setIsTyping(true);
-    setTimeout(async () => {
+    typingTimeoutRef.current = setTimeout(async () => {
+      typingTimeoutRef.current = null;
       const result = await sendMockWhatsAppMessageAction(activeChatId, userText);
       setIsTyping(false);
       if (result.success && result.agentMessage) {

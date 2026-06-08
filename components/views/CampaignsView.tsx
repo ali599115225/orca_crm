@@ -149,11 +149,17 @@ export default function CampaignsView({
   const searchParams = useSearchParams();
   const urlPlatform = searchParams.get('platform');
 
+  const [usingFallback, setUsingFallback] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'paused' | 'draft'>('all');
   const [localPlatformFilter, setLocalPlatformFilter] = useState<string | null>(urlPlatform);
 
   const platformFilter = platformFilterState !== undefined ? platformFilterState : localPlatformFilter;
   const setPlatformFilter = setPlatformFilterState !== undefined ? setPlatformFilterState : setLocalPlatformFilter;
+
+  // detect if using mock data
+  useEffect(() => {
+    if (!campaignsState) setUsingFallback(true);
+  }, [campaignsState]);
 
   // sync URL param if it changes
   useEffect(() => { 
@@ -282,7 +288,22 @@ export default function CampaignsView({
     <div className={embedded ? "space-y-5" : "space-y-5 p-6"} dir={dir}>
 
       {/* ── Page Header ─────────────────────────────────────── */}
-      {!embedded && <PageHeader title={t.title} description={t.desc} />}
+      {!embedded && (
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+              {t.title}
+              {usingFallback && (
+                <span className="mr-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
+                  <i className="ph-bold ph-warning-circle"></i>
+                  بيانات تجريبية
+                </span>
+              )}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5 font-medium">{t.desc}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Platform Filter Banner ───────────────────────────── */}
       {platformFilter && (

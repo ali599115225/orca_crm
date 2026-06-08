@@ -182,7 +182,7 @@ export default function TopBarClient({
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
                 ? 'border-white/10 bg-white/5 text-amber-400 hover:border-corporate-blue dark:hover:border-cyan-glow' 
-                : 'border-slate-350 bg-[var(--nc-surface)] text-indigo-650 hover:border-corporate-blue'
+                : 'border-slate-400 bg-[var(--nc-surface)] text-indigo-700 hover:border-corporate-blue'
             }`}
           >
             {isDark ? '☀️' : '🌙'}

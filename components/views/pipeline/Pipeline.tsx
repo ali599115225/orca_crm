@@ -25,21 +25,85 @@ const stageAccent: Record<string, string> = {
   "Closed": "#22C55E",
 };
 
+// ─── بيانات افتراضية لضمان 6 عملاء في كل عمود ───
+const mockNames = [
+  { first: "عبدالرحمن", last: "المالكي" }, { first: "سلطان", last: "العتيبي" },
+  { first: "فهد", last: "الدوسري" }, { first: "تركي", last: "الشمراني" },
+  { first: "بدر", last: "القحطاني" }, { first: "ماجد", last: "الزهراني" },
+  { first: "خالد", last: "الحربي" }, { first: "ناصر", last: "الغامدي" },
+  { first: "سعود", last: "السديري" }, { first: "عمر", last: "الشمري" },
+  { first: "يوسف", last: "المطيري" }, { first: "راشد", last: "البقمي" },
+  { first: "حمد", last: "البلوي" }, { first: "مشعل", last: "العتيبي" },
+  { first: "وليد", last: "الأحمدي" }, { first: "عبدالعزيز", last: "الفهيد" },
+  { first: "صالح", last: "الراجحي" }, { first: "محمد", last: "العمري" },
+  { first: "أحمد", last: "السبيعي" }, { first: "إبراهيم", last: "الموسى" },
+  { first: "سامي", last: "الحازمي" }, { first: "نايف", last: "الشمري" },
+  { first: "عبدالله", last: "الغامدي" }, { first: "فيصل", last: "الزهراني" },
+  { first: "موسى", last: "القحطاني" }, { first: "هاني", last: "الدوسري" },
+  { first: "وائل", last: "الحربي" }, { first: "جابر", last: "العتيبي" },
+  { first: "سعد", last: "المطيري" }, { first: "فواز", last: "الشهري" },
+  { first: "نواف", last: "الرشيد" }, { first: "عاصم", last: "البلوي" },
+  { first: "تامر", last: "السلمي" }, { first: "ياسر", last: "القرني" },
+  { first: "أيمن", last: "الغامدي" }, { first: "بسام", last: "الهذلي" },
+  { first: "زياد", last: "الخالدي" }, { first: "هشام", last: "العنزي" },
+  { first: "رامي", last: "الحارثي" }, { first: "علي", last: "الزهراني" },
+  { first: "حسن", last: "الشهري" }, { first: "عدنان", last: "المالكي" },
+];
+
+const mockSources = ["إعلانات سناب شات", "حملة ميتا", "زيارة مباشرة", "إحالة عميل", "موقع إلكتروني", "واتساب", "إعلانات جوجل", "معرض عقاري"];
+const mockCities = ["الرياض", "جدة", "الدمام", "مكة", "تبوك", "أبها", "الخبر", "القصيم"];
+
+function generateMockLeads(): LeadItem[] {
+  const result: LeadItem[] = [];
+  let idx = 0;
+  for (const stage of stages) {
+    for (let i = 0; i < 6; i++) {
+      const person = mockNames[idx % mockNames.length];
+      result.push({
+        id: `mock_${stage.id}_${i}`,
+        firstName: person.first,
+        lastName: person.last,
+        city: mockCities[Math.floor(Math.random() * mockCities.length)],
+        source: mockSources[Math.floor(Math.random() * mockSources.length)],
+        leadScore: 40 + Math.floor(Math.random() * 55),
+        stage: stage.id,
+        projectId: null,
+        assignedTo: ["المستشار رائد", "المستشار فواز", "المستشار عبدالرحمن", "المستشار سعود", "المستشار عمر", "المستشار بدر"][Math.floor(Math.random() * 6)],
+      });
+      idx++;
+    }
+  }
+  return result;
+}
+
+const DEFAULT_MOCK_LEADS = generateMockLeads();
+
 export default function Pipeline() {
-  const [leads, setLeads] = useState<LeadItem[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<LeadItem[]>([]);
+  const [leads, setLeads] = useState<LeadItem[]>(DEFAULT_MOCK_LEADS);
+  const [filteredLeads, setFilteredLeads] = useState<LeadItem[]>(DEFAULT_MOCK_LEADS);
   const [filterProject, setFilterProject] = useState("");
   const [filterSource, setFilterSource] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const loadLeads = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/v1/leads");
       const json = await res.json();
-      if (json.success) {
-        setLeads(json.data);
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const merged = [...json.data];
+        for (const stage of stages) {
+          const stageReal = json.data.filter((l: LeadItem) => (l.stage || "New") === stage.id);
+          const needed = 6 - stageReal.length;
+          for (let i = 0; i < needed; i++) {
+            const mockLead = DEFAULT_MOCK_LEADS.find(l => l.stage === stage.id && !merged.some(m => m.id === l.id));
+            if (mockLead) {
+              merged.push({ ...mockLead, id: `${mockLead.id}_${Date.now()}_${i}` });
+            }
+          }
+        }
+        setLeads(merged);
       }
     } catch (e) {
       console.error(e);

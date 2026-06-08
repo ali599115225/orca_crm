@@ -83,12 +83,16 @@ export default function DocumentsView() {
     setSuccess(null);
 
     try {
+      const buffer = await file.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+
       const res = await createDocumentActionDirect({
         name: file.name,
         type: docType,
         linkedTo: linkedTo || null,
         linkedType: linkedType || null,
         size: file.size,
+        fileContent: base64,
       });
 
       if (res.success) {
@@ -110,20 +114,27 @@ export default function DocumentsView() {
     }
   };
 
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
-    if (!confirm(isArabic ? 'هل أنت متأكد من حذف هذا الملف نهائياً؟' : 'Are you sure you want to delete this file?')) return;
+    setConfirmDelete(id);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!confirmDelete) return;
     try {
-      const res = await deleteDocumentActionDirect(id);
+      const res = await deleteDocumentActionDirect(confirmDelete);
       if (res.success) {
         setSuccess(isArabic ? 'تم حذف الملف بنجاح.' : 'File deleted.');
-        setDocuments(documents.filter(d => d.id !== id));
-        if (previewDoc?.id === id) setPreviewDoc(null);
+        setDocuments(documents.filter(d => d.id !== confirmDelete));
+        if (previewDoc?.id === confirmDelete) setPreviewDoc(null);
       } else {
         setError(res.error || 'Delete failed');
       }
     } catch (err) {
       setError('Connection error');
     } finally {
+      setConfirmDelete(null);
       setTimeout(() => setSuccess(null), 3000);
     }
   };
@@ -538,6 +549,21 @@ export default function DocumentsView() {
                   <span>{isArabic ? 'تحميل وتنزيل الملف' : 'Download Document'}</span>
                 </a>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+            <h3 className="text-base font-extrabold text-rose-400 border-b border-white/5 pb-2">{isArabic ? 'تأكيد حذف الملف' : 'Confirm Delete'}</h3>
+            <p className="text-[var(--nc-text-dim)]">{isArabic ? 'هل أنت متأكد أنك تريد حذف هذا الملف؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this file? This action cannot be undone.'}</p>
+            <div className="flex gap-2">
+              <button onClick={confirmDeleteFile} className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all">{isArabic ? 'تأكيد الحذف' : 'Delete'}</button>
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/5 text-[var(--nc-text-dim)] rounded-xl transition-all">{isArabic ? 'إلغاء' : 'Cancel'}</button>
             </div>
           </div>
         </div>

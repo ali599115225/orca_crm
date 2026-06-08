@@ -12,10 +12,6 @@ export async function authorizeAgentAccess(agentName: string): Promise<{
   message?: string;
 }> {
   const startTime = Date.now();
-  
-  // 1. إجبارية التأخير الاصطناعي (Artificial Latency): 3000ms to 5000ms
-  const latency = Math.floor(Math.random() * 2001) + 3000;
-  await new Promise(resolve => setTimeout(resolve, latency));
 
   let tenantId = "";
   let userId = null;

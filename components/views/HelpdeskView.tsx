@@ -7,6 +7,7 @@ import { createTicketAction, closeTicketAction } from '@/app/actions/helpdesk';
 import { useApp } from '@/app/context/AppContext';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { LayoutContainer } from '@/components/ui/LayoutContainer';
+import { toArabicNumerals } from '@/lib/formatters';
 
 
 interface Ticket {
@@ -160,17 +161,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     updateSla();
     const interval = setInterval(updateSla, 1000);
     return () => clearInterval(interval);
-  }, [selectedTicket, lang]);
+  }, [selectedTicket?.id, lang]);
 
   // Convert numbers to Arabic Eastern numerals if Arabic language is active
-  const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (num === undefined || num === null) return "";
-    let str = num.toString();
-    if (!isArabic) return str;
-    const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str.replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)]);
-  };
-
   const formatTicketDate = (dateStr: string | Date) => {
     const dateObj = new Date(dateStr);
     const formatted = dateObj.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', {

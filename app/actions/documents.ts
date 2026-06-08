@@ -78,7 +78,7 @@ export async function getDocumentsAction() {
 }
 
 /**
- * إدراج مستند جديد وحفظه في المستودع
+ * إدراج مستند جديد وحفظه في المستودع مع رفع الملف الفعلي
  */
 export async function createDocumentActionDirect(data: {
   name: string;
@@ -87,11 +87,26 @@ export async function createDocumentActionDirect(data: {
   linkedType?: string | null;
   size?: number;
   url?: string;
+  fileContent?: string;
 }) {
   try {
-    const { name, type, linkedTo, linkedType, size, url } = data;
+    const { name, type, linkedTo, linkedType, size, url, fileContent } = data;
     const docId = `doc-${Date.now()}`;
-    const fileUrl = url || `/mock-documents/${docId}-${name}`;
+    const safeName = name.replace(/[^a-zA-Z0-9_.-]/g, "_");
+    const uploadsDir = path.join(SCRATCH_DIR, "uploads");
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    let fileUrl = url || `/mock-documents/${docId}-${safeName}`;
+
+    if (fileContent) {
+      const base64Data = fileContent.includes(",") ? fileContent.split(",")[1] : fileContent;
+      const filePath = path.join(uploadsDir, `${docId}-${safeName}`);
+      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      fileUrl = `/scratch/uploads/${docId}-${safeName}`;
+    }
 
     const newDoc = {
       id: docId,
@@ -111,7 +126,7 @@ export async function createDocumentActionDirect(data: {
     revalidatePath("/operations/documents");
     return { success: true, data: newDoc };
   } catch (error: any) {
-    console.error("فشل إنشاء مستند جديد:", error);
+    console.error("Failed to create document:", error);
     return { success: false, error: error.message };
   }
 }

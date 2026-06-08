@@ -209,7 +209,7 @@ html { scroll-behavior: smooth; }
 .nc-pipeline::-webkit-scrollbar-thumb:hover { background: rgba(223, 123, 98, 0.35); }
 
 .nc-stage {
-  flex: 0 0 280px; min-width: 280px; min-height: 60vh;
+  flex: 0 0 280px; min-width: 280px;
   background: var(--nc-surface);
   border: 1px solid var(--nc-glass-border);
   border-radius: var(--radius-xl);
@@ -516,22 +516,9 @@ html { scroll-behavior: smooth; }
   overflow-y: auto !important;
 }
 
-.SmartCard,
-.card-modern,
-.ds-card,
-.orca-panel,
-.nc-section {
-  max-height: 80vh;
-  overflow-y: auto !important;
-}
-
 /* ─── Top fading scroll mask (تتلاشى للأعلى) ─── */
-.overflow-y-auto,
 .nc-stage-body,
-.tab-pane,
-.tab-area,
-.custom-scrollbar,
-.overflow-x-auto {
+.custom-scrollbar {
   mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.1) 8px, black 32px) !important;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.1) 8px, black 36px) !important;
 }
@@ -567,11 +554,7 @@ html { scroll-behavior: smooth; }
 .ds-card,
 .orca-panel,
 .tab-pane,
-.tab-area,
-.bg-\[var\(--nc-surface-strong\)\],
-.bg-\[var\(--nc-surface\)\],
-.rounded-2xl,
-.rounded-3xl {
+.tab-area {
   animation: fadeInUpSmooth 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

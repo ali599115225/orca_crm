@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { saveContractTermsAction } from '@/app/actions/contract';
 import SmartCard from '@/components/ui/SmartCard';
+import { toast } from '@/app/context/ToastContext';
 
 const DEFAULT_TERMS = 
 `1. يعتبر هذا الحجز مبدئياً وصالحاً لمدة (15) يوماً من تاريخ إصدار هذه الوثيقة لاستكمال الإجراءات البنكية.
@@ -23,7 +24,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
     if (result.success) {
       setIsEditing(false);
     } else {
-      alert("فشل حفظ البنود: " + result.error);
+      toast.error("فشل حفظ البنود: " + result.error);
     }
   };
 

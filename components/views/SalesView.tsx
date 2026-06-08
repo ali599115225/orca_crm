@@ -6,6 +6,7 @@ import LayoutContainer from '@/components/ui/LayoutContainer';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { getSalesPerformanceAction, SalesRepKPI } from '@/app/actions/sales';
 import { useApp } from '@/app/context/AppContext';
+import { toArabicNumerals } from '@/lib/formatters';
 
 const TRANSLATIONS = {
   AR: {
@@ -87,17 +88,9 @@ export default function SalesView() {
     loadPerformance();
   }, []);
 
-  const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (num === undefined || num === null) return "";
-    let str = num.toString();
-    if (!isArabic) return str;
-    const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str.replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)]).replace(/%/g, "٪");
-  };
-
   const formatPercentage = (val: string | number): string => {
-    let raw = val.toString().replace('%', '');
-    return toArabicNumerals(raw) + "٪";
+    let raw = val.toString().replace(/%/g, '');
+    return (isArabic ? toArabicNumerals(raw) : raw) + "٪";
   };
 
   const totalLeads = salesReps.reduce((sum, r) => sum + r.leadsCount, 0);

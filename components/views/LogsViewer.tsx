@@ -38,6 +38,7 @@ export default function LogsViewer() {
   const [expandedLogIdx, setExpandedLogIdx] = useState<number | null>(null);
   const [triggeringError, setTriggeringError] = useState(false);
   const [clearingLogs, setClearingLogs] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchLogs = async () => {
@@ -57,9 +58,11 @@ export default function LogsViewer() {
   }, []);
 
   const handleClearLogs = async () => {
-    if (!confirm(isArabic ? 'هل أنت متأكد من مسح جميع السجلات؟' : 'Are you sure you want to clear all logs?')) {
-      return;
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearLogs = async () => {
+    setShowClearConfirm(false);
     setClearingLogs(true);
     const res = await clearSystemLogsAction();
     setClearingLogs(false);
@@ -138,7 +141,7 @@ export default function LogsViewer() {
             <button
               onClick={fetchLogs}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-650 hover:bg-indigo-600 text-white font-bold text-xs transition-all border border-indigo-500/30 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs transition-all border border-indigo-500/30 cursor-pointer"
             >
               <i className={`ph-bold ph-arrow-counter-clockwise text-sm ${loading ? 'animate-spin' : ''}`}></i>
               <span>{isArabic ? "تحديث" : "Refresh"}</span>
@@ -178,7 +181,7 @@ export default function LogsViewer() {
                 onClick={() => setFilterLevel(lvl)}
                 className={`px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
                   filterLevel === lvl 
-                    ? 'bg-indigo-650 text-white shadow-md' 
+                    ? 'bg-indigo-700 text-white shadow-md' 
                     : 'text-[var(--nc-text-dim)] font-medium hover:text-slate-200'
                 }`}
               >
@@ -337,6 +340,19 @@ export default function LogsViewer() {
         )}
       </div>
 
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowClearConfirm(false)}></div>
+          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+            <h3 className="text-base font-extrabold text-rose-400 border-b border-white/5 pb-2">{isArabic ? 'تأكيد مسح السجلات' : 'Confirm Clear Logs'}</h3>
+            <p className="text-[var(--nc-text-dim)]">{isArabic ? 'هل أنت متأكد من مسح جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to clear all logs? This action cannot be undone.'}</p>
+            <div className="flex gap-2 pt-2">
+              <button onClick={confirmClearLogs} disabled={clearingLogs} className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all">{clearingLogs ? 'جاري المسح...' : isArabic ? 'تأكيد المسح' : 'Clear'}</button>
+              <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/5 text-[var(--nc-text-dim)] rounded-xl transition-all">{isArabic ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -60,7 +60,7 @@ export default function LeadsTabs() {
       aiScore: score,
       status: "Unassigned"
     });
-    toast.error(`[WEBHOOK SIMULATOR SUCCESS]\nتم تلقي بيانات عميل جديد بنجاح من Facebook Ads:\nالاسم: ${randomName}\nالجوال: ${phone}\nالتقييم الأولي للـ AI: ${score}%`);
+    toast.success(`[WEBHOOK SIMULATOR]\nتم تلقي بيانات عميل جديد بنجاح من Facebook Ads:\nالاسم: ${randomName}\nالجوال: ${phone}\nالتقييم الأولي للـ AI: ${score}%`);
   };
 
   const tabs = [
@@ -151,7 +151,7 @@ export default function LeadsTabs() {
           <Button 
             onClick={() => {
               addTelemetryEvent("leads.search", { query: searchTerm });
-              toast.error(`تم تشغيل البحث الشامل عن: ${searchTerm}`);
+              toast.success(`تم تشغيل البحث الشامل عن: ${searchTerm}`);
             }}
             className="px-4 py-2 text-xs font-bold"
           >

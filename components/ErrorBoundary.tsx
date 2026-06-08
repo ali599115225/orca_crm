@@ -29,9 +29,12 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    if (typeof window !== 'undefined') {
-      window.location.href = '/operations';
-    }
+    window.location.href = '/operations';
+  };
+
+  private handleReload = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
   };
 
   public render() {
@@ -57,11 +60,8 @@ export default class ErrorBoundary extends Component<Props, State> {
 
             <div className="flex flex-col gap-2 pt-2">
               <button
-                onClick={this.handleReset = () => {
-                  this.setState({ hasError: false, error: null });
-                  window.location.reload();
-                }}
-                className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-650 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer"
+                onClick={this.handleReload}
+                className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-700 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer"
               >
                 تحديث واستعادة الاتصال ➔
               </button>

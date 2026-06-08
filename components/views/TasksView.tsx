@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { getTasksAction, getLeadsListAction, toggleTaskStatusAction, createTaskAction } from '@/app/actions/tasks';
 import { useApp } from '@/app/context/AppContext';
+import { toArabicNumerals } from '@/lib/formatters';
 import { SmartCard } from '@/components/ui/SmartCard';
 
 const TRANSLATIONS = {
@@ -107,10 +108,11 @@ export default function TasksView() {
   }, []);
 
   const handleToggle = async (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
     const result = await toggleTaskStatusAction(taskId, currentStatus);
-    if (result.success) {
-      const updatedTasks = await getTasksAction();
-      setTasks(updatedTasks);
+    if (!result.success) {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: currentStatus } : t));
     }
   };
 
@@ -129,14 +131,6 @@ export default function TasksView() {
     } else {
       setErrorMessage(result.error || 'حدث خطأ غير متوقع.');
     }
-  };
-
-  const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (num === undefined || num === null) return '';
-    let str = num.toString();
-    if (!isArabic) return str;
-    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return str.replace(/[0-9]/g, (w) => arabicDigits[+w]);
   };
 
   const formatTaskDate = (dateStr: string | null | undefined): string => {

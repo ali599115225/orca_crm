@@ -79,7 +79,7 @@ export default function AgentManagementView({
       if (diff > 0) {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 65));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         
         ticks[l.agentId] = isArabic 
           ? `متبقي ${days} يوم و ${hours} ساعة` 

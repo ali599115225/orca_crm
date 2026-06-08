@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 import ContractWizard from '@/components/features/ContractWizard';
@@ -115,6 +116,7 @@ export default function DashboardView({
   todayTasks = [],
 }: DashboardViewProps) {
   const { theme, lang } = useApp();
+  const router = useRouter();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Helper to translate digits to Arabic
@@ -135,10 +137,7 @@ export default function DashboardView({
 
   // Refresh page data when contract is created successfully
   const handleWizardSuccess = () => {
-    // Optionally trigger routing refresh or telemetry logs reload
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
+    router.refresh();
   };
 
   return (
@@ -221,7 +220,7 @@ export default function DashboardView({
                 {formatNum(dailyToursCount)}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-450 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
               <i className="ph-fill ph-calendar-check text-xl"></i>
             </div>
           </div>
@@ -275,7 +274,7 @@ export default function DashboardView({
 
           <button
             onClick={() => setIsWizardOpen(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-corporate-blue dark:bg-gradient-to-r dark:from-indigo-650 dark:to-indigo-500 hover:scale-[1.02] text-white font-extrabold text-xs transition-all shadow-md cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-corporate-blue dark:bg-gradient-to-r dark:from-indigo-700 dark:to-indigo-500 hover:scale-[1.02] text-white font-extrabold text-xs transition-all shadow-md cursor-pointer"
           >
             <i className="ph-fill ph-file-plus text-sm"></i>
             <span>{lang === 'AR' ? 'إصدار عقد جديد' : 'Issue New Contract'}</span>

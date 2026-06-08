@@ -8,32 +8,29 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * حركة تسجيل الدخول والتحقق المشفر من الهوية والشركة النشطة
- * [MERGED v2.1] — يجمع بين:
- *   - تأخير Brute-Force من HEAD (طبقة أمان إضافية)
- *   - رسائل الخطأ العربية الواضحة من MERGE_HEAD
- *   - حماية الدخول المتقاطع (Cross-Tenant) المُفعَّلة من MERGE_HEAD
- *   - PLATFORM_ARCHITECT الحقيقي من MERGE_HEAD
- *   - logoutAction المحسَّن من MERGE_HEAD
  */
 export async function loginAction(formData: FormData) {
-  await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 200) + 300));
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const rl = rateLimit(`login:${email}`, 5, 60000);
+  if (!rl.allowed) {
+    return { success: false, error: "محاولات دخول كثيرة جداً. الرجاء الانتظار دقيقة." };
+  }
 
   try {
-    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     if (!email || !password) {
       throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
     }
 
-    console.log("[LOGIN ACTION] login attempt:", email.trim().toLowerCase());
-    // 🔍 البحث عن المستخدم عالمياً — البريد فريد على مستوى النظام بالكامل
+    console.log("[LOGIN ACTION] login attempt:", email);
     const user = await rawPrisma.user.findFirst({
       where: {
-        email: email.trim().toLowerCase(),
+        email,
         isActive: true,
       },
       include: {
