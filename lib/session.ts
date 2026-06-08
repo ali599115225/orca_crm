@@ -2,33 +2,36 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-// مفتاح التشفير السري (يُفضل وضعه في ملف .env في الإنتاج)
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "orca_crm_super_secret_key_2026_saudi_real_estate"
-);
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required but not set.");
+  }
+  return new TextEncoder().encode(secret);
+}
 
 /**
  * تشفير البيانات وتحويلها إلى Token مشفر ينتهي بعد 24 ساعة
  */
-export async function encrypt(payload: any) {
+export async function encrypt(payload: Record<string, unknown>) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
-    .sign(SECRET_KEY);
+    .sign(getJwtSecret());
 }
 
 /**
  * فك التشفير والتحقق من صحة الـ Token
  */
-export async function decrypt(input: string): Promise<any> {
+export async function decrypt(input: string): Promise<Record<string, unknown> | null> {
   try {
-    const { payload } = await jwtVerify(input, SECRET_KEY, {
+    const { payload } = await jwtVerify(input, getJwtSecret(), {
       algorithms: ["HS256"],
     });
     return payload;
-  } catch (e) {
-    return null; // الـ Token تالف أو منتهي الصلاحية
+  } catch {
+    return null;
   }
 }
 

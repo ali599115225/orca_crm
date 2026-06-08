@@ -207,7 +207,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       <header className="w-full p-6 flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
           <span className="font-bold tracking-widest text-lg">ORCA CRM</span>
-          <div className="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+          <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
           <span className={`border text-xs px-2 py-1 rounded transition-colors ${isDarkMode ? 'border-slate-700 text-slate-400 font-medium bg-white/5' : 'border-slate-300 text-slate-500 font-medium bg-white/50'}`}>Secure Edition</span>
         </div>
         <div className="flex items-center gap-4 text-sm">
@@ -224,13 +224,13 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
             <span>{lang === 'AR' ? 'English' : 'العربية'}</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
+          <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
 
           <div className="flex items-center gap-2">
             <span className={isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}>
               {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
             </span>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-slate-700' : 'bg-slate-300'}`}>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
               <div className={`w-4 h-4 rounded-full bg-corporate-blue dark:bg-cyan-glow absolute shadow-md transition-all duration-300 ease-in-out ${isDarkMode ? 'right-7' : 'right-1'}`}></div>
             </button>
           </div>
@@ -325,7 +325,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
               <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-4">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`max-w-[85%] p-3 rounded-2xl ${msg.sender === 'bot' ? `bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 self-end rounded-bl-none ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}` : `self-start rounded-br-none ${isDarkMode ? 'bg-void text-white border border-gray-800' : 'bg-slate-200 text-slate-900 border border-slate-300'}`}`}>
+                  <div key={idx} className={`max-w-[85%] p-3 rounded-2xl ${msg.sender === 'bot' ? `bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 self-end rounded-bl-none ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}` : `self-start rounded-br-none ${isDarkMode ? 'bg-void text-white border border-gray-800' : 'bg-[var(--nc-surface)] text-slate-900 border border-slate-300'}`}`}>
                     {msg.text}
                   </div>
                 ))}

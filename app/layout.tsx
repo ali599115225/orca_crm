@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
+import Script from 'next/script';
 import { AuthProvider } from "@/app/context/AuthContext";
 import { UIBusProvider } from "@/app/context/UIBusContext";
 import { ToastProvider } from "@/app/context/ToastContext";
@@ -24,15 +25,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         
-        {/* Phosphor Icons */}
-        <script src="https://unpkg.com/@phosphor-icons/web"></script>
       </head>
-      <body className="font-sans text-[var(--nc-text-primary)] transition-colors duration-300 min-h-screen relative antialiased selection:bg-[var(--nc-accent-soft)] selection:text-[var(--nc-accent)]">
+      <body className="font-sans text-[var(--nc-text-primary)] transition-colors duration-300 h-screen w-screen overflow-hidden fixed inset-0 antialiased selection:bg-[var(--nc-accent-soft)] selection:text-[var(--nc-accent)]">
         {/* Ambient Glow Elements */}
         <div className="fixed -top-40 -right-40 w-96 h-96 rounded-full bg-[var(--nc-coral-bg)] blur-[100px] pointer-events-none z-0 transition-colors duration-300" />
         <div className="fixed -bottom-40 -left-40 w-[30rem] h-[30rem] rounded-full bg-[var(--nc-coral-bg)] blur-[130px] pointer-events-none z-0 transition-colors duration-300" />
 
-        <div className="relative z-10 min-h-screen flex flex-col">
+        <div className="relative z-10 h-full flex flex-col">
           <LanguageProvider>
             <ThemeProvider>
               <AuthProvider>
@@ -47,6 +46,7 @@ export default function RootLayout({
             </ThemeProvider>
           </LanguageProvider>
         </div>
+        <Script src="https://unpkg.com/@phosphor-icons/web" strategy="afterInteractive" />
       </body>
     </html>
   )

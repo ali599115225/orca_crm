@@ -266,7 +266,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
               >
                 إلغاء الأمر
               </button>

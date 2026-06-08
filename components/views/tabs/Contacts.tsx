@@ -2,6 +2,7 @@
 "use client";
 import { toast } from '@/app/context/ToastContext';
 import React, { useState, useEffect } from 'react';
+import { SmartCard } from '@/components/ui/SmartCard';
 
 type Contact = {
   id: string;
@@ -115,45 +116,45 @@ export default function Contacts() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Contact Directory / Creation */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-            <h3 className="text-white font-bold text-sm mb-4">إنشاء جهة اتصال جديدة (Create Contact)</h3>
+          <SmartCard className="p-4">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">إنشاء جهة اتصال جديدة (Create Contact)</h3>
             <form onSubmit={handleCreateContact} className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <input
                 placeholder="الاسم بالكامل *"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               />
               <input
                 placeholder="رقم الجوال *"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               />
               <input
                 placeholder="البريد الإلكتروني"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
               />
               <input
                 placeholder="الوقت المفضل للتواصل"
                 value={prefTime}
                 onChange={(e) => setPrefTime(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
               />
               <input
                 placeholder="نطاق الميزانية"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
               />
               <button
                 type="submit"
@@ -163,10 +164,10 @@ export default function Contacts() {
                 {btnLoading ? "جاري الإضافة..." : "حفظ جهة الاتصال"}
               </button>
             </form>
-          </div>
+          </SmartCard>
 
-          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-            <h3 className="text-white font-bold text-sm mb-4">دفتر جهات الاتصال (Contacts Directory)</h3>
+          <SmartCard className="p-4">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">دفتر جهات الاتصال (Contacts Directory)</h3>
             {loading ? (
               <div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل جهات الاتصال...</div>
             ) : contacts.length === 0 ? (
@@ -186,7 +187,7 @@ export default function Contacts() {
                   <tbody className="divide-y divide-slate-800/60 text-slate-200">
                     {contacts.map((contact) => (
                       <tr key={contact.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors">
-                        <td className="py-2 px-1 font-bold text-white">{contact.name}</td>
+                        <td className="py-2 px-1 font-bold text-[var(--nc-foreground)]">{contact.name}</td>
                         <td className="py-2 px-1 font-en">{contact.phone}</td>
                         <td className="py-2 px-1">{contact.budgetRange || "—"}</td>
                         <td className="py-2 px-1 font-en">{contact.email || "—"}</td>
@@ -204,14 +205,14 @@ export default function Contacts() {
                 </table>
               </div>
             )}
-          </div>
+          </SmartCard>
         </div>
 
         {/* Selected Contact / Notes Timeline */}
         <div className="space-y-6">
-          <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4 min-h-[400px] flex flex-col justify-between">
+          <SmartCard className="p-4 min-h-[400px] flex flex-col justify-between">
             <div>
-              <h3 className="text-white font-bold text-sm mb-4 border-b border-slate-850 pb-2 flex items-center gap-2">
+              <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4 pb-2 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                 <span>سجل التواصل والخط الزمني</span>
               </h3>
@@ -219,10 +220,10 @@ export default function Contacts() {
               {selectedContact ? (
                 <div className="space-y-4">
                   <div className="text-xs">
-                    <p className="text-white font-bold text-sm mb-1">{selectedContact.name}</p>
+                    <p className="text-[var(--nc-foreground)] font-bold text-sm mb-1">{selectedContact.name}</p>
                     <p className="text-[var(--nc-text-dim)] font-medium font-en">{selectedContact.phone}</p>
                     {selectedContact.preferredContactTime && (
-                      <p className="text-[var(--nc-text-dim)] font-medium mt-1">الوقت المفضل: <span className="text-white">{selectedContact.preferredContactTime}</span></p>
+                      <p className="text-[var(--nc-text-dim)] font-medium mt-1">الوقت المفضل: <span className="text-[var(--nc-foreground)]">{selectedContact.preferredContactTime}</span></p>
                     )}
                   </div>
 
@@ -247,12 +248,12 @@ export default function Contacts() {
             </div>
 
             {selectedContact && (
-              <form onSubmit={handleAddNote} className="border-t border-slate-850 pt-4 mt-4 text-xs space-y-2">
+              <form onSubmit={handleAddNote} className="border-t border-[var(--nc-border)] pt-4 mt-4 text-xs space-y-2">
                 <textarea
                   placeholder="أدخل ملاحظة جديدة (اتصال، مراسلة واتساب، إلخ)..."
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  className="w-full bg-[var(--nc-surface-solid)] border border-slate-700 rounded-lg p-2 text-white h-16 resize-none"
+                  className="w-full bg-[var(--nc-surface-solid)] border border-[var(--nc-border)] rounded-lg p-2 text-[var(--nc-foreground)] h-16 resize-none"
                   required
                 />
                 <div className="flex gap-2">
@@ -273,7 +274,7 @@ export default function Contacts() {
                 </div>
               </form>
             )}
-          </div>
+          </SmartCard>
         </div>
 
       </div>

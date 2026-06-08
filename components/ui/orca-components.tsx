@@ -6,13 +6,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: LucideIcon;
 }
 
-export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', icon: Icon, ...props }) => {
+export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', icon: Icon, className = '', ...props }) => {
   const variants = {
     primary: "nc-btn nc-btn-primary",
     secondary: "nc-btn nc-btn-ghost",
   };
   return (
-    <button className={`${variants[variant]}`} {...props}>
+    <button className={`${variants[variant]} ${className}`} {...props}>
       {Icon && <Icon size={18} />}
       {children}
     </button>

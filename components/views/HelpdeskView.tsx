@@ -1,11 +1,13 @@
 // components/views/HelpdeskView.tsx
 'use client';
-
 import React, { useState, useEffect } from 'react';
+
+import PageHeader from '@/components/ui/PageHeader';
 import { createTicketAction, closeTicketAction } from '@/app/actions/helpdesk';
 import { useApp } from '@/app/context/AppContext';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { LayoutContainer } from '@/components/ui/LayoutContainer';
+
 
 interface Ticket {
   id: string;
@@ -250,22 +252,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const closedTickets = tickets.filter(t => t.status === 'CLOSED').length;
 
   return (
-    <div className="nc-page nc-stack p-6" dir={dir}>
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent)] text-xs font-semibold mb-3">
-            <i className="ph-bold ph-headset"></i> {t.badgeText}
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-foreground)] mb-2">
-            {t.title}
-          </h1>
-          <p className="text-xs md:text-sm text-[var(--nc-foreground-muted)] font-medium max-w-2xl leading-relaxed">
-            {t.subtitle}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6" dir={dir}>
+
+      <PageHeader title={t.title} description={t.subtitle} />
 
       <LayoutContainer
         kpis={
@@ -273,31 +262,31 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-ticket text-[var(--nc-accent)] text-lg"></i>
               <div>
-                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
+                <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
                 <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{toArabicNumerals(tickets.length)}</p>
               </div>
             </SmartCard>
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-activity text-emerald-500 text-lg"></i>
               <div>
-                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
+                <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
                 <p className="text-lg font-bold text-emerald-500 font-en">{toArabicNumerals(openTickets)}</p>
               </div>
             </SmartCard>
             <SmartCard className="px-4 py-3 flex items-center gap-3">
               <i className="ph-bold ph-check-circle text-[var(--nc-foreground-muted)] text-lg"></i>
               <div>
-                <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
+                <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
                 <p className="text-lg font-bold text-[var(--nc-foreground-muted)] font-en">{toArabicNumerals(closedTickets)}</p>
               </div>
             </SmartCard>
           </div>
         }
         actions={
-          <div className="bg-transparent border-none p-0 space-y-4">
+          <div className="bg-transparent border-none p-0 flex flex-col gap-4 w-full">
             <div className="border-b border-[var(--nc-border)] pb-3">
               <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.openTicket}</h3>
-              <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium mt-0.5">{t.openTicketSub}</p>
+              <p className="text-xs text-[var(--nc-foreground-muted)] font-medium mt-0.5">{t.openTicketSub}</p>
             </div>
 
             {error && (
@@ -337,7 +326,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-[var(--nc-accent)] hover:scale-[1.01] text-white font-bold text-sm transition-all cursor-pointer disabled:opacity-55 shadow-md"
+                className="w-full py-3 rounded-xl bg-[var(--nc-accent)] hover:scale-[1.01] text-[var(--nc-foreground)] font-bold text-sm transition-all cursor-pointer disabled:opacity-55 shadow-md"
               >
                 {loading ? t.submittingBtn : t.submitBtn}
               </button>
@@ -345,7 +334,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
           </div>
         }
         insights={
-          <div className="bg-transparent border-none p-0 space-y-4">
+          <div className="bg-transparent border-none p-0 flex flex-col gap-4 w-full">
             <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
               <span>{t.ledgerTitle}</span>
               <span className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
@@ -372,7 +361,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     >
                       <div className="space-y-1">
                         <h5 className="font-bold text-xs text-[var(--nc-foreground)] line-clamp-1">{ticket.title}</h5>
-                        <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
+                        <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
                       </div>
                       
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -404,7 +393,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               <div className="border-b border-[var(--nc-border)] pb-4 flex justify-between items-center gap-4">
                 <div>
                   <h3 className="text-[var(--nc-foreground)] font-bold text-lg">{selectedTicket.title}</h3>
-                  <p className="text-xs text-slate-500 text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
+                  <p className="text-xs text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
                     {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', selectedTicket.id)}
                   </p>
                 </div>
@@ -430,7 +419,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
               {/* Inquiry description */}
               <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl">
-                <p className="text-[var(--nc-accent)] text-xs text-slate-500 font-bold mb-1.5">{t.authorLabel}</p>
+                <p className="text-[var(--nc-accent)] text-xs font-bold mb-1.5">{t.authorLabel}</p>
                 <p className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
               </div>
 
@@ -461,7 +450,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     const isClient = rep.sender === 'CLIENT';
                     return (
                       <div key={rep.id} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'} space-y-1`}>
-                        <div className={`p-3 rounded-xl text-xs leading-normal max-w-[85%] ${isClient ? 'bg-[var(--nc-accent)] text-white rounded-br-none' : 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] rounded-bl-none'}`}>
+                        <div className={`p-3 rounded-xl text-xs leading-normal max-w-[85%] ${isClient ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)] rounded-br-none' : 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] rounded-bl-none'}`}>
                           {rep.message}
                         </div>
                         <span className="text-[9px] text-[var(--nc-foreground-muted)] font-medium font-en px-1">{new Date(rep.createdAt).toLocaleTimeString()}</span>
@@ -482,7 +471,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     <button
                       type="submit"
                       disabled={submittingReply || !replyInput.trim()}
-                      className="bg-[var(--nc-accent)] hover:scale-[1.02] text-white px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-colors disabled:opacity-50 shrink-0 shadow-sm"
+                      className="bg-[var(--nc-accent)] hover:scale-[1.02] text-[var(--nc-foreground)] px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-colors disabled:opacity-50 shrink-0 shadow-sm"
                     >
                       {submittingReply ? '...' : t.sendReplyBtn}
                     </button>
@@ -504,5 +493,3 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     </div>
   );
 }
-
-

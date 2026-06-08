@@ -1,7 +1,9 @@
 // components/views/SalesView.tsx
 'use client';
-
 import React, { useState, useEffect } from 'react';
+import PageHeader from '@/components/ui/PageHeader';
+import LayoutContainer from '@/components/ui/LayoutContainer';
+import { SmartCard } from '@/components/ui/SmartCard';
 import { getSalesPerformanceAction, SalesRepKPI } from '@/app/actions/sales';
 import { useApp } from '@/app/context/AppContext';
 
@@ -12,23 +14,23 @@ const TRANSLATIONS = {
     desc: "تتبع جودة خدمة المستشارين العقاريين، سرعة الاستجابة، ونسب إغلاق الحجوزات بنظام المبيعات الموحد.",
     card1_title: "إجمالي عملاء المبيعات",
     card1_sub: "عميل مسند للقسم",
-    card2_title: "حجوزات نشطة بالقسم",
+    card2_title: "حجوزات نشطة",
     card2_sub: "عربونات مسجلة",
-    card3_title: "العقود الموقعة نهائياً",
+    card3_title: "العقود الموقعة",
     card3_sub: "إغلاق ناجح",
-    card4_title: "متوسط معدل التحويل (CR)",
+    card4_title: "معدل التحويل (CR)",
     card4_sub: "نسبة ممتازة",
     tableTitle: "لوحة تميز فريق المبيعات (Leaderboard)",
-    tableSub: "مرتبة تنازلياً حسب تحقيق الهدف الفردي ومعدلات الإغلاق العقارية",
-    tableRank: "رتبة التميز",
-    tableRep: "اسم المستشار العقاري",
-    tableLeads: "العملاء المتابعين",
-    tableResponse: "متوسط سرعة الرد",
-    tableCr: "معدل التحويل (CR)",
-    tableDeals: "حجوزات / عقود مغلقة",
-    tableTarget: "تحقيق الأهداف الشهرية (KPI Target)",
-    loading: "جاري حساب وتحليل مؤشرات الأداء العقاري...",
-    noData: "لا يوجد بيانات مبيعات مسجلة في قاعدة بيانات شركتكم حالياً للتحليل.",
+    tableSub: "مرتبة تنازلياً حسب تحقيق الهدف الفردي",
+    tableRank: "رتبة",
+    tableRep: "المستشار العقاري",
+    tableLeads: "العملاء",
+    tableResponse: "سرعة الرد",
+    tableCr: "معدل التحويل",
+    tableDeals: "حجوزات / عقود",
+    tableTarget: "تحقيق الهدف",
+    loading: "جاري حساب وتحليل مؤشرات الأداء...",
+    noData: "لا يوجد بيانات مبيعات مسجلة حالياً.",
     bookingSuffix: " حجز",
     contractSuffix: " عقد",
     leadSuffix: " عميل"
@@ -36,26 +38,26 @@ const TRANSLATIONS = {
   EN: {
     tag: "Sales Performance & Conversion Audit 2026 📊",
     title: "Sales Team Performance & KPIs Leaderboard",
-    desc: "Track real estate consultant performance, response latencies, and conversion ratios inside the unified billing system.",
+    desc: "Track real estate consultant performance, response latencies, and conversion ratios.",
     card1_title: "Total Assigned Leads",
     card1_sub: "Assigned leads to department",
     card2_title: "Active Reservations",
     card2_sub: "Deposits registered",
     card3_title: "Final Sales Contracts",
     card3_sub: "Successful closure",
-    card4_title: "Average Conversion Rate (CR)",
+    card4_title: "Avg Conversion Rate (CR)",
     card4_sub: "Excellent ratio",
-    tableTitle: "Sales Representatives Leaderboard & Performance Matrix",
-    tableSub: "Ranked descending based on monthly target achievement",
-    tableRank: "Rank Index",
-    tableRep: "Real Estate Consultant",
-    tableLeads: "Assigned Leads",
-    tableResponse: "Avg Response Time",
-    tableCr: "Conversion Rate (CR)",
-    tableDeals: "Reservations / Contracts Closed",
-    tableTarget: "Monthly KPI Target Achievement",
-    loading: "Calculating and evaluating real estate performance metrics...",
-    noData: "No sales data found in your company database for analysis.",
+    tableTitle: "Sales Representatives Leaderboard",
+    tableSub: "Ranked by monthly target achievement",
+    tableRank: "Rank",
+    tableRep: "Consultant",
+    tableLeads: "Leads",
+    tableResponse: "Response Time",
+    tableCr: "Conv. Rate",
+    tableDeals: "Reservations / Contracts",
+    tableTarget: "KPI Target",
+    loading: "Calculating performance metrics...",
+    noData: "No sales data found.",
     bookingSuffix: " res.",
     contractSuffix: " contr.",
     leadSuffix: " leads"
@@ -85,24 +87,19 @@ export default function SalesView() {
     loadPerformance();
   }, []);
 
-  // دالة تحويل الأرقام إلى الأرقام العربية الشرقية حسب اللغة النشطة
   const toArabicNumerals = (num: string | number | undefined | null): string => {
     if (num === undefined || num === null) return "";
     let str = num.toString();
     if (!isArabic) return str;
     const arabicDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-    return str
-      .replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)])
-      .replace(/%/g, "٪");
+    return str.replace(/[0-9]/g, (w) => arabicDigits[parseInt(w)]).replace(/%/g, "٪");
   };
 
-  // تنسيق الأرقام والنسبة المئوية
   const formatPercentage = (val: string | number): string => {
     let raw = val.toString().replace('%', '');
     return toArabicNumerals(raw) + "٪";
   };
 
-  // حساب الأرقام الإجمالية
   const totalLeads = salesReps.reduce((sum, r) => sum + r.leadsCount, 0);
   const totalBookings = salesReps.reduce((sum, r) => sum + r.bookings, 0);
   const totalContracts = salesReps.reduce((sum, r) => sum + r.contracts, 0);
@@ -113,134 +110,220 @@ export default function SalesView() {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
         <div className="w-10 h-10 border-4 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm text-[var(--nc-text-dim)] font-medium dark:text-slate-450">{t.loading}</p>
+        <p className="text-sm text-[var(--nc-foreground-muted)] font-medium">{t.loading}</p>
       </div>
     );
   }
 
   return (
-    <div className="nc-page nc-stack" dir={dir}>
-      
+    <div className="nc-page nc-stack p-6" dir={dir}>
+
       {/* Header */}
-      <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
+      <PageHeader title={t.title} description={t.desc}>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent)] text-xs font-semibold">
           <i className="ph-bold ph-trend-up"></i> {t.tag}
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
-          {t.title}
-        </h1>
-        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
-          {t.desc}
-        </p>
-      </div>
+      </PageHeader>
 
-      {/* Aggregate Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
-          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card1_title}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white font-en">{toArabicNumerals(totalLeads)}</h3>
-          <span className="text-[10px] text-slate-450 block mt-1">{t.card1_sub}</span>
-        </div>
-        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
-          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card2_title}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-amber-500">{toArabicNumerals(totalBookings)}</h3>
-          <span className="text-[10px] text-slate-450 block mt-1">{t.card2_sub}</span>
-        </div>
-        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
-          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card3_title}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
-          <span className="text-[10px] text-slate-450 block mt-1">{t.card3_sub}</span>
-        </div>
-        <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-4 shadow-sm">
-          <p className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-1">{t.card4_title}</p>
-          <h3 className="text-xl md:text-2xl font-bold text-indigo-500 dark:text-indigo-400 font-en">{formatPercentage(avgCR)}</h3>
-          <span className="text-[10px] text-slate-450 block mt-1">{t.card4_sub}</span>
-        </div>
-      </div>
+      <LayoutContainer
+        kpis={
+          <>
+            <SmartCard className="p-5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[var(--nc-foreground-muted)] text-xs font-bold mb-1">{t.card1_title}</p>
+                  <h3 className="text-2xl font-black text-[var(--nc-foreground)] font-en">{toArabicNumerals(totalLeads)}</h3>
+                  <span className="text-[10px] text-[var(--nc-foreground-muted)] block mt-1">{t.card1_sub}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center">
+                  <i className="ph-bold ph-users text-[var(--nc-accent)] text-base"></i>
+                </div>
+              </div>
+            </SmartCard>
+            <SmartCard className="p-5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[var(--nc-foreground-muted)] text-xs font-bold mb-1">{t.card2_title}</p>
+                  <h3 className="text-2xl font-black text-amber-500">{toArabicNumerals(totalBookings)}</h3>
+                  <span className="text-[10px] text-[var(--nc-foreground-muted)] block mt-1">{t.card2_sub}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <i className="ph-bold ph-clock text-amber-500 text-base"></i>
+                </div>
+              </div>
+            </SmartCard>
+            <SmartCard className="p-5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[var(--nc-foreground-muted)] text-xs font-bold mb-1">{t.card3_title}</p>
+                  <h3 className="text-2xl font-black text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
+                  <span className="text-[10px] text-[var(--nc-foreground-muted)] block mt-1">{t.card3_sub}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <i className="ph-bold ph-check-circle text-emerald-500 text-base"></i>
+                </div>
+              </div>
+            </SmartCard>
+            <SmartCard className="p-5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[var(--nc-foreground-muted)] text-xs font-bold mb-1">{t.card4_title}</p>
+                  <h3 className="text-2xl font-black text-indigo-500 font-en">{formatPercentage(avgCR)}</h3>
+                  <span className="text-[10px] text-[var(--nc-foreground-muted)] block mt-1">{t.card4_sub}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <i className="ph-bold ph-chart-line-up text-indigo-500 text-base"></i>
+                </div>
+              </div>
+            </SmartCard>
+          </>
+        }
+        actions={
+          <SmartCard className="p-5 space-y-4 h-full flex flex-col">
+            <div className="border-b border-[var(--nc-border)] pb-3">
+              <h4 className="text-[var(--nc-foreground)] font-bold text-sm flex items-center gap-2">
+                <i className="ph-bold ph-ranking text-[var(--nc-accent)]"></i>
+                {isArabic ? 'مؤشرات فريق المبيعات' : 'Sales Team KPIs'}
+              </h4>
+              <p className="text-xs text-[var(--nc-foreground-muted)] mt-1">{t.tableSub}</p>
+            </div>
+            <div className="space-y-3 flex-grow pt-2">
+              {/* Top rep highlight */}
+              {salesReps[0] && (
+                <div className="bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] text-[var(--nc-accent)] font-bold uppercase tracking-wide">
+                    {isArabic ? '🏆 المركز الأول' : '🏆 Top Performer'}
+                  </p>
+                  <p className="text-sm font-bold text-[var(--nc-foreground)]">{salesReps[0].name}</p>
+                  <p className="text-xs text-[var(--nc-foreground-muted)]">
+                    CR: <span className="font-bold text-[var(--nc-accent)] font-en">{formatPercentage(salesReps[0].conversionRate)}</span>
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[var(--nc-surface-strong)] rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'فريق المبيعات' : 'Sales Team'}</p>
+                  <p className="text-xl font-black text-[var(--nc-foreground)] font-en">{toArabicNumerals(salesReps.length)}</p>
+                </div>
+                <div className="bg-[var(--nc-surface-strong)] rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'إجمالي الصفقات' : 'Total Deals'}</p>
+                  <p className="text-xl font-black text-[var(--nc-foreground)] font-en">{toArabicNumerals(totalDeals)}</p>
+                </div>
+              </div>
+            </div>
+          </SmartCard>
+        }
+        insights={
+          <SmartCard className="p-5 space-y-3 h-full flex flex-col">
+            <div className="border-b border-[var(--nc-border)] pb-3">
+              <h4 className="text-[var(--nc-foreground)] font-bold text-sm flex items-center gap-2">
+                <i className="ph-bold ph-chart-bar text-[var(--nc-accent)]"></i>
+                {isArabic ? 'توزيع الأداء' : 'Performance Breakdown'}
+              </h4>
+            </div>
+            <div className="space-y-3 flex-grow pt-1">
+              {salesReps.slice(0, 5).map((rep, idx) => (
+                <div key={rep.id} className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[var(--nc-foreground)] truncate max-w-[60%]">{rep.name}</span>
+                    <span className="text-[10px] font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.targetAchieved)}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        rep.targetAchieved >= 90 ? 'bg-emerald-500' :
+                        rep.targetAchieved >= 50 ? 'bg-amber-500' : 'bg-[var(--nc-accent)]'
+                      }`}
+                      style={{ width: `${Math.min(rep.targetAchieved, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SmartCard>
+        }
+        details={
+          <SmartCard className="overflow-hidden">
+            <div className="p-4 border-b border-[var(--nc-border)] flex justify-between items-center">
+              <h4 className="font-bold text-[var(--nc-foreground)] flex items-center gap-2">
+                <i className="ph-bold ph-medal text-amber-500"></i>
+                {t.tableTitle}
+              </h4>
+              <span className="text-xs text-[var(--nc-foreground-muted)]">{toArabicNumerals(salesReps.length)} {isArabic ? 'مستشار' : 'consultants'}</span>
+            </div>
 
-      {/* Main Leaderboard Panel */}
-      <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/20">
-          <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-bold text-base">{t.tableTitle}</h3>
-          <p className="text-xs text-[var(--nc-text-dim)] font-medium dark:text-slate-450 mt-1">{t.tableSub}</p>
-        </div>
-
-        {salesReps.length === 0 ? (
-          <div className="p-8 text-center text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-sm">
-            {t.noData}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-50 dark:bg-[var(--nc-surface)]">
-                  <th className="p-4 font-semibold text-center w-24">{t.tableRank}</th>
-                  <th className="p-4 font-semibold">{t.tableRep}</th>
-                  <th className="p-4 font-semibold text-center">{t.tableLeads}</th>
-                  <th className="p-4 font-semibold text-center">{t.tableResponse}</th>
-                  <th className="p-4 font-semibold text-center">{t.tableCr}</th>
-                  <th className="p-4 font-semibold text-center">{t.tableDeals}</th>
-                  <th className="p-4 font-semibold w-64">{t.tableTarget}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-[var(--nc-text-dim)] font-medium">
-                {salesReps.map((rep, idx) => {
-                  const rank = idx + 1;
-                  return (
-                    <tr key={rep.id} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
-                      <td className="p-4 text-center">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
-                          rank === 1 
-                            ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30 font-black' 
-                            : rank === 2 
-                            ? 'bg-slate-400/20 text-[var(--nc-text-dim)] font-medium border border-slate-400/30 font-black'
-                            : rank === 3
-                            ? 'bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)]/90 border border-[var(--nc-accent-border)] font-bold'
-                            : 'bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium'
-                        }`}>
-                          {toArabicNumerals(rank)}
-                        </span>
-                      </td>
-                      <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold dark:text-white">
-                        {rep.name}
-                        <span className="text-[10px] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium block font-normal mt-0.5">{rep.email}</span>
-                      </td>
-                      <td className="p-4 text-center font-en">{toArabicNumerals(rep.leadsCount)}{t.leadSuffix}</td>
-                      <td className="p-4 text-center text-xs">{toArabicNumerals(rep.responseTime)}</td>
-                      <td className="p-4 text-center font-en font-bold text-[var(--nc-text-secondary)]">{formatPercentage(rep.conversionRate)}</td>
-                      <td className="p-4 text-center text-xs font-en">
-                        <span className="text-amber-500 font-semibold">{toArabicNumerals(rep.bookings)}{t.bookingSuffix}</span>
-                        <span className="text-[var(--nc-text-dim)] font-medium mx-1">/</span>
-                        <span className="text-emerald-500 font-semibold">{toArabicNumerals(rep.contracts)}{t.contractSuffix}</span>
-                      </td>
-                      <td className="p-4">
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[10px] font-semibold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
-                            <span>{isArabic ? "نسبة الإنجاز:" : "Achieved:"}</span>
-                            <span className="font-en">{formatPercentage(rep.targetAchieved)}</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-100 dark:bg-[var(--nc-surface-solid)]/80 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                rep.targetAchieved >= 90 
-                                  ? 'bg-emerald-500' 
-                                  : rep.targetAchieved >= 50 
-                                  ? 'bg-amber-500' 
-                                  : 'bg-[var(--nc-accent)]'
-                              }`}
-                              style={{ width: `${rep.targetAchieved}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
+            {salesReps.length === 0 ? (
+              <div className="p-8 text-center text-[var(--nc-foreground-muted)] text-sm">
+                {t.noData}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-[var(--nc-surface-strong)] border-y border-[var(--nc-border)] text-[var(--nc-foreground-muted)] text-[11px] font-bold">
+                      <th className="py-3 px-4 text-center w-12">{t.tableRank}</th>
+                      <th className="py-3 px-4">{t.tableRep}</th>
+                      <th className="py-3 px-4 text-center">{t.tableLeads}</th>
+                      <th className="py-3 px-4 text-center">{t.tableResponse}</th>
+                      <th className="py-3 px-4 text-center">{t.tableCr}</th>
+                      <th className="py-3 px-4 text-center">{t.tableDeals}</th>
+                      <th className="py-3 px-4 w-56">{t.tableTarget}</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--nc-border)]">
+                    {salesReps.map((rep, idx) => {
+                      const rank = idx + 1;
+                      return (
+                        <tr key={rep.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors">
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
+                              rank === 1 ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
+                              rank === 2 ? 'bg-[var(--nc-border)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)]' :
+                              rank === 3 ? 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)]' :
+                              'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)]'
+                            }`}>
+                              {toArabicNumerals(rank)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="font-bold text-[var(--nc-foreground)] text-xs">{rep.name}</p>
+                            <span className="text-[10px] text-[var(--nc-foreground-muted)] block">{rep.email}</span>
+                          </td>
+                          <td className="py-3 px-4 text-center text-xs font-en">{toArabicNumerals(rep.leadsCount)}{t.leadSuffix}</td>
+                          <td className="py-3 px-4 text-center text-xs">{toArabicNumerals(rep.responseTime)}</td>
+                          <td className="py-3 px-4 text-center font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.conversionRate)}</td>
+                          <td className="py-3 px-4 text-center text-xs font-en">
+                            <span className="text-amber-500 font-semibold">{toArabicNumerals(rep.bookings)}{t.bookingSuffix}</span>
+                            <span className="text-[var(--nc-foreground-muted)] mx-1">/</span>
+                            <span className="text-emerald-500 font-semibold">{toArabicNumerals(rep.contracts)}{t.contractSuffix}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] text-[var(--nc-foreground-muted)]">
+                                <span>{isArabic ? 'الإنجاز:' : 'Achieved:'}</span>
+                                <span className="font-en font-bold">{formatPercentage(rep.targetAchieved)}</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    rep.targetAchieved >= 90 ? 'bg-emerald-500' :
+                                    rep.targetAchieved >= 50 ? 'bg-amber-500' : 'bg-[var(--nc-accent)]'
+                                  }`}
+                                  style={{ width: `${rep.targetAchieved}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SmartCard>
+        }
+      />
 
     </div>
   );

@@ -1,10 +1,12 @@
 // components/views/DocumentsView.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/app/context/AppContext';
 import { toast } from '@/app/context/ToastContext';
 import { getDocumentsAction, createDocumentActionDirect, deleteDocumentActionDirect } from '@/app/actions/documents';
+import { SmartCard } from '@/components/ui/SmartCard';
+import PageHeader from '@/components/ui/PageHeader';
 
 interface DocumentItem {
   id: string;
@@ -30,6 +32,9 @@ export default function DocumentsView() {
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Upload panel state
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Form fields for upload
   const [docType, setDocType] = useState<'CONTRACT' | 'BLUEPRINT' | 'ID' | 'IMAGE' | 'OTHER'>('CONTRACT');
@@ -147,19 +152,28 @@ export default function DocumentsView() {
       case 'BLUEPRINT': return 'ph-compass text-blue-500';
       case 'ID': return 'ph-identification-card text-purple-500';
       case 'IMAGE': return 'ph-image text-amber-500';
-      default: return 'ph-file text-[var(--nc-text-dim)] font-medium';
+      default: return 'ph-file text-[var(--nc-foreground-muted)]';
     }
   };
 
   const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           doc.type.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'ALL' || doc.type === filterType;
     return matchesSearch && matchesType;
   });
 
+  const DOCS_TITLE = {
+    AR: { title: 'مستودع الوثائق المشترك', desc: 'تحكَّم في مخططات المشاريع، العقود والبطاقات بمكان مركزي آمن.' },
+    EN: { title: 'Shared Document Repository', desc: 'Manage project blueprints, contracts and IDs in one secure central location.' },
+  };
+  const pageText = DOCS_TITLE[lang] || DOCS_TITLE.AR;
+
   return (
-    <div className="space-y-6" dir={dir}>
+    <div className="space-y-5 p-6" dir={dir}>
+
+      <PageHeader title={pageText.title} description={pageText.desc} />
+
       {/* Messages */}
       {success && (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold animate-pulse">
@@ -172,42 +186,214 @@ export default function DocumentsView() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Side: Upload & Configuration Form (4 cols) */}
-        <div className="lg:col-span-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-5 shadow-sm space-y-4">
-          <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-extrabold text-sm border-b border-slate-100 dark:border-[var(--nc-glass-border)] pb-3">
-            <i className="ph-bold ph-upload-simple text-[var(--nc-text-secondary)] ml-2"></i>
-            {isArabic ? 'تحميل مستند جديد للمستودع' : 'Upload Document to Repository'}
-          </h3>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">
-                {isArabic ? 'تصنيف الملف *' : 'Document Type *'}
-              </label>
-              <select
-                value={docType}
-                onChange={(e: any) => setDocType(e.target.value)}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4.5 py-3 text-xs text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+      {/* ── Document Grid Card (full width, no title) ── */}
+      <SmartCard className="p-5 space-y-4">
+        {/* Toolbar: filters + search + view toggle */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex flex-wrap gap-1.5">
+            {['ALL', 'CONTRACT', 'BLUEPRINT', 'ID', 'IMAGE', 'OTHER'].map(type => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                  filterType === type
+                    ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)] border-transparent shadow-sm'
+                    : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
+                }`}
               >
-                <option value="CONTRACT">{isArabic ? 'عقد موحد (Contract)' : 'Contract'}</option>
-                <option value="BLUEPRINT">{isArabic ? 'مخطط كروكي (Blueprint)' : 'Blueprint'}</option>
-                <option value="ID">{isArabic ? 'بطاقة هوية (ID Card)' : 'ID Document'}</option>
-                <option value="IMAGE">{isArabic ? 'صورة معالم (Image)' : 'Image'}</option>
-                <option value="OTHER">{isArabic ? 'ملف ملحق آخر (Other)' : 'Other'}</option>
-              </select>
-            </div>
+                {type === 'ALL' ? (isArabic ? 'الكل' : 'All') : getDocTypeLabel(type)}
+              </button>
+            ))}
+          </div>
 
-            {/* Linking Context */}
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative w-full sm:w-44 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 flex items-center gap-1.5">
+              <i className="ph ph-magnifying-glass text-[var(--nc-foreground-muted)] text-xs"></i>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={isArabic ? 'ابحث باسم الملف...' : 'Search files...'}
+                className="bg-transparent border-none outline-none text-xs w-full text-[var(--nc-foreground)] font-bold"
+              />
+            </div>
+            {/* View mode */}
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'grid' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
+            >
+              <i className="ph ph-squares-four"></i>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'list' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
+            >
+              <i className="ph ph-list"></i>
+            </button>
+          </div>
+        </div>
+
+        {/* Documents Grid/List */}
+        {loading ? (
+          <div className="py-20 text-center">
+            <div className="w-8 h-8 border-3 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-xs text-[var(--nc-foreground-muted)]">{isArabic ? 'جاري الاتصال بمستودع الملفات...' : 'Syncing document archive...'}</p>
+          </div>
+        ) : filteredDocs.length === 0 ? (
+          <div className="py-20 border border-dashed border-[var(--nc-border)] rounded-2xl text-center text-[var(--nc-foreground-muted)]">
+            <i className="ph ph-file-x text-4xl block mb-2 opacity-50"></i>
+            <p className="text-xs">{isArabic ? 'لم نعثر على أي مستندات تطابق الفلتر.' : 'No files matching criteria.'}</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredDocs.map(doc => (
+              <div
+                key={doc.id}
+                className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl shadow-sm hover:border-[var(--nc-accent-border)]/40 transition-all flex flex-col justify-between group h-40"
+              >
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center">
+                      <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/10 text-rose-500 rounded transition-opacity"
+                    >
+                      <i className="ph ph-trash"></i>
+                    </button>
+                  </div>
+
+                  <h4 className="font-bold text-xs text-[var(--nc-foreground)] truncate" title={doc.name}>
+                    {doc.name}
+                  </h4>
+
+                  <div className="flex items-center gap-2 text-[10px] text-[var(--nc-foreground-muted)]">
+                    <span>{formatSize(doc.size)}</span>
+                    <span>•</span>
+                    <span>{getDocTypeLabel(doc.type)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-2 border-t border-[var(--nc-border)] flex justify-between items-center">
+                  <button
+                    onClick={() => setPreviewDoc(doc)}
+                    className="text-[10px] text-indigo-500 font-bold hover:underline"
+                  >
+                    {isArabic ? 'معاينة المستند' : 'Preview inline'}
+                  </button>
+
+                  {doc.linkedType && (
+                    <span className="bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-[8px] font-black px-1.5 py-0.5 rounded border border-[var(--nc-border)]">
+                      {doc.linkedType === 'LEAD' ? (isArabic ? 'عميل' : 'Lead') : doc.linkedType === 'PROPERTY' ? (isArabic ? 'عقار' : 'Property') : (isArabic ? 'مشروع' : 'Project')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* List View */
+          <div className="space-y-2">
+            {filteredDocs.map(doc => (
+              <div
+                key={doc.id}
+                className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-3.5 rounded-xl flex items-center justify-between gap-4 hover:border-[var(--nc-accent-border)]/40 transition-all"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center shrink-0">
+                    <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs text-[var(--nc-foreground)] truncate" title={doc.name}>
+                      {doc.name}
+                    </h4>
+                    <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">
+                      {getDocTypeLabel(doc.type)} • {formatSize(doc.size)} • {new Date(doc.createdAt).toLocaleDateString(isArabic ? 'ar-EG' : 'en-US')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setPreviewDoc(doc)}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-[10px] font-bold hover:bg-[var(--nc-surface-strong)] transition-colors"
+                  >
+                    {isArabic ? 'معاينة' : 'Preview'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    className="p-2 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors"
+                  >
+                    <i className="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SmartCard>
+
+      {/* ── Upload Panel (Bottom, Parallel Horizontal Expansion) ── */}
+      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] overflow-hidden transition-all duration-500 ease-in-out shadow-sm">
+        {/* Collapsed Header / Toggle Bar */}
+        <button
+          onClick={() => setUploadOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-3.5 text-start group hover:bg-[var(--nc-surface)]/40 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors duration-300 ${uploadOpen ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)]' : 'bg-[var(--nc-surface)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)]'}`}>
+              <i className={`ph-bold ph-upload-simple text-sm transition-transform duration-300 ${uploading ? 'animate-bounce' : ''}`}></i>
+            </span>
+            <div>
+              <p className="text-sm font-extrabold text-[var(--nc-foreground)]">
+                {isArabic ? 'تحميل مستند جديد للمستودع' : 'Upload Document to Repository'}
+              </p>
+              <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">
+                {uploading
+                  ? (isArabic ? 'جاري رفع الملف...' : 'Uploading...')
+                  : (isArabic ? 'PDF, PNG, JPG, DOCX — حتى 5 ميجابايت' : 'PDF, PNG, JPG, DOCX — up to 5MB')}
+              </p>
+            </div>
+          </div>
+          <i className={`ph-bold ph-caret-down text-[var(--nc-foreground-muted)] text-sm transition-transform duration-300 ${uploadOpen ? 'rotate-180' : ''}`}></i>
+        </button>
+
+        {/* Expandable Form — Horizontal parallel layout */}
+        <div
+          className={`transition-all duration-500 ease-in-out overflow-hidden ${uploadOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}
+        >
+          <div className="border-t border-[var(--nc-border)] px-5 py-4">
+            {/* Horizontal grid: Type | Link Context | Entity ID | Drop Zone */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+              {/* Col 1: Doc Type */}
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">
+                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
+                  {isArabic ? 'تصنيف الملف *' : 'Document Type *'}
+                </label>
+                <select
+                  value={docType}
+                  onChange={(e: any) => setDocType(e.target.value)}
+                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
+                >
+                  <option value="CONTRACT">{isArabic ? 'عقد موحد' : 'Contract'}</option>
+                  <option value="BLUEPRINT">{isArabic ? 'مخطط كروكي' : 'Blueprint'}</option>
+                  <option value="ID">{isArabic ? 'بطاقة هوية' : 'ID Document'}</option>
+                  <option value="IMAGE">{isArabic ? 'صورة عقار' : 'Image'}</option>
+                  <option value="OTHER">{isArabic ? 'ملف ملحق' : 'Other'}</option>
+                </select>
+              </div>
+
+              {/* Col 2: Link Context */}
+              <div>
+                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
                   {isArabic ? 'ربط بـ' : 'Link Context'}
                 </label>
                 <select
                   value={linkedType}
                   onChange={(e: any) => setLinkedType(e.target.value)}
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-3 text-xs text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
                 >
                   <option value="">{isArabic ? 'غير مرتبطة' : 'Unlinked'}</option>
                   <option value="PROPERTY">{isArabic ? 'عقار مخصص' : 'Property'}</option>
@@ -215,8 +401,10 @@ export default function DocumentsView() {
                   <option value="LEAD">{isArabic ? 'عميل مهتم' : 'Lead'}</option>
                 </select>
               </div>
+
+              {/* Col 3: Entity ID */}
               <div>
-                <label className="block text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-xs font-semibold mb-2">
+                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
                   {isArabic ? 'معرف الكيان' : 'Entity ID'}
                 </label>
                 <input
@@ -225,232 +413,69 @@ export default function DocumentsView() {
                   disabled={!linkedType}
                   onChange={(e) => setLinkedTo(e.target.value)}
                   placeholder={linkedType ? 'ID...' : 'N/A'}
-                  className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3.5 py-3 text-xs text-[var(--nc-text-primary)] font-bold dark:text-white focus:outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-50"
+                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-40 transition-colors"
                 />
               </div>
-            </div>
 
-            {/* Drag & Drop Area */}
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              className="border-2 border-dashed border-slate-250 dark:border-[var(--nc-glass-border)] hover:border-[var(--nc-accent-border)] rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-[var(--nc-surface-solid)]/20 hover:scale-[1.01] duration-200 relative"
-            >
-              <input
-                type="file"
-                onChange={handleFileUpload}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                disabled={uploading}
-              />
-              <div className="space-y-2">
-                <i className={`ph ph-cloud-arrow-up text-3xl ${uploading ? 'text-[var(--nc-text-secondary)] animate-bounce' : 'text-[var(--nc-text-dim)] font-medium'}`}></i>
-                <p className="text-slate-700 dark:text-[var(--nc-text-dim)] font-medium text-xs font-extrabold">
-                  {uploading ? (isArabic ? 'جاري رفع الملف للمستودع...' : 'Uploading file...') : (isArabic ? 'اسحب الملف هنا أو اضغط للاختيار' : 'Drag file here or click to browse')}
-                </p>
-                <p className="text-[10px] text-slate-450 dark:text-[var(--nc-text-dim)] font-medium leading-normal">
-                  {isArabic ? 'يدعم PDF, PNG, JPG, DOCX حتى 5 ميجابايت' : 'Supports PDF, PNG, JPG, DOCX up to 5MB'}
-                </p>
+              {/* Col 4: Drag & Drop / File picker */}
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                className="relative border-2 border-dashed border-[var(--nc-accent-border)]/50 hover:border-[var(--nc-accent-border)] rounded-xl py-2.5 px-4 text-center cursor-pointer transition-all hover:bg-[var(--nc-surface)]/30 hover:scale-[1.02] duration-200 flex items-center justify-center gap-2 min-h-[42px]"
+              >
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={uploading}
+                />
+                <i className={`ph ph-cloud-arrow-up text-base ${uploading ? 'text-[var(--nc-accent)] animate-bounce' : 'text-[var(--nc-accent-border)]'}`}></i>
+                <span className="text-[10px] font-extrabold text-[var(--nc-foreground-muted)]">
+                  {uploading
+                    ? (isArabic ? 'جاري الرفع...' : 'Uploading...')
+                    : (isArabic ? 'اسحب أو اختر ملفاً' : 'Drop or pick file')}
+                </span>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Right Side: Ledger Network & File Grid (8 cols) */}
-        <div className="lg:col-span-8 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-5 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-100 dark:border-[var(--nc-glass-border)] pb-4">
-            <div>
-              <h3 className="text-[var(--nc-text-primary)] font-bold dark:text-white font-extrabold text-base">
-                {isArabic ? 'مستودع الوثائق المشترك' : 'Secure Document Storage'}
-              </h3>
-              <p className="text-[11px] text-slate-450 dark:text-[var(--nc-text-dim)] font-medium mt-0.5">
-                {isArabic ? 'تحكَّم في مخططات المشاريع، العقود والبطاقات بمكان مركزي آمن.' : 'Manage contracts, blueprints, and credentials.'}
-              </p>
-            </div>
-
-            {/* View Mode & Filter */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'grid' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)]' : 'border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium'}`}
-              >
-                <i className="ph ph-squares-four"></i>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'list' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)]' : 'border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium'}`}
-              >
-                <i className="ph ph-list"></i>
-              </button>
-            </div>
-          </div>
-
-          {/* Filters & Search */}
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <div className="flex flex-wrap gap-1.5">
-              {['ALL', 'CONTRACT', 'BLUEPRINT', 'ID', 'IMAGE', 'OTHER'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                    filterType === type 
-                      ? 'bg-[var(--nc-surface-solid)] dark:bg-white text-white dark:text-slate-950 border-transparent shadow-sm' 
-                      : 'border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium hover:border-slate-350 dark:hover:border-slate-700'
-                  }`}
-                >
-                  {type === 'ALL' ? (isArabic ? 'الكل' : 'All') : getDocTypeLabel(type)}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:w-48 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg px-3 py-2 flex items-center">
-              <i className="ph ph-magnifying-glass text-[var(--nc-text-dim)] font-medium ml-1.5 text-xs"></i>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isArabic ? 'ابحث باسم الملف...' : 'Search files...'}
-                className="bg-transparent border-none outline-none text-xs w-full text-[var(--nc-text-primary)] font-bold dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Documents Grid/List */}
-          {loading ? (
-            <div className="py-20 text-center">
-              <div className="w-8 h-8 border-3 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-              <p className="text-xs text-[var(--nc-text-dim)] font-medium">{isArabic ? 'جاري الاتصال بمستودع الملفات...' : 'Syncing document archive...'}</p>
-            </div>
-          ) : filteredDocs.length === 0 ? (
-            <div className="py-20 border border-dashed border-[var(--nc-glass-border)] dark:border-slate-850 rounded-2xl text-center text-[var(--nc-text-dim)] font-medium">
-              <i className="ph ph-file-x text-4xl block mb-2 opacity-50"></i>
-              <p className="text-xs">{isArabic ? 'لم نعثر على أي مستندات تطابق الفلتر.' : 'No files matching criteria.'}</p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredDocs.map(doc => (
-                <div
-                  key={doc.id}
-                  className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-4 rounded-xl shadow-sm hover:border-[var(--nc-accent-border)]/40 transition-all flex flex-col justify-between group h-40"
-                >
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="w-8 h-8 rounded-lg bg-white dark:bg-[var(--nc-surface-solid)] border border-slate-150 dark:border-slate-700 flex items-center justify-center">
-                        <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(doc.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/10 text-rose-500 rounded transition-opacity"
-                      >
-                        <i className="ph ph-trash"></i>
-                      </button>
-                    </div>
-
-                    <h4 className="font-bold text-xs text-[var(--nc-text-primary)] font-bold dark:text-white truncate" title={doc.name}>
-                      {doc.name}
-                    </h4>
-
-                    <div className="flex items-center gap-2 text-[10px] text-slate-450">
-                      <span>{formatSize(doc.size)}</span>
-                      <span>•</span>
-                      <span>{getDocTypeLabel(doc.type)}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-2 border-t border-slate-100 dark:border-slate-850/50 flex justify-between items-center">
-                    <button
-                      onClick={() => setPreviewDoc(doc)}
-                      className="text-[10px] text-indigo-500 font-bold hover:underline"
-                    >
-                      {isArabic ? 'معاينة المستند' : 'Preview inline'}
-                    </button>
-                    
-                    {doc.linkedType && (
-                      <span className="bg-slate-200/80 dark:bg-slate-850 text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[8px] font-black px-1.5 py-0.5 rounded border border-slate-300/40 dark:border-slate-700">
-                        {doc.linkedType === 'LEAD' ? (isArabic ? 'عميل' : 'Lead') : doc.linkedType === 'PROPERTY' ? (isArabic ? 'عقار' : 'Property') : (isArabic ? 'مشروع' : 'Project')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* List View */
-            <div className="space-y-2">
-              {filteredDocs.map(doc => (
-                <div
-                  key={doc.id}
-                  className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-3.5 rounded-xl flex items-center justify-between gap-4 hover:border-[var(--nc-accent-border)]/40 transition-all"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-[var(--nc-surface-solid)] border border-slate-150 dark:border-slate-700 flex items-center justify-center shrink-0">
-                      <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-xs text-[var(--nc-text-primary)] font-bold dark:text-white truncate" title={doc.name}>
-                        {doc.name}
-                      </h4>
-                      <p className="text-[10px] text-slate-450 mt-0.5">
-                        {getDocTypeLabel(doc.type)} • {formatSize(doc.size)} • {new Date(doc.createdAt).toLocaleDateString(isArabic ? 'ar-EG' : 'en-US')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setPreviewDoc(doc)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium text-[10px] font-bold hover:bg-slate-300 dark:hover:bg-slate-700/80 transition-colors"
-                    >
-                      {isArabic ? 'معاينة' : 'Preview'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="p-2 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors"
-                    >
-                      <i className="ph ph-trash"></i>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {/* PDF/Image Preview Modal */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface-solid)]/80 backdrop-blur-md">
-          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-gradient-to-b from-[var(--nc-surface-solid)] to-[var(--nc-surface-solid)] border border-slate-850 p-6 shadow-2xl animate-scale-up flex flex-col h-[80vh]">
-            <div className="flex justify-between items-center border-b border-slate-850 pb-3.5 mb-4 shrink-0">
-              <h3 className="text-white font-extrabold text-sm flex items-center gap-2">
-                <i className="ph-bold ph-eye text-[var(--nc-text-secondary)]"></i>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface)]/80 backdrop-blur-md">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-6 shadow-2xl animate-scale-up flex flex-col h-[80vh]">
+            <div className="flex justify-between items-center border-b border-[var(--nc-border)] pb-3.5 mb-4 shrink-0">
+              <h3 className="text-[var(--nc-foreground)] font-extrabold text-sm flex items-center gap-2">
+                <i className="ph-bold ph-eye text-[var(--nc-foreground-muted)]"></i>
                 {previewDoc.name}
               </h3>
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="text-[var(--nc-text-dim)] font-medium hover:text-white text-lg bg-[var(--nc-surface)] hover:bg-[var(--nc-surface-solid)] w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] text-lg bg-[var(--nc-surface)] hover:bg-[var(--nc-surface-strong)] w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {/* Simulated file display view */}
-            <div className="flex-grow bg-[var(--nc-surface-solid)]/80 border border-[var(--nc-glass-border)] rounded-xl overflow-hidden flex items-center justify-center relative p-6">
+            <div className="flex-grow bg-[var(--nc-surface)]/80 border border-[var(--nc-border)] rounded-xl overflow-hidden flex items-center justify-center relative p-6">
               {previewDoc.type === 'IMAGE' || previewDoc.name.endsWith('.png') || previewDoc.name.endsWith('.jpg') ? (
                 <div className="text-center space-y-4 max-w-full max-h-full flex flex-col items-center">
-                  <div className="w-32 h-32 rounded-xl bg-slate-850/50 border border-slate-700/50 flex items-center justify-center shadow-lg">
-                    <i className="ph ph-image text-white text-5xl opacity-80"></i>
+                  <div className="w-32 h-32 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center shadow-lg">
+                    <i className="ph ph-image text-[var(--nc-foreground)] text-5xl opacity-80"></i>
                   </div>
-                  <p className="text-[var(--nc-text-dim)] font-medium text-xs">{isArabic ? 'معاينة صورة المحتوى العقاري' : 'Property image visual preview'}</p>
+                  <p className="text-[var(--nc-foreground-muted)] text-xs">{isArabic ? 'معاينة صورة المحتوى العقاري' : 'Property image visual preview'}</p>
                 </div>
               ) : (
                 /* PDF preview card mockup */
-                <div className="w-full max-w-md bg-white border border-[var(--nc-glass-border)] rounded-xl p-8 text-[var(--nc-text-primary)] font-bold space-y-6 shadow-2xl relative overflow-hidden">
+                <div className="w-full max-w-md bg-white border border-[var(--nc-border)] rounded-xl p-8 text-[var(--nc-foreground)] font-bold space-y-6 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 left-0 h-2.5 bg-gradient-to-r from-emerald-500 via-indigo-500 to-amber-500"></div>
-                  
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+
+                  <div className="flex justify-between items-center border-b border-[var(--nc-border)] pb-4">
                     <div>
-                      <h4 className="font-extrabold text-sm text-[var(--nc-text-primary)] font-bold">أوركا لخدمات المحاكاة العقارية</h4>
-                      <p className="text-[10px] text-[var(--nc-text-dim)] font-medium mt-0.5">ORCA DIGITAL COMPLIANCE SECURE DOCUMENT</p>
+                      <h4 className="font-extrabold text-sm text-[var(--nc-foreground)]">أوركا لخدمات المحاكاة العقارية</h4>
+                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">ORCA DIGITAL COMPLIANCE SECURE DOCUMENT</p>
                     </div>
                     <i className="ph ph-seal-check text-emerald-500 text-3xl"></i>
                   </div>
@@ -458,27 +483,27 @@ export default function DocumentsView() {
                   <div className="space-y-3.5 text-[11px] leading-relaxed">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="block text-[var(--nc-text-dim)] font-medium font-bold">{isArabic ? 'اسم الوثيقة:' : 'Document Name:'}</span>
-                        <span className="block font-extrabold text-[var(--nc-text-primary)] font-bold truncate">{previewDoc.name}</span>
+                        <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'اسم الوثيقة:' : 'Document Name:'}</span>
+                        <span className="block font-extrabold text-[var(--nc-foreground)] truncate">{previewDoc.name}</span>
                       </div>
                       <div>
-                        <span className="block text-[var(--nc-text-dim)] font-medium font-bold">{isArabic ? 'تاريخ التخزين:' : 'Storage Date:'}</span>
-                        <span className="block font-mono font-bold text-[var(--nc-text-primary)] font-bold">{new Date(previewDoc.createdAt).toLocaleDateString()}</span>
+                        <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'تاريخ التخزين:' : 'Storage Date:'}</span>
+                        <span className="block font-mono font-bold text-[var(--nc-foreground)]">{new Date(previewDoc.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                     <div>
-                      <span className="block text-[var(--nc-text-dim)] font-medium font-bold">{isArabic ? 'تصنيف الموثوقية:' : 'Security Classification:'}</span>
+                      <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'تصنيف الموثوقية:' : 'Security Classification:'}</span>
                       <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded font-black text-[9px] uppercase">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         {isArabic ? 'رسمي مشفر (Secure Encrypted)' : 'Encrypted'}
                       </span>
                     </div>
-                    <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg text-[var(--nc-text-dim)] font-medium font-mono text-[9px] select-all leading-normal whitespace-pre">
+                    <div className="p-3 bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-lg text-[var(--nc-foreground-muted)] font-mono text-[9px] select-all leading-normal whitespace-pre">
                       {`SECURE_DECRYPT_ID: ${previewDoc.id}\nDIGEST_SHA256: 4a2b918a38b1...2c8d\nSTORAGE_BLOB_PROVIDER: MOCK_PERSIST_JSON`}
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-[10px] font-bold text-[var(--nc-text-dim)] font-medium">
+                  <div className="border-t border-[var(--nc-border)] pt-4 flex justify-between items-center text-[10px] font-bold text-[var(--nc-foreground-muted)]">
                     <span>{isArabic ? 'بوابة التحقق الحكومي' : 'Government verify portal'}</span>
                     <span className="text-emerald-500 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -490,13 +515,13 @@ export default function DocumentsView() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between items-center gap-4 mt-6 pt-4 border-t border-slate-850 shrink-0">
-              <span className="text-slate-450 text-[10px] font-mono">{formatSize(previewDoc.size)}</span>
-              
+            <div className="flex justify-between items-center gap-4 mt-6 pt-4 border-t border-[var(--nc-border)] shrink-0">
+              <span className="text-[var(--nc-foreground-muted)] text-[10px] font-mono">{formatSize(previewDoc.size)}</span>
+
               <div className="flex gap-2">
                 <button
                   onClick={() => setPreviewDoc(null)}
-                  className="px-4 py-2 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium text-xs font-bold rounded-xl cursor-pointer transition-colors border border-slate-750"
+                  className="px-4 py-2 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-pointer transition-colors border border-[var(--nc-border)]"
                 >
                   {isArabic ? 'إغلاق' : 'Close'}
                 </button>
@@ -507,7 +532,7 @@ export default function DocumentsView() {
                     e.preventDefault();
                     toast.error(isArabic ? `تنزيل المستند: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
                   }}
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
+                  className="px-5 py-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-[var(--nc-foreground)] text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
                 >
                   <i className="ph-bold ph-download-simple"></i>
                   <span>{isArabic ? 'تحميل وتنزيل الملف' : 'Download Document'}</span>
@@ -520,7 +545,3 @@ export default function DocumentsView() {
     </div>
   );
 }
-
-
-
-

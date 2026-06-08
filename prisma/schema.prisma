@@ -194,6 +194,12 @@ model Tenant {
   mansourChats          MansourChat[]
   platformConnections   PlatformConnection[]
   agentLeases           AgentLease[]
+  units                 Unit[]
+  contracts             Contract[]
+  installments          Installment[]
+  rentalInvoices        RentalInvoice[]
+  receipts              Receipt[]
+  generalLedgerEntries  GeneralLedger[]
   contacts              Contact[]
   opportunities         Opportunity[]
   tours                 Tour[]
@@ -264,6 +270,8 @@ model PayrollCommission {
 
 model Unit {
   id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String     @map("tenant_id") @db.Uuid
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   projectId     String     @map("project_id") @db.Uuid
   project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   unitNumber    String     @map("unit_number")
@@ -291,11 +299,14 @@ model Unit {
 
   @@unique([projectId, unitNumber], name: "uq_project_unit_number")
   @@index([projectId], map: "idx_units_project_id")
+  @@index([tenantId], map: "idx_units_tenant_id")
   @@map("units")
 }
 
 model Contract {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   unitId         String        @unique @map("unit_id") @db.Uuid
   unit           Unit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
   buyerName      String        @map("buyer_name")
@@ -308,11 +319,14 @@ model Contract {
   installments   Installment[]
 
   @@index([unitId], map: "idx_contracts_unit_id")
+  @@index([tenantId], map: "idx_contracts_tenant_id")
   @@map("contracts")
 }
 
 model Installment {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contractId         String   @map("contract_id") @db.Uuid
   contract           Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   installmentNumber  Int      @map("installment_number")
@@ -325,6 +339,7 @@ model Installment {
   @@unique([contractId, installmentNumber], name: "uq_contract_installment_number")
   @@index([contractId], map: "idx_installments_contract_id")
   @@index([dueDate], map: "idx_installments_due_date")
+  @@index([tenantId], map: "idx_installments_tenant_id")
   @@map("installments")
 }
 
@@ -351,6 +366,8 @@ model RentalLease {
 
 model RentalInvoice {
   id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   leaseId        String      @map("lease_id") @db.Uuid
   lease          RentalLease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
   dueDate        DateTime    @map("due_date") @db.Date
@@ -362,6 +379,7 @@ model RentalInvoice {
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([leaseId], map: "idx_rental_invoices_lease_id")
+  @@index([tenantId], map: "idx_rental_invoices_tenant_id")
   @@map("rental_invoices")
 }
 
@@ -461,22 +479,32 @@ model AgentLease {
 
 model Receipt {
   id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id") @db.Uuid
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoiceId     String
   amount        Decimal
   paymentMethod String
   receivedDate  DateTime      @default(now())
   status        String        @default("COMPLETED")
   ledgerEntry   GeneralLedger?
+
+  @@index([tenantId], map: "idx_receipts_tenant_id")
+  @@map("receipts")
 }
 
 model GeneralLedger {
   id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id") @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   receiptId   String?  @unique
   receipt     Receipt? @relation(fields: [receiptId], references: [id])
   debit       Decimal
   credit      Decimal
   description String
   createdAt   DateTime @default(now())
+
+  @@index([tenantId], map: "idx_general_ledger_tenant_id")
+  @@map("general_ledger")
 }
 
 model Contact {

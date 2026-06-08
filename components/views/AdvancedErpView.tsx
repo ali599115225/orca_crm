@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import PageHeader from '@/components/ui/PageHeader';
 import { useApp } from "@/app/context/AppContext";
 import { getErpStatsAction, getLedgerEntriesAction } from "@/app/actions/accounting";
 import { getRentalContractsAction } from "@/app/actions/rentals";
@@ -565,21 +566,15 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
       )}
 
       {/* Header view */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <PageHeader title={t.title} description={t.subtitle}>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold">
             <i className="ph-bold ph-scales"></i> {isArabic ? "الامتثال والتحصيل المالي" : "Financial Compliance & Ledger"}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold dark:text-white mb-2">
-            {t.title}
-          </h1>
-          <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium">
-            {t.subtitle}
-          </p>
-        </div>
+        </PageHeader>
 
         {/* Tab switch buttons */}
-        <div className="flex bg-slate-100 dark:bg-[#151f32] p-1 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] shrink-0">
+        <div className="flex bg-[var(--nc-surface)] dark:bg-[#151f32] p-1 rounded-xl border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] shrink-0">
           <button 
             onClick={() => setActiveTab('ijara')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
@@ -774,7 +769,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "تم حفظ مسودة العقد بنجاح!" : "Draft contract saved successfully!", "info")}
-                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-sm py-3 px-4 rounded-xl transition-all hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer"
+                        className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-sm py-3 px-4 rounded-xl transition-all hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 cursor-pointer"
                       >
                         {t.saveDraft}
                       </button>
@@ -879,7 +874,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                         <strong className="text-indigo-500 text-lg md:text-xl block font-bold">{toArabicNumerals(98)}%</strong>
                         <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] md:text-xs font-semibold">{t.successRate}</span>
                       </div>
-                      <div className="bg-slate-100/50 dark:bg-[var(--nc-surface)] p-3 rounded-xl border border-slate-250 dark:border-[var(--nc-glass-border)] text-center">
+                      <div className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)] p-3 rounded-xl border border-slate-250 dark:border-[var(--nc-glass-border)] text-center">
                         <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium text-[10px] block font-semibold mb-1">{t.lastUpdateText}</span>
                         <strong className="text-[var(--nc-text-primary)] font-bold dark:text-slate-200 text-xs font-bold block">{t.lastUpdateVal}</strong>
                       </div>
@@ -981,7 +976,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                           <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.saleRev}</span>
                           <strong className="text-emerald-500 font-bold">{toArabicNumerals("65%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
                           <div className="h-full bg-emerald-500 rounded-full" style={{ width: "65%" }}></div>
                         </div>
                       </div>
@@ -992,7 +987,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                           <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.rentRev}</span>
                           <strong className="text-[var(--nc-text-secondary)] font-bold">{toArabicNumerals("25%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
                           <div className="h-full bg-[var(--nc-accent)] rounded-full" style={{ width: "25%" }}></div>
                         </div>
                       </div>
@@ -1003,7 +998,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                           <span className="text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium font-semibold">{t.otherRev}</span>
                           <strong className="text-amber-500 font-bold">{toArabicNumerals("10%")}</strong>
                         </div>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] rounded-full overflow-hidden">
                           <div className="h-full bg-amber-500 rounded-full" style={{ width: "10%" }}></div>
                         </div>
                       </div>
@@ -1037,7 +1032,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                           type="text" 
                           value="INV-2026-001235" 
                           disabled 
-                          className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--nc-text-dim)] font-medium opacity-60 outline-none"
+                          className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] dark:border-[var(--nc-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--nc-text-dim)] font-medium opacity-60 outline-none"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -1120,7 +1115,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "تم إرسال الفاتورة عبر البريد بنجاح!" : "Invoice sent via email!", "info")}
-                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
+                        className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 transition-all cursor-pointer"
                       >
                         {t.sendToClient}
                       </button>
@@ -1128,7 +1123,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <button 
                         type="button"
                         onClick={() => showToast(isArabic ? "جاري تهيئة الطباعة..." : "Preparing print spool...", "info")}
-                        className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer"
+                        className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] text-slate-700 dark:text-[var(--nc-text-dim)] font-medium font-bold text-xs py-3 px-3 rounded-xl hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 transition-all cursor-pointer"
                       >
                         {t.printBtn}
                       </button>
@@ -1183,7 +1178,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                                 <td className="p-4 text-center">
                                   <button 
                                     onClick={() => showToast(`${t.actionShow} ${inv.id}`, "info")}
-                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-100 dark:bg-[var(--nc-surface-solid)] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
                                   >
                                     {isPaid ? t.actionShow : t.actionRemind}
                                   </button>
@@ -1376,7 +1371,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                             <td className="p-4 text-center">
                               <button 
                                 onClick={() => showToast(isArabic ? "جاري تنزيل ملف PDF المشفر..." : "Downloading signed ZATCA PDF...", "info")}
-                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-slate-100 dark:bg-[var(--nc-surface-solid)] hover:bg-slate-200 dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
+                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
                               >
                                 {isArabic ? "تنزيل الشهادة" : "Download CSID"}
                               </button>
@@ -1539,7 +1534,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                       <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-[var(--nc-surface)] transition-colors">
                         <td className="p-4 font-en text-[var(--nc-text-dim)] font-medium text-xs">{toArabicNumerals(l.date)}</td>
                         <td className="p-4">
-                          <span className="bg-slate-100 dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium border border-[var(--nc-glass-border)] dark:border-slate-700/80 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                          <span className="bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium border border-[var(--nc-glass-border)] dark:border-slate-700/80 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
                             {l.cat === "إيجار" || l.cat === "Rent" ? t.rentCat : t.payrollCat}
                           </span>
                         </td>

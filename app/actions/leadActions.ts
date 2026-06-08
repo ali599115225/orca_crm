@@ -1,22 +1,25 @@
 ﻿'use server';
-import { PrismaClient, LeadStatus } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from 'next/cache';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { Lead, LeadStatus } from '@prisma/client';
 
-const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function fetchLeads(tenantId: string) {
   try { return await prisma.lead.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } }); } 
-  catch (error) { return []; }
+  catch { return []; }
 }
 
-export async function createLead(data: any) {
+export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'leadActivities' | 'tasks' | 'mansourChats'>) {
   try {
     const newLead = await prisma.lead.create({ data: { ...data, leadScore: Math.floor(Math.random() * 40) + 40 } });
     revalidatePath('/leads');
     return { success: true, lead: newLead };
-  } catch (error) { return { success: false, error }; }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "فشل إنشاء العميل المحتمل";
+    return { success: false, error: message };
+  }
 }
 
 export async function updateLeadStatus(id: string, status: LeadStatus) {
@@ -24,11 +27,21 @@ export async function updateLeadStatus(id: string, status: LeadStatus) {
     const updatedLead = await prisma.lead.update({ where: { id }, data: { status } });
     revalidatePath('/leads');
     return { success: true, lead: updatedLead };
-  } catch (error) { return { success: false, error }; }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "فشل تحديث حالة العميل";
+    return { success: false, error: message };
+  }
 }
 
-// 🧠 المحرك الذكي الحقيقي (المضاد للأخطاء)
-export async function generateAIInsight(lead: any) {
+interface AIInsightLead {
+  firstName: string;
+  city: string;
+  source: string;
+  leadScore: number;
+  status: string;
+}
+
+export async function generateAIInsight(lead: AIInsightLead) {
   try {
     if (!process.env.GEMINI_API_KEY) {
       return { insight: "مفتاح API غير متوفر في ملف .env", message: "لا يوجد اتصال." };
@@ -55,7 +68,6 @@ export async function generateAIInsight(lead: any) {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     
-    // 🛡️ طريقة مضادة للرصاص: استخراج ما بين الأقواس فقط
     const jsonStart = responseText.indexOf('{');
     const jsonEnd = responseText.lastIndexOf('}');
     
@@ -64,11 +76,11 @@ export async function generateAIInsight(lead: any) {
     }
 
     const cleanJson = responseText.substring(jsonStart, jsonEnd + 1);
-    const aiData = JSON.parse(cleanJson);
+    const aiData = JSON.parse(cleanJson) as { insight: string; message: string };
 
     return { insight: aiData.insight, message: aiData.message };
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Error:", error);
     return {
       insight: "حدث خطأ أثناء تحليل البيانات. يرجى التأكد من صحة مفتاح API أو المحاولة لاحقاً.",

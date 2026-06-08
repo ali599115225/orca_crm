@@ -6,6 +6,7 @@ import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 import ContractWizard from '@/components/features/ContractWizard';
 import { SmartCard } from '@/components/ui/SmartCard';
+import PageHeader from '@/components/ui/PageHeader';
 import type { PipelineStage, TodayTask } from '@/app/actions/dashboard';
 
 interface DashboardViewProps {
@@ -144,37 +145,23 @@ export default function DashboardView({
     <div className="nc-page nc-stack" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       
       {/* 1. Welcome Banner (البنر الترحيبي العام) */}
-      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl dark:shadow-none transition-all">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-corporate-blue/10 dark:bg-cyan-glow/5 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
-        
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 text-corporate-blue dark:text-cyan-glow text-xs font-semibold mb-3">
-            <span className="w-2 h-2 rounded-full bg-corporate-blue dark:bg-cyan-glow animate-pulse"></span>
-            {lang === 'AR' ? 'نواة العمليات المتكاملة' : 'Bento Intelligence Suite'}
-          </div>
-          <h1 className="text-xl md:text-3xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">
-            {lang === 'AR' 
-              ? `بوابة ذكاء العمليات - ${tenant?.companyName || 'أوركا العقارية'}`
-              : `Operations Portal - ${tenant?.companyName || 'ORCA Properties'}`
-            }
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-            {lang === 'AR'
-              ? 'مراقبة فورية لمؤشرات المبيعات ونشاط الجولات، مدعومة بمكتبة الإجراءات السريعة ومساعد التنبؤات التلقائي المبني على الذكاء الاصطناعي.'
-              : 'Real-time sales, property tours tracking, quick workflow actions, and predictive AI analytics.'
-            }
-          </p>
+      <PageHeader 
+        title={lang === 'AR' 
+          ? `مرحباً بك، ${tenant?.companyName || 'علي'} 👋`
+          : `Welcome back, ${tenant?.companyName || 'Ali'} 👋`
+        }
+        description={lang === 'AR'
+          ? 'مراقبة فورية لمؤشرات المبيعات ونشاط الجولات، مدعومة بمكتبة الإجراءات السريعة ومساعد التنبؤات التلقائي المبني على الذكاء الاصطناعي.'
+          : 'Real-time sales, property tours tracking, quick workflow actions, and predictive AI analytics.'
+        }
+      >
+        <div className="bg-[#1C2B48]/50 backdrop-blur border border-white/10 p-3 rounded-xl text-center md:min-w-[170px] shadow-sm">
+           <p className="text-[#C4D8E5] font-medium text-xs mb-1">{lang === 'AR' ? 'تاريخ اليوم' : "Today's Date"}</p>
+           <p className="text-[#8EB1D1] font-bold text-base md:text-lg font-mono">
+              {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
+           </p>
         </div>
-
-        <div className="relative z-10 flex flex-col gap-2 w-full md:w-auto shrink-0">
-          <div className="bg-white/50 dark:bg-void/75 backdrop-blur border border-slate-200/50 dark:border-white/10 p-4 rounded-xl text-center md:min-w-[170px] shadow-sm">
-             <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mb-1 font-semibold">{lang === 'AR' ? 'تاريخ اليوم' : "Today's Date"}</p>
-             <p className="text-corporate-blue dark:text-cyan-glow font-bold text-base md:text-lg">
-                {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
-             </p>
-          </div>
-        </div>
-      </div>
+      </PageHeader>
 
       {/* 2. Bento Box Grid System (المصفوفة الذكية الكبرى) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -443,7 +430,7 @@ export default function DashboardView({
                       {formatNum(stage.count)}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div className="w-full h-1.5 rounded-full bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)] overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -560,7 +547,55 @@ export default function DashboardView({
 
       </div>
 
-      {/* 4. Contract Issuance Drawer/Wizard Modal overlay */}
+      {/* 4. Recent Requests Grid (أحدث الطلبات الاستثمارية) */}
+      <div className="grid grid-cols-1 gap-6">
+        <SmartCard className="p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[var(--color-coral-soft)] flex items-center justify-center text-[var(--color-coral)]">
+                <i className="ph-bold ph-users text-base"></i>
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                  {lang === "AR" ? "أحدث الطلبات الاستثمارية" : "Recent Requests"}
+                </h4>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px]">
+                  {lang === "AR" ? "آخر العملاء المسجلين في النظام" : "Latest leads registered"}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {recentLeads.slice(0, 5).map((lead) => (
+              <div key={lead.id} className="flex items-center justify-between p-3 rounded-xl bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 hover:border-[var(--color-coral-border)] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">
+                    {lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">{lead.firstName} {lead.lastName}</h5>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{lead.phone} • {lead.city}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-2 py-1 rounded text-[9px] font-bold bg-[var(--color-coral-soft)] text-[var(--color-coral)]">
+                    {lead.status === 'NEW' ? (lang === 'AR' ? 'جديد' : 'New') : lead.status}
+                  </span>
+                  {lead.project && <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[100px]">{lead.project.name}</p>}
+                </div>
+              </div>
+            ))}
+            {recentLeads.length === 0 && (
+              <div className="text-center py-6 text-slate-500 text-xs">
+                {lang === 'AR' ? 'لا توجد طلبات حديثة' : 'No recent requests'}
+              </div>
+            )}
+          </div>
+        </SmartCard>
+      </div>
+
+      {/* 5. Contract Issuance Drawer/Wizard Modal overlay */}
       <ContractWizard
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}

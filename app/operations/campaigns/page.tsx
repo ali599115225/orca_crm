@@ -2,7 +2,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import CampaignsView from '@/components/views/CampaignsView';
+import MarketingView from '@/components/views/MarketingView';
 
 export default function CampaignsPage() {
   return (
@@ -13,7 +13,7 @@ export default function CampaignsPage() {
         ))}
       </div>
     }>
-      <CampaignsView />
+      <MarketingView />
     </Suspense>
   );
 }

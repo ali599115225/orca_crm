@@ -1,9 +1,11 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { Menu, Search, Plus, Bell, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
+import { Menu, Search, Bell, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
+import { logoutAction } from '@/app/actions/auth';
+
 
 interface SovereignHeaderProps {
   onMenuClick?: () => void;
@@ -16,7 +18,6 @@ const tabNames: Record<string, string> = {
   rental:     'العقود والمدفوعات',
   calculator: 'حاسبة التمويل السكني',
   sales:      'أداء المبيعات',
-  // القيم الجديدة بعد sidebar_marketing_reorg
   marketing:  'الإعلان والتسويق',
   shopping:   'الإعلان والتسويق — التسوق',
   agents:     'الوكلاء الذكيون',
@@ -38,10 +39,10 @@ const routeNames: Record<string, string> = {
   '/operations/calculator': 'حاسبة التمويل السكني',
   '/operations/sales':      'أداء المبيعات',
   '/operations/tours':      'الجولات العقارية',
-  // المسار الجديد بعد sidebar_marketing_reorg
   '/operations/marketing':  'الإعلان والتسويق',
   '/operations/agents':     'الوكلاء الذكيون',
   '/operations/tasks':      'المهام والتذكيرات',
+  '/operations/documents':  'مستودع المستندات',
   '/operations/helpdesk':   'مركز الدعم والمستندات',
   '/operations/whatsapp':   'قناة الواتساب',
   '/operations/settings':   'الإعدادات',
@@ -51,7 +52,7 @@ function HeaderBreadcrumbs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
-  
+
   let activeTabName = 'نظرة عامة';
   if (pathname === '/operations' && tab) {
     activeTabName = tabNames[tab] || 'نظرة عامة';
@@ -60,10 +61,10 @@ function HeaderBreadcrumbs() {
   }
 
   return (
-    <div className="hidden sm:flex items-center text-sm font-medium text-slate-550 dark:text-slate-400">
-      <span className="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">العمليات</span>
-      <ChevronLeft size={16} className="mx-1 opacity-50" />
-      <span className="text-corporate-blue dark:text-cyan-glow font-bold">{activeTabName}</span>
+    <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]">
+      <span className="hover:text-[var(--nc-foreground)] cursor-pointer transition-colors">العمليات</span>
+      <ChevronLeft size={16} className="mx-1 opacity-40" />
+      <span className="text-[var(--nc-accent)] font-bold">{activeTabName}</span>
     </div>
   );
 }
@@ -73,19 +74,19 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
   const router = useRouter();
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-white/70 dark:bg-white/5 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/10 shadow-lg dark:shadow-none z-40 w-full dir-rtl text-slate-900 dark:text-white transition-all">
-      
-      {/* اليمين: زر الجوال ومسار التنقل */}
+    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/90 backdrop-blur-xl border-b border-[var(--nc-border)] shadow-sm z-40 w-full dir-rtl text-[var(--nc-foreground)] transition-all">
+
+      {/* Right: Mobile menu + breadcrumbs */}
       <div className="flex items-center gap-3 lg:w-1/3">
-        <button 
-          className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" 
+        <button
+          className="md:hidden text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] transition-colors"
           onClick={onMenuClick}
           aria-label="فتح القائمة"
         >
           <Menu size={24} />
         </button>
         <Suspense fallback={
-          <div className="hidden sm:flex items-center text-sm font-medium text-slate-500">
+          <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]">
             <span>العمليات</span>
           </div>
         }>
@@ -93,75 +94,85 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         </Suspense>
       </div>
 
-      {/* الوسط: شريط البحث الشامل */}
+      {/* Center: Global search bar */}
       <div className="hidden lg:flex justify-center w-1/3">
         <div className="relative w-full max-w-md group">
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <Search size={16} className="text-slate-500 dark:text-slate-400 group-focus-within:text-corporate-blue dark:group-focus-within:text-cyan-glow transition-colors" />
+            <Search
+              size={16}
+              className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
+            />
           </div>
-          <input 
-            type="text" 
-            placeholder="بحث شامل (العملاء، العقود)..." 
-            className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 focus:border-corporate-blue dark:focus:border-cyan-glow rounded-lg py-2 pl-14 pr-10 text-sm text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner"
+          <input
+            type="text"
+            placeholder="بحث شامل (العملاء، العقود)..."
+            className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
           />
           <div className="absolute inset-y-0 left-0 flex items-center pl-2">
-            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-white/5 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-white/10">Ctrl+K</span>
+            <span className="text-[10px] font-mono text-[var(--nc-foreground-muted)] bg-[var(--nc-surface-strong)] px-1.5 py-0.5 rounded border border-[var(--nc-border)]">Ctrl+K</span>
           </div>
         </div>
       </div>
 
-      {/* اليسار: الإجراءات السريعة، الإشعارات، والملف الشخصي */}
+      {/* Left: Quick actions, notifications, profile */}
       <div className="flex items-center justify-end gap-2 lg:gap-3 lg:w-1/3">
-        
-        {/* حالة ساهر */}
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 rounded-full text-xs font-medium text-slate-900 dark:text-white">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
+
+        {/* Saher connection status */}
+        <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-full text-xs font-medium text-[var(--nc-foreground)]">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]"></div>
           <span>ساهر</span>
         </div>
 
-        {/* زر اللغة */}
-        <button 
+        {/* Language toggle */}
+        <button
           onClick={toggleLang}
-          className="hidden sm:flex items-center justify-center w-9 h-9 bg-white/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue dark:hover:border-cyan-glow rounded-lg transition-all shadow-inner" 
+          className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
           title="تغيير اللغة"
         >
           <Globe size={18} />
         </button>
 
-        {/* زر تبديل الوضع */}
-        <button 
+        {/* Theme toggle */}
+        <button
           onClick={toggleTheme}
-          className="hidden sm:flex items-center justify-center w-9 h-9 bg-white/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue dark:hover:border-cyan-glow rounded-lg transition-all shadow-inner" 
+          className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
           title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
         >
-          {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
+          {theme === 'dark'
+            ? <Sun size={18} className="text-amber-400" />
+            : <Moon size={18} />}
         </button>
 
-        {/* الإشعارات */}
-        <button className="relative w-9 h-9 flex items-center justify-center bg-white/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/50 dark:border-white/10 hover:border-corporate-blue dark:hover:border-cyan-glow rounded-lg transition-all shadow-inner">
+        {/* Notifications */}
+        <button className="relative w-9 h-9 flex items-center justify-center bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all">
           <Bell size={18} />
-          <span className="absolute top-1.5 left-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-void"></span>
+          <span className="absolute top-1.5 left-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--nc-surface-strong)]"></span>
         </button>
 
-        {/* الملف الشخصي للمستخدم */}
-        <div className="flex items-center gap-3 pl-2 border-r border-slate-200/50 dark:border-white/10 ml-1 pr-1">
+        {/* User profile */}
+        <div className="flex items-center gap-3 pl-2 border-r border-[var(--nc-border)] ml-1 pr-1">
           <div className="hidden md:block text-left mr-2">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight text-right">علي زيلع</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 text-right mt-0.5">شركة دار الأعمار</p>
+            <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight text-right">علي زيلع</p>
+            <p className="text-[10px] text-[var(--nc-foreground-muted)] text-right mt-0.5">شركة دار الأعمار</p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 flex items-center justify-center text-sm font-bold text-corporate-blue dark:text-cyan-glow shadow-sm hover:border-corporate-blue/50 dark:hover:border-cyan-glow/50 transition-colors">
+          <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent)] shadow-sm transition-colors cursor-pointer">
             ع.ز
           </div>
         </div>
 
-        {/* زر تسجيل الخروج */}
-        <button 
-          onClick={() => {
+        {/* Logout */}
+        <button
+          onClick={async () => {
             localStorage.removeItem('userRole');
             localStorage.removeItem('token');
-            router.push('/');
+            try {
+              await logoutAction();
+            } catch (err) {
+              console.error(err);
+              router.push('/');
+            }
           }}
-          className="flex items-center justify-center w-9 h-9 bg-red-500/10 text-red-650 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all shadow-sm" 
+          className="flex items-center justify-center w-9 h-9 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg transition-all"
           title="تسجيل الخروج"
         >
           <LogOut size={18} />

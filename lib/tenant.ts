@@ -11,7 +11,8 @@ import { cache } from "react";
 export const getActiveTenant = cache(async function getActiveTenantInternal(hostOverride?: string) {
   // 1. أولاً: التحقق من الجلسة والصلاحيات الفوقية للمشرف العام
   const session = await getSession();
-  const isSuperAdmin = session && (session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa");
+  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const isSuperAdmin = session && superAdminEmails.includes(String(session.email).toLowerCase());
 
   // إذا لم يكن مشرفاً عاماً، نلتزم تماماً بشركته المحددة بالجلسة (العزل الصارم والحماية من التطفل)
   if (session && session.tenantId && !isSuperAdmin) {

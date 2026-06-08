@@ -1,8 +1,9 @@
 // components/views/ToursView.tsx
 'use client';
 import { toast } from '@/app/context/ToastContext';
-
 import React, { useState, useEffect, useRef } from 'react';
+
+import PageHeader from '@/components/ui/PageHeader';
 import {
   MapPin, Heart, Eye, Calculator, Calendar, ArrowRight, UserCheck, Play,
   Settings, Bot, Sparkles, FileText, CheckCircle2, AlertCircle, X, ShieldAlert,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DateField } from '../ui/DateField';
 import { LayoutContainer } from '../ui/LayoutContainer';
+import { SmartCard } from '@/components/ui/SmartCard';
 
 import { getPropertiesAction } from '@/app/actions/properties';
 import { ToursConfigType, TOURS_CONFIG } from '@/lib/tours-config';
@@ -488,7 +490,7 @@ export default function ToursView() {
       {toursLoading && (
         <div className="nc-glass p-6 flex items-center justify-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-          <span className="text-sm text-slate-400">جاري تحميل الجولات من قاعدة البيانات...</span>
+          <span className="text-sm text-[var(--nc-foreground-muted)]">جاري تحميل الجولات من قاعدة البيانات...</span>
         </div>
       )}
       {toursError && !toursLoading && (
@@ -499,11 +501,8 @@ export default function ToursView() {
       )}
 
       {/* ─── Page Header ───────────────────────────── */}
-      <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-white text-lg">الجولات العقارية</h1>
-          <p className="text-sm text-slate-400 mt-1">تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.</p>
-        </div>
+      <div className="px-6 md:px-8 pt-6 pb-2">
+        <PageHeader title="الجولات العقارية" description="تصفح الجولات التفاعلية المباشرة، وحلّل طرق العرض وسلوكيات الحجز الفوري لعملائك.">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveModal('settings_flag')}
@@ -513,15 +512,17 @@ export default function ToursView() {
             قواعد العرض (Feature Flags)
           </button>
         </div>
+        </PageHeader>
       </div>
 
       <LayoutContainer
         kpis={null}
         actions={
-          <div className="space-y-4">
+          <SmartCard className="p-5 h-full">
+            <div className="flex flex-col gap-4 w-full">
             {/* البحث وتصفية الجولات */}
             <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white border-b border-white/5 pb-2">البحث وتصفية الجولات</h3>
+            <h3 className="text-lg font-semibold text-[var(--nc-foreground)] border-b border-[var(--nc-border)] pb-2">البحث وتصفية الجولات</h3>
             
             <div className="space-y-3.5 text-xs">
               
@@ -532,7 +533,7 @@ export default function ToursView() {
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
                   placeholder="ابحث بحي، مدينة، أو ID..."
-                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-3 py-2 text-xs text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)]"
                 />
               </div>
 
@@ -542,7 +543,7 @@ export default function ToursView() {
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-2 text-xs text-[var(--nc-foreground)] outline-none"
                   >
                     <option value="">كل الأنواع</option>
                     <option value="apartment">شقة</option>
@@ -556,7 +557,7 @@ export default function ToursView() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-2 text-xs text-[var(--nc-foreground)] outline-none"
                   >
                     <option value="">الكل</option>
                     <option value="available">متاح</option>
@@ -574,15 +575,15 @@ export default function ToursView() {
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="من"
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-1.5 text-center text-xs text-[var(--nc-foreground)] outline-none"
                   />
-                  <span className="text-[var(--nc-text-dim)] font-medium">—</span>
+                  <span className="text-[var(--nc-foreground-muted)]">—</span>
                   <input
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="إلى"
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-1.5 text-center text-xs text-[var(--nc-foreground)] outline-none"
                   />
                 </div>
               </div>
@@ -593,7 +594,7 @@ export default function ToursView() {
                   <select
                     value={bedsFilter}
                     onChange={(e) => setBedsFilter(e.target.value)}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-2 text-xs text-white outline-none font-mono"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-2 text-xs text-[var(--nc-foreground)] outline-none font-mono"
                   >
                     <option value="">الكل</option>
                     <option value="1">1+</option>
@@ -610,12 +611,12 @@ export default function ToursView() {
                     value={areaFilter}
                     onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="مثال: 150"
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-center text-xs text-white outline-none"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-1.5 text-center text-xs text-[var(--nc-foreground)] outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2 border-t border-white/5">
+              <div className="flex gap-2 pt-2 border-t border-[var(--nc-border)]">
                 <button
                   onClick={() => {
                     addTelemetryEvent('tours.filters_applied', { searchVal, typeFilter, statusFilter, minPrice, maxPrice });
@@ -635,7 +636,7 @@ export default function ToursView() {
                     setAreaFilter('');
                     addTelemetryEvent('tours.filters_cleared', {});
                   }}
-                  className="px-3 py-2 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                  className="px-3 py-2 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] rounded-xl transition-all"
                 >
                   مسح
                 </button>
@@ -644,15 +645,17 @@ export default function ToursView() {
             </div>
             </div>
           </div>
+          </SmartCard>
         }
         insights={
+          <SmartCard className="p-5 h-full">
           <div className="space-y-4">
             {/* الجولات المحفوظة */}
-            <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-5 space-y-3">
-              <h3 className="text-lg font-semibold text-white border-b border-white/5 pb-2">الجولات المحفوظة</h3>
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-[var(--nc-foreground)] border-b border-[var(--nc-border)] pb-2">الجولات المحفوظة</h3>
               <div className="space-y-2">
                 {favorites.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium py-1 text-center">لا توجد جولات محفوظة</p>
+                  <p className="text-xs text-[var(--nc-foreground-muted)] py-1 text-center">لا توجد جولات محفوظة</p>
                 ) : (
                   favorites.map(fid => {
                     const p = properties.find(x => x.id === fid);
@@ -661,9 +664,9 @@ export default function ToursView() {
                       <div
                         key={fid}
                         onClick={() => handlePropertySelection(p)}
-                        className="flex justify-between items-center p-2 bg-[var(--nc-surface)] rounded-xl border border-white/5 hover:border-[var(--nc-accent-border)]/35 transition-all text-xs text-slate-500 cursor-pointer"
+                        className="flex justify-between items-center p-2 bg-[var(--nc-surface)] rounded-xl border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)]/35 transition-all text-xs text-[var(--nc-foreground-muted)] cursor-pointer"
                       >
-                        <span className="text-white truncate max-w-[130px] font-semibold">{p.title}</span>
+                        <span className="text-[var(--nc-foreground)] truncate max-w-[130px] font-semibold">{p.title}</span>
                         <span className="text-rose-500 font-bold shrink-0">❤️</span>
                       </div>
                     );
@@ -672,6 +675,7 @@ export default function ToursView() {
               </div>
             </div>
           </div>
+          </SmartCard>
         }
         details={
           <div className="space-y-6">
@@ -705,7 +709,7 @@ export default function ToursView() {
           {/* شبكة الجولات مع تقييد التمدد */}
           <div className="max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
             {filteredListings.length === 0 ? (
-              <div className="bg-[var(--nc-surface-solid)] border border-dashed border-white/10 rounded-3xl p-12 text-center text-[var(--nc-text-dim)] font-medium">
+              <div className="bg-[var(--nc-surface-strong)] border border-dashed border-[var(--nc-border)] rounded-3xl p-12 text-center text-[var(--nc-foreground-muted)]">
                 لا توجد جولات مطابقة لشروط الفلترة الحالية.
               </div>
             ) : (
@@ -724,13 +728,13 @@ export default function ToursView() {
                       }`}
                     >
                       {/* الميديا */}
-                      <div className="h-40 bg-[var(--nc-surface-solid)] relative flex items-center justify-center overflow-hidden shrink-0">
+                      <div className="h-40 bg-[var(--nc-surface-strong)] relative flex items-center justify-center overflow-hidden shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10" />
                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--nc-accent-border) 1px,transparent 1px)] [background-size:16px_16px]" />
                         {p.media && p.media.length > 0 ? (
                           <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.media[0]})` }} />
                         ) : (
-                          <span className="z-10 text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-bold bg-[var(--nc-surface-solid)] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
+                          <span className="z-10 text-xs text-[var(--nc-foreground-muted)] font-bold bg-[var(--nc-surface-strong)] px-3 py-1 rounded-full">لا توجد وسائط متوفرة</span>
                         )}
                         <div className="absolute top-3 right-3 z-20 flex gap-1.5">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-sm ${
@@ -769,7 +773,7 @@ export default function ToursView() {
                           <div><p>الغرف</p><p className="font-semibold text-white text-lg font-mono">{p.beds > 0 ? p.beds : '—'}</p></div>
                           <div><p>اكتمال البيانات</p><p className={`font-bold font-mono ${p.dataCompleteness >= 0.8 ? 'text-emerald-400' : 'text-amber-400'}`}>{Math.round(p.dataCompleteness * 100)}%</p></div>
                         </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                        <div className="flex justify-between items-center pt-2 border-t border-[var(--nc-border)]">
                           <div>
                             <p className="text-[9px] text-[var(--nc-text-dim)] font-medium">السعر المطلوب</p>
                             <p className="font-black text-[var(--nc-text-secondary)] text-xs font-mono">{p.price > 0 ? `${p.price.toLocaleString()} ر.س` : 'غير محدد'}</p>
@@ -798,8 +802,8 @@ export default function ToursView() {
                 <button onClick={() => setInlinePropertyId(null)} className="text-[var(--nc-text-dim)] font-medium hover:text-white"><X size={14} /></button>
               </div>
               <div className="space-y-3.5 text-xs">
-                <h3 className="font-black text-white text-sm">{inlineProp.title}</h3>
-                <div className="h-44 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+                <h3 className="font-black text-[var(--nc-foreground)] text-sm">{inlineProp.title}</h3>
+                <div className="h-44 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl relative overflow-hidden flex items-center justify-center">
                   {inlineProp.tourType === 'video' ? (
                     <video src={inlineProp.tourUrl} controls className="w-full h-full object-cover" />
                   ) : (
@@ -810,14 +814,14 @@ export default function ToursView() {
                     </div>
                   )}
                 </div>
-                <ul className="space-y-2 text-[var(--nc-text-dim)] font-medium text-xs text-slate-500 bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5">
+                <ul className="space-y-2 text-[var(--nc-foreground-muted)] text-xs bg-[var(--nc-surface)] p-3 rounded-xl border border-[var(--nc-border)]">
                   <li className="flex justify-between"><span>الرقم المرجعي (ID):</span><span className="font-mono text-white font-bold">{inlineProp.id}</span></li>
                   <li className="flex justify-between"><span>المساحة:</span><span className="font-mono text-white font-bold">{inlineProp.area} م²</span></li>
                   <li className="flex justify-between"><span>السعر المطلـوب:</span><span className="font-mono text-[var(--nc-text-secondary)] font-black">{inlineProp.price.toLocaleString()} ر.س</span></li>
                   <li className="flex justify-between"><span>الوكيل المسؤول:</span><span className="text-white font-bold">{inlineProp.agent}</span></li>
                 </ul>
                 <div className="space-y-3">
-                  <h5 className="font-semibold text-white text-lg border-b border-white/5 pb-1">نموذج حجز الجولة العقارية</h5>
+                  <h5 className="font-semibold text-[var(--nc-foreground)] text-lg border-b border-[var(--nc-border)] pb-1">نموذج حجز الجولة العقارية</h5>
                   <form onSubmit={(e) => submitTourSchedule(e, inlineProp.id)} className="space-y-2.5 text-right">
                     <div className="space-y-1">
                       <label className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium font-bold">اسم العميل بالكامل *</label>
@@ -868,7 +872,7 @@ export default function ToursView() {
                       <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
                       <span>{log.timestamp}</span>
                     </div>
-                    <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium overflow-x-auto whitespace-pre-wrap">{JSON.stringify(log.payload, null, 2)}</pre>
+                    <pre className="text-[9px] text-[var(--nc-foreground-muted)] overflow-x-auto whitespace-pre-wrap">{JSON.stringify(log.payload, null, 2)}</pre>
                   </div>
                 ))
               )}
@@ -884,7 +888,7 @@ export default function ToursView() {
       {activeModal === 'details' && selectedProp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl text-right max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-start border-b border-white/5 pb-3">
               <div className="space-y-1">
@@ -900,7 +904,7 @@ export default function ToursView() {
             </div>
 
             {/* مشغل الميديا المدمج بالمودال */}
-            <div className="h-64 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center">
+            <div className="h-64 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl relative overflow-hidden flex items-center justify-center">
               {selectedProp.media && selectedProp.media.length > 0 ? (
                 selectedProp.tourType === 'video' ? (
                   <video src={selectedProp.tourUrl} controls className="w-full h-full object-cover" />
@@ -912,7 +916,7 @@ export default function ToursView() {
                   </div>
                 )
               ) : (
-                <div className="text-center p-4 text-[var(--nc-text-dim)] font-medium">
+                <div className="text-center p-4 text-[var(--nc-foreground-muted)]">
                   <AlertCircle size={30} className="mx-auto text-amber-500 mb-1.5" />
                   <p className="font-bold text-xs">لا توجد وسائط أو جولات مسجلة لهذه الوحدة</p>
                   <p className="text-xs text-slate-500">يمكنك حجز جولة ميدانية لمشاهدة العقار على أرض الواقع.</p>
@@ -920,7 +924,7 @@ export default function ToursView() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs border-b border-white/5 pb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs border-b border-[var(--nc-border)] pb-3">
               <div className="space-y-2">
                 <h4 className="font-bold text-[var(--nc-text-secondary)] border-b border-white/5 pb-1">المعلومات الأساسية للعقار</h4>
                 <ul className="space-y-1.5 text-[var(--nc-text-dim)] font-medium text-xs text-slate-500">
@@ -950,7 +954,7 @@ export default function ToursView() {
               </div>
 
               <div className="space-y-2.5">
-                <h4 className="font-semibold text-white text-lg border-b border-white/5 pb-1">حجز الجولة العقارية</h4>
+                <h4 className="font-semibold text-[var(--nc-foreground)] text-lg border-b border-[var(--nc-border)] pb-1">حجز الجولة العقارية</h4>
                 <form onSubmit={(e) => submitTourSchedule(e, selectedProp.id)} className="space-y-2 text-right">
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -959,7 +963,7 @@ export default function ToursView() {
                       value={visitName}
                       onChange={(e) => setVisitName(e.target.value)}
                       placeholder="اسم العميل"
-                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none"
+                      className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2 text-[var(--nc-foreground)] outline-none"
                     />
                     <input
                       type="text"
@@ -967,7 +971,7 @@ export default function ToursView() {
                       value={visitPhone}
                       onChange={(e) => setVisitPhone(e.target.value)}
                       placeholder="رقم الهاتف"
-                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-left font-mono"
+                      className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2 text-[var(--nc-foreground)] outline-none text-left font-mono"
                       dir="ltr"
                     />
                   </div>
@@ -980,7 +984,7 @@ export default function ToursView() {
                     <select
                       value={visitTime}
                       onChange={(e) => setVisitTime(e.target.value)}
-                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white outline-none text-center"
+                      className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2 text-[var(--nc-foreground)] outline-none text-center"
                     >
                       <option value="09:00">09:00 صباحاً</option>
                       <option value="11:00">11:00 صباحاً</option>
@@ -1010,7 +1014,7 @@ export default function ToursView() {
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleMortgagePrefill(selectedProp, e)}
-                  className="px-4 py-2 bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface-solid)] border border-white/10 text-[var(--nc-text-secondary)] text-xs font-bold rounded-xl transition-all"
+                  className="px-4 py-2 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-text-secondary)] text-xs font-bold rounded-xl transition-all"
                 >
                   احسب تمويل العقار
                 </button>
@@ -1030,7 +1034,7 @@ export default function ToursView() {
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-6 py-2 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl font-bold"
+                className="px-6 py-2 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] rounded-xl font-bold"
               >
                 إغلاق
               </button>
@@ -1044,7 +1048,7 @@ export default function ToursView() {
       {activeModal === 'mortgage' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
+          <div className="relative bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
@@ -1053,7 +1057,7 @@ export default function ToursView() {
               </h3>
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-[var(--nc-text-dim)] font-medium hover:text-white"
+                className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
               >
                 <X size={15} />
               </button>
@@ -1062,23 +1066,23 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] font-medium font-bold">سعر العقار المطلوب (ر.س)</label>
+                <label className="text-[var(--nc-foreground-muted)] font-bold">سعر العقار المطلوب (ر.س)</label>
                 <input
                   type="number"
                   value={mortgagePrice}
                   onChange={(e) => setMortgagePrice(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono text-sm"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2.5 text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)] font-mono text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">الدفعة الأولى المقترحة (%)</label>
+                  <label className="text-[var(--nc-foreground-muted)] font-bold">الدفعة الأولى المقترحة (%)</label>
                   <input
                     type="number"
                     value={mortgageDownPct}
                     onChange={(e) => setMortgageDownPct(Number(e.target.value))}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2.5 text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
@@ -1092,23 +1096,23 @@ export default function ToursView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">فترة السداد (سنوات)</label>
+                  <label className="text-[var(--nc-foreground-muted)] font-bold">فترة السداد (سنوات)</label>
                   <input
                     type="number"
                     value={mortgageTermYears}
                     onChange={(e) => setMortgageTermYears(Number(e.target.value))}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2.5 text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[var(--nc-text-dim)] font-medium font-bold">نسبة الفائدة السنوية (%)</label>
+                  <label className="text-[var(--nc-foreground-muted)] font-bold">نسبة الفائدة السنوية (%)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={mortgageRatePct}
                     onChange={(e) => setMortgageRatePct(Number(e.target.value))}
-                    className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[var(--nc-accent-border)] font-mono"
+                    className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2.5 text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)] font-mono"
                   />
                 </div>
               </div>
@@ -1132,7 +1136,7 @@ export default function ToursView() {
 
             </div>
 
-            <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+            <div className="flex gap-2 justify-end pt-2 border-t border-[var(--nc-border)]">
               <button
                 onClick={() => {
                   fetch(`/api/properties/${selectedPropertyId || 'T-XXX'}/request-finance`, {
@@ -1158,7 +1162,7 @@ export default function ToursView() {
               </button>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2.5 bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium rounded-xl transition-all"
+                className="px-4 py-2.5 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] rounded-xl transition-all"
               >
                 إغلاق
               </button>
@@ -1172,14 +1176,14 @@ export default function ToursView() {
       {activeModal === 'settings_flag' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
+          <div className="relative bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-right text-xs">
             
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
                 <Settings size={15} className="text-cyan-400" />
                 <span>Feature Flags & Thresholds</span>
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-[var(--nc-text-dim)] font-medium hover:text-white">
+              <button onClick={() => setActiveModal(null)} className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]">
                 <X size={15} />
               </button>
             </div>
@@ -1187,7 +1191,7 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] font-medium font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
+                <label className="text-[var(--nc-foreground-muted)] font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1195,9 +1199,9 @@ export default function ToursView() {
                   max="1.0"
                   value={config.minDataCompleteness}
                   onChange={(e) => setConfig(prev => ({ ...prev, minDataCompleteness: Number(e.target.value) }))}
-                  className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-2 text-white font-mono"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl p-2 text-[var(--nc-foreground)] font-mono"
                 />
-                <span className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium">الجولات التي تقل نسبة اكتمال بياناتها عن هذا التخمين ستفتح في Modal إجبارياً.</span>
+                <span className="text-xs text-[var(--nc-foreground-muted)]">الجولات التي تقل نسبة اكتمال بياناتها عن هذا التخمين ستفتح في Modal إجبارياً.</span>
               </div>
 
               <div className="flex items-center justify-between py-2 border-t border-b border-white/5">
@@ -1215,7 +1219,7 @@ export default function ToursView() {
                 <div className="bg-[var(--nc-surface-solid)] p-2.5 rounded-xl border border-white/5 text-xs text-slate-500 font-mono text-cyan-300">
                   {JSON.stringify(config.forceModalStatuses)}
                 </div>
-                <span className="text-[9px] text-[var(--nc-text-dim)] font-medium">تشمل الحالات الافتراضية المحجوزة وقيد المراجعة لحماية الخصوصية.</span>
+                <span className="text-[9px] text-[var(--nc-foreground-muted)]">تشمل الحالات الافتراضية المحجوزة وقيد المراجعة لحماية الخصوصية.</span>
               </div>
 
             </div>
@@ -1240,6 +1244,8 @@ export default function ToursView() {
     </>
   );
 }
+
+
 
 
 

@@ -3,7 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import * as dotenv from 'dotenv'
 
-(process.env as any).NODE_ENV = 'development'
+process.env.NODE_ENV = 'development'
 dotenv.config({ path: '.env', override: true })
 
 export default defineConfig({
@@ -16,7 +16,7 @@ export default defineConfig({
     seed: 'tsx ./prisma/seed.ts',
   },
   migrate: {
-    async adapter(env: any) {
+    async adapter() {
       const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
@@ -24,4 +24,4 @@ export default defineConfig({
       return new PrismaPg(pool)
     },
   },
-} as any)
+})

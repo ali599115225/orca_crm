@@ -163,10 +163,11 @@ export async function registerTenantAction(formData: FormData) {
       return { newTenant, newAdmin };
     });
 
-    // 🚀 الإجراء التنبيهي 1: إرسال رسالة SMS لجوالك فورياً لإعلامك بالعميل الجديد [1.2.1]
-    const myMobile = process.env.ADMIN_ALERT_MOBILE || "+966557516311"; // هاتف التنبيهات الخاص بك
-    const alertSMS = `🔔 تنبيه أوركا: تم تسجيل منشأة جديدة بالمنصة باسم (${companyName}) بنطاق فرعي (${cleanSubdomain}) بنجاح!`;
-    await sendSMSNotification(myMobile, alertSMS);
+    const alertMobile = process.env.ADMIN_ALERT_MOBILE;
+    if (alertMobile) {
+      const alertSMS = `🔔 تنبيه أوركا: تم تسجيل منشأة جديدة بالمنصة باسم (${companyName}) بنطاق فرعي (${cleanSubdomain}) بنجاح!`;
+      await sendSMSNotification(alertMobile, alertSMS);
+    }
 
     // 🚀 الإجراء التنبيهي 2: إرسال بريد إلكتروني منسق بالكامل لبريدك الشخصي [1.1.2, 1.2.1]
     const emailSubject = `🏢 تسجيل منشأة جديدة بالمنصة: ${companyName}`;
@@ -207,7 +208,8 @@ export async function registerTenantAction(formData: FormData) {
 
     return { success: true, subdomain: result.newTenant.subdomain };
 
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "حدث خطأ أثناء التسجيل.";
+    return { success: false, error: message };
   }
 }

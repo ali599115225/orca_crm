@@ -23,6 +23,7 @@ async function main() {
 
   await prisma.generalLedger.deleteMany({});
   await prisma.receipt.deleteMany({});
+  await prisma.rentalInvoice.deleteMany({});
   await prisma.installment.deleteMany({});
   await prisma.contract.deleteMany({});
   await prisma.unit.deleteMany({});
@@ -41,11 +42,18 @@ async function main() {
   await prisma.agentLease.deleteMany({});
   await prisma.agentTelemetryLog.deleteMany({});
   await prisma.auditLog.deleteMany({});
+  await prisma.rentalLease.deleteMany({});
+  await prisma.contact.deleteMany({});
+  await prisma.opportunity.deleteMany({});
+  await prisma.tour.deleteMany({});
+  await prisma.offer.deleteMany({});
+  await prisma.automationWorkflow.deleteMany({});
+  await prisma.telemetryEvent.deleteMany({});
   await prisma.tenant.deleteMany({});
 
   console.log("🔑 جاري إنشاء البيانات التجريبية...");
 
-  const securePassword = await bcrypt.hash("123456", 10);
+  const securePassword = await bcrypt.hash("Orca@Secure2026!", 10);
 
   // Tenant
   const tenant = await prisma.tenant.create({
@@ -77,9 +85,9 @@ async function main() {
     },
   });
 
-  // Unit — بدون tenantId لأنه غير موجود في schema
   const unit = await prisma.unit.create({
     data: {
+      tenantId: tenant.id,
       projectId: project.id,
       unitNumber: "A-101",
       floorPosition: 1,
@@ -88,9 +96,9 @@ async function main() {
     },
   });
 
-  // Contract — بدون tenantId
   const contract = await prisma.contract.create({
     data: {
+      tenantId: tenant.id,
       unitId: unit.id,
       buyerName: "سليمان الراشد",
       buyerPhone: "0505123456",
@@ -98,10 +106,10 @@ async function main() {
     },
   });
 
-  // Installments — بدون tenantId
   await prisma.installment.createMany({
     data: [
       {
+        tenantId: tenant.id,
         contractId: contract.id,
         installmentNumber: 1,
         amountSar: 50000,
@@ -109,6 +117,7 @@ async function main() {
         paymentStatus: "Paid",
       },
       {
+        tenantId: tenant.id,
         contractId: contract.id,
         installmentNumber: 2,
         amountSar: 50000,
@@ -118,9 +127,9 @@ async function main() {
     ],
   });
 
-  // Receipt — بدون tenantId
   const receipt = await prisma.receipt.create({
     data: {
+      tenantId: tenant.id,
       invoiceId: contract.id,
       amount: 50000,
       paymentMethod: "BANK_TRANSFER",
@@ -128,16 +137,15 @@ async function main() {
     },
   });
 
-  // GeneralLedger — بدون tenantId
-  // GeneralLedger — سجل واحد فقط لأن receiptId @unique
-await prisma.generalLedger.create({
-  data: {
-    receiptId: receipt.id,
-    debit: 50000,
-    credit: 50000,
-    description: "دفعة أولى - عقد رقم " + contract.id,
-  },
-});
+  await prisma.generalLedger.create({
+    data: {
+      tenantId: tenant.id,
+      receiptId: receipt.id,
+      debit: 50000,
+      credit: 50000,
+      description: "دفعة أولى - عقد رقم " + contract.id,
+    },
+  });
 
   console.log("🎉 تمت التغذية بنجاح كامل!");
 }

@@ -41,7 +41,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
           {isAdmin && (
             <button 
               onClick={() => setIsEditing(!isEditing)}
-              className="bg-slate-200/50 dark:bg-white/5 hover:bg-slate-300/50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-350 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300/50 dark:border-white/10 cursor-pointer transition-all"
+              className="bg-[var(--nc-surface)] dark:bg-white/5 hover:bg-[var(--nc-surface)] dark:hover:bg-white/10 text-slate-700 dark:text-slate-350 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300/50 dark:border-white/10 cursor-pointer transition-all"
             >
               {isEditing ? 'إلغاء التعديل ✕' : '📝 تعديل بنود الشروط'}
             </button>
@@ -56,7 +56,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
       </SmartCard>
 
       {/* نموذج وثيقة عقد الحجز الموحد المطور والمصمم ليتسع بدقة بصفحة واحدة (A4 Layout) */}
-      <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-xl print:shadow-none print:border-none print:p-0 space-y-5 relative text-slate-900 dark:text-white">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-[var(--nc-surface)] p-8 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-xl print:shadow-none print:border-none print:p-0 space-y-5 relative text-slate-900 dark:text-white">
         
         {/* هيدر الوثيقة الرسمي */}
         <div className="flex items-center justify-between border-b border-slate-900 dark:border-white/20 pb-4">
@@ -103,7 +103,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
             <h3 className="text-xs font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">بيانات الوحدة العقارية والمالية:</h3>
             <div className="overflow-hidden border border-slate-200 dark:border-slate-800 rounded-xl">
               <table className="w-full text-[11px] text-right">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-[var(--nc-surface)] text-slate-700 dark:text-slate-300">
                   <tr>
                     <th className="px-4 py-2">المشروع العقاري</th>
                     <th className="px-4 py-2">المدينة</th>
@@ -137,7 +137,7 @@ export function ContractView({ lead, tenant, isAdmin }: { lead: any; tenant: any
                 value={terms}
                 onChange={(e) => setTerms(e.target.value)}
                 rows={4}
-                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-[10px] text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full bg-white dark:bg-[var(--nc-surface)] border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-[10px] text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="اكتب بنود عقد شركتك المخصصة هنا (كل بند في سطر مستقل)..."
               />
               <button 

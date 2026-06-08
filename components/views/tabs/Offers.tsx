@@ -2,6 +2,7 @@
 "use client";
 import { toast } from '@/app/context/ToastContext';
 import React, { useState, useEffect } from 'react';
+import { SmartCard } from "@/components/ui/SmartCard";
 
 type Offer = {
   id: string;
@@ -119,19 +120,19 @@ export default function Offers() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Creation Form */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">إنشاء وتقديم عرض سعر (Send Offer)</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">إنشاء وتقديم عرض سعر (Send Offer)</h3>
           <form onSubmit={handleCreateOffer} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">اختر الصفقة / الفرصة *</label>
               <select
                 value={oppId}
                 onChange={(e) => setOppId(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="">-- اختر الفرصة --</option>
@@ -150,7 +151,7 @@ export default function Offers() {
                 placeholder="السعر المقترح للمفاوضة"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               />
             </div>
@@ -161,7 +162,7 @@ export default function Offers() {
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en"
                 required
               />
             </div>
@@ -174,11 +175,11 @@ export default function Offers() {
               {btnLoading ? "جاري الإنشاء..." : "إنشاء العرض"}
             </button>
           </form>
-        </div>
+        </SmartCard>
 
         {/* Offers List Panel */}
-        <div className="lg:col-span-2 bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">العروض العقارية وحالاتها (Active Offers)</h3>
+        <SmartCard className="lg:col-span-2 p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">العروض العقارية وحالاتها (Active Offers)</h3>
           {loading ? (
             <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل العروض...</div>
           ) : offers.length === 0 ? (
@@ -189,18 +190,18 @@ export default function Offers() {
                 <div key={offer.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl hover:border-[var(--nc-accent-border)]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-bold">{getOpportunityLeadName(offer.linkedOpportunityId)}</span>
+                      <span className="text-[var(--nc-foreground)] font-bold">{getOpportunityLeadName(offer.linkedOpportunityId)}</span>
                       <span className={`text-xs px-2 py-1 rounded-full font-bold ${
                         offer.status === "PENDING"
                           ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                           : offer.status === "ACCEPTED"
                           ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-slate-500/10 text-[var(--nc-text-dim)] font-medium"
+                          : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium"
                       }`}>
                         {offer.status}
                       </span>
                     </div>
-                    <p className="text-slate-450">سعر المفاوضة: <span className="text-white font-semibold font-en">{Number(offer.price).toLocaleString()} ر.س</span></p>
+                    <p className="text-slate-450">سعر المفاوضة: <span className="text-[var(--nc-foreground)] font-semibold font-en">{Number(offer.price).toLocaleString()} ر.س</span></p>
                     <p className="text-slate-450 font-en">صلاحية العرض: <span className="text-indigo-400 font-semibold">{offer.validUntil.slice(0, 10)}</span></p>
                     {offer.documentUrl && (
                       <a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-xs mt-1 font-en">
@@ -222,7 +223,7 @@ export default function Offers() {
               ))}
             </div>
           )}
-        </div>
+        </SmartCard>
 
       </div>
     </div>

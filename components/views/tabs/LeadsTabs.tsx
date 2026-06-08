@@ -1,7 +1,7 @@
 // components/views/tabs/LeadsTabs.tsx
 "use client";
 import { toast } from '@/app/context/ToastContext';
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
 import Pipeline from "../pipeline/Pipeline";
 import Contacts from "./Contacts";
@@ -24,14 +24,18 @@ export default function LeadsTabs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([
-    {
-      id: "evt_leads_init",
-      type: "leads.initialized",
-      timestamp: new Date().toISOString(),
-      payload: { message: "تهيئة نظام إدارة الصفقات والعملاء بنجاح" }
-    }
-  ]);
+  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    setTelemetryLogs([
+      {
+        id: "evt_leads_init",
+        type: "leads.initialized",
+        timestamp: new Date().toISOString(),
+        payload: { message: "تهيئة نظام إدارة الصفقات والعملاء بنجاح" }
+      }
+    ]);
+  }, []);
 
   const addTelemetryEvent = (type: string, payload: any) => {
     const newEvt = {
@@ -239,7 +243,7 @@ export default function LeadsTabs() {
       </div>
 
       {/* Webhook logs or Telemetry log console at the very bottom */}
-      <div className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
+      <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-3xl p-5 shadow-2xl flex flex-col flex-1 min-h-0 space-y-3">
         <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
           <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
             <Bot size={15} />
@@ -254,7 +258,7 @@ export default function LeadsTabs() {
           </button>
         </div>
         
-        <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-slate-500 font-mono leading-relaxed">
+        <div className="flex-1 overflow-y-auto mt-3 space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
           {telemetryLogs.map((log) => (
             <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
               <div className="flex justify-between text-[9px]">

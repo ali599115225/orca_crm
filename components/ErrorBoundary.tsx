@@ -67,7 +67,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 onClick={this.handleReset}
-                className="w-full py-3 px-4 rounded-xl text-xs font-bold text-slate-700 dark:text-[var(--nc-text-dim)] font-medium bg-slate-100 dark:bg-[var(--nc-surface-solid)] hover:bg-slate-200 dark:hover:bg-slate-750 active:scale-[0.98] transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl text-xs font-bold text-slate-700 dark:text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 active:scale-[0.98] transition-all cursor-pointer"
               >
                 العودة للوحة القيادة
               </button>

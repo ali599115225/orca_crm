@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
 import SovereignHeader from '../../app/components/SovereignHeader';
 import SovereignSidebar from '../../app/components/SovereignSidebar';
 
@@ -12,7 +11,7 @@ export default function DashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-transparent text-slate-900 dark:text-white overflow-hidden font-sans" dir="rtl">
+    <div className="h-screen w-full overflow-hidden flex bg-[var(--nc-bg)] font-sans" dir="rtl">
 
       {/* ── Overlay للجوال ─────────────────────────────────────────────── */}
       {isMobileMenuOpen && (
@@ -27,20 +26,20 @@ export default function DashboardLayout({
         className={`
           fixed inset-y-0 right-0 z-50 transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
-          md:translate-x-0 md:static md:z-auto
+          md:translate-x-0 md:static md:z-auto shrink-0
         `}
       >
         <SovereignSidebar />
       </div>
 
       {/* ── المحتوى الرئيسي ─────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
 
-        {/* الشريط العلوي */}
+        {/* الشريط العلوي — ثابت الارتفاع */}
         <SovereignHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
 
-        {/* منطقة العرض */}
-        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* منطقة العرض — تمرير داخلي فقط */}
+        <div className="flex-1 overflow-y-auto min-h-0 relative">
           {children}
         </div>
 

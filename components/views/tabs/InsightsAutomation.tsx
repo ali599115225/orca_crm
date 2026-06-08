@@ -2,6 +2,7 @@
 "use client";
 import { toast } from '@/app/context/ToastContext';
 import React, { useState, useEffect } from 'react';
+import { SmartCard } from "@/components/ui/SmartCard";
 
 type Workflow = {
   id: string;
@@ -80,19 +81,19 @@ export default function InsightsAutomation() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Playbook / Workflow Visual Editor */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">محرر مسارات الأتمتة (Workflows Editor)</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">محرر مسارات الأتمتة (Workflows Editor)</h3>
           <form onSubmit={handleCreateWorkflow} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">اسم خط سير العمل (Workflow Name)</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               />
             </div>
@@ -102,7 +103,7 @@ export default function InsightsAutomation() {
               <select
                 value={triggerEvent}
                 onChange={(e) => setTriggerEvent(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="lead.created">عند تسجيل عميل محتمل جديد (lead.created)</option>
@@ -116,7 +117,7 @@ export default function InsightsAutomation() {
               <select
                 value={action1}
                 onChange={(e) => setAction1(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="send_whatsapp_welcome">إرسال رسالة ترحيبية واتساب</option>
@@ -130,7 +131,7 @@ export default function InsightsAutomation() {
               <select
                 value={action2}
                 onChange={(e) => setAction2(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="create_followup_task">جدولة مهمة متابعة تلقائية</option>
@@ -147,11 +148,11 @@ export default function InsightsAutomation() {
               {btnLoading ? "جاري الحفظ..." : "تفعيل وحفظ خط سير العمل"}
             </button>
           </form>
-        </div>
+        </SmartCard>
 
         {/* Visual Funnel Performance Reports */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">تقارير كفاءة المبيعات والقمع العقاري</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">تقارير كفاءة المبيعات والقمع العقاري</h3>
           {loading ? (
             <div className="text-center py-12 text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل التقارير...</div>
           ) : reportData ? (
@@ -159,7 +160,7 @@ export default function InsightsAutomation() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl">
                   <p className="text-slate-450 text-xs mb-1">نسبة تحويل العملاء</p>
-                  <p className="text-white font-bold font-en text-base">{reportData.conversionRatio}%</p>
+                  <p className="text-[var(--nc-foreground)] font-bold font-en text-base">{reportData.conversionRatio}%</p>
                 </div>
                 <div className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl">
                   <p className="text-slate-450 text-xs mb-1">متوسط مدة الإغلاق</p>
@@ -169,13 +170,13 @@ export default function InsightsAutomation() {
 
               {/* Conversion Funnel visual bars */}
               <div className="space-y-3 pt-2">
-                <h4 className="text-white font-bold text-xs">أرقام قمع المبيعات (Sales Funnel Details)</h4>
+                <h4 className="text-[var(--nc-foreground)] font-bold text-xs">أرقام قمع المبيعات (Sales Funnel Details)</h4>
                 
                 <div className="space-y-2 font-en text-xs">
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-[var(--nc-text-dim)] font-medium">New Leads</span>
-                      <span className="text-white font-bold">{reportData.funnel.new}</span>
+                      <span className="text-[var(--nc-foreground)] font-bold">{reportData.funnel.new}</span>
                     </div>
                     <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-1.5 overflow-hidden">
                       <div className="bg-indigo-500 h-full rounded-full" style={{ width: "100%" }}></div>
@@ -185,7 +186,7 @@ export default function InsightsAutomation() {
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-[var(--nc-text-dim)] font-medium">Contacted</span>
-                      <span className="text-white font-bold">{reportData.funnel.contacted}</span>
+                      <span className="text-[var(--nc-foreground)] font-bold">{reportData.funnel.contacted}</span>
                     </div>
                     <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-1.5 overflow-hidden">
                       <div className="bg-sky-500 h-full rounded-full" style={{ width: "70%" }}></div>
@@ -195,7 +196,7 @@ export default function InsightsAutomation() {
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-[var(--nc-text-dim)] font-medium">Qualified Tours</span>
-                      <span className="text-white font-bold">{reportData.funnel.tourScheduled}</span>
+                      <span className="text-[var(--nc-foreground)] font-bold">{reportData.funnel.tourScheduled}</span>
                     </div>
                     <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-1.5 overflow-hidden">
                       <div className="bg-amber-500 h-full rounded-full" style={{ width: "30%" }}></div>
@@ -205,7 +206,7 @@ export default function InsightsAutomation() {
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-[var(--nc-text-dim)] font-medium">Closed Sales</span>
-                      <span className="text-white font-bold">{reportData.funnel.closed}</span>
+                      <span className="text-[var(--nc-foreground)] font-bold">{reportData.funnel.closed}</span>
                     </div>
                     <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-1.5 overflow-hidden">
                       <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${reportData.conversionRatio}%` }}></div>
@@ -217,11 +218,11 @@ export default function InsightsAutomation() {
           ) : (
             <div className="text-center py-12 text-[var(--nc-text-dim)] font-medium text-xs">لا يوجد بيانات تقارير متاحة.</div>
           )}
-        </div>
+        </SmartCard>
 
         {/* Workflows List */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">مسارات الأتمتة النشطة (Active Workflows)</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">مسارات الأتمتة النشطة (Active Workflows)</h3>
           {loading ? (
             <div className="text-center py-12 text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل مسارات الأتمتة...</div>
           ) : workflows.length === 0 ? (
@@ -231,7 +232,7 @@ export default function InsightsAutomation() {
               {workflows.map((flow) => (
                 <div key={flow.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl flex flex-col gap-2 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="text-white font-bold">{flow.name}</span>
+                    <span className="text-[var(--nc-foreground)] font-bold">{flow.name}</span>
                     <span className="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-xs font-bold">
                       نشط Active
                     </span>
@@ -241,7 +242,7 @@ export default function InsightsAutomation() {
               ))}
             </div>
           )}
-        </div>
+        </SmartCard>
 
       </div>
     </div>

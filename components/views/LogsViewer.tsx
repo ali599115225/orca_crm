@@ -1,6 +1,7 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
+
+import PageHeader from '@/components/ui/PageHeader';
 import { useApp } from '@/app/context/AppContext';
 import { toast } from '@/app/context/ToastContext';
 import { getSystemLogsAction, clearSystemLogsAction, triggerMockErrorAction } from '@/app/actions/logs';
@@ -129,7 +130,7 @@ export default function LogsViewer() {
             <button
               onClick={handleClearLogs}
               disabled={clearingLogs || loading || logs.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-slate-700 text-[var(--nc-text-dim)] font-medium hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium hover:text-white font-bold text-xs transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
             >
               <i className="ph-bold ph-trash text-sm"></i>
               <span>{isArabic ? "مسح السجلات" : "Clear Log File"}</span>

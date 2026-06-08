@@ -1,7 +1,10 @@
 // components/views/CalculatorView.tsx
 'use client';
-
 import React, { useState } from 'react';
+
+import PageHeader from '@/components/ui/PageHeader';
+import LayoutContainer from '@/components/ui/LayoutContainer';
+import { SmartCard } from '@/components/ui/SmartCard';
 import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 
@@ -272,25 +275,15 @@ export default function CalculatorView() {
     <div className="nc-page nc-stack" dir={dir}>
       
       {/* Header */}
-      <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
-          <i className="ph-bold ph-calculator"></i> {t.tag}
-        </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-text-primary)] font-bold mb-2">
-          {t.title}
-        </h1>
-        <p className="text-xs md:text-sm text-[var(--nc-text-dim)] font-medium">
-          {t.desc}
-        </p>
-      </div>
+      <PageHeader title={t.title} description={t.desc} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        
-        {/* Left Side: Inputs Panel */}
-        <div className="lg:col-span-7 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm space-y-6">
-          <h3 className="text-[var(--nc-text-primary)] font-bold text-base border-b border-[var(--nc-glass-border)] pb-3">
-            {t.inputsTitle}
-          </h3>
+      <LayoutContainer
+        actions={
+          /* Left Side: Inputs Panel */
+          <SmartCard className="p-6 shadow-sm space-y-6">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-base border-b border-[var(--nc-border)] pb-3">
+              {t.inputsTitle}
+            </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -397,42 +390,43 @@ export default function CalculatorView() {
           </div>
 
           {/* Dynamic Checklist Switches */}
-          <div className="space-y-3 pt-3 border-t border-[var(--nc-glass-border)]">
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-text-dim)] font-medium select-none">
+          <div className="space-y-3 pt-3 border-t border-[var(--nc-border)]">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={salaryTransfer}
                 onChange={(e) => setSalaryTransfer(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-glass-border)] bg-transparent"
+                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
               />
               <span>{t.salaryTransferLabel}</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-text-dim)] font-medium select-none">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={developerOffer}
                 onChange={(e) => setDeveloperOffer(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-glass-border)] bg-transparent"
+                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
               />
               <span>{t.developerOfferLabel}</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-text-dim)] font-medium select-none">
+            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
               <input 
                 type="checkbox" 
                 checked={hasSakani}
                 onChange={(e) => setHasSakani(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-glass-border)] bg-transparent"
+                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
               />
               <span>{t.sakaniLabel}</span>
             </label>
           </div>
-        </div>
+        </SmartCard>
+        }
+        insights={
+          /* Right Side: Results & SAMA Check Panel */
+          <div className="space-y-6">
 
-        {/* Right Side: Results & SAMA Check Panel */}
-        <div className="lg:col-span-5 space-y-6">
-          
           {/* Card 1: Main installment results */}
-          <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm text-white relative overflow-hidden flex flex-col gap-5">
+          <SmartCard className="p-6 shadow-sm relative overflow-hidden flex flex-col gap-5">
             <div className="absolute top-0 right-0 w-36 h-36 bg-[var(--nc-accent-soft)] rounded-full blur-[50px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
             
             <div className="relative z-10 flex justify-between items-start">
@@ -458,16 +452,16 @@ export default function CalculatorView() {
               </h2>
             </div>
 
-            <div className="relative z-10 border-t border-[var(--nc-glass-border)] pt-4 space-y-2 text-xs">
-              <div className="flex justify-between items-center text-[var(--nc-text-dim)] font-medium">
+            <div className="relative z-10 border-t border-[var(--nc-border)] pt-4 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-[var(--nc-foreground-muted)] font-medium">
                 <span>{t.ageTitle}:</span>
-                <span className="font-bold text-white font-en">
+                <span className="font-bold text-[var(--nc-foreground)] font-en">
                   {toArabicNumerals(ageDetails.years)} {t.ageYears}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-[var(--nc-text-dim)] font-medium">
+              <div className="flex justify-between items-center text-[var(--nc-foreground-muted)] font-medium">
                 <span>{isArabic ? "الدعم السكني المقدر:" : "Est. Sakani Support:"}:</span>
-                <span className={`font-bold font-en ${hasSakani ? 'text-[var(--nc-text-secondary)]' : 'text-[var(--nc-text-dim)] font-medium'}`}>
+                <span className={`font-bold font-en ${hasSakani ? 'text-[var(--nc-text-secondary)]' : 'text-[var(--nc-foreground-muted)] font-medium'}`}>
                   {hasSakani ? `${t.sakaniSupportActive} ${formatCurrency(monthlySakaniSupport)}` : t.sakaniSupportInactive}
                 </span>
               </div>
@@ -478,11 +472,11 @@ export default function CalculatorView() {
                 </div>
               )}
             </div>
-          </div>
+          </SmartCard>
 
           {/* Card 2: SAMA DSR limits compliance audit box */}
-          <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl p-6 shadow-sm space-y-4">
-            <h4 className="text-[var(--nc-text-primary)] font-bold text-base border-b border-[var(--nc-glass-border)] pb-3 flex items-center gap-2">
+          <SmartCard className="p-6 shadow-sm space-y-4">
+            <h4 className="text-[var(--nc-foreground)] font-bold text-base border-b border-[var(--nc-border)] pb-3 flex items-center gap-2">
               <i className="ph-bold ph-shield-check text-[var(--nc-text-secondary)]"></i>
               {t.samaComplianceTitle}
             </h4>
@@ -500,20 +494,20 @@ export default function CalculatorView() {
                 <span>{t.commitmentsCol}</span>
                 <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(existingCommitments)}</span>
               </div>
-              <div className="flex justify-between border-t border-[var(--nc-glass-border)] pt-2.5">
+              <div className="flex justify-between border-t border-[var(--nc-border)] pt-2.5">
                 <span>{t.totalCostCol}</span>
-                <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(totalPropertyCost)}</span>
+                <span className="font-bold text-[var(--nc-foreground)] font-bold font-en">{formatCurrency(totalPropertyCost)}</span>
               </div>
 
               {/* DSR Indicator progress bar */}
-              <div className="space-y-2 pt-3 border-t border-[var(--nc-glass-border)]">
+              <div className="space-y-2 pt-3 border-t border-[var(--nc-border)]">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold">{t.dsrLabel}</span>
                   <span className={`font-bold font-en text-sm ${isCompliant ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {toArabicNumerals(actualDsrPercentage.toFixed(1))}% / {toArabicNumerals(maxDsrLimit)}% ({t.samaCeiling})
                   </span>
                 </div>
-                <div className="h-2 w-full bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-full overflow-hidden">
                   <div 
                     className={`h-full rounded-full transition-all duration-500 ${
                       actualDsrPercentage > maxDsrLimit 
@@ -537,22 +531,22 @@ export default function CalculatorView() {
               <i className={`ph-bold ${isCompliant ? 'ph-check-circle' : 'ph-warning-octagon'} text-base shrink-0`}></i>
               <span>{isCompliant ? t.compliantMsg : t.nonCompliantMsg}</span>
             </div>
+          </SmartCard>
           </div>
-
-        </div>
-      </div>
+        }
+      />
 
       {/* Comparison Matrix Table */}
-      <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
-          <h3 className="text-[var(--nc-text-primary)] font-bold text-base">{t.matrixTitle}</h3>
-          <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">{t.matrixSub}</p>
+      <SmartCard className="shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.matrixTitle}</h3>
+          <p className="text-xs text-[var(--nc-foreground-muted)] font-medium mt-1">{t.matrixSub}</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)]">
+              <tr className="border-b border-[var(--nc-border)] text-[var(--nc-foreground-muted)] font-medium bg-[var(--nc-surface)]">
                 <th className="p-4 font-semibold">{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
                 <th className="p-4 font-semibold">{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
                 <th className="p-4 font-semibold">{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
@@ -560,7 +554,7 @@ export default function CalculatorView() {
                 <th className="p-4 font-semibold">{isArabic ? 'الإجراء' : 'Action'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium">
+            <tbody className="divide-y divide-[var(--nc-border)] text-[var(--nc-foreground-muted)] font-medium">
               {Object.entries(BANK_DATA).map(([key, data]) => {
                 const isActive = selectedBank === key;
                 
@@ -605,7 +599,7 @@ export default function CalculatorView() {
             </tbody>
           </table>
         </div>
-      </div>
+      </SmartCard>
 
     </div>
   );

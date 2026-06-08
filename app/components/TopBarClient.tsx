@@ -170,7 +170,7 @@ export default function TopBarClient({
             className={`h-8 px-3 rounded-lg border text-[10px] font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
                 ? 'border-white/10 bg-white/5 text-slate-300 hover:border-corporate-blue dark:hover:border-cyan-glow hover:text-corporate-blue dark:hover:text-cyan-glow' 
-                : 'border-slate-350 bg-slate-100 text-slate-700 hover:border-corporate-blue hover:text-corporate-blue'
+                : 'border-slate-350 bg-[var(--nc-surface)] text-slate-700 hover:border-corporate-blue hover:text-corporate-blue'
             }`}
           >
             🌐 {lang === 'AR' ? 'EN' : 'عربي'}
@@ -182,7 +182,7 @@ export default function TopBarClient({
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
                 ? 'border-white/10 bg-white/5 text-amber-400 hover:border-corporate-blue dark:hover:border-cyan-glow' 
-                : 'border-slate-350 bg-slate-100 text-indigo-650 hover:border-corporate-blue'
+                : 'border-slate-350 bg-[var(--nc-surface)] text-indigo-650 hover:border-corporate-blue'
             }`}
           >
             {isDark ? '☀️' : '🌙'}

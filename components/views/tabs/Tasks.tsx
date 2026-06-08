@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SmartCard } from "@/components/ui/SmartCard";
 
 type Task = {
   id: string;
@@ -114,19 +115,19 @@ export default function Tasks() {
   const completedTasks = tasks.filter(t => t.status === "COMPLETED");
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Task Creation */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">إضافة مهمة جديدة (Create Task)</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">إضافة مهمة جديدة (Create Task)</h3>
           <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">اربط العميل المحتمل *</label>
               <select
                 value={leadId}
                 onChange={(e) => setLeadId(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="">-- اختر العميل --</option>
@@ -142,7 +143,7 @@ export default function Tasks() {
                 placeholder="مثال: الاتصال لمتابعة زيارة النرجس"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               />
             </div>
@@ -153,7 +154,7 @@ export default function Tasks() {
                 placeholder="أدخل تفاصيل التذكير والمتابعة..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded p-2 text-white h-16 resize-none"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded p-2 text-[var(--nc-foreground)] h-16 resize-none"
               />
             </div>
 
@@ -163,7 +164,7 @@ export default function Tasks() {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en"
               />
             </div>
 
@@ -172,7 +173,7 @@ export default function Tasks() {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
               >
                 <option value="LOW">منخفضة</option>
                 <option value="MEDIUM">متوسطة</option>
@@ -188,14 +189,14 @@ export default function Tasks() {
               حفظ المهمة
             </button>
           </form>
-        </div>
+        </SmartCard>
 
         {/* Task Columns Grid (PENDING vs COMPLETED) */}
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Pending Tasks Column */}
-          <div className="bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] rounded-xl p-4 flex flex-col min-h-[400px]">
-            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[var(--nc-glass-border)] text-xs font-bold text-white">
+          <SmartCard className="p-4 flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[var(--nc-glass-border)] text-xs font-bold text-[var(--nc-foreground)]">
               <span>مهام معلقة (Pending)</span>
               <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full font-en">{pendingTasks.length}</span>
             </div>
@@ -204,7 +205,7 @@ export default function Tasks() {
               {pendingTasks.map(task => (
                 <div key={task.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl flex flex-col justify-between gap-2 shadow-sm">
                   <div className="text-xs space-y-1">
-                    <h4 className="text-white font-bold leading-snug">{task.title}</h4>
+                    <h4 className="text-[var(--nc-foreground)] font-bold leading-snug">{task.title}</h4>
                     {task.description && <p className="text-[var(--nc-text-dim)] font-medium">{task.description}</p>}
                     {task.lead && (
                       <p className="text-[var(--nc-text-dim)] font-medium text-xs">
@@ -214,7 +215,7 @@ export default function Tasks() {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className={`px-2 py-1 rounded font-bold ${
-                      task.priority === "HIGH" ? "bg-rose-500/10 text-rose-400" : "bg-slate-700 text-[var(--nc-text-dim)] font-medium"
+                      task.priority === "HIGH" ? "bg-rose-500/10 text-rose-400" : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium"
                     }`}>
                       {task.priority}
                     </span>
@@ -232,11 +233,11 @@ export default function Tasks() {
                 <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا يوجد مهام معلقة. أضف مهمة جديدة.</div>
               )}
             </div>
-          </div>
+          </SmartCard>
 
           {/* Completed Tasks Column */}
-          <div className="bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] rounded-xl p-4 flex flex-col min-h-[400px]">
-            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[var(--nc-glass-border)] text-xs font-bold text-white">
+          <SmartCard className="p-4 flex flex-col min-h-[400px]">
+            <div className="flex justify-between items-center pb-2 mb-4 border-b border-[var(--nc-glass-border)] text-xs font-bold text-[var(--nc-foreground)]">
               <span>مهام منجزة (Completed)</span>
               <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full font-en">{completedTasks.length}</span>
             </div>
@@ -258,7 +259,7 @@ export default function Tasks() {
                 <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">لا توجد مهام مكتملة في السجل.</div>
               )}
             </div>
-          </div>
+          </SmartCard>
 
         </div>
 

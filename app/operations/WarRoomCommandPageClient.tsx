@@ -206,7 +206,7 @@ export default function WarRoomCommandPageClient({
       {/* ⚠️ Glassmorphic Growth Warning Modal (تحذير اقتراب سعة الباقة) */}
       {showGrowthAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg p-4 animate-fade-in">
-          <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-slate-900/90 border border-slate-200/50 dark:border-white/10 max-w-md w-full p-6 space-y-6 shadow-2xl text-center" dir={dir}>
+          <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-[var(--nc-surface)] border border-slate-200/50 dark:border-white/10 max-w-md w-full p-6 space-y-6 shadow-2xl text-center" dir={dir}>
             <div className="absolute top-0 right-0 w-48 h-48 bg-corporate-blue/10 dark:bg-cyan-glow/5 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-corporate-blue/10 dark:bg-cyan-glow/5 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -219,7 +219,7 @@ export default function WarRoomCommandPageClient({
               </h3>
             </div>
 
-            <div className="bg-slate-200/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-4 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium leading-relaxed font-sans text-right" dir={dir}>
+            <div className="bg-[var(--nc-surface)] dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-4 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium leading-relaxed font-sans text-right" dir={dir}>
               <p className="text-center font-bold text-corporate-blue dark:text-cyan-glow mb-2">
                 {lang === 'AR' ? `نظام مراقبة النمو للوكيل منصور` : `Mansour Growth Intelligence Alert`}
               </p>
@@ -249,14 +249,14 @@ export default function WarRoomCommandPageClient({
                   window.history.pushState(null, '', `?tab=settings`);
                   window.dispatchEvent(new CustomEvent('popstate'));
                 }}
-                className="w-full bg-slate-200/50 dark:bg-white/5 hover:bg-slate-300/50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-350 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all border border-slate-200/50 dark:border-white/10 flex items-center justify-center gap-1.5"
+                className="w-full bg-[var(--nc-surface)] dark:bg-white/5 hover:bg-[var(--nc-surface)] dark:hover:bg-white/10 text-slate-700 dark:text-slate-350 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center transition-all border border-slate-200/50 dark:border-white/10 flex items-center justify-center gap-1.5"
               >
                 <i className="ph-bold ph-sparkle"></i>
                 <span>{lang === 'AR' ? "ترقية الباقة الشاملة ➔" : "Upgrade Entire Plan ➔"}</span>
               </button>
               <button 
                 onClick={() => setShowGrowthAlert(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-medium text-[10px] font-bold py-2 rounded-xl cursor-pointer transition-all border border-slate-200/50 dark:border-white/10"
+                className="w-full bg-[var(--nc-surface)] hover:bg-[var(--nc-surface)] dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 font-medium text-[10px] font-bold py-2 rounded-xl cursor-pointer transition-all border border-slate-200/50 dark:border-white/10"
               >
                 {lang === 'AR' ? "تجاهل التنبيه مؤقتاً" : "Dismiss Alert"}
               </button>

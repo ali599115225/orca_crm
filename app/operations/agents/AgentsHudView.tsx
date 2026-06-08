@@ -234,7 +234,7 @@ export default function AgentsHudView({
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <span className="bg-slate-200/50 dark:bg-white/5 text-amber-500 dark:text-amber-400 border border-slate-200/50 dark:border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold">
+          <span className="bg-[var(--nc-surface)] dark:bg-white/5 text-amber-500 dark:text-amber-400 border border-slate-200/50 dark:border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold">
             الباقة: {PLAN_LABELS[plan] || plan}
           </span>
           <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${isAtCap ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
@@ -270,7 +270,7 @@ export default function AgentsHudView({
               <span>السعة المستهلكة</span>
               <span className="font-bold text-slate-900 dark:text-white">{activeCount} / {maxSlots > 900000 ? "∞" : maxSlots}</span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-white/10 h-3 rounded-full overflow-hidden">
+            <div className="w-full bg-[var(--nc-surface)] dark:bg-white/10 h-3 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${isAtCap ? "bg-rose-500" : capPercentage > 70 ? "bg-amber-500" : "bg-emerald-500"}`}
                 style={{ width: `${capPercentage}%` }}
@@ -299,7 +299,7 @@ export default function AgentsHudView({
           <button
             onClick={handleAddSlot}
             disabled={loadingAdd || isAtCap}
-            className={`w-full p-3 rounded-xl text-xs font-black transition-all cursor-pointer ${isAtCap ? "bg-slate-200 dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300/50 dark:border-white/5" : "bg-corporate-blue dark:bg-cyan-glow text-white dark:text-slate-950 hover:opacity-90 shadow-md"}`}
+            className={`w-full p-3 rounded-xl text-xs font-black transition-all cursor-pointer ${isAtCap ? "bg-[var(--nc-surface)] dark:bg-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300/50 dark:border-white/5" : "bg-corporate-blue dark:bg-cyan-glow text-white dark:text-slate-950 hover:opacity-90 shadow-md"}`}
           >
             {loadingAdd ? "جاري الإضافة..." : isAtCap ? "🔒 قفل السعة مفعّل" : "+ إضافة مقعد وكيل"}
           </button>
@@ -332,7 +332,7 @@ export default function AgentsHudView({
                         </p>
                         {usage && (
                           <div className="flex items-center gap-2 mt-1">
-                            <div className="w-20 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div className="w-20 h-1.5 bg-[var(--nc-surface)] dark:bg-white/10 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${usagePct > 80 ? "bg-rose-500" : "bg-emerald-500"}`}
                                 style={{ width: `${usagePct}%` }}
@@ -346,7 +346,7 @@ export default function AgentsHudView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${slot.isActive ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-white/10"}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${slot.isActive ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-[var(--nc-surface)] dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-white/10"}`}>
                         {slot.isActive ? "نشط" : "معطل"}
                       </span>
                       {slot.isActive && (
@@ -381,8 +381,8 @@ export default function AgentsHudView({
                 <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">فحص + صيانة ذاتية + Self-Healing</p>
               </div>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${saherStatus === "IDLE" ? "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : saherStatus === "RUNNING" ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${saherStatus === "IDLE" ? "bg-slate-400 dark:bg-slate-500" : saherStatus === "RUNNING" ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${saherStatus === "IDLE" ? "bg-[var(--nc-surface)] dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : saherStatus === "RUNNING" ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${saherStatus === "IDLE" ? "bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]" : saherStatus === "RUNNING" ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
               {saherStatus === "IDLE" ? "IDLE" : saherStatus === "RUNNING" ? "يشغّل..." : "DONE"}
             </span>
           </div>
@@ -430,8 +430,8 @@ export default function AgentsHudView({
                 <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">فحص الاشتراكات + Failover Sentinel</p>
               </div>
             </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${sanadStatus === "IDLE" ? "bg-slate-200/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : sanadStatus === "RUNNING" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${sanadStatus === "IDLE" ? "bg-slate-400 dark:bg-slate-500" : sanadStatus === "RUNNING" ? "bg-emerald-400 animate-ping" : "bg-emerald-400"}`} />
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black border ${sanadStatus === "IDLE" ? "bg-[var(--nc-surface)] dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10" : sanadStatus === "RUNNING" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 animate-pulse" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${sanadStatus === "IDLE" ? "bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]" : sanadStatus === "RUNNING" ? "bg-emerald-400 animate-ping" : "bg-emerald-400"}`} />
               {sanadStatus === "IDLE" ? "IDLE" : sanadStatus === "RUNNING" ? "يشغّل..." : "DONE"}
             </span>
           </div>

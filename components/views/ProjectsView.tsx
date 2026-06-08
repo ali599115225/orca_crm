@@ -9,9 +9,10 @@ import {
   CloudUpload, ArrowRight, UserCheck, Trash2
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
-import { DateField, DateRangeField } from '../ui/DateField';
+import { DateField } from '../ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
 import LayoutContainer from '../ui/LayoutContainer';
+import PageHeader from '../ui/PageHeader';
 import { 
   getDetailedProjectsAction, 
   createProjectActionDirect, 
@@ -484,170 +485,229 @@ export default function ProjectsView() {
     p.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="nc-page nc-stack text-[var(--ds-text-primary)]" dir="rtl">
-      
-      {/* ── Layout Wrapper ── */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        
-        {/* ── Left/Main Content Column ── */}
-        <div className="flex-1 w-full space-y-6">
 
-          {/* ── View 1: Projects Catalog (Shown if no project selected) ── */}
-          {!selectedProjectId ? (
-            <div className="ds-card ds-p-xl">
-              
-              <div className="ds-card-header">
+  // KPIs
+  const kpisContent = (
+    <>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي المشاريع</p>
+            <h3 className="text-2xl font-black text-white">{projectsList.length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
+            <Building2 size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">قيد الإنشاء</p>
+            <h3 className="text-2xl font-black text-amber-400">{projectsList.filter(p => p.status === "قيد الإنشاء").length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+            <Activity size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي الوحدات</p>
+            <h3 className="text-2xl font-black text-white">{projectsList.reduce((s, p) => s + p.unitsTotal, 0)}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
+            <Landmark size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">وحدات مباعة</p>
+            <h3 className="text-2xl font-black text-emerald-400">{projectsList.reduce((s, p) => s + p.unitsSold, 0)}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+      </Card>
+    </>
+  );
+  const actionsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Search size={16} className="text-[var(--nc-text-secondary)]" />
+          البحث والتصفية
+        </h4>
+        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">ابحث عن المشاريع بالاسم أو الموقع</p>
+      </div>
+      <div className="space-y-3 flex-grow pt-2">
+        <input
+          placeholder="بحث بالمشروع أو الحي..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
+        />
+        <div className="border-t border-white/5 my-3 pt-3">
+          <Button
+            onClick={() => {
+              if (!isAllowed("CREATE_PROJECT")) {
+                alert("عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.");
+                return;
+              }
+              setActiveModal("new_project");
+            }}
+            className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            مشروع عقاري جديد
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+  const insightsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Building2 size={16} className="text-cyan-400" />
+          ملخص المشروع المحدد
+        </h4>
+        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">
+          {selectedProjectId && project ? project.name : "اختر مشروعاً لعرض ملخصه"}
+        </p>
+      </div>
+      <div className="space-y-3 flex-grow pt-2 text-xs">
+        {selectedProjectId && project ? (
+          <div className="space-y-3">
+            <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-white text-sm">{project.name}</span>
+                <span className={"px-2 py-0.5 rounded-full text-[9px] font-bold " + (project.status === "مكتمل" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30")}>{project.status}</span>
+              </div>
+              <p className="text-xs text-[var(--nc-text-dim)] flex items-center gap-1"><MapPin size={11} /> {project.location}</p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
-                  <h2 className="ds-h2">إدارة المشاريع العقارية</h2>
-                  <p className="ds-body-sm">تصفح وجدولة مراحل المشاريع المتاحة ومراقبة الوحدات</p>
+                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">الوحدات المباعة</p>
+                  <p className="font-bold text-emerald-400">{project.unitsSold} / {project.unitsTotal}</p>
                 </div>
-                
-                <div className="nc-row">
-                  <div className="relative max-w-xs">
-                    <Search className="absolute right-3 top-2.5 text-[var(--ds-text-muted)]" size={16} />
-                    <input 
-                      type="text"
-                      placeholder="بحث بالمشروع أو الحي..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="nc-glass !py-2 pr-9 pl-4 w-56"
-                      style={{ fontSize: '0.75rem', outline: 'none' }}
-                    />
-                  </div>
-                  <Button 
-                    icon={Plus}
-                    onClick={() => {
-                      if (!isAllowed('CREATE_PROJECT')) {
-                        alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء مشروع عقاري.');
-                        return;
-                      }
-                      setActiveModal('new_project');
-                    }}
-                  >
-                    مشروع جديد
-                  </Button>
+                <div>
+                  <p className="text-[10px] text-[var(--nc-text-dim)] font-medium">نسبة التشييد</p>
+                  <p className="font-bold text-[var(--nc-accent-text)]">{project.progressPercent}%</p>
                 </div>
               </div>
-
-              {/* Loading / Error / Empty States */}
-              {isLoading && (
-                <div className="ds-stack ds-row-center ds-py-xl">
-                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ds-accent)] border-t-transparent animate-spin"></div>
-                  <span className="ds-muted">جاري تحميل المشاريع من قاعدة البيانات...</span>
-                </div>
-              )}
-
-              {fetchError && !isLoading && (
-                <div className="ds-stack ds-row-center ds-py-lg">
-                  <p className="ds-body-sm ds-p-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', display: 'inline-block' }}>
-                    {fetchError}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="nc-btn nc-btn-ghost nc-btn-sm"
-                  >
-                    إعادة المحاولة
-                  </button>
-                </div>
-              )}
-
-              {!isLoading && !fetchError && filteredProjects.length === 0 && (
-                <div className="ds-py-lg ds-row-center">
-                  <span className="ds-muted">لا توجد مشاريع عقارية مسجلة حالياً.</span>
-                </div>
-              )}
-
-              {/* Projects Table Grid */}
-              {!isLoading && !fetchError && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
-                      <th className="pb-3 px-4">اسم المشروع</th>
-                      <th className="pb-3 px-4">الموقع</th>
-                      <th className="pb-3 px-4">الحالة</th>
-                      <th className="pb-3 px-4">مبيعات الوحدات</th>
-                      <th className="pb-3 px-4">تقدم التشييد</th>
-                      <th className="pb-3 px-4 text-center">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredProjects.map((p) => (
-                      <tr 
-                        key={p.id} 
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors group"
-                      >
-                        <td className="py-4 px-4 font-bold text-white text-sm">
-                          {p.name}
-                        </td>
-                        <td className="py-4 px-4 text-xs text-[#C4D8E5] font-medium">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin size={12} className="text-[#C4D8E5] font-medium" />
-                            {p.location}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            p.status === 'مكتمل' 
-                              ? 'bg-emerald-500/25 text-emerald-400' 
-                              : 'bg-amber-500/25 text-amber-400'
-                          }`}>
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-xs">
-                          <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-[#1C2B48] rounded-full h-1.5 border border-white/5">
-                              <div 
-                                className="bg-[#8EB1D1] h-1.5 rounded-full" 
-                                style={{ width: `${p.progressPercent}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-[11px] font-bold text-[#8EB1D1]">{p.progressPercent}%</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <button 
-                            onClick={async () => {
-                              setSelectedProjectId(p.id);
-                              addTelemetryEvent('project.opened', p.id, { name: p.name });
-                              try {
-                                const dbUnits = await getProjectUnitsAction(String(p.id));
-                                setProjectUnits(prev => ({
-                                  ...prev,
-                                  [p.id]: dbUnits
-                                }));
-                                addTelemetryEvent('api.units_loaded', p.id, { count: dbUnits.length });
-                              } catch (err: any) {
-                                console.error("فشل جلب وحدات المشروع من قاعدة البيانات:", err);
-                                if (!projectUnits[p.id]) {
-                                  setProjectUnits(prev => ({
-                                    ...prev,
-                                    [p.id]: initialUnits[p.id as number] || []
-                                  }));
-                                }
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1C2B48] border border-white/5 hover:bg-[#8EB1D1]/20 hover:text-[#8EB1D1] hover:border-[#8EB1D1]/30 rounded-lg text-xs font-bold transition-all"
-                          >
-                            <Eye size={13} />
-                            استعراض
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="w-full bg-[var(--nc-surface-solid)] rounded-full h-1.5 mt-1">
+                <div className="bg-[var(--nc-accent)] h-1.5 rounded-full transition-all" style={{ width: project.progressPercent + "%" }}></div>
+              </div>
             </div>
-            )}
+            <button
+              onClick={() => setSelectedProjectId(null)}
+              className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1"
+            >
+              <ArrowRight size={13} />
+              العودة لقائمة المشاريع
+            </button>
           </div>
-          ) : (
-            
-            // ─── View 2: Detailed Project View ───
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-50 pt-4">
+            <Building2 size={32} className="text-[var(--nc-text-dim)]" />
+            <p className="text-[var(--nc-text-dim)]">اختر مشروعاً من القائمة<br/>لعرض ملخصه هنا</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+  const detailsContent = (
+    <div className="space-y-6">
+      {!selectedProjectId ? (
+        <Card className="overflow-hidden border border-white/5">
+          <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
+            <h4 className="font-bold text-white">قائمة المشاريع العقارية</h4>
+            <span className="text-xs text-[var(--nc-text-dim)] font-medium">{filteredProjects.length} مشروع</span>
+          </div>
+          {isLoading && (
+            <div className="py-12 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+              <span className="text-xs text-slate-500 font-medium">جاري تحميل المشاريع...</span>
+            </div>
+          )}
+          {fetchError && !isLoading && (
+            <div className="py-8 text-center">
+              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">{fetchError}</p>
+              <button onClick={() => window.location.reload()} className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline">إعادة المحاولة</button>
+            </div>
+          )}
+          {!isLoading && !fetchError && filteredProjects.length === 0 && (
+            <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">لا توجد مشاريع عقارية مسجلة حالياً.</div>
+          )}
+          {!isLoading && !fetchError && filteredProjects.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
+                    <th className="py-3 px-4">اسم المشروع</th>
+                    <th className="py-3 px-4">الموقع</th>
+                    <th className="py-3 px-4">الحالة</th>
+                    <th className="py-3 px-4">مبيعات الوحدات</th>
+                    <th className="py-3 px-4">تقدم التشييد</th>
+                    <th className="py-3 px-4 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProjects.map((p) => (
+                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                      <td className="py-3 px-4 font-bold text-white text-xs">{p.name}</td>
+                      <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">
+                        <div className="flex items-center gap-1.5"><MapPin size={11} />{p.location}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={"px-2 py-0.5 rounded-full text-[10px] font-bold " + (p.status === "مكتمل" ? "bg-emerald-500/25 text-emerald-400" : "bg-amber-500/25 text-amber-400")}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs">
+                        <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5">
+                            <div className="bg-[var(--nc-accent)] h-1.5 rounded-full" style={{ width: p.progressPercent + "%" }}></div>
+                          </div>
+                          <span className="text-[11px] font-bold text-[var(--nc-accent-text)]">{p.progressPercent}%</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={async () => {
+                            setSelectedProjectId(p.id);
+                            addTelemetryEvent("project.opened", p.id, { name: p.name });
+                            try {
+                              const dbUnits = await getProjectUnitsAction(String(p.id));
+                              setProjectUnits(prev => ({ ...prev, [p.id]: dbUnits }));
+                              addTelemetryEvent("api.units_loaded", p.id, { count: dbUnits.length });
+                            } catch (err) {
+                              if (!projectUnits[p.id]) {
+                                setProjectUnits(prev => ({ ...prev, [p.id]: (initialUnits)[p.id] || [] }));
+                              }
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent-text)] rounded-lg text-[10px] font-bold transition-all"
+                        >
+                          <Eye size={12} />
+                          استعراض
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      ) : (
             <div className="space-y-6">
               
               {/* Return link */}
@@ -1139,188 +1199,28 @@ export default function ProjectsView() {
               </div>
 
             </div>
-          )}
-
-          {/* ── Telemetry Live Log Console ── */}
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-                <Bot size={15} />
-                قناة الأحداث والتحليلات الفورية (Telemetry Event Bus Logs)
-              </h4>
-              <button 
-                onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium border border-white/5 px-2 py-0.5 rounded"
-              >
-                مسح السجل
-              </button>
-            </div>
-            
-            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[11px] font-mono leading-relaxed">
-              {telemetryLogs.map((log) => (
-                <div key={log.id} className="p-2.5 bg-[#1C2B48]/60 rounded-xl border border-white/5 space-y-1">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
-                    <span className="text-[#C4D8E5] font-medium">{log.timestamp}</span>
-                  </div>
-                  <div className="text-[#C4D8E5] font-medium">
-                    <span className="text-cyan-400">actor:</span> {log.actorId} | 
-                    <span className="text-cyan-400"> project:</span> {log.projectId || 'N/A'}
-                  </div>
-                  <pre className="text-[10px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-1.5 rounded overflow-x-auto">
-                    {JSON.stringify(log.payload, null, 2)}
-                  </pre>
-                </div>
-              ))}
-            </div>
+      )}
+    </div>
+  );
+  return (
+    <div className="properties-page p-6 text-[var(--ds-text-primary)]" dir="rtl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">
+            العمليات
           </div>
-
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
+            إدارة المشاريع العقارية
+          </h1>
         </div>
-
-        {/* ── Sticky Right Column (Sidebar Summary Overlay) ── */}
-        <aside className="w-full lg:w-80 shrink-0 space-y-6">
-          
-          {/* Financial summary wrapper (reference accounting service) */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-4">
-            <div className="border-b border-[#A7C7E7]/20 pb-3">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Landmark size={16} className="text-[#8EB1D1]" />
-                الملخص المالي العام
-              </h4>
-              <p className="text-[10px] text-[#C4D8E5] font-medium mt-1">يعرض ملخصاً عرضياً مستخرجاً من نظام الحسابات المركزي</p>
-            </div>
-
-            {selectedProjectId ? (
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-[#C4D8E5] font-medium">إجمالي المبيعات والتعاقدات</span>
-                  <span className="font-bold text-white font-mono">{(accountingFinance[selectedProjectId]?.contractsTotal || 0).toLocaleString()} ر.س</span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-[#C4D8E5] font-medium">المدفوعات والمبالغ المحصلة</span>
-                  <span className="font-bold text-emerald-400 font-mono">{(accountingFinance[selectedProjectId]?.collected || 0).toLocaleString()} ر.س</span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-[#C4D8E5] font-medium">المطالبات والأقساط المستحقة</span>
-                  <span className="font-bold text-amber-500 font-mono">{(accountingFinance[selectedProjectId]?.outstanding || 0).toLocaleString()} ر.س</span>
-                </div>
-
-                <div className="pt-2">
-                  <button 
-                    onClick={triggerPaymentReceivedSimulation}
-                    className="w-full py-2 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
-                  >
-                    محاكاة استلام دفعة مالية (Webhook)
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-[#C4D8E5] font-medium text-center py-3">الرجاء اختيار مشروع لاستعراض تفاصيله المالية العامة.</p>
-            )}
-          </div>
-
-          {/* Quick actions box */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
-            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">إجراءات سريعة</h4>
-            <div className="flex flex-col gap-2">
-              <button 
-                onClick={() => {
-                  if (!selectedProjectId) {
-                    alert('الرجاء اختيار مشروع أولاً.');
-                    return;
-                  }
-                  if (!isAllowed('CREATE_BOOKING')) {
-                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
-                    return;
-                  }
-                  setActiveModal('new_booking');
-                }}
-                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-              >
-                <span>إنشاء حجز جديد</span>
-                <ChevronRight size={14} className="opacity-50" />
-              </button>
-
-              <button 
-                onClick={() => {
-                  if (!selectedProjectId) {
-                    alert('الرجاء اختيار مشروع أولاً.');
-                    return;
-                  }
-                  addTelemetryEvent('tour.scheduled', selectedProjectId, { 
-                    leadName: 'عميل مهتم سريع', 
-                    date: '2026-06-10', 
-                    notes: 'جولة موجهة بواسطة حجز فوري' 
-                  });
-                  alert('تمت جدولة الجولة العقارية وإدراج الحدث بنجاح.');
-                }}
-                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-              >
-                <span>جدولة جولة عقارية سريعة</span>
-                <ChevronRight size={14} className="opacity-50" />
-              </button>
-
-              <button 
-                onClick={() => {
-                  if (!selectedProjectId) {
-                    alert('الرجاء اختيار مشروع أولاً.');
-                    return;
-                  }
-                  addTelemetryEvent('handover.scheduled', selectedProjectId, { 
-                    unitNo: 'A-101', 
-                    date: '2026-07-01'
-                  });
-                  alert('تمت جدولة تسليم الوحدة وإرسال الإشعار للعميل.');
-                }}
-                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-              >
-                <span>تسجيل موعد استلام نهائي</span>
-                <ChevronRight size={14} className="opacity-50" />
-              </button>
-            </div>
-          </div>
-
-          {/* Site alerts */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
-            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
-              <Clock size={14} className="text-amber-500" />
-              تنبيهات ومواعيد موجهة
-            </h4>
-            <ul className="text-xs space-y-2 text-[#C4D8E5] font-medium">
-              <li className="flex items-start gap-1.5">
-                <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                <span>انحراف في خطة صب قواعد الهيكل للمرحلة الثانية.</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
-                <span>موعد تسليم وشيك لوحدة B-201 (١ يوليو ٢٠٢٦).</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Recent documents list */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
-            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">المستندات الأخيرة</h4>
-            <div className="space-y-2 text-xs">
-              {[
-                { id: 'doc_991', name: 'رخصة_الحفر_المعتمدة.pdf', ref: 'doc-ref-121' },
-                { id: 'doc_992', name: 'تقرير_سلامة_التربة.pdf', ref: 'doc-ref-122' }
-              ].map(doc => (
-                <div key={doc.id} className="p-2 bg-[#1C2B48]/40 rounded-lg border border-white/5 flex items-center justify-between">
-                  <div className="truncate pr-1">
-                    <p className="truncate text-slate-200 text-[11px]">{doc.name}</p>
-                    <span className="text-[9px] text-[#C4D8E5] font-medium">ID: {doc.ref}</span>
-                  </div>
-                  <FileCheck size={14} className="text-[#8EB1D1] shrink-0" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </aside>
-
       </div>
 
+      <LayoutContainer
+        kpis={kpisContent}
+        actions={actionsContent}
+        insights={insightsContent}
+        details={detailsContent}
+      >
       {/* ── Modal 1: New Project Form ── */}
       {activeModal === 'new_project' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1390,7 +1290,7 @@ export default function ProjectsView() {
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1468,7 +1368,7 @@ export default function ProjectsView() {
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1534,7 +1434,7 @@ export default function ProjectsView() {
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1609,7 +1509,7 @@ export default function ProjectsView() {
               <button 
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1659,7 +1559,7 @@ export default function ProjectsView() {
               </button>
               <button 
                 onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all"
               >
                 إلغاء
               </button>
@@ -1668,9 +1568,12 @@ export default function ProjectsView() {
         </div>
       )}
 
+      </LayoutContainer>
+
     </div>
   );
 }
+
 
 
 

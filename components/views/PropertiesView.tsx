@@ -1,5 +1,4 @@
 'use client';
-import { toast } from '@/app/context/ToastContext';
 
 import React, { useState, useTransition, useEffect } from 'react';
 import { 
@@ -9,8 +8,10 @@ import {
   CloudUpload, ArrowRight, UserCheck, Trash2, Key, Users
 } from 'lucide-react';
 import { Button, Card, Badge } from '../ui/orca-components';
-import { DateField, DateRangeField } from '../ui/DateField';
+import { DateField } from '../ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
+import LayoutContainer from '../ui/LayoutContainer';
+import PageHeader from '../ui/PageHeader';
 import { 
   getPropertiesAction, 
   createUnitActionDirect, 
@@ -468,575 +469,350 @@ export default function PropertiesView() {
     إجمالي الضرائب والعمولة (8%): ${summary.commissionTaxTotal.toLocaleString()} ر.س`);
   };
 
-  return (
-    <div className="nc-page nc-stack">
-      
-      {/* ── Date Range Filter Form (Sprint 1 DateRangeField Demo) ── */}
-      <div className="p-4 bg-[#1C2B48]/40 border border-white/5 rounded-2xl space-y-3">
-        <h4 className="text-xs font-bold text-[#C4D8E5] font-medium">تصفية الوحدات حسب تاريخ الإدراج (DateRangeField)</h4>
-        <div className="max-w-md">
-          <DateRangeField
-            fromDate={filterFromDate}
-            toDate={filterToDate}
-            onChange={(from, to) => {
-              setFilterFromDate(from);
-              setFilterToDate(to);
-              addTelemetryEvent('filter.dates_changed', { from, to });
-            }}
-            labelFrom="تاريخ الإدراج من"
-            labelTo="تاريخ الإدراج إلى"
+
+  // KPIs
+  const kpisContent = (
+    <>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي الوحدات</p>
+            <h3 className="text-2xl font-black text-white">{properties.length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
+            <Home size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المتاحة</p>
+            <h3 className="text-2xl font-black text-emerald-500">{properties.filter(p => p.status === 'Available').length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المحجوزة</p>
+            <h3 className="text-2xl font-black text-amber-500">{properties.filter(p => p.status === 'Hold').length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+            <Clock size={18} />
+          </div>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المباعة</p>
+            <h3 className="text-2xl font-black text-rose-400">{properties.filter(p => p.status === 'Sold').length}</h3>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
+            <Landmark size={18} />
+          </div>
+        </div>
+      </Card>
+    </>
+  );
+
+  // Actions
+  const actionsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Search size={16} className="text-[var(--nc-text-secondary)]" />
+          البحث والتصفية
+        </h4>
+        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">ابحث عن الوحدات السكنية عبر الفلاتر المتقدمة</p>
+      </div>
+
+      <div className="space-y-3 flex-grow pt-2">
+        <div className="flex gap-2">
+          <input 
+            placeholder="بحث برقم الوحدة أو المشروع..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]" 
           />
         </div>
-      </div>
-
-      {/* ── Layout Grid ── */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        
-        {/* ── Left Content Area ── */}
-        <div className="flex-1 w-full space-y-6">
-          
-          {/* Properties catalog card */}
-          <div className="nc-glass ds-p-xl ds-stack">
-            
-            <div className="nc-glass-header">
-              <div>
-                <h3 className="ds-h3">سجل الوحدات والعقارات (Inventory)</h3>
-                <p className="ds-body-sm">إجمالي العقود والوحدات المتاحة والمحجوزة</p>
-              </div>
-
-              <div className="nc-row">
-                <div className="relative">
-                  <Search className="absolute right-3 top-2 text-[var(--ds-text-muted)]" size={14} />
-                  <input
-                    type="text"
-                    placeholder="بحث برقم الوحدة أو المشروع..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="nc-glass !py-1.5 pr-8 pl-4 w-52"
-                    style={{ fontSize: '0.75rem', outline: 'none' }}
-                  />
-                </div>
-
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="nc-glass !py-1.5 px-3"
-                  style={{ fontSize: '0.75rem', outline: 'none' }}
-                >
-                  <option value="">كل الحالات</option>
-                  <option value="Available">متاحة</option>
-                  <option value="Hold">محجوزة مؤقتاً</option>
-                  <option value="Sold">مباعة</option>
-                </select>
-
-                <Button 
-                  icon={Plus}
-                  onClick={() => {
-                    if (!isAllowed('CREATE_UNIT')) {
-                      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
-                      return;
-                    }
-                    setActiveModal('new_unit');
-                  }}
-                >
-                  وحدة جديدة
-                </Button>
-              </div>
-            </div>
-
-            {/* Loading / Error / Empty States */}
-            {isLoading && (
-              <div className="py-12 flex flex-col items-center justify-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
-                <span className="text-xs text-[#C4D8E5] font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
-              </div>
-            )}
-
-            {fetchError && !isLoading && (
-              <div className="py-8 text-center">
-                <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
-                  {fetchError}
-                </p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
-                >
-                  إعادة المحاولة
-                </button>
-              </div>
-            )}
-
-            {!isLoading && !fetchError && filteredProperties.length === 0 && (
-              <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
-                لا توجد وحدات عقارية مسجلة حالياً.
-              </div>
-            )}
-
-            {!isLoading && !fetchError && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-right border-collapse">
-                <thead>
-                  <tr className="border-b border-[#A7C7E7]/20 text-[#C4D8E5] font-medium text-xs font-bold">
-                    <th className="pb-3 px-4">رقم الوحدة</th>
-                    <th className="pb-3 px-4">المشروع</th>
-                    <th className="pb-3 px-4">المساحة</th>
-                    <th className="pb-3 px-4">السعر المطلوب</th>
-                    <th className="pb-3 px-4">الحالة</th>
-                    <th className="pb-3 px-4 text-center">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProperties.map(u => (
-                    <tr 
-                      key={u.id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                    >
-                      <td className="py-3 px-4 font-bold text-white text-xs">{u.sku} — {u.type}</td>
-                      <td className="py-3 px-4 text-xs text-[#C4D8E5] font-medium">{u.project}</td>
-                      <td className="py-3 px-4 text-xs text-[#C4D8E5] font-medium">{u.area}</td>
-                      <td className="py-3 px-4 text-xs font-bold text-white">{u.price.toLocaleString()} ر.س</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          u.status === 'Available' 
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                            : u.status === 'Hold'
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                        }`}>
-                          {u.status === 'Available' ? 'متاحة' : u.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setSelectedUnitId(u.id);
-                            setSimulatedPrice(u.price);
-                            setPriceSimResult('');
-                            addTelemetryEvent('unit.opened', { unitId: u.id, sku: u.sku });
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#1C2B48] border border-white/5 hover:bg-[#8EB1D1]/20 hover:text-[#8EB1D1] hover:border-[#8EB1D1]/30 rounded-lg text-[10px] font-bold transition-all"
-                        >
-                          <Eye size={12} />
-                          تفاصيل
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredProperties.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-[#C4D8E5] font-medium text-xs">لا توجد وحدات عقارية متطابقة مع خيارات التصفية الحالية.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            )}
-
-          </div>
-
-          {/* Unit Detail card (only visible if selected) */}
-          {selectedUnit && (
-            <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
-              
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#A7C7E7]/20 pb-4">
-                <div>
-                  <h3 className="text-base font-black text-white">{selectedUnit.sku} — {selectedUnit.type}</h3>
-                  <p className="text-[11px] text-[#C4D8E5] font-medium mt-1">المشروع: {selectedUnit.project} | المساحة: {selectedUnit.area} | المرجع التعاقدي: {selectedUnit.contractId || 'لا يوجد'}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {selectedUnit.status === 'Available' && (
-                    <Button 
-                      onClick={() => {
-                        if (!isAllowed('BOOK_UNIT')) {
-                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
-                          return;
-                        }
-                        setBookingOfferPrice(selectedUnit.price);
-                        setActiveModal('book_unit');
-                      }}
-                    >
-                      إنشاء حجز
-                    </Button>
-                  )}
-
-                  {selectedUnit.status === 'Sold' && !selectedUnit.financialSettlementId && (
-                    <Button 
-                      variant="secondary"
-                      onClick={() => {
-                        if (!isAllowed('START_HANDOVER')) {
-                          alert('عذراً! دورك الحالي لا يمتلك الصلاحية لبدء تسليم الوحدة.');
-                          return;
-                        }
-                        setActiveModal('handover_assistant');
-                      }}
-                    >
-                      بدء تسليم الوحدة
-                    </Button>
-                  )}
-
-                  <Button 
-                    variant="secondary"
-                    onClick={() => {
-                      alert(`[UNIT MANIFEST]
-                      الـ SKU: ${selectedUnit.sku}
-                      المشروع: ${selectedUnit.project}
-                      المساحة: ${selectedUnit.area}
-                      القيمة الحالية: ${selectedUnit.price.toLocaleString()} ر.س
-                      الحالة الحالية: ${selectedUnit.status}`);
-                    }}
-                  >
-                    عرض Manifest
-                  </Button>
-                </div>
-              </div>
-
-              {/* Gallery & Description */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-xs font-bold text-[#C4D8E5] font-medium mb-2">الوصف العام والمميزات</h4>
-                  <p className="text-xs text-slate-200 leading-relaxed bg-[#1C2B48]/45 p-4 rounded-xl border border-white/5">{selectedUnit.desc}</p>
-                  
-                  <div className="mt-4 space-y-2">
-                    <h4 className="text-xs font-bold text-[#C4D8E5] font-medium">مستندات وتراخيص الوحدة المرفقة:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedUnit.docs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1C2B48] rounded-xl border border-white/5 text-[10px] text-[#C4D8E5] font-medium font-mono">
-                          <FileText size={12} className="text-[#8EB1D1]" />
-                          {doc}
-                        </div>
-                      ))}
-                      {selectedUnit.docs.length === 0 && <span className="text-[10px] text-[#C4D8E5] font-medium">لا توجد مخططات مرفوعة للوحدة حالياً.</span>}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-xs font-bold text-[#C4D8E5] font-medium mb-2">معرض صور الوحدة العقارية</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedUnit.media.map((src, idx) => (
-                      <img key={idx} src={src} alt="unit" className="w-full h-24 rounded-lg object-cover border border-white/5 hover:border-cyan-500/30 transition-colors" />
-                    ))}
-                    {selectedUnit.media.length === 0 && <div className="col-span-2 py-8 bg-[#1C2B48]/40 border border-dashed border-white/10 rounded-xl flex items-center justify-center text-[10px] text-[#C4D8E5] font-medium">لا توجد صور متوفرة.</div>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tabs Section */}
-              <div className="border-t border-[#A7C7E7]/20 pt-6">
-                
-                {/* Internal Tab Bar */}
-                <div className="flex flex-wrap gap-2 border-b border-[#A7C7E7]/20 pb-2.5 mb-4">
-                  {[
-                    { id: 'events', name: 'سجل التغييرات البصري' },
-                    { id: 'pricing', name: 'محاكاة الأسعار والخصومات' },
-                    { id: 'prediction', name: 'توقع البيع (Predictive)' },
-                    { id: 'handovers', name: 'سجلات التسليم والأعطال' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => {
-                        startTransition(() => {
-                          setActiveTab(tab.id);
-                        });
-                      }}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        activeTab === tab.id 
-                          ? 'bg-[#8EB1D1] text-white shadow-sm'
-                          : 'bg-[#1C2B48]/40 text-[#C4D8E5] font-medium hover:text-white border border-white/5'
-                      }`}
-                    >
-                      {tab.name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab Pane rendering */}
-                {isPending ? (
-                  <div className="py-8 flex flex-col items-center justify-center gap-2">
-                    <div className="w-6 h-6 rounded-full border-2 border-[#8EB1D1] border-t-transparent animate-spin"></div>
-                    <span className="text-[10px] text-[#C4D8E5] font-medium">جاري تحميل بيانات التبويب...</span>
-                  </div>
-                ) : (
-                  <div className="tab-pane-content text-xs">
-                    
-                    {/* Tab: Events */}
-                    {activeTab === 'events' && (
-                      <div className="space-y-4">
-                        <div className="border-r-2 border-[#A7C7E7]/20 pr-4 space-y-4">
-                          {selectedUnit.events.map((ev, idx) => (
-                            <div key={idx} className="relative space-y-1">
-                              {/* Bullet dot */}
-                              <div className="absolute right-[-21px] top-1.5 w-2 h-2 rounded-full bg-[#8EB1D1] border border-slate-900"></div>
-                              
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-200">{ev.type}</span>
-                                <span className="text-[10px] text-[#C4D8E5] font-medium font-mono">{ev.at}</span>
-                              </div>
-                              <p className="text-[#C4D8E5] font-medium text-[11px]">{ev.note}</p>
-                              {ev.media && ev.media.length > 0 && (
-                                <img src={ev.media[0]} className="w-24 h-16 rounded object-cover mt-2 border border-white/5" alt="event attachment" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tab: Pricing Simulator */}
-                    {activeTab === 'pricing' && (
-                      <div className="space-y-4 max-w-md bg-[#1C2B48]/40 p-4 rounded-2xl border border-white/5">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[#C4D8E5] font-medium">السعر الأساسي المطلوب:</span>
-                            <span className="font-bold text-white">{selectedUnit.price.toLocaleString()} ر.س</span>
-                          </div>
-                          
-                          <div className="space-y-1">
-                            <label className="text-[#C4D8E5] font-medium block">السعر المستهدف للمحاكاة (ر.س):</label>
-                            <input
-                              type="number"
-                              value={simulatedPrice}
-                              onChange={(e) => setSimulatedPrice(Number(e.target.value))}
-                              className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2 text-white outline-none focus:border-[#8EB1D1]"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[#C4D8E5] font-medium">
-                              <label>نسبة الخصم المعروضة:</label>
-                              <span className="font-bold text-[#8EB1D1]">{discountPercent}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="20"
-                              value={discountPercent}
-                              onChange={(e) => setDiscountPercent(Number(e.target.value))}
-                              className="w-full accent-[#8EB1D1] bg-[#1C2B48] h-2 rounded-lg"
-                            />
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handlePriceSimulation}
-                              className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white rounded-lg transition-colors font-bold"
-                            >
-                              تشغيل المحاكاة
-                            </button>
-                            {priceSimResult && (
-                              <button
-                                onClick={handleSavePriceDraft}
-                                className="px-3 py-1.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-lg transition-colors border border-white/5"
-                              >
-                                حفظ كمسودة تسعير
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {priceSimResult && (
-                          <div className="mt-3 p-3 bg-[#1C2B48]/80 border border-[#8EB1D1]/20 text-[#8EB1D1] font-medium rounded-xl text-[11px] leading-relaxed">
-                            {priceSimResult}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Tab: Prediction */}
-                    {activeTab === 'prediction' && (
-                      <div className="bg-[#1C2B48]/40 p-4 rounded-xl border border-white/5 space-y-4">
-                        <h4 className="font-bold text-white flex items-center gap-2">
-                          <Bot size={15} className="text-cyan-400" />
-                          مساعد التنبؤ الذكي (Predictive Analytics)
-                        </h4>
-                        
-                        {selectedUnit.status === 'Sold' ? (
-                          <p className="text-[#C4D8E5] font-medium">الوحدة مباعة وموثقة بالفعل، لا يمكن تنبؤ فترة بقائها.</p>
-                        ) : (
-                          <div className="space-y-2 leading-relaxed">
-                            <p>بناءً على موقع المشروع ({selectedUnit.project}) وحجم الطلب على الشقق بقيمة تقارب {selectedUnit.price.toLocaleString()} ر.س:</p>
-                            <ul className="list-disc list-inside text-[#C4D8E5] font-medium space-y-1">
-                              <li>الوقت المتوقع للبيع: <span className="font-bold text-[#8EB1D1]">45 - 60 يومًا</span></li>
-                              <li>نسبة الثقة في التحليلات: <span className="font-bold text-emerald-400">78%</span></li>
-                              <li>توصية النظام التسويقية: إطلاق حملة ممولة مستهدفة في تويتر وسناب شات تستهدف منطقة شمال الرياض.</li>
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Tab: Handovers */}
-                    {activeTab === 'handovers' && (
-                      <div className="space-y-4">
-                        <div className="space-y-3">
-                          {selectedUnit.handovers.map((h, idx) => (
-                            <div key={idx} className="bg-[#1C2B48]/40 p-4 rounded-xl border border-white/5 space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-white">معرف محضر الاستلام: {h.id}</span>
-                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[9px] font-bold">مكتمل وموقع</span>
-                              </div>
-                              <p className="text-[#C4D8E5] font-medium text-[11px]">تاريخ التسجيل: {h.scheduledAt}</p>
-                              <div className="border-t border-[#A7C7E7]/20 pt-2 text-[11px] text-[#C4D8E5] font-medium space-y-1">
-                                <p className="font-bold">قائمة فحص العيوب (Checklist):</p>
-                                <pre className="font-sans text-[11px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-2 rounded">{h.checklist}</pre>
-                              </div>
-                            </div>
-                          ))}
-                          {selectedUnit.handovers.length === 0 && (
-                            <p className="text-[#C4D8E5] font-medium text-center py-4">لم يتم تسجيل أي محاضر تسليم أو مراجعة عيوب لهذه الوحدة العقارية.</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ── Telemetry logs output ── */}
-          <div className="bg-[#1C2B48] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-3">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-                <Bot size={15} />
-                سجل تتبع الأحداث العقارية الفورية (Telemetry Event Bus Logs)
-              </h4>
-              <button 
-                onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-[#C4D8E5] font-medium hover:text-[#C4D8E5] font-medium border border-white/5 px-2 py-0.5 rounded"
-              >
-                مسح السجل
-              </button>
-            </div>
-            
-            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
-              {telemetryLogs.map((log) => (
-                <div key={log.id} className="p-2.5 bg-[#1C2B48]/60 rounded-xl border border-white/5 space-y-1">
-                  <div className="flex justify-between text-[9px]">
-                    <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
-                    <span className="text-[#C4D8E5] font-medium">{log.timestamp}</span>
-                  </div>
-                  <pre className="text-[9px] text-[#C4D8E5] font-medium bg-[#1C2B48] p-1.5 rounded overflow-x-auto">
-                    {JSON.stringify(log.payload, null, 2)}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        <div className="flex gap-2">
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
+          >
+            <option value="">كل الحالات</option>
+            <option value="Available">متاحة</option>
+            <option value="Hold">محجوزة مؤقتاً</option>
+            <option value="Sold">مباعة</option>
+          </select>
+          <select 
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
+          >
+            <option value="">كل المشاريع</option>
+            <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
+            <option value="واحة الخليج">واحة الخليج</option>
+          </select>
         </div>
 
-        {/* ── Right Column Sidebar ── */}
-        <aside className="w-full lg:w-80 shrink-0 space-y-6">
-          
-          {/* Financial summary (Referencing Accounting proxy summaries) */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-4">
-            <div className="border-b border-[#A7C7E7]/20 pb-3">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Landmark size={16} className="text-[#8EB1D1]" />
-                الملخص المالي للعقود
-              </h4>
-              <p className="text-[10px] text-[#C4D8E5] font-medium mt-1">يستعلم من خدمة الحسابات المركزية (Accounting API Summary)</p>
-            </div>
+        <div className="border-t border-white/5 my-3 pt-3">
+          <Button 
+            onClick={() => {
+              if (!isAllowed('CREATE_UNIT')) {
+                alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
+                return;
+              }
+              setActiveModal('new_unit');
+            }}
+            className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            إضافة وحدة عقارية جديدة
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
 
-            {selectedUnitId ? (
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-[#C4D8E5] font-medium">حالة البيع الحالية</span>
-                  <span className="font-bold text-white">
-                    {selectedUnit?.status === 'Sold' ? 'مباعة بالكامل' : selectedUnit?.status === 'Hold' ? 'محجوزة مؤقتاً' : 'متاحة للبيع'}
-                  </span>
-                </div>
-
-                {selectedUnit?.status === 'Sold' ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#C4D8E5] font-medium">مرجع الفواتير والتسوية</span>
-                      <span className="font-mono text-cyan-400 text-[10px]">{selectedUnit.financialSettlementId || 'قيد المعالجة'}</span>
-                    </div>
-                    <div className="pt-2">
-                      <button
-                        onClick={showFinancialSummary}
-                        className="w-full py-2 bg-[#1C2B48] border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] text-xs font-bold rounded-xl transition-all shadow-sm"
-                      >
-                        تفاصيل تسوية الإيرادات ➔
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-[#C4D8E5] font-medium leading-relaxed text-center">لا يوجد مرجع تسوية مالية بعد للوحدات المتاحة أو المحجوزة مؤقتاً.</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-[#C4D8E5] font-medium text-center py-3">الرجاء اختيار وحدة عقارية لعرض مرجعها المالي العام.</p>
-            )}
-          </div>
-
-          {/* Quick actions panel */}
-          <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-5 shadow-xl space-y-3">
-            <h4 className="text-xs font-bold text-white border-b border-[#A7C7E7]/20 pb-2">إجراءات سريعة</h4>
-            <div className="flex flex-col gap-2">
-              <button 
-                onClick={async () => {
-                  if (!selectedUnitId) {
-                    alert('الرجاء تحديد وحدة عقارية أولاً.');
-                    return;
-                  }
-                  if (!isAllowed('UPDATE_STATUS')) {
-                    alert('عذراً! دورك الحالي لا يمتلك الصلاحية لتعديل حالة الوحدات.');
-                    return;
-                  }
-                  try {
-                    const res = await updateUnitStatusAction(String(selectedUnitId), 'Hold');
-                    if (res.success && res.status) {
-                      setProperties(prev => prev.map(u => u.id === selectedUnitId ? { ...u, status: res.status as PropertyUnit['status'] } : u));
-                      addTelemetryEvent('unit.quick_hold', { unitId: selectedUnitId, sku: selectedUnit?.sku });
-                      alert('تم وضع الوحدة بحالة الحجز المؤقت (Hold) بنجاح.');
-                    } else {
-                      alert('فشل وضع الوحدة في حالة Hold بقاعدة البيانات: ' + res.error);
-                    }
-                  } catch (err: any) {
-                    alert('خطأ أثناء تحديث حالة الوحدة: ' + err.message);
-                  }
-                }}
-                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-              >
-                <span>وضع الوحدة بحالة Hold فوري</span>
-                <ChevronRight size={14} className="opacity-50" />
-              </button>
-
-              <button 
-                onClick={() => {
-                  if (!selectedUnitId) {
-                    alert('الرجاء تحديد وحدة عقارية أولاً.');
-                    return;
-                  }
-                  addTelemetryEvent('tour.quick_schedule', { unitId: selectedUnitId, sku: selectedUnit?.sku, date: '2026-06-15' });
-                  alert('تمت جدولة موعد جولة عقارية موجهة للعميل للوحدة العقارية.');
-                }}
-                className="w-full py-2 text-right px-3 text-xs bg-[#1C2B48] border border-white/5 hover:border-cyan-500/20 rounded-xl hover:text-white transition-all flex items-center justify-between"
-              >
-                <span>جدولة جولة عقارية موجهة</span>
-                <ChevronRight size={14} className="opacity-50" />
-              </button>
-            </div>
-          </div>
-
-        </aside>
-
+  // Insights (AI Predictor or Details)
+  const insightsContent = (
+    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+      <div className="border-b border-[var(--nc-glass-border)] pb-3">
+        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Bot size={16} className="text-cyan-400" />
+          تفاصيل وإجراءات الوحدة
+        </h4>
+        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">
+          {selectedUnit ? 'بيانات الوحدة المختارة للإجراء السريع' : 'يرجى تحديد وحدة لعرض الإجراءات السريعة'}
+        </p>
       </div>
 
-      {/* ── Modal 1: New Unit Form ── */}
+      <div className="space-y-4 flex-grow pt-2 text-xs">
+        {selectedUnit ? (
+          <div className="space-y-3">
+            <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-white text-sm">{selectedUnit.sku} — {selectedUnit.type}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                  selectedUnit.status === 'Available' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                  selectedUnit.status === 'Hold' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                  'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                }`}>
+                  {selectedUnit.status === 'Available' ? 'متاحة' : selectedUnit.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--nc-text-dim)]">المشروع: {selectedUnit.project} | المساحة: {selectedUnit.area}</p>
+              <p className="text-xs font-bold text-[var(--nc-accent-text)] mt-1">السعر المطلوب: {selectedUnit.price.toLocaleString()} ر.س</p>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              {selectedUnit.status === 'Available' && (
+                <button 
+                  onClick={() => {
+                    if (!isAllowed('BOOK_UNIT')) {
+                      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
+                      return;
+                    }
+                    setBookingOfferPrice(selectedUnit.price);
+                    setActiveModal('book_unit');
+                  }}
+                  className="w-full py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  إنشاء حجز فوري
+                </button>
+              )}
+              {selectedUnit.status === 'Sold' && !selectedUnit.financialSettlementId && (
+                <button 
+                  onClick={() => {
+                    if (!isAllowed('START_HANDOVER')) {
+                      alert('عذراً! دورك الحالي لا يمتلك الصلاحية لبدء تسليم الوحدة.');
+                      return;
+                    }
+                    setActiveModal('handover_assistant');
+                  }}
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  بدء تسليم الوحدة (Handover)
+                </button>
+              )}
+              {selectedUnit.status === 'Sold' && selectedUnit.financialSettlementId && (
+                <button 
+                  onClick={showFinancialSummary}
+                  className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  عرض تفاصيل الإيرادات المحدثة
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-50 pt-4">
+            <Home size={32} className="text-[var(--nc-text-dim)]" />
+            <p className="text-[var(--nc-text-dim)]">اختر وحدة من القائمة أدناه<br/>لعرض الإجراءات المتاحة لها</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  // Details
+  const detailsContent = (
+    <div className="space-y-6">
+      <Card className="overflow-hidden border border-white/5">
+        <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
+          <h4 className="font-bold text-white">قائمة الوحدات العقارية</h4>
+          <span className="text-xs text-[var(--nc-text-dim)] font-medium">{filteredProperties.length} وحدة متطابقة</span>
+        </div>
+        
+        {/* Loading / Error / Empty States */}
+        {isLoading && (
+          <div className="py-12 flex flex-col items-center justify-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+            <span className="text-xs text-slate-500 font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
+          </div>
+        )}
+
+        {fetchError && !isLoading && (
+          <div className="py-8 text-center">
+            <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
+              {fetchError}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !fetchError && filteredProperties.length === 0 && (
+          <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
+            لا توجد وحدات عقارية مسجلة حالياً.
+          </div>
+        )}
+
+        {!isLoading && !fetchError && filteredProperties.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse">
+              <thead>
+                <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
+                  <th className="py-3 px-4">رقم الوحدة</th>
+                  <th className="py-3 px-4">المشروع</th>
+                  <th className="py-3 px-4">المساحة</th>
+                  <th className="py-3 px-4">السعر المطلوب</th>
+                  <th className="py-3 px-4">الحالة</th>
+                  <th className="py-3 px-4 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProperties.map(u => (
+                  <tr 
+                    key={u.id}
+                    className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${selectedUnitId === u.id ? 'bg-[var(--nc-surface-solid)] border-l-4 border-l-[var(--nc-accent-border)]' : 'border-l-4 border-l-transparent'}`}
+                    onClick={() => {
+                      setSelectedUnitId(u.id);
+                      setSimulatedPrice(u.price);
+                      setPriceSimResult('');
+                      addTelemetryEvent('unit.opened', { unitId: u.id, sku: u.sku });
+                    }}
+                  >
+                    <td className="py-3 px-4 font-bold text-white text-xs">{u.sku} — {u.type}</td>
+                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">{u.project}</td>
+                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">{u.area}</td>
+                    <td className="py-3 px-4 text-xs font-bold text-[var(--nc-accent-text)]">{u.price.toLocaleString()} ر.س</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        u.status === 'Available' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        u.status === 'Hold' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                        'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                      }`}>
+                        {u.status === 'Available' ? 'متاحة' : u.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent-text)] rounded-lg text-[10px] font-bold transition-all"
+                      >
+                        <Eye size={12} />
+                        تحديد
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Telemetry log console */}
+      <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-3xl p-5 shadow-2xl flex flex-col space-y-3">
+        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
+            <Activity size={15} />
+            سجل الأحداث العقارية الفورية (Telemetry Logs)
+          </h4>
+          <button 
+            type="button"
+            onClick={() => setTelemetryLogs([])}
+            className="text-[10px] text-[var(--nc-text-dim)] font-medium hover:text-white border border-white/5 px-2 py-0.5 rounded"
+          >
+            مسح السجل
+          </button>
+        </div>
+        
+        <div className="max-h-40 overflow-y-auto mt-2 space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
+          {telemetryLogs.map((log) => (
+            <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-[var(--nc-text-secondary)] font-bold">[{log.type.toUpperCase()}]</span>
+                <span className="text-[var(--nc-text-dim)] font-medium">{log.timestamp}</span>
+              </div>
+              <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-1.5 rounded overflow-x-auto">
+                {JSON.stringify(log.payload, null, 2)}
+              </pre>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="properties-page p-6 text-[var(--ds-text-primary)]" dir="rtl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">
+            العمليات
+          </div>
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
+            سجل العقارات والوحدات
+          </h1>
+        </div>
+      </div>
+
+      <LayoutContainer
+        kpis={kpisContent}
+        actions={actionsContent}
+        insights={insightsContent}
+        details={detailsContent}
+      >
+
+            {/* ── Modal 1: New Unit Form ── */}
       {activeModal === 'new_unit' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleCreateUnit}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <Plus size={18} />
@@ -1129,7 +905,7 @@ export default function PropertiesView() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleCreateBooking}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <FileCheck size={18} />
@@ -1211,7 +987,7 @@ export default function PropertiesView() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
           <form 
             onSubmit={handleCompleteHandover}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
               <Key size={18} />
@@ -1272,10 +1048,7 @@ export default function PropertiesView() {
         </div>
       )}
 
+      </LayoutContainer>
     </div>
   );
 }
-
-
-
-

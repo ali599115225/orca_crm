@@ -19,9 +19,7 @@ import bcrypt from "bcryptjs";
  *   - logoutAction المحسَّن من MERGE_HEAD
  */
 export async function loginAction(formData: FormData) {
-  // ⏳ تأخير اصطناعي لمنع هجمات Brute-Force (3-5 ثوانٍ)
-  const latency = Math.floor(Math.random() * 2001) + 3000;
-  await new Promise(resolve => setTimeout(resolve, latency));
+  await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 200) + 300));
 
   try {
     const email = formData.get("email") as string;
@@ -31,7 +29,7 @@ export async function loginAction(formData: FormData) {
       throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
     }
 
-    console.log("[LOGIN ACTION DEBUG] logging in email:", email);
+    console.log("[LOGIN ACTION] login attempt:", email.trim().toLowerCase());
     // 🔍 البحث عن المستخدم عالمياً — البريد فريد على مستوى النظام بالكامل
     const user = await rawPrisma.user.findFirst({
       where: {
@@ -43,15 +41,15 @@ export async function loginAction(formData: FormData) {
       }
     });
 
-    console.log("[LOGIN ACTION DEBUG] found user:", user ? { id: user.id, email: user.email, isActive: user.isActive } : null);
-    console.log("[LOGIN ACTION DEBUG] found tenant:", user?.tenant ? { id: user.tenant.id, subdomain: user.tenant.subdomain, isActive: user.tenant.isActive } : null);
-
     if (!user || !user.tenant || !user.tenant.isActive) {
       throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");
     }
 
-    // 🔐 التحقق من كلمة المرور
-    const isPasswordCorrect = password === "123456" || await bcrypt.compare(password, user.passwordHash);
+    if (!user.passwordHash) {
+      throw new Error("بيانات الدخول غير صحيحة.");
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordCorrect) {
       throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
@@ -61,19 +59,16 @@ export async function loginAction(formData: FormData) {
     const proto = formData.get("clientProto") as string || "https";
     const isSecureConnection = proto === "https";
 
-    const isSuperAdmin = user.email === "ali.orca@outlook.sa" || user.email === "elite.orca@outlook.sa";
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isSuperAdmin = superAdminEmails.includes(user.email.toLowerCase());
 
     const cookieStore = await cookies();
 
     // 🛡️ حماية الدخول المتقاطع بين المستأجرين (Cross-Tenant Protection)
-    // يمنع مستخدم شركة A من الدخول على رابط شركة B
-    if (!isSuperAdmin) {
-      const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
-      if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
-        throw new Error(
-          `عذراً، هذا المتصفح/الجهاز مسجل ومرتبط بشركة أخرى (${deviceTenant}). يُمنع الدخول المتقاطع لحماية سرية البيانات.`
-        );
-      }
+    // إذا كان الكوكي مختلف، نسمح بالدخول ونحدّث الكوكي تلقائياً
+    const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
+    if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
+      console.log(`[LOGIN ACTION] Device tenant mismatch: ${deviceTenant} → ${user.tenant.subdomain}, updating cookie`);
     }
 
     // 🛡️ فحص النطاق العقاري ومطابقة الشركة
@@ -91,8 +86,7 @@ export async function loginAction(formData: FormData) {
       throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
     }
 
-    // ─── Platform Architect — المطور المسؤول ────────────────────────────────
-    const PLATFORM_ARCHITECT_EMAILS = ["ali.orca@outlook.sa", "elite.orca@outlook.sa"];
+    const PLATFORM_ARCHITECT_EMAILS = (process.env.PLATFORM_ARCHITECT_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isPlatformArchitect = PLATFORM_ARCHITECT_EMAILS.includes(user.email.toLowerCase());
 
     const sessionPayload = {
@@ -107,12 +101,19 @@ export async function loginAction(formData: FormData) {
     const sessionToken = await encrypt(sessionPayload);
     const isCustomDomain = host.includes("orca.az-ez.pro");
 
-    const cookieOptions: any = {
+    const cookieOptions: {
+      httpOnly: boolean;
+      secure: boolean;
+      sameSite: "lax" | "strict" | "none";
+      path: string;
+      maxAge: number;
+      domain?: string;
+    } = {
       httpOnly: true,
       secure: isSecureConnection,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 ساعة
+      maxAge: 60 * 60 * 24,
     };
 
     // مشاركة الكوكيز عبر جميع النطاقات الفرعية
@@ -151,8 +152,9 @@ export async function loginAction(formData: FormData) {
 
     return { success: true, redirectUrl };
 
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "حدث خطأ غير متوقع.";
+    return { success: false, error: message };
   }
 }
 

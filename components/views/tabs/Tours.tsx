@@ -2,6 +2,7 @@
 "use client";
 import { toast } from '@/app/context/ToastContext';
 import React, { useState, useEffect } from 'react';
+import { SmartCard } from "@/components/ui/SmartCard";
 
 type Tour = {
   id: string;
@@ -116,19 +117,19 @@ export default function Tours() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Scheduler Panel */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">حجز وتنسيق جولة عقارية (Schedule Tour)</h3>
+        <SmartCard className="p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">حجز وتنسيق جولة عقارية (Schedule Tour)</h3>
           <form onSubmit={handleCreateTour} className="space-y-4 text-xs">
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">العميل المحتمل *</label>
               <select
                 value={leadId}
                 onChange={(e) => setLeadId(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="">-- اختر العميل --</option>
@@ -144,7 +145,7 @@ export default function Tours() {
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en"
                 required
               >
               </input>
@@ -155,7 +156,7 @@ export default function Tours() {
               <select
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                 required
               >
                 <option value="مشروع النرجس السكني">مشروع النرجس السكني</option>
@@ -171,7 +172,7 @@ export default function Tours() {
                 type="number"
                 value={attendees}
                 onChange={(e) => setAttendees(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
               />
             </div>
 
@@ -181,7 +182,7 @@ export default function Tours() {
                 placeholder="أدخل ملاحظات خاصة بالزيارة..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded p-2 text-white h-16 resize-none"
+                className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded p-2 text-[var(--nc-foreground)] h-16 resize-none"
               />
             </div>
 
@@ -193,11 +194,11 @@ export default function Tours() {
               {btnLoading ? "جاري الحفظ..." : "حفظ الجولة وجدولة التذكيرات"}
             </button>
           </form>
-        </div>
+        </SmartCard>
 
         {/* Tours List Panel */}
-        <div className="lg:col-span-2 bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">الجولات العقارية المجدولة (Scheduled Tours)</h3>
+        <SmartCard className="lg:col-span-2 p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">الجولات العقارية المجدولة (Scheduled Tours)</h3>
           {loading ? (
             <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل الجولات...</div>
           ) : tours.length === 0 ? (
@@ -213,13 +214,13 @@ export default function Tours() {
                   <div key={tour.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl hover:border-[var(--nc-accent-border)]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold">{getLeadName(tour.leadId)}</span>
+                        <span className="text-[var(--nc-foreground)] font-bold">{getLeadName(tour.leadId)}</span>
                         <span className={`text-xs px-2 py-1 rounded-full font-bold ${
                           tour.status === "SCHEDULED"
                             ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
                             : tour.status === "COMPLETED"
                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-slate-500/10 text-[var(--nc-text-dim)] font-medium"
+                            : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium"
                         }`}>
                           {tour.status}
                         </span>
@@ -252,7 +253,7 @@ export default function Tours() {
               })}
             </div>
           )}
-        </div>
+        </SmartCard>
 
       </div>
     </div>

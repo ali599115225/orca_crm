@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SmartCard } from "@/components/ui/SmartCard";
 
 type Opportunity = {
   id: string;
@@ -119,20 +120,20 @@ export default function Opportunities() {
   };
 
   return (
-    <div className="tab-pane bg-[#021324] border border-[#0ea5e9]/10 p-6 rounded-2xl">
+    <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Creation Form */}
-        <div className="bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4 flex flex-col justify-between">
+        <SmartCard className="p-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-white font-bold text-sm mb-4">إنشاء فرصة صفقة جديدة (Create Opportunity)</h3>
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">إنشاء فرصة صفقة جديدة (Create Opportunity)</h3>
             <form onSubmit={handleCreateOpportunity} className="space-y-3.5 text-xs">
               <div className="flex flex-col gap-1">
                 <label className="text-[var(--nc-text-dim)] font-medium">اختر العميل المحتمل *</label>
                 <select
                   value={leadId}
                   onChange={(e) => setLeadId(e.target.value)}
-                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                   required
                 >
                   <option value="">-- اختر العميل --</option>
@@ -149,7 +150,7 @@ export default function Opportunities() {
                   placeholder="مثال: 750000"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white"
+                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"
                   required
                 />
               </div>
@@ -164,7 +165,7 @@ export default function Opportunities() {
                   onChange={(e) => setProbability(e.target.value)}
                   className="w-full accent-[var(--nc-accent)]"
                 />
-                <span className="text-left font-en font-bold text-white">{probability}%</span>
+                <span className="text-left font-en font-bold text-[var(--nc-foreground)]">{probability}%</span>
               </div>
 
               <div className="flex flex-col gap-1">
@@ -173,7 +174,7 @@ export default function Opportunities() {
                   placeholder="أدخل معرفات الوحدات مفصولة بفاصلة"
                   value={unitIds}
                   onChange={(e) => setUnitIds(e.target.value)}
-                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white animate-pulse"
+                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] animate-pulse"
                 />
               </div>
 
@@ -183,7 +184,7 @@ export default function Opportunities() {
                   type="date"
                   value={closeDate}
                   onChange={(e) => setCloseDate(e.target.value)}
-                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-white font-en"
+                  className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en"
                 />
               </div>
 
@@ -211,16 +212,16 @@ export default function Opportunities() {
             <div className="bg-indigo-950/20 border border-indigo-900/30 rounded-xl p-3.5 mt-4 text-xs space-y-2">
               <div className="flex justify-between items-center text-indigo-400 font-bold">
                 <span>سعر العرض المقترح (AI)</span>
-                <span className="font-en text-sm text-white">{aiPrice.toLocaleString()} ر.س</span>
+                <span className="font-en text-sm text-[var(--nc-foreground)]">{aiPrice.toLocaleString()} ر.س</span>
               </div>
               <p className="text-[var(--nc-text-dim)] font-medium leading-relaxed text-xs">{aiRationale}</p>
             </div>
           )}
-        </div>
+        </SmartCard>
 
         {/* Opportunities List Table */}
-        <div className="lg:col-span-2 bg-[var(--nc-surface)] border border-[#0ea5e9]/5 rounded-xl p-4">
-          <h3 className="text-white font-bold text-sm mb-4">الصفقات والفرص النشطة (Opportunities List)</h3>
+        <SmartCard className="lg:col-span-2 p-4">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">الصفقات والفرص النشطة (Opportunities List)</h3>
           {loading ? (
             <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">جاري تحميل الصفقات...</div>
           ) : opportunities.length === 0 ? (
@@ -240,7 +241,7 @@ export default function Opportunities() {
                 <tbody className="divide-y divide-slate-800/60 text-slate-200">
                   {opportunities.map((opp) => (
                     <tr key={opp.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors">
-                      <td className="py-2 px-1 font-bold text-white">{getLeadName(opp.leadId)}</td>
+                      <td className="py-2 px-1 font-bold text-[var(--nc-foreground)]">{getLeadName(opp.leadId)}</td>
                       <td className="py-2 px-1 font-en">{Number(opp.value).toLocaleString()} ر.س</td>
                       <td className="py-2 px-1 text-center">
                         <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded font-en">
@@ -259,7 +260,7 @@ export default function Opportunities() {
               </table>
             </div>
           )}
-        </div>
+        </SmartCard>
 
       </div>
     </div>

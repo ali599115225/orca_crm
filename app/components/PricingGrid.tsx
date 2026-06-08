@@ -83,7 +83,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
         <button
           onClick={() => setIsYearly(!isYearly)}
           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            theme === "dark" ? "bg-[var(--nc-bg)] ring-1 ring-white/10" : "bg-slate-200 ring-1 ring-slate-300"
+            theme === "dark" ? "bg-[var(--nc-bg)] ring-1 ring-white/10" : "bg-[var(--nc-surface)] ring-1 ring-slate-300"
           }`}
           role="switch"
           aria-checked={isYearly}
@@ -139,7 +139,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${
                     plan.isPopular 
                       ? (isCardDark ? "bg-pricing-bronze/10 text-pricing-gold-soft border-pricing-bronze/30" : "bg-pricing-bronze-soft/10 text-pricing-bronze-soft border-pricing-bronze-soft/20")
-                      : idx === 2 ? "bg-white/5 text-pricing-silver border-pricing-silver/20" : (isCardDark ? "bg-white/5 text-[var(--nc-text-dim)] font-medium border-white/10" : "bg-slate-100 text-[var(--nc-text-dim)] font-medium border-slate-300")
+                      : idx === 2 ? "bg-white/5 text-pricing-silver border-pricing-silver/20" : (isCardDark ? "bg-white/5 text-[var(--nc-text-dim)] font-medium border-white/10" : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium border-slate-300")
                   }`}>
                     {plan.badge}
                   </span>
@@ -219,7 +219,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                       ? "bg-pricing-gold-soft hover:bg-pricing-gold text-[var(--nc-text-primary)] shadow-[0_0_20px_var(--color-pricing-gold-soft)]"
                       : (isCardDark 
                           ? "bg-white/10 hover:bg-white/15 text-white border border-white/5" 
-                          : "bg-slate-100 hover:bg-slate-200 text-[var(--nc-text-primary)] border border-[var(--nc-glass-border)] shadow-sm")
+                          : "bg-[var(--nc-surface)] hover:bg-[var(--nc-surface)] text-[var(--nc-text-primary)] border border-[var(--nc-glass-border)] shadow-sm")
                   }`}
                 >
                   اختيار الباقة والتفعيل ➔
