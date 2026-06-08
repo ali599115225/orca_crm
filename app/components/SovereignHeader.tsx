@@ -163,14 +163,20 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         {/* Logout */}
         <button
           onClick={async () => {
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('token');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('token');
+              sessionStorage.removeItem('userRole');
+              sessionStorage.removeItem('token');
+            }
+
             try {
               await logoutAction();
             } catch (err) {
-              console.error(err);
-              router.push('/');
+              console.error("Logout failed:", err);
             }
+
+            router.replace('/login?logged_out=true');
           }}
           className="flex items-center justify-center w-9 h-9 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg transition-all"
           title="تسجيل الخروج"

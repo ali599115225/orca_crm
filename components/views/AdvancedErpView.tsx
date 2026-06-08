@@ -406,6 +406,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
   // Mock states for actions
   const [zatkaStatus, setZatkaStatus] = useState<"IDLE" | "PROCESSING" | "SUCCESS">("IDLE");
   const [invoiceStatusMap, setInvoiceStatusMap] = useState<Record<string, "IDLE" | "PROCESSING" | "SUCCESS">>({});
+  const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState<any | null>(null);
   const [search, setSearch] = useState("");
 
   // Unified designs on all three plans: no locks
@@ -419,12 +420,52 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
     }, 2000);
   };
 
-  const handleInvoiceCreate = (id: string) => {
+  const handleViewInvoice = (invoice: any) => {
+    setSelectedInvoiceDetail(invoice);
+  };
+
+  const handleInvoiceCreate = async (id: string) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract) {
+      showToast(isArabic ? "لم يتم العثور على العقد المطلوب." : "Contract not found.", "error");
+      return;
+    }
+
+    const estimatedDue = contract.due || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const invoiceAmount = Math.max(1000, Math.round(contract.rent / 12));
+
     setInvoiceStatusMap(prev => ({ ...prev, [id]: "PROCESSING" }));
-    setTimeout(() => {
+
+    try {
+      const response = await fetch(`/api/v1/leases/${id}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ due: estimatedDue, amount: invoiceAmount }),
+      });
+      const json = await response.json();
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || "Failed to create invoice");
+      }
+
+      const newInvoice = {
+        id: json.invoice.id,
+        client: contract.tenant,
+        value: json.invoice.amount,
+        issueDate: new Date().toISOString().split('T')[0],
+        dueDate: json.invoice.due,
+        status: json.invoice.status === 'paid' ? 'مدفوعة' : json.invoice.status === 'overdue' ? 'متأخرة' : 'قيد التحصيل',
+      };
+
+      setInvoices(prev => [newInvoice, ...prev]);
       setInvoiceStatusMap(prev => ({ ...prev, [id]: "SUCCESS" }));
       showToast(t.invoiceSuccess, "success");
-    }, 2000);
+    } catch (err: unknown) {
+      setInvoiceStatusMap(prev => ({ ...prev, [id]: "IDLE" }));
+      const message = err instanceof Error ? err.message : "Failed to issue invoice";
+      showToast(isArabic ? `فشل إصدار الفاتورة: ${message}` : `Invoice creation failed: ${message}`, "error");
+      console.error(err);
+    }
   };
 
   // Form submission handlers
@@ -1177,7 +1218,7 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                                 </td>
                                 <td className="p-4 text-center">
                                   <button 
-                                    onClick={() => showToast(`${t.actionShow} ${inv.id}`, "info")}
+                                    onClick={() => handleViewInvoice(inv)}
                                     className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--nc-text-dim)] font-medium dark:text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface)] dark:bg-[var(--nc-surface-solid)] hover:bg-[var(--nc-surface)] dark:hover:bg-slate-750 transition-all cursor-pointer border border-[var(--nc-glass-border)] dark:border-slate-700/80"
                                   >
                                     {isPaid ? t.actionShow : t.actionRemind}
@@ -1554,6 +1595,78 @@ export default function AdvancedErpView({ tenantPlan, initialTab = "ijara" }: { 
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {selectedInvoiceDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedInvoiceDetail(null)}></div>
+          <div className="relative w-full max-w-xl rounded-3xl overflow-hidden bg-white dark:bg-[#0b1220] border border-slate-200/10 shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/10">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{isArabic ? 'تفاصيل الفاتورة' : 'Invoice Details'}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{selectedInvoiceDetail.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedInvoiceDetail(null)}
+                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              >
+                اغلاق
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-300">
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{isArabic ? 'العميل' : 'Client'}</p>
+                  <p>{selectedInvoiceDetail.client}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{isArabic ? 'رقم الفاتورة' : 'Invoice ID'}</p>
+                  <p>{selectedInvoiceDetail.id}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{isArabic ? 'المبلغ' : 'Amount'}</p>
+                  <p>{formatCurrency(selectedInvoiceDetail.value)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{isArabic ? 'تاريخ الاستحقاق' : 'Due Date'}</p>
+                  <p>{selectedInvoiceDetail.dueDate}</p>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 dark:bg-[#111928] p-4 border border-slate-200/10">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-2">{isArabic ? 'حالة الفاتورة' : 'Invoice Status'}</p>
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-500 px-3 py-2 text-xs font-semibold">
+                  {selectedInvoiceDetail.status}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.open(`mailto:accounts@orca.az-ez.pro?subject=${encodeURIComponent(isArabic ? `الفاتورة ${selectedInvoiceDetail.id}` : `Invoice ${selectedInvoiceDetail.id}`)}&body=${encodeURIComponent(isArabic ? `مرحباً،
+
+هذه نسخة من الفاتورة رقم ${selectedInvoiceDetail.id} بقيمة ${formatCurrency(selectedInvoiceDetail.value)}.
+
+مع تحيات ORCA.` : `Hello,
+
+Please find attached invoice ${selectedInvoiceDetail.id} for ${formatCurrency(selectedInvoiceDetail.value)}.
+
+Regards.`)}`);
+                    }
+                  }}
+                  className="rounded-xl px-4 py-2 bg-[var(--nc-accent)] text-white text-xs font-bold hover:bg-[var(--nc-accent-hover)] transition-all"
+                >
+                  {isArabic ? 'إرسال عبر البريد' : 'Send Email'}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="rounded-xl px-4 py-2 bg-[var(--nc-surface)] dark:bg-[#151f32] text-slate-900 dark:text-white text-xs font-bold hover:bg-slate-200 transition-all"
+                >
+                  {isArabic ? 'طباعة الفاتورة' : 'Print Invoice'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

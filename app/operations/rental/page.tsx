@@ -115,6 +115,7 @@ export default function RentalPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [prefilledContractId, setPrefilledContractId] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
 
   // New Lease form state
   const [newUnit, setNewUnit] = useState('');
@@ -292,6 +293,41 @@ export default function RentalPage() {
     setNewDeposit(0);
     setActiveModal(null);
     alert('تم تسجيل العقد الجديد بنجاح!');
+  };
+
+  const handleLeaseDocumentUpload = () => {
+    if (!selectedLease) {
+      toast.error('يرجى اختيار عقد أولاً قبل رفع المستند.');
+      return;
+    }
+    if (!selectedDocumentFile) {
+      toast.error('يرجى اختيار ملف للرفع أولاً.');
+      return;
+    }
+
+    addTelemetryEvent('document.uploaded', {
+      contractId: selectedLease.id,
+      fileName: selectedDocumentFile.name,
+      fileSize: selectedDocumentFile.size,
+    });
+
+    toast.success('تم رفع مستند العقد بنجاح.');
+    setSelectedDocumentFile(null);
+  };
+
+  const handleDownloadLeaseAgreement = (leaseId: string) => {
+    const lease = leases.find(l => l.id === leaseId);
+    const content = `عقد إيجار موحد\n--------------------------------------\nرقم العقد: ${lease?.id || leaseId}\nالوحدة: ${lease?.unit || 'غير محددة'}\nالمستأجر: ${lease?.tenant || 'غير محدد'}\nتاريخ البداية: ${lease?.start || '-'}\nتاريخ الانتهاء: ${lease?.end || '-'}\nالمبلغ السنوي: ${lease?.rent?.toLocaleString() || '-'} ر.س\n\nهذه نسخة تجريبية من مسودة العقد الموحد.`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `عقد_إيجار_موحد_${leaseId}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    addTelemetryEvent('document.downloaded', { contractId: leaseId });
   };
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
@@ -1049,12 +1085,13 @@ export default function RentalPage() {
                           <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/5 flex items-center justify-between gap-4">
                             <span className="text-[11px] text-[var(--nc-text-dim)]">إضافة مستند أو ملف عقد مصدق:</span>
                             <div className="flex gap-2">
-                              <input type="file" className="text-[10px] text-[var(--nc-text-dim)]" />
+                              <input
+                            type="file"
+                            className="text-[10px] text-[var(--nc-text-dim)]"
+                            onChange={(e) => setSelectedDocumentFile(e.target.files?.[0] || null)}
+                          />
                               <button 
-                                onClick={() => {
-                                  addTelemetryEvent('document.uploaded', { contractId: selectedLease.id, docType: 'lease_agreement' });
-                                  alert('تم رفع مستند العقد بنجاح.');
-                                }}
+                                onClick={handleLeaseDocumentUpload}
                                 className="px-3 py-1 bg-[var(--nc-surface-strong)] border border-white/10 hover:bg-white/5 rounded text-[10px] text-white"
                               >
                                 رفع الملف
@@ -1064,7 +1101,12 @@ export default function RentalPage() {
 
                           <ul className="space-y-2 pr-2 list-disc list-inside">
                             <li>
-                              <a href="#" onClick={(e) => { e.preventDefault(); alert('تحميل مسودة العقد المصدق...'); }} className="text-cyan-400 hover:underline">عقد_إيجار_موحد_{selectedLease.id}.pdf</a>
+                              <button
+                                onClick={() => handleDownloadLeaseAgreement(selectedLease.id)}
+                                className="text-cyan-400 hover:underline text-left"
+                              >
+                                عقد_إيجار_موحد_{selectedLease.id}.txt
+                              </button>
                               <span className="text-[9px] text-[var(--nc-text-dim)] font-mono ml-2">(حجم: 1.2 MB)</span>
                             </li>
                           </ul>

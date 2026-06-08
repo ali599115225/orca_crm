@@ -182,6 +182,5 @@ export async function logoutAction() {
   // حذف كوكيز ربط الجهاز بالشركة
   cookieStore.delete("device_tenant_subdomain");
 
-  // إضافة ?logged_out=true لمنع الـ proxy من إعادة التوجيه فوراً للـ /operations
-  redirect("/login?logged_out=true");
+  return { success: true };
 }
