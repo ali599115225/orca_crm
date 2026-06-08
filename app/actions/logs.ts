@@ -87,12 +87,12 @@ export async function triggerMockErrorAction(errorMessage?: string) {
       "تم التقاط خطأ تجريبي في واجهة الإدارة لغرض التحقق",
       err,
       {
-        tenantId: session.tenantId || "SYSTEM",
-        subdomain: session.subdomain || "system",
-        userId: session.userId || "usr-admin",
+        tenantId: (session.tenantId as string) || "SYSTEM",
+        subdomain: (session.subdomain as string) || "system",
+        userId: (session.userId as string) || "usr-admin",
         action: "TRIGGER_SIMULATED_FAILURE",
         path: "app/actions/logs.ts",
-        triggeredBy: session.name || "Administrator"
+        triggeredBy: (session.name as string) || "Administrator"
       }
     );
     return { success: true };

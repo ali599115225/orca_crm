@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "";
     const search = searchParams.get("search") || "";
 
-    const where: any = { lease: { tenantId: session.tenantId } };
+    const where: any = { lease: { tenantId: session.tenantId as string } };
     if (leaseId) where.leaseId = leaseId;
     if (status) where.status = status;
 
@@ -78,13 +78,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "الحقول contractId, due, amount إلزامية" }, { status: 400 });
     }
 
-    const lease = await prisma.rentalLease.findFirst({ where: { id: contractId, tenantId: session.tenantId } });
+    const lease = await prisma.rentalLease.findFirst({ where: { id: contractId, tenantId: session.tenantId as string } });
     if (!lease) {
       return NextResponse.json({ success: false, error: "عقد الإيجار غير موجود" }, { status: 404 });
     }
 
     const invoice = await prisma.rentalInvoice.create({
       data: {
+        tenantId: session.tenantId as string,
         leaseId: contractId,
         dueDate: new Date(due),
         amount: parseFloat(amount),

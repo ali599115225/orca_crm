@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const projects = await prisma.project.findMany({
-      where: { tenantId: session.tenantId },
+      where: { tenantId: session.tenantId as string },
       include: {
         _count: {
           select: { leads: true }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const newProject = await prisma.project.create({
       data: {
         tenant: {
-          connect: { id: session.tenantId }
+          connect: { id: session.tenantId as string }
         },
         name,
         city,
@@ -118,7 +118,7 @@ export async function PUT(request: NextRequest) {
 
     // التحقق من ملكية المشروع للمستأجر
     const existingProject = await prisma.project.findFirst({
-      where: { id, tenantId: session.tenantId }
+      where: { id, tenantId: session.tenantId as string }
     });
 
     if (!existingProject) {
@@ -164,7 +164,7 @@ export async function DELETE(request: NextRequest) {
 
     // التحقق من ملكية المشروع للمستأجر قبل الحذف
     const existingProject = await prisma.project.findFirst({
-      where: { id, tenantId: session.tenantId }
+      where: { id, tenantId: session.tenantId as string }
     });
 
     if (!existingProject) {

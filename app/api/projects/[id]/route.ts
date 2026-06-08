@@ -33,7 +33,7 @@ export async function GET(
   try {
     const { id } = await params;
     const project = await prisma.project.findFirst({
-      where: { id, tenantId: session.tenantId },
+      where: { id, tenantId: session.tenantId as string },
       include: {
         _count: { select: { leads: true, units: true } },
         units: {
@@ -73,7 +73,7 @@ export async function PUT(
     const body = await request.json();
     const { name, city, status, unitsTotal, unitsSold, unitsBooked, minPrice, maxPrice } = body;
 
-    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId } });
+    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId as string } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا تملك صلاحية الوصول" }, { status: 404 });
     }
@@ -109,7 +109,7 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId } });
+    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId as string } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا تملك صلاحية حذفه" }, { status: 404 });
     }

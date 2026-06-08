@@ -603,7 +603,7 @@ export async function savePlatformConnectionAction(data: {
     await prisma.auditLog.create({
       data: {
         tenantId: tenant.id,
-        userId: session.userId,
+        userId: session.userId as string,
         action: "AD_PLATFORM_CONFIG_UPDATED",
         tableName: "platform_connections",
         recordId: data.platform,
@@ -673,7 +673,7 @@ export async function testPlatformConnectionAction(platform: string) {
     await prisma.auditLog.create({
       data: {
         tenantId: tenant.id,
-        userId: session.userId,
+        userId: session.userId as string,
         action: "AD_PLATFORM_CONNECTION_TESTED",
         tableName: "platform_connections",
         recordId: connection.id,
@@ -775,7 +775,7 @@ export async function leaseAgentAction(data: {
     await prisma.auditLog.create({
       data: {
         tenantId: tenant.id,
-        userId: session.userId,
+        userId: session.userId as string,
         action: "AGENT_LEASED",
         tableName: "agent_leases",
         recordId: lease.id,

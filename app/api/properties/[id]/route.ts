@@ -33,7 +33,7 @@ export async function GET(
   try {
     const { id } = await params;
     const unit = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId } },
+      where: { id, project: { tenantId: session.tenantId as string } },
       include: { project: { select: { id: true, name: true } } },
     });
 
@@ -91,7 +91,7 @@ export async function PUT(
     const body = await request.json();
 
     const existing = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId } },
+      where: { id, project: { tenantId: session.tenantId as string } },
     });
 
     if (!existing) {
@@ -143,7 +143,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const existing = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId } },
+      where: { id, project: { tenantId: session.tenantId as string } },
     });
 
     if (!existing) {

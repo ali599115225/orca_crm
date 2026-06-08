@@ -11,9 +11,9 @@ export async function getTenantAndUser(request: NextRequest) {
   try {
     const session = await getSession();
     if (session) {
-      tenantId = tenantId || session.tenantId;
-      userId = session.userId || (session as any).id || null;
-      userRole = session.role || null;
+      tenantId = tenantId || (session.tenantId as string);
+      userId = (session.userId as string) || (session as any).id || null;
+      userRole = (session.role as string) || null;
     }
   } catch (e) {}
 

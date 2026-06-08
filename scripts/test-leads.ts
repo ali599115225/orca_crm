@@ -40,6 +40,7 @@ export async function runLeadsTestSuite(tenantId: string, userId: string): Promi
     const unitNumber = "U-TEST-" + Math.floor(Math.random() * 100000);
     const unit = await prisma.unit.create({
       data: {
+        tenantId,
         projectId: project.id,
         unitNumber,
         floorPosition: 2,
@@ -203,6 +204,7 @@ export async function runLeadsTestSuite(tenantId: string, userId: string): Promi
     // Generate contract linked to the mock unit
     const contract = await prisma.contract.create({
       data: {
+        tenantId,
         unitId: unit.id,
         buyerName: "اختبار العميل التلقائي",
         buyerPhone: "+966500000099",

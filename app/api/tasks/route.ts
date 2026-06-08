@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const tasks = await prisma.task.findMany({
-      where: { tenantId: session.tenantId },
+      where: { tenantId: session.tenantId as string },
       include: {
         lead: {
           select: { firstName: true, lastName: true, phone: true }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // التحقق من صلاحية العميل ومستشاره المكلف
     const lead = await prisma.lead.findUnique({
-      where: { id: leadId, tenantId: session.tenantId },
+      where: { id: leadId, tenantId: session.tenantId as string },
       select: { assignedTo: true }
     });
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     const newTask = await prisma.task.create({
       data: {
-        tenant: { connect: { id: session.tenantId } },
+        tenant: { connect: { id: session.tenantId as string } },
         lead: { connect: { id: leadId } },
         assignedUser: { connect: { id: lead.assignedTo } },
         title,
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest) {
 
     // التحقق من ملكية المهمة للشركة
     const existingTask = await prisma.task.findFirst({
-      where: { id, tenantId: session.tenantId }
+      where: { id, tenantId: session.tenantId as string }
     });
 
     if (!existingTask) {
@@ -159,7 +159,7 @@ export async function DELETE(request: NextRequest) {
 
     // التحقق من ملكية المهمة قبل الحذف
     const existingTask = await prisma.task.findFirst({
-      where: { id, tenantId: session.tenantId }
+      where: { id, tenantId: session.tenantId as string }
     });
 
     if (!existingTask) {

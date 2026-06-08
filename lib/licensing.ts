@@ -26,7 +26,7 @@ export async function authorizeAgentAccess(agentName: string): Promise<{
   try {
     const session = await getSession();
     if (session) {
-      userId = session.userId;
+      userId = session.userId as string;
     }
 
     const tenant = await getActiveTenant();

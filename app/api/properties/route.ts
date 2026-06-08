@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "";
     const projectId = searchParams.get("projectId") || "";
 
-    const where: any = { tenantId: session.tenantId };
+    const where: any = { tenantId: session.tenantId as string };
 
     if (status) where.status = status;
     if (projectId) where.projectId = projectId;
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     const project = await prisma.project.findFirst({
-      where: { id: projectId, tenantId: session.tenantId },
+      where: { id: projectId, tenantId: session.tenantId as string },
     });
     if (!project) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا ينتمي لشركتك" }, { status: 404 });

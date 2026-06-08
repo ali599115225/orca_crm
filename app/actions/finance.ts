@@ -1,19 +1,22 @@
 'use server';
-import { prisma } from '@/lib/prisma'; // تأكد من مسار الـ Prisma Client
+import { prisma } from '@/lib/prisma';
+import { getActiveTenant } from '@/lib/tenant';
 
 export async function processPayment(invoiceId: string, amount: number, method: string) {
+  const tenant = await getActiveTenant();
   return await prisma.$transaction(async (tx) => {
     // 1. إنشاء سند القبض
     const receipt = await tx.receipt.create({
-      data: { invoiceId, amount, paymentMethod: method }
+      data: { tenantId: tenant.id, invoiceId, amount, paymentMethod: method }
     });
 
     // 2. ترحيل القيد للأستاذ العام
     await tx.generalLedger.create({
       data: {
+        tenantId: tenant.id,
         receiptId: receipt.id,
-        debit: amount, // يدخل للصندوق
-        credit: 0, // هنا ستحدد حساب الإيراد المقابل
+        debit: amount,
+        credit: 0,
         description: `تحصيل دفعة إيجار للفاتورة ${invoiceId}`
       }
     });

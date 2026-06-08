@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const leases = await prisma.rentalLease.findMany({
-      where: { tenantId: session.tenantId },
+      where: { tenantId: session.tenantId as string },
       include: { _count: { select: { invoices: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     const lease = await prisma.rentalLease.create({
       data: {
-        tenantId: session.tenantId,
+        tenantId: session.tenantId as string,
         unitName: unit,
         tenantName: tenant,
         startDate: new Date(start),
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: "معرّف العقد (id) مطلوب" }, { status: 400 });
     }
 
-    const existing = await prisma.rentalLease.findFirst({ where: { id, tenantId: session.tenantId } });
+    const existing = await prisma.rentalLease.findFirst({ where: { id, tenantId: session.tenantId as string } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "العقد غير موجود" }, { status: 404 });
     }

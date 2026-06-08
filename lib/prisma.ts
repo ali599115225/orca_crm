@@ -93,7 +93,7 @@ function createExtendedPrismaClient() {
               (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
             } else if (operation === "createMany") {
               if (Array.isArray(queryArgs.data)) {
-                queryArgs.data = queryArgs.data.map((item: Record<string, unknown>) => ({ ...item, tenantId }));
+                (queryArgs as any).data = queryArgs.data.map((item: Record<string, unknown>) => ({ ...item, tenantId }));
               }
             } else if (operation === "updateMany" || operation === "deleteMany") {
               (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
