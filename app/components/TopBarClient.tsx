@@ -167,6 +167,7 @@ export default function TopBarClient({
           {/* محول اللغة */}
           <button
             onClick={toggleLang}
+            aria-label={lang === 'AR' ? 'Switch to English' : 'التبديل إلى العربية'}
             className={`h-8 px-3 rounded-lg border text-[10px] font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
                 ? 'border-white/10 bg-white/5 text-slate-300 hover:border-corporate-blue dark:hover:border-cyan-glow hover:text-corporate-blue dark:hover:text-cyan-glow' 
@@ -179,6 +180,7 @@ export default function TopBarClient({
           {/* زر تبديل المظهر */}
           <button
             onClick={toggleTheme}
+            aria-label={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
             className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-[1.02] ${
               isDark 
                 ? 'border-white/10 bg-white/5 text-amber-400 hover:border-corporate-blue dark:hover:border-cyan-glow' 

@@ -1,39 +1,33 @@
-// app/api/v1/support/tickets/[id]/reply/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const SCRATCH_DIR = path.join(process.cwd(), 'scratch');
-const REPLIES_FILE = path.join(SCRATCH_DIR, 'ticket_replies.json');
-
-function getReplies() {
-  if (!fs.existsSync(SCRATCH_DIR)) {
-    fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(REPLIES_FILE)) {
-    fs.writeFileSync(REPLIES_FILE, JSON.stringify({}, null, 2));
-    return {};
-  }
-  try {
-    return JSON.parse(fs.readFileSync(REPLIES_FILE, 'utf-8'));
-  } catch (err) {
-    return {};
-  }
-}
-
-function saveReplies(replies: Record<string, any[]>) {
-  fs.writeFileSync(REPLIES_FILE, JSON.stringify(replies, null, 2));
-}
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const { id } = await params;
-    const allReplies = getReplies();
-    const ticketReplies = allReplies[id] || [];
-    return NextResponse.json({ success: true, data: ticketReplies });
+
+    const ticket = await prisma.ticket.findFirst({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (!ticket) {
+      return NextResponse.json({ success: false, error: 'التذكرة غير موجودة' }, { status: 404 });
+    }
+
+    const prismaAny = prisma as any;
+    const replies = await prismaAny.ticketReply.findMany({
+      where: { ticketId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return NextResponse.json({ success: true, data: replies });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -44,29 +38,37 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
-    const { message, sender } = body; // sender: 'CLIENT' or 'SUPPORT' or 'AI'
+    const { message, sender } = body;
 
     if (!message || !sender) {
       return NextResponse.json({ success: false, error: 'Message and sender are required' }, { status: 400 });
     }
 
-    const newReply = {
-      id: `reply-${Date.now()}`,
-      message,
-      sender,
-      createdAt: new Date().toISOString()
-    };
-
-    const allReplies = getReplies();
-    if (!allReplies[id]) {
-      allReplies[id] = [];
+    const ticket = await prisma.ticket.findFirst({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (!ticket) {
+      return NextResponse.json({ success: false, error: 'التذكرة غير موجودة' }, { status: 404 });
     }
-    allReplies[id].push(newReply);
-    saveReplies(allReplies);
 
-    return NextResponse.json({ success: true, data: newReply });
+    const prismaAny = prisma as any;
+    const reply = await prismaAny.ticketReply.create({
+      data: {
+        ticketId: id,
+        message,
+        sender,
+        createdByUserId: session.userId,
+      },
+    });
+
+    return NextResponse.json({ success: true, data: reply });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

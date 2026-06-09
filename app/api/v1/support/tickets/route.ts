@@ -1,13 +1,16 @@
-// app/api/v1/support/tickets/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getActiveTenant } from '@/lib/tenant';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const tenant = await getActiveTenant();
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const tickets = await prisma.ticket.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: session.tenantId },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -19,7 +22,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenant = await getActiveTenant();
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, description } = body;
 
@@ -27,30 +34,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Title and description are required' }, { status: 400 });
     }
 
-    // 1. Create ticket in db
     const ticket = await prisma.ticket.create({
       data: {
-        tenant: {
-          connect: { id: tenant.id }
-        },
+        tenantId: session.tenantId,
         title,
         description,
         status: 'OPEN',
       }
     });
 
-    // 2. Immediate assistant reply mock
-    let aiReply = "";
     const lowerDesc = description.toLowerCase();
+    let aiReply = "";
 
     if (lowerDesc.includes("باقة") || lowerDesc.includes("اشتراك") || lowerDesc.includes("دفع")) {
-      aiReply = `🤖 مرحباً بك شريكنا بـ (${tenant.companyName})، أنا مساعد الدعم الفني الذكي لمنصة أوركا. بخصوص استفسارك عن ترقيات الاشتراكات والدفع، يمكنك التوجه إلى صفحة الإعدادات وتحديد باقة الاشتراك ودفعها بـ مدى أو فيزا أو STC Pay بشكل فوري وسيتم تفعيل حسابك وصلاحيات الموظفين تلقائياً خلال ثوانٍ معدودة.`;
+      aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. بخصوص استفسارك عن ترقيات الاشتراكات والدفع، يمكنك التوجه إلى صفحة الإعدادات وتحديد باقة الاشتراك ودفعها بـ مدى أو فيزا أو STC Pay بشكل فوري وسيتم تفعيل حسابك وصلاحيات الموظفين تلقائياً خلال ثوانٍ معدودة.`;
     } else if (lowerDesc.includes("ربط") || lowerDesc.includes("نطاق") || lowerDesc.includes("دومين") || lowerDesc.includes("dns")) {
-      aiReply = `🤖 مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لربط نطاقك المخصص المشتري من Hostinger أو غيرها، يرجى التوجه إلى لوحة إدارة الـ DNS الخاصة بنطاقك وإضافة سجل CNAME يشير إلى: cname.vercel-dns.com، وبمجرد إتمام ذلك، تفضل بتحديث الإعدادات باللوحة وسيتم توجيه رابط المبيعات الخاص بك آلياً.`;
+      aiReply = `مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لربط نطاقك المخصص المشتري من Hostinger أو غيرها، يرجى التوجه إلى لوحة إدارة DNS الخاصة بنطاقك وإضافة سجل CNAME يشير إلى: cname.vercel-dns.com، وبمجرد إتمام ذلك، تفضل بتحديث الإعدادات باللوحة وسيتم توجيه رابط المبيعات الخاص بك آلياً.`;
     } else if (lowerDesc.includes("خطأ") || lowerDesc.includes("مشكلة") || lowerDesc.includes("عطل") || lowerDesc.includes("توقف")) {
-      aiReply = `⚠️ مرحباً بك، أنا مساعد الدعم الفني. تم رصد إشعار بوجود عطل محتمل بخصوص "${title}". لقد قمت بتسجيل التفاصيل وتصنيف التذكرة كأولوية حرجة، وتم إرسال تنبيه مباشر إلى رئيس فريق التطوير (المهندس علي) للتدخل البشري الفوري ومراجعة سجلات الخادم (SRE Logs) لإصلاح الخلل بأقرب وقت.`;
+      aiReply = `تم رصد إشعار بوجود عطل محتمل بخصوص "${title}". لقد قمت بتسجيل التفاصيل وتصنيف التذكرة كأولوية حرجة، وتم إرسال تنبيه مباشر إلى فريق التطوير للتدخل الفوري.`;
     } else {
-      aiReply = `🤖 مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لقد تسلمت تذكرتك بنجاح بخصوص موضوع "${title}". تفاصيل استفسارك قيد المعالجة الآن وسأقوم بتوفير إجابة تقنية مفصلة أو توجيه التذكرة للقسم المختص خلال دقائق قليلة. شكراً لاهتمامك.`;
+      aiReply = `مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لقد تسلمت تذكرتك بنجاح بخصوص موضوع "${title}". تفاصيل استفسارك قيد المعالجة الآن وسيتم توفير إجابة تقنية مفصلة خلال دقائق قليلة.`;
     }
 
     const updated = await prisma.ticket.update({
@@ -60,6 +63,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 550 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

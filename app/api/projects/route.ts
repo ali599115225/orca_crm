@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
   }
 
-  const rl = rateLimit(`projects:${session.tenantId}`);
-  if (!rl.allowed) {
+    const rl = await rateLimit(`projects:${session.tenantId}`);
+    if (!rl.allowed) {
     return NextResponse.json({ error: "طلبات كثيرة جداً. حاول لاحقاً.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
   }
 

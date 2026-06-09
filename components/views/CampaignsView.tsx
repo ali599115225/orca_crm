@@ -399,23 +399,23 @@ export default function CampaignsView({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs" dir={dir}>
+            <table className="nc-table text-xs" dir={dir}>
               <thead>
-                <tr className="border-b border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)]">
-                  <th className="py-2.5 px-4 font-bold text-right whitespace-nowrap">{t.campaign}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.spend}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.leads}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.ctr}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.cvr}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.roas}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.cpl}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.status}</th>
-                  <th className="py-2.5 px-3 font-bold whitespace-nowrap">{t.actions}</th>
+                <tr>
+                  <th className="text-right whitespace-nowrap">{t.campaign}</th>
+                  <th className="whitespace-nowrap">{t.spend}</th>
+                  <th className="whitespace-nowrap">{t.leads}</th>
+                  <th className="whitespace-nowrap">{t.ctr}</th>
+                  <th className="whitespace-nowrap">{t.cvr}</th>
+                  <th className="whitespace-nowrap">{t.roas}</th>
+                  <th className="whitespace-nowrap">{t.cpl}</th>
+                  <th className="whitespace-nowrap">{t.status}</th>
+                  <th className="whitespace-nowrap">{t.actions}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--nc-border)]">
+              <tbody>
                 {filtered.map(c => (
-                  <tr key={c.id} className="hover:bg-[var(--nc-surface)] transition-colors group">
+                  <tr key={c.id} className="nc-hover-glow group">
                     {/* Campaign Name + Platform */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">

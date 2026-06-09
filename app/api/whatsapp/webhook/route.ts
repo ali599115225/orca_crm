@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     const chatId = body.senderData.chatId;
 
     console.log(
-      `[WhatsApp→Saher] 📩 رسالة واردة | من: ${senderPhone} | ${textMessage.substring(0, 50)}...`
+      `[WhatsApp→Saher] رسالة واردة | من: مشفر | ${textMessage.substring(0, 50)}...`
     );
 
     // ─── تسليم الرسالة للوكيل ساهر للتأهيل الفوري ──────────────────
@@ -169,7 +169,7 @@ async function sendGreenAPIReply(chatId: string, message: string): Promise<void>
       const errText = await response.text();
       console.error(`[Green API] فشل الإرسال (${response.status}):`, errText);
     } else {
-      console.log(`[Green API] ✅ تم إرسال رد ساهر لـ ${chatId}`);
+      console.log(`[Green API] تم إرسال رد ساهر بنجاح`);
     }
   } catch (error: any) {
     console.error("[Green API] خطأ في الإرسال:", error.message);

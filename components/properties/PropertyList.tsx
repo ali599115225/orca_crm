@@ -382,22 +382,22 @@ export default function PropertyList({
 
         {!isLoading && !fetchError && filteredProperties.length > 0 && (
           <div className="overflow-x-auto max-h-[450px] overflow-y-auto custom-scrollbar">
-            <table className="w-full text-right border-collapse">
+            <table className="nc-table">
               <thead>
-                <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
-                  <th className="py-3 px-4">رقم الوحدة</th>
-                  <th className="py-3 px-4">المشروع</th>
-                  <th className="py-3 px-4">المساحة</th>
-                  <th className="py-3 px-4">السعر المطلوب</th>
-                  <th className="py-3 px-4">الحالة</th>
-                  <th className="py-3 px-4 text-center">إجراءات</th>
+                <tr>
+                  <th>رقم الوحدة</th>
+                  <th>المشروع</th>
+                  <th>المساحة</th>
+                  <th>السعر المطلوب</th>
+                  <th>الحالة</th>
+                  <th className="text-center">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProperties.map(u => (
                   <tr 
                     key={u.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer border-l-4 border-l-transparent"
+                    className="hover:bg-[var(--nc-accent-soft)] transition-colors cursor-pointer"
                     onClick={() => {
                       onSelectProperty(String(u.id));
                       logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });

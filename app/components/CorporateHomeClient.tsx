@@ -346,7 +346,7 @@ export default function CorporateHomeClient({ host, companyName, initialProjects
             <button onClick={toggleLang} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ch-border-light)', background: 'var(--ch-accent-soft)', color: 'var(--ch-foreground-muted)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
               🌐 {lang === 'AR' ? 'EN' : 'عربي'}
             </button>
-            <button onClick={toggleTheme} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--ch-border-light)', background: 'var(--ch-accent-soft)', color: 'var(--ch-foreground-muted)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={toggleTheme} aria-label="Toggle theme" style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--ch-border-light)', background: 'var(--ch-accent-soft)', color: 'var(--ch-foreground-muted)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               ☀
             </button>
             <a href="/login" className="btn-outline" style={{ height: 32, padding: '0 14px', borderRadius: 8, textDecoration: 'none', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center' }}>

@@ -1,13 +1,16 @@
-// app/api/v1/settings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getActiveTenant } from '@/lib/tenant';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const tenant = await getActiveTenant();
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const dbTenant = await prisma.tenant.findUnique({
-      where: { id: tenant.id },
+      where: { id: session.tenantId },
       select: {
         id: true,
         companyName: true,
@@ -18,7 +21,7 @@ export async function GET(request: NextRequest) {
         nationalAddress: true,
         whatsappConnected: true,
         extraAgents: true,
-      }
+      },
     });
 
     return NextResponse.json({ success: true, data: dbTenant });
@@ -29,18 +32,22 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const tenant = await getActiveTenant();
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { commercialRegistry, vatNumber, nationalAddress, companyName } = body;
 
     const updated = await prisma.tenant.update({
-      where: { id: tenant.id },
+      where: { id: session.tenantId },
       data: {
-        commercialRegistry: commercialRegistry !== undefined ? commercialRegistry : undefined,
-        vatNumber: vatNumber !== undefined ? vatNumber : undefined,
-        nationalAddress: nationalAddress !== undefined ? nationalAddress : undefined,
-        companyName: companyName !== undefined ? companyName : undefined,
-      }
+        ...(commercialRegistry !== undefined && { commercialRegistry }),
+        ...(vatNumber !== undefined && { vatNumber }),
+        ...(nationalAddress !== undefined && { nationalAddress }),
+        ...(companyName !== undefined && { companyName }),
+      },
     });
 
     return NextResponse.json({ success: true, data: updated });

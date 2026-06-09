@@ -1,9 +1,14 @@
-// app/api/v1/whatsapp/threads/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getMockWhatsAppChatsAction } from '@/app/actions/whatsapp';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const result = await getMockWhatsAppChatsAction();
     if (result.success) {
       return NextResponse.json({ success: true, data: result.chats });

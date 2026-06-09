@@ -1,6 +1,7 @@
-// lib/session.ts
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+
+const SESSION_DURATION = "12h";
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -10,20 +11,14 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-/**
- * تشفير البيانات وتحويلها إلى Token مشفر ينتهي بعد 24 ساعة
- */
 export async function encrypt(payload: Record<string, unknown>) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime(SESSION_DURATION)
     .sign(getJwtSecret());
 }
 
-/**
- * فك التشفير والتحقق من صحة الـ Token
- */
 export async function decrypt(input: string): Promise<Record<string, unknown> | null> {
   try {
     const { payload } = await jwtVerify(input, getJwtSecret(), {
@@ -35,9 +30,6 @@ export async function decrypt(input: string): Promise<Record<string, unknown> | 
   }
 }
 
-/**
- * جلب بيانات جلسة المستخدم الحالي في السيرفر
- */
 export async function getSession() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session_token")?.value;

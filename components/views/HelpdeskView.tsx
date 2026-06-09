@@ -306,8 +306,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               </div>
 
               <div>
-                <label className="block text-[var(--nc-foreground-muted)] font-medium text-xs font-semibold mb-2">{t.detailsLabel}</label>
+                <label htmlFor="ticket-details" className="block text-[var(--nc-foreground-muted)] font-medium text-xs font-semibold mb-2">{t.detailsLabel}</label>
                 <textarea 
+                  id="ticket-details"
                   name="description" 
                   rows={4} 
                   required 
@@ -454,7 +455,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
                 {selectedTicket.status === 'OPEN' && (
                   <form onSubmit={handleSendReply} className="flex gap-2">
+                    <label htmlFor="reply-input" className="sr-only">{t.replyPlaceholder}</label>
                     <input
+                      id="reply-input"
                       type="text"
                       value={replyInput}
                       onChange={(e) => setReplyInput(e.target.value)}

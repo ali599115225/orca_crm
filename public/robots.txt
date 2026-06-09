@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /operations/
+Disallow: /register
+Disallow: /contract/
+
+Sitemap: https://orca.az-ez.pro/sitemap.xml

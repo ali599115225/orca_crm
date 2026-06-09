@@ -1,11 +1,13 @@
-// app/api/v1/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, rawPrisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit";
 
 const jwtSecret = process.env.JWT_SECRET;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,9 +18,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
-    const rl = rateLimit(`login:${request.headers.get("x-forwarded-for") || "unknown"}`);
+    const clientIp = request.headers.get("x-forwarded-for") || "unknown";
+    const rl = await rateLimit(`login:${clientIp}`, 5, 60000, true);
     if (!rl.allowed) {
-      return NextResponse.json({ error: "طلبات تسجيل دخول كثيرة. حاول بعد 30 ثانية.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
+      return NextResponse.json({
+        error: "طلبات تسجيل دخول كثيرة. حاول بعد دقيقة.",
+        retryAfter: Math.ceil(rl.resetIn / 1000),
+      }, { status: 429 });
     }
 
     if (!email || !password) {
@@ -28,7 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🛡️ تعقيم المدخلات لمنع هجمات حقن قواعد البيانات (SQL Injection) والنصوص العابرة للمواقع (XSS)
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanPassword = String(password);
 
@@ -40,28 +45,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // البحث عن المستخدم في قاعدة البيانات
     const user = await rawPrisma.user.findUnique({
-      where: { email: cleanEmail }
+      where: { email: cleanEmail },
+      select: {
+        id: true,
+        tenantId: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        passwordHash: true,
+      },
     });
 
-    if (!user || !user.isActive) {
-      return NextResponse.json(
-        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو الحساب معطل." },
-        { status: 401 }
-      );
-    }
-
-    // التحقق من صحة كلمة المرور باستخدام تشفير Bcrypt الآمن
-    const isPasswordValid = await bcrypt.compare(cleanPassword, user.passwordHash);
-    if (!isPasswordValid) {
+    if (!user) {
       return NextResponse.json(
         { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." },
         { status: 401 }
       );
     }
 
-    // ربط مسميات الصلاحيات المطلوبة في الـ JWT (Admin, Supervisor, Broker)
+    const recentFailedAttempts = await rawPrisma.failedLoginAttempt.count({
+      where: {
+        userId: user.id,
+        createdAt: { gte: new Date(Date.now() - LOCKOUT_DURATION_MS) },
+      },
+    });
+
+    if (recentFailedAttempts >= MAX_LOGIN_ATTEMPTS) {
+      return NextResponse.json({
+        error: "تم تعطيل الحساب مؤقتاً بسبب محاولات دخول فاشلة كثيرة. حاول بعد 15 دقيقة.",
+        locked: true,
+      }, { status: 423 });
+    }
+
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو الحساب معطل." },
+        { status: 401 }
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(cleanPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      await rawPrisma.failedLoginAttempt.create({
+        data: {
+          userId: user.id,
+          ipAddress: clientIp,
+        },
+      });
+
+      await writeAuditLog({
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: "LOGIN",
+        tableName: "users",
+        recordId: user.id,
+        details: `Failed login attempt from IP: ${clientIp}`,
+      });
+
+      return NextResponse.json(
+        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." },
+        { status: 401 }
+      );
+    }
+
+    await rawPrisma.failedLoginAttempt.deleteMany({
+      where: { userId: user.id },
+    });
+
     let jwtRole = "Broker";
     if (user.role === "ADMIN") {
       jwtRole = "Admin";
@@ -71,28 +123,43 @@ export async function POST(request: NextRequest) {
       jwtRole = "Broker";
     }
 
-    // توليد الرمز المشفر الموثوق (JWT) بصلاحية ١٢ ساعة
     const token = await new SignJWT({
       user_id: user.id,
       company_id: user.tenantId,
       role: jwtRole,
+      tenantId: user.tenantId,
+      userId: user.id,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("12h")
       .sign(SECRET_KEY);
 
-    // تحديث تاريخ آخر تسجيل دخول بصورة غير معطلة للسرعة (تم تخطيه لعدم وجود الحقل في الموديل)
+    await writeAuditLog({
+      tenantId: user.tenantId,
+      userId: user.id,
+      action: "LOGIN",
+      tableName: "users",
+      recordId: user.id,
+      details: "Successful login",
+    });
 
     return NextResponse.json({
       success: true,
-      message: "تم تسجيل الدخول بنجاح وصياغة الرمز المشفر.",
-      token: token,
-      expires_in: "12 hours"
+      message: "تم تسجيل الدخول بنجاح",
+      token,
+      expires_in: "12 hours",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
     });
 
   } catch (error: any) {
-    console.error("فشل تسجيل الدخول:", error.message);
+    console.error("Login error:", error.message);
     return NextResponse.json(
       { error: "حدث خطأ داخلي أثناء معالجة عملية تسجيل الدخول." },
       { status: 500 }

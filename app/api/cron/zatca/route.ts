@@ -1,18 +1,43 @@
-import { NextResponse } from 'next/server';
+// R3 FIXED: CRON_SECRET auth + rate limit + audit logging
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { computeNextRetryAt, isExpired } from '@/lib/zatca/queue';
 import { submitReporting, submitClearance } from '@/lib/zatca/api';
+import { rateLimit } from '@/lib/rate-limit';
+import { writeAuditLog } from '@/lib/audit';
 
-export async function GET() {
+const CRON_SECRET = process.env.CRON_SECRET || '';
+
+function authorizeRequest(request: NextRequest): boolean {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const token = authHeader.substring(7);
+  return token === CRON_SECRET;
+}
+
+export async function GET(request: NextRequest) {
+  if (!authorizeRequest(request)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const rl = await rateLimit('cron:zatca', 1, 300000);
+  if (!rl.allowed) {
+    return NextResponse.json({
+      success: false,
+      error: 'Rate limited. Max 1 request per 5 minutes.',
+      retryAfter: Math.ceil(rl.resetIn / 1000),
+    }, { status: 429 });
+  }
+
   try {
     const now = new Date();
 
     const pendingItems = await prisma.zatcaQueue.findMany({
       where: {
         status: { in: ['PENDING', 'RETRYING'] },
-        AND: [
+        OR: [
           { nextRetryAt: null },
-          { OR: [{ nextRetryAt: { lte: now } }] },
+          { nextRetryAt: { lte: now } },
         ],
       },
       include: {
@@ -42,6 +67,14 @@ export async function GET() {
             data: { status: 'FAILED', lastError: 'Max retries exceeded' },
           });
           results.push({ queueId: item.id, status: 'FAILED', reason: 'max_retries_exceeded' });
+
+          await writeAuditLog({
+            tenantId: item.tenantId,
+            action: 'ZATCA_SUBMIT',
+            tableName: 'zatca_queue',
+            recordId: item.id,
+            details: 'ZATCA submission failed: max retries exceeded',
+          });
           continue;
         }
 
@@ -111,7 +144,9 @@ export async function GET() {
       success: true,
       processed: results.length,
       results,
-      pendingTotal: await prisma.zatcaQueue.count({ where: { status: { in: ['PENDING', 'RETRYING'] } } }),
+      pendingTotal: await prisma.zatcaQueue.count({
+        where: { status: { in: ['PENDING', 'RETRYING'] } },
+      }),
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

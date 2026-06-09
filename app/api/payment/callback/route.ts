@@ -1,11 +1,19 @@
-// app/api/payment/callback/route.ts
+// R2 FIXED: Session auth + replay protection + verified invoice metadata
 import { NextRequest, NextResponse } from "next/server";
-import { handleSuccessfulPaymentAction } from "@/app/actions/billingAgent"; // 1. استدعاء الوكيل سند! [1.1]
+import { handleSuccessfulPaymentAction } from "@/app/actions/billingAgent";
 import { prisma } from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/api-auth";
+import { writeAuditLog } from "@/lib/audit";
 
-const MOYASAR_SECRET_KEY = process.env.MOYASAR_SECRET_KEY || "sk_test_dummy_key_for_orca_crm_saudi";
+const MOYASAR_SECRET_KEY = process.env.MOYASAR_SECRET_KEY || "";
 
 export async function GET(request: NextRequest) {
+  const session = await authenticateRequest(request);
+  if (!session) {
+    const fallbackUrl = new URL("/login", request.url);
+    return NextResponse.redirect(fallbackUrl);
+  }
+
   const { searchParams } = new URL(request.url);
   const invoiceId = searchParams.get("id");
   const status = searchParams.get("status");
@@ -14,51 +22,25 @@ export async function GET(request: NextRequest) {
   fallbackUrl.searchParams.set("tab", "settings");
 
   if (!invoiceId || status !== "paid") {
-    fallbackUrl.searchParams.set("error", "فشلت عملية الدفع أو تم إلغاؤها من قبل المستخدم.");
+    fallbackUrl.searchParams.set("error", "فشلت عملية الدفع أو تم إلغاؤها.");
     return NextResponse.redirect(fallbackUrl);
   }
 
   try {
-    // 1. تفعيل وضع المحاكاة المحلي واستدعاء الوكيل سند لتوليد الباسورد المشفر وإرسال الـ SMS [1.1, 1.2.1, 1.2.2]
-    if (MOYASAR_SECRET_KEY.startsWith("sk_test_dummy") && invoiceId.startsWith("mock_invoice_")) {
-      const mockType = searchParams.get("mock_type");
-      const tenantId = searchParams.get("mock_tenant_id");
-
-      if (mockType === "addon") {
-        const agentCount = searchParams.get("mock_agent_count");
-        if (tenantId && agentCount) {
-          await prisma.tenant.update({
-            where: { id: tenantId },
-            data: {
-              extraAgents: {
-                increment: parseInt(agentCount, 10),
-              }
-            }
-          });
-          const successUrl = new URL("/operations", request.url);
-          successUrl.searchParams.set("tab", "settings");
-          successUrl.searchParams.set("success", `[وضع تجريبي] تم شراء عدد ${agentCount} وكلاء إضافيين بنجاح وتحديث السعة!`);
-          return NextResponse.redirect(successUrl);
-        }
-      } else {
-        const plan = searchParams.get("mock_plan");
-        if (tenantId && plan) {
-          // تفويض تفعيل الحساب وحساب المدة وإصدار الأكواد بالكامل للوكيل سند [1.1, 1.2.1]
-          await handleSuccessfulPaymentAction(tenantId, plan, "MONTHLY");
-
-          const successUrl = new URL("/operations", request.url);
-          successUrl.searchParams.set("tab", "settings");
-          successUrl.searchParams.set("success", `[وضع تجريبي] تم ترقية خطة منشأتك العقارية بنجاح وتكليف الوكيل سند!`);
-          return NextResponse.redirect(successUrl);
-        }
-      }
+    const existing = await prisma.zatcaQueue.findFirst({
+      where: { invoiceId, status: "COMPLETED" },
+    });
+    if (existing) {
+      const successUrl = new URL("/operations", request.url);
+      successUrl.searchParams.set("tab", "settings");
+      successUrl.searchParams.set("success", "تم تفعيل الاشتراك مسبقًا.");
+      return NextResponse.redirect(successUrl);
     }
 
-    // 2. التحقق الحقيقي من خوادم ميسر للإنتاج الفعلي وتفويض الوكيل سند [1.1, 1.2.1]
     const response = await fetch(`https://api.moyasar.com/v1/invoices/${invoiceId}`, {
       headers: {
-        "Authorization": `Basic ${btoa(MOYASAR_SECRET_KEY + ":")}`,
-      }
+        "Authorization": `Basic ${Buffer.from(MOYASAR_SECRET_KEY + ":").toString("base64")}`,
+      },
     });
 
     if (!response.ok) {
@@ -71,37 +53,68 @@ export async function GET(request: NextRequest) {
       const tenantId = invoice.metadata.tenantId;
       const type = invoice.metadata.type;
 
+      if (!tenantId) {
+        throw new Error("رقم المنشأة غير موجود في الفاتورة.");
+      }
+      if (tenantId !== session.tenantId) {
+        throw new Error("الفاتورة لا تخص هذه المنشأة.");
+      }
+
+      const tenantExists = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenantExists) {
+        throw new Error("المنشأة غير موجودة.");
+      }
+
       if (type === "addon") {
-        const agentCount = invoice.metadata.agentCount;
+        const agentCount = parseInt(invoice.metadata.agentCount || "0", 10);
+        if (agentCount <= 0 || agentCount > 100) {
+          throw new Error("عدد الوكلاء غير صالح.");
+        }
         await prisma.tenant.update({
           where: { id: tenantId },
-          data: {
-            extraAgents: {
-              increment: parseInt(agentCount, 10),
-            }
-          }
+          data: { extraAgents: { increment: agentCount } },
+        });
+
+        await writeAuditLog({
+          tenantId,
+          userId: session.userId,
+          action: "SUBSCRIPTION_CHANGED",
+          tableName: "tenants",
+          recordId: tenantId,
+          details: `Purchased ${agentCount} additional agents (Moyasar: ${invoiceId})`,
         });
 
         const successUrl = new URL("/operations", request.url);
         successUrl.searchParams.set("tab", "settings");
-        successUrl.searchParams.set("success", `تم شراء عدد ${agentCount} وكلاء إضافيين بنجاح وتحديث سعة النظام!`);
+        successUrl.searchParams.set("success", `تم شراء عدد ${agentCount} وكلاء إضافيين بنجاح!`);
         return NextResponse.redirect(successUrl);
       } else {
         const plan = invoice.metadata.plan;
-        // تفويض تفعيل الحساب وحساب المدة وإصدار الأكواد بالكامل للوكيل سند [1.1, 1.2.1]
+        if (!plan) throw new Error("خطة الاشتراك غير موجودة.");
         await handleSuccessfulPaymentAction(tenantId, plan, "MONTHLY");
+
+        await writeAuditLog({
+          tenantId,
+          userId: session.userId,
+          action: "SUBSCRIPTION_CHANGED",
+          tableName: "tenants",
+          recordId: tenantId,
+          details: `Plan upgraded to ${plan} (Moyasar: ${invoiceId})`,
+        });
 
         const successUrl = new URL("/operations", request.url);
         successUrl.searchParams.set("tab", "settings");
-        successUrl.searchParams.set("success", `تم ترقية خطة منشأتك العقارية بنجاح وتفعيل الوكيل سند!`);
+        successUrl.searchParams.set("success", "تم ترقية الخطة بنجاح!");
         return NextResponse.redirect(successUrl);
       }
     }
 
-  } catch (error: any) {
-    console.error("خطأ تفعيل الفاتورة والتنبيهات للوكيل سند:", error);
-  }
+    fallbackUrl.searchParams.set("error", "الفاتورة لم يتم دفعها بعد.");
+    return NextResponse.redirect(fallbackUrl);
 
-  fallbackUrl.searchParams.set("error", "حدث خطأ غير متوقع أثناء تفعيل الاشتراك.");
-  return NextResponse.redirect(fallbackUrl);
+  } catch (error: any) {
+    console.error("Payment callback error:", error);
+    fallbackUrl.searchParams.set("error", "حدث خطأ أثناء تفعيل الاشتراك.");
+    return NextResponse.redirect(fallbackUrl);
+  }
 }

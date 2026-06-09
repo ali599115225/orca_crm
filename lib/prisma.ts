@@ -1,32 +1,27 @@
-// lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { tenantContext } from "./tenant-context";
 
 function createRawPrismaClient(): PrismaClient {
-  // ─── تنظيف رابط قاعدة البيانات من channel_binding غير المدعوم في Neon Pooler
   const rawUrl = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/gi, "");
-  const sslConfig = (process.env.NODE_ENV === "production" || rawUrl.includes("neon.tech") || rawUrl.includes("sslmode=require"))
-    ? { rejectUnauthorized: false, checkServerIdentity: () => undefined }
+  const isProduction = process.env.NODE_ENV === "production" || rawUrl.includes("neon.tech") || rawUrl.includes("sslmode=require");
+
+  const sslConfig = isProduction
+    ? { rejectUnauthorized: true }
     : false;
-  
-  console.log("Prisma init - rawUrl length:", rawUrl.length, "sslConfig:", !!sslConfig);
 
   const pool = new pg.Pool({
     connectionString: rawUrl,
-    // ⏱️ timeouts لمنع التجميد في Vercel serverless + Neon cold start
-    connectionTimeoutMillis: 10000,  // أقصى 10 ثانية لإنشاء الاتصال
-    idleTimeoutMillis: 10000,        // إغلاق الاتصال غير المستخدم بعد 10 ثواني
-    max: 1,                          // حد أقصى اتصال واحد في serverless
-    // ─── SSL: مرن في التطوير، صارم ومتوافق مع Neon في الإنتاج
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000,
+    max: 1,
     ssl: sslConfig,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 
-// Singleton للعميل الخام (بدون ملحقات أو عزل تلقائي للتنفيذ الخاص)
 export const rawPrisma = global.rawPrisma ?? createRawPrismaClient();
 if (process.env.NODE_ENV !== "production") {
   global.rawPrisma = rawPrisma;
@@ -71,7 +66,7 @@ function createExtendedPrismaClient() {
             "PlatformConnection",
             "FollowupSequence",
             "AutomationWorkflow",
-            "TelemetryEvent"
+            "TelemetryEvent",
           ];
 
           const hasTenantIsolation = tenantId && modelsWithTenantId.includes(model);
@@ -105,7 +100,7 @@ function createExtendedPrismaClient() {
           const result = await query(args);
 
           const isWrite = ["create", "update", "delete", "upsert", "createMany", "updateMany", "deleteMany"].includes(operation);
-          if (isWrite && model !== "AuditLog" && tenantId) {
+          if (isWrite && model !== "AuditLog" && model !== "RateLimitEntry" && model !== "UserFavorite" && model !== "FailedLoginAttempt" && tenantId) {
             (async () => {
               try {
                 let recordId = "unknown";
@@ -117,7 +112,6 @@ function createExtendedPrismaClient() {
                   }
                 }
 
-                // نستخدم العميل الخام لتفادي التكرار اللانهائي في الميدل وير
                 await rawPrisma.auditLog.create({
                   data: {
                     tenantId,
@@ -125,9 +119,7 @@ function createExtendedPrismaClient() {
                     action: operation.toUpperCase(),
                     tableName: model,
                     recordId,
-                    details: JSON.stringify({
-                      args: args
-                    }),
+                    details: JSON.stringify({ args }),
                   },
                 });
               } catch (e) {

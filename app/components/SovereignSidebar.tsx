@@ -97,15 +97,17 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function SovereignSidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   return (
-    <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/90 backdrop-blur-xl border border-white/10 flex flex-col transition-all duration-300">
+    <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-l border-[var(--nc-glass-border)] flex flex-col transition-all duration-300">
       {/* Logo / Brand */}
-      <div className="h-16 flex items-center justify-center lg:justify-start px-5 border-b border-[var(--nc-border)] shrink-0">
-        <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase md:hidden lg:inline">
-          ORCA CRM
-        </span>
-        <span className="text-[15px] font-black text-[var(--nc-accent)] tracking-widest uppercase hidden md:inline lg:hidden">
-          O
-        </span>
+      <div className="h-16 flex items-center justify-center lg:justify-start px-5 border-b border-[var(--nc-glass-border)] shrink-0">
+        <div className="flex items-center gap-2.5">
+          <span className="w-7 h-7 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)] font-black text-sm md:hidden lg:flex">
+            O
+          </span>
+          <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase md:hidden lg:inline">
+            ORCA CRM
+          </span>
+        </div>
       </div>
 
       <Suspense

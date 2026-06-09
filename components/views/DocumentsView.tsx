@@ -221,7 +221,9 @@ export default function DocumentsView() {
             {/* Search */}
             <div className="relative w-full sm:w-44 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 flex items-center gap-1.5">
               <i className="ph ph-magnifying-glass text-[var(--nc-foreground-muted)] text-xs"></i>
+              <label htmlFor="doc-search" className="sr-only">{isArabic ? 'ابحث باسم الملف' : 'Search files'}</label>
               <input
+                id="doc-search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -233,12 +235,14 @@ export default function DocumentsView() {
             <button
               onClick={() => setViewMode('grid')}
               className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'grid' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
+              aria-label="عرض شبكي"
             >
               <i className="ph ph-squares-four"></i>
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'list' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
+              aria-label="عرض قائمة"
             >
               <i className="ph ph-list"></i>
             </button>
@@ -271,6 +275,7 @@ export default function DocumentsView() {
                     <button
                       onClick={() => handleDelete(doc.id)}
                       className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/10 text-rose-500 rounded transition-opacity"
+                      aria-label="حذف المستند"
                     >
                       <i className="ph ph-trash"></i>
                     </button>
@@ -336,6 +341,7 @@ export default function DocumentsView() {
                   <button
                     onClick={() => handleDelete(doc.id)}
                     className="p-2 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors"
+                    aria-label="حذف المستند"
                   >
                     <i className="ph ph-trash"></i>
                   </button>

@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', i
 };
 
 export const Card: React.FC<{children: React.ReactNode, className?: string}> = ({ children, className = "" }) => (
-  <div className={`nc-glass ${className}`}>
+  <div className={`nc-card-default ${className}`}>
     {children}
   </div>
 );

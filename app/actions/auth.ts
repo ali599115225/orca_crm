@@ -15,7 +15,7 @@ import { rateLimit } from "@/lib/rate-limit";
  */
 export async function loginAction(formData: FormData) {
   const email = (formData.get("email") as string || "").trim().toLowerCase();
-  const rl = rateLimit(`login:${email}`, 5, 60000);
+  const rl = await rateLimit(`login:${email}`, 5, 60000);
   if (!rl.allowed) {
     return { success: false, error: "محاولات دخول كثيرة جداً. الرجاء الانتظار دقيقة." };
   }

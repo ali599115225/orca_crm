@@ -1,38 +1,27 @@
-// app/api/v1/agents/[id]/logs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const mockLogs = [
-      {
-        id: 'log-1',
-        agentId: id,
-        action: 'فحص التزام العقد ومراجعة هوية العميل عبر منصة إيجار',
-        result: { status: 'SUCCESS', details: 'تأكيد صحة البيانات بنسبة 100%' },
-        createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'log-2',
-        agentId: id,
-        action: 'أتمتة الفوترة الدورية للدفعة الثانية لمشروع فلل النرجس',
-        result: { status: 'SUCCESS', invoiceId: 'inv-89213' },
-        createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-      },
-      {
-        id: 'log-3',
-        agentId: id,
-        action: 'الرد التلقائي على استفسار تمويل العميل أبو فهد عبر واتساب',
-        result: { status: 'SUCCESS', leadId: 'lead-982' },
-        createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-      }
-    ];
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
 
-    return NextResponse.json({ success: true, agentId: id, data: mockLogs });
+    const { id } = await params;
+
+    const logs = await prisma.agentTelemetryLog.findMany({
+      where: { agentId: id, tenantId: session.tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return NextResponse.json({ success: true, agentId: id, data: logs });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 550 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

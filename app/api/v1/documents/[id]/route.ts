@@ -1,40 +1,29 @@
-// app/api/v1/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const SCRATCH_DIR = path.join(process.cwd(), 'scratch');
-const DOCUMENTS_FILE = path.join(SCRATCH_DIR, 'documents.json');
-
-function getDocuments() {
-  if (!fs.existsSync(DOCUMENTS_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(DOCUMENTS_FILE, 'utf-8'));
-  } catch (err) {
-    return [];
-  }
-}
-
-function saveDocuments(docs: any[]) {
-  fs.writeFileSync(DOCUMENTS_FILE, JSON.stringify(docs, null, 2));
-}
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const docs = getDocuments();
-    const initialLength = docs.length;
-    const filtered = docs.filter((d: any) => d.id !== id);
-
-    if (filtered.length === initialLength) {
-      return NextResponse.json({ success: false, error: 'Document not found' }, { status: 444 });
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
-    saveDocuments(filtered);
-    return NextResponse.json({ success: true, message: 'Document deleted successfully' });
+    const { id } = await params;
+
+    const prismaAny = prisma as any;
+    const doc = await prismaAny.document.findFirst({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (!doc) {
+      return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
+    }
+
+    await prismaAny.document.delete({ where: { id } });
+    return NextResponse.json({ success: true, message: 'تم حذف الملف' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

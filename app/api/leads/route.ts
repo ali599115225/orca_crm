@@ -1,11 +1,15 @@
-﻿import { NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/api-auth";
 
-const demo = [
-  { id: 1, name: "أحمد السبيعي", source: "إعلان مدفوع", status: "مهتم", lastContact: "قبل 3 أيام", phone: "050-1234567" },
-  { id: 2, name: "سارة العتيبي", source: "واتساب", status: "جديد", lastContact: "اليوم", phone: "055-9876543" },
-  { id: 3, name: "محمد القحطاني", source: "موقع إلكتروني", status: "محتمل قوي", lastContact: "أمس", phone: "053-5555555" },
-];
-
-export async function GET() {
-  return NextResponse.json(demo);
+export async function GET(request: NextRequest) {
+  try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: "غير مصرح بالوصول" }, { status: 401 });
+    }
+    return NextResponse.json({ success: true, data: [] });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }

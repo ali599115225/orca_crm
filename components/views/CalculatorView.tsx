@@ -544,17 +544,17 @@ export default function CalculatorView() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-right border-collapse text-sm">
+          <table className="nc-table text-sm">
             <thead>
-              <tr className="border-b border-[var(--nc-border)] text-[var(--nc-foreground-muted)] font-medium bg-[var(--nc-surface)]">
-                <th className="p-4 font-semibold">{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
-                <th className="p-4 font-semibold">{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
-                <th className="p-4 font-semibold">{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
-                <th className="p-4 font-semibold">{t.netMonthlyInstallmentLabel}</th>
-                <th className="p-4 font-semibold">{isArabic ? 'الإجراء' : 'Action'}</th>
+              <tr>
+                <th>{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
+                <th>{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
+                <th>{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
+                <th>{t.netMonthlyInstallmentLabel}</th>
+                <th>{isArabic ? 'الإجراء' : 'Action'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--nc-border)] text-[var(--nc-foreground-muted)] font-medium">
+            <tbody>
               {Object.entries(BANK_DATA).map(([key, data]) => {
                 const isActive = selectedBank === key;
                 
@@ -571,20 +571,18 @@ export default function CalculatorView() {
                   <tr 
                     key={key} 
                     onClick={() => setSelectedBank(key)}
-                    className={`hover:bg-[var(--nc-accent-hover)]/5 transition-colors cursor-pointer ${
-                      isActive ? 'bg-[var(--nc-accent-soft)]' : ''
-                    }`}
+                    className={`nc-hover-glow cursor-pointer ${isActive ? 'nc-row-selected' : ''}`}
                   >
-                    <td className="p-4 font-bold text-[var(--nc-text-primary)] font-bold flex items-center gap-2">
+                    <td className="font-bold text-[var(--nc-text-primary)] flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[var(--nc-accent)]' : 'bg-transparent'}`}></div>
                       {data.name}
                     </td>
-                    <td className="p-4 font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
-                    <td className="p-4 text-xs max-w-xs truncate" title={isArabic ? data.promo : data.promoEn}>
+                    <td className="font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
+                    <td className="text-xs max-w-xs truncate" title={isArabic ? data.promo : data.promoEn}>
                       {isArabic ? data.promo : data.promoEn}
                     </td>
-                    <td className="p-4 font-en font-black text-sm text-[var(--nc-text-secondary)]">{formatCurrency(bNetInstallment)}</td>
-                    <td className="p-4">
+                    <td className="font-en font-black text-sm text-[var(--nc-text-primary)]">{formatCurrency(bNetInstallment)}</td>
+                    <td className="nc-cell-actions">
                       <span className={`text-xs font-bold transition-all px-3 py-1.5 rounded-lg border ${
                         isActive 
                           ? 'bg-[var(--nc-accent)] text-[#1C2B48] border-transparent' 

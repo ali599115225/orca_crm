@@ -13,16 +13,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, icon
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-transparent border-none w-full">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className="w-10 h-10 rounded-xl bg-[var(--color-coral-soft)] text-[var(--color-coral)] flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] flex items-center justify-center shrink-0">
             <Icon size={20} />
           </div>
         )}
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+          <h1 className="nc-heading-1">
             {title}
           </h1>
           {description && (
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5 font-medium">
+            <p className="text-[var(--nc-text-secondary)] text-sm mt-0.5 font-medium">
               {description}
             </p>
           )}

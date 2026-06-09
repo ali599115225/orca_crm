@@ -583,50 +583,54 @@ export default function RentalPage() {
   // ── KPIs ─────────────────────────────────────────────────────────────────
   const kpisContent = (
     <>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">المستحقات المفوترة</p>
-            <h3 className="text-2xl font-black text-white">{totalReceivables.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
+      <div className="nc-card-elevated p-5">
+        <div className="flex items-start mb-3">
+          <div className="flex-1">
+            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">المستحقات المفوترة</p>
+            <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">{totalReceivables.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
             <FileText size={18} />
           </div>
         </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">متأخرات السداد</p>
-            <h3 className="text-2xl font-black text-rose-400">{totalOverdue.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
+        <p className="text-[9px] text-[var(--nc-text-dim)]">إجمالي الفواتير الصادرة</p>
+      </div>
+      <div className="nc-card-elevated p-5">
+        <div className="flex items-start mb-3">
+          <div className="flex-1">
+            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">متأخرات السداد</p>
+            <h3 className="nc-metric-lg font-black text-rose-400">{totalOverdue.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
           <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
             <AlertCircle size={18} />
           </div>
         </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">محصل هذا الشهر</p>
-            <h3 className="text-2xl font-black text-emerald-400">{collectedThisMonth.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
+        <p className="text-[9px] text-[var(--nc-text-dim)]">مستحقات تجاوزت تاريخ الاستحقاق</p>
+      </div>
+      <div className="nc-card-elevated p-5">
+        <div className="flex items-start mb-3">
+          <div className="flex-1">
+            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">محصل هذا الشهر</p>
+            <h3 className="nc-metric-lg font-black text-emerald-400">{collectedThisMonth.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
             <CheckCircle2 size={18} />
           </div>
         </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">تسويات معلقة</p>
-            <h3 className="text-2xl font-black text-cyan-400">{pendingSettlementsCount}</h3>
+        <p className="text-[9px] text-[var(--nc-text-dim)]">إجمالي التحصيلات خلال الشهر الحالي</p>
+      </div>
+      <div className="nc-card-elevated p-5">
+        <div className="flex items-start mb-3">
+          <div className="flex-1">
+            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">تسويات معلقة</p>
+            <h3 className="nc-metric-lg font-black text-cyan-400">{pendingSettlementsCount}</h3>
           </div>
           <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
             <Landmark size={18} />
           </div>
         </div>
-      </Card>
+        <p className="text-[9px] text-[var(--nc-text-dim)]">تسويات مالية غير مؤكدة بعد</p>
+      </div>
     </>
   );
 

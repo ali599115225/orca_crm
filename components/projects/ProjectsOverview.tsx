@@ -275,20 +275,20 @@ export default function ProjectsOverview({
 
         {!isLoading && filteredProjects.length > 0 && (
           <div className="overflow-x-auto max-h-[450px] overflow-y-auto custom-scrollbar">
-            <table className="w-full text-right border-collapse">
+            <table className="nc-table">
               <thead>
-                <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
-                  <th className="py-3 px-4">اسم المشروع</th>
-                  <th className="py-3 px-4">الموقع</th>
-                  <th className="py-3 px-4">الحالة</th>
-                  <th className="py-3 px-4">مبيعات الوحدات</th>
-                  <th className="py-3 px-4">تقدم التشييد</th>
-                  <th className="py-3 px-4 text-center">إجراءات</th>
+                <tr>
+                  <th>اسم المشروع</th>
+                  <th>الموقع</th>
+                  <th>الحالة</th>
+                  <th>مبيعات الوحدات</th>
+                  <th>تقدم التشييد</th>
+                  <th className="text-center">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProjects.map((p) => (
-                  <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                  <tr key={p.id} className="hover:bg-[var(--nc-accent-soft)] transition-colors group">
                     <td className="py-3 px-4 font-bold text-white text-xs">{p.name}</td>
                     <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">
                       <div className="flex items-center gap-1.5"><MapPin size={11} />{p.location}</div>

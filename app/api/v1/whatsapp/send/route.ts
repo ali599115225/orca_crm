@@ -1,9 +1,14 @@
-// app/api/v1/whatsapp/send/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sendMockWhatsAppMessageAction } from '@/app/actions/whatsapp';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { chatId, message } = body;
 
@@ -13,8 +18,8 @@ export async function POST(request: NextRequest) {
 
     const result = await sendMockWhatsAppMessageAction(chatId, message);
     if (result.success) {
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         data: {
           clientMessage: result.clientMessage,
           agentMessage: result.agentMessage

@@ -1,30 +1,34 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
 
-// GET /api/v1/leases/:id - Retrieve details for a specific lease contract
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  
-  // Return simulated detail payload
-  return NextResponse.json({
-    success: true,
-    lease: {
-      id,
-      unit: 'A-101',
-      tenant: 'محمد العلي',
-      start: '2026-01-01',
-      end: '2026-12-31',
-      rent: 12000,
-      currency: 'SAR',
-      status: 'active',
-      deposit: 3000,
-      financialRef: 'FS-3001',
-      invoices: [
-        { id: 'INV-9001', due: '2026-06-14', amount: 12000, status: 'unpaid' },
-        { id: 'INV-9002', due: '2026-05-01', amount: 12000, status: 'paid' }
-      ]
+  try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
     }
-  });
+
+    const { id } = await params;
+
+    const lease = await prisma.rentalLease.findFirst({
+      where: { id, tenantId: session.tenantId },
+      include: {
+        invoices: {
+          orderBy: { dueDate: 'asc' },
+        },
+      },
+    });
+
+    if (!lease) {
+      return NextResponse.json({ success: false, error: 'عقد الإيجار غير موجود' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: lease });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }

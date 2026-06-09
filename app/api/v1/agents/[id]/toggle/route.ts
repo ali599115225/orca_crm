@@ -1,14 +1,17 @@
-// app/api/v1/agents/[id]/toggle/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-memory store (shared via module scope — في الإنتاج استخدم DB)
-const overrides: Record<string, boolean> = {};
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { isActive } = body;
@@ -20,9 +23,17 @@ export async function POST(
       );
     }
 
-    overrides[id] = isActive;
+    const agent = await prisma.agentSlot.findFirst({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (!agent) {
+      return NextResponse.json({ success: false, error: 'الوكيل غير موجود' }, { status: 404 });
+    }
 
-    console.log(`[agents/${id}/toggle] isActive → ${isActive}`);
+    await prisma.agentSlot.update({
+      where: { id },
+      data: { isActive },
+    });
 
     return NextResponse.json({
       success: true,
@@ -30,9 +41,7 @@ export async function POST(
       isActive,
       message: isActive ? 'تم تفعيل الوكيل بنجاح.' : 'تم إيقاف الوكيل.',
     });
-
   } catch (err) {
-    console.error('[agents/toggle] error:', err);
     return NextResponse.json({ success: false, error: 'خطأ داخلي.' }, { status: 500 });
   }
 }

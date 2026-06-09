@@ -8,6 +8,11 @@ import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import {
+  postCommissionEntry,
+  findAccountByCode,
+  seedChartOfAccounts,
+} from "@/lib/accounting";
 
 // ===================================================
 // 📋 واجهة بيانات العقد العقاري
@@ -260,14 +265,43 @@ export async function markCommissionPaidAction(commissionId: string) {
     if (!session) throw new Error("يجب تسجيل الدخول.");
 
     const tenant = await getActiveTenant();
+    await seedChartOfAccounts(tenant.id);
 
-    await prisma.payrollCommission.update({
+    const commission = await prisma.payrollCommission.findFirst({
       where: { id: commissionId, tenantId: tenant.id },
-      data: { status: "PAID" },
     });
+    if (!commission) throw new Error("العمولة غير موجودة");
 
-    revalidatePath("/operations/sales");
-    return { success: true };
+    return await prisma.$transaction(async (tx) => {
+      await tx.payrollCommission.update({
+        where: { id: commissionId },
+        data: { status: "PAID" },
+      });
+
+      const payment = await tx.commissionPayment.create({
+        data: {
+          commissionId,
+          tenantId: tenant.id,
+          amount: commission.amount,
+          method: "BANK_TRANSFER",
+          status: "PAID",
+        },
+      });
+
+      const expenseAccount = await findAccountByCode(tenant.id, "5.1");
+      const cashAccount = await findAccountByCode(tenant.id, "1.1.1");
+      if (expenseAccount && cashAccount) {
+        await postCommissionEntry(
+          tenant.id,
+          commissionId,
+          Number(commission.amount),
+          expenseAccount.id,
+          cashAccount.id
+        );
+      }
+
+      return payment;
+    });
   } catch (error: any) {
     return { success: false, error: error.message };
   }

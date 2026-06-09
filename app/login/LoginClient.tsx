@@ -230,7 +230,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
             <span className={isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}>
               {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
             </span>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
               <div className={`w-4 h-4 rounded-full bg-corporate-blue dark:bg-cyan-glow absolute shadow-md transition-all duration-300 ease-in-out ${isDarkMode ? 'right-7' : 'right-1'}`}></div>
             </button>
           </div>
@@ -315,12 +315,12 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-corporate-blue/10 dark:bg-cyan-glow/10 flex items-center justify-center border border-corporate-blue/30 dark:border-cyan-glow/30 text-corporate-blue dark:text-cyan-glow font-bold">A</div>
                   <div>
-                    <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                       {lang === 'AR' ? 'مساعد ORCA الذكي' : 'ORCA Smart Assistant'}
-                    </h3>
+                    </p>
                   </div>
                 </div>
-                <button onClick={() => setIsChatOpen(false)} className={`p-1 font-bold focus:outline-none ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>X</button>
+                <button onClick={() => setIsChatOpen(false)} aria-label={lang === 'AR' ? 'إغلاق المحادثة' : 'Close chat'} className={`p-1 font-bold focus:outline-none ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>X</button>
               </div>
 
               <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-4">
@@ -339,8 +339,9 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
               <div className={`p-4 border-t ${isDarkMode ? 'border-slate-700/50 bg-void/80' : 'border-slate-200 bg-slate-50'}`}>
                 <form onSubmit={handleChatSubmit} className="relative flex items-center">
-                  <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} className={`w-full rounded-full pl-12 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-sm transition-colors ${isDarkMode ? 'bg-void text-white border-slate-700' : 'bg-white text-slate-900 border-slate-350'}`} placeholder={lang === 'AR' ? 'اسأل عن العقارات...' : 'Ask about properties...'} />
-                  <button type="submit" className="absolute left-2 w-8 h-8 flex items-center justify-center bg-corporate-blue dark:bg-cyan-glow text-white dark:text-void rounded-full text-xs font-bold focus:outline-none">
+                  <label htmlFor="chat-input" className="sr-only">{lang === 'AR' ? 'الاستفسار عن العقارات' : 'Ask about properties'}</label>
+                  <input id="chat-input" type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} className={`w-full rounded-full pl-12 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-sm transition-colors ${isDarkMode ? 'bg-void text-white border-slate-700' : 'bg-white text-slate-900 border-slate-350'}`} placeholder={lang === 'AR' ? 'اسأل عن العقارات...' : 'Ask about properties...'} />
+                  <button type="submit" aria-label={lang === 'AR' ? 'إرسال الرسالة' : 'Send message'} className="absolute left-2 w-8 h-8 flex items-center justify-center bg-corporate-blue dark:bg-cyan-glow text-white dark:text-void rounded-full text-xs font-bold focus:outline-none">
                     {lang === 'AR' ? 'إرسال' : 'Send'}
                   </button>
                 </form>
@@ -371,19 +372,17 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               )}
 
               <div className="space-y-1.5 text-right">
-                <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                <label htmlFor="email" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                   {lang === 'AR' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
-                {/* تم حذف البريد الافتراضي هنا لأمان الكود */}
-                <input type="email" name="email" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="example@domain.com" required />
+                <input id="email" type="email" name="email" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="example@domain.com" required />
               </div>
 
               <div className="space-y-1.5 text-right">
-                <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                <label htmlFor="password" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                   {lang === 'AR' ? 'كلمة المرور' : 'Password'}
                 </label>
-                {/* تم حذف كلمة المرور الافتراضية هنا لأمان الكود */}
-                <input type="password" name="password" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="••••••••" required />
+                <input id="password" type="password" name="password" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="••••••••" required />
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -391,10 +390,10 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                   {lang === 'AR' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
                 </a>
                 <div className="flex items-center gap-2">
-                  <label className={`text-sm cursor-pointer ${isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}`}>
+                  <input type="checkbox" id="remember-me" defaultChecked className="custom-checkbox" />
+                  <label htmlFor="remember-me" className={`text-sm cursor-pointer ${isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}`}>
                     {lang === 'AR' ? 'تذكرني' : 'Remember Me'}
                   </label>
-                  <input type="checkbox" defaultChecked className="custom-checkbox" />
                 </div>
               </div>
 

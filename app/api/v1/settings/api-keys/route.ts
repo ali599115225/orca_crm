@@ -1,48 +1,44 @@
-// app/api/v1/settings/api-keys/route.ts
+// R1 FIXED: Authentication + RBAC + Masking + Encryption + Audit
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import crypto from 'crypto';
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
+import { encryptText } from '@/lib/crypto';
+import { writeAuditLog } from '@/lib/audit';
 
-const SCRATCH_DIR = path.join(process.cwd(), 'scratch');
-const KEYS_FILE = path.join(SCRATCH_DIR, 'api_keys.json');
-
-function getApiKeys() {
-  if (!fs.existsSync(SCRATCH_DIR)) {
-    fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(KEYS_FILE)) {
-    const initialKeys = [
-      {
-        id: 'key-1',
-        name: 'كود دمج ووردبريس لموقع المبيعات',
-        key: 'orca_live_sk_78129837a283b918',
-        createdAt: new Date('2026-04-10').toISOString()
-      },
-      {
-        id: 'key-2',
-        name: 'قناة أتمتة مهام ريتمينز رابيد',
-        key: 'orca_live_sk_91823791a823b129',
-        createdAt: new Date('2026-05-18').toISOString()
-      }
-    ];
-    fs.writeFileSync(KEYS_FILE, JSON.stringify(initialKeys, null, 2));
-    return initialKeys;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(KEYS_FILE, 'utf-8'));
-  } catch (err) {
-    return [];
-  }
+function maskKey(key: string): string {
+  if (key.length <= 8) return '********';
+  return '*'.repeat(key.length - 4) + key.slice(-4);
 }
 
-function saveApiKeys(keys: any[]) {
-  fs.writeFileSync(KEYS_FILE, JSON.stringify(keys, null, 2));
+function generateApiKey(): string {
+  return 'orca_live_sk_' + crypto.randomBytes(24).toString('hex');
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const keys = getApiKeys();
-    return NextResponse.json({ success: true, data: keys });
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+    if (session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
+    }
+
+    const prismaAny = prisma as any;
+    const keys = await prismaAny.apiKey.findMany({
+      where: { tenantId: session.tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const masked = (keys as any[]).map((k: any) => ({
+      id: k.id,
+      name: k.name,
+      key: maskKey(k.key),
+      createdAt: k.createdAt.toISOString(),
+    }));
+
+    return NextResponse.json({ success: true, data: masked });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -50,26 +46,52 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+    if (session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name } = body;
 
-    if (!name) {
-      return NextResponse.json({ success: false, error: 'Name is required' }, { status: 400 });
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json({ success: false, error: 'اسم المفتاح مطلوب' }, { status: 400 });
     }
 
-    const randomHex = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    const newKey = {
-      id: `key-${Date.now()}`,
-      name,
-      key: `orca_live_sk_${randomHex}`,
-      createdAt: new Date().toISOString()
-    };
+    const rawKey = generateApiKey();
+    const encrypted = encryptText(rawKey);
 
-    const keys = getApiKeys();
-    keys.unshift(newKey);
-    saveApiKeys(keys);
+    const prismaAny = prisma as any;
+    const apiKey = await prismaAny.apiKey.create({
+      data: {
+        tenantId: session.tenantId,
+        name: name.trim(),
+        key: encrypted,
+        createdByUserId: session.userId,
+      },
+    });
 
-    return NextResponse.json({ success: true, data: newKey });
+    await writeAuditLog({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      action: 'API_KEY_CREATED',
+      tableName: 'api_keys',
+      recordId: apiKey.id,
+      details: `Created API key: ${name.trim()}`,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: apiKey.id,
+        name: apiKey.name,
+        key: rawKey,
+        createdAt: apiKey.createdAt.toISOString(),
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -77,6 +99,14 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+    if (session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -84,11 +114,26 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    const keys = getApiKeys();
-    const filtered = keys.filter((k: any) => k.id !== id);
-    saveApiKeys(filtered);
+    const prismaAny = prisma as any;
+    const existing = await prismaAny.apiKey.findFirst({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'المفتاح غير موجود' }, { status: 404 });
+    }
 
-    return NextResponse.json({ success: true, message: 'Key deleted successfully' });
+    await prismaAny.apiKey.delete({ where: { id } });
+
+    await writeAuditLog({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      action: 'API_KEY_DELETED',
+      tableName: 'api_keys',
+      recordId: id,
+      details: `Deleted API key: ${existing.name}`,
+    });
+
+    return NextResponse.json({ success: true, message: 'تم حذف المفتاح' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

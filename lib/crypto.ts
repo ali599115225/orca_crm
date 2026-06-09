@@ -1,9 +1,9 @@
 ﻿import crypto from 'crypto';
 
 function getEncryptionKey(): string {
-  const key = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
+  const key = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
   if (!key) {
-    throw new Error("JWT_SECRET or NEXTAUTH_SECRET environment variable is required for encryption.");
+    throw new Error("ENCRYPTION_KEY environment variable is required.");
   }
   return key;
 }

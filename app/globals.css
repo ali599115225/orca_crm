@@ -471,6 +471,219 @@ html { scroll-behavior: smooth; }
 .lead-score { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--nc-accent); font-weight: 600; }
 
 /* ════════════════════════════════════════════════════════════
+   CARD ELEVATION SYSTEM
+   ════════════════════════════════════════════════════════════ */
+
+.nc-card-elevated {
+  background: var(--nc-surface-strong);
+  border: 1px solid var(--nc-glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dark .nc-card-elevated {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+.nc-card-elevated:hover {
+  border-color: var(--nc-accent-border);
+  box-shadow: 0 8px 32px rgba(223, 123, 98, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.nc-card-default {
+  background: var(--nc-surface);
+  border: 1px solid var(--nc-glass-border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(var(--nc-glass-blur));
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nc-card-default:hover {
+  border-color: var(--nc-accent-border);
+  box-shadow: var(--nc-glow);
+}
+
+.nc-card-subtle {
+  background: transparent;
+  border: 1px solid var(--nc-glass-border);
+  border-radius: var(--radius-xl);
+  transition: all 0.2s ease;
+}
+.nc-card-subtle:hover {
+  border-color: var(--nc-glass-border-hover);
+  background: var(--nc-accent-soft);
+}
+
+/* ════════════════════════════════════════════════════════════
+   TABLE STANDARDIZATION
+   ════════════════════════════════════════════════════════════ */
+
+.nc-table {
+  width: 100%;
+  text-align: right;
+  border-collapse: collapse;
+}
+.nc-table thead tr {
+  border-bottom: 1px solid var(--nc-glass-border);
+}
+.nc-table th {
+  padding: 12px 16px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--nc-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.nc-table td {
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  color: var(--nc-text-primary);
+}
+.nc-table tbody tr {
+  border-bottom: 1px solid var(--nc-glass-border);
+  transition: background 0.15s ease;
+}
+.nc-table tbody tr:last-child {
+  border-bottom: none;
+}
+.nc-table tbody tr:hover {
+  background: var(--nc-accent-soft);
+}
+.nc-table tbody tr.nc-row-selected {
+  background: var(--nc-coral-bg);
+  border-left: 3px solid var(--nc-accent);
+}
+.nc-table .nc-cell-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+.nc-table .nc-cell-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--nc-surface-strong);
+  border: 1px solid var(--nc-glass-border);
+  border-radius: var(--radius-md);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--nc-text-secondary);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.nc-table .nc-cell-actions button:hover {
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent);
+  border-color: var(--nc-accent-border);
+}
+
+/* Alternate row shading (subtle) */
+.nc-table-striped tbody tr:nth-child(even) {
+  background: rgba(148, 163, 184, 0.03);
+}
+.dark .nc-table-striped tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ════════════════════════════════════════════════════════════
+   TYPOGRAPHY RHYTHM
+   ════════════════════════════════════════════════════════════ */
+
+.nc-heading-1 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--nc-text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.nc-heading-2 {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--nc-text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+.nc-heading-3 {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--nc-text-primary);
+  line-height: 1.4;
+}
+.nc-heading-4 {
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--nc-text-secondary);
+  line-height: 1.4;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DARK MODE DEPTH REFINEMENT
+   ════════════════════════════════════════════════════════════ */
+
+.dark .nc-surface-raised {
+  background: rgba(25, 39, 62, 0.85);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+.dark .nc-surface-flat {
+  background: rgba(11, 17, 32, 0.95);
+  border-color: rgba(148, 163, 184, 0.06);
+}
+.dark .nc-surface-overlay {
+  background: rgba(21, 31, 50, 0.98);
+  border-color: rgba(148, 163, 184, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ════════════════════════════════════════════════════════════
+   MICRO-INTERACTIONS
+   ════════════════════════════════════════════════════════════ */
+
+.nc-hover-lift {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+.nc-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.nc-hover-glow {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.nc-hover-glow:hover {
+  border-color: var(--nc-accent-border);
+  box-shadow: 0 0 20px rgba(223, 123, 98, 0.08);
+}
+
+.nc-hover-brighten {
+  transition: opacity 0.2s ease;
+}
+.nc-hover-brighten:hover {
+  opacity: 0.85;
+}
+
+.nc-btn-press {
+  transition: transform 0.1s ease;
+}
+.nc-btn-press:active {
+  transform: scale(0.96);
+}
+
+/* Staggered entrance animation for card grids */
+.nc-stagger-enter > * {
+  animation: ncFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.nc-stagger-enter > *:nth-child(1) { animation-delay: 0ms; }
+.nc-stagger-enter > *:nth-child(2) { animation-delay: 60ms; }
+.nc-stagger-enter > *:nth-child(3) { animation-delay: 120ms; }
+.nc-stagger-enter > *:nth-child(4) { animation-delay: 180ms; }
+.nc-stagger-enter > *:nth-child(5) { animation-delay: 240ms; }
+.nc-stagger-enter > *:nth-child(6) { animation-delay: 300ms; }
+
+/* ════════════════════════════════════════════════════════════
    RESPONSIVE & GLOBAL STYLING
    ════════════════════════════════════════════════════════════ */
 

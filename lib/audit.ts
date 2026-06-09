@@ -17,7 +17,12 @@ export type AuditAction =
   | "USER_UPDATED"
   | "USER_DELETED"
   | "USER_PERMISSION_CHANGED"
-  | "TENANT_UPDATED";
+  | "TENANT_UPDATED"
+  | "API_KEY_CREATED"
+  | "API_KEY_DELETED"
+  | "CRON_RUN"
+  | "ZATCA_SUBMIT"
+  | "BILLING_RUN";
 
 export async function writeAuditLog(params: {
   tenantId: string;

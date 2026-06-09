@@ -571,7 +571,9 @@ export default function ToursView() {
               <div className="space-y-1">
                 <label className="text-[var(--nc-text-dim)] font-medium font-bold">نطاق السعر (ر.س)</label>
                 <div className="flex items-center gap-1">
+                  <label htmlFor="min-price" className="sr-only">الحد الأدنى للسعر</label>
                   <input
+                    id="min-price"
                     type="number"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
@@ -579,7 +581,9 @@ export default function ToursView() {
                     className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-2 py-1.5 text-center text-xs text-[var(--nc-foreground)] outline-none"
                   />
                   <span className="text-[var(--nc-foreground-muted)]">—</span>
+                  <label htmlFor="max-price" className="sr-only">الحد الأعلى للسعر</label>
                   <input
+                    id="max-price"
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
@@ -607,7 +611,9 @@ export default function ToursView() {
 
                 <div className="space-y-1">
                   <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحد الأدنى م²</label>
+                  <label htmlFor="min-area" className="sr-only">الحد الأدنى للمساحة</label>
                   <input
+                    id="min-area"
                     type="number"
                     value={areaFilter}
                     onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
@@ -687,7 +693,9 @@ export default function ToursView() {
                 <strong className="text-white bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
                   {filteredListings.length}
                 </strong>
+                <label htmlFor="sort-tours" className="sr-only">ترتيب حسب</label>
                 <select
+                  id="sort-tours"
                   value={sortVal}
                   onChange={(e) => setSortVal(e.target.value)}
                   className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none font-bold mr-2"
@@ -747,14 +755,15 @@ export default function ToursView() {
                           </span>
                         </div>
                         <div className="absolute top-3 left-3 z-20">
-                          <button
-                            onClick={(e) => handleToggleFavorite(p.id, e)}
-                            className={`p-1.5 rounded-lg border transition-all ${
-                              isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
-                            }`}
-                          >
-                            <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
-                          </button>
+                <button
+                  onClick={(e) => handleToggleFavorite(p.id, e)}
+                  className={`p-1.5 rounded-lg border transition-all ${
+                    isFav ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
+                  }`}
+                  aria-label={isFav ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
+                >
+                  <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
+                </button>
                         </div>
                         {p.tourType === '360' ? (
                           <span className="absolute bottom-3 right-3 z-20 bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">جولة 360°</span>
@@ -800,7 +809,7 @@ export default function ToursView() {
                   <Monitor size={13} className="text-emerald-400 animate-pulse" />
                   <span>تفاصيل الجولة (عرض Inline)</span>
                 </h4>
-                <button onClick={() => setInlinePropertyId(null)} className="text-[var(--nc-text-dim)] font-medium hover:text-white"><X size={14} /></button>
+                <button onClick={() => setInlinePropertyId(null)} aria-label="إغلاق" className="text-[var(--nc-text-dim)] font-medium hover:text-white"><X size={14} /></button>
               </div>
               <div className="space-y-3.5 text-xs">
                 <h3 className="font-black text-[var(--nc-foreground)] text-sm">{inlineProp.title}</h3>
@@ -899,6 +908,7 @@ export default function ToursView() {
               <button
                 onClick={() => setActiveModal(null)}
                 className="text-[var(--nc-text-dim)] font-medium hover:text-white"
+                aria-label="إغلاق"
               >
                 <X size={18} />
               </button>
@@ -1059,6 +1069,7 @@ export default function ToursView() {
               <button
                 onClick={() => setActiveModal(null)}
                 className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
+                aria-label="إغلاق"
               >
                 <X size={15} />
               </button>
@@ -1067,8 +1078,9 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[var(--nc-foreground-muted)] font-bold">سعر العقار المطلوب (ر.س)</label>
+                <label htmlFor="mortgage-price" className="text-[var(--nc-foreground-muted)] font-bold">سعر العقار المطلوب (ر.س)</label>
                 <input
+                  id="mortgage-price"
                   type="number"
                   value={mortgagePrice}
                   onChange={(e) => setMortgagePrice(Number(e.target.value))}
@@ -1184,7 +1196,7 @@ export default function ToursView() {
                 <Settings size={15} className="text-cyan-400" />
                 <span>Feature Flags & Thresholds</span>
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]">
+              <button onClick={() => setActiveModal(null)} className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]" aria-label="إغلاق">
                 <X size={15} />
               </button>
             </div>
@@ -1192,8 +1204,9 @@ export default function ToursView() {
             <div className="space-y-3.5">
               
               <div className="space-y-1">
-                <label className="text-[var(--nc-foreground-muted)] font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
+                <label htmlFor="min-data-completeness" className="text-[var(--nc-foreground-muted)] font-bold block mb-1">الحد الأدنى لاكتمال البيانات (Data Completeness)</label>
                 <input
+                  id="min-data-completeness"
                   type="number"
                   step="0.05"
                   min="0.0"
@@ -1206,8 +1219,9 @@ export default function ToursView() {
               </div>
 
               <div className="flex items-center justify-between py-2 border-t border-b border-white/5">
-                <label className="text-[var(--nc-text-dim)] font-medium font-bold">فرض المودال عند غياب الميديا</label>
+                <label htmlFor="require-media" className="text-[var(--nc-text-dim)] font-medium font-bold">فرض المودال عند غياب الميديا</label>
                 <input
+                  id="require-media"
                   type="checkbox"
                   checked={config.requireMedia}
                   onChange={(e) => setConfig(prev => ({ ...prev, requireMedia: e.target.checked }))}

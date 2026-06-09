@@ -559,7 +559,9 @@ export default function OffersView() {
 
                 <div className="space-y-1">
                   <label className="text-[var(--nc-text-dim)] font-medium font-bold">الحد الأدنى م²</label>
+                  <label htmlFor="offers-min-area" className="sr-only">الحد الأدنى للمساحة</label>
                   <input
+                    id="offers-min-area"
                     type="number"
                     value={areaFilter}
                     onChange={(e) => setAreaFilter(e.target.value === '' ? '' : Number(e.target.value))}
@@ -630,7 +632,9 @@ export default function OffersView() {
                 <strong className="text-white bg-[var(--nc-surface-solid)] px-2 py-0.5 rounded border border-white/5 font-mono text-sm">
                   {filteredProperties.length}
                 </strong>
+                <label htmlFor="sort-offers" className="sr-only">ترتيب حسب</label>
                 <select
+                  id="sort-offers"
                   value={sortVal}
                   onChange={(e) => {
                     setSortVal(e.target.value);
@@ -706,19 +710,20 @@ export default function OffersView() {
                             </span>
                           </div>
                           <div className="absolute top-3 left-3 z-20">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(p.id);
-                              }}
-                              className={`p-1.5 rounded-lg border transition-all ${
-                                isFav 
-                                  ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' 
-                                  : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
-                              }`}
-                            >
-                              <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
-                            </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(p.id);
+                                }}
+                                className={`p-1.5 rounded-lg border transition-all ${
+                                  isFav 
+                                    ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' 
+                                    : 'bg-[var(--nc-surface-solid)]/80 border-white/5 text-[var(--nc-text-dim)] font-medium hover:text-rose-400'
+                                }`}
+                                aria-label={isFav ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
+                              >
+                                <Heart size={12} className={isFav ? 'fill-rose-500' : ''} />
+                              </button>
                           </div>
                         </div>
 

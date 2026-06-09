@@ -1,14 +1,21 @@
-// app/api/properties/[id]/request-finance/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/api-auth';
+import { writeAuditLog } from '@/lib/audit';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
-    const { userId, loanParams, contactInfo } = body;
+    const { loanParams, contactInfo } = body;
 
     if (!loanParams || !loanParams.price || loanParams.price <= 0) {
       return NextResponse.json(
@@ -31,12 +38,13 @@ export async function POST(
 
     const requestId = `FIN-${Date.now().toString(36).toUpperCase()}`;
 
-    console.log('[request-finance] Request logged:', {
-      requestId,
-      propertyId: id,
-      userId,
-      installment,
-      contactInfo
+    await writeAuditLog({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      action: 'LEAD_CREATED',
+      tableName: 'units',
+      recordId: id,
+      details: JSON.stringify({ requestId, type: 'finance_request', loanParams, contactInfo }),
     });
 
     return NextResponse.json({
@@ -47,12 +55,10 @@ export async function POST(
         loanAmount,
         estimatedInstallment: installment,
         currency: 'SAR',
-        note: 'الحساب تقديري فقط ويعتمد على معطيات التمويل المدخلة. سيتم التواصل مع الجهة التمويلية المختارة.'
-      }
+        note: 'الحساب تقديري فقط. سيتم التواصل مع الجهة التمويلية المختارة.',
+      },
     });
-
   } catch (err) {
-    console.error('[request-finance] error:', err);
     return NextResponse.json(
       { success: false, error: 'خطأ داخلي في معالجة طلب التمويل.' },
       { status: 500 }

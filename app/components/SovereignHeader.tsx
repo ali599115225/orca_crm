@@ -74,7 +74,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
   const router = useRouter();
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/90 backdrop-blur-xl border-b border-[var(--nc-border)] shadow-sm z-40 w-full dir-rtl text-[var(--nc-foreground)] transition-all">
+    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-b border-[var(--nc-glass-border)] z-40 w-full dir-rtl text-[var(--nc-foreground)] transition-all">
 
       {/* Right: Mobile menu + breadcrumbs */}
       <div className="flex items-center gap-3 lg:w-1/3">
@@ -103,13 +103,15 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
               className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
             />
           </div>
+          <label htmlFor="global-search" className="sr-only">بحث شامل</label>
           <input
+            id="global-search"
             type="text"
             placeholder="بحث شامل (العملاء، العقود)..."
             className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
           />
           <div className="absolute inset-y-0 left-0 flex items-center pl-2">
-            <span className="text-[10px] font-mono text-[var(--nc-foreground-muted)] bg-[var(--nc-surface-strong)] px-1.5 py-0.5 rounded border border-[var(--nc-border)]">Ctrl+K</span>
+              <span className="text-[9px] font-mono text-[var(--nc-foreground-muted)] bg-[var(--nc-surface-strong)] px-1.5 py-0.5 rounded border border-[var(--nc-glass-border)]">Ctrl+K</span>
           </div>
         </div>
       </div>
@@ -128,6 +130,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
           onClick={toggleLang}
           className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
           title="تغيير اللغة"
+          aria-label="تغيير اللغة"
         >
           <Globe size={18} />
         </button>
@@ -137,6 +140,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
           onClick={toggleTheme}
           className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
           title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+          aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
         >
           {theme === 'dark'
             ? <Sun size={18} className="text-amber-400" />
@@ -144,7 +148,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         </button>
 
         {/* Notifications */}
-        <button className="relative w-9 h-9 flex items-center justify-center bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all">
+        <button className="relative w-9 h-9 flex items-center justify-center bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all" aria-label="الإشعارات">
           <Bell size={18} />
           <span className="absolute top-1.5 left-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--nc-surface-strong)]"></span>
         </button>
@@ -180,6 +184,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
           }}
           className="flex items-center justify-center w-9 h-9 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg transition-all"
           title="تسجيل الخروج"
+          aria-label="تسجيل الخروج"
         >
           <LogOut size={18} />
         </button>
