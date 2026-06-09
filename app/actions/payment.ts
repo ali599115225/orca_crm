@@ -6,7 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 
 const MOYASAR_SECRET_KEY = process.env.MOYASAR_SECRET_KEY || "sk_test_dummy_key_for_orca_crm_saudi";
 
-export async function initiateSubscriptionPaymentAction(plan: "basic" | "professional" | "enterprise") {
+export async function initiateSubscriptionPaymentAction(plan: "basic" | "silver" | "gold") {
   try {
     const tenant = await getActiveTenant();
 
@@ -20,12 +20,12 @@ export async function initiateSubscriptionPaymentAction(plan: "basic" | "profess
 
     // 2. الوضع الحقيقي (بوابة ميسر الفعلية)
     const planPrices: Record<string, number> = {
-      basic: 29900,
-      professional: 59900,
-      enterprise: 129900,
+      basic: 45000,
+      silver: 90000,
+      gold: 240000,
     };
 
-    const amountInHalalas = planPrices[plan] || 29900;
+    const amountInHalalas = planPrices[plan] || 45000;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const callbackUrl = `${appUrl}/api/payment/callback`;
 
@@ -38,7 +38,7 @@ export async function initiateSubscriptionPaymentAction(plan: "basic" | "profess
       body: JSON.stringify({
         amount: amountInHalalas,
         currency: "SAR",
-        description: `ترقية باقة ${plan === "basic" ? "الأساسية" : plan === "professional" ? "الاحترافية" : "الشركات"} - ${tenant.companyName}`,
+        description: `ترقية باقة ${plan === "basic" ? "الأساسية" : plan === "silver" ? "الفضية" : "الذهبية"} - ${tenant.companyName}`,
         callback_url: callbackUrl,
         metadata: {
           tenantId: tenant.id,
@@ -72,8 +72,8 @@ export async function initiateAddonPaymentAction(agentCount: number) {
       throw new Error("يجب اختيار وكيل واحد على الأقل للشراء.");
     }
 
-    // حساب سعر الوكلاء بناءً على الباقة الحالية: الأساسية 75 ر.س، الاحترافية والشركات 60 ر.س
-    const pricePerAgent = tenant.subscriptionPlan === "basic" ? 7500 : 6000;
+    // حساب سعر الوكلاء: 250 ر.س للوكيل الواحد (موحد لجميع الباقات)
+    const pricePerAgent = 25000;
     const amountInHalalas = pricePerAgent * agentCount;
     
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

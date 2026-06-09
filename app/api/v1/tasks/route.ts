@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
           select: { firstName: true, lastName: true },
         },
       },
+      take: 100,
     });
 
     return NextResponse.json({ success: true, data: tasks });

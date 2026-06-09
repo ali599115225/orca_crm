@@ -8,7 +8,10 @@ export async function POST(request: Request) {
   
   // Skeleton HMAC Validation check (can be active via feature flags or compliance keys)
   if (signature) {
-    const webhookSecret = process.env.WEBHOOK_SECRET || 'orca_secret_compliance_key_2026';
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return Response.json({ error: "WEBHOOK_SECRET not configured" }, { status: 500 });
+    }
     const rawBody = await request.clone().text();
     const hmac = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
     

@@ -94,7 +94,8 @@ export default function TasksView() {
   useEffect(() => {
     async function loadData() {
       try {
-        const dbTasks = await getTasksAction();
+        const tasksResult = await getTasksAction();
+        const dbTasks = tasksResult && 'data' in tasksResult ? tasksResult.data : (Array.isArray(tasksResult) ? tasksResult : []);
         const dbLeads = await getLeadsListAction();
         setTasks(dbTasks);
         setLeads(dbLeads);
@@ -125,7 +126,8 @@ export default function TasksView() {
     if (result.success) {
       setSuccessMessage(t.successMsg);
       e.currentTarget.reset();
-      const updatedTasks = await getTasksAction();
+      const updatedTasksResult = await getTasksAction();
+      const updatedTasks = updatedTasksResult && 'data' in updatedTasksResult ? updatedTasksResult.data : (Array.isArray(updatedTasksResult) ? updatedTasksResult : []);
       setTasks(updatedTasks);
       setTimeout(() => setSuccessMessage(null), 3000);
     } else {

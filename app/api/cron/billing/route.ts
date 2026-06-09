@@ -7,11 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { sendSMSNotification } from "@/lib/notifications";
 
-// مفتاح التحقق من طلبات Cron (يُخزَّن في Vercel env vars)
-const CRON_SECRET = process.env.CRON_SECRET || "cron_secret_orca_2026";
-
 export async function GET(request: NextRequest) {
-  // التحقق من المصدر الموثوق
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,16 +42,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    for (const tenant of expiredTenants) {
-      try {
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: { isActive: false, paymentStatus: "UNPAID" },
-        });
-        results.suspended++;
-      } catch (err: any) {
-        results.errors.push(`فشل تعليق ${tenant.companyName}: ${err.message}`);
-      }
+    if (expiredTenants.length > 0) {
+      const expiredIds = expiredTenants.map(t => t.id);
+      const updateResult = await prisma.tenant.updateMany({
+        where: { id: { in: expiredIds } },
+        data: { isActive: false, paymentStatus: "UNPAID" },
+      });
+      results.suspended = updateResult.count;
     }
 
     // ===================================================
@@ -95,10 +92,12 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    for (const lease of expiredLeases) {
-      try {
-        if (lease.autoRenewal) {
-          // الخيار الأول (مضاعفة السعر): تجديد العقد لشهر آخر ومضاعفة السعر
+    const renewLeases = expiredLeases.filter(l => l.autoRenewal);
+    const expireLeases = expiredLeases.filter(l => !l.autoRenewal);
+
+    if (renewLeases.length > 0) {
+      for (const lease of renewLeases) {
+        try {
           const newPrice = Number(lease.leasePrice) * 2;
           const newStartDate = new Date(now);
           const newEndDate = new Date();
@@ -106,49 +105,41 @@ export async function GET(request: NextRequest) {
 
           await prisma.agentLease.update({
             where: { id: lease.id },
-            data: {
-              startDate: newStartDate,
-              endDate: newEndDate,
-              leasePrice: newPrice
-            }
+            data: { startDate: newStartDate, endDate: newEndDate, leasePrice: newPrice }
           });
-
-          // توثيق التجديد التلقائي في سجل التدقيق
-          await prisma.auditLog.create({
-            data: {
-              tenantId: lease.tenantId,
-              action: "AGENT_LEASE_AUTO_RENEWED",
-              tableName: "agent_leases",
-              recordId: lease.id,
-              details: `تم تجديد عقد استئجار الوكيل ${lease.agentId} تلقائياً لمدة 30 يوماً إضافية بسعر مضاعف: ${newPrice} SAR.`
-            }
-          });
-
           results.renewedLeases++;
-        } else {
-          // الخيار الثاني والثالث: إرسال إشعار الترقية الإجبارية وإيقاف الصلاحية (الإيقاف يتم تلقائياً بانتهاء التاريخ)
-          const alertMessage = `لقد انتهت فترة وكيلك المخصص (${lease.agentId}). لضمان استمرارية الأداء، يمكنك الترقية للباقة الأعلى (للحصول على الوكيل بشكل دائم) أو تجديد العقد الحالي بسعر مضاعف.`;
-          
-          // إرسال الإشعار النصي لجوال المدير
-          const clientMobile = "+966557516311";
-          await sendSMSNotification(clientMobile, alertMessage);
-
-          // توثيق انتهاء العقد وإيقاف صلاحية الوكيل في سجل التدقيق
-          await prisma.auditLog.create({
-            data: {
-              tenantId: lease.tenantId,
-              action: "AGENT_LEASE_EXPIRED",
-              tableName: "agent_leases",
-              recordId: lease.id,
-              details: `انتهى عقد استئجار الوكيل ${lease.agentId} وتم سحب الصلاحيات لعدم تفعيل التجديد التلقائي. تم إرسال تنبيه SMS للعميل.`
-            }
-          });
-
-          results.expiredLeases++;
+        } catch (err: any) {
+          results.errors.push(`فشل تجديد ${lease.agentId}: ${err.message}`);
         }
-      } catch (err: any) {
-        results.errors.push(`فشل معالجة عقد استئجار الوكيل ${lease.agentId} للمنشأة ${lease.tenantId}: ${err.message}`);
       }
+      const renewAuditLogs = renewLeases.map(l => ({
+        tenantId: l.tenantId,
+        action: "AGENT_LEASE_AUTO_RENEWED" as const,
+        tableName: "agent_leases",
+        recordId: l.id,
+        details: `تم تجديد عقد استئجار الوكيل ${l.agentId} تلقائياً لمدة 30 يوماً إضافية بسعر مضاعف: ${Number(l.leasePrice) * 2} SAR.`
+      }));
+      await prisma.auditLog.createMany({ data: renewAuditLogs });
+    }
+
+    if (expireLeases.length > 0) {
+      for (const lease of expireLeases) {
+        try {
+          const alertMessage = `لقد انتهت فترة وكيلك المخصص (${lease.agentId}). لضمان استمرارية الأداء، يمكنك الترقية للباقة الأعلى (للحصول على الوكيل بشكل دائم) أو تجديد العقد الحالي بسعر مضاعف.`;
+          await sendSMSNotification("+966557516311", alertMessage);
+          results.expiredLeases++;
+        } catch (err: any) {
+          results.errors.push(`فشل إشعار ${lease.agentId}: ${err.message}`);
+        }
+      }
+      const expireAuditLogs = expireLeases.map(l => ({
+        tenantId: l.tenantId,
+        action: "AGENT_LEASE_EXPIRED" as const,
+        tableName: "agent_leases",
+        recordId: l.id,
+        details: `انتهى عقد استئجار الوكيل ${l.agentId} وتم سحب الصلاحيات لعدم تفعيل التجديد التلقائي. تم إرسال تنبيه SMS للعميل.`
+      }));
+      await prisma.auditLog.createMany({ data: expireAuditLogs });
     }
 
     // ===================================================
@@ -181,17 +172,25 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    for (const lease of leasesExpiringIn3Days) {
-      try {
-        const adminName = lease.tenant.users[0]?.name || "شريكنا العزيز";
-        const platformName = lease.tenant.platformConnections[0]?.platform || "Meta Ads";
-        const leadsCount = await prisma.lead.count({ where: { tenantId: lease.tenantId } });
-        const plan = (lease.tenant.subscriptionPlan || "basic").toLowerCase();
-        const powerPercent = plan === 'basic' ? '20' : '60';
-        const agentName = lease.agentId;
-        const cacReduction = "35";
+    if (leasesExpiringIn3Days.length > 0) {
+      const tenantIds = [...new Set(leasesExpiringIn3Days.map(l => l.tenantId))];
+      const leadCounts = await prisma.lead.groupBy({
+        by: ['tenantId'],
+        where: { tenantId: { in: tenantIds } },
+        _count: { id: true },
+      });
+      const leadCountMap = new Map(leadCounts.map(l => [l.tenantId, l._count.id]));
 
-        const messageText = `أهلاً ${adminName}، أقوم الآن بمراجعة دورية لأداء حملاتك عبر ${platformName}. بصفتي وكيلك الرقمي، من واجبي مشاركتك هذه الأرقام:
+      for (const lease of leasesExpiringIn3Days) {
+        try {
+          const adminName = lease.tenant.users[0]?.name || "شريكنا العزيز";
+          const platformName = lease.tenant.platformConnections[0]?.platform || "Meta Ads";
+          const leadsCount = leadCountMap.get(lease.tenantId) || 0;
+          const plan = (lease.tenant.subscriptionPlan || "basic").toLowerCase();
+          const powerPercent = plan === 'basic' ? '20' : '60';
+          const agentName = lease.agentId;
+
+          const messageText = `أهلاً ${adminName}، أقوم الآن بمراجعة دورية لأداء حملاتك عبر ${platformName}. بصفتي وكيلك الرقمي، من واجبي مشاركتك هذه الأرقام:
 
 📉 حالة الأداء:
 لقد نجحنا في جذب ${leadsCount} عميل محتمل هذا الشهر. ولكن لاحظت وجود فرص بيعية غير مكتملة بسبب تأخر المتابعة أو غياب الأتمتة المتقدمة.
@@ -208,30 +207,26 @@ export async function GET(request: NextRequest) {
 
 القفزة الاستراتيجية (الترقية للباقة الماسية لتفعيل كافة الوكلاء وإغلاق الفجوات البيعية).
 
-بناءً على أرقامك، الترقية للماسة ستخفض تكلفة استحواذ العميل بنسبة ${cacReduction}%.
+بناءً على أرقامك، الترقية للماسة ستخفض تكلفة استحواذ العميل بنسبة 35%.
 
 هل تود مني عرض سيناريو الأرباح المتوقع؟
 [رابط: أريد رؤية السيناريو] ➔ https://${lease.tenant.subdomain}.orca.az-ez.pro/operations?tab=growth&action=view-scenario
 [رابط: تمديد الاستئجار] ➔ https://${lease.tenant.subdomain}.orca.az-ez.pro/operations?tab=growth&action=renew-lease`;
 
-        // إرسال الإشعار النصي لجوال المدير كقالب منصور
-        const clientMobile = "+966557516311";
-        await sendSMSNotification(clientMobile, messageText);
-
-        // توثيق التنبيه في سجل التدقيق
-        await prisma.auditLog.create({
-          data: {
-            tenantId: lease.tenantId,
-            action: "MANSOUR_EXPIRY_ALERT_SENT",
-            tableName: "agent_leases",
-            recordId: lease.id,
-            details: `أرسل الوكيل منصور رسالة تنبيه بقرب انتهاء عقد الوكيل ${lease.agentId} للعميل عبر الواتساب/SMS.`
-          }
-        });
-
-      } catch (err: any) {
-        results.errors.push(`فشل إرسال تنبيه منصور لعقد الوكيل ${lease.agentId} للمنشأة ${lease.tenantId}: ${err.message}`);
+          await sendSMSNotification("+966557516311", messageText);
+        } catch (err: any) {
+          results.errors.push(`فشل إرسال تنبيه منصور لعقد الوكيل ${lease.agentId} للمنشأة ${lease.tenantId}: ${err.message}`);
+        }
       }
+
+      const auditLogs = leasesExpiringIn3Days.map(l => ({
+        tenantId: l.tenantId,
+        action: "MANSOUR_EXPIRY_ALERT_SENT" as const,
+        tableName: "agent_leases",
+        recordId: l.id,
+        details: `أرسل الوكيل منصور رسالة تنبيه بقرب انتهاء عقد الوكيل ${l.agentId} للعميل عبر الواتساب/SMS.`
+      }));
+      await prisma.auditLog.createMany({ data: auditLogs });
     }
 
     // ===================================================
@@ -241,51 +236,71 @@ export async function GET(request: NextRequest) {
       where: { isActive: true }
     });
 
-    for (const tenant of activeTenants) {
-      try {
-        const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
-        
-        let staffLimit = 99999;
-        let leadsLimit = 99999;
-        let projectsLimit = 99999;
-        let planNameAr = "الباقة الذهبية/الماسية";
+    if (activeTenants.length > 0) {
+      const tenantIds = activeTenants.map(t => t.id);
 
-        if (plan === "basic") {
-          staffLimit = 2;
-          leadsLimit = 100;
-          projectsLimit = 2;
-          planNameAr = "الباقة الأساسية";
-        } else if (plan === "silver" || plan === "pro" || plan === "professional") {
-          staffLimit = 10;
-          leadsLimit = 1000;
-          projectsLimit = 10;
-          planNameAr = "الباقة الاحترافية";
-        }
+      const staffCounts = await prisma.user.groupBy({
+        by: ['tenantId'],
+        where: { tenantId: { in: tenantIds } },
+        _count: { id: true },
+      });
+      const leadsCounts = await prisma.lead.groupBy({
+        by: ['tenantId'],
+        where: { tenantId: { in: tenantIds } },
+        _count: { id: true },
+      });
+      const projectsCounts = await prisma.project.groupBy({
+        by: ['tenantId'],
+        where: { tenantId: { in: tenantIds } },
+        _count: { id: true },
+      });
 
-        // جلب الإحصاءات الفعلية
-        const staffCount = await prisma.user.count({ where: { tenantId: tenant.id } });
-        const leadsCount = await prisma.lead.count({ where: { tenantId: tenant.id } });
-        const projectsCount = await prisma.project.count({ where: { tenantId: tenant.id } });
+      const staffCountMap = new Map(staffCounts.map(c => [c.tenantId, c._count.id]));
+      const leadsCountMap = new Map(leadsCounts.map(c => [c.tenantId, c._count.id]));
+      const projectsCountMap = new Map(projectsCounts.map(c => [c.tenantId, c._count.id]));
 
-        const staffUsage = staffCount / staffLimit;
-        const leadsUsage = leadsCount / leadsLimit;
-        const projectsUsage = projectsCount / projectsLimit;
+      const updates: { id: string; growthWarning: boolean }[] = [];
+      const auditLogData: { tenantId: string; action: string; tableName: string; recordId: string; details: string }[] = [];
 
-        const maxUsage = Math.max(staffUsage, leadsUsage, projectsUsage);
-        const triggerWarning = maxUsage >= 0.8;
+      for (const tenant of activeTenants) {
+        try {
+          const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
+          
+          let staffLimit = 99999;
+          let leadsLimit = 99999;
+          let projectsLimit = 99999;
+          let planNameAr = "الباقة الذهبية/الماسية";
 
-        // تحديث حالة التحذير
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: { growthWarning: triggerWarning }
-        });
+          if (plan === "basic") {
+            staffLimit = 2;
+            leadsLimit = 100;
+            projectsLimit = 2;
+            planNameAr = "الباقة الأساسية";
+          } else if (plan === "silver" || plan === "pro" || plan === "professional") {
+            staffLimit = 10;
+            leadsLimit = 1000;
+            projectsLimit = 10;
+            planNameAr = "الباقة الاحترافية";
+          }
 
-        if (triggerWarning) {
-          results.growthWarnings++;
-          const projectedDays = Math.max(1, Math.round((1 - maxUsage) * 15)) || 3;
+          const staffCount = staffCountMap.get(tenant.id) || 0;
+          const leadsCount = leadsCountMap.get(tenant.id) || 0;
+          const projectsCount = projectsCountMap.get(tenant.id) || 0;
 
-          // قالب الرسالة الموحد (The Growth Template)
-          const messageText = `أهلاً ${tenant.companyName || "شريكنا العزيز"}، بصفتي وكيلك الرقمي، لاحظت أننا استهلكنا 80% من سعة ${planNameAr} الحالية. إذا استمر هذا التدفق، سنصل للسقف المحدود خلال ${projectedDays} يوم.
+          const staffUsage = staffCount / staffLimit;
+          const leadsUsage = leadsCount / leadsLimit;
+          const projectsUsage = projectsCount / projectsLimit;
+
+          const maxUsage = Math.max(staffUsage, leadsUsage, projectsUsage);
+          const triggerWarning = maxUsage >= 0.8;
+
+          updates.push({ id: tenant.id, growthWarning: triggerWarning });
+
+          if (triggerWarning) {
+            results.growthWarnings++;
+            const projectedDays = Math.max(1, Math.round((1 - maxUsage) * 15)) || 3;
+
+            const messageText = `أهلاً ${tenant.companyName || "شريكنا العزيز"}، بصفتي وكيلك الرقمي، لاحظت أننا استهلكنا 80% من سعة ${planNameAr} الحالية. إذا استمر هذا التدفق، سنصل للسقف المحدود خلال ${projectedDays} يوم.
 
 💡 الحل الأذكى للنمو:
 
@@ -296,23 +311,27 @@ export async function GET(request: NextRequest) {
 [زر: استئجار وكيل] ➔ https://${tenant.subdomain}.orca.az-ez.pro/operations?tab=agents
 [زر: عرض تفاصيل الترقية] ➔ https://${tenant.subdomain}.orca.az-ez.pro/operations?tab=settings`;
 
-          // إرسال تنبيه منصور للعميل
-          const clientMobile = "+966557516311";
-          await sendSMSNotification(clientMobile, messageText);
+            await sendSMSNotification("+966557516311", messageText);
 
-          // توثيق التفاعل في سجل التدقيق
-          await prisma.auditLog.create({
-            data: {
+            auditLogData.push({
               tenantId: tenant.id,
               action: "GROWTH_MONITOR_ALERT_SENT",
               tableName: "tenants",
               recordId: tenant.id,
               details: `تم تفعيل تحذير النمو الموحد للعميل. سعة الاستهلاك تجاوزت 80% (سعة: ${Math.round(maxUsage * 100)}%). تم إرسال قالب المتابعة عبر منصور.`
-            }
-          });
+            });
+          }
+        } catch (err: any) {
+          results.errors.push(`فشل تشغيل مراقب النمو للمنشأة ${tenant.id}: ${err.message}`);
         }
-      } catch (err: any) {
-        results.errors.push(`فشل تشغيل مراقب النمو للمنشأة ${tenant.id}: ${err.message}`);
+      }
+
+      // Batch all updates and audit logs
+      for (const { id, growthWarning } of updates) {
+        await prisma.tenant.update({ where: { id }, data: { growthWarning } });
+      }
+      if (auditLogData.length > 0) {
+        await prisma.auditLog.createMany({ data: auditLogData });
       }
     }
 

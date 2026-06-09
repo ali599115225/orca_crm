@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
 
 export async function processPayment(invoiceId: string, amount: number, method: string) {
-  const tenant = await getActiveTenant();
-  return await prisma.$transaction(async (tx) => {
+  try {
+    const tenant = await getActiveTenant();
+    return await prisma.$transaction(async (tx) => {
     // 1. إنشاء سند القبض
     const receipt = await tx.receipt.create({
       data: { tenantId: tenant.id, invoiceId, amount, paymentMethod: method }
@@ -21,6 +22,10 @@ export async function processPayment(invoiceId: string, amount: number, method: 
       }
     });
 
-    return receipt;
-  });
+      return receipt;
+    });
+  } catch (error) {
+    console.error("[processPayment]", error);
+    throw new Error("فشل معالجة الدفعة");
+  }
 }

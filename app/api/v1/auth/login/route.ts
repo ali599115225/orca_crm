@@ -5,12 +5,14 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "orca_crm_super_secret_key_2026_saudi_real_estate"
-);
+const jwtSecret = process.env.JWT_SECRET;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!jwtSecret) {
+      return NextResponse.json({ error: "JWT_SECRET not configured" }, { status: 500 });
+    }
+    const SECRET_KEY = new TextEncoder().encode(jwtSecret);
     const body = await request.json();
     const { email, password } = body;
 

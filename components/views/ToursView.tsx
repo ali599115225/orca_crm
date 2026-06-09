@@ -196,9 +196,10 @@ export default function ToursView() {
     async function loadTours() {
       setToursLoading(true);
       try {
-        const data = await getPropertiesAction();
-        if (data && data.length > 0) {
-          const mapped: PropertyTour[] = data.map((u: any) => ({
+        const toursResult = await getPropertiesAction();
+        const propertiesForTour = toursResult && 'data' in toursResult ? toursResult.data : (Array.isArray(toursResult) ? toursResult : []);
+        if (propertiesForTour && propertiesForTour.length > 0) {
+          const mapped: PropertyTour[] = propertiesForTour.map((u: any) => ({
             id: u.id,
             title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
             type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',

@@ -170,6 +170,8 @@ model Tenant {
   encryptedClientSecret String?       @map("encrypted_client_secret")
   encryptedApiKey       String?       @map("encrypted_api_key")
   encryptedZatcaCredentials String?   @map("encrypted_zatca_credentials")
+  invoicePrefix             String    @default("INV") @map("invoice_prefix")
+  nextInvoiceNumber         Int       @default(1) @map("next_invoice_number")
   
   subscriptionExpiresAt DateTime?     @map("subscription_expires_at") @db.Timestamptz
   paymentStatus         String        @default("UNPAID") @map("payment_status")
@@ -207,6 +209,8 @@ model Tenant {
   automationWorkflows   AutomationWorkflow[]
   telemetryEvents       TelemetryEvent[]
   rentalLeases          RentalLease[]
+  zatcaDevices          ZatcaDevice[]
+  zatcaQueueItems       ZatcaQueue[]
 
   @@map("tenants")
 }
@@ -315,6 +319,8 @@ model Contract {
   signedAt       DateTime      @default(now()) @map("signed_at") @db.Timestamptz
   endDate        DateTime?     @map("end_date") @db.Timestamptz
   status         String        @default("Active") @map("status")
+  vatType        String        @default("STANDARD") @map("vat_type")
+  vatRate        Decimal       @default(15.00) @map("vat_rate") @db.Decimal(5, 2)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
   installments   Installment[]
 
@@ -330,11 +336,12 @@ model Installment {
   contractId         String   @map("contract_id") @db.Uuid
   contract           Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   installmentNumber  Int      @map("installment_number")
-  amountSar          Decimal  @map("amount_sar") @db.Decimal(12, 2)
-  dueDate            DateTime @map("due_date") @db.Date
-  paymentStatus      String   @default("Pending") @map("payment_status")
-  securePaymentToken String   @unique @default(dbgenerated("gen_random_uuid()")) @map("secure_payment_token") @db.Uuid
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  amountSar          Decimal   @map("amount_sar") @db.Decimal(12, 2)
+  vatAmount          Decimal?  @map("vat_amount") @db.Decimal(12, 2)
+  dueDate            DateTime  @map("due_date") @db.Date
+  paymentStatus      String    @default("Pending") @map("payment_status")
+  securePaymentToken String    @unique @default(dbgenerated("gen_random_uuid()")) @map("secure_payment_token") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([contractId, installmentNumber], name: "uq_contract_installment_number")
   @@index([contractId], map: "idx_installments_contract_id")
@@ -357,6 +364,8 @@ model RentalLease {
   currency       String   @default("SAR")
   status         String   @default("active")
   financialRef   String?  @map("financial_ref")
+  vatType        String   @default("STANDARD") @map("vat_type")
+  vatRate        Decimal  @default(15.00) @map("vat_rate") @db.Decimal(5, 2)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
   invoices       RentalInvoice[]
 
@@ -370,17 +379,88 @@ model RentalInvoice {
   tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   leaseId        String      @map("lease_id") @db.Uuid
   lease          RentalLease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  invoiceNumber  Int         @map("invoice_number")
+  invoicePrefix  String      @default("INV") @map("invoice_prefix")
+  zatcaUuid      String      @default(uuid()) @map("zatca_uuid") @db.Uuid
+
+  issueDate      DateTime    @default(now()) @map("issue_date") @db.Date
   dueDate        DateTime    @map("due_date") @db.Date
-  amount         Decimal     @map("amount") @db.Decimal(12, 2)
+
+  subtotal       Decimal     @map("subtotal") @db.Decimal(12, 2)
+  vatRate        Decimal     @default(15.00) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount      Decimal     @map("vat_amount") @db.Decimal(12, 2)
+  totalAmount    Decimal     @map("total_amount") @db.Decimal(12, 2)
+
+  qrPayload      String?     @map("qr_payload") @db.Text
+  qrCode         String?     @map("qr_code") @db.Text
+  qrImage        String?     @map("qr_image") @db.Text
+
+  invoiceTypeCode String     @default("388") @map("invoice_type_code")
+  previousInvoiceHash String? @map("previous_invoice_hash")
+
+  zatcaXml       String?     @map("zatca_xml") @db.Text
+  zatcaSignedXml String?     @map("zatca_signed_xml") @db.Text
+  zatcaStatus    String      @default("DRAFT") @map("zatca_status")
+  zatcaResponse  String?     @map("zatca_response") @db.Text
+  zatcaError     String?     @map("zatca_error") @db.Text
+  zatcaClearedAt DateTime?   @map("zatca_cleared_at") @db.Timestamptz
+
   status         String      @default("unpaid")
   paidAt         DateTime?   @map("paid_at") @db.Timestamptz
   paymentMethod  String?     @map("payment_method")
   paymentRef     String?     @map("payment_ref")
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  queueItems     ZatcaQueue[]
+
+  @@unique([tenantId, invoiceNumber], name: "uq_tenant_invoice_number")
   @@index([leaseId], map: "idx_rental_invoices_lease_id")
   @@index([tenantId], map: "idx_rental_invoices_tenant_id")
   @@map("rental_invoices")
+}
+
+model ZatcaDevice {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deviceName     String   @map("device_name")
+  deviceType     String   @default("COMPLIANCE") @map("device_type")
+  csr            String?  @map("csr") @db.Text
+  complianceCert String?  @map("compliance_cert") @db.Text
+  productionCert String?  @map("production_cert") @db.Text
+  privateKey     String   @map("private_key") @db.Text
+  publicKey      String   @map("public_key") @db.Text
+  status         String   @default("ACTIVE")
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId], map: "idx_zatca_devices_tenant_id")
+  @@map("zatca_devices")
+}
+
+model ZatcaQueue {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoiceId   String    @map("invoice_id") @db.Uuid
+  invoice     RentalInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  action      String    @default("REPORT")
+  status      String    @default("PENDING")
+  retryCount  Int       @default(0) @map("retry_count")
+  maxRetries  Int       @default(5) @map("max_retries")
+  lastError   String?   @map("last_error") @db.Text
+  nextRetryAt DateTime? @map("next_retry_at") @db.Timestamptz
+  payload     String?   @map("payload") @db.Text
+  response    String?   @map("response") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+
+  @@index([tenantId, status], map: "idx_zatca_queue_tenant_status")
+  @@index([nextRetryAt], map: "idx_zatca_queue_next_retry")
+  @@map("zatca_queue")
 }
 
 model AgentTelemetryLog {

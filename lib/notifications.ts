@@ -1,6 +1,6 @@
 // lib/notifications.ts
 
-const SMS_API_KEY = process.env.SMS_API_KEY || "mock_sms_key_for_testing";
+const SMS_API_KEY = process.env.SMS_API_KEY;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "mock_whatsapp_token_for_testing";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || "mock_id";
 
@@ -10,7 +10,7 @@ const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || "mock_i
 export async function sendSMSNotification(to: string, message: string) {
   try {
     // وضع التجربة والمحاكاة الفورية في سجلات السيرفر (Vercel / Local Logs)
-    if (SMS_API_KEY.startsWith("mock_")) {
+    if (!SMS_API_KEY) {
       console.log(`📱 [سجل الإشعارات السحابي - SMS] ➔ تم الإرسال لجوال: ${to} | نص الرسالة: "${message}"`);
       return { success: true, mock: true };
     }

@@ -5,10 +5,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runInstallmentAgentAction } from "@/app/actions/sanadAgent";
 
-const CRON_SECRET = process.env.CRON_SECRET || "cron_secret_orca_2026";
-
 export async function GET(request: NextRequest) {
-  // التحقق من المصدر الموثوق للكرون
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

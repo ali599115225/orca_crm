@@ -8,58 +8,37 @@ import { revalidatePath } from "next/cache";
 /**
  * جلب تفاصيل المشاريع مع حساب إحصائيات الحجوزات ونسب الإنجاز ديناميكياً من الوحدات
  */
-export async function getDetailedProjectsAction() {
+export async function getDetailedProjectsAction(page = 1, limit = 50) {
   try {
     const tenant = await getActiveTenant();
-    
-    const projects = await prisma.project.findMany({
-      where: { tenantId: tenant.id },
-      include: {
-        units: {
-          select: {
-            id: true,
-            status: true,
-            priceSar: true,
-          }
-        },
-        _count: {
-          select: { leads: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const skip = (page - 1) * limit;
 
-    // تحويل قيم الـ Decimal وقيم الإحصائيات لتكون آمنة للإرسال عبر الشبكة
-    return projects.map((project) => {
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where: { tenantId: tenant.id },
+        include: { units: { select: { id: true, status: true, priceSar: true } }, _count: { select: { leads: true } } },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.project.count({ where: { tenantId: tenant.id } }),
+    ]);
+
+    const data = projects.map((project) => {
       const units = project.units || [];
       const unitsTotal = units.length || project.unitsTotal || 0;
       const unitsSold = units.filter(u => u.status === "Sold").length;
       const unitsBooked = units.filter(u => u.status === "Hold").length;
-      
       const prices = units.map(u => Number(u.priceSar)).filter(p => p > 0);
       const minPrice = prices.length > 0 ? Math.min(...prices) : (project.minPrice ? Number(project.minPrice) : 0);
       const maxPrice = prices.length > 0 ? Math.max(...prices) : (project.maxPrice ? Number(project.maxPrice) : 0);
-
-      // نسبة الإنجاز بناءً على المبيعات كمعيار للوحة
-      const progressPercent = unitsTotal > 0 ? Math.min(100, Math.round((unitsSold / unitsTotal) * 100)) : 0;
-
-      return {
-        id: project.id,
-        name: project.name,
-        city: project.city,
-        status: project.status,
-        unitsTotal,
-        unitsSold,
-        unitsBooked,
-        minPrice,
-        maxPrice,
-        progressPercent,
-        createdAt: project.createdAt.toISOString(),
-      };
+      return { id: project.id, name: project.name, city: project.city, status: project.status, unitsTotal, unitsSold, unitsBooked, minPrice, maxPrice, progressPercent: unitsTotal > 0 ? Math.min(100, Math.round((unitsSold / unitsTotal) * 100)) : 0, createdAt: project.createdAt.toISOString() };
     });
+
+    return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
   } catch (error) {
     console.error("فشل جلب تفاصيل المشاريع:", error);
-    return [];
+    return { data: [], page, limit, total: 0, totalPages: 0 };
   }
 }
 
@@ -157,6 +136,13 @@ export async function createProjectActionDirect(data: { name: string; city: stri
  */
 export async function getProjectUnitsAction(projectId: string) {
   try {
+    const tenant = await getActiveTenant();
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!project) return [];
+
     const units = await prisma.unit.findMany({
       where: { projectId },
       orderBy: { unitNumber: "asc" }
@@ -168,7 +154,7 @@ export async function getProjectUnitsAction(projectId: string) {
       type: u.type || 'شقة',
       area: u.area || '120 م²',
       price: Number(u.priceSar),
-      status: u.status, // Available, Hold, Sold
+      status: u.status,
     }));
   } catch (error) {
     console.error("فشل جلب وحدات المشروع:", error);
@@ -181,6 +167,12 @@ export async function getProjectUnitsAction(projectId: string) {
  */
 export async function toggleUnitStatusAction(unitId: string, currentStatus: string) {
   try {
+    const tenant = await getActiveTenant();
+    const unit = await prisma.unit.findFirst({
+      where: { id: unitId, project: { tenantId: tenant.id } },
+    });
+    if (!unit) throw new Error("الوحدة غير موجودة أو لا تنتمي لمنشأتك.");
+
     const nextStatus = currentStatus === 'Available' ? 'Hold' : 'Available';
     
     const updatedUnit = await prisma.unit.update({

@@ -125,9 +125,10 @@ export default function OffersView() {
     async function loadOffers() {
       setOffersLoading(true);
       try {
-        const data = await getPropertiesAction();
-        if (data && data.length > 0) {
-          const mapped: PropertyOffer[] = data.map((u: any) => ({
+        const offersResult = await getPropertiesAction();
+        const propertiesData = offersResult && 'data' in offersResult ? offersResult.data : (Array.isArray(offersResult) ? offersResult : []);
+        if (propertiesData && propertiesData.length > 0) {
+          const mapped: PropertyOffer[] = propertiesData.map((u: any) => ({
             id: u.id,
             title: u.sku || `${u.type} - ${u.district || ''}`.trim(),
             type: (u.type === 'فيلا' || u.type === 'villa') ? 'villa' : u.type === 'أرض' || u.type === 'land' ? 'land' : 'apartment',

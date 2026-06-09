@@ -36,6 +36,7 @@ export async function getContractWizardDataAction() {
         lastName: true,
         phone: true,
       },
+      take: 100,
     });
 
     // 2. جلب جهات الاتصال البديلة (Contacts) لشمولية الفهرس
@@ -47,6 +48,7 @@ export async function getContractWizardDataAction() {
         name: true,
         phone: true,
       },
+      take: 100,
     });
 
     // دمج العملاء في مصفوفة موحدة
@@ -80,6 +82,7 @@ export async function getContractWizardDataAction() {
         { project: { name: "asc" } },
         { unitNumber: "asc" },
       ],
+      take: 100,
     });
 
     const availableProperties = units

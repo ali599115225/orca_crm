@@ -23,8 +23,12 @@ const GREEN_API_URL =
   process.env.WHATSAPP_API_URL ||
   "https://7107.api.greenapi.com";
 
-const WEBHOOK_SECRET =
-  process.env.WHATSAPP_WEBHOOK_SECRET || "orca_whatsapp_webhook_2026_secret";
+let WEBHOOK_SECRET: string | undefined;
+function ensureWebhookSecret() {
+  if (!WEBHOOK_SECRET) {
+    WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET;
+  }
+}
 
 // ─── هيكل رسائل Green API ───────────────────────────────────────────────────
 
@@ -59,18 +63,18 @@ interface GreenAPIWebhookBody {
 // GET: التحقق من Webhook (لا تستخدمه Green API — لكن نُبقيه للتوافقية)
 // ═══════════════════════════════════════════════════════════════════
 export async function GET(request: NextRequest) {
+  ensureWebhookSecret();
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
 
-  if (token === WEBHOOK_SECRET) {
+  if (token && WEBHOOK_SECRET && token === WEBHOOK_SECRET) {
     return NextResponse.json({ status: "Webhook active", instance: GREEN_API_ID_INSTANCE });
   }
 
-  // دعم التحقق من Meta API (للتوافقية)
   const mode = searchParams.get("hub.mode");
   const hubToken = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
-  if (mode === "subscribe" && hubToken === WEBHOOK_SECRET) {
+  if (mode === "subscribe" && hubToken && WEBHOOK_SECRET && hubToken === WEBHOOK_SECRET) {
     return new NextResponse(challenge, { status: 200 });
   }
 

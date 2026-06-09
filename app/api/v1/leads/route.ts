@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
         ...(stage ? { stage } : {}),
       },
       orderBy: { createdAt: "desc" },
+      take: 100,
     });
 
     return NextResponse.json({ success: true, data: leads });

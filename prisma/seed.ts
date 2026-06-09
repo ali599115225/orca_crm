@@ -4,7 +4,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const connectionString = process.env.DATABASE_URL;
@@ -243,13 +243,21 @@ async function main() {
     });
 
     // فواتير إيجار
+    const quarterlySubtotal = new Prisma.Decimal(Number(lease.rentAmount) / 4);
+    const vatRate = new Prisma.Decimal(15.00);
+    const vatAmount = quarterlySubtotal.mul(vatRate).div(100);
+    const totalAmount = quarterlySubtotal.add(vatAmount);
     for (let j = 0; j < 3; j++) {
       await prisma.rentalInvoice.create({
         data: {
           tenantId: tenant.id,
           leaseId: lease.id,
+          invoiceNumber: j + 1,
           dueDate: new Date(Date.now() + (j + 1) * 90 * 86400000),
-          amount: Number(lease.rentAmount) / 4,
+          subtotal: quarterlySubtotal,
+          vatRate: vatRate,
+          vatAmount: vatAmount,
+          totalAmount: totalAmount,
           status: j === 0 ? "paid" : "unpaid",
         },
       });

@@ -6,31 +6,26 @@ import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { sendWhatsAppNotification } from "@/lib/notifications";
 
-export async function getTasksAction() {
+export async function getTasksAction(page = 1, limit = 50) {
   try {
     const tenant = await getActiveTenant();
-    
-    return await prisma.task.findMany({
-      where: { tenantId: tenant.id },
-      include: {
-        lead: {
-          select: {
-            firstName: true,
-            lastName: true,
-            phone: true,
-          }
-        },
-        assignedUser: {
-          select: {
-            name: true,
-          }
-        }
-      },
-      orderBy: { dueDate: "asc" },
-    });
+    const skip = (page - 1) * limit;
+
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where: { tenantId: tenant.id },
+        include: { lead: { select: { firstName: true, lastName: true, phone: true } }, assignedUser: { select: { name: true } } },
+        orderBy: { dueDate: "asc" },
+        skip,
+        take: limit,
+      }),
+      prisma.task.count({ where: { tenantId: tenant.id } }),
+    ]);
+
+    return { data: tasks, page, limit, total, totalPages: Math.ceil(total / limit) };
   } catch (error) {
     console.error("فشل جلب المهام:", error);
-    return [];
+    return { data: [], page, limit, total: 0, totalPages: 0 };
   }
 }
 

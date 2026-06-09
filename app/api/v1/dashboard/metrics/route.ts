@@ -1,19 +1,20 @@
 // app/api/v1/dashboard/metrics/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    // 🛡️ استخراج معرف المنشأة الممرر آلياً من خلال Middleware الخاص بالـ JWT
-    const companyId = request.headers.get("x-company-id");
-    if (!companyId) {
+    const session = await getSession();
+    if (!session?.tenantId) {
+      console.warn(`[UNAUTHORIZED] /api/v1/dashboard/metrics - IP: ${request.headers.get("x-forwarded-for") || "unknown"}`);
       return NextResponse.json(
-        { error: "غير مصرح بالوصول: معرف المنشأة العقارية (x-company-id) مفقود." },
-        { status: 400 }
+        { error: "غير مصرح بالوصول: يرجى تسجيل الدخول أولاً." },
+        { status: 401 }
       );
     }
+    const companyId = session.tenantId as string;
 
-    // 1. جلب عملاء المنشأة المعزولة للتحليل
     const leads = await prisma.lead.findMany({
       where: { tenantId: companyId },
       select: {
@@ -26,20 +27,17 @@ export async function GET(request: NextRequest) {
 
     const totalLeads = leads.length;
     
-    // تصفية الحجوزات النشطة والعقود المكتملة والمستبعدة
     const activeBookings = leads.filter((l) => l.status === "RESERVED").length;
     const closedSales = leads.filter(
       (l) => l.status === "CONTRACT_SIGNED" || l.status === "WON"
     ).length;
     const lostLeads = leads.filter((l) => l.status === "LOST").length;
 
-    // حساب معدل التحويل الكلي للشركة
     const successfulDeals = activeBookings + closedSales;
     const conversionRateVal = totalLeads > 0 
       ? ((successfulDeals / totalLeads) * 100).toFixed(1)
       : "0.0";
 
-    // 2. تحليل كفاءة قنوات التسويق والمصادر
     const sourceMap: Record<string, number> = {};
     leads.forEach((l) => {
       sourceMap[l.source] = (sourceMap[l.source] || 0) + 1;
@@ -48,7 +46,6 @@ export async function GET(request: NextRequest) {
       .map(([source, count]) => ({ source, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 3. تحليل جغرافيا المبيعات (المدن)
     const cityMap: Record<string, number> = {};
     leads.forEach((l) => {
       cityMap[l.city] = (cityMap[l.city] || 0) + 1;
@@ -57,7 +54,6 @@ export async function GET(request: NextRequest) {
       .map(([city, count]) => ({ city, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 4. تتبع مراحل قمع المبيعات
     const statusOrder = [
       { key: "NEW", label: "عميل جديد" },
       { key: "CONTACTED", label: "تم التواصل" },

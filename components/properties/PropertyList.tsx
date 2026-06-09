@@ -153,7 +153,8 @@ export default function PropertyList({
       try {
         setIsLoading(true);
         setFetchError(null);
-        const data = await getPropertiesAction();
+        const result = await getPropertiesAction();
+        const data = result && 'data' in result ? result.data : (Array.isArray(result) ? result : []);
         if (data && data.length > 0) {
           setProperties(data);
           addTelemetryEvent('api.properties_loaded', { count: data.length });
@@ -205,8 +206,9 @@ export default function PropertyList({
     }
 
     try {
-      const projects = await getDetailedProjectsAction();
-      const firstProject = projects?.[0];
+      const projectsResult2 = await getDetailedProjectsAction();
+      const projectsList2 = projectsResult2 && 'data' in projectsResult2 ? projectsResult2.data : (Array.isArray(projectsResult2) ? projectsResult2 : []);
+      const firstProject = projectsList2?.[0];
       if (!firstProject) {
         toast.error('الرجاء إنشاء مشروع عقاري أولاً قبل إضافة وحدات.');
         return;

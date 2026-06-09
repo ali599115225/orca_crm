@@ -1,19 +1,20 @@
 // app/api/v1/dashboard/telemetry/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    // 🛡️ استخراج معرف المنشأة الممرر آلياً من خلال Middleware الخاص بالـ JWT
-    const companyId = request.headers.get("x-company-id");
-    if (!companyId) {
+    const session = await getSession();
+    if (!session?.tenantId) {
+      console.warn(`[UNAUTHORIZED] /api/v1/dashboard/telemetry - IP: ${request.headers.get("x-forwarded-for") || "unknown"}`);
       return NextResponse.json(
-        { error: "غير مصرح بالوصول: معرف المنشأة العقارية (x-company-id) مفقود." },
-        { status: 400 }
+        { error: "غير مصرح بالوصول: يرجى تسجيل الدخول أولاً." },
+        { status: 401 }
       );
     }
+    const companyId = session.tenantId as string;
 
-    // جلب آخر 20 سجل تتبع تفاعلي للوكلاء لهذه المنشأة
     const telemetryLogs = await prisma.agentTelemetryLog.findMany({
       where: { tenantId: companyId },
       orderBy: { createdAt: "desc" },

@@ -6,32 +6,35 @@ import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
 
-export async function getLeadsAction() {
+export async function getLeadsAction(page = 1, limit = 50) {
   try {
     const tenant = await getActiveTenant();
-    
-    const leads = await prisma.lead.findMany({
-      where: { tenantId: tenant.id },
-      include: {
-        project: true,
-        assignedUser: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const skip = (page - 1) * limit;
 
-    return leads.map((lead) => ({
-      ...lead,
-      project: lead.project
-        ? {
-            ...lead.project,
-            minPrice: lead.project.minPrice ? Number(lead.project.minPrice) : null,
-            maxPrice: lead.project.maxPrice ? Number(lead.project.maxPrice) : null,
-          }
-        : null,
-    }));
+    const [leads, total] = await Promise.all([
+      prisma.lead.findMany({
+        where: { tenantId: tenant.id },
+        include: { project: true, assignedUser: true },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.lead.count({ where: { tenantId: tenant.id } }),
+    ]);
+
+    return {
+      data: leads.map((lead) => ({
+        ...lead,
+        project: lead.project ? { ...lead.project, minPrice: lead.project.minPrice ? Number(lead.project.minPrice) : null, maxPrice: lead.project.maxPrice ? Number(lead.project.maxPrice) : null } : null,
+      })),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
   } catch (error) {
     console.error("فشل جلب العملاء:", error);
-    return [];
+    return { data: [], page, limit, total: 0, totalPages: 0 };
   }
 }
 

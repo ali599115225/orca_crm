@@ -3,20 +3,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { tenantContext } from "@/lib/tenant-context";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
   if (sessionToken) {
     const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
+    if (payload && payload.tenantId) {
+      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
+      return payload;
+    }
   }
 
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
     const payload = await decrypt(token);
-    if (payload && payload.tenantId) return payload;
+    if (payload && payload.tenantId) {
+      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
+      return payload;
+    }
   }
 
   return null;
@@ -42,7 +49,8 @@ export async function GET(request: NextRequest) {
           select: { name: true }
         }
       },
-      orderBy: { dueDate: "asc" }
+      orderBy: { dueDate: "asc" },
+      take: 100,
     });
 
     return NextResponse.json({ success: true, data: tasks });

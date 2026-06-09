@@ -46,20 +46,15 @@ export default function ProjectsView() {
       try {
         setIsLoading(true);
         setFetchError(null);
-        const data = await getDetailedProjectsAction();
+        const result = await getDetailedProjectsAction();
+        const data = result && 'data' in result ? result.data : (Array.isArray(result) ? result : []);
         if (data && data.length > 0) {
           setUsingFallback(false);
           setProjectsList(data.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            location: p.city,
+            id: p.id, name: p.name, location: p.city,
             status: p.status === 'COMPLETED' ? 'مكتمل' : p.status === 'PLANNING' ? 'مخطط له' : 'قيد الإنشاء',
-            unitsTotal: p.unitsTotal,
-            unitsSold: p.unitsSold,
-            progressPercent: p.progressPercent,
-            description: p.description || '',
-            createdAt: p.createdAt,
-            updatedAt: p.createdAt,
+            unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, progressPercent: p.progressPercent,
+            description: p.description || '', createdAt: p.createdAt, updatedAt: p.createdAt,
           })));
           addTelemetryEvent('api.projects_loaded', 0, { count: data.length });
         } else {
@@ -105,20 +100,15 @@ export default function ProjectsView() {
 
   const handleRefreshProjects = async () => {
     try {
-      const data = await getDetailedProjectsAction();
-      if (data && data.length > 0) {
+      const refreshResult2 = await getDetailedProjectsAction();
+      const refreshData2 = refreshResult2 && 'data' in refreshResult2 ? refreshResult2.data : (Array.isArray(refreshResult2) ? refreshResult2 : []);
+      if (refreshData2 && refreshData2.length > 0) {
         setUsingFallback(false);
-        setProjectsList(data.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          location: p.city,
+        setProjectsList(refreshData2.map((p: any) => ({
+          id: p.id, name: p.name, location: p.city,
           status: p.status === 'COMPLETED' ? 'مكتمل' : p.status === 'PLANNING' ? 'مخطط له' : 'قيد الإنشاء',
-          unitsTotal: p.unitsTotal,
-          unitsSold: p.unitsSold,
-          progressPercent: p.progressPercent,
-          description: p.description || '',
-          createdAt: p.createdAt,
-          updatedAt: p.createdAt,
+          unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, progressPercent: p.progressPercent,
+          description: p.description || '', createdAt: p.createdAt, updatedAt: p.createdAt,
         })));
       }
     } catch {

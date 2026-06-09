@@ -6,13 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
 
-const CRON_SECRET = process.env.CRON_SECRET || "cron_secret_orca_2026";
-
-// عداد محاولات الإصلاح (يُخزَّن في الذاكرة - سيُعاد ضبطه عند إعادة التشغيل)
 let healingAttempts = 0;
 const MAX_HEALING_ATTEMPTS = 3;
 
 export async function GET(request: NextRequest) {
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

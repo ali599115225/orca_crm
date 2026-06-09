@@ -52,6 +52,7 @@ export async function runInstallmentAgentAction() {
 
     let processedCount = 0;
     const errors: string[] = [];
+    const telemetryLogs: { tenantId: string; agentId: string; actionType: string; logMessageAr: string; severity: string }[] = [];
 
     // 2. معالجة كل قسط وإصدار روابط الدفع والمتابعة الآلية
     for (const installment of dueInstallments) {
@@ -61,37 +62,28 @@ export async function runInstallmentAgentAction() {
         const tenant = unit.project.tenant;
 
         if (!tenant || !tenant.isActive) {
-          continue; // تخطي الشركات المعطلة مؤقتاً
+          continue;
         }
 
-        // إنشاء رابط الدفع المشفر
         const paymentLink = `https://${tenant.subdomain}.orca.az-ez.pro/pay/${installment.securePaymentToken}`;
 
-
-        // صياغة تفاصيل الرسالة
         const buyerName = contract.buyerName;
         const buyerPhone = contract.buyerPhone;
         const unitNumber = unit.unitNumber;
         const amountStr = parseFloat(installment.amountSar.toString()).toLocaleString("en-US");
         const dueDateStr = new Date(installment.dueDate).toLocaleDateString("ar-SA");
 
-        // إرسال تنبيه واتساب التلقائي للعميل
         const templateName = "installment_reminder";
         const variables = [buyerName, unitNumber, amountStr, dueDateStr, paymentLink];
 
         await sendWhatsAppNotification(buyerPhone, templateName, variables);
 
-        // 3. تدوين سجل تتبع الوكيل سند غير القابل للتعديل ليتدفق لحظياً إلى لوحة التحكم
-        const logMessageAr = `«قام الوكيل سند بتوليد رابط دفع مشفر وإرساله عبر الواتساب الآمن للمشتري (${buyerName}) لتذكيره بالقسط المستحق للوحدة ${unitNumber} بقيمة ${amountStr} ر.س»`;
-        
-        await prisma.agentTelemetryLog.create({
-          data: {
-            tenantId: tenant.id,
-            agentId: "Sanad",
-            actionType: "Link_Dispatched",
-            logMessageAr: logMessageAr,
-            severity: "Info",
-          },
+        telemetryLogs.push({
+          tenantId: tenant.id,
+          agentId: "Sanad",
+          actionType: "Link_Dispatched",
+          logMessageAr: `«قام الوكيل سند بتوليد رابط دفع مشفر وإرساله عبر الواتساب الآمن للمشتري (${buyerName}) لتذكيره بالقسط المستحق للوحدة ${unitNumber} بقيمة ${amountStr} ر.س»`,
+          severity: "Info",
         });
 
         processedCount++;
@@ -99,6 +91,10 @@ export async function runInstallmentAgentAction() {
         console.error(`خطأ معالجة القسط للعميل ${installment.contract.buyerName}:`, err.message);
         errors.push(`${installment.contract.buyerName}: ${err.message}`);
       }
+    }
+
+    if (telemetryLogs.length > 0) {
+      await prisma.agentTelemetryLog.createMany({ data: telemetryLogs });
     }
 
     try {

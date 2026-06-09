@@ -52,8 +52,9 @@ export default function PropertyDetail({
     async function loadProperty() {
       try {
         setLoading(true);
-        const data = await getPropertiesAction();
-        const found = data?.find((p: any) => String(p.id) === String(propertyId));
+        const prResult = await getPropertiesAction();
+        const propsList = prResult && 'data' in prResult ? prResult.data : (Array.isArray(prResult) ? prResult : []);
+        const found = propsList?.find((p: any) => String(p.id) === String(propertyId));
         if (found) {
           setProperty(found);
           setSimulatedPrice(found.price);

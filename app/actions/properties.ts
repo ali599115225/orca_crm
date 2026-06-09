@@ -8,75 +8,46 @@ import { revalidatePath } from "next/cache";
 /**
  * جلب العقارات والوحدات التابعة للشركاء والمشاريع الخاصة بالمنشأة الحالية
  */
-export async function getPropertiesAction(filters?: { search?: string; status?: string; projectId?: string }) {
+export async function getPropertiesAction(filters?: { search?: string; status?: string; projectId?: string }, page = 1, limit = 50) {
   try {
     const tenant = await getActiveTenant();
+    const skip = (page - 1) * limit;
 
-    const where: any = {
-      project: {
-        tenantId: tenant.id,
-      },
-    };
+    const where: any = { project: { tenantId: tenant.id } };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.projectId) where.projectId = filters.projectId;
 
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-    if (filters?.projectId) {
-      where.projectId = filters.projectId;
-    }
-
-    const units = await prisma.unit.findMany({
-      where,
-      include: {
-        project: {
-          select: { id: true, name: true },
-        },
-        contract: {
-          select: { id: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [units, total] = await Promise.all([
+      prisma.unit.findMany({
+        where,
+        include: { project: { select: { id: true, name: true } }, contract: { select: { id: true } } },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.unit.count({ where }),
+    ]);
 
     let list = units.map((u) => ({
-      id: u.id,
-      sku: u.unitNumber,
-      type: u.type || "شقة سكنية",
-      project: u.project?.name || "",
-      projectId: u.projectId,
-      area: u.area || "120 م²",
-      price: Number(u.priceSar),
-      priceStr: Number(u.priceSar).toLocaleString() + " ر.س",
-      status: u.status as "Available" | "Hold" | "Sold",
-      desc: u.description || "",
-      media: Array.isArray(u.media) ? (u.media as string[]) : [],
-      docs: Array.isArray(u.docs) ? (u.docs as string[]) : [],
-      events: Array.isArray(u.events) ? (u.events as any[]) : [],
-      handovers: Array.isArray(u.handovers) ? (u.handovers as any[]) : [],
-      contractId: u.contract?.id || undefined,
-      beds: u.beds || 3,
-      city: u.city || "الرياض",
-      district: u.district || "غير محدد",
-      agentName: u.agentName || "غير معين",
-      lat: u.lat || 24.7,
-      lng: u.lng || 46.7,
-      createdAt: u.createdAt,
+      id: u.id, sku: u.unitNumber, type: u.type || "شقة سكنية", project: u.project?.name || "",
+      projectId: u.projectId, area: u.area || "120 م²", price: Number(u.priceSar),
+      priceStr: Number(u.priceSar).toLocaleString() + " ر.س", status: u.status as "Available" | "Hold" | "Sold",
+      desc: u.description || "", media: Array.isArray(u.media) ? (u.media as string[]) : [],
+      docs: Array.isArray(u.docs) ? (u.docs as string[]) : [], events: Array.isArray(u.events) ? (u.events as any[]) : [],
+      handovers: Array.isArray(u.handovers) ? (u.handovers as any[]) : [], contractId: u.contract?.id || undefined,
+      beds: u.beds || 3, city: u.city || "الرياض", district: u.district || "غير محدد",
+      agentName: u.agentName || "غير معين", lat: u.lat || 24.7, lng: u.lng || 46.7, createdAt: u.createdAt,
     }));
 
     if (filters?.search) {
       const q = filters.search.toLowerCase();
-      list = list.filter(
-        (u) =>
-          u.sku.toLowerCase().includes(q) ||
-          u.type.toLowerCase().includes(q) ||
-          u.project.toLowerCase().includes(q)
-      );
+      list = list.filter((u) => u.sku.toLowerCase().includes(q) || u.type.toLowerCase().includes(q) || u.project.toLowerCase().includes(q));
     }
 
-    return list;
+    return { data: list, page, limit, total, totalPages: Math.ceil(total / limit) };
   } catch (error) {
     console.error("فشل جلب العقارات والوحدات:", error);
-    return [];
+    return { data: [], page, limit, total: 0, totalPages: 0 };
   }
 }
 

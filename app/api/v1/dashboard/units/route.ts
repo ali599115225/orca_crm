@@ -1,18 +1,20 @@
 // app/api/v1/dashboard/units/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    const companyId = request.headers.get("x-company-id");
-    if (!companyId) {
+    const session = await getSession();
+    if (!session?.tenantId) {
+      console.warn(`[UNAUTHORIZED] /api/v1/dashboard/units - IP: ${request.headers.get("x-forwarded-for") || "unknown"}`);
       return NextResponse.json(
-        { error: "غير مصرح بالوصول: معرف المنشأة العقارية مفقود." },
-        { status: 400 }
+        { error: "غير مصرح بالوصول: يرجى تسجيل الدخول أولاً." },
+        { status: 401 }
       );
     }
+    const companyId = session.tenantId as string;
 
-    // 1. جلب أول مشروع نشط للمطور العقاري الحالي
     let project = await prisma.project.findFirst({
       where: { tenantId: companyId },
     });
@@ -28,7 +30,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 2. جلب الوحدات العقارية المسجلة في قاعدة البيانات لهذا المشروع
     let units = await prisma.unit.findMany({
       where: { projectId: project.id },
       orderBy: [
@@ -37,7 +38,6 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // 3. التغذية التلقائية بالوحدات في حال كان المشروع جديداً لضمان رسم المصفوفة 100%
     if (units.length === 0) {
       const unitsData = [];
       for (let i = 0; i < 64; i++) {

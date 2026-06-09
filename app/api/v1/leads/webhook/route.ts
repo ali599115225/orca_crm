@@ -100,7 +100,6 @@ export async function POST(request: NextRequest) {
     let assignedRepId: string | null = null;
     let isHotLead = intentScore >= 75;
 
-    // توجيه ذكي: ربط العميل عالي الجدية بأول موظف مبيعات متاح (صاحب أقل ليدات)
     if (isHotLead) {
       const salesReps = await prisma.user.findMany({
         where: {
@@ -111,17 +110,16 @@ export async function POST(request: NextRequest) {
       });
 
       if (salesReps.length > 0) {
-        // حساب أعداد الليدات لكل موظف لاختيار الأقل ضغطاً
-        const repsWithCounts = await Promise.all(
-          salesReps.map(async (rep) => {
-            const count = await prisma.lead.count({
-              where: { assignedTo: rep.id }
-            });
-            return { id: rep.id, count };
-          })
-        );
-        repsWithCounts.sort((a, b) => a.count - b.count);
-        assignedRepId = repsWithCounts[0].id;
+        const repIds = salesReps.map(r => r.id);
+        const leadCounts = await prisma.lead.groupBy({
+          by: ['assignedTo'],
+          where: { assignedTo: { in: repIds } },
+          _count: { id: true },
+        });
+        const countMap = new Map(leadCounts.map(l => [l.assignedTo, l._count.id]));
+        const sortedReps = salesReps.map(rep => ({ id: rep.id, count: countMap.get(rep.id) || 0 }));
+        sortedReps.sort((a, b) => a.count - b.count);
+        assignedRepId = sortedReps[0].id;
       }
     }
 

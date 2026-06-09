@@ -125,19 +125,15 @@ export async function checkAndSuspendExpiredTenantsAction() {
     }
 
     // تعطيل الشركات المنتهية وإرسال تذكيرات دفع آلياً
-    for (const tenant of expiredTenants) {
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: {
-          isActive: false,
-          paymentStatus: "UNPAID",
-        }
-      });
+    const expiredIds = expiredTenants.map(t => t.id);
+    await prisma.tenant.updateMany({
+      where: { id: { in: expiredIds } },
+      data: { isActive: false, paymentStatus: "UNPAID" }
+    });
 
-      // 🚀 إرسال رسالة جوال آلية تذكيرية بضرورة التجديد [1.2.1]
+    for (const tenant of expiredTenants) {
       const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca.az-ez.pro/operations?tab=settings`;
-      const clientMobile = "+966557516311"; // هاتف المدير العقاري
-      await sendSMSNotification(clientMobile, suspendSMS);
+      await sendSMSNotification("+966557516311", suspendSMS);
     }
 
     revalidatePath("/operations");

@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const offers = await prisma.offer.findMany({
       where: { tenantId },
       orderBy: { createdAt: "desc" },
+      take: 100,
     });
 
     return NextResponse.json({ success: true, data: offers });

@@ -5,7 +5,7 @@ import React, { useState, useTransition, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Calculator, Megaphone, Plus, Search, Eye,
   Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
-  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2
+  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2, QrCode, Download
 } from 'lucide-react';
 import { DateField } from '@/components/ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
@@ -29,10 +29,21 @@ interface Lease {
 
 interface Invoice {
   id: string;
+  invoiceNumber: number;
+  invoicePrefix: string;
+  invoiceLabel: string;
+  zatcaUuid: string;
   contractId: string;
-  due: string;      // YYYY-MM-DD
-  amount: number;
+  due: string;
+  subtotal: number;
+  vatRate: number;
+  vatAmount: number;
+  totalAmount: number;
   status: 'unpaid' | 'paid' | 'overdue';
+  qrCode?: string;
+  qrImage?: string;
+  customerName?: string;
+  unitName?: string;
 }
 
 interface Payment {
@@ -68,28 +79,11 @@ const initialLeases: Lease[] = [
   { id: 'L-1003', unit: 'C-301', tenant: 'شركة النخبة', start: '2026-03-01', end: '2027-02-28', rent: 25000, currency: 'SAR', status: 'active', deposit: 5000, financialRef: null }
 ];
 
-const initialInvoices: Invoice[] = [
-  { id: 'INV-9001', contractId: 'L-1001', due: '2026-06-14', amount: 12000, status: 'unpaid' },
-  { id: 'INV-9002', contractId: 'L-1002', due: '2026-05-01', amount: 45000, status: 'paid' },
-  { id: 'INV-9003', contractId: 'L-1003', due: '2026-07-01', amount: 25000, status: 'unpaid' },
-  { id: 'INV-9004', contractId: 'L-1001', due: '2026-05-10', amount: 12000, status: 'overdue' },
-  { id: 'INV-9005', contractId: 'L-1003', due: '2026-05-20', amount: 25000, status: 'overdue' }
-];
+const initialInvoices: Invoice[] = []; // Loaded from API
 
-const initialPayments: Payment[] = [
-  { id: 'P-5001', invoiceId: 'INV-9002', date: '2026-05-02', amount: 45000, method: 'bank', ref: 'TXN-8891' }
-];
-
-const initialSettlements: Settlement[] = [
-  { id: 'FS-3001', contractId: 'L-1002', gross: 120000, deductions: 12000, net: 108000, status: 'completed' }
-];
-
-const initialEvents: EventLog[] = [
-  { id: 'ev_1', contractId: 'L-1001', type: 'lease.created', timestamp: '2026-01-01T10:00:00Z', note: 'تم تسجيل عقد جديد للوحدة A-101' },
-  { id: 'ev_2', contractId: 'L-1002', type: 'lease.created', timestamp: '2025-07-01T09:00:00Z', note: 'تم تسجيل عقد جديد للوحدة B-201' },
-  { id: 'ev_3', contractId: 'L-1002', type: 'invoice.issued', timestamp: '2026-05-01T08:00:00Z', note: 'تم إصدار فاتورة بمبلغ 45,000 ر.س' },
-  { id: 'ev_4', contractId: 'L-1002', type: 'payment.received', timestamp: '2026-05-02T14:30:00Z', note: 'تم تحصيل الدفعة رقم INV-9002' }
-];
+const initialPayments: Payment[] = [];
+const initialSettlements: Settlement[] = [];
+const initialEvents: EventLog[] = [];
 
 export default function RentalPage() {
   const [mounted, setMounted] = useState(false);
@@ -126,9 +120,10 @@ export default function RentalPage() {
   const [newDeposit, setNewDeposit] = useState(0);
 
   // Create Invoice form state
-  const [invoiceDue, setInvoiceDue] = useState(''); // YYYY-MM-DD
-  const [invoiceAmount, setInvoiceAmount] = useState(0);
-  const [invoiceContractId, setInvoiceContractId] = useState('');
+  const [invSubtotal, setInvSubtotal] = useState(0);
+  const [invVatType, setInvVatType] = useState('STANDARD');
+  const [invDueDate, setInvDueDate] = useState('');
+  const [invLeaseId, setInvLeaseId] = useState('');
 
   // Payment form state
   const [payMethod, setPayMethod] = useState('bank');
@@ -145,8 +140,6 @@ export default function RentalPage() {
   // Permission check — delegated to AuthContext
   const isAllowed = (action: string) => hasPermission(action);
 
-  // Feature Flags
-  const [enableZakat, setEnableZakat] = useState(false);
   const [enableCompliance, setEnableCompliance] = useState(false);
 
   // Details sub-tabs controller
@@ -220,8 +213,8 @@ export default function RentalPage() {
   };
 
   // KPIs
-  const totalReceivables = invoices.filter(i => i.status !== 'paid').reduce((acc, i) => acc + i.amount, 0);
-  const totalOverdue = invoices.filter(i => i.status === 'overdue').reduce((acc, i) => acc + i.amount, 0);
+  const totalReceivables = invoices.filter(i => i.status !== 'paid').reduce((acc, i) => acc + i.totalAmount, 0);
+  const totalOverdue = invoices.filter(i => i.status === 'overdue').reduce((acc, i) => acc + i.totalAmount, 0);
   const collectedThisMonth = payments.reduce((acc, p) => acc + p.amount, 0);
   const pendingSettlementsCount = settlements.filter(s => s.status === 'pending').length;
 
@@ -337,16 +330,10 @@ export default function RentalPage() {
       return;
     }
 
-    const targetContractId = invoiceContractId || prefilledContractId;
-    if (!targetContractId || !invoiceDue || invoiceAmount <= 0) {
+    const leaseId = invLeaseId || prefilledContractId;
+    if (!leaseId || !invDueDate || invSubtotal <= 0) {
       alert('يرجى التحقق من المدخلات.');
       return;
-    }
-
-    let finalAmount = invoiceAmount;
-    if (enableZakat) {
-      finalAmount = Math.round(invoiceAmount * 1.15);
-      addTelemetryEvent('zakat.tax_calculated', { invoiceAmount, vat: Math.round(invoiceAmount * 0.15), total: finalAmount });
     }
 
     let newInvoiceId = 'unknown';
@@ -354,12 +341,30 @@ export default function RentalPage() {
       const res = await fetch('/api/v1/invoices/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractId: targetContractId, due: invoiceDue, amount: finalAmount }),
+        body: JSON.stringify({ leaseId, subtotal: invSubtotal, vatType: invVatType, dueDate: invDueDate }),
       });
       const json = await res.json();
       if (json.success) {
-        newInvoiceId = json.invoice.id;
-        setInvoices(prev => [...prev, json.invoice]);
+        const inv = json.invoice;
+        newInvoiceId = inv.id;
+        setInvoices(prev => [{
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          invoicePrefix: inv.invoicePrefix,
+          invoiceLabel: inv.invoiceLabel,
+          zatcaUuid: inv.zatcaUuid,
+          contractId: inv.leaseId,
+          due: inv.dueDate,
+          subtotal: inv.subtotal,
+          vatRate: inv.vatRate,
+          vatAmount: inv.vatAmount,
+          totalAmount: inv.totalAmount,
+          status: inv.status,
+          qrCode: inv.qrCode,
+          qrImage: inv.qrImage,
+          customerName: inv.customerName,
+          unitName: inv.unitName,
+        }, ...prev]);
       } else {
         throw new Error(json.error);
       }
@@ -370,28 +375,29 @@ export default function RentalPage() {
 
     const newEv: EventLog = {
       id: `ev_${Date.now()}`,
-      contractId: targetContractId,
+      contractId: leaseId,
       type: 'invoice.issued',
       timestamp: new Date().toISOString(),
-      note: `تم إصدار الفاتورة بمبلغ ${finalAmount.toLocaleString()} ر.س`
+      note: `تم إصدار الفاتورة ${newInvoiceId} بقيمة ${invSubtotal} ر.س`
     };
     setEvents(prev => [...prev, newEv]);
 
     addTelemetryEvent('invoice.issued', {
-      contractId: targetContractId,
+      contractId: leaseId,
       invoiceId: newInvoiceId,
       actorId: 'usr_active',
       timestamp: new Date().toISOString(),
       status: 'unpaid',
-      payload: { due: invoiceDue, amount: finalAmount, currency: 'SAR' }
+      payload: { subtotal: invSubtotal, vatType: invVatType, due: invDueDate, currency: 'SAR' }
     });
 
-    setInvoiceDue('');
-    setInvoiceAmount(0);
-    setInvoiceContractId('');
+    setInvSubtotal(0);
+    setInvVatType('STANDARD');
+    setInvDueDate('');
+    setInvLeaseId('');
     setPrefilledContractId('');
     setActiveModal(null);
-    alert(`تم إصدار الفاتورة بنجاح!`);
+    alert('تم إصدار الفاتورة بنجاح!');
   };
 
   const handleRegisterPayment = (e: React.FormEvent) => {
@@ -412,7 +418,7 @@ export default function RentalPage() {
       id: payId,
       invoiceId: selectedInvoice.id,
       date: payDate,
-      amount: selectedInvoice.amount,
+      amount: selectedInvoice.totalAmount,
       method: payMethod,
       ref: payRef || undefined
     };
@@ -425,7 +431,7 @@ export default function RentalPage() {
       contractId: selectedInvoice.contractId,
       type: 'payment.received',
       timestamp: new Date().toISOString(),
-      note: `تم سداد الفاتورة رقم ${selectedInvoice.id} بمبلغ ${selectedInvoice.amount.toLocaleString()} ر.س عبر ${payMethod}`
+      note: `تم سداد الفاتورة رقم ${selectedInvoice.id} بمبلغ ${selectedInvoice.totalAmount.toLocaleString()} ر.س عبر ${payMethod}`
     };
     setEvents(prev => [...prev, newEv]);
 
@@ -437,7 +443,7 @@ export default function RentalPage() {
       timestamp: new Date().toISOString(),
       status: 'paid',
       idempotencyKey: payIdempotencyKey,
-      payload: { amount: selectedInvoice.amount, method: payMethod, ref: payRef }
+      payload: { amount: selectedInvoice.totalAmount, method: payMethod, ref: payRef }
     });
 
     // Reset
@@ -529,7 +535,7 @@ export default function RentalPage() {
       id: pid,
       invoiceId: inv.id,
       date: new Date().toISOString().split('T')[0],
-      amount: inv.amount,
+      amount: inv.totalAmount,
       method: 'bank',
       ref: match.transactionId
     };
@@ -554,7 +560,7 @@ export default function RentalPage() {
       actorId: 'system_reconciliation',
       timestamp: new Date().toISOString(),
       status: 'paid',
-      payload: { amount: inv.amount, method: 'bank', ref: match.transactionId }
+      payload: { amount: inv.totalAmount, method: 'bank', ref: match.transactionId }
     });
 
     alert(`تم اعتماد المطابقة بنجاح وتسوية الفاتورة ${inv.id}.`);
@@ -899,7 +905,8 @@ export default function RentalPage() {
                               return;
                             }
                             setPrefilledContractId(selectedLease.id);
-                            setInvoiceAmount(selectedLease.rent);
+                            setInvSubtotal(selectedLease.rent);
+                            setInvVatType('STANDARD');
                             setActiveModal('create_invoice');
                           }}
                           className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
@@ -989,7 +996,9 @@ export default function RentalPage() {
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
                                 <th className="pb-2">رقم الفاتورة</th>
                                 <th className="pb-2">تاريخ الاستحقاق</th>
-                                <th className="pb-2">المبلغ المطلوب</th>
+                                <th className="pb-2">قبل الضريبة</th>
+                                <th className="pb-2">الضريبة</th>
+                                <th className="pb-2">الإجمالي</th>
                                 <th className="pb-2">الحالة</th>
                                 <th className="pb-2 text-left">إجراءات</th>
                               </tr>
@@ -997,9 +1006,11 @@ export default function RentalPage() {
                             <tbody>
                               {invoices.filter(i => i.contractId === selectedLease.id).map(inv => (
                                 <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                  <td className="py-2.5 font-bold text-white">{inv.id}</td>
+                                  <td className="py-2.5 font-bold text-white">{inv.invoiceLabel || inv.id}</td>
                                   <td className="py-2.5 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(inv.due)}</td>
-                                  <td className="py-2.5 font-bold text-white">{inv.amount.toLocaleString()} ر.س</td>
+                                  <td className="py-2.5">{inv.subtotal.toLocaleString()} ر.س</td>
+                                  <td className="py-2.5 text-amber-400">{inv.vatAmount.toLocaleString()} ر.س</td>
+                                  <td className="py-2.5 font-bold text-white">{inv.totalAmount.toLocaleString()} ر.س</td>
                                   <td className="py-2.5">
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                                       inv.status === 'paid' 
@@ -1021,24 +1032,21 @@ export default function RentalPage() {
                                         }}
                                         className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
                                       >
-                                        سداد الفاتورة
+                                        سداد
                                       </button>
                                     )}
                                     <button
-                                      onClick={() => {
-                                        addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
-                                        alert(`تم إرسال تذكير سداد للفاتورة ${inv.id}.`);
-                                      }}
-                                      className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all ml-1"
+                                      onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
+                                      className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all"
                                     >
-                                      تذكير
+                                      PDF
                                     </button>
                                   </td>
                                 </tr>
                               ))}
                               {invoices.filter(i => i.contractId === selectedLease.id).length === 0 && (
                                 <tr>
-                                  <td colSpan={5} className="py-4 text-center text-[var(--nc-text-dim)]">لا توجد فواتير مرتبطة بهذا العقد حالياً.</td>
+                                  <td colSpan={7} className="py-4 text-center text-[var(--nc-text-dim)]">لا توجد فواتير مرتبطة بهذا العقد حالياً.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -1215,62 +1223,80 @@ export default function RentalPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
-                      <th className="py-3 px-4">رقم الفاتورة</th>
-                      <th className="py-3 px-4">العقد المرتبط</th>
-                      <th className="py-3 px-4">تاريخ الاستحقاق</th>
-                      <th className="py-3 px-4">المبلغ</th>
-                      <th className="py-3 px-4">الحالة</th>
-                      <th className="py-3 px-4 text-center">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInvoices.map(inv => (
-                      <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-white">{inv.id}</td>
-                        <td className="py-3.5 px-4 font-mono text-cyan-400">{inv.contractId}</td>
-                        <td className="py-3.5 px-4 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(inv.due)}</td>
-                        <td className="py-3.5 px-4 font-bold text-white">{inv.amount.toLocaleString()} ر.س</td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                            inv.status === 'paid' 
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                              : inv.status === 'overdue'
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          }`}>
-                            {inv.status === 'paid' ? 'مدفوعة' : inv.status === 'overdue' ? 'متأخرة عن الدفع' : 'غير مدفوعة'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center space-x-2">
-                          {inv.status !== 'paid' && (
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(inv);
-                                setPayDate(new Date().toISOString().split('T')[0]);
-                                setActiveModal('register_payment');
-                              }}
-                              className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
-                            >
-                              سداد
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              addTelemetryEvent('invoice.reminder_sent', { invoiceId: inv.id, contractId: inv.contractId });
-                              alert(`تم إرسال تذكير سداد للفاتورة ${inv.id}.`);
-                            }}
-                            className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all ml-1"
-                          >
-                            تذكير
-                          </button>
-                        </td>
+                  <table className="w-full text-right border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
+                        <th className="py-3 px-4">رقم الفاتورة</th>
+                        <th className="py-3 px-4">العميل / الوحدة</th>
+                        <th className="py-3 px-4">تاريخ الاستحقاق</th>
+                        <th className="py-3 px-4">قبل الضريبة</th>
+                        <th className="py-3 px-4">الضريبة</th>
+                        <th className="py-3 px-4">الإجمالي</th>
+                        <th className="py-3 px-4">الحالة</th>
+                        <th className="py-3 px-4 text-center">QR</th>
+                        <th className="py-3 px-4 text-center">إجراءات</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredInvoices.map(inv => (
+                        <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-white">{inv.invoiceLabel || inv.id}</td>
+                          <td className="py-3.5 px-4">
+                            <div className="text-white text-xs">{inv.customerName || '-'}</div>
+                            <div className="text-[var(--nc-text-dim)] text-[10px]">{inv.unitName || ''}</div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(inv.due)}</td>
+                          <td className="py-3.5 px-4">{inv.subtotal.toLocaleString()} ر.س</td>
+                          <td className="py-3.5 px-4 text-amber-400">{inv.vatAmount.toLocaleString()} ر.س</td>
+                          <td className="py-3.5 px-4 font-bold text-white">{inv.totalAmount.toLocaleString()} ر.س</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                              inv.status === 'paid' 
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                : inv.status === 'overdue'
+                                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            }`}>
+                              {inv.status === 'paid' ? 'مدفوعة' : inv.status === 'overdue' ? 'متأخرة عن الدفع' : 'غير مدفوعة'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            {inv.qrImage && (
+                              <button
+                                onClick={() => window.open(`/api/v1/invoices/${inv.id}/qr`, '_blank')}
+                                className="text-[#8EB1D1] hover:text-white transition-colors"
+                                title="عرض QR"
+                              >
+                                <QrCode size={14} />
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center space-x-2">
+                            {inv.status !== 'paid' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedInvoice(inv);
+                                  setPayDate(new Date().toISOString().split('T')[0]);
+                                  setActiveModal('register_payment');
+                                }}
+                                className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
+                              >
+                                سداد
+                              </button>
+                            )}
+                            <button
+                              onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
+                              className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all"
+                              title="تحميل PDF"
+                            >
+                              <Download size={12} className="inline ml-1" />
+                              PDF
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
               </div>
             </div>
           )}
@@ -1568,7 +1594,7 @@ export default function RentalPage() {
         </div>
       )}
 
-      {/* ── Modal 2: Create Invoice Form (Prefilled contractId support) ── */}
+      {/* ── Modal 2: Create Invoice Form (VAT + QR + PDF) ── */}
       {activeModal === 'create_invoice' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
@@ -1578,38 +1604,81 @@ export default function RentalPage() {
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
               <FileCheck size={18} />
-              إصدار فاتورة إيجارية
+              إصدار فاتورة ضريبية
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">رقم العقد (Contract ID):</label>
+              <label className="text-[var(--nc-text-dim)] block">رقم العقد (Lease ID):</label>
               <input 
                 type="text"
                 required
                 disabled={!!prefilledContractId}
-                value={prefilledContractId || invoiceContractId}
-                onChange={(e) => setInvoiceContractId(e.target.value)}
+                value={prefilledContractId || invLeaseId}
+                onChange={(e) => setInvLeaseId(e.target.value)}
                 placeholder="مثال: L-1001"
                 className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] disabled:opacity-50 font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">قيمة الفاتورة المفوترة (SAR):</label>
+              <label className="text-[var(--nc-text-dim)] block">المبلغ قبل الضريبة (Subtotal SAR):</label>
               <input 
                 type="number"
+                name="inv-subtotal"
                 required
-                value={invoiceAmount}
-                onChange={(e) => setInvoiceAmount(Number(e.target.value))}
+                value={invSubtotal || ''}
+                onChange={(e) => setInvSubtotal(Number(e.target.value))}
                 className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
+              <label className="text-[var(--nc-text-dim)] block">نوع الضريبة (VAT Type):</label>
+              <select
+                value={invVatType}
+                onChange={(e) => setInvVatType(e.target.value)}
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+              >
+                <option value="STANDARD">ضريبة 15% (STANDARD)</option>
+                <option value="ZERO_RATED">صفرية (ZERO RATED)</option>
+                <option value="EXEMPT">معفاة (EXEMPT)</option>
+              </select>
+            </div>
+
+            {invSubtotal > 0 && (
+              <div className="bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--nc-text-dim)]">قبل الضريبة:</span>
+                  <span className="text-white">{invSubtotal.toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--nc-text-dim)]">
+                    ضريبة ({invVatType === 'EXEMPT' ? 0 : invVatType === 'ZERO_RATED' ? 0 : 15}%):
+                  </span>
+                  <span className="text-amber-400">
+                    {invVatType === 'EXEMPT' || invVatType === 'ZERO_RATED'
+                      ? '0.00'
+                      : (invSubtotal * 0.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {' '}ر.س
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs font-bold pt-1 border-t border-white/10">
+                  <span className="text-[var(--nc-text-dim)]">الإجمالي:</span>
+                  <span className="text-emerald-400">
+                    {invVatType === 'EXEMPT' || invVatType === 'ZERO_RATED'
+                      ? invSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2})
+                      : (invSubtotal * 1.15).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    {' '}ر.س
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
               <DateField 
-                value={invoiceDue}
-                onChange={(val) => setInvoiceDue(val)}
-                label="تاريخ الاستحقاق النهائي (DateField)"
+                value={invDueDate}
+                onChange={(val) => setInvDueDate(val)}
+                label="تاريخ الاستحقاق"
               />
             </div>
 
@@ -1618,7 +1687,7 @@ export default function RentalPage() {
                 type="submit"
                 className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
               >
-                إصدار الفاتورة وتنبيه العميل
+                إصدار الفاتورة (مع QR + PDF)
               </button>
               <button 
                 type="button"
@@ -1655,7 +1724,7 @@ export default function RentalPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--nc-text-dim)]">القيمة الإجمالية المطلوبة:</span>
-                <span className="text-emerald-400 font-bold">{selectedInvoice.amount.toLocaleString()} ر.س</span>
+                <span className="text-emerald-400 font-bold">{selectedInvoice.totalAmount.toLocaleString()} ر.س</span>
               </div>
             </div>
 

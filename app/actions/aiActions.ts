@@ -1,8 +1,8 @@
 'use server';
 
 export async function analyzeLeadAI(lead: any) {
-  // محاكاة وقت التفكير للذكاء الاصطناعي (1.5 ثانية) لإعطاء طابع احترافي
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
   let recommendation = "";
   let actionText = "";
@@ -35,12 +35,16 @@ export async function analyzeLeadAI(lead: any) {
     priority = "medium";
   }
 
-  return {
-    recommendation,
-    actionText,
-    priority,
-    confidence: Math.floor(Math.random() * 10) + 85 // نسبة ثقة الذكاء الاصطناعي 85-95%
-  };
+    return {
+      recommendation,
+      actionText,
+      priority,
+      confidence: Math.floor(Math.random() * 10) + 85
+    };
+  } catch (error) {
+    console.error("[analyzeLeadAI]", error);
+    return { recommendation: "تعذر التحليل", actionText: "", priority: "medium", confidence: 0 };
+  }
 }
 
 

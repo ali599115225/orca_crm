@@ -64,6 +64,7 @@ export async function submitContractToEjarAction(
     // ===================================================
     const EJAR_API_URL = process.env.EJAR_API_URL || "https://api.ejar.sa/sandbox/v1";
     const EJAR_API_KEY = process.env.EJAR_API_KEY || "sandbox_key_demo";
+    const isSandbox = !process.env.EJAR_API_KEY;
 
     const ejarPayload = {
       contractType: "RESIDENTIAL",
@@ -98,7 +99,7 @@ export async function submitContractToEjarAction(
 
     try {
       // في البيئة التجريبية نحاكي الاستجابة
-      if (EJAR_API_KEY === "sandbox_key_demo") {
+      if (isSandbox) {
         // محاكاة Ejar Sandbox Response
         ejarContractId = `EJAR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         contractNumber = `CR-${new Date().getFullYear()}-${Math.floor(Math.random() * 999999)}`;

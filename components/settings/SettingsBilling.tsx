@@ -228,9 +228,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
     setError(null);
     setLoadingPlan(plan);
 
-    const paymentPlan = plan === 'silver' ? 'professional' : plan === 'gold' ? 'enterprise' : plan;
-
-    const result = await initiateSubscriptionPaymentAction(paymentPlan as any);
+    const result = await initiateSubscriptionPaymentAction(plan);
     setLoadingPlan(null);
 
     if (result.success && result.paymentUrl) {

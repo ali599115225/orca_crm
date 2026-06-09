@@ -1,19 +1,24 @@
 ﻿'use server';
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from 'next/cache';
+import { getActiveTenant } from "@/lib/tenant";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Lead, LeadStatus } from '@prisma/client';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function fetchLeads(tenantId: string) {
-  try { return await prisma.lead.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } }); } 
-  catch { return []; }
+export async function fetchLeads() {
+  try {
+    const tenant = await getActiveTenant();
+    return await prisma.lead.findMany({ where: { tenantId: tenant.id }, orderBy: { createdAt: 'desc' } });
+  } catch { return []; }
 }
 
 export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'leadActivities' | 'tasks' | 'mansourChats'>) {
   try {
-    const newLead = await prisma.lead.create({ data: { ...data, leadScore: Math.floor(Math.random() * 40) + 40 } });
+    const tenant = await getActiveTenant();
+    const { tenantId: _, ...safeData } = data as any;
+    const newLead = await prisma.lead.create({ data: { ...safeData, tenantId: tenant.id, leadScore: Math.floor(Math.random() * 40) + 40 } });
     revalidatePath('/leads');
     return { success: true, lead: newLead };
   } catch (error: unknown) {
@@ -24,7 +29,8 @@ export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedA
 
 export async function updateLeadStatus(id: string, status: LeadStatus) {
   try {
-    const updatedLead = await prisma.lead.update({ where: { id }, data: { status } });
+    const tenant = await getActiveTenant();
+    const updatedLead = await prisma.lead.update({ where: { id, tenantId: tenant.id }, data: { status } });
     revalidatePath('/leads');
     return { success: true, lead: updatedLead };
   } catch (error: unknown) {
