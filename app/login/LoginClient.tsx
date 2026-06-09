@@ -231,6 +231,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
             </span>
             <button onClick={() => setIsDarkMode(!isDarkMode)} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
+              <span className="sr-only">{isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>
               <div className={`w-4 h-4 rounded-full bg-corporate-blue dark:bg-cyan-glow absolute shadow-md transition-all duration-300 ease-in-out ${isDarkMode ? 'right-7' : 'right-1'}`}></div>
             </button>
           </div>
@@ -390,7 +391,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                   {lang === 'AR' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
                 </a>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="remember-me" defaultChecked className="custom-checkbox" />
+                  <input type="checkbox" id="remember-me" defaultChecked className="custom-checkbox" aria-label={lang === 'AR' ? 'تذكرني' : 'Remember Me'} />
                   <label htmlFor="remember-me" className={`text-sm cursor-pointer ${isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}`}>
                     {lang === 'AR' ? 'تذكرني' : 'Remember Me'}
                   </label>
@@ -398,7 +399,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               </div>
 
               <div className="pt-4">
-                <button type="submit" disabled={loading} className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none">
+                <button type="submit" disabled={loading} className="w-full bg-[#b85a44] hover:bg-[#a04c3a] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none">
                   {loading ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...") : (lang === 'AR' ? "تسجيل الدخول" : "Log In")}
                 </button>
               </div>

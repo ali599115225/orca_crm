@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   description: 'نظام إدارة علاقات العملاء العقاري - مؤسسة أبعاد السكنية',
   robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
   icons: {
+    icon: '/logo.png',
     apple: '/logo.png',
   },
   other: {
