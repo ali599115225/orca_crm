@@ -29,6 +29,11 @@ const nextConfig = {
         destination: '/operations/marketing?tab=shopping',
         permanent: false,
       },
+      {
+        source: '/favicon.ico',
+        destination: '/logo.png',
+        permanent: true,
+      },
     ];
   },
   async headers() {
