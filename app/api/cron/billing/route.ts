@@ -352,7 +352,7 @@ export async function GET(request: NextRequest) {
           <p>⏰ <strong>عقود استئجار منتهية وموقوفة:</strong> ${results.expiredLeases}</p>
           ${results.errors.length > 0 ? `<p style="color: #ef4444;">❌ أخطاء: ${results.errors.join(", ")}</p>` : ""}
         </div>
-        <p style="font-size: 10px; color: #475569; text-align: center;">تقرير آلي من ORCA CRM Cron System</p>
+        <p style="font-size: 10px; color: #475569; text-align: center;">تقرير آلي من ORCA Cron System</p>
       </div>
     `;
 

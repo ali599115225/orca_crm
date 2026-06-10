@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
         <h4 style="color: #f59e0b;">الملاحظات والتحذيرات:</h4>
         ${report.anomalies.map((a) => `<p style="margin: 4px 0;">${a}</p>`).join("")}
       </div>
-      <p style="font-size: 10px; color: #475569; text-align: center; border-top: 1px solid #1e293b; padding-top: 12px;">ORCA CRM Sentinel Agent v2.0</p>
+      <p style="font-size: 10px; color: #475569; text-align: center; border-top: 1px solid #1e293b; padding-top: 12px;">ORCA Sentinel Agent v2.0</p>
     </div>
   `;
 
@@ -192,7 +192,7 @@ async function activateFailoverMode() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        text: "🆘 ORCA CRM FAILOVER ACTIVATED - Database unreachable after 3 healing attempts",
+        text: "🆘 ORCA FAILOVER ACTIVATED - Database unreachable after 3 healing attempts",
         severity: "CRITICAL",
         timestamp: new Date().toISOString(),
       }),

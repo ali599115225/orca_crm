@@ -283,7 +283,7 @@ export default function LeadsTabs() {
             {lang === 'AR' ? 'إدارة علاقات العملاء' : 'Customer Relationship Management'}
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
-            {lang === 'AR' ? 'مركز إدارة العملاء والصفقات — ORCA CRM' : 'Deals & Leads Hub — ORCA CRM'}
+            {lang === 'AR' ? 'مركز إدارة العملاء والصفقات — ORCA' : 'Deals & Leads Hub — ORCA'}
           </h1>
         </div>
       </div>

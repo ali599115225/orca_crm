@@ -8,9 +8,19 @@ import { ToastProvider } from "@/app/context/ToastContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
-  title: 'ORCA CRM',
-  description: 'نظام إدارة علاقات العملاء العقاري - مؤسسة أبعاد السكنية',
+  title: 'ORCA — The Operating System for Real Estate',
+  description: 'منصة ORCA لإدارة وتشغيل الأصول والمشاريع والعلاقات العقارية — إدارة المحافظ، العقود، التحصيل، المحاسبة، الصيانة، بوابات الملاك والمستأجرين.',
   robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  openGraph: {
+    title: 'ORCA — The Operating System for Real Estate',
+    description: 'منصة ORCA لإدارة وتشغيل الأصول والمشاريع والعلاقات العقارية',
+    siteName: 'ORCA',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ORCA — The Operating System for Real Estate',
+    description: 'منصة ORCA لإدارة وتشغيل الأصول والمشاريع والعلاقات العقارية',
+  },
   icons: {
     icon: '/logo.png',
     apple: '/logo.png',

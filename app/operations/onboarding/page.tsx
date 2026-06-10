@@ -6,7 +6,7 @@ import { OnboardingForm } from './OnboardingForm'; // استدعاء استما�
 
 // تعيين اسم التبويب العلوي للمتصفح باللغة العربية بدقة
 export const metadata = {
-  title: "خطوة التفعيل النهائية - ORCA CRM",
+  title: "خطوة التفعيل النهائية - ORCA",
 };
 
 export default async function OnboardingPage() {

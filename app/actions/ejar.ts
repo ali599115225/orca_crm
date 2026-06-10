@@ -197,7 +197,7 @@ export async function submitContractToEjarAction(
           <p><strong>تاريخ التسجيل:</strong> ${new Date().toLocaleDateString("ar-SA")}</p>
         </div>
         <p style="font-size: 11px; color: #94a3b8; text-align: center;">
-          تم توليد هذا الإشعار آلياً من نظام ORCA CRM عبر تكامل منصة إيجار.
+          تم توليد هذا الإشعار آلياً من نظام ORCA عبر تكامل منصة إيجار.
         </p>
       </div>
     `;

@@ -58,7 +58,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
         { 
           text: lang === 'AR' 
             ? 'مرحباً! أنا المساعد الذكي لمنصة ORCA العقارية. كيف يمكنني خدمتك اليوم؟' 
-            : 'Hello! I am the smart assistant for the ORCA CRM real estate platform. How can I assist you today?', 
+            : 'Hello! I am the smart assistant for the ORCA real estate platform. How can I assist you today?', 
           sender: 'bot' 
         }
       ]);
@@ -206,7 +206,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       {/* Header */}
       <header className="w-full p-6 flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
-          <span className="font-bold tracking-widest text-lg">ORCA CRM</span>
+          <span className="font-bold tracking-widest text-lg">ORCA</span>
           <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
           <span className={`border text-xs px-2 py-1 rounded transition-colors ${isDarkMode ? 'border-slate-700 text-slate-400 font-medium bg-white/5' : 'border-slate-300 text-slate-500 font-medium bg-white/50'}`}>Secure Edition</span>
         </div>

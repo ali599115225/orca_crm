@@ -168,7 +168,7 @@ function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t, activeS
         <div className="eh-header-actions">
           <button onClick={() => setLang(lang === "AR" ? "EN" : "AR")} className="eh-lang-btn">{lang === "AR" ? "EN" : "عربي"}</button>
           <Link href="/login" className="eh-btn-secondary">{t.signIn}</Link>
-          <Link href="/register" className="eh-btn-primary">{t.startFree}</Link>
+          <Link href="/demo" className="eh-btn-primary">{t.startFree}</Link>
           <button className="eh-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
             <span /><span /><span />
           </button>
@@ -180,7 +180,7 @@ function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t, activeS
             <a key={item.href} href={item.href} className="eh-mobile-link" onClick={() => setMobileOpen(false)}>{item.label}</a>
           ))}
           <Link href="/login" className="eh-btn-secondary" style={{ width: "100%", textAlign: "center" }}>{t.signIn}</Link>
-          <Link href="/register" className="eh-btn-primary" style={{ width: "100%", textAlign: "center" }}>{t.startFree}</Link>
+          <Link href="/demo" className="eh-btn-primary" style={{ width: "100%", textAlign: "center" }}>{t.startFree}</Link>
         </div>
       )}
     </header>
@@ -239,7 +239,7 @@ function HeroSection({ t, isRtl, lang }: any) {
           </p>
 
           <div className={`eh-hero-ctas${mounted ? " eh-fade-in" : ""}`} style={{ animationDelay: "0.45s" }}>
-            <Link href="/register" className="eh-btn-primary eh-btn-lg">{t.heroCTA}</Link>
+            <Link href="/demo" className="eh-btn-primary eh-btn-lg">{t.heroCTA}</Link>
             <a href="#product" className="eh-btn-ghost eh-btn-lg">{t.heroLearn}</a>
           </div>
 
@@ -645,7 +645,7 @@ function PricingSection({ t }: any) {
                   <li key={j} className="eh-plan-feature">{f}</li>
                 ))}
               </ul>
-              <a href={plan.featured ? "/register" : "#product"} className={`${plan.featured ? "eh-btn-primary" : "eh-btn-secondary"} eh-btn-full`}>{t.priceCTA}</a>
+              <a href={plan.featured ? "/demo" : "#product"} className={`${plan.featured ? "eh-btn-primary" : "eh-btn-secondary"} eh-btn-full`}>{t.priceCTA}</a>
             </div>
           ))}
         </div>
@@ -667,7 +667,7 @@ function CTASection({ t }: any) {
           <h2 className="eh-cta-title">{t.ctaTitle}</h2>
           <p className="eh-cta-desc">{t.ctaDesc}</p>
           <div className="eh-cta-actions">
-            <Link href="/register" className="eh-btn-primary eh-btn-xl">{t.ctaDemo}</Link>
+            <Link href="/demo" className="eh-btn-primary eh-btn-xl">{t.ctaDemo}</Link>
             <a href="#" className="eh-btn-gold eh-btn-xl">{t.ctaConsult}</a>
           </div>
           <div className="eh-cta-trust">

@@ -4,7 +4,7 @@ import HelpdeskView from '@/components/views/HelpdeskView';
 
 export default async function HelpdeskPage() {
   let initialTickets: any[] = [];
-  let tenantName = 'ORCA CRM';
+  let tenantName = 'ORCA';
 
   try {
     const tenant = await prisma.tenant.findFirst({

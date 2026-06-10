@@ -217,7 +217,7 @@ export async function runSystemDiagnosticsAction(): Promise<{ success: boolean; 
 
     // --- 4. إرسال بريد إلكتروني تنبيهي حريري للمشرف العام في حال رصد أخطاء ---
     const hasCriticalIssues = report.vercel.status === "ERROR" || report.database.status === "ERROR" || report.domain.status === "ERROR";
-    const emailSubject = `${hasCriticalIssues ? "🚨 تنبيه حرج:" : "🔍 تقرير دوري:"} صيانة ومراقبة نظام ORCA CRM`;
+    const emailSubject = `${hasCriticalIssues ? "🚨 تنبيه حرج:" : "🔍 تقرير دوري:"} صيانة ومراقبة نظام ORCA`;
     
     const anomaliesHtml = report.anomalies.map(a => `<li style="margin-bottom: 6px; color: ${a.includes('🚨') ? '#dc2626' : '#d97706'}; font-weight: bold;">${a}</li>`).join("");
     const recsHtml = report.recommendations.map(r => `<li style="margin-bottom: 4px; color: #334155;">${r}</li>`).join("");
@@ -253,7 +253,7 @@ export async function runSystemDiagnosticsAction(): Promise<{ success: boolean; 
         </div>
 
         <p style="font-size: 10px; color: #475569; text-align: center; border-top: 1px solid #ffffff10; padding-top: 15px; margin-top: 25px;">
-          هذا التقرير الفني تم إصداره وتنبيهه آلياً لمشرفي النظام العامين لمنصة ORCA CRM.
+          هذا التقرير الفني تم إصداره وتنبيهه آلياً لمشرفي النظام العامين لمنصة ORCA.
         </p>
       </div>
     `;

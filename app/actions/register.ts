@@ -173,7 +173,7 @@ export async function registerTenantAction(formData: FormData) {
     const emailSubject = `🏢 تسجيل منشأة جديدة بالمنصة: ${companyName}`;
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; padding: 20px;">
-        <h2 style="color: #f59e0b;">🔔 تنبيه إدارة ORCA CRM</h2>
+        <h2 style="color: #f59e0b;">🔔 تنبيه إدارة ORCA</h2>
         <p>تم تسجيل مطور عقاري جديد بنجاح ببيانات المنصة السحابية:</p>
         <ul>
           <li><strong>اسم المنشأة:</strong> ${companyName}</li>

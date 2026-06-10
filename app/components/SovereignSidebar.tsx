@@ -105,7 +105,7 @@ export default function SovereignSidebar({ onLinkClick }: { onLinkClick?: () => 
             O
           </span>
           <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase md:hidden lg:inline">
-            ORCA CRM
+            ORCA
           </span>
         </div>
       </div>

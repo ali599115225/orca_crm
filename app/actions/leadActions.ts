@@ -55,7 +55,7 @@ export async function generateAIInsight(lead: AIInsightLead) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `
-      أنت مستشار مبيعات عقارية محترف تعمل في منصة ORCA CRM في السعودية.
+      أنت مستشار مبيعات عقارية محترف تعمل في منصة ORCA في السعودية.
       لديك عميل محتمل بهذه البيانات:
       - الاسم: ${lead.firstName}
       - المدينة: ${lead.city}

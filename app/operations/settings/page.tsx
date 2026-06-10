@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   // Default values
   let tenant = {
-    companyName: 'ORCA CRM',
+    companyName: 'ORCA',
     subdomain: 'orca',
     subscriptionPlan: 'BASIC',
     extraAgents: 0,

@@ -23,7 +23,7 @@ const ar = {
   userName: "علي زيلع",
   companyName: "شركة دار الأعمار",
   initials: "ع.ز",
-  crmTitle: "نظام إدارة العملاء — ORCA CRM",
+  crmTitle: "نظام إدارة العملاء — ORCA",
   tabPipeline: "الخط الزمني",
   tabAI: "تحليل الذكاء الاصطناعي",
   tabActivities: "الأنشطة",

@@ -1,6 +1,6 @@
 // app/actions/saherAgent.ts
 // 🤖 وكيل ساهر — محرك التأهيل الذكي وإسناد العملاء + Replay Strategy Engine
-// النواة الذكية الأولى لمنصة ORCA CRM
+// النواة الذكية الأولى لمنصة ORCA
 "use server";
 
 import { prisma } from "@/lib/prisma";

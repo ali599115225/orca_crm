@@ -1,6 +1,6 @@
 // lib/analytics-events.ts
 /**
- * واجهة موحّدة لإرسال أحداث تحليلية في ORCA CRM.
+ * واجهة موحّدة لإرسال أحداث تحليلية في ORCA.
  * في الإنتاج: أبدل console.log بـ fetch('/api/v1/dashboard/telemetry', ...).
  */
 

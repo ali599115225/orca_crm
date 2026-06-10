@@ -143,7 +143,7 @@ export default function PricingGrid({ theme = "dark" }: { theme?: "dark" | "ligh
                   }`}>
                     {plan.badge}
                   </span>
-                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium"}`}>ORCA CRM</span>
+                  <span className={`text-[10px] font-bold tracking-wider ${isCardDark ? "text-[var(--nc-text-dim)] font-medium" : "text-[var(--nc-text-dim)] font-medium"}`}>ORCA</span>
                 </div>
 
                 <div className="space-y-2">

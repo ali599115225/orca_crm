@@ -18,7 +18,7 @@ export async function sendAdminEmailAlert(subject: string, htmlContent: string) 
     if (RESEND_API_KEY) {
       // إرسال حقيقي سحابي عبر خوادم Resend
       await resend.emails.send({
-        from: 'ORCA CRM <onboarding@resend.dev>', // نطاق الإرسال الافتراضي المجاني للتجربة
+        from: 'ORCA <onboarding@resend.dev>', // نطاق الإرسال الافتراضي المجاني للتجربة
         to: recipients,
         subject: subject,
         html: htmlContent,

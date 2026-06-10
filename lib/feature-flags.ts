@@ -1,6 +1,6 @@
 // lib/feature-flags.ts
 /**
- * Feature Flags — ORCA CRM
+ * Feature Flags — ORCA
  *
  * تفعيل feature flag:
  *   - محلياً: أضف  NEXT_PUBLIC_FF_SIDEBAR_MARKETING_REORG=true  في ملف .env.local
