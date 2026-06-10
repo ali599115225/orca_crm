@@ -163,25 +163,25 @@ export default function DashboardView({
       </PageHeader>
 
       {/* 2. Bento Box Grid System (المصفوفة الذكية الكبرى) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 nc-stagger-enter">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 nc-stagger-enter">
         
         {/* ========================================================
             ROW 1: KPIs (4 elevated SmartCards - primary visual weight)
            ======================================================== */}
 
         {/* Card 1: Closed Contracts (العقود المغلقة) */}
-        <SmartCard elevation="elevated" className="p-5">
-          <div className="flex items-start mb-4">
+        <SmartCard elevation="elevated" className="p-3">
+          <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
                 {lang === 'AR' ? 'العقود المغلقة' : 'Closed Contracts'}
               </p>
-              <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">
+              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(closedContractsCount)}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-              <i className="ph-fill ph-file-lock text-xl"></i>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+              <i className="ph-fill ph-file-lock text-base"></i>
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
@@ -190,18 +190,18 @@ export default function DashboardView({
         </SmartCard>
 
         {/* Card 2: Sent Offers (العروض المرسلة) */}
-        <SmartCard elevation="elevated" className="p-5">
-          <div className="flex items-start mb-4">
+        <SmartCard elevation="elevated" className="p-3">
+          <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
                 {lang === 'AR' ? 'العروض المرسلة' : 'Sent Offers'}
               </p>
-              <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">
+              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(sentOffersCount)}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
-              <i className="ph-fill ph-paper-plane-tilt text-xl"></i>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <i className="ph-fill ph-paper-plane-tilt text-base"></i>
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
@@ -210,18 +210,18 @@ export default function DashboardView({
         </SmartCard>
 
         {/* Card 3: Daily Tours (الجولات اليوم) */}
-        <SmartCard elevation="elevated" className="p-5">
-          <div className="flex items-start mb-4">
+        <SmartCard elevation="elevated" className="p-3">
+          <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                {lang === 'AR' ? 'الجولات اليوم' : 'Daily Tours'}
+                {lang === 'AR' ? 'جولات اليوم' : 'Daily Tours'}
               </p>
-              <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">
+              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(dailyToursCount)}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
-              <i className="ph-fill ph-calendar-check text-xl"></i>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <i className="ph-fill ph-calendar-check text-base"></i>
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
@@ -230,18 +230,18 @@ export default function DashboardView({
         </SmartCard>
 
         {/* Card 4: Total Leads (إجمالي العملاء) */}
-        <SmartCard elevation="elevated" className="p-5">
-          <div className="flex items-start mb-4">
+        <SmartCard elevation="elevated" className="p-3">
+          <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
                 {lang === 'AR' ? 'إجمالي العملاء' : 'Total Leads'}
               </p>
-              <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">
+              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(totalLeadsCount)}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-              <i className="ph-fill ph-users-three text-xl"></i>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <i className="ph-fill ph-users-three text-base"></i>
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
@@ -254,7 +254,7 @@ export default function DashboardView({
            ======================================================== */}
 
         {/* Action Card: إجراء سريع (col-span-1) */}
-        <SmartCard elevation="default" className="p-5 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[var(--nc-accent-soft)] via-transparent to-transparent">
+        <SmartCard elevation="default" className="p-4 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[var(--nc-accent-soft)] via-transparent to-transparent">
           <div className="absolute -top-10 -left-10 w-24 h-24 bg-[var(--nc-coral-bg)] rounded-full blur-2xl"></div>
           
           <div>
@@ -282,7 +282,7 @@ export default function DashboardView({
         </SmartCard>
 
         {/* AI Assistant Panel (col-span-3) - secondary visual weight */}
-        <SmartCard elevation="subtle" className="xl:col-span-3 p-5">
+        <SmartCard elevation="subtle" className="xl:col-span-3 p-4">
           <div>
             <div className="flex items-center justify-between border-b border-[var(--nc-glass-border)] pb-3.5 mb-4">
               <div className="flex items-center gap-2.5">
@@ -303,7 +303,7 @@ export default function DashboardView({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               
               {/* Box 1: Best Contact time */}
               <div className="nc-card-default p-3.5">
@@ -376,10 +376,10 @@ export default function DashboardView({
       </div>
 
       {/* 3. Pipeline Snapshot + Today's Tasks Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
         {/* Pipeline Snapshot (col-span-2) - default card */}
-        <SmartCard elevation="default" className="xl:col-span-2 p-5">
+        <SmartCard elevation="default" className="xl:col-span-2 p-4">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400">
@@ -448,7 +448,7 @@ export default function DashboardView({
         </SmartCard>
 
         {/* Today's Urgent Tasks (col-span-1) */}
-        <SmartCard elevation="default" className="p-5">
+        <SmartCard elevation="default" className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400">
@@ -540,8 +540,8 @@ export default function DashboardView({
       </div>
 
       {/* 4. Recent Requests Grid (أحدث الطلبات الاستثمارية) */}
-      <div className="grid grid-cols-1 gap-5">
-        <SmartCard elevation="default" className="p-5">
+      <div className="grid grid-cols-1 gap-4">
+        <SmartCard elevation="default" className="p-4">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">

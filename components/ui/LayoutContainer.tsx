@@ -14,7 +14,7 @@ export const LayoutContainer: React.FC<LayoutContainerProps> = ({ kpis, actions,
 
       {/* 1. KPIs Top Row — إحصائيات الصفحة العليا */}
       {kpis && (
-        <section className="nc-stagger-enter grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="nc-stagger-enter grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {kpis}
         </section>
       )}

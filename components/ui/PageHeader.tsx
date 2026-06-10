@@ -10,7 +10,7 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, icon: Icon, children }) => {
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 bg-transparent border-none w-full">
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 bg-transparent border-none w-full">
       <div className="flex items-center gap-3">
         {Icon && (
           <div className="w-10 h-10 rounded-xl bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] flex items-center justify-center shrink-0">

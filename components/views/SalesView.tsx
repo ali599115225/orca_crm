@@ -121,11 +121,11 @@ export default function SalesView() {
       <LayoutContainer
         kpis={
           <>
-            <SmartCard elevation="elevated" className="p-5">
+            <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card1_title}</p>
-                  <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(totalLeads)}</h3>
+                  <h3 className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(totalLeads)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
                   <i className="ph-bold ph-users text-base"></i>
@@ -133,11 +133,11 @@ export default function SalesView() {
               </div>
               <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card1_sub}</span>
             </SmartCard>
-            <SmartCard elevation="elevated" className="p-5">
+            <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card2_title}</p>
-                  <h3 className="nc-metric-lg font-black text-amber-500">{toArabicNumerals(totalBookings)}</h3>
+                  <h3 className="text-xl font-black text-amber-500">{toArabicNumerals(totalBookings)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
                   <i className="ph-bold ph-clock text-base"></i>
@@ -145,11 +145,11 @@ export default function SalesView() {
               </div>
               <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card2_sub}</span>
             </SmartCard>
-            <SmartCard elevation="elevated" className="p-5">
+            <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card3_title}</p>
-                  <h3 className="nc-metric-lg font-black text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
+                  <h3 className="text-xl font-black text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <i className="ph-bold ph-check-circle text-base"></i>
@@ -157,11 +157,11 @@ export default function SalesView() {
               </div>
               <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card3_sub}</span>
             </SmartCard>
-            <SmartCard elevation="elevated" className="p-5">
+            <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card4_title}</p>
-                  <h3 className="nc-metric-lg font-black text-indigo-500 font-en">{formatPercentage(avgCR)}</h3>
+                  <h3 className="text-xl font-black text-indigo-500 font-en">{formatPercentage(avgCR)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
                   <i className="ph-bold ph-chart-line-up text-base"></i>
@@ -172,7 +172,7 @@ export default function SalesView() {
           </>
         }
         actions={
-          <SmartCard elevation="default" className="p-5 space-y-4 h-full flex flex-col">
+          <SmartCard elevation="default" className="p-4 space-y-4 h-full flex flex-col">
             <div className="border-b border-[var(--nc-glass-border)] pb-3">
               <h4 className="nc-heading-3 flex items-center gap-2">
                 <i className="ph-bold ph-ranking text-[var(--nc-accent)]"></i>
@@ -206,7 +206,7 @@ export default function SalesView() {
           </SmartCard>
         }
         insights={
-          <SmartCard elevation="default" className="p-5 space-y-3 h-full flex flex-col">
+          <SmartCard elevation="default" className="p-4 space-y-3 h-full flex flex-col">
             <div className="border-b border-[var(--nc-glass-border)] pb-3">
               <h4 className="nc-heading-3 flex items-center gap-2">
                 <i className="ph-bold ph-chart-bar text-[var(--nc-accent)]"></i>

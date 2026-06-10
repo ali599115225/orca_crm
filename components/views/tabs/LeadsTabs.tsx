@@ -82,7 +82,7 @@ export default function LeadsTabs() {
   // KPIs
   const kpisContent = (
     <>
-      <Card className="p-5">
+      <Card className="p-3">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">العملاء الجدد (هذا الأسبوع)</p>
@@ -93,7 +93,7 @@ export default function LeadsTabs() {
           </div>
         </div>
       </Card>
-      <Card className="p-5">
+      <Card className="p-3">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الفرص النشطة</p>
@@ -104,7 +104,7 @@ export default function LeadsTabs() {
           </div>
         </div>
       </Card>
-      <Card className="p-5">
+      <Card className="p-3">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الجولات المجدولة</p>
@@ -115,7 +115,7 @@ export default function LeadsTabs() {
           </div>
         </div>
       </Card>
-      <Card className="p-5">
+      <Card className="p-3">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">نسبة نجاح الصفقات</p>
@@ -131,7 +131,7 @@ export default function LeadsTabs() {
 
   // Actions
   const actionsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <Card className="p-4 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Settings size={16} className="text-[var(--nc-text-secondary)]" />
@@ -175,7 +175,7 @@ export default function LeadsTabs() {
 
   // Insights (AI Predictor)
   const insightsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <Card className="p-4 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Bot size={16} className="text-cyan-400" />
@@ -240,37 +240,6 @@ export default function LeadsTabs() {
             {active === "insights" && <InsightsAutomation />}
           </>
         )}
-      </div>
-
-      {/* Webhook logs or Telemetry log console at the very bottom */}
-      <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-3xl p-5 shadow-2xl flex flex-col flex-1 min-h-0 space-y-3">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-          <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-            <Bot size={15} />
-            سجل تتبع أتمتة العملاء الفورية (Telemetry Event Bus Logs)
-          </h4>
-          <button 
-            type="button"
-            onClick={() => setTelemetryLogs([])}
-            className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-dim)] font-medium border border-white/5 px-2 py-0.5 rounded"
-          >
-            مسح السجل
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto mt-3 space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
-          {telemetryLogs.map((log) => (
-            <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--nc-text-secondary)] font-bold">[{log.type.toUpperCase()}]</span>
-                <span className="text-[var(--nc-text-dim)] font-medium">{log.timestamp}</span>
-              </div>
-              <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-1.5 rounded overflow-x-auto">
-                {JSON.stringify(log.payload, null, 2)}
-              </pre>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

@@ -863,31 +863,6 @@ export default function ToursView() {
             </div>
           )}
 
-          {/* شاشة الأحداث الفورية Telemetry Logs */}
-          <div className="bg-[var(--nc-surface-solid)] border border-white/5 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Bot size={14} className="text-[var(--nc-text-secondary)]" />
-                <span>سجل تتبع أحداث الجولات الفورية (Tour Event Telemetry Console)</span>
-              </h4>
-              <button onClick={() => setTelemetryLogs([])} className="text-xs text-slate-500 text-rose-400 hover:text-rose-300 font-semibold">مسح السجل</button>
-            </div>
-            <div className="h-32 bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl p-3 font-mono text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium overflow-y-auto space-y-2 select-text text-left" dir="ltr">
-              {telemetryLogs.length === 0 ? (
-                <div className="text-center text-[var(--nc-text-dim)] font-medium py-6">No telemetry events logged</div>
-              ) : (
-                telemetryLogs.map(log => (
-                  <div key={log.id} className="p-2 bg-[var(--nc-surface)] rounded border border-white/5 space-y-1">
-                    <div className="flex justify-between text-[var(--nc-text-dim)] font-medium border-b border-white/5 pb-1">
-                      <span className="text-[var(--nc-text-secondary)] font-bold">{log.type}</span>
-                      <span>{log.timestamp}</span>
-                    </div>
-                    <pre className="text-[9px] text-[var(--nc-foreground-muted)] overflow-x-auto whitespace-pre-wrap">{JSON.stringify(log.payload, null, 2)}</pre>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
           </div>
         }
       />

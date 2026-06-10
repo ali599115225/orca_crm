@@ -175,9 +175,9 @@ export default function TasksView() {
       <PageHeader title={t.title} description={t.desc} />
 
       {/* ── KPI Row ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Total */}
-        <SmartCard className="p-4 flex items-center gap-3">
+        <SmartCard className="p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center shrink-0">
             <i className="ph-bold ph-list-checks text-[var(--nc-accent)] text-lg"></i>
           </div>
@@ -188,7 +188,7 @@ export default function TasksView() {
         </SmartCard>
 
         {/* Pending */}
-        <SmartCard className="p-4 flex items-center gap-3">
+        <SmartCard className="p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
             <i className="ph-bold ph-clock-countdown text-amber-500 text-lg"></i>
           </div>
@@ -199,7 +199,7 @@ export default function TasksView() {
         </SmartCard>
 
         {/* Completed */}
-        <SmartCard className="p-4 flex items-center gap-3">
+        <SmartCard className="p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
             <i className="ph-bold ph-check-circle text-emerald-500 text-lg"></i>
           </div>
@@ -210,7 +210,7 @@ export default function TasksView() {
         </SmartCard>
 
         {/* Completion Rate */}
-        <SmartCard className="p-4 flex items-center gap-3">
+        <SmartCard className="p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
             <i className="ph-bold ph-chart-donut text-indigo-500 text-lg"></i>
           </div>

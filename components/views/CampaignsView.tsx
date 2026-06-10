@@ -289,7 +289,7 @@ export default function CampaignsView({
 
       {/* ── Page Header ─────────────────────────────────────── */}
       {!embedded && (
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
               {t.title}
@@ -324,14 +324,14 @@ export default function CampaignsView({
       )}
 
       {/* ── KPI Cards Row 1 ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: t.totalBudget,     value: `${(totalBudget/1000).toFixed(0)}K`, sub: t.currency, color: 'text-[var(--nc-foreground)]',  icon: 'ph-wallet',        bg: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)]', icol: 'text-[var(--nc-accent)]'  },
           { label: t.totalSpend,      value: `${(totalSpend/1000).toFixed(1)}K`,  sub: t.currency, color: 'text-indigo-500',              icon: 'ph-money',         bg: 'bg-indigo-500/10 border-indigo-500/20',                      icol: 'text-indigo-500'          },
           { label: t.totalLeads,      value: `${totalLeads}`,                      sub: '',        color: 'text-[var(--nc-accent)]',       icon: 'ph-users',         bg: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)]', icol: 'text-[var(--nc-accent)]'  },
           { label: t.activeCampaigns, value: `${activeCampaigns}`,                 sub: '',        color: 'text-emerald-500',              icon: 'ph-megaphone',     bg: 'bg-emerald-500/10 border-emerald-500/20',                    icol: 'text-emerald-500'         },
         ].map(k => (
-          <SmartCard key={k.label} className="p-4 flex items-center gap-3 hover:scale-[1.02] transition-transform duration-300">
+          <SmartCard key={k.label} className="p-3 flex items-center gap-3 hover:scale-[1.02] transition-transform duration-300">
             <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${k.bg}`}>
               <i className={`ph-bold ${k.icon} text-lg ${k.icol}`}></i>
             </div>
@@ -344,14 +344,14 @@ export default function CampaignsView({
       </div>
 
       {/* ── KPI Cards Row 2: Calculated Metrics ─────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: t.avgCTR,  value: `${fmt(avgCTR)}%`,          color: 'text-blue-500',   icon: 'ph-cursor-click',    bg: 'bg-blue-500/10 border-blue-500/20',     icol: 'text-blue-500',   hint: 'Click-Through Rate' },
           { label: t.avgCVR,  value: `${fmt(avgCVR)}%`,          color: 'text-purple-500', icon: 'ph-funnel',          bg: 'bg-purple-500/10 border-purple-500/20', icol: 'text-purple-500', hint: 'Conversion Rate'     },
           { label: t.avgROAS, value: `${fmt(avgROAS, 1)}×`,      color: 'text-emerald-500',icon: 'ph-chart-line-up',   bg: 'bg-emerald-500/10 border-emerald-500/20',icol:'text-emerald-500',hint: 'Return on Ad Spend'  },
           { label: t.avgCPL,  value: `${fmt(avgCPL, 0)}`,        color: 'text-amber-500',  icon: 'ph-coins',           bg: 'bg-amber-500/10 border-amber-500/20',   icol: 'text-amber-500',  hint: `${t.currency}/lead` },
         ].map(k => (
-          <SmartCard key={k.label} className="p-4 flex items-center gap-3 hover:scale-[1.02] transition-transform duration-300">
+          <SmartCard key={k.label} className="p-3 flex items-center gap-3 hover:scale-[1.02] transition-transform duration-300">
             <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${k.bg}`}>
               <i className={`ph-bold ${k.icon} text-lg ${k.icol}`}></i>
             </div>

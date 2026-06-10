@@ -431,36 +431,6 @@ export default function PropertyList({
           </div>
         )}
       </Card>
-
-      <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-3xl p-5 shadow-2xl flex flex-col space-y-3">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-          <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-            <Activity size={15} />
-            سجل الأحداث العقارية الفورية (Telemetry Logs)
-          </h4>
-          <button 
-            type="button"
-            onClick={() => setTelemetryLogs([])}
-            className="text-[10px] text-[var(--nc-text-dim)] font-medium hover:text-white border border-white/5 px-2 py-0.5 rounded"
-          >
-            مسح السجل
-          </button>
-        </div>
-
-        <div className="max-h-40 overflow-y-auto mt-2 space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed">
-          {telemetryLogs.map((log) => (
-            <div key={log.id} className="p-2.5 bg-[var(--nc-surface-strong)] rounded-xl border border-white/5 space-y-1">
-              <div className="flex justify-between text-[9px]">
-                <span className="text-[var(--nc-text-secondary)] font-bold">[{log.type.toUpperCase()}]</span>
-                <span className="text-[var(--nc-text-dim)] font-medium">{log.timestamp}</span>
-              </div>
-              <pre className="text-[9px] text-[var(--nc-text-dim)] font-medium bg-[var(--nc-surface-solid)] p-1.5 rounded overflow-x-auto">
-                {JSON.stringify(log.payload, null, 2)}
-              </pre>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 

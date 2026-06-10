@@ -252,21 +252,21 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       <LayoutContainer
         kpis={
           <div className="flex items-center gap-4 flex-wrap">
-            <SmartCard className="px-4 py-3 flex items-center gap-3">
+            <SmartCard className="px-3 py-2 flex items-center gap-3">
               <i className="ph-bold ph-ticket text-[var(--nc-accent)] text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
                 <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{toArabicNumerals(tickets.length)}</p>
               </div>
             </SmartCard>
-            <SmartCard className="px-4 py-3 flex items-center gap-3">
+            <SmartCard className="px-3 py-2 flex items-center gap-3">
               <i className="ph-bold ph-activity text-emerald-500 text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
                 <p className="text-lg font-bold text-emerald-500 font-en">{toArabicNumerals(openTickets)}</p>
               </div>
             </SmartCard>
-            <SmartCard className="px-4 py-3 flex items-center gap-3">
+            <SmartCard className="px-3 py-2 flex items-center gap-3">
               <i className="ph-bold ph-check-circle text-[var(--nc-foreground-muted)] text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>

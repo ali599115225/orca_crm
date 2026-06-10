@@ -38,8 +38,15 @@
   --font-mono: "JetBrains Mono", "Consolas", "Monaco", monospace;
 
   /* ── Spacing ────────────────────────────────── */
-  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
-  --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+  --space-lg: 20px; --space-xl: 28px; --space-2xl: 40px; --space-3xl: 52px;
+
+  /* ── Density System ──────────────────────────── */
+  --density-kpi-padding: 12px;
+  --density-kpi-icon: 32px;
+  --density-kpi-metric: 1.25rem;
+  --density-card-padding: 16px;
+  --density-section-gap: 12px;
 
   /* ── Radii ──────────────────────────────────── */
   --radius-sm: 4px; --radius-md: 8px; --radius-lg: 10px; --radius-xl: 14px; --radius-2xl: 18px; --radius-full: 9999px;
@@ -162,7 +169,7 @@ html { scroll-behavior: smooth; }
 .nc-page {
   position: relative;
   z-index: 1;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
@@ -180,7 +187,7 @@ html { scroll-behavior: smooth; }
   border: 1px solid var(--nc-glass-border);
   border-radius: var(--radius-xl);
   backdrop-filter: blur(var(--nc-glass-blur));
-  padding: var(--space-lg);
+  padding: var(--space-md);
 }
 .nc-section-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -312,13 +319,13 @@ html { scroll-behavior: smooth; }
 
 .nc-card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--space-md) var(--space-md) var(--space-sm);
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
   border-bottom: 1px solid var(--nc-glass-border);
 }
-.nc-card-body { padding: var(--space-md); }
+.nc-card-body { padding: var(--space-sm); }
 .nc-card-footer {
   display: flex; align-items: center; justify-content: flex-end;
-  gap: var(--space-sm); padding: var(--space-sm) var(--space-md) var(--space-md);
+  gap: var(--space-xs); padding: var(--space-xs) var(--space-sm) var(--space-sm);
   border-top: 1px solid var(--nc-glass-border);
 }
 
@@ -383,7 +390,10 @@ html { scroll-behavior: smooth; }
 .nc-metric { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700; color: var(--nc-text-primary); line-height: 1; }
 .nc-metric-label { font-size: 0.6875rem; color: var(--nc-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
 .nc-metric-sm { font-size: 0.9375rem; }
-.nc-metric-lg { font-size: 1.75rem; }
+.nc-metric-lg { font-size: 1.375rem; }
+
+.nc-kpi-compact { padding: var(--space-sm) !important; }
+.nc-kpi-compact .nc-metric-lg { font-size: 1.25rem !important; }
 
 .nc-scan { position: relative; overflow: hidden; }
 .nc-scan::after {
