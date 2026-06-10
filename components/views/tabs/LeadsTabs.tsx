@@ -3,7 +3,7 @@
 import { toast } from '@/app/context/ToastContext';
 import { useState, useTransition, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
-import Pipeline from "../pipeline/Pipeline";
+import LeadsPipelineV2 from "../pipeline/LeadsPipelineV2";
 import Contacts from "./Contacts";
 import Opportunities from "./Opportunities";
 import Tours from "./Tours";
@@ -231,7 +231,7 @@ export default function LeadsTabs() {
           </div>
         ) : (
           <>
-            {active === "pipeline" && <Pipeline />}
+            {active === "pipeline" && <LeadsPipelineV2 />}
             {active === "contacts" && <Contacts />}
             {active === "opportunities" && <Opportunities />}
             {active === "tours" && <Tours />}
