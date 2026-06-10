@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import EnterpriseHome from "@/app/components/EnterpriseHome";
 
 export default function Page() {
-  redirect("/operations/dashboard");
+  return <EnterpriseHome />;
 }
-
