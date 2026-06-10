@@ -15,7 +15,7 @@ async function authenticateRequest() {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -23,6 +23,9 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const isDownload = searchParams.get('download') === '1';
 
   try {
     const invoice = await prisma.rentalInvoice.findFirst({
@@ -138,12 +141,17 @@ export async function GET(
       <button onclick="window.print()" style="padding: 10px 30px; background: #1a365d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">طباعة / Print</button>
     </div>
   </div>
+  ${isDownload ? '<script>window.onload = function() { window.print(); }</script>' : ''}
 </body>
 </html>`;
 
-    return new NextResponse(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
+    const headers: Record<string, string> = {
+      'Content-Type': 'text/html; charset=utf-8',
+    };
+    if (isDownload) {
+      headers['Content-Disposition'] = `attachment; filename="invoice-${label}.html"`;
+    }
+    return new NextResponse(html, { headers });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -7,6 +7,10 @@ import { sendAdminEmailAlert } from "@/lib/email";
 import { exec } from "child_process";
 import { promisify } from "util";
 import dns from "dns";
+import {
+  buildSentinelSystemPrompt,
+  type SentinelAIOutput,
+} from "@/lib/agents/sentinelPrompt";
 
 const execPromise = promisify(exec);
 const resolveDns = promisify(dns.resolve);
@@ -44,6 +48,7 @@ export interface SentinelReport {
   };
   anomalies: string[];
   recommendations: string[];
+  aiAnalysis?: SentinelAIOutput | null;
 }
 
 /**
@@ -260,7 +265,91 @@ export async function runSystemDiagnosticsAction(): Promise<{ success: boolean; 
 
     await sendAdminEmailAlert(emailSubject, emailHtml);
 
-    return { success: true, report };
+    // --- 5. استدعاء Gemini لتحليل التقرير وتقديم توصيات ذكية ---
+    let aiAnalysis: SentinelAIOutput | null = null;
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+      if (apiKey) {
+        const systemPrompt = buildSentinelSystemPrompt({ domainName });
+
+        const rawReportData = `
+تقرير فحص نظام ORCA:
+
+### Vercel:
+- الحالة: ${report.vercel.status}
+- المشروع: ${report.vercel.projectName}
+- رابط النشر: ${report.vercel.latestDeploymentUrl}
+- حالة النشر: ${report.vercel.latestDeploymentStatus}
+- وقت البناء: ${report.vercel.buildTime}
+- تفاصيل الخطأ: ${report.vercel.errorDetails || "لا يوجد"}
+
+### قاعدة البيانات:
+- الحالة: ${report.database.status}
+- زمن الاستجابة: ${report.database.latencyMs}ms
+- عدد المستأجرين: ${report.database.totalRows.tenants}
+- عدد المستخدمين: ${report.database.totalRows.users}
+- عدد العملاء: ${report.database.totalRows.leads}
+- عدد المشاريع: ${report.database.totalRows.projects}
+- وضع SSL: ${report.database.sslMode}
+- تفاصيل الخطأ: ${report.database.errorDetails || "لا يوجد"}
+
+### النطاق:
+- الحالة: ${report.domain.status}
+- اسم النطاق: ${report.domain.domainName}
+- عنوان IP: ${report.domain.ipResolved}
+- كود HTTP: ${report.domain.httpResponseCode}
+- حالة SSL: ${report.domain.sslStatus}
+- تفاصيل الخطأ: ${report.domain.errorDetails || "لا يوجد"}
+
+### الشذوذ المرصود:
+${report.anomalies.map((a, i) => `${i + 1}. ${a}`).join("\n")}
+        `.trim();
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: `حلل تقرير فحص النظام التالي وأعطني النتيجة بصيغة JSON نظيفة فقط دون أي نص إضافي:\n\n${rawReportData}`,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 2048,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: AbortSignal.timeout(25_000),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+          const cleanJson = rawText
+            .replace(/```json\n?/g, "")
+            .replace(/```\n?/g, "")
+            .trim();
+
+          aiAnalysis = JSON.parse(cleanJson) as SentinelAIOutput;
+        }
+      }
+    } catch (aiErr) {
+      console.warn("[سنينل] فشل التحليل الذكي للتقرير:", aiErr);
+    }
+
+    return { success: true, report: { ...report, aiAnalysis } };
 
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -17,6 +17,12 @@ import {
   getAuditSummary,
   seedChartOfAccounts,
   getChartOfAccounts,
+  getIncomeStatement,
+  getBalanceSheet,
+  getCashFlowStatement,
+  getSupplierBalances,
+  getPayablesReport,
+  getPayablesSummary,
 } from "@/lib/accounting";
 
 export async function getLedgerEntriesAction() {
@@ -240,6 +246,54 @@ export async function getGeneralLedgerAction(accountId?: string, fromDate?: stri
     });
     const rows = await getGeneralLedgerReport(tenant.id, accountId, fromDate, toDate);
     return { success: true, accounts, rows };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getIncomeStatementAction(period?: string) {
+  try {
+    const tenant = await getActiveTenant();
+    const result = await getIncomeStatement(tenant.id, period);
+    return { success: true, ...result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getBalanceSheetAction(period?: string) {
+  try {
+    const tenant = await getActiveTenant();
+    const result = await getBalanceSheet(tenant.id, period);
+    return { success: true, ...result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getCashFlowAction(period?: string) {
+  try {
+    const tenant = await getActiveTenant();
+    const result = await getCashFlowStatement(tenant.id, period);
+    return { success: true, ...result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getPayablesAction(view?: string) {
+  try {
+    const tenant = await getActiveTenant();
+    if (view === 'report') {
+      const items = await getPayablesReport(tenant.id);
+      return { success: true, items };
+    }
+    if (view === 'summary') {
+      const summary = await getPayablesSummary(tenant.id);
+      return { success: true, ...summary };
+    }
+    const suppliers = await getSupplierBalances(tenant.id);
+    return { success: true, suppliers };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

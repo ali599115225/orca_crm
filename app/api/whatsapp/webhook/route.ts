@@ -85,7 +85,23 @@ export async function GET(request: NextRequest) {
 // POST: استقبال رسائل Green API الواردة → ساهر
 // ═══════════════════════════════════════════════════════════════════
 export async function POST(request: NextRequest) {
+  ensureWebhookSecret();
   try {
+    const signature = request.headers.get("x-greenapi-signature") || request.headers.get("x-hub-signature") || "";
+    const authHeader = request.headers.get("authorization") || "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const queryToken = new URL(request.url).searchParams.get("token") || "";
+
+    const tokenOk = WEBHOOK_SECRET && (
+      signature === WEBHOOK_SECRET ||
+      bearerToken === WEBHOOK_SECRET ||
+      queryToken === WEBHOOK_SECRET
+    );
+
+    if (!tokenOk) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body: GreenAPIWebhookBody = await request.json();
 
     // تجاهل الرسائل الصادرة والتحديثات غير الجوهرية

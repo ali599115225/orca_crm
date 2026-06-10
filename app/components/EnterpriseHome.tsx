@@ -69,7 +69,7 @@ export default function EnterpriseHome() {
     <div style={{ background: "#050816", color: "#FFFFFF", fontFamily: "'Inter', 'Cairo', sans-serif", direction: dir, minHeight: "100vh" }}>
       <style>{STYLES}</style>
 
-      <LaunchBanner t={t} />
+{/* LaunchBanner removed — 30% discount claim was not real */}
 
       {/* ═══ HEADER ═══ */}
       <Header lang={lang} setLang={setLang} scrolled={scrolled} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} t={t} activeSection={activeSection} />
@@ -202,13 +202,13 @@ function HeroSection({ t, isRtl, lang }: any) {
   }, [mounted]);
 
   const termLines = [
-    <div key={0} className="eh-terminal-line"><span className="eh-token eh-token-key">ASSETS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">1,247</span></div>,
-    <div key={1} className="eh-terminal-line"><span className="eh-token eh-token-key">UNITS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">4,832</span></div>,
-    <div key={2} className="eh-terminal-line"><span className="eh-token eh-token-key">OCCUPANCY</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">94.7</span><span className="eh-token eh-token-unit">%</span></div>,
-    <div key={3} className="eh-terminal-line"><span className="eh-token eh-token-key">REVENUE</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">SAR 428M</span></div>,
-    <div key={4} className="eh-terminal-line"><span className="eh-token eh-token-key">COLLECTIONS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">97.2</span><span className="eh-token eh-token-unit">%</span></div>,
+    <div key={0} className="eh-terminal-line"><span className="eh-token eh-token-key">SYSTEM</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">ORCA v3.2</span></div>,
+    <div key={1} className="eh-terminal-line"><span className="eh-token eh-token-key">REGION</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">Riyadh</span></div>,
+    <div key={2} className="eh-terminal-line"><span className="eh-token eh-token-key">ACCOUNTING</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">Double-Entry</span></div>,
+    <div key={3} className="eh-terminal-line"><span className="eh-token eh-token-key">ENCRYPTION</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">AES-256</span></div>,
+    <div key={4} className="eh-terminal-line"><span className="eh-token eh-token-key">ZATCA</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">Integrated</span></div>,
     <div key={5} className="eh-terminal-divider" />,
-    <div key={6}><div className="eh-terminal-line"><span className="eh-token eh-token-cmd">$</span> <span className="eh-token eh-token-fn">system.status</span></div><div className="eh-terminal-line eh-terminal-success"><span className="eh-token eh-token-out">→</span> ALL SYSTEMS OPERATIONAL</div></div>,
+    <div key={6}><div className="eh-terminal-line"><span className="eh-token eh-token-cmd">$</span> <span className="eh-token eh-token-fn">system.status</span></div><div className="eh-terminal-line eh-terminal-success"><span className="eh-token eh-token-out">→</span> Riyadh Region — Operational</div></div>,
   ];
 
   return (
@@ -602,7 +602,9 @@ function ComparisonSection({ t }: any) {
               <div className="eh-compare-cell eh-compare-feature">{row.feature}</div>
               <div className="eh-compare-cell eh-compare-excel">{row.excel === "✗" ? <span className="eh-compare-no">✗</span> : <span className="eh-compare-yes">✓</span>}</div>
               <div className="eh-compare-cell eh-compare-crm">{row.crm === "✗" ? <span className="eh-compare-no">✗</span> : row.crm === "△" ? <span className="eh-compare-partial">△</span> : <span className="eh-compare-yes">✓</span>}</div>
-              <div className="eh-compare-cell eh-compare-orca"><span className="eh-compare-yes">✓</span></div>
+              <div className="eh-compare-cell eh-compare-orca">
+                {row.orca === "✗" ? <span className="eh-compare-no">✗</span> : row.orca === "△" ? <span className="eh-compare-partial">△</span> : <span className="eh-compare-yes">✓</span>}
+              </div>
             </div>
           ))}
         </div>
@@ -732,27 +734,26 @@ const AR = {
     { href: "#pricing", label: "الباقات" },
     { href: "#demo", label: "تواصل مع المبيعات" },
   ],
-  heroBadge: "نظام تشغيل العقارات المرخص من هيئة السوق المالية",
-  heroStatus: "جميع الأنظمة عاملة | Riyadh Region",
+  heroBadge: "نظام تشغيل عقاري متوافق مع متطلبات السوق",
+  heroStatus: "Riyadh Region",
   heroTitle: "نظام التشغيل",
   heroTitleAccent: "الخلفي للعقارات",
   heroSub: "منصة مؤسسية واحدة تدير المحافظ العقارية والمشاريع والعمليات المالية والتشغيلية بعمق يفوق التوقعات. مصممة للمؤسسات التي تدير أصولاً عقارية بمليارات الريالات.",
   heroCTA: "اطلب نسخة تجريبية تنفيذية",
   heroLearn: "اعرف المزيد",
   stats: [
-    { val: "١,٢٤٧+", lbl: "أصل عقاري" },
-    { val: "٤,٨٣٢+", lbl: "وحدة تحت الإدارة" },
-    { val: "٩٧.٢٪", lbl: "نسبة التحصيل" },
-    { val: "٤٢٨+M", lbl: "قيمة الأصول (ر.س)" },
+    { val: "قريباً", lbl: "أصل عقاري" },
+    { val: "قريباً", lbl: "وحدة تحت الإدارة" },
+    { val: "ذكي", lbl: "نظام تحصيل" },
   ],
   terminalTitle: "ORCA System Terminal v3.2",
   trustLabel: "الثقة المؤسسية",
   trustTitle: "بنية تحتية على مستوى المؤسسات المالية",
   trustDesc: "أعلى معايير الأمان والامتثال والشفافية التشغيلية.",
   trustItems: [
-    { icon: "🔐", title: "أمان متعدد الطبقات", desc: "تشفير مصرفي AES-256، التحقق الثنائي، وسجلات تدقيق كاملة لجميع العمليات." },
-    { icon: "✅", title: "الامتثال لهيئة السوق المالية", desc: "مصمم وفق متطلبات هيئة السوق المالية السعودية وضوابط الأمان السيبراني." },
-    { icon: "☁️", title: "البنية السحابية المؤسسية", desc: "استضافة على AWS Saudi Arabia مع نسخ احتياطي فوري و SLA بنسبة 99.99٪." },
+    { icon: "🔐", title: "أمان متعدد الطبقات", desc: "تشفير مصرفي AES-256 وسجلات تدقيق كاملة لجميع العمليات." },
+    { icon: "✅", title: "متوافق مع متطلبات السوق", desc: "مصمم وفق متطلبات السوق السعودي وضوابط الأمان السيبراني." },
+    { icon: "☁️", title: "البنية السحابية المؤسسية", desc: "استضافة على AWS Cloud مع نسخ احتياطي فوري و SLA بنسبة 99.5%+." },
     { icon: "📋", title: "صلاحيات وتدقيق", desc: "نظام صلاحيات دقيق مع تتبع كامل لكل إجراء وتقرير تدقيق شامل." },
   ],
   osLabel: "المنظومة",
@@ -778,10 +779,10 @@ const AR = {
   aiTitle: "ذكاء اصطناعي تنبؤي للمؤسسات العقارية",
   aiDesc: "تحليلات متقدمة ورؤى استباقية تدعم قراراتك الاستثمارية والتشغيلية.",
   aiItems: [
-    { icon: "📈", tag: "AI PREDICT", title: "التنبؤ بالإشغال", desc: "نموذج ذكاء اصطناعي يتنبأ بنسب الإشغال للأشهر الـ ١٢ القادمة بناءً على الاتجاهات التاريخية والموسمية.", metric: "94.7%", metricLbl: "دقة التنبؤ" },
-    { icon: "⚠️", tag: "AI RISK", title: "مخاطر التحصيل", desc: "تحليل استباقي لمخاطر التحصيل لكل مستأجر مع توصيات بالإجراءات التصحيحية قبل الاستحقاق.", metric: "92.3%", metricLbl: "دقة التحليل" },
-    { icon: "💡", tag: "AI INSIGHTS", title: "الرؤى التنفيذية", desc: "تقارير تنفيذية ذكية تحلل أداء المحفظة وتقترح فرص تحسين الإيرادات وخفض التكاليف.", metric: "98.1%", metricLbl: "التغطية التحليلية" },
-    { icon: "📊", tag: "AI REPORT", title: "التقارير الذكية", desc: "تقارير مالية وتشغيلية آلية مع تحليل فجوات وتوصيات قابلة للتنفيذ للإدارة العليا.", metric: "24/7", metricLbl: "تشغيل متواصل" },
+    { icon: "📈", tag: "AI PREDICT", title: "التنبؤ بالإشغال", desc: "نموذج ذكاء اصطناعي يتنبأ بنسب الإشغال للأشهر الـ ١٢ القادمة بناءً على الاتجاهات التاريخية والموسمية.", metric: "AI", metricLbl: "نظام تنبؤي" },
+    { icon: "⚠️", tag: "AI RISK", title: "مخاطر التحصيل", desc: "تحليل استباقي لمخاطر التحصيل لكل مستأجر مع توصيات بالإجراءات التصحيحية قبل الاستحقاق.", metric: "AI", metricLbl: "تحليل ذكي" },
+    { icon: "💡", tag: "AI INSIGHTS", title: "الرؤى التنفيذية", desc: "تقارير تنفيذية ذكية تحلل أداء المحفظة وتقترح فرص تحسين الإيرادات وخفض التكاليف.", metric: "", metricLbl: "" },
+    { icon: "📊", tag: "AI REPORT", title: "التقارير الذكية", desc: "تقارير مالية وتشغيلية آلية مع تحليل فجوات وتوصيات قابلة للتنفيذ للإدارة العليا.", metric: "AI", metricLbl: "تشغيل متواصل" },
   ],
   propLabel: "إدارة العقارات",
   propTitle: "منصة شاملة لإدارة المحافظ العقارية",
@@ -792,7 +793,7 @@ const AR = {
     { icon: "🔑", title: "المستأجرين", desc: "إدارة دورة حياة المستأجر من العقد إلى التجديد مع أتمتة الإجراءات." },
     { icon: "🛠️", title: "الصيانة", desc: "نظام تذاكر صيانة متكامل مع تتبع الحالة والتكلفة وإشعارات فورية." },
     { icon: "📋", title: "العقود الإيجارية", desc: "إدارة العقود الإيجارية مع تجديد تلقائي واحتساب الإيجارات والغرامات." },
-    { icon: "📱", title: "تطبيق جوال", desc: "تطبيق جوال للملاك والمستأجرين لمتابعة العقود والفواتير وطلبات الصيانة." },
+    { icon: "📱", title: "تطبيق جوال (قريباً)", desc: "تطبيق جوال للملاك والمستأجرين لمتابعة العقود والفواتير وطلبات الصيانة — قيد التطوير." },
   ],
   finLabel: "العمليات المالية",
   finTitle: "منصة مالية متكاملة",
@@ -811,22 +812,12 @@ const AR = {
   portalOwnerBadge: "OWNER PORTAL",
   portalOwnerTitle: "بوابة المالك",
   portalOwnerItems: [
-    "لوحة قيادة تنفيذية للمحفظة العقارية",
-    "تقارير الإيرادات والمصروفات لحظياً",
-    "متابعة نسب الإشغال وأداء الوحدات",
-    "طلب تقارير مالية وتشغيلية مخصصة",
-    "إدارة العقود والإيجارات إلكترونياً",
-    "تواصل مباشر مع فريق الإدارة",
+    "قيد التطوير — لوحة قيادة تنفيذية، تقارير، إدارة العقود والمزيد",
   ],
   portalTenantBadge: "TENANT PORTAL",
   portalTenantTitle: "بوابة المستأجر",
   portalTenantItems: [
-    "عرض العقد الإيجاري والمسحوبات",
-    "سداد الفواتير إلكترونياً",
-    "تقديم طلبات الصيانة ومتابعتها",
-    "تواصل مع إدارة العقار",
-    "إشعارات بالتجديد والمدفوعات",
-    "تحميل المستندات والفواتير",
+    "قيد التطوير — عرض العقود، سداد الفواتير، طلبات الصيانة والمزيد",
   ],
   roiLabel: "حاسبة العائد",
   roiTitle: "احسب العائد على استثمارك",
@@ -845,14 +836,14 @@ const AR = {
   compCRM: "CRM تقليدي",
   compOrca: "ORCA",
   compRows: [
-    { feature: "منصة موحدة لإدارة العقارات", excel: "✗", crm: "△" },
-    { feature: "إدارة مالية ومحاسبة متكاملة", excel: "✗", crm: "✗" },
-    { feature: "التكامل مع ZATCA", excel: "✗", crm: "✗" },
-    { feature: "ذكاء اصطناعي وتحليلات تنبؤية", excel: "✗", crm: "✗" },
-    { feature: "بوابات ملاك ومستأجرين", excel: "✗", crm: "△" },
-    { feature: "نظام صلاحيات وتدقيق", excel: "✗", crm: "△" },
-    { feature: "تقارير تنفيذية آلية", excel: "✗", crm: "✗" },
-    { feature: "دعم فني 24/7", excel: "✗", crm: "✓" },
+    { feature: "منصة موحدة لإدارة العقارات", excel: "✗", crm: "△", orca: "✓" },
+    { feature: "إدارة مالية ومحاسبة متكاملة", excel: "✗", crm: "✗", orca: "✓" },
+    { feature: "التكامل مع ZATCA", excel: "✗", crm: "✗", orca: "✓" },
+    { feature: "ذكاء اصطناعي وتحليلات تنبؤية", excel: "✗", crm: "✗", orca: "△" },
+    { feature: "بوابات ملاك ومستأجرين", excel: "✗", crm: "△", orca: "△" },
+    { feature: "نظام صلاحيات وتدقيق", excel: "✗", crm: "△", orca: "✓" },
+    { feature: "تقارير تنفيذية آلية", excel: "✗", crm: "✗", orca: "△" },
+    { feature: "دعم فني", excel: "✗", crm: "✓", orca: "✓" },
   ],
   priceLabel: "الباقات",
   priceTitle: "باقات مرنة للمؤسسات بكل الأحجام",
@@ -865,8 +856,8 @@ const AR = {
   priceCTA: "ابدأ الآن",
   plans: [
     { name: "ستارتر", priceMonth: "٤,٩٩٩", priceAnnual: "٤,١٦٦", desc: "للمكاتب العقارية الصغيرة", features: ["حتى ١٠٠ وحدة", "٣ مستخدمين", "إدارة العملاء", "الفواتير الأساسية", "تقارير بسيطة", "دعم عبر البريد الإلكتروني"] },
-    { name: "بروفيشنال", priceMonth: "١٢,٩٩٩", priceAnnual: "١٠,٨٣٣", desc: "لشركات إدارة العقارات المتوسطة", featured: true, features: ["حتى ١,٠٠٠ وحدة", "١٥ مستخدم", "جميع ميزات الستارتر", "بوابات الملاك والمستأجرين", "محاسبة متكاملة", "ZATCA", "ذكاء اصطناعي", "دعم 24/7"] },
-    { name: "إنتربرايز", priceMonth: "اتصل بنا", priceAnnual: "اتصل بنا", desc: "للمؤسسات والمحافظ الكبيرة", features: ["وحدات غير محدودة", "مستخدمين غير محدودين", "جميع الميزات", "API مخصص", "SLA 99.99%", "مدير حساب مخصص", "استضافة خاصة", "تدريب ميداني"] },
+    { name: "بروفيشنال", priceMonth: "١٢,٩٩٩", priceAnnual: "١٠,٨٣٣", desc: "لشركات إدارة العقارات المتوسطة", featured: true, features: ["حتى ١,٠٠٠ وحدة", "١٥ مستخدم", "جميع ميزات الستارتر", "بوابات الملاك والمستأجرين", "محاسبة متكاملة", "ZATCA", "ذكاء اصطناعي", "دعم فني"] },
+    { name: "إنتربرايز", priceMonth: "اتصل بنا", priceAnnual: "اتصل بنا", desc: "للمؤسسات والمحافظ الكبيرة", features: ["وحدات غير محدودة", "مستخدمين غير محدودين", "جميع الميزات", "API مخصص", "SLA 99.5%+", "مدير حساب مخصص", "استضافة خاصة", "تدريب ميداني"] },
   ],
   ctaLabel: "تواصل مع المبيعات",
   ctaTitle: "استعد لتحويل محفظتك العقارية",
@@ -875,15 +866,15 @@ const AR = {
   ctaConsult: "استشارة مجانية",
   ctaTrust: [
     "🔒 تشفير مصرفي AES-256",
-    "✅ متوافق مع هيئة السوق المالية",
+    "✅ متوافق مع متطلبات السوق",
     "🇸🇦 متكامل مع ZATCA",
-    "🏦 استضافة AWS السعودية",
-    "💳 Apple Pay & Mada",
+    "☁️ استضافة AWS Cloud",
+    "💳 Apple Pay & Mada (قريباً)",
     "📄 فواتير ضريبية معتمدة",
   ],
   footerDesc: "نظام تشغيل العقارات المؤسسي الرائد في المملكة العربية السعودية ومنطقة الخليج.",
-  footerGDPR: "GDPR",
-  footerISO: "ISO 27001",
+  footerGDPR: "GDPR (قريباً)",
+  footerISO: "ISO 27001 (قريباً)",
   footerZATCA: "ZATCA",
   footerCopyright: "© 2026 ORCA. جميع الحقوق محفوظة.",
   footerCols: [
@@ -913,25 +904,25 @@ const AR = {
     },
   ],
   casesLabel: "دراسات الحالة",
-  casesTitle: "نتائج حقيقية مع ORCA",
-  casesDesc: "شاهد كيف ساعدت ORCA المؤسسات العقارية في تحويل عملياتها التشغيلية.",
-  casesBefore: "قبل ORCA",
-  casesAfter: "بعد ORCA",
+  casesTitle: "سيناريوهات متوقعة مع ORCA",
+  casesDesc: "نماذج متوقعة لكيفية تحسين ORCA للعمليات العقارية للمؤسسات.",
+  casesBefore: "الوضع الحالي",
+  casesAfter: "السيناريو المتوقع",
   cases: [
-    { industry: "شركة إدارة عقارات", result: "وفر ٤.٢ مليون ر.س سنوياً",
+    { industry: "شركة إدارة عقارات", result: "سيناريو متوقع: توفير ٤.٢ مليون ر.س سنوياً",
       before: ["إدارة ١,٢٠٠ وحدة يدوياً بـ Excel", "تحصيل يدوي عبر المكالمات والواتساب", "فواتير ورقية بدون تكامل ضريبي", "تأخر ١٥ يوم في متوسط التحصيل"],
       after: ["نظام مركزي يدير جميع الوحدات", "تحصيل تلقائي مع بوابات دفع رقمية", "فواتير ZATCA آلية بالكامل", "تحصيل فوري بنسبة ٩٧٪"],
-      metrics: [{ val: "٩٧٪", lbl: "نسبة التحصيل" }, { val: "٨٢٪", lbl: "توفير الوقت" }, { val: "٤.٢M", lbl: "توفير سنوي (ر.س)" }]
+      metrics: [{ val: "٩٧٪", lbl: "نسبة التحصيل (متوقعة)" }, { val: "٨٢٪", lbl: "توفير الوقت (متوقع)" }, { val: "٤.٢M", lbl: "توفير سنوي متوقع (ر.س)" }]
     },
-    { industry: "مطور عقاري", result: "ضاعف سرعة المبيعات ٣ مرات",
+    { industry: "مطور عقاري", result: "سيناريو متوقع: مضاعفة سرعة المبيعات ٣ مرات",
       before: ["عمليات بيع متفرقة بين ٤ أنظمة", "تأخير في إصدار العقود أسبوعين", "فقدان ٣٠٪ من العملاء المحتملين", "تقارير شهرية متأخرة وغير دقيقة"],
       after: ["مسار مبيعات موحد مع أتمتة كاملة", "عقود رقمية تصدر في دقائق", "استبقاء ٩٥٪ من العملاء المحتملين", "تقارير لحظية للوحة القيادة التنفيذية"],
-      metrics: [{ val: "3x", lbl: "سرعة المبيعات" }, { val: "٩٥٪", lbl: "استبقاء العملاء" }, { val: "٢ دقيقة", lbl: "وقت إصدار العقد" }]
+      metrics: [{ val: "3x", lbl: "سرعة المبيعات (متوقعة)" }, { val: "٩٥٪", lbl: "استبقاء العملاء (متوقع)" }, { val: "٢ دقيقة", lbl: "وقت إصدار العقد (متوقع)" }]
     },
-    { industry: "مؤسسة استثمارية", result: "قلص فريق العمليات ٦٠٪",
+    { industry: "مؤسسة استثمارية", result: "سيناريو متوقع: تقليص فريق العمليات ٦٠٪",
       before: ["فريق مكون من ١٥ موظف للعمليات", "تقارير مالية تستغرق ١٠ أيام", "متابعة يدوية للصيانة والعقود", "معلومات غير مكتملة عن المحفظة"],
       after: ["فريق ٦ موظفين مع أتمتة شاملة", "تقارير مالية لحظية بدقة ١٠٠٪", "نظام صيانة مؤتمت بالكامل", "رؤية كاملة للمحفظة في لحظة"],
-      metrics: [{ val: "٦٠٪", lbl: "تقليص الفريق" }, { val: "١٠٠٪", lbl: "دقة التقارير" }, { val: "١٠ أيام → ٠", lbl: "تأخير التقارير" }]
+      metrics: [{ val: "٦٠٪", lbl: "تقليص الفريق (متوقع)" }, { val: "١٠٠٪", lbl: "دقة التقارير (متوقعة)" }, { val: "١٠ أيام → ٠", lbl: "تأخير التقارير (متوقع)" }]
     },
   ],
 };
@@ -952,27 +943,26 @@ const EN: typeof AR = {
     { href: "#pricing", label: "Pricing" },
     { href: "#demo", label: "Contact Sales" },
   ],
-  heroBadge: "CMA-Regulated Real Estate Operating System",
-  heroStatus: "All Systems Operational | Riyadh Region",
+  heroBadge: "Market-Aligned Real Estate Operating System",
+  heroStatus: "Riyadh Region",
   heroTitle: "The Operating System",
   heroTitleAccent: "For Real Estate",
   heroSub: "A single institutional platform managing real estate portfolios, projects, financial operations, and property management with unmatched depth. Built for organizations managing multi-billion-riyal real estate assets.",
   heroCTA: "Request Executive Trial",
   heroLearn: "Learn More",
   stats: [
-    { val: "1,247+", lbl: "Assets Managed" },
-    { val: "4,832+", lbl: "Units Under Management" },
-    { val: "97.2%", lbl: "Collection Rate" },
-    { val: "428M+", lbl: "Asset Value (SAR)" },
+    { val: "Coming Soon", lbl: "Assets Managed" },
+    { val: "Coming Soon", lbl: "Units Under Management" },
+    { val: "Smart", lbl: "Collections System" },
   ],
   terminalTitle: "ORCA System Terminal v3.2",
   trustLabel: "Enterprise Trust",
   trustTitle: "Institutional-Grade Infrastructure",
   trustDesc: "Highest standards of security, compliance, and operational transparency.",
   trustItems: [
-    { icon: "🔐", title: "Multi-Layer Security", desc: "AES-256 bank-grade encryption, two-factor authentication, and full audit trails across all operations." },
-    { icon: "✅", title: "CMA Compliance", desc: "Built to meet Saudi Capital Market Authority requirements and cybersecurity controls." },
-    { icon: "☁️", title: "Enterprise Cloud Infrastructure", desc: "Hosted on AWS Saudi Arabia with instant backup and 99.99% SLA guarantee." },
+    { icon: "🔐", title: "Multi-Layer Security", desc: "AES-256 bank-grade encryption and full audit trails across all operations." },
+    { icon: "✅", title: "Market-Aligned", desc: "Built to meet Saudi market requirements and cybersecurity controls." },
+    { icon: "☁️", title: "Enterprise Cloud Infrastructure", desc: "Hosted on AWS Cloud with instant backup and 99.5%+ SLA guarantee." },
     { icon: "📋", title: "Role-Based Access & Audit", desc: "Granular permission system with complete action tracking and comprehensive audit reports." },
   ],
   osLabel: "Platform",
@@ -998,10 +988,10 @@ const EN: typeof AR = {
   aiTitle: "Predictive AI for Real Estate Enterprises",
   aiDesc: "Advanced analytics and proactive insights powering your investment and operational decisions.",
   aiItems: [
-    { icon: "📈", tag: "AI PREDICT", title: "Occupancy Forecasting", desc: "AI model predicting occupancy rates for the next 12 months based on historical and seasonal trends.", metric: "94.7%", metricLbl: "Prediction Accuracy" },
-    { icon: "⚠️", tag: "AI RISK", title: "Collection Risk Analysis", desc: "Proactive risk analysis per tenant with corrective action recommendations before due dates.", metric: "92.3%", metricLbl: "Analysis Accuracy" },
-    { icon: "💡", tag: "AI INSIGHTS", title: "Executive Insights", desc: "Intelligent executive reports analyzing portfolio performance and suggesting revenue optimization opportunities.", metric: "98.1%", metricLbl: "Analytics Coverage" },
-    { icon: "📊", tag: "AI REPORT", title: "Smart Reporting", desc: "Automated financial and operational reports with gap analysis and actionable recommendations.", metric: "24/7", metricLbl: "Continuous Operation" },
+    { icon: "📈", tag: "AI PREDICT", title: "Occupancy Forecasting", desc: "AI model predicting occupancy rates for the next 12 months based on historical and seasonal trends.", metric: "AI", metricLbl: "Predictive System" },
+    { icon: "⚠️", tag: "AI RISK", title: "Collection Risk Analysis", desc: "Proactive risk analysis per tenant with corrective action recommendations before due dates.", metric: "AI", metricLbl: "Smart Analysis" },
+    { icon: "💡", tag: "AI INSIGHTS", title: "Executive Insights", desc: "Intelligent executive reports analyzing portfolio performance and suggesting revenue optimization opportunities.", metric: "", metricLbl: "" },
+    { icon: "📊", tag: "AI REPORT", title: "Smart Reporting", desc: "Automated financial and operational reports with gap analysis and actionable recommendations.", metric: "AI", metricLbl: "Continuous Operation" },
   ],
   propLabel: "Property Management",
   propTitle: "Comprehensive Portfolio Management Platform",
@@ -1012,7 +1002,7 @@ const EN: typeof AR = {
     { icon: "🔑", title: "Tenants", desc: "Full tenant lifecycle management from contract to renewal with automated procedures." },
     { icon: "🛠️", title: "Maintenance", desc: "Integrated maintenance ticket system with status tracking, cost management, and instant notifications." },
     { icon: "📋", title: "Lease Contracts", desc: "Lease contract management with auto-renewal, rent calculation, and penalty computation." },
-    { icon: "📱", title: "Mobile App", desc: "Mobile app for owners and tenants to track contracts, invoices, and maintenance requests." },
+    { icon: "📱", title: "Mobile App (Coming Soon)", desc: "Mobile app for owners and tenants to track contracts, invoices, and maintenance requests — under development." },
   ],
   finLabel: "Financial Operations",
   finTitle: "Integrated Financial Platform",
@@ -1031,22 +1021,12 @@ const EN: typeof AR = {
   portalOwnerBadge: "OWNER PORTAL",
   portalOwnerTitle: "Owner Portal",
   portalOwnerItems: [
-    "Executive dashboard for portfolio performance",
-    "Real-time revenue and expense reports",
-    "Occupancy tracking and unit performance",
-    "Custom financial and operational reports",
-    "Contract and lease management",
-    "Direct communication with management",
+    "Under Development — executive dashboard, reports, contract management & more",
   ],
   portalTenantBadge: "TENANT PORTAL",
   portalTenantTitle: "Tenant Portal",
   portalTenantItems: [
-    "View lease contract and statements",
-    "Pay invoices online",
-    "Submit and track maintenance requests",
-    "Communicate with property management",
-    "Renewal and payment notifications",
-    "Download documents and invoices",
+    "Under Development — view contracts, pay invoices, maintenance requests & more",
   ],
   roiLabel: "ROI Calculator",
   roiTitle: "Calculate Your Return on Investment",
@@ -1065,14 +1045,14 @@ const EN: typeof AR = {
   compCRM: "Traditional CRM",
   compOrca: "ORCA",
   compRows: [
-    { feature: "Unified real estate management platform", excel: "✗", crm: "△" },
-    { feature: "Integrated financial management & accounting", excel: "✗", crm: "✗" },
-    { feature: "ZATCA compliance & integration", excel: "✗", crm: "✗" },
-    { feature: "AI-powered predictive analytics", excel: "✗", crm: "✗" },
-    { feature: "Owner & tenant portals", excel: "✗", crm: "△" },
-    { feature: "Role-based access & audit trails", excel: "✗", crm: "△" },
-    { feature: "Automated executive reporting", excel: "✗", crm: "✗" },
-    { feature: "24/7 technical support", excel: "✗", crm: "✓" },
+    { feature: "Unified real estate management platform", excel: "✗", crm: "△", orca: "✓" },
+    { feature: "Integrated financial management & accounting", excel: "✗", crm: "✗", orca: "✓" },
+    { feature: "ZATCA compliance & integration", excel: "✗", crm: "✗", orca: "✓" },
+    { feature: "AI-powered predictive analytics", excel: "✗", crm: "✗", orca: "△" },
+    { feature: "Owner & tenant portals", excel: "✗", crm: "△", orca: "△" },
+    { feature: "Role-based access & audit trails", excel: "✗", crm: "△", orca: "✓" },
+    { feature: "Automated executive reporting", excel: "✗", crm: "✗", orca: "△" },
+    { feature: "Technical support", excel: "✗", crm: "✓", orca: "✓" },
   ],
   priceLabel: "Pricing",
   priceTitle: "Flexible Plans for Every Enterprise",
@@ -1085,8 +1065,8 @@ const EN: typeof AR = {
   priceCTA: "Get Started",
   plans: [
     { name: "Starter", priceMonth: "4,999", priceAnnual: "4,166", desc: "For small real estate offices", features: ["Up to 100 units", "3 users", "Lead management", "Basic invoicing", "Simple reports", "Email support"] },
-    { name: "Professional", priceMonth: "12,999", priceAnnual: "10,833", desc: "For mid-size property management firms", featured: true, features: ["Up to 1,000 units", "15 users", "All Starter features", "Owner & tenant portals", "Full accounting", "ZATCA integration", "AI analytics", "24/7 support"] },
-    { name: "Enterprise", priceMonth: "Contact Us", priceAnnual: "Contact Us", desc: "For large institutions and portfolios", features: ["Unlimited units", "Unlimited users", "All features", "Custom API", "99.99% SLA", "Dedicated account manager", "Private hosting", "On-site training"] },
+    { name: "Professional", priceMonth: "12,999", priceAnnual: "10,833", desc: "For mid-size property management firms", featured: true, features: ["Up to 1,000 units", "15 users", "All Starter features", "Owner & tenant portals", "Full accounting", "ZATCA integration", "AI analytics", "Technical support"] },
+    { name: "Enterprise", priceMonth: "Contact Us", priceAnnual: "Contact Us", desc: "For large institutions and portfolios", features: ["Unlimited units", "Unlimited users", "All features", "Custom API", "99.5%+ SLA", "Dedicated account manager", "Private hosting", "On-site training"] },
   ],
   ctaLabel: "Contact Sales",
   ctaTitle: "Ready to Transform Your Real Estate Portfolio?",
@@ -1095,15 +1075,15 @@ const EN: typeof AR = {
   ctaConsult: "Free Consultation",
   ctaTrust: [
     "🔒 AES-256 Bank Encryption",
-    "✅ CMA Regulated",
+    "✅ Market-Aligned",
     "🇸🇦 ZATCA Integrated",
-    "🏦 AWS Saudi Arabia",
-    "💳 Apple Pay & Mada",
+    "☁️ AWS Cloud",
+    "💳 Apple Pay & Mada (Coming Soon)",
     "📄 Tax Invoices",
   ],
   footerDesc: "The leading enterprise real estate operating system in Saudi Arabia and the GCC region.",
-  footerGDPR: "GDPR",
-  footerISO: "ISO 27001",
+  footerGDPR: "GDPR (Coming Soon)",
+  footerISO: "ISO 27001 (Coming Soon)",
   footerZATCA: "ZATCA Compliant",
   footerCopyright: "© 2026 ORCA. All rights reserved.",
   footerCols: [
@@ -1133,25 +1113,25 @@ const EN: typeof AR = {
     },
   ],
   casesLabel: "Case Studies",
-  casesTitle: "Real Results with ORCA",
-  casesDesc: "See how ORCA helped real estate organizations transform their operations.",
-  casesBefore: "Before ORCA",
-  casesAfter: "After ORCA",
+  casesTitle: "Projected Scenarios with ORCA",
+  casesDesc: "Projected models of how ORCA can improve real estate operations for enterprises.",
+  casesBefore: "Current State",
+  casesAfter: "Projected Scenario",
   cases: [
-    { industry: "Property Management Co.", result: "Saved SAR 4.2M annually",
+    { industry: "Property Management Co.", result: "Projected: Save SAR 4.2M annually",
       before: ["Manually managing 1,200 units with Excel", "Manual collections via calls & WhatsApp", "Paper invoices without tax integration", "Average 15-day collection delay"],
       after: ["Centralized system managing all units", "Automated collections with digital payment gateways", "Fully automated ZATCA invoices", "97% real-time collection rate"],
-      metrics: [{ val: "97%", lbl: "Collection Rate" }, { val: "82%", lbl: "Time Saved" }, { val: "4.2M", lbl: "Annual Savings (SAR)" }]
+      metrics: [{ val: "97%", lbl: "Collection Rate (Projected)" }, { val: "82%", lbl: "Time Saved (Projected)" }, { val: "4.2M", lbl: "Annual Savings SAR (Projected)" }]
     },
-    { industry: "Real Estate Developer", result: "3x faster sales velocity",
+    { industry: "Real Estate Developer", result: "Projected: 3x faster sales velocity",
       before: ["Sales operations across 4 separate systems", "2-week delay in contract issuance", "30% lead loss rate", "Late and inaccurate monthly reports"],
       after: ["Unified sales pipeline with full automation", "Digital contracts issued in minutes", "95% lead retention rate", "Real-time executive dashboard reporting"],
-      metrics: [{ val: "3x", lbl: "Sales Velocity" }, { val: "95%", lbl: "Lead Retention" }, { val: "2 min", lbl: "Contract Issuance" }]
+      metrics: [{ val: "3x", lbl: "Sales Velocity (Projected)" }, { val: "95%", lbl: "Lead Retention (Projected)" }, { val: "2 min", lbl: "Contract Issuance (Projected)" }]
     },
-    { industry: "Investment Institution", result: "Reduced ops team by 60%",
+    { industry: "Investment Institution", result: "Projected: Reduce ops team by 60%",
       before: ["15-person operations team", "10-day financial reporting cycle", "Manual maintenance & contract tracking", "Incomplete portfolio visibility"],
       after: ["6-person team with full automation", "Real-time financial reports at 100% accuracy", "Fully automated maintenance system", "Complete portfolio visibility in seconds"],
-      metrics: [{ val: "60%", lbl: "Team Reduction" }, { val: "100%", lbl: "Report Accuracy" }, { val: "10 days → 0", lbl: "Reporting Delay" }]
+      metrics: [{ val: "60%", lbl: "Team Reduction (Projected)" }, { val: "100%", lbl: "Report Accuracy (Projected)" }, { val: "10 days → 0", lbl: "Reporting Delay (Projected)" }]
     },
   ],
 };
@@ -1464,7 +1444,7 @@ const STYLES = `
   /* ── Comparison ── */
   .eh-compare { background: #050816; }
   .eh-compare-table {
-    border: 1px solid #1E293B; border-radius: 12px; overflow: hidden;
+    border: 1px solid #1E293B; border-radius: 12px;
     overflow-x: auto;
   }
   .eh-compare-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; }

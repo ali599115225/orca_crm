@@ -2,7 +2,8 @@
 // Full Production Verification - tests all 10 critical flows with session cookie auth
 
 const BASE = process.env.BASE_URL || "http://localhost:3458";
-const JWT_SECRET = "6ba5289724f54ce28e10ab06cb42d472bfa63d847505932638590f5401e6916bf45ff53d8695301e51367cfe84d2ec9486e23e190f28d76b6b9a373ed060ba88";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
 
 import { SignJWT } from "jose";
 

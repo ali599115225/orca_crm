@@ -233,11 +233,11 @@ export default function ProjectsOverview({
                 )}
               </div>
               <button
-                onClick={triggerPaymentSimulation}
-                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold rounded-lg hover:bg-emerald-500/20 transition-all shrink-0"
+                disabled={true}
+                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-[11px] font-bold rounded-lg cursor-not-allowed shrink-0"
               >
                 <DollarSign size={14} className="inline ml-1" />
-                محاكاة webhook
+                محاكاة webhook (قيد التطوير)
               </button>
             </div>
           </Card>
@@ -452,8 +452,8 @@ export default function ProjectsOverview({
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all">
-                حفظ المرحلة التنفيذية
+              <button type="submit" disabled={true} className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed">
+                حفظ المرحلة التنفيذية (قريباً)
               </button>
               <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-[var(--nc-surface)] text-[#C4D8E5] font-medium rounded-xl transition-all">
                 إلغاء

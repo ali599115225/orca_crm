@@ -29,13 +29,14 @@ export async function toggleWhatsAppConnectionAction(connected: boolean) {
 }
 
 /**
- * استرجاع قائمة المحادثات الوهمية للاختبار والتشغيل
+ * استرجاع قائمة المحادثات — وضع Sandbox للتطوير والاختبار
  */
 export async function getMockWhatsAppChatsAction() {
   try {
     const tenant = await getActiveTenant();
 
-    // محادثات افتراضية مسبقة التهيئة
+    const isSandbox = process.env.WHATSAPP_API_TOKEN ? false : true;
+
     const mockChats = [
       {
         id: "chat_1",
@@ -79,23 +80,30 @@ export async function getMockWhatsAppChatsAction() {
       }
     ];
 
-    return { success: true, chats: mockChats, tenant };
+    return {
+      success: true,
+      chats: mockChats,
+      tenant,
+      source: isSandbox ? "SANDBOX" : "GREENAPI",
+      sandbox: isSandbox,
+      warning: isSandbox ? "هذه محادثات وهمية للتطوير والاختبار فقط. فعل WHATSAPP_API_TOKEN للانتقال إلى الوضع الحقيقي." : null,
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
 /**
- * إرسال رسالة وهمية ومحاكاة رد الوكيل الذكي الفوري (AI Agent Simulated Response)
+ * إرسال رسالة ومحاكاة رد الوكيل — وضع Sandbox للتطوير
  */
 export async function sendMockWhatsAppMessageAction(chatId: string, messageText: string) {
   try {
     const tenant = await getActiveTenant();
+    const isSandbox = process.env.WHATSAPP_API_TOKEN ? false : true;
     const cleanMsg = messageText.trim().toLowerCase();
 
     let aiReplyText = "";
 
-    // منطق توليد ردود ذكية ومحسنة حسب محتوى رسالة المطور
     if (cleanMsg.includes("سعر") || cleanMsg.includes("بكم") || cleanMsg.includes("اسعار") || cleanMsg.includes("تكلفتها")) {
       aiReplyText = `🤖 بخصوص الأسعار في مشاريعنا بـ (${tenant.companyName})، تبدأ أسعار الشقق السكنية الفاخرة من 450,000 ريال، والفلل المستقلة تبدأ من 1,200,000 ريال مع توفر خيارات الدفع النقدية أو التمويل الميسر. هل ترغب في إرسال بروشور الأسعار التفصيلي عبر الواتساب؟`;
     } else if (cleanMsg.includes("موقع") || cleanMsg.includes("وين") || cleanMsg.includes("مكان") || cleanMsg.includes("حي")) {
@@ -108,8 +116,11 @@ export async function sendMockWhatsAppMessageAction(chatId: string, messageText:
       aiReplyText = `🤖 أهلاً بك يا فندم، أنا وكيل المبيعات الآلي لـ (${tenant.companyName}). لقد رصدت استفسارك حول "${messageText}". جاري تجهيز الرد الفني الشامل أو تحويلك لأقرب مستشار مبيعات عقاري لخدمتك بشكل أسرع. هل تفضل الاتصال الهاتفي المباشر؟`;
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
+      source: isSandbox ? "SANDBOX" : "GREENAPI",
+      sandbox: isSandbox,
+      warning: isSandbox ? "هذه استجابة وهمية مبنية على كلمات مفتاحية. للتجربة الحقيقية، فعل WHATSAPP_API_TOKEN." : null,
       clientMessage: { sender: "client", text: messageText, time: "الآن" },
       agentMessage: { sender: "agent", text: aiReplyText, time: "الآن" }
     };

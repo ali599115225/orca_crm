@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from 'next/cache';
 import { getActiveTenant } from "@/lib/tenant";
+import { getSession } from "@/lib/session";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Lead, LeadStatus } from '@prisma/client';
 
@@ -16,6 +17,10 @@ export async function fetchLeads() {
 
 export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'leadActivities' | 'tasks' | 'mansourChats'>) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "يجب تسجيل الدخول أولاً" };
+    }
     const tenant = await getActiveTenant();
     const { tenantId: _, ...safeData } = data as any;
     const newLead = await prisma.lead.create({ data: { ...safeData, tenantId: tenant.id, leadScore: Math.floor(Math.random() * 40) + 40 } });

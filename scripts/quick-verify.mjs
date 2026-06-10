@@ -33,7 +33,8 @@ function api(method, path, body, cookie, retries = 20) {
 }
 
 async function main() {
-  const JWT_SECRET = process.env.JWT_SECRET || "6ba5289724f54ce28e10ab06cb42d472bfa63d847505932638590f5401e6916bf45ff53d8695301e51367cfe84d2ec9486e23e190f28d76b6b9a373ed060ba88";
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
   const secret = new TextEncoder().encode(JWT_SECRET);
   const session = await new SignJWT({
     userId: "admin-demo-id",

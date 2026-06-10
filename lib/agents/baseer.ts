@@ -1,6 +1,10 @@
 // lib/agents/baseer.ts
 import { prisma, rawPrisma } from "../prisma";
 import { tenantContext } from "../tenant-context";
+import {
+  buildBaseerSystemPrompt,
+  type BaseerAIOutput,
+} from "./baseerPrompt";
 
 export interface StrategyReport {
   timestamp: string;
@@ -21,6 +25,116 @@ export interface StrategyReport {
     conservative: { description: string; expectedCashflowSar: number };
     pessimistic: { description: string; expectedCashflowSar: number };
   };
+  aiInterpretation?: BaseerAIOutput | null;
+}
+
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent";
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 800;
+
+/**
+ * استدعاء Gemini لتفسير التقرير المالي بلغة عربية مفهومة
+ */
+async function callGeminiForFinancialInterpretation(
+  systemPrompt: string,
+  reportSummary: string,
+  retryCount = 0
+): Promise<BaseerAIOutput | null> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+
+  if (!apiKey) {
+    console.warn("[بصير] مفتاح Gemini API غير موجود، تخطي التفسير الذكي");
+    return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `تقرير مالي استشرافي للتحليل:\n\n${reportSummary}\n\nأعطني التفسير بصيغة JSON نظيفة فقط دون أي نص إضافي.`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.text();
+      const statusCode = response.status;
+
+      if (retryCount < MAX_RETRIES && (statusCode >= 500 || statusCode === 429)) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (retryCount + 1)));
+        return callGeminiForFinancialInterpretation(systemPrompt, reportSummary, retryCount + 1);
+      }
+
+      throw new Error(`Gemini API Error: ${statusCode} — ${err}`);
+    }
+
+    const data = await response.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+    const cleanJson = rawText
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
+    return JSON.parse(cleanJson) as BaseerAIOutput;
+  } catch (error: any) {
+    if (retryCount < MAX_RETRIES && error.name === "AbortError") {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (retryCount + 1)));
+      return callGeminiForFinancialInterpretation(systemPrompt, reportSummary, retryCount + 1);
+    }
+
+    console.error("[بصير] خطأ في استدعاء Gemini للتفسير المالي:", error);
+    return null;
+  }
+}
+
+/**
+ * بناء ملخص التقرير المالي لتمريره للذكاء الاصطناعي
+ */
+function buildReportSummary(companyName: string, report: StrategyReport): string {
+  return `
+الشركة: ${companyName}
+
+### المؤشرات المالية:
+- إجمالي العقود النشطة: ${report.metrics.totalActiveContractsCount} عقد بقيمة ${report.metrics.totalActiveContractsSar.toLocaleString("ar-SA")} ر.س
+- إجمالي المحصل: ${report.metrics.totalCollectedSar.toLocaleString("ar-SA")} ر.س
+- إجمالي المعلق: ${report.metrics.totalPendingSar.toLocaleString("ar-SA")} ر.س
+- معدل التحصيل: ${report.metrics.collectionRate.toFixed(1)}%
+
+### التدفقات النقدية المتوقعة:
+- خلال 30 يوماً: ${report.projections.days30Sar.toLocaleString("ar-SA")} ر.س
+- خلال 60 يوماً: ${report.projections.days60Sar.toLocaleString("ar-SA")} ر.س
+- خلال 90 يوماً: ${report.projections.days90Sar.toLocaleString("ar-SA")} ر.س
+
+### السيناريوهات:
+- متفائل (100%): ${report.scenarios.optimistic.expectedCashflowSar.toLocaleString("ar-SA")} ر.س
+- متحفظ (75%): ${report.scenarios.conservative.expectedCashflowSar.toLocaleString("ar-SA")} ر.س
+- متشائم (45%): ${report.scenarios.pessimistic.expectedCashflowSar.toLocaleString("ar-SA")} ر.س
+  `.trim();
 }
 
 /**
@@ -28,7 +142,8 @@ export interface StrategyReport {
  */
 export async function runBaseerStrategyReport(
   tenantId: string,
-  userId: string | undefined
+  userId: string | undefined,
+  companyName?: string
 ): Promise<StrategyReport> {
   return tenantContext.run({ tenantId, userId }, async (): Promise<StrategyReport> => {
     const now = new Date();
@@ -162,6 +277,29 @@ export async function runBaseerStrategyReport(
       },
     });
 
-    return report;
+    // 5. استدعاء Gemini لتفسير التقرير بالعربية (AI Interpretation)
+    let aiInterpretation: BaseerAIOutput | null = null;
+    try {
+      const reportName = companyName || "الشركة";
+      const systemPrompt = buildBaseerSystemPrompt({ companyName: reportName });
+      const reportSummary = buildReportSummary(reportName, report);
+      aiInterpretation = await callGeminiForFinancialInterpretation(systemPrompt, reportSummary);
+
+      if (aiInterpretation) {
+        await prisma.agentTelemetryLog.create({
+          data: {
+            tenantId,
+            agentId: "Baseer",
+            actionType: "AI_Interpretation",
+            logMessageAr: `«[الوكيل بصير] تم إصدار تفسير ذكي للتقرير المالي — درجة الخطورة: ${aiInterpretation.risk_level} — درجة الثقة: ${(aiInterpretation.confidence * 100).toFixed(0)}%»`,
+            severity: aiInterpretation.risk_level === "CRITICAL" || aiInterpretation.risk_level === "HIGH" ? "Warning" : "Info",
+          },
+        });
+      }
+    } catch (aiErr) {
+      console.warn("[بصير] فشل التفسير الذكي للتقرير المالي:", aiErr);
+    }
+
+    return { ...report, aiInterpretation };
   });
 }

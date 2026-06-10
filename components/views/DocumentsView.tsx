@@ -546,8 +546,12 @@ export default function DocumentsView() {
                   href={previewDoc.url}
                   download={previewDoc.name}
                   onClick={(e) => {
-                    e.preventDefault();
-                    toast.error(isArabic ? `تنزيل المستند: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
+                    if (previewDoc.url.startsWith('/mock-documents/')) {
+                      e.preventDefault();
+                      toast.error(isArabic ? 'هذا الملف وهمي وغير متوفر للتحميل' : 'This is a mock file and is not available for download');
+                      return;
+                    }
+                    toast.info(isArabic ? `جاري تنزيل: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
                   }}
                   className="px-5 py-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-[var(--nc-foreground)] text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
                 >

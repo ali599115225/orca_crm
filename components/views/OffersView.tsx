@@ -14,6 +14,7 @@ import { SmartCard } from '@/components/ui/SmartCard';
 import { useAuth } from '@/app/context/AuthContext';
 import { toast } from '@/app/context/ToastContext';
 import { getPropertiesAction } from '@/app/actions/properties';
+import { scheduleTourActionDirect } from '@/app/actions/tours';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface PropertyOffer {
@@ -373,13 +374,14 @@ export default function OffersView() {
     addTelemetryEvent('mortgage.modal_prefilled', { propertyId: pId, price: p.price });
   };
 
-  const handleScheduleVisit = (e: React.FormEvent) => {
+  const handleScheduleVisit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitDate || !visitName || !visitPhone) {
       toast.error('يرجى تحديد التاريخ والاسم ورقم الجوال لحجز الزيارة.');
       return;
     }
 
+    const datetimeStr = `${visitDate}T${visitTime}:00`;
     const visitPayload = {
       propertyId: selectedPropertyId,
       scheduledAt: visitDate,
@@ -390,11 +392,27 @@ export default function OffersView() {
     };
 
     addTelemetryEvent('offer.visit_scheduled', visitPayload);
+
+    try {
+      const result = await scheduleTourActionDirect({
+        propertyId: selectedPropertyId || '',
+        userName: visitName,
+        phone: visitPhone.replace(/\D/g, ''),
+        datetime: datetimeStr,
+      });
+      if (result.success) {
+        toast.success(`تم جدولة الجولة العقارية بنجاح وتأكيد الموعد بتاريخ ${visitDate.split('-').reverse().join('/')} في تمام الساعة ${visitTime}. سيقوم المستشار العقاري بالتواصل معك.`);
+      } else {
+        toast.error(result.error || 'تعذر جدولة الجولة، يرجى المحاولة مرة أخرى.');
+      }
+    } catch (err: any) {
+      toast.error('حدث خطأ أثناء حجز الجولة: ' + err.message);
+    }
+
     setActiveModal(null);
     setVisitName('');
     setVisitPhone('');
     setVisitNotes('');
-    toast.error(`تم تأكيد موعد زيارة العقار بتاريخ ${visitDate.split('-').reverse().join('/')} في تمام الساعة ${visitTime}. سيقوم المستشار العقاري بالتواصل معك.`);
   };
 
   const handleContactAgent = (e: React.FormEvent) => {
@@ -1033,13 +1051,10 @@ export default function OffersView() {
 
             <div className="flex gap-2 justify-end pt-2 border-t border-[var(--nc-border)]">
               <button
-                onClick={() => {
-                  toast.success('');
-                  setActiveModal(null);
-                }}
-                className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-[var(--nc-foreground)] text-xs font-bold rounded-xl transition-all"
+                disabled={true}
+                className="flex-1 py-2.5 bg-cyan-600/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
               >
-                تأكيد وإرسال للشركاء
+                تأكيد وإرسال للشركاء (قريباً)
               </button>
               <button
                 onClick={() => setActiveModal(null)}
@@ -1196,9 +1211,10 @@ export default function OffersView() {
               <div className="flex gap-2 justify-end pt-2 border-t border-[var(--nc-border)]">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-foreground)] text-xs font-bold rounded-xl transition-all"
+                  disabled={true}
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
                 >
-                  إدراج العرض ونشره
+                  إدراج العرض ونشره (قريباً)
                 </button>
                 <button
                   type="button"
@@ -1381,9 +1397,10 @@ export default function OffersView() {
               <div className="flex gap-2 justify-end pt-2 border-t border-[var(--nc-border)]">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-foreground)] text-xs font-bold rounded-xl transition-all"
+                  disabled={true}
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
                 >
-                  إرسال الطلب الآن
+                  إرسال الطلب الآن (قريباً)
                 </button>
                 <button
                   type="button"

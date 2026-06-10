@@ -4,21 +4,55 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 
-const MOYASAR_SECRET_KEY = process.env.MOYASAR_SECRET_KEY || "sk_test_dummy_key_for_orca_crm_saudi";
+const PAYLINK_SECRET = process.env.PAYLINK_SECRET || "test_secret_key_placeholder";
+const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || "https://paylink.sa/api/v1";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+function generateIdempotencyKey(): string {
+  return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+async function createPaylinkInvoice(params: {
+  amount: number;
+  description: string;
+  metadata: Record<string, string>;
+}): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
+  const idempotencyKey = generateIdempotencyKey();
+
+  try {
+    const response = await fetch(`${PAYLINK_BASE}/invoice`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${PAYLINK_SECRET}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        amount: params.amount, // in halalas
+        currency: "SAR",
+        description: params.description,
+        callback_url: `${APP_URL}/api/payment/callback`,
+        metadata: params.metadata,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || "فشل الاتصال ببوابة Paylink");
+    }
+
+    const invoice = await response.json();
+    return { success: true, paymentUrl: invoice.url || invoice.payment_url };
+  } catch (error: any) {
+    console.error("[Paylink] create invoice error:", error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 export async function initiateSubscriptionPaymentAction(plan: "basic" | "silver" | "gold") {
   try {
     const tenant = await getActiveTenant();
 
-    // 1. وضع محاكاة الدفع المحلي (Mock Mode) للتجربة السلسة بدون حساب ميسر حقيقي
-    if (MOYASAR_SECRET_KEY.startsWith("sk_test_dummy")) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      // نمرر البيانات مباشرة في الرابط في وضع التجربة لتخطي التحقق الخارجي
-      const mockCallbackUrl = `${appUrl}/api/payment/callback?id=mock_invoice_${Math.random().toString(36).substring(2, 9)}&status=paid&mock_tenant_id=${tenant.id}&mock_plan=${plan}`;
-      return { success: true, paymentUrl: mockCallbackUrl };
-    }
-
-    // 2. الوضع الحقيقي (بوابة ميسر الفعلية)
     const planPrices: Record<string, number> = {
       basic: 45000,
       silver: 90000,
@@ -26,44 +60,30 @@ export async function initiateSubscriptionPaymentAction(plan: "basic" | "silver"
     };
 
     const amountInHalalas = planPrices[plan] || 45000;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const callbackUrl = `${appUrl}/api/payment/callback`;
 
-    const response = await fetch("https://api.moyasar.com/v1/invoices", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${btoa(MOYASAR_SECRET_KEY + ":")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: amountInHalalas,
-        currency: "SAR",
-        description: `ترقية باقة ${plan === "basic" ? "الأساسية" : plan === "silver" ? "الفضية" : "الذهبية"} - ${tenant.companyName}`,
-        callback_url: callbackUrl,
-        metadata: {
-          tenantId: tenant.id,
-          plan: plan,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.message || "فشل الاتصال ببوابة ميسر.");
+    if (!PAYLINK_SECRET || PAYLINK_SECRET === "test_secret_key_placeholder") {
+      return {
+        success: false,
+        error: "بوابة الدفع Paylink غير مفعلة حالياً. يرجى التواصل مع الدعم الفني.",
+      };
     }
 
-    const invoice = await response.json();
-    return { success: true, paymentUrl: invoice.url };
+    const result = await createPaylinkInvoice({
+      amount: amountInHalalas,
+      description: `ترقية باقة ${plan === "basic" ? "الأساسية" : plan === "silver" ? "الفضية" : "الذهبية"} - ${tenant.companyName}`,
+      metadata: {
+        tenantId: tenant.id,
+        plan,
+      },
+    });
 
+    return result;
   } catch (error: any) {
-    console.error("خطأ بوابة ميسر:", error);
+    console.error("خطأ بوابة Paylink:", error);
     return { success: false, error: error.message };
   }
 }
 
-/**
- * تهيئة عملية دفع فاتورة شراء وكلاء إضافيين بالربط مع ميسر
- */
 export async function initiateAddonPaymentAction(agentCount: number) {
   try {
     const tenant = await getActiveTenant();
@@ -72,49 +92,29 @@ export async function initiateAddonPaymentAction(agentCount: number) {
       throw new Error("يجب اختيار وكيل واحد على الأقل للشراء.");
     }
 
-    // حساب سعر الوكلاء: 250 ر.س للوكيل الواحد (موحد لجميع الباقات)
     const pricePerAgent = 25000;
     const amountInHalalas = pricePerAgent * agentCount;
-    
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const callbackUrl = `${appUrl}/api/payment/callback`;
 
-    // 1. وضع محاكاة الدفع المحلي (Mock Mode) للتجربة السلسة
-    if (MOYASAR_SECRET_KEY.startsWith("sk_test_dummy")) {
-      const mockCallbackUrl = `${appUrl}/api/payment/callback?id=mock_invoice_${Math.random().toString(36).substring(2, 9)}&status=paid&mock_tenant_id=${tenant.id}&mock_type=addon&mock_agent_count=${agentCount}`;
-      return { success: true, paymentUrl: mockCallbackUrl };
+    if (!PAYLINK_SECRET || PAYLINK_SECRET === "test_secret_key_placeholder") {
+      return {
+        success: false,
+        error: "بوابة الدفع Paylink غير مفعلة حالياً. يرجى التواصل مع الدعم الفني.",
+      };
     }
 
-    // 2. الوضع الحقيقي (بوابة ميسر الفعلية)
-    const response = await fetch("https://api.moyasar.com/v1/invoices", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${btoa(MOYASAR_SECRET_KEY + ":")}`,
-        "Content-Type": "application/json",
+    const result = await createPaylinkInvoice({
+      amount: amountInHalalas,
+      description: `شراء عدد ${agentCount} وكيل إضافي لمنصة أوركا - ${tenant.companyName}`,
+      metadata: {
+        type: "addon",
+        tenantId: tenant.id,
+        agentCount: String(agentCount),
       },
-      body: JSON.stringify({
-        amount: amountInHalalas,
-        currency: "SAR",
-        description: `شراء عدد ${agentCount} وكيل إضافي لمنصة أوركا - ${tenant.companyName}`,
-        callback_url: callbackUrl,
-        metadata: {
-          type: "addon",
-          tenantId: tenant.id,
-          agentCount: agentCount,
-        }
-      })
     });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.message || "فشل الاتصال ببوابة ميسر لشراء الوكلاء.");
-    }
-
-    const invoice = await response.json();
-    return { success: true, paymentUrl: invoice.url };
-
+    return result;
   } catch (error: any) {
-    console.error("خطأ بوابة ميسر لشراء الوكلاء:", error);
+    console.error("خطأ بوابة Paylink لشراء الوكلاء:", error);
     return { success: false, error: error.message };
   }
 }

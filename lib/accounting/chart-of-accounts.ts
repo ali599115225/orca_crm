@@ -115,6 +115,14 @@ export const DEFAULT_CHART_OF_ACCOUNTS: AccountSeed[] = [
         nameAr: 'إيرادات الإيجار',
         nameEn: 'Rental Revenue',
         type: 'REVENUE',
+        children: [
+          {
+            code: '4.1.1',
+            nameAr: 'إيرادات الاشتراكات',
+            nameEn: 'Subscription Revenue',
+            type: 'REVENUE',
+          },
+        ],
       },
       {
         code: '4.2',

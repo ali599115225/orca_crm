@@ -84,7 +84,7 @@ export default function MarketingView() {
   }, [searchParams]);
 
   const addTelemetryEvent = useCallback((type: string, payload?: any) => {
-    // Telemetry placeholder
+    console.log('[Telemetry]', type, payload);
   }, []);
 
   return (

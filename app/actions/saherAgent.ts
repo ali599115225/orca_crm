@@ -96,9 +96,15 @@ async function logTelemetryEvent(
 
 // ─── استدعاء Gemini API لتحليل الرسالة ──────────────────────────────────────
 
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent";
+const GEMINI_MAX_RETRIES = 3;
+const GEMINI_RETRY_DELAY_MS = 1000;
+
 async function callGeminiForLeadQualification(
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  retryCount = 0
 ): Promise<SaherLeadOutput | null> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
@@ -108,37 +114,51 @@ async function callGeminiForLeadQualification(
   }
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `رسالة واتساب جديدة واردة للتحليل والتأهيل:\n\n${userMessage}\n\nأعطني النتيجة بصيغة JSON نظيفة فقط دون أي نص إضافي.`,
+              },
+            ],
           },
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `رسالة واتساب جديدة واردة للتحليل والتأهيل:\n\n${userMessage}\n\nأعطني النتيجة بصيغة JSON نظيفة فقط دون أي نص إضافي.`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Gemini API Error: ${response.status} — ${err}`);
+      const statusCode = response.status;
+
+      // إعادة المحاولة للأخطاء القابلة للاسترداد (5xx, 429)
+      if (retryCount < GEMINI_MAX_RETRIES && (statusCode >= 500 || statusCode === 429)) {
+        console.warn(
+          `[ساهر] API غير متاح (${statusCode})، إعادة المحاولة ${retryCount + 1}/${GEMINI_MAX_RETRIES}...`
+        );
+        await new Promise((r) => setTimeout(r, GEMINI_RETRY_DELAY_MS * (retryCount + 1)));
+        return callGeminiForLeadQualification(systemPrompt, userMessage, retryCount + 1);
+      }
+
+      throw new Error(`Gemini API Error: ${statusCode} — ${err}`);
     }
 
     const data = await response.json();
@@ -151,8 +171,36 @@ async function callGeminiForLeadQualification(
       .replace(/```\n?/g, "")
       .trim();
 
-    return JSON.parse(cleanJson) as SaherLeadOutput;
-  } catch (error) {
+    const parsed = JSON.parse(cleanJson) as SaherLeadOutput;
+
+    // معايرة درجة العميل (Lead Score Calibration)
+    if (parsed.lead_data && typeof parsed.lead_data.lead_score === "number") {
+      // تسقيف الدرجة بين 0 و 100
+      parsed.lead_data.lead_score = Math.max(0, Math.min(100, parsed.lead_data.lead_score));
+
+      // إذا كان الإجراء REJECTED ولكن الدرجة مرتفعة، نُصحح تلقائياً
+      if (parsed.action === "LEAD_REJECTED" && parsed.lead_data.lead_score >= 60) {
+        parsed.action = "MORE_INFO_NEEDED";
+        parsed.confidence = Math.min(0.5, parsed.confidence);
+      }
+
+      // إذا كان الإجراء QUALIFIED ولكن الدرجة منخفضة جداً، نُصحح
+      if (parsed.action === "LEAD_QUALIFIED" && parsed.lead_data.lead_score < 30) {
+        parsed.lead_data.lead_score = 35;
+      }
+    }
+
+    return parsed;
+  } catch (error: any) {
+    // إعادة المحاولة لأخطاء الشبكة/الوقت المستقطع
+    if (retryCount < GEMINI_MAX_RETRIES && error.name === "AbortError") {
+      console.warn(
+        `[ساهر] انتهت مهلة الطلب، إعادة المحاولة ${retryCount + 1}/${GEMINI_MAX_RETRIES}...`
+      );
+      await new Promise((r) => setTimeout(r, GEMINI_RETRY_DELAY_MS * (retryCount + 1)));
+      return callGeminiForLeadQualification(systemPrompt, userMessage, retryCount + 1);
+    }
+
     console.error("[ساهر] خطأ في استدعاء Gemini:", error);
     return null;
   }

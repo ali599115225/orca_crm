@@ -7,6 +7,10 @@ import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { encryptText, decryptText } from "@/lib/crypto";
 import { authorizeAgentAccess } from "@/lib/licensing";
+import {
+  buildMansourSystemPrompt,
+  type MansourOutput,
+} from "@/lib/agents/mansour";
 
 // تكلفت الحملات التسويقية الافتراضية لكل مصدر إعلاني (ثابتة لأغراض حساب الاستعاضة والاستحواذ)
 const SOURCE_MARKETING_SPEND: Record<string, number> = {
@@ -403,18 +407,101 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
       time: nowTime
     });
 
-    // 4. محاكاة رد الوكيل منصور الذكي
-    const cleanMsg = messageText.trim().toLowerCase();
-    let replyText = "";
+    // 4. استدعاء وكيل منصور الحقيقي عبر Gemini API
+    const previousMessages = messages.slice(-10);
+    const systemPrompt = buildMansourSystemPrompt({
+      companyName: tenant.companyName,
+      subscriptionPlan: tenant.subscriptionPlan,
+      previousMessages,
+    });
 
-    if (cleanMsg.includes("بروشور") || cleanMsg.includes("برشور") || cleanMsg.includes("كتالوج") || cleanMsg.includes("تفاصيل")) {
-      replyText = `🤖 أهلاً بك يا فندم. لقد قمت بإرسال الكتالوج التفصيلي والمخططات الهندسية لوحداتنا السكنية بنجاح عبر الواتساب. هل تفضل الاتفاق على موعد لزيارة المعرض أو فيلا العرض لمشاهدة جودة التشطيب على الطبيعة؟ - منصور`;
-    } else if (cleanMsg.includes("دفعة") || cleanMsg.includes("اقساط") || cleanMsg.includes("أقساط") || cleanMsg.includes("قسط")) {
-      replyText = `🤖 نظام الدفع المعتمد في مشاريعنا هو دفعة مقدمة حجز 10% ثم دفعات متوازية مع مراحل البناء العقاري أو التمويل عبر البنوك. يمكنني ربطك الآن بالقسم المالي لتهيئة حسبة تناسب راتبك الشهري. ما رأيك؟ - منصور`;
-    } else if (cleanMsg.includes("موقع") || cleanMsg.includes("وين") || cleanMsg.includes("حي")) {
-      replyText = `🤖 مشاريعنا تتركز في أرقى مناطق شمال وشرق الرياض بأسعار تنافسية. تتوفر لدينا فلل العرض للزيارة يومياً من 4 م إلى 9 م. هل تود حجز موعد زيارة اليوم وسأرسل لك الموقع؟ - منصور`;
-    } else {
-      replyText = `🤖 أهلاً بك يا فندم. لقد سجلت استفسارك بخصوص "${messageText}" وسأقوم بأتمتة المتابعة معك ومع القسم المختص لتجهيز الرد الأوفى. كيف يمكنني خدمتك أيضاً بخصوص مشاريعنا؟ - منصور`;
+    let replyText = "";
+    let mansourOutput: MansourOutput | null = null;
+
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+
+      if (apiKey) {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: `رسالة جديدة من عميل محتمل:\n\n${messageText}\n\nأعطني الرد بصيغة JSON نظيفة فقط دون أي نص إضافي.`,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.4,
+                maxOutputTokens: 2048,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: AbortSignal.timeout(25_000),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+          const cleanJson = rawText
+            .replace(/```json\n?/g, "")
+            .replace(/```\n?/g, "")
+            .trim();
+
+          try {
+            mansourOutput = JSON.parse(cleanJson) as MansourOutput;
+            replyText = mansourOutput.reply_to_client_ar || "";
+          } catch (parseErr) {
+            console.warn("[منصور] JSON غير صالح من Gemini:", parseErr);
+          }
+        } else {
+          console.warn("[منصور] فشل استدعاء Gemini API:", response.status);
+        }
+      }
+    } catch (geminiErr) {
+      console.warn("[منصور] خطأ Gemini، الرجوع للرد الاحتياطي:", geminiErr);
+    }
+
+    // احتياطي: إذا فشل Gemini، استخدم الرد الافتراضي
+    if (!replyText) {
+      const cleanMsg = messageText.trim().toLowerCase();
+      if (cleanMsg.includes("بروشور") || cleanMsg.includes("برشور") || cleanMsg.includes("كتالوج") || cleanMsg.includes("تفاصيل")) {
+        replyText = `🤖 أهلاً بك يا فندم. يمكنني إرسال التفاصيل والمواصفات الكاملة. هل تفضل حجز موعد عرض توضيحي (ديمو) لمنصة ORCA لتشاهد بنفسك قدرات النظام؟ - منصور`;
+      } else if (cleanMsg.includes("دفعة") || cleanMsg.includes("اقساط") || cleanMsg.includes("أقساط") || cleanMsg.includes("قسط") || cleanMsg.includes("سعر")) {
+        replyText = `🤖 أهلاً بك! لدينا ثلاث باقات: الباقة الأساسية (Starter) بسعر 4,999 ر.س شهرياً، والباقة الاحترافية (Professional) بسعر 12,999 ر.س شهرياً، وباقة المؤسسات بسعر مخصص. ما حجم أعمالك العقارية لأرشح لك الأنسب؟ - منصور`;
+      } else if (cleanMsg.includes("عرض") || cleanMsg.includes("تجربة") || cleanMsg.includes("ديمو")) {
+        replyText = `🤖 بكل سرور! يسعدنا ترتيب عرض توضيحي (ديمو) لمنصة ORCA. هل تفضلون الأسبوع القادم؟ وما الوقت المناسب لكم؟ - منصور`;
+      } else if (cleanMsg.includes("زاتكا") || cleanMsg.includes("ضريبة") || cleanMsg.includes("فاتورة")) {
+        replyText = `🤖 نعم، منصة ORCA تدعم الفوترة الإلكترونية المتوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (زاتكا) بالكامل. النظام يُصدر فواتير إلكترونية معتمدة برمز QR وتوقيع إلكتروني. هل تود تفاصيل أكثر عن التكامل مع زاتكا؟ - منصور`;
+      } else {
+        replyText = `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدتك اليوم؟ هل لديك استفسار عن الباقات، الميزات، أو تود حجز عرض توضيحي؟ - منصور`;
+      }
+    }
+
+    // تحديث بيانات تأهيل العميل إذا توفرت من Gemini
+    if (mansourOutput && chat.leadId) {
+      try {
+        const qual = mansourOutput.lead_qualification;
+        await prisma.lead.update({
+          where: { id: chat.leadId },
+          data: {
+            leadScore: qual.lead_score || 50,
+          },
+        });
+      } catch (updateErr) {
+        console.warn("[منصور] فشل تحديث درجة العميل:", updateErr);
+      }
     }
 
     messages.push({

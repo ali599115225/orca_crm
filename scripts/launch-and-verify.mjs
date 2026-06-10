@@ -103,7 +103,9 @@ async function main() {
     // The encrypt() function uses jose SignJWT with { userId, tenantId, tenantSubdomain, role, name, email }
     // We need the secret key
     const { SignJWT } = await import("jose");
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "6ba5289724f54ce28e10ab06cb42d472bfa63d847505932638590f5401e6916bf45ff53d8695301e51367cfe84d2ec9486e23e190f28d76b6b9a373ed060ba88");
+    const jwt = process.env.JWT_SECRET;
+    if (!jwt) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
+    const secret = new TextEncoder().encode(jwt);
     const session = await new SignJWT({
       userId: "admin-demo-id",
       tenantId: "demo-tenant-id",

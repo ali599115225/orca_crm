@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { parseCsvStatement, reconcileBankStatement } from '@/lib/accounting/bank-reconciliation';
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -43,9 +44,28 @@ export async function POST(request: NextRequest) {
     const tenantId = session.tenantId as string;
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const mode = (formData.get('mode') as string) || 'invoice';
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file uploaded' }, { status: 400 });
+    }
+
+    const fileContent = await file.text();
+
+    if (mode === 'bank') {
+      const statementLines = parseCsvStatement(fileContent);
+      if (statementLines.length === 0) {
+        return NextResponse.json({ success: false, error: 'تعذر تحليل كشف الحساب — تأكد من صيغة CSV' }, { status: 400 });
+      }
+
+      const result = await reconcileBankStatement(tenantId, statementLines);
+
+      return NextResponse.json({
+        success: true,
+        mode: 'bank',
+        message: `تمت معالجة ${statementLines.length} حركة بنكية — ${result.matches.length} مطابقة`,
+        ...result,
+      });
     }
 
     const unpaidInvoices = await prisma.rentalInvoice.findMany({
@@ -87,6 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      mode: 'invoice',
       message: `تمت معالجة ${file.name}`,
       matches,
       exceptions,

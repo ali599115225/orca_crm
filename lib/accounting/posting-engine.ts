@@ -44,14 +44,14 @@ export async function postJournalEntry(input: JournalEntryInput): Promise<any> {
     );
   }
 
-  const lastEntry = await prisma.journalEntry.findFirst({
-    where: { tenantId },
-    orderBy: { entryNumber: 'desc' },
-    select: { entryNumber: true },
-  });
-  const nextNumber = (lastEntry?.entryNumber ?? 0) + 1;
-
   return prisma.$transaction(async (tx) => {
+    const lastEntry = await tx.journalEntry.findFirst({
+      where: { tenantId },
+      orderBy: { entryNumber: 'desc' },
+      select: { entryNumber: true },
+    });
+    const nextNumber = (lastEntry?.entryNumber ?? 0) + 1;
+
     const entry = await tx.journalEntry.create({
       data: {
         tenantId,

@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/app/context/ToastContext';
+import { useRouter } from 'next/navigation';
 
 import React, { useState, useTransition, useEffect } from 'react';
 import {
@@ -89,6 +90,7 @@ export default function RentalPage() {
   const [mounted, setMounted] = useState(false);
   const [activePane, setActivePane] = useState<'dashboard' | 'leases' | 'invoices' | 'reconciliation' | 'settlements'>('leases');
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   // Core entities state
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
@@ -130,6 +132,7 @@ export default function RentalPage() {
   const [payRef, setPayRef] = useState('');
   const [payDate, setPayDate] = useState(''); // YYYY-MM-DD
   const [payIdempotencyKey, setPayIdempotencyKey] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
 
   // Reconciliation Upload mock state
   const [bankFileLoaded, setBankFileLoaded] = useState(false);
@@ -400,59 +403,70 @@ export default function RentalPage() {
     alert('تم إصدار الفاتورة بنجاح!');
   };
 
-  const handleRegisterPayment = (e: React.FormEvent) => {
+  const handleRegisterPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoice) return;
     if (!isAllowed('PAY_INVOICE')) {
-      alert('عذراً، لا تملك صلاحية تسجيل الدفعات.');
+      toast.error('عذراً، لا تملك صلاحية تسجيل الدفعات.');
       return;
     }
 
     if (!payDate || !payIdempotencyKey) {
-      alert('يرجى تحديد تاريخ السداد وإدخال مفتاح تفادي التكرار (Idempotency Key).');
+      toast.error('يرجى تحديد تاريخ السداد وإدخال مفتاح تفادي التكرار (Idempotency Key).');
       return;
     }
 
-    const payId = 'P-' + Math.floor(5002 + Math.random() * 900);
-    const newP: Payment = {
-      id: payId,
-      invoiceId: selectedInvoice.id,
-      date: payDate,
-      amount: selectedInvoice.totalAmount,
-      method: payMethod,
-      ref: payRef || undefined
-    };
+    setIsPaying(true);
+    try {
+      const res = await fetch(`/api/v1/invoices/${selectedInvoice.id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': payIdempotencyKey,
+        },
+        body: JSON.stringify({
+          amount: selectedInvoice.totalAmount,
+          method: payMethod,
+        }),
+      });
 
-    setPayments(prev => [...prev, newP]);
-    setInvoices(prev => prev.map(inv => inv.id === selectedInvoice.id ? { ...inv, status: 'paid' } : inv));
+      const data = await res.json();
 
-    const newEv: EventLog = {
-      id: `ev_${Date.now()}`,
-      contractId: selectedInvoice.contractId,
-      type: 'payment.received',
-      timestamp: new Date().toISOString(),
-      note: `تم سداد الفاتورة رقم ${selectedInvoice.id} بمبلغ ${selectedInvoice.totalAmount.toLocaleString()} ر.س عبر ${payMethod}`
-    };
-    setEvents(prev => [...prev, newEv]);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'فشل تسجيل الدفعة');
+      }
 
-    addTelemetryEvent('payment.received', {
-      contractId: selectedInvoice.contractId,
-      invoiceId: selectedInvoice.id,
-      paymentId: payId,
-      actorId: 'usr_active',
-      timestamp: new Date().toISOString(),
-      status: 'paid',
-      idempotencyKey: payIdempotencyKey,
-      payload: { amount: selectedInvoice.totalAmount, method: payMethod, ref: payRef }
-    });
+      addTelemetryEvent('payment.received', {
+        contractId: selectedInvoice.contractId,
+        invoiceId: selectedInvoice.id,
+        paymentId: data.payment?.id,
+        actorId: 'usr_active',
+        timestamp: new Date().toISOString(),
+        status: 'paid',
+        idempotencyKey: payIdempotencyKey,
+        payload: { amount: selectedInvoice.totalAmount, method: payMethod, ref: payRef }
+      });
 
-    // Reset
-    setPayRef('');
-    setPayDate('');
-    setPayIdempotencyKey('idemp-' + Math.floor(100000 + Math.random() * 900000));
-    setSelectedInvoice(null);
-    setActiveModal(null);
-    alert(`تم تسجيل عملية الدفع بنجاح! رقم الإيصال: ${payId}`);
+      // Refresh data
+      const invoicesRes = await fetch('/api/v1/invoices/');
+      if (invoicesRes.ok) {
+        const json = await invoicesRes.json();
+        if (json.success) setInvoices(json.invoices);
+      }
+
+      toast.success(data.message || 'تم تسجيل الدفعة بنجاح');
+
+      // Reset
+      setPayRef('');
+      setPayDate('');
+      setPayIdempotencyKey('idemp-' + Math.floor(100000 + Math.random() * 900000));
+      setSelectedInvoice(null);
+      setActiveModal(null);
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ أثناء تسجيل الدفعة');
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const handleRequestSettlement = (contractId: string, amount: number) => {
@@ -1779,9 +1793,10 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                disabled={isPaying}
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                تأكيد التحصيل والتسوية
+                {isPaying ? 'جاري التسجيل...' : 'تأكيد التحصيل والتسوية'}
               </button>
               <button 
                 type="button"

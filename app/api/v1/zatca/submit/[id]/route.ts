@@ -6,6 +6,7 @@ import { computeInvoiceHash, computePreviousInvoiceHash } from '@/lib/zatca/pih'
 import { validateXmlStructure } from '@/lib/zatca/xml/xml-validator';
 import { validatePreSubmission } from '@/lib/zatca/validate';
 import { submitReporting, submitClearance, ZatcaSubmissionResponse } from '@/lib/zatca/api';
+import { signXmlSimple } from '@/lib/zatca/sign';
 import { formatInvoiceLabel } from '@/lib/zatca/xml/xml-generator';
 import { VatType } from '@/lib/vat/types';
 
@@ -107,11 +108,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       orderBy: { createdAt: 'desc' },
     });
 
+    let signedXml = unsignedXml;
+    if (device?.privateKey) {
+      try {
+        signedXml = signXmlSimple(unsignedXml, device.privateKey);
+      } catch (signErr: any) {
+        console.warn('[zatca] ECDSA signing failed, using unsigned XML:', signErr.message);
+      }
+    }
+
     let submissionResult: ZatcaSubmissionResponse;
     if (invoiceTypeCode === '381') {
-      submissionResult = await submitClearance(unsignedXml, device);
+      submissionResult = await submitClearance(signedXml, device);
     } else {
-      submissionResult = await submitReporting(unsignedXml, device);
+      submissionResult = await submitReporting(signedXml, device);
     }
 
     const newStatus = submissionResult.success
@@ -122,7 +132,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       where: { id: invoice.id },
       data: {
         zatcaXml: unsignedXml,
-        zatcaSignedXml: unsignedXml,
+        zatcaSignedXml: signedXml,
         zatcaStatus: newStatus,
         previousInvoiceHash: pih,
         zatcaResponse: JSON.stringify(submissionResult.rawResponse || {}),

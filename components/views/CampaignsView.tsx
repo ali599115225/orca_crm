@@ -305,6 +305,14 @@ export default function CampaignsView({
         </div>
       )}
 
+      {/* ── Demo Data Warning Banner ──────────────────────── */}
+      {usingFallback && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs font-bold">
+          <i className="ph-bold ph-warning text-base"></i>
+          <span>⚠️ هذه بيانات توضيحية (Demo) — لم يتم ربطها بقاعدة البيانات بعد</span>
+        </div>
+      )}
+
       {/* ── Platform Filter Banner ───────────────────────────── */}
       {platformFilter && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] rounded-xl">

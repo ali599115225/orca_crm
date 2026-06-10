@@ -231,8 +231,9 @@ model Tenant {
   accountBalances       AccountBalance[]
   journalEntries        JournalEntry[]
   paymentTransactions   PaymentTransaction[]
-  commissionPayments    CommissionPayment[]
- 
+  commissionPayments CommissionPayment[]
+  maintenanceTickets  MaintenanceTicket[]
+  
   @@map("tenants")
 }
 
@@ -870,4 +871,28 @@ model FailedLoginAttempt {
 
   @@index([userId, createdAt])
   @@map("failed_login_attempts")
+}
+
+model MaintenanceTicket {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unitId         String?      @map("unit_id") @db.Uuid
+  title          String
+  description    String       @db.Text
+  status         String       @default("pending")
+  priority       Priority
+  category       String?      @default("other")
+  reportedBy     String?      @map("reported_by")
+  assignedTo     String?      @map("assigned_to")
+  estimatedCost  Decimal?     @map("estimated_cost") @db.Decimal(10, 2)
+  actualCost     Decimal?     @map("actual_cost") @db.Decimal(10, 2)
+  scheduledDate  DateTime?    @map("scheduled_date") @db.Timestamptz
+  completedDate  DateTime?    @map("completed_date") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, status])
+  @@index([unitId])
+  @@map("maintenance_tickets")
 }

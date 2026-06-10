@@ -15,7 +15,7 @@ function createRawPrismaClient(): PrismaClient {
     connectionString: rawUrl,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 10000,
-    max: 1,
+    max: isProduction ? 5 : 3,
     ssl: sslConfig,
   });
   const adapter = new PrismaPg(pool);
@@ -67,6 +67,12 @@ function createExtendedPrismaClient() {
             "FollowupSequence",
             "AutomationWorkflow",
             "TelemetryEvent",
+            "MaintenanceTicket",
+            "Account",
+            "AccountBalance",
+            "JournalEntry",
+            "PaymentTransaction",
+            "CommissionPayment",
           ];
 
           const hasTenantIsolation = tenantId && modelsWithTenantId.includes(model);
