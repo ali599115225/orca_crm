@@ -6,10 +6,28 @@ import Link from "next/link";
 const LANG = { AR: "ar", EN: "en" } as const;
 type Lang = keyof typeof LANG;
 
+const NAV_SECTIONS = ["hero", "trust", "platform", "product", "ai", "properties", "finance", "portals", "compare", "pricing", "demo"];
+
+function getVisibleSection(): string {
+  let active = "hero";
+  let maxRatio = 0;
+  for (const id of NAV_SECTIONS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const visible = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+    const ratio = visible / Math.min(rect.height, vh);
+    if (ratio > maxRatio) { maxRatio = ratio; active = id; }
+  }
+  return active;
+}
+
 export default function EnterpriseHome() {
   const [lang, setLang] = useState<Lang>("AR");
   const [scrolled, setScrolled] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("hero");
   const dir = lang === "AR" ? "rtl" : "ltr";
   const isRtl = dir === "rtl";
 
@@ -21,8 +39,13 @@ export default function EnterpriseHome() {
     body.style.position = "static";
     (document.documentElement.style as any).scrollBehavior = "smooth";
 
-    const onScroll = () => setScrolled(window.scrollY);
+    const onScroll = () => { setScrolled(window.scrollY); setActiveSection(getVisibleSection()); };
     window.addEventListener("scroll", onScroll, { passive: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("eh-visible"); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll(".eh-section").forEach(s => observer.observe(s));
 
     return () => {
       try {
@@ -30,6 +53,7 @@ export default function EnterpriseHome() {
         body.style.position = origPosition;
         (document.documentElement.style as any).scrollBehavior = "";
         window.removeEventListener("scroll", onScroll);
+        observer.disconnect();
       } catch {}
     };
   }, []);
@@ -45,8 +69,10 @@ export default function EnterpriseHome() {
     <div style={{ background: "#050816", color: "#FFFFFF", fontFamily: "'Inter', 'Cairo', sans-serif", direction: dir, minHeight: "100vh" }}>
       <style>{STYLES}</style>
 
+      <LaunchBanner t={t} />
+
       {/* ═══ HEADER ═══ */}
-      <Header lang={lang} setLang={setLang} scrolled={scrolled} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} t={t} />
+      <Header lang={lang} setLang={setLang} scrolled={scrolled} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} t={t} activeSection={activeSection} />
 
       {/* ═══ 1. EXECUTIVE HERO ═══ */}
       <HeroSection t={t} isRtl={isRtl} lang={lang} />
@@ -72,16 +98,19 @@ export default function EnterpriseHome() {
       {/* ═══ 8. OWNER & TENANT PORTALS ═══ */}
       <PortalSection t={t} />
 
-      {/* ═══ 9. ROI CALCULATOR ═══ */}
+      {/* ═══ 9. CASE STUDIES ═══ */}
+      <CaseStudySection t={t} lang={lang} />
+
+      {/* ═══ 10. ROI CALCULATOR ═══ */}
       <ROISection t={t} lang={lang} />
 
-      {/* ═══ 10. COMPARISON ═══ */}
+      {/* ═══ 11. COMPARISON ═══ */}
       <ComparisonSection t={t} />
 
-      {/* ═══ 11. PRICING ═══ */}
+      {/* ═══ 12. PRICING ═══ */}
       <PricingSection t={t} />
 
-      {/* ═══ 12. EXECUTIVE CTA ═══ */}
+      {/* ═══ 13. EXECUTIVE CTA ═══ */}
       <CTASection t={t} />
 
       {/* ═══ FOOTER ═══ */}
@@ -91,13 +120,29 @@ export default function EnterpriseHome() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   LAUNCH BANNER
+══════════════════════════════════════════════════════════════ */
+function LaunchBanner({ t }: any) {
+  return (
+    <div className="eh-launch-banner">
+      <div className="eh-launch-inner">
+        <span className="eh-launch-dot" />
+        <span>{t.launchBanner}</span>
+        <a href="#pricing" className="eh-launch-cta">{t.launchCTA}</a>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    HEADER
 ══════════════════════════════════════════════════════════════ */
-function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t }: any) {
+function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t, activeSection }: any) {
+  const sectionFromHref = (href: string) => href.replace("#", "");
   return (
     <header className={`eh-header${scrolled > 50 ? " eh-header-scrolled" : ""}`}>
       <div className="eh-header-inner">
-        <div className="eh-logo">
+        <div className="eh-logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ cursor: "pointer" }}>
           <div className="eh-logo-icon">
             <svg viewBox="0 0 40 40" width="32" height="32" fill="none">
               <rect x="2" y="2" width="36" height="36" rx="8" stroke="#C9A96E" strokeWidth="2" />
@@ -113,7 +158,10 @@ function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t }: any) 
 
         <nav className="eh-nav">
           {t.nav.map((item: any) => (
-            <a key={item.href} href={item.href} className="eh-nav-link">{item.label}</a>
+            <a key={item.href} href={item.href}
+              className={`eh-nav-link${activeSection === sectionFromHref(item.href) ? " eh-nav-active" : ""}`}>
+              {item.label}
+            </a>
           ))}
         </nav>
 
@@ -144,7 +192,24 @@ function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t }: any) 
 ══════════════════════════════════════════════════════════════ */
 function HeroSection({ t, isRtl, lang }: any) {
   const [mounted, setMounted] = useState(false);
+  const [lines, setLines] = useState(0);
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    if (!mounted) return;
+    const TOTAL = 7;
+    const timer = setInterval(() => setLines(n => n < TOTAL ? n + 1 : TOTAL), 350);
+    return () => clearInterval(timer);
+  }, [mounted]);
+
+  const termLines = [
+    <div key={0} className="eh-terminal-line"><span className="eh-token eh-token-key">ASSETS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">1,247</span></div>,
+    <div key={1} className="eh-terminal-line"><span className="eh-token eh-token-key">UNITS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">4,832</span></div>,
+    <div key={2} className="eh-terminal-line"><span className="eh-token eh-token-key">OCCUPANCY</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">94.7</span><span className="eh-token eh-token-unit">%</span></div>,
+    <div key={3} className="eh-terminal-line"><span className="eh-token eh-token-key">REVENUE</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">SAR 428M</span></div>,
+    <div key={4} className="eh-terminal-line"><span className="eh-token eh-token-key">COLLECTIONS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">97.2</span><span className="eh-token eh-token-unit">%</span></div>,
+    <div key={5} className="eh-terminal-divider" />,
+    <div key={6}><div className="eh-terminal-line"><span className="eh-token eh-token-cmd">$</span> <span className="eh-token eh-token-fn">system.status</span></div><div className="eh-terminal-line eh-terminal-success"><span className="eh-token eh-token-out">→</span> ALL SYSTEMS OPERATIONAL</div></div>,
+  ];
 
   return (
     <section className="eh-section eh-hero">
@@ -195,15 +260,8 @@ function HeroSection({ t, isRtl, lang }: any) {
               <span className="eh-terminal-title">{t.terminalTitle}</span>
             </div>
             <div className="eh-terminal-body">
-              <div className="eh-terminal-line"><span className="eh-token eh-token-key">ASSETS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">1,247</span></div>
-              <div className="eh-terminal-line"><span className="eh-token eh-token-key">UNITS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">4,832</span></div>
-              <div className="eh-terminal-line"><span className="eh-token eh-token-key">OCCUPANCY</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">94.7</span><span className="eh-token eh-token-unit">%</span></div>
-              <div className="eh-terminal-line"><span className="eh-token eh-token-key">REVENUE</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">SAR 428M</span></div>
-              <div className="eh-terminal-line"><span className="eh-token eh-token-key">COLLECTIONS</span> <span className="eh-token eh-token-op">=</span> <span className="eh-token eh-token-num">97.2</span><span className="eh-token eh-token-unit">%</span></div>
-              <div className="eh-terminal-divider" />
-              <div className="eh-terminal-line"><span className="eh-token eh-token-cmd">$</span> <span className="eh-token eh-token-fn">system.status</span></div>
-              <div className="eh-terminal-line eh-terminal-success"><span className="eh-token eh-token-out">→</span> ALL SYSTEMS OPERATIONAL</div>
-              <div className="eh-terminal-cursor" />
+              {termLines.slice(0, lines)}
+              {lines >= 7 && <div className="eh-terminal-cursor" />}
             </div>
           </div>
         </div>
@@ -418,7 +476,56 @@ function PortalSection({ t }: any) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   9. ROI CALCULATOR
+   9. CASE STUDIES
+══════════════════════════════════════════════════════════════ */
+function CaseStudySection({ t, lang }: any) {
+  const isAr = lang === "AR";
+  return (
+    <section className="eh-section eh-cases" id="cases">
+      <div className="eh-section-container">
+        <div className="eh-section-label">{t.casesLabel}</div>
+        <h2 className="eh-section-title">{t.casesTitle}</h2>
+        <p className="eh-section-desc">{t.casesDesc}</p>
+        <div className="eh-cases-grid">
+          {t.cases.map((c: any, i: number) => (
+            <div key={i} className="eh-case-card">
+              <div className="eh-case-header">
+                <span className="eh-case-industry">{c.industry}</span>
+                <span className="eh-case-result">{c.result}</span>
+              </div>
+              <div className="eh-case-body">
+                <div className="eh-case-column eh-case-before">
+                  <div className="eh-case-column-label">{t.casesBefore}</div>
+                  {c.before.map((b: string, j: number) => (
+                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-red" />{b}</div>
+                  ))}
+                </div>
+                <div className="eh-case-arrow">→</div>
+                <div className="eh-case-column eh-case-after">
+                  <div className="eh-case-column-label">{t.casesAfter}</div>
+                  {c.after.map((a: string, j: number) => (
+                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-green" />{a}</div>
+                  ))}
+                </div>
+              </div>
+              <div className="eh-case-metrics">
+                {c.metrics.map((m: any, j: number) => (
+                  <div key={j} className="eh-case-metric">
+                    <span className="eh-case-metric-val">{m.val}</span>
+                    <span className="eh-case-metric-lbl">{m.lbl}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   10. ROI CALCULATOR
 ══════════════════════════════════════════════════════════════ */
 function ROISection({ t, lang }: any) {
   const [units, setUnits] = useState(500);
@@ -474,7 +581,7 @@ function ROISection({ t, lang }: any) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   10. COMPARISON
+   11. COMPARISON
 ══════════════════════════════════════════════════════════════ */
 function ComparisonSection({ t }: any) {
   return (
@@ -486,13 +593,15 @@ function ComparisonSection({ t }: any) {
         <div className="eh-compare-table">
           <div className="eh-compare-row eh-compare-header">
             <div className="eh-compare-cell eh-compare-feature">{t.compFeature}</div>
-            <div className="eh-compare-cell eh-compare-traditional">{t.compTraditional}</div>
+            <div className="eh-compare-cell eh-compare-excel">{t.compExcel}</div>
+            <div className="eh-compare-cell eh-compare-crm">{t.compCRM}</div>
             <div className="eh-compare-cell eh-compare-orca">{t.compOrca}</div>
           </div>
           {t.compRows.map((row: any, i: number) => (
             <div key={i} className="eh-compare-row">
               <div className="eh-compare-cell eh-compare-feature">{row.feature}</div>
-              <div className="eh-compare-cell eh-compare-traditional"><span className="eh-compare-no">✗</span></div>
+              <div className="eh-compare-cell eh-compare-excel">{row.excel === "✗" ? <span className="eh-compare-no">✗</span> : <span className="eh-compare-yes">✓</span>}</div>
+              <div className="eh-compare-cell eh-compare-crm">{row.crm === "✗" ? <span className="eh-compare-no">✗</span> : row.crm === "△" ? <span className="eh-compare-partial">△</span> : <span className="eh-compare-yes">✓</span>}</div>
               <div className="eh-compare-cell eh-compare-orca"><span className="eh-compare-yes">✓</span></div>
             </div>
           ))}
@@ -503,7 +612,7 @@ function ComparisonSection({ t }: any) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   11. PRICING
+   12. PRICING
 ══════════════════════════════════════════════════════════════ */
 function PricingSection({ t }: any) {
   const [annual, setAnnual] = useState(true);
@@ -546,7 +655,7 @@ function PricingSection({ t }: any) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   12. EXECUTIVE CTA
+   13. EXECUTIVE CTA
 ══════════════════════════════════════════════════════════════ */
 function CTASection({ t }: any) {
   return (
@@ -613,6 +722,8 @@ const AR = {
   headerSub: "Real Estate OS",
   signIn: "دخول",
   startFree: "اطلب النسخة التجريبية",
+  launchBanner: "🚀 عرض الإطلاق الحصري 2026 — خصم 30% للمشتركين الجدد",
+  launchCTA: "سجل الآن ←",
   nav: [
     { href: "#platform", label: "المنظومة" },
     { href: "#product", label: "المنتج" },
@@ -730,17 +841,18 @@ const AR = {
   compTitle: "ORCA مقابل الحلول التقليدية",
   compDesc: "لماذا تختار ORCA على غيره من الحلول.",
   compFeature: "الميزة",
-  compTraditional: "الحلول التقليدية",
+  compExcel: "Excel",
+  compCRM: "CRM تقليدي",
   compOrca: "ORCA",
   compRows: [
-    { feature: "منصة موحدة لإدارة العقارات" },
-    { feature: "إدارة مالية ومحاسبة متكاملة" },
-    { feature: "التكامل مع ZATCA" },
-    { feature: "ذكاء اصطناعي وتحليلات تنبؤية" },
-    { feature: "بوابات ملاك ومستأجرين" },
-    { feature: "نظام صلاحيات وتدقيق" },
-    { feature: "تقارير تنفيذية آلية" },
-    { feature: "دعم فني 24/7" },
+    { feature: "منصة موحدة لإدارة العقارات", excel: "✗", crm: "△" },
+    { feature: "إدارة مالية ومحاسبة متكاملة", excel: "✗", crm: "✗" },
+    { feature: "التكامل مع ZATCA", excel: "✗", crm: "✗" },
+    { feature: "ذكاء اصطناعي وتحليلات تنبؤية", excel: "✗", crm: "✗" },
+    { feature: "بوابات ملاك ومستأجرين", excel: "✗", crm: "△" },
+    { feature: "نظام صلاحيات وتدقيق", excel: "✗", crm: "△" },
+    { feature: "تقارير تنفيذية آلية", excel: "✗", crm: "✗" },
+    { feature: "دعم فني 24/7", excel: "✗", crm: "✓" },
   ],
   priceLabel: "الباقات",
   priceTitle: "باقات مرنة للمؤسسات بكل الأحجام",
@@ -800,8 +912,29 @@ const AR = {
       ],
     },
   ],
+  casesLabel: "دراسات الحالة",
+  casesTitle: "نتائج حقيقية مع ORCA",
+  casesDesc: "شاهد كيف ساعدت ORCA المؤسسات العقارية في تحويل عملياتها التشغيلية.",
+  casesBefore: "قبل ORCA",
+  casesAfter: "بعد ORCA",
+  cases: [
+    { industry: "شركة إدارة عقارات", result: "وفر ٤.٢ مليون ر.س سنوياً",
+      before: ["إدارة ١,٢٠٠ وحدة يدوياً بـ Excel", "تحصيل يدوي عبر المكالمات والواتساب", "فواتير ورقية بدون تكامل ضريبي", "تأخر ١٥ يوم في متوسط التحصيل"],
+      after: ["نظام مركزي يدير جميع الوحدات", "تحصيل تلقائي مع بوابات دفع رقمية", "فواتير ZATCA آلية بالكامل", "تحصيل فوري بنسبة ٩٧٪"],
+      metrics: [{ val: "٩٧٪", lbl: "نسبة التحصيل" }, { val: "٨٢٪", lbl: "توفير الوقت" }, { val: "٤.٢M", lbl: "توفير سنوي (ر.س)" }]
+    },
+    { industry: "مطور عقاري", result: "ضاعف سرعة المبيعات ٣ مرات",
+      before: ["عمليات بيع متفرقة بين ٤ أنظمة", "تأخير في إصدار العقود أسبوعين", "فقدان ٣٠٪ من العملاء المحتملين", "تقارير شهرية متأخرة وغير دقيقة"],
+      after: ["مسار مبيعات موحد مع أتمتة كاملة", "عقود رقمية تصدر في دقائق", "استبقاء ٩٥٪ من العملاء المحتملين", "تقارير لحظية للوحة القيادة التنفيذية"],
+      metrics: [{ val: "3x", lbl: "سرعة المبيعات" }, { val: "٩٥٪", lbl: "استبقاء العملاء" }, { val: "٢ دقيقة", lbl: "وقت إصدار العقد" }]
+    },
+    { industry: "مؤسسة استثمارية", result: "قلص فريق العمليات ٦٠٪",
+      before: ["فريق مكون من ١٥ موظف للعمليات", "تقارير مالية تستغرق ١٠ أيام", "متابعة يدوية للصيانة والعقود", "معلومات غير مكتملة عن المحفظة"],
+      after: ["فريق ٦ موظفين مع أتمتة شاملة", "تقارير مالية لحظية بدقة ١٠٠٪", "نظام صيانة مؤتمت بالكامل", "رؤية كاملة للمحفظة في لحظة"],
+      metrics: [{ val: "٦٠٪", lbl: "تقليص الفريق" }, { val: "١٠٠٪", lbl: "دقة التقارير" }, { val: "١٠ أيام → ٠", lbl: "تأخير التقارير" }]
+    },
+  ],
 };
-
 /* ══════════════════════════════════════════════════════════════
    CONTENT - ENGLISH
 ══════════════════════════════════════════════════════════════ */
@@ -809,6 +942,8 @@ const EN: typeof AR = {
   headerSub: "Real Estate OS",
   signIn: "Sign In",
   startFree: "Request Trial",
+  launchBanner: "🚀 Exclusive 2026 Launch Offer — 30% off for new subscribers",
+  launchCTA: "Register Now ←",
   nav: [
     { href: "#platform", label: "Platform" },
     { href: "#product", label: "Product" },
@@ -926,17 +1061,18 @@ const EN: typeof AR = {
   compTitle: "ORCA vs Traditional Solutions",
   compDesc: "Why leading enterprises choose ORCA over traditional solutions.",
   compFeature: "Feature",
-  compTraditional: "Traditional Solutions",
+  compExcel: "Excel",
+  compCRM: "Traditional CRM",
   compOrca: "ORCA",
   compRows: [
-    { feature: "Unified real estate management platform" },
-    { feature: "Integrated financial management & accounting" },
-    { feature: "ZATCA compliance & integration" },
-    { feature: "AI-powered predictive analytics" },
-    { feature: "Owner & tenant portals" },
-    { feature: "Role-based access & audit trails" },
-    { feature: "Automated executive reporting" },
-    { feature: "24/7 technical support" },
+    { feature: "Unified real estate management platform", excel: "✗", crm: "△" },
+    { feature: "Integrated financial management & accounting", excel: "✗", crm: "✗" },
+    { feature: "ZATCA compliance & integration", excel: "✗", crm: "✗" },
+    { feature: "AI-powered predictive analytics", excel: "✗", crm: "✗" },
+    { feature: "Owner & tenant portals", excel: "✗", crm: "△" },
+    { feature: "Role-based access & audit trails", excel: "✗", crm: "△" },
+    { feature: "Automated executive reporting", excel: "✗", crm: "✗" },
+    { feature: "24/7 technical support", excel: "✗", crm: "✓" },
   ],
   priceLabel: "Pricing",
   priceTitle: "Flexible Plans for Every Enterprise",
@@ -996,8 +1132,29 @@ const EN: typeof AR = {
       ],
     },
   ],
+  casesLabel: "Case Studies",
+  casesTitle: "Real Results with ORCA",
+  casesDesc: "See how ORCA helped real estate organizations transform their operations.",
+  casesBefore: "Before ORCA",
+  casesAfter: "After ORCA",
+  cases: [
+    { industry: "Property Management Co.", result: "Saved SAR 4.2M annually",
+      before: ["Manually managing 1,200 units with Excel", "Manual collections via calls & WhatsApp", "Paper invoices without tax integration", "Average 15-day collection delay"],
+      after: ["Centralized system managing all units", "Automated collections with digital payment gateways", "Fully automated ZATCA invoices", "97% real-time collection rate"],
+      metrics: [{ val: "97%", lbl: "Collection Rate" }, { val: "82%", lbl: "Time Saved" }, { val: "4.2M", lbl: "Annual Savings (SAR)" }]
+    },
+    { industry: "Real Estate Developer", result: "3x faster sales velocity",
+      before: ["Sales operations across 4 separate systems", "2-week delay in contract issuance", "30% lead loss rate", "Late and inaccurate monthly reports"],
+      after: ["Unified sales pipeline with full automation", "Digital contracts issued in minutes", "95% lead retention rate", "Real-time executive dashboard reporting"],
+      metrics: [{ val: "3x", lbl: "Sales Velocity" }, { val: "95%", lbl: "Lead Retention" }, { val: "2 min", lbl: "Contract Issuance" }]
+    },
+    { industry: "Investment Institution", result: "Reduced ops team by 60%",
+      before: ["15-person operations team", "10-day financial reporting cycle", "Manual maintenance & contract tracking", "Incomplete portfolio visibility"],
+      after: ["6-person team with full automation", "Real-time financial reports at 100% accuracy", "Fully automated maintenance system", "Complete portfolio visibility in seconds"],
+      metrics: [{ val: "60%", lbl: "Team Reduction" }, { val: "100%", lbl: "Report Accuracy" }, { val: "10 days → 0", lbl: "Reporting Delay" }]
+    },
+  ],
 };
-
 /* ══════════════════════════════════════════════════════════════
    STYLES
 ══════════════════════════════════════════════════════════════ */
@@ -1308,17 +1465,48 @@ const STYLES = `
   .eh-compare { background: #050816; }
   .eh-compare-table {
     border: 1px solid #1E293B; border-radius: 12px; overflow: hidden;
+    overflow-x: auto;
   }
-  .eh-compare-row { display: grid; grid-template-columns: 2fr 1fr 1fr; }
+  .eh-compare-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; }
   .eh-compare-header { background: #0F172A; border-bottom: 1px solid #1E293B; }
-  .eh-compare-cell { padding: 16px 24px; font-size: 13px; color: #CBD5E1; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-  .eh-compare-header .eh-compare-cell { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-  .eh-compare-feature { border-right: 1px solid #1E293B; }
-  .eh-compare-traditional { border-right: 1px solid #1E293B; color: #64748B; justify-content: center; }
-  .eh-compare-orca { justify-content: center; }
+  .eh-compare-cell { padding: 14px 16px; font-size: 12px; color: #CBD5E1; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .eh-compare-header .eh-compare-cell { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748B; }
+  .eh-compare-feature { border-right: 1px solid #1E293B; font-weight: 600; }
+  .eh-compare-excel { border-right: 1px solid #1E293B; color: #64748B; justify-content: center; }
+  .eh-compare-crm { border-right: 1px solid #1E293B; color: #94A3B8; justify-content: center; }
+  .eh-compare-orca { justify-content: center; color: #CBD5E1; }
   .eh-compare-row:not(.eh-compare-header):nth-child(even) { background: rgba(15, 23, 42, 0.3); }
-  .eh-compare-yes { color: #22C55E; font-size: 18px; }
-  .eh-compare-no { color: #EF4444; font-size: 14px; opacity: 0.5; }
+  .eh-compare-yes { color: #22C55E; font-size: 16px; }
+  .eh-compare-no { color: #EF4444; font-size: 12px; opacity: 0.4; }
+  .eh-compare-partial { color: #C9A96E; font-size: 14px; }
+
+  /* ── Launch Banner ── */
+  .eh-launch-banner {
+    background: linear-gradient(90deg, rgba(201, 169, 110, 0.08), rgba(201, 169, 110, 0.04), rgba(201, 169, 110, 0.08));
+    border-bottom: 1px solid rgba(201, 169, 110, 0.1);
+    padding: 8px 0;
+  }
+  .eh-launch-inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-size: 12px; color: #CBD5E1; font-weight: 600;
+  }
+  .eh-launch-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #C9A96E; box-shadow: 0 0 8px rgba(201, 169, 110, 0.5);
+    animation: launchPulse 2s ease-in-out infinite;
+  }
+  @keyframes launchPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .eh-launch-cta {
+    padding: 3px 14px; border-radius: 99px; background: rgba(201, 169, 110, 0.12);
+    border: 1px solid rgba(201, 169, 110, 0.2); color: #C9A96E;
+    font-size: 11px; font-weight: 700; text-decoration: none;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .eh-launch-cta:hover { background: rgba(201, 169, 110, 0.2); border-color: rgba(201, 169, 110, 0.3); }
+
+  /* ── Nav Active ── */
+  .eh-nav-active { color: #C9A96E !important; }
 
   /* ── Pricing ── */
   .eh-pricing { background: #0B1120; }
@@ -1397,6 +1585,50 @@ const STYLES = `
   .eh-footer-link:hover { color: #C9A96E; }
   .eh-footer-bottom { padding-top: 24px; border-top: 1px solid rgba(36, 50, 72, 0.2); text-align: center; }
   .eh-footer-bottom span { font-size: 11px; color: #475569; font-weight: 500; }
+
+  /* ── Case Studies ── */
+  .eh-cases { background: #0B1120; }
+  .eh-cases-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 900px) { .eh-cases-grid { grid-template-columns: repeat(3, 1fr); } }
+  .eh-case-card {
+    background: #0F172A; border: 1px solid #1E293B; border-radius: 14px;
+    padding: 28px; transition: all 0.3s;
+  }
+  .eh-case-card:hover { border-color: rgba(201, 169, 110, 0.15); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+  .eh-case-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #1E293B;
+  }
+  .eh-case-industry { font-size: 11px; font-weight: 700; color: #C9A96E; }
+  .eh-case-result {
+    font-size: 10px; font-weight: 600; color: #22C55E;
+    padding: 3px 10px; border-radius: 4px;
+    background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.1);
+  }
+  .eh-case-body { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: start; margin-bottom: 20px; }
+  .eh-case-column-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  .eh-case-before .eh-case-column-label { color: #EF4444; }
+  .eh-case-after .eh-case-column-label { color: #22C55E; }
+  .eh-case-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11px; color: #94A3B8; font-weight: 500;
+    margin-bottom: 8px; line-height: 1.5;
+  }
+  .eh-case-bullet { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .eh-case-bullet-red { background: #EF4444; opacity: 0.5; }
+  .eh-case-bullet-green { background: #22C55E; }
+  .eh-case-arrow { color: #475569; font-size: 14px; display: flex; align-items: center; padding-top: 20px; }
+  .eh-case-metrics { display: flex; gap: 8px; padding-top: 16px; border-top: 1px solid #1E293B; }
+  .eh-case-metric {
+    flex: 1; text-align: center; padding: 12px 8px;
+    border-radius: 8px; background: rgba(5, 8, 22, 0.4);
+    border: 1px solid rgba(36, 50, 72, 0.3);
+  }
+  .eh-case-metric-val { font-size: 18px; font-weight: 900; color: #C9A96E; display: block; }
+  .eh-case-metric-lbl { font-size: 9px; color: #64748B; font-weight: 600; margin-top: 2px; display: block; }
 
   /* ── Animations ── */
   .eh-fade-in { animation: ehFadeUp 0.8s ease forwards; opacity: 0; }
