@@ -17,7 +17,7 @@
       "schedule": "0 8 * * *"
     }
   ],
-  "buildCommand": "prisma generate && npx prisma migrate deploy || true && next build",
+  "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
   "framework": "nextjs"
 }
