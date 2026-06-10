@@ -14,16 +14,23 @@ export default function EnterpriseHome() {
   const isRtl = dir === "rtl";
 
   useEffect(() => {
-    document.body.style.overflow = "auto";
-    document.body.style.position = "static";
+    const body = document.body;
+    const origOverflow = body.style.overflow;
+    const origPosition = body.style.position;
+    body.style.overflow = "auto";
+    body.style.position = "static";
     (document.documentElement.style as any).scrollBehavior = "smooth";
+
     const onScroll = () => setScrolled(window.scrollY);
     window.addEventListener("scroll", onScroll, { passive: true });
+
     return () => {
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      (document.documentElement.style as any).scrollBehavior = "";
-      window.removeEventListener("scroll", onScroll);
+      try {
+        body.style.overflow = origOverflow;
+        body.style.position = origPosition;
+        (document.documentElement.style as any).scrollBehavior = "";
+        window.removeEventListener("scroll", onScroll);
+      } catch {}
     };
   }, []);
 
