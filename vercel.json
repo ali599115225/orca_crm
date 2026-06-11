@@ -17,7 +17,7 @@
       "schedule": "0 8 * * *"
     }
   ],
-  "buildCommand": "prisma generate && next build",
+  "buildCommand": "prisma generate && npx prisma db push --accept-data-loss && next build",
   "installCommand": "npm install",
   "framework": "nextjs"
 }
