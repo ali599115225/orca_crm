@@ -2,10 +2,11 @@ import { getWhatsAppChatsAction, getCloudAPIStatusAction } from "@/app/actions/w
 import WhatsAppView from "@/components/views/WhatsAppView";
 
 export default async function WHATSAPPPage() {
-  const [chatResult, cloudStatus] = await Promise.all([
-    getWhatsAppChatsAction(),
-    getCloudAPIStatusAction(),
-  ]);
+  let chatResult: any = { success: false, chats: [], tenant: null, warning: null };
+  let cloudStatus: any = { configured: false, provider: "none", status: "disconnected", error: null };
+
+  try { chatResult = await getWhatsAppChatsAction(); } catch { chatResult.warning = "فشل تحميل المحادثات"; }
+  try { cloudStatus = await getCloudAPIStatusAction(); } catch { cloudStatus.error = "فشل الاتصال بـ Meta API"; }
 
   const chats = chatResult.success && chatResult.chats ? chatResult.chats : [];
   const tenant = {
