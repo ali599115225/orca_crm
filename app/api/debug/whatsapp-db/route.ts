@@ -39,7 +39,9 @@ export async function GET() {
           phone: c.phone,
           name: c.name,
           messagesCount: count,
-          lastMessage: last?.messageText?.substring(0, 60) || null,
+          rawMessageText: last?.messageText,
+          rawType: typeof last?.messageText,
+          lastMessage: typeof last?.messageText === "string" ? last.messageText.substring(0, 120) : String(last?.messageText ?? ""),
           lastDirection: last?.direction || null,
         };
       })

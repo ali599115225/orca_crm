@@ -87,16 +87,17 @@ export async function getWhatsAppChatsAction() {
           take: 50,
         });
         const lastMsg = messages[messages.length - 1];
+        const safeText = (t: any) => typeof t === "string" ? t : String(t ?? "");
         return {
           id: c.id,
           contactName: c.name || c.phone,
           contactPhone: c.phone,
-          lastMessage: lastMsg?.messageText?.substring(0, 100) || "",
+          lastMessage: safeText(lastMsg?.messageText).substring(0, 100) || "",
           time: lastMsg?.createdAt?.toISOString() || c.lastMessageAt?.toISOString() || "",
           unread: false,
           messages: messages.map((m: any) => ({
             sender: m.direction === "inbound" ? "client" : "agent",
-            text: m.messageText || "",
+            text: safeText(m.messageText),
             time: m.createdAt?.toISOString() || "",
           })),
         };
