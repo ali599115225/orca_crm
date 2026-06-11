@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { LeadItem } from "./KanbanCard";
 
@@ -59,6 +60,7 @@ function genMockLeads(): LeadItem[] {
 const DEF_MOCK = genMockLeads();
 
 export default function LeadsPipelineV2() {
+  const router = useRouter();
   const [lang] = useState("AR");
   const [leads, setLeads] = useState<LeadItem[]>(DEF_MOCK);
   const [filtered, setFiltered] = useState<LeadItem[]>(DEF_MOCK);
@@ -232,7 +234,24 @@ export default function LeadsPipelineV2() {
             ) : (
               <>
                 <div className="lv2-detail-header">
-                  <h3 className="lv2-detail-name">{selLead.firstName} {selLead.lastName || ""}</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 className="lv2-detail-name">{selLead.firstName} {selLead.lastName || ""}</h3>
+                    <button
+                      onClick={() => router.push(`/operations/leads/${selLead.id}`)}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        background: "rgba(59,130,246,0.1)",
+                        border: "1px solid rgba(59,130,246,0.2)",
+                        borderRadius: "6px",
+                        color: "#3B82F6",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t ? "عرض التفاصيل الكاملة" : "View Full Details"} →
+                    </button>
+                  </div>
                   <span className="lv2-detail-score" style={{ background: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)", borderColor: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)" }}>
                     {detailData?.leadScore || selLead.leadScore}
                   </span>

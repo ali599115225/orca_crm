@@ -78,6 +78,40 @@ export async function updateLeadStatusAction(leadId: string, newStatus: any) {
 /**
  * تسجيل عميل جديد مع تفعيل الربط العلائقي الصارم والإشعارات [1]
  */
+export async function getLeadDetailAction(leadId: string) {
+  try {
+    const tenant = await getActiveTenant();
+
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, tenantId: tenant.id },
+      include: {
+        assignedUser: { select: { id: true, name: true, email: true } },
+        project: { select: { id: true, name: true } },
+        emailMessages: {
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        },
+        leadActivities: {
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            user: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!lead) {
+      return { success: false, error: "العميل غير موجود" };
+    }
+
+    return { success: true, lead };
+  } catch (error: any) {
+    console.error("[Lead Detail] Error:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function createLeadAction(formData: FormData) {
   try {
     const clientHost = formData.get("clientHost") as string;
