@@ -15,8 +15,9 @@ const labelClass = "text-[10px] font-bold uppercase tracking-wider text-[var(--n
 export default async function OwnerPortalPage() {
   const tenant = await getActiveTenant();
   const session = await getSession();
-  const ownerName = session?.name || session?.email || "المالك";
+  const ownerName = (session?.name || session?.email || "المالك") as string;
   const ownerUserId = session?.userId;
+  const safeCompanyName = (tenant?.companyName || "الشركة") as string;
 
   const [contracts, units, rentalLeases, rentalInvoices, maintenanceTickets, installments] = await Promise.all([
     prisma.contract.findMany({
@@ -86,7 +87,7 @@ export default async function OwnerPortalPage() {
         </div>
         <div>
           <h1 className="text-xl font-black text-[var(--nc-text-primary)]">بوابة المالك</h1>
-          <p className="text-xs text-[var(--nc-text-dim)]">{ownerName} — {tenant.companyName}</p>
+          <p className="text-xs text-[var(--nc-text-dim)]">{ownerName} — {safeCompanyName}</p>
         </div>
       </div>
 

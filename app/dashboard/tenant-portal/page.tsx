@@ -15,7 +15,8 @@ const labelClass = "text-[10px] font-bold uppercase tracking-wider text-[var(--n
 export default async function TenantPortalPage() {
   const tenant = await getActiveTenant();
   const session = await getSession();
-  const tenantName = session?.name || session?.email || "المستأجر";
+  const tenantName = (session?.name || session?.email || "المستأجر") as string;
+  const safeCompanyName = (tenant?.companyName || "الشركة") as string;
 
   const [rentalLeases, maintenanceTickets] = await Promise.all([
     prisma.rentalLease.findMany({
@@ -94,7 +95,7 @@ export default async function TenantPortalPage() {
         </div>
         <div>
           <h1 className="text-xl font-black text-[var(--nc-text-primary)]">بوابة المستأجر</h1>
-          <p className="text-xs text-[var(--nc-text-dim)]">{tenantName} — {tenant.companyName}</p>
+          <p className="text-xs text-[var(--nc-text-dim)]">{tenantName} — {safeCompanyName}</p>
         </div>
       </div>
 
