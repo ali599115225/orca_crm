@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMockWhatsAppChatsAction } from '@/app/actions/whatsapp';
 import { authenticateRequest } from '@/lib/api-auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,12 +9,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
-    const result = await getMockWhatsAppChatsAction();
-    if (result.success) {
-      return NextResponse.json({ success: true, data: result.chats });
-    } else {
-      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
-    }
+    const tenantId = session.tenantId as string;
+
+    const contacts = await (prisma as any).whatsAppContact.findMany({
+      where: { tenantId },
+      orderBy: { lastMessageAt: 'desc' },
+      take: 50,
+    });
+
+    const chats = await Promise.all(
+      contacts.map(async (c: any) => {
+        const messages = await (prisma as any).whatsAppMessage.findMany({
+          where: { tenantId, phone: c.phone },
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+        });
+        const lastMsg = messages[messages.length - 1];
+        return {
+          id: c.id,
+          contactName: c.name || c.phone,
+          contactPhone: c.phone,
+          lastMessage: lastMsg?.messageText?.substring(0, 100) || '',
+          time: lastMsg?.createdAt?.toISOString() || c.lastMessageAt?.toISOString() || '',
+          unread: false,
+          messages: messages.map((m: any) => ({
+            sender: m.direction === 'inbound' ? 'client' : 'agent',
+            text: m.messageText || '',
+            time: m.createdAt?.toISOString() || '',
+          })),
+        };
+      })
+    );
+
+    return NextResponse.json({ success: true, data: chats });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

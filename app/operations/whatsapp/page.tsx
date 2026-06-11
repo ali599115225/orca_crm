@@ -1,15 +1,24 @@
-import { getMockWhatsAppChatsAction } from "@/app/actions/whatsapp";
+import { getWhatsAppChatsAction, getCloudAPIStatusAction } from "@/app/actions/whatsapp";
 import WhatsAppView from "@/components/views/WhatsAppView";
 
 export default async function WHATSAPPPage() {
-  const result = await getMockWhatsAppChatsAction();
+  const [chatResult, cloudStatus] = await Promise.all([
+    getWhatsAppChatsAction(),
+    getCloudAPIStatusAction(),
+  ]);
 
-  const chats = result.success && result.chats ? result.chats : [];
+  const chats = chatResult.success && chatResult.chats ? chatResult.chats : [];
   const tenant = {
-    companyName: (result.success && result.tenant?.companyName) || "مؤسسة أبعاد السكنية",
-    whatsappConnected: (result.success && result.tenant?.whatsappConnected) || false,
+    companyName: (chatResult.success && chatResult.tenant?.companyName) || "مؤسسة أبعاد السكنية",
+    whatsappConnected: cloudStatus.configured && cloudStatus.status === "connected",
   };
 
-  return <WhatsAppView initialChats={chats} tenant={tenant} />;
+  return (
+    <WhatsAppView
+      initialChats={chats}
+      tenant={tenant}
+      cloudStatus={cloudStatus}
+      warning={chatResult.warning || null}
+    />
+  );
 }
-
