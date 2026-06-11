@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 
 import PageHeader from '@/components/ui/PageHeader';
 import { SmartCard } from '@/components/ui/SmartCard';
-import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
+import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction, deleteWhatsAppConversationAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
 
 interface Message {
@@ -109,6 +109,20 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     setIsSending(false);
   }
 
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete(contactId: string) {
+    setIsDeleting(true);
+    const result = await deleteWhatsAppConversationAction(contactId);
+    setIsDeleting(false);
+    setDeleteConfirm(null);
+    if (result.success) {
+      if (activeChatId === contactId) setActiveChatId(null);
+      setChats(prev => prev.filter(c => c.id !== contactId));
+    }
+  }
+
   function startNewChat() {
     const phone = newPhone.trim();
     if (!phone) return;
@@ -184,16 +198,44 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
           {chats.length === 0 && <p className="text-xs text-[var(--nc-text-dim)]">{t.emptyState}</p>}
 
           {chats.map(chat => (
-            <div key={chat.id} onClick={() => setActiveChatId(chat.id)}
-              className={`p-3 rounded-xl cursor-pointer transition-colors ${chat.id === activeChatId ? 'bg-[var(--nc-accent-soft)]' : 'bg-[var(--nc-surface)] hover:bg-white/5'}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-[var(--nc-text-primary)]">{chat.contactName}</span>
-                <span className="text-[10px] text-[var(--nc-text-dim)]">{chat.time}</span>
+            <div key={chat.id} className="relative">
+              <div onClick={() => setActiveChatId(chat.id)}
+                className={`p-3 rounded-xl cursor-pointer transition-colors ${chat.id === activeChatId ? 'bg-[var(--nc-accent-soft)]' : 'bg-[var(--nc-surface)] hover:bg-white/5'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-[var(--nc-text-primary)]">{chat.contactName}</span>
+                  <span className="text-[10px] text-[var(--nc-text-dim)]">{chat.time}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-[var(--nc-text-dim)] truncate flex-1">{chat.lastMessage || chat.contactPhone}</p>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(chat.id); }}
+                    disabled={isDeleting}
+                    className="text-rose-400 hover:text-rose-300 text-xs ml-2 shrink-0">✕</button>
+                </div>
               </div>
-              <p className="text-xs text-[var(--nc-text-dim)] truncate mt-1">{chat.lastMessage || chat.contactPhone}</p>
             </div>
           ))}
         </div>
+
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteConfirm(null)} />
+            <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm mx-4 space-y-4 shadow-2xl">
+              <p className="text-sm text-[var(--nc-text-primary)] text-center">
+                هل تريد حذف هذه المحادثة؟ سيتم حذف الرسائل من ORCA فقط، ولن تُحذف من واتساب.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting}
+                  className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl disabled:opacity-50">
+                  {isDeleting ? "جاري الحذف..." : "حذف"}
+                </button>
+                <button onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
+                  className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="lg:col-span-2">
           <SmartCard className="p-4 flex flex-col" style={{ minHeight: "400px", maxHeight: "500px" }}>

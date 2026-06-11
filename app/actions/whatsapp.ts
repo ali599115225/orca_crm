@@ -180,3 +180,26 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
     return { success: false, error: error.message };
   }
 }
+
+export async function deleteWhatsAppConversationAction(contactId: string) {
+  try {
+    const tenant = await getActiveTenant();
+
+    const contact = await (prisma as any).whatsAppContact.findFirst({
+      where: { id: contactId, tenantId: tenant.id },
+    });
+    if (!contact) return { success: false, error: "المحادثة غير موجودة" };
+
+    await (prisma as any).whatsAppMessage.deleteMany({
+      where: { tenantId: tenant.id, phone: contact.phone },
+    });
+    await (prisma as any).whatsAppContact.delete({
+      where: { id: contactId, tenantId: tenant.id },
+    });
+
+    revalidatePath("/operations/whatsapp");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
