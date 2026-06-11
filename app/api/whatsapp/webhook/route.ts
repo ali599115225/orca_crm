@@ -126,8 +126,36 @@ async function handleMetaInbound(body: any) {
       const senderPhone = msg.from;
       const messageText = msg.text?.body || msg.button?.text || msg.interactive?.button_reply?.id || "";
       const msgType = msg.type;
+      const metaMessageId = msg.id;
 
       console.log(`[Meta WhatsApp] Inbound from ${senderPhone}: ${messageText?.substring(0, 100)}`);
+
+      // Store in DB
+      try {
+        const tenant = await prisma.tenant.findFirst({ where: { whatsappConnected: true }, select: { id: true } });
+        if (tenant) {
+          await prisma.whatsAppContact.upsert({
+            where: { tenantId_phone: { tenantId: tenant.id, phone: senderPhone } },
+            create: { tenantId: tenant.id, phone: senderPhone, name: value.contacts?.[0]?.profile?.name, provider: "meta", lastMessageAt: new Date() },
+            update: { lastMessageAt: new Date(), name: value.contacts?.[0]?.profile?.name || undefined },
+          });
+          await prisma.whatsAppMessage.create({
+            data: {
+              tenantId: tenant.id,
+              phone: senderPhone,
+              direction: "inbound",
+              provider: "meta",
+              messageText,
+              messageType: msgType,
+              metaMessageId,
+              rawPayload: msg,
+              status: "received",
+            },
+          });
+        }
+      } catch (dbErr) {
+        console.error("[Meta WhatsApp] DB store error:", dbErr);
+      }
 
       if (messageText) {
         await processSaherWhatsAppLeadAction({

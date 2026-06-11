@@ -896,3 +896,41 @@ model MaintenanceTicket {
   @@index([unitId])
   @@map("maintenance_tickets")
 }
+
+model WhatsAppContact {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone         String
+  name          String?
+  provider      String   @default("meta")
+  metaContactId String?  @map("meta_contact_id")
+  lastMessageAt DateTime? @map("last_message_at")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, lastMessageAt])
+  @@map("whatsapp_contacts")
+}
+
+model WhatsAppMessage {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone          String
+  direction      String   @default("inbound")
+  provider       String   @default("meta")
+  messageText    String?  @map("message_text") @db.Text
+  messageType    String?  @default("text") @map("message_type")
+  metaMessageId  String?  @map("meta_message_id")
+  rawPayload     Json?    @map("raw_payload")
+  status         String?  @default("received")
+  deliveredAt    DateTime? @map("delivered_at")
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, phone, createdAt])
+  @@index([metaMessageId])
+  @@map("whatsapp_messages")
+}

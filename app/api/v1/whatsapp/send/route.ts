@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,14 +16,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'chatId and message are required' }, { status: 400 });
     }
 
-    // Try Meta Cloud API first
+    const tenantId = session.tenantId as string;
+
+    // Try Meta Cloud API
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 
     if (!accessToken || !phoneNumberId) {
       return NextResponse.json({
         success: false,
-        error: "WhatsApp Cloud API not configured. Set WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID in Vercel.",
+        error: "WhatsApp Cloud API not configured.",
         env: { access_token_set: !!accessToken, phone_number_id_set: !!phoneNumberId }
       }, { status: 500 });
     }
@@ -47,10 +50,34 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json();
 
+    // Store outbound message
+    try {
+      await prisma.whatsAppContact.upsert({
+        where: { tenantId_phone: { tenantId, phone: chatId } },
+        create: { tenantId, phone: chatId, provider: "meta", lastMessageAt: new Date() },
+        update: { lastMessageAt: new Date() },
+      });
+      await prisma.whatsAppMessage.create({
+        data: {
+          tenantId,
+          phone: chatId,
+          direction: "outbound",
+          provider: "meta",
+          messageText: message,
+          messageType: "text",
+          metaMessageId: result.messages?.[0]?.id || null,
+          rawPayload: result,
+          status: response.ok ? "sent" : "failed",
+        },
+      });
+    } catch (dbErr) {
+      console.error("[WhatsApp Send] DB error:", dbErr);
+    }
+
     return NextResponse.json({
       success: response.ok,
       provider: "meta",
-      result,
+      metaResponse: result,
     });
 
   } catch (error: any) {
