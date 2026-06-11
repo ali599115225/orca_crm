@@ -134,7 +134,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   return (
     <div className="space-y-4 p-6" dir={dir}>
-      <PageHeader title={t.title} subtitle={t.subtitle.replace("{companyName}", tenant.companyName)} />
+      <PageHeader title={t.title} description={t.subtitle.replace("{companyName}", tenant.companyName)} />
 
       {/* Cloud API Status */}
       <SmartCard className="p-4">

@@ -231,10 +231,10 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
     const result = await initiateSubscriptionPaymentAction(plan);
     setLoadingPlan(null);
 
-    if (result.success && result.paymentUrl) {
-      window.location.href = result.paymentUrl;
+    if (result.success && (result as any).paymentUrl) {
+      window.location.href = (result as any).paymentUrl;
     } else {
-      setError(result.error || (isArabic ? "عذراً، فشل بدء عملية الدفع والاتصال بالبوابة." : "Sorry, payment initialization failed."));
+      setError((result as any).error || (isArabic ? "عذراً، فشل بدء عملية الدفع والاتصال بالبوابة." : "Sorry, payment initialization failed."));
     }
   };
 
@@ -246,10 +246,10 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
     const result = await initiateAddonPaymentAction(agentCount);
     setLoadingAgent(false);
 
-    if (result.success && result.paymentUrl) {
-      window.location.href = result.paymentUrl;
+    if (result.success && (result as any).paymentUrl) {
+      window.location.href = (result as any).paymentUrl;
     } else {
-      setError(result.error || (isArabic ? "عذراً، فشل بدء عملية الدفع لشراء الوكلاء." : "Sorry, payment initialization failed for purchasing agents."));
+      setError((result as any).error || (isArabic ? "عذراً، فشل بدء عملية الدفع لشراء الوكلاء." : "Sorry, payment initialization failed for purchasing agents."));
     }
   };
 
