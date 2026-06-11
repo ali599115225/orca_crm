@@ -75,6 +75,7 @@ function createExtendedPrismaClient() {
             "CommissionPayment",
             "WhatsAppContact",
             "WhatsAppMessage",
+            "EmailMessage",
           ];
 
           const hasTenantIsolation = tenantId && modelsWithTenantId.includes(model);

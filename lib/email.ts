@@ -32,3 +32,80 @@ export async function sendAdminEmailAlert(subject: string, htmlContent: string) 
     console.error("فشل إرسال بريد التنبيه الإداري:", error);
   }
 }
+
+/**
+ * إرسال بريد إلكتروني عام من ORCA CRM
+ * يُستخدم لإرسال بريد يدوي من داخل CRM
+ */
+export interface SendEmailOptions {
+  from: string;
+  to: string;
+  cc?: string;
+  bcc?: string;
+  subject: string;
+  htmlBody?: string;
+  textBody?: string;
+}
+
+export interface SendEmailResult {
+  success: boolean;
+  providerMessageId?: string;
+  error?: string;
+}
+
+export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
+  try {
+    if (!RESEND_API_KEY) {
+      return {
+        success: false,
+        error: "RESEND_API_KEY غير مُهيأ. أضفه في متغيرات البيئة.",
+      };
+    }
+
+    if (!options.to || !options.subject) {
+      return {
+        success: false,
+        error: "الحقول المطلوبة: to, subject",
+      };
+    }
+
+    const emailData: any = {
+      from: options.from,
+      to: options.to.split(",").map(e => e.trim()),
+      subject: options.subject,
+    };
+
+    if (options.cc) {
+      emailData.cc = options.cc.split(",").map(e => e.trim());
+    }
+    if (options.bcc) {
+      emailData.bcc = options.bcc.split(",").map(e => e.trim());
+    }
+    if (options.htmlBody) {
+      emailData.html = options.htmlBody;
+    }
+    if (options.textBody) {
+      emailData.text = options.textBody;
+    }
+
+    const result = await resend.emails.send(emailData);
+
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error.message || "فشل إرسال البريد",
+      };
+    }
+
+    return {
+      success: true,
+      providerMessageId: result.data?.id,
+    };
+  } catch (error: any) {
+    console.error("[Email] Send error:", error.message);
+    return {
+      success: false,
+      error: error.message || "خطأ غير متوقع في إرسال البريد",
+    };
+  }
+}

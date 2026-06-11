@@ -79,6 +79,7 @@ model User {
   leadActivities LeadActivity[]
   tasks          Task[]
   commissions    PayrollCommission[]
+  emailMessages  EmailMessage[]
 
   @@map("users")
 }
@@ -126,6 +127,7 @@ model Lead {
   tasks           Task[]
   mansourChats    MansourChat[]
   whatsappContact WhatsAppContact?
+  emailMessages   EmailMessage[]
   stage           String?
   score           Int?
   priority        String?
@@ -238,6 +240,7 @@ model Tenant {
   maintenanceTickets   MaintenanceTicket[]
   whatsappContacts     WhatsAppContact[]
   whatsappMessages     WhatsAppMessage[]
+  emailMessages        EmailMessage[]
 
   @@map("tenants")
 }
@@ -751,9 +754,10 @@ model Contact {
   notes                String?  @db.Text
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  createdBy            String?  @map("created_by") @db.Uuid
-  updatedBy            String?  @map("updated_by") @db.Uuid
-  auditLog             String?  @map("audit_log") @db.Text
+  createdBy            String?          @map("created_by") @db.Uuid
+  updatedBy            String?          @map("updated_by") @db.Uuid
+  auditLog             String?          @map("audit_log") @db.Text
+  emailMessages        EmailMessage[]
 
   @@map("contacts")
 }
@@ -956,4 +960,36 @@ model WhatsAppMessage {
   @@index([tenantId, phone, createdAt])
   @@index([metaMessageId])
   @@map("whatsapp_messages")
+}
+
+model EmailMessage {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId              String?   @map("lead_id") @db.Uuid
+  lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  contactId           String?   @map("contact_id") @db.Uuid
+  contact             Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  userId              String?   @map("user_id") @db.Uuid
+  user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  direction           String    @default("outbound")
+  provider            String    @default("resend")
+  from                String
+  to                  String
+  cc                  String?
+  bcc                 String?
+  subject             String
+  htmlBody            String?   @map("html_body") @db.Text
+  textBody            String?   @map("text_body") @db.Text
+  status              String    @default("DRAFT")
+  providerMessageId   String?   @map("provider_message_id")
+  errorMessage        String?   @map("error_message") @db.Text
+  sentAt              DateTime? @map("sent_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([leadId])
+  @@index([contactId])
+  @@map("email_messages")
 }
