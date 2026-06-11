@@ -103,34 +103,38 @@ model Project {
 }
 
 model Lead {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String         @map("tenant_id") @db.Uuid
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  projectId       String?        @map("project_id") @db.Uuid
-  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignedTo      String?        @map("assigned_to") @db.Uuid
-  assignedUser    User?          @relation("AssignedLeads", fields: [assignedTo], references: [id], onDelete: SetNull)
-  firstName       String         @map("first_name")
-  lastName        String?        @map("last_name")
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectId       String?          @map("project_id") @db.Uuid
+  project         Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo      String?          @map("assigned_to") @db.Uuid
+  assignedUser    User?            @relation("AssignedLeads", fields: [assignedTo], references: [id], onDelete: SetNull)
+  firstName       String           @map("first_name")
+  lastName        String?          @map("last_name")
   phone           String
   email           String?
   city            String
   source          String
   status          LeadStatus
-  lostReason      String?        @map("lost_reason")
-  leadScore       Int            @default(50) @map("lead_score")
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  lostReason      String?          @map("lost_reason")
+  leadScore       Int              @default(50) @map("lead_score")
+  lastContactedAt DateTime?        @map("last_contacted_at") @db.Timestamptz
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   leadActivities  LeadActivity[]
   tasks           Task[]
   mansourChats    MansourChat[]
+  whatsappContact WhatsAppContact?
   stage           String?
   score           Int?
+  priority        String?
+  aiSummary       String?        @map("ai_summary") @db.Text
   assignedAgentId String?        @map("assigned_agent_id") @db.Uuid
-  unitId          String?        @map("unit_id") @db.Uuid
-  createdBy       String?        @map("created_by") @db.Uuid
-  updatedBy       String?        @map("updated_by") @db.Uuid
-  auditLog        String?        @map("audit_log") @db.Text
+  unitId          String?          @map("unit_id") @db.Uuid
+  createdBy       String?          @map("created_by") @db.Uuid
+  updatedBy       String?          @map("updated_by") @db.Uuid
+  auditLog        String?          @map("audit_log") @db.Text
 
   @@map("leads")
 }
@@ -844,6 +848,19 @@ model TelemetryEvent {
   @@map("telemetry_events")
 }
 
+model WhatsAppAttachment {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId   String          @map("message_id") @db.Uuid
+  message     WhatsAppMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  type        String
+  mimeType    String?         @map("mime_type")
+  url         String?
+  size        Int?
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("whatsapp_attachments")
+}
+
 model RateLimitEntry {
   key     String   @id
   count   Int      @default(1)
@@ -906,6 +923,8 @@ model WhatsAppContact {
   name          String?
   provider      String    @default("meta")
   metaContactId String?   @map("meta_contact_id")
+  leadId        String?   @unique @map("lead_id") @db.Uuid
+  lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   lastMessageAt DateTime? @map("last_message_at")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -916,20 +935,23 @@ model WhatsAppContact {
 }
 
 model WhatsAppMessage {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String    @map("tenant_id") @db.Uuid
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone         String
-  direction     String    @default("inbound")
-  provider      String    @default("meta")
-  messageText   String?   @map("message_text") @db.Text
-  messageType   String?   @default("text") @map("message_type")
-  metaMessageId String?   @map("meta_message_id")
-  rawPayload    Json?     @map("raw_payload")
-  status        String?   @default("received")
-  deliveredAt   DateTime? @map("delivered_at")
-  readAt        DateTime? @map("read_at")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  direction     String              @default("inbound")
+  provider      String              @default("meta")
+  messageText   String?             @map("message_text") @db.Text
+  messageType   String?             @default("text") @map("message_type")
+  metaMessageId String?             @map("meta_message_id")
+  rawPayload    Json?               @map("raw_payload")
+  status        String?             @default("received")
+  aiSummary     String?             @map("ai_summary") @db.Text
+  deliveredAt   DateTime?           @map("delivered_at") @db.Timestamptz
+  readAt        DateTime?           @map("read_at") @db.Timestamptz
+  failedAt      DateTime?           @map("failed_at") @db.Timestamptz
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  attachments   WhatsAppAttachment[]
 
   @@index([tenantId, phone, createdAt])
   @@index([metaMessageId])

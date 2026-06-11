@@ -328,7 +328,24 @@ export async function processSaherWhatsAppLeadAction(
       },
     });
 
-    // 7. تسجيل Telemetry للعملية الناجحة
+    // 7. تسجيل Audit Log لإنشاء العميل من واتساب
+    await prisma.auditLog.create({
+      data: {
+        tenantId: tenant.id,
+        action: "WHATSAPP_LEAD_CREATED",
+        tableName: "Lead",
+        recordId: newLead.id,
+        details: JSON.stringify({
+          source: "whatsapp",
+          senderPhone: message.senderPhone,
+          senderName: message.senderName,
+          leadScore: leadData.lead_score,
+          assignedAgent: assignedAgent?.name || "unassigned",
+        }),
+      },
+    });
+
+    // 8. تسجيل Telemetry للعملية الناجحة
     await logTelemetryEvent(
       tenant.id,
       "SAHER",

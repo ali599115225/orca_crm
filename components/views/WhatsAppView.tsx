@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import PageHeader from '@/components/ui/PageHeader';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction, deleteWhatsAppConversationAction } from "@/app/actions/whatsapp";
+import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
 import { useApp } from "@/app/context/AppContext";
 import toast from 'react-hot-toast';
 
@@ -19,6 +20,10 @@ interface Chat {
   id: string;
   contactName: string;
   contactPhone: string;
+  leadId?: string | null;
+  leadStatus?: string | null;
+  leadSource?: string | null;
+  leadPriority?: string | null;
   lastMessage: string;
   time: string;
   unread: boolean;
@@ -55,6 +60,14 @@ const TRANSLATIONS = {
     sendBtn: "إرسال",
     selectConversation: "اختر محادثة من القائمة",
     configureWarning: "WhatsApp Cloud API غير مفعل. أضف WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID في Vercel.",
+    createTask: "إنشاء مهمة",
+    taskTitleLabel: "عنوان المهمة",
+    taskTypeLabel: "نوع المهمة",
+    taskTypes: { Call: "اتصال", Visit: "زيارة", "Follow-up": "متابعة", "Send Offer": "إرسال عرض" },
+    createTaskBtn: "إنشاء",
+    cancelBtn: "إلغاء",
+    taskCreated: "تم إنشاء المهمة بنجاح",
+    taskError: "تعذر إنشاء المهمة",
   },
   EN: {
     title: "WhatsApp Cloud API",
@@ -75,6 +88,14 @@ const TRANSLATIONS = {
     sendBtn: "Send",
     selectConversation: "Select a conversation",
     configureWarning: "WhatsApp Cloud API is not configured. Add WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID in Vercel.",
+    createTask: "Create Task",
+    taskTitleLabel: "Task Title",
+    taskTypeLabel: "Task Type",
+    taskTypes: { Call: "Call", Visit: "Visit", "Follow-up": "Follow-up", "Send Offer": "Send Offer" },
+    createTaskBtn: "Create",
+    cancelBtn: "Cancel",
+    taskCreated: "Task created successfully",
+    taskError: "Failed to create task",
   }
 };
 
@@ -91,6 +112,10 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const [isSending, setIsSending] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [newPhone, setNewPhone] = useState("");
+  const [taskChatId, setTaskChatId] = useState<string | null>(null);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskType, setTaskType] = useState("Call");
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeChat = chats.find(c => c.id === activeChatId) || null;
@@ -111,6 +136,26 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     setIsSending(false);
   }
 
+  async function handleCreateTask() {
+    if (!taskTitle.trim() || !taskChatId) return;
+    setIsCreatingTask(true);
+    const chat = chats.find(c => c.id === taskChatId);
+    const formData = new FormData();
+    formData.append("title", taskTitle.trim());
+    formData.append("taskType", taskType);
+    formData.append("contactPhone", chat?.contactPhone || "");
+    const result = await createWhatsAppTaskAction(formData);
+    setIsCreatingTask(false);
+    if (result.success) {
+      toast.success(t.taskCreated);
+      setTaskChatId(null);
+      setTaskTitle("");
+      setTaskType("Call");
+    } else {
+      toast.error(result.error || t.taskError);
+    }
+  }
+
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -126,6 +171,26 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     } else {
       toast.error(result.error || "تعذر حذف المحادثة");
     }
+  }
+
+  function getClassificationBadge(priority: string | null | undefined) {
+    if (!priority) return null;
+    const colors: Record<string, string> = {
+      HOT: "bg-red-500/20 text-red-400 border-red-500/30",
+      WARM: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+      COLD: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    };
+    const labels: Record<string, string> = {
+      HOT: isArabic ? "ساخن" : "HOT",
+      WARM: isArabic ? "دافئ" : "WARM",
+      COLD: isArabic ? "بارد" : "COLD",
+    };
+    const colorClass = colors[priority] || colors.COLD;
+    return (
+      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${colorClass} font-bold`}>
+        {labels[priority] || priority}
+      </span>
+    );
   }
 
   function startNewChat() {
@@ -207,11 +272,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
               <div onClick={() => setActiveChatId(chat.id)}
                 className={`p-3 rounded-xl cursor-pointer transition-colors ${chat.id === activeChatId ? 'bg-[var(--nc-accent-soft)]' : 'bg-[var(--nc-surface)] hover:bg-white/5'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-[var(--nc-text-primary)]">{chat.contactName}</span>
+                  <span className="text-sm font-bold text-[var(--nc-text-primary)] flex items-center gap-2">
+                    {chat.contactName}
+                    {getClassificationBadge(chat.leadPriority)}
+                  </span>
                   <span className="text-[10px] text-[var(--nc-text-dim)]">{chat.time}</span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-[var(--nc-text-dim)] truncate flex-1">{chat.lastMessage || chat.contactPhone}</p>
+                  <button onClick={(e) => { e.stopPropagation(); setTaskChatId(chat.id); setTaskTitle(""); setTaskType("Call"); }}
+                    className="text-[var(--nc-accent)] hover:text-[var(--nc-accent-hover)] text-xs ml-1 shrink-0" title={t.createTask}>+</button>
                   <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(chat.id); }}
                     disabled={isDeleting}
                     className="text-rose-400 hover:text-rose-300 text-xs ml-2 shrink-0">✕</button>
@@ -236,6 +306,42 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
                 <button onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
                   className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
                   إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {taskChatId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setTaskChatId(null)} />
+            <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm mx-4 space-y-4 shadow-2xl">
+              <h3 className="text-sm font-bold text-[var(--nc-text-primary)] text-center">{t.createTask}</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-[var(--nc-text-dim)] mb-1">{t.taskTitleLabel}</label>
+                  <input value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
+                    placeholder={t.taskTitleLabel}
+                    className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-[var(--nc-text-primary)] outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--nc-text-dim)] mb-1">{t.taskTypeLabel}</label>
+                  <select value={taskType} onChange={e => setTaskType(e.target.value)}
+                    className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-[var(--nc-text-primary)] outline-none">
+                    {Object.entries(t.taskTypes).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleCreateTask} disabled={isCreatingTask || !taskTitle.trim()}
+                  className="flex-1 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-sm font-bold rounded-xl disabled:opacity-50">
+                  {isCreatingTask ? "..." : t.createTaskBtn}
+                </button>
+                <button onClick={() => setTaskChatId(null)} disabled={isCreatingTask}
+                  className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
+                  {t.cancelBtn}
                 </button>
               </div>
             </div>

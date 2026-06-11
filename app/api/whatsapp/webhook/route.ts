@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
+import { logWhatsAppActivity, classifyWhatsAppLead } from "@/app/actions/whatsapp-crm";
 
 // ─── إعدادات Green API ───────────────────────────────────────────────────────
 const GREEN_API_ID_INSTANCE =
@@ -120,7 +121,9 @@ async function handleMetaInbound(body: any) {
   const messages = value.messages;
   const statuses = value.statuses;
 
-  // معالجة الرسائل الواردة
+  const tenant = await prisma.tenant.findFirst({ where: { whatsappConnected: true }, select: { id: true } });
+  const tenantId = tenant?.id;
+
   if (messages && Array.isArray(messages)) {
     for (const msg of messages) {
       const senderPhone = msg.from;
@@ -130,49 +133,156 @@ async function handleMetaInbound(body: any) {
 
       console.log(`[Meta WhatsApp] Inbound from ${senderPhone}: ${messageText?.substring(0, 100)}`);
 
-      // Store in DB
-      try {
-        const tenant = await prisma.tenant.findFirst({ where: { whatsappConnected: true }, select: { id: true } });
-        if (tenant) {
-          await prisma.whatsAppContact.upsert({
-            where: { tenantId_phone: { tenantId: tenant.id, phone: senderPhone } },
-            create: { tenantId: tenant.id, phone: senderPhone, name: value.contacts?.[0]?.profile?.name, provider: "meta", lastMessageAt: new Date() },
-            update: { lastMessageAt: new Date(), name: value.contacts?.[0]?.profile?.name || undefined },
+      if (!tenantId) {
+        if (messageText) {
+          await processSaherWhatsAppLeadAction({
+            senderPhone,
+            senderName: value.contacts?.[0]?.profile?.name || senderPhone,
+            messageText,
+            timestamp: new Date(parseInt(msg.timestamp) * 1000).toISOString(),
+            chatId: senderPhone,
           });
-          await prisma.whatsAppMessage.create({
+        }
+        continue;
+      }
+
+      try {
+        // Phase I — Contact Resolution (Dedup)
+        let contact = await prisma.whatsAppContact.findUnique({
+          where: { tenantId_phone: { tenantId, phone: senderPhone } },
+        });
+
+        // Phase A — Lead Auto Creation
+        let lead = await prisma.lead.findFirst({
+          where: { tenantId, phone: senderPhone },
+        });
+
+        if (!lead) {
+          lead = await prisma.lead.create({
             data: {
-              tenantId: tenant.id,
+              tenantId,
+              firstName: `WhatsApp Lead ${senderPhone}`,
               phone: senderPhone,
-              direction: "inbound",
+              city: "Unknown",
+              source: "WHATSAPP",
+              status: "NEW",
+            },
+          });
+        } else {
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: { updatedAt: new Date() },
+          });
+        }
+
+        if (!contact) {
+          contact = await prisma.whatsAppContact.create({
+            data: {
+              tenantId,
+              phone: senderPhone,
+              name: value.contacts?.[0]?.profile?.name || undefined,
               provider: "meta",
-              messageText,
-              messageType: msgType,
-              metaMessageId,
-              rawPayload: msg,
-              status: "received",
+              leadId: lead.id,
+              lastMessageAt: new Date(),
+            },
+          });
+        } else {
+          await prisma.whatsAppContact.update({
+            where: { id: contact.id },
+            data: {
+              leadId: contact.leadId || lead.id,
+              lastMessageAt: new Date(),
+              name: value.contacts?.[0]?.profile?.name || undefined,
             },
           });
         }
+
+        await prisma.whatsAppMessage.create({
+          data: {
+            tenantId,
+            phone: senderPhone,
+            direction: "inbound",
+            provider: "meta",
+            messageText,
+            messageType: msgType,
+            metaMessageId,
+            rawPayload: msg,
+            status: "received",
+          },
+        });
       } catch (dbErr) {
         console.error("[Meta WhatsApp] DB store error:", dbErr);
       }
 
       if (messageText) {
-        await processSaherWhatsAppLeadAction({
+        const saherResult = await processSaherWhatsAppLeadAction({
           senderPhone,
           senderName: value.contacts?.[0]?.profile?.name || senderPhone,
           messageText,
           timestamp: new Date(parseInt(msg.timestamp) * 1000).toISOString(),
           chatId: senderPhone,
         });
+
+        if (saherResult.leadId && tenant) {
+          await logWhatsAppActivity(tenant.id, saherResult.leadId, senderPhone, "inbound", messageText, metaMessageId);
+
+          if (saherResult.saherOutput) {
+            const saherOutputStr = JSON.stringify(saherResult.saherOutput);
+            await prisma.lead.update({
+              where: { id: saherResult.leadId },
+              data: { aiSummary: saherOutputStr },
+            }).catch(() => {});
+            await (prisma as any).whatsAppMessage.updateMany({
+              where: { tenantId: tenant.id, phone: senderPhone, metaMessageId },
+              data: { aiSummary: saherOutputStr },
+            }).catch(() => {});
+            await (prisma as any).whatsAppContact.updateMany({
+              where: { tenantId: tenant.id, phone: senderPhone },
+              data: { leadId: saherResult.leadId },
+            });
+          }
+
+          await classifyWhatsAppLead(saherResult.leadId, messageText);
+        }
       }
     }
   }
 
-  // معالجة تحديثات الحالة
-  if (statuses && Array.isArray(statuses)) {
+  // Phase H — Delivery Tracking (statuses)
+  if (statuses && Array.isArray(statuses) && tenantId) {
     for (const status of statuses) {
       console.log(`[Meta WhatsApp] Status: ${status.id} → ${status.status} (${status.timestamp})`);
+      try {
+        const statusTime = new Date(parseInt(status.timestamp) * 1000);
+        const updateData: any = {};
+
+        switch (status.status) {
+          case "sent":
+            updateData.status = "sent";
+            break;
+          case "delivered":
+            updateData.status = "delivered";
+            updateData.deliveredAt = statusTime;
+            break;
+          case "read":
+            updateData.status = "read";
+            updateData.readAt = statusTime;
+            break;
+          case "failed":
+            updateData.status = "failed";
+            updateData.failedAt = statusTime;
+            break;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.whatsAppMessage.updateMany({
+            where: { metaMessageId: status.id, tenantId },
+            data: updateData,
+          });
+        }
+      } catch (statusErr) {
+        console.error("[Meta WhatsApp] Status update error:", statusErr);
+      }
     }
   }
 
@@ -207,6 +317,78 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
 
   console.log(`[Green API→Saher] رسالة واردة | ${textMessage.substring(0, 50)}...`);
 
+  // Phase A + I: Lead auto-creation and contact dedup
+  const tenant = await prisma.tenant.findFirst({ where: { whatsappConnected: true }, select: { id: true } });
+  let leadId: string | undefined;
+
+  if (tenant) {
+    try {
+      let lead = await prisma.lead.findFirst({
+        where: { tenantId: tenant.id, phone: senderPhone },
+      });
+
+      if (!lead) {
+        lead = await prisma.lead.create({
+          data: {
+            tenantId: tenant.id,
+            firstName: `WhatsApp Lead ${senderPhone}`,
+            phone: senderPhone,
+            city: "Unknown",
+            source: "WHATSAPP",
+              status: "NEW",
+            },
+          });
+        } else {
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: { updatedAt: new Date() },
+          });
+        }
+        leadId = lead.id;
+
+      let contact = await prisma.whatsAppContact.findUnique({
+        where: { tenantId_phone: { tenantId: tenant.id, phone: senderPhone } },
+      });
+
+      if (!contact) {
+        await prisma.whatsAppContact.create({
+          data: {
+            tenantId: tenant.id,
+            phone: senderPhone,
+            name: senderName,
+            provider: "greenapi",
+            leadId: lead.id,
+            lastMessageAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.whatsAppContact.update({
+          where: { id: contact.id },
+          data: {
+            leadId: contact.leadId || lead.id,
+            lastMessageAt: new Date(),
+            name: senderName || undefined,
+          },
+        });
+      }
+
+      await prisma.whatsAppMessage.create({
+        data: {
+          tenantId: tenant.id,
+          phone: senderPhone,
+          direction: "inbound",
+          provider: "greenapi",
+          messageText: textMessage,
+          messageType: body.messageData?.typeMessage || "text",
+          rawPayload: body,
+          status: "received",
+        },
+      });
+    } catch (dbErr) {
+      console.error("[Green API] DB store error:", dbErr);
+    }
+  }
+
   const saherResult = await processSaherWhatsAppLeadAction({
     senderPhone,
     senderName,
@@ -214,6 +396,30 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
     timestamp: new Date((body.timestamp || Date.now() / 1000) * 1000).toISOString(),
     chatId,
   });
+
+  // Phase C + D + E: Activity logging, aiSummary, classification
+  const finalLeadId = saherResult.leadId || leadId;
+  if (finalLeadId && tenant) {
+    await logWhatsAppActivity(tenant.id, finalLeadId, senderPhone, "inbound", textMessage, body.idMessage);
+
+    if (saherResult.saherOutput) {
+      const saherOutputStr = JSON.stringify(saherResult.saherOutput);
+      await prisma.lead.update({
+        where: { id: finalLeadId },
+        data: { aiSummary: saherOutputStr },
+      }).catch(() => {});
+      await (prisma as any).whatsAppMessage.updateMany({
+        where: { tenantId: tenant.id, phone: senderPhone, metaMessageId: body.idMessage },
+        data: { aiSummary: saherOutputStr },
+      }).catch(() => {});
+      await (prisma as any).whatsAppContact.updateMany({
+        where: { tenantId: tenant.id, phone: senderPhone },
+        data: { leadId: finalLeadId },
+      });
+    }
+
+    await classifyWhatsAppLead(finalLeadId, textMessage);
+  }
 
   if (saherResult.responseToClient) {
     await sendWhatsAppReply(chatId, saherResult.responseToClient);

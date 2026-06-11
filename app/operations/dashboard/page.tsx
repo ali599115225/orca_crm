@@ -1,6 +1,7 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
+import { getWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
 import DashboardView from './DashboardView';
 
 export const metadata = {
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
     dbRecentLeads,
     dbRecentTasks,
     dbProjects,
+    whatsAppStatsResult,
   ] = await Promise.all([
     prisma.lead.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
     prisma.task.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
@@ -43,6 +45,7 @@ export default async function DashboardPage() {
     prisma.project.findMany({
       where: { tenantId: tenant.id }, take: 4, orderBy: { createdAt: 'desc' },
     }),
+    getWhatsAppDashboardStats(),
   ]);
 
   const leadCountMap = new Map(leadGroup.map(l => [l.status, l._count.id]));
@@ -90,6 +93,11 @@ export default async function DashboardPage() {
       aiPredictions={{ bestContactTimes: [], expectedToClose: [], projectsNeedingCampaign: [], agentsNeedingSupport: [] }}
       pipelineStages={pipelineStages}
       todayTasks={todayTasks}
+      whatsAppStats={whatsAppStatsResult.success ? {
+        conversationsCount: whatsAppStatsResult.conversationsCount,
+        newLeadsCount: whatsAppStatsResult.newLeadsCount,
+        unreadMessagesCount: whatsAppStatsResult.unreadMessagesCount,
+      } : undefined}
     />
   );
 }

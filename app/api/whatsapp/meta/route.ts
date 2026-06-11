@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "";
+const WHATSAPP_WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET || "";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -38,6 +39,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const signature = request.headers.get("x-hub-signature") || "";
+    const queryToken = new URL(request.url).searchParams.get("token") || "";
+
+    if (WHATSAPP_WEBHOOK_SECRET && !signature.includes(WHATSAPP_WEBHOOK_SECRET) && queryToken !== WHATSAPP_WEBHOOK_SECRET && WHATSAPP_VERIFY_TOKEN && queryToken !== WHATSAPP_VERIFY_TOKEN) {
+      console.warn("[WhatsApp Meta] POST rejected: invalid auth");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const timestamp = new Date().toISOString();

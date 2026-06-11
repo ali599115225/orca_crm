@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authenticateRequest } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await authenticateRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const META_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || "";
     const META_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 

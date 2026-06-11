@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
     name TEXT,
     provider TEXT DEFAULT 'meta',
     meta_contact_id TEXT,
+    lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
     last_message_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
     status TEXT DEFAULT 'received',
     delivered_at TIMESTAMPTZ,
     read_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -38,3 +40,13 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_tenant_phone
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_meta_id 
     ON whatsapp_messages(meta_message_id);
+
+CREATE TABLE IF NOT EXISTS whatsapp_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES whatsapp_messages(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    mime_type TEXT,
+    url TEXT,
+    size INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

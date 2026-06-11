@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
@@ -75,6 +76,7 @@ export async function getWhatsAppChatsAction() {
 
     const contacts = await (prisma as any).whatsAppContact.findMany({
       where: { tenantId: tenant.id },
+      select: { id: true, name: true, phone: true, leadId: true, lastMessageAt: true },
       orderBy: { lastMessageAt: "desc" },
       take: 50,
     });
@@ -86,6 +88,10 @@ export async function getWhatsAppChatsAction() {
           orderBy: { createdAt: "asc" },
           take: 50,
         });
+        const lead = await (prisma as any).lead.findFirst({
+          where: { tenantId: tenant.id, phone: c.phone },
+          select: { id: true, status: true, source: true, priority: true },
+        });
         const lastMsg = messages[messages.length - 1];
         const safeText = (t: any) => typeof t === "string" ? t : String(t ?? "");
         return {
@@ -95,6 +101,10 @@ export async function getWhatsAppChatsAction() {
           lastMessage: safeText(lastMsg?.messageText).substring(0, 100) || "",
           time: lastMsg?.createdAt?.toISOString() || c.lastMessageAt?.toISOString() || "",
           unread: false,
+          leadId: lead?.id || null,
+          leadStatus: lead?.status || null,
+          leadSource: lead?.source || null,
+          leadPriority: lead?.priority || null,
           messages: messages.map((m: any) => ({
             sender: m.direction === "inbound" ? "client" : "agent",
             text: safeText(m.messageText),
@@ -148,7 +158,7 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
     const result = await response.json();
     const metaMessageId = result.messages?.[0]?.id || null;
 
-    if (response.ok && metaMessageId) {
+      if (response.ok && metaMessageId) {
       try {
         await (prisma as any).whatsAppContact.upsert({
           where: { tenantId_phone: { tenantId: tenant.id, phone: chatId } },
@@ -166,6 +176,21 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
             metaMessageId,
             rawPayload: result,
             status: "sent",
+          },
+        });
+        const lead = await (prisma as any).lead.findFirst({
+          where: { tenantId: tenant.id, phone: chatId },
+        });
+        if (lead) {
+          await logWhatsAppActivity(tenant.id, lead.id, chatId, "outbound", messageText, metaMessageId);
+        }
+        await prisma.auditLog.create({
+          data: {
+            tenantId: tenant.id,
+            action: "WHATSAPP_MESSAGE_SENT",
+            tableName: "WhatsAppMessage",
+            recordId: metaMessageId,
+            details: JSON.stringify({ to: chatId, length: messageText.length, provider: "meta" }),
           },
         });
       } catch {}
@@ -196,6 +221,16 @@ export async function deleteWhatsAppConversationAction(contactId: string) {
     });
     await (prisma as any).whatsAppContact.delete({
       where: { id: contactId, tenantId: tenant.id },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        tenantId: tenant.id,
+        action: "WHATSAPP_CONVERSATION_DELETED",
+        tableName: "WhatsAppContact",
+        recordId: contactId,
+        details: JSON.stringify({ phone: contact.phone, name: contact.name }),
+      },
     });
 
     revalidatePath("/operations/whatsapp");

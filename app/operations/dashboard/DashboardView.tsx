@@ -100,6 +100,11 @@ interface DashboardViewProps {
   };
   pipelineStages?: PipelineStage[];
   todayTasks?: TodayTask[];
+  whatsAppStats?: {
+    conversationsCount: number;
+    newLeadsCount: number;
+    unreadMessagesCount: number;
+  };
 }
 
 export default function DashboardView({
@@ -114,6 +119,7 @@ export default function DashboardView({
   aiPredictions,
   pipelineStages = [],
   todayTasks = [],
+  whatsAppStats,
 }: DashboardViewProps) {
   const { theme, lang } = useApp();
   const router = useRouter();
@@ -248,6 +254,70 @@ export default function DashboardView({
             {lang === 'AR' ? 'العملاء المستثمرون المسجلون بقاعدة البيانات' : 'Total prospects registered in CRM database'}
           </p>
         </SmartCard>
+
+        {/* WhatsApp Stats Cards */}
+        {whatsAppStats && (
+          <>
+            <SmartCard elevation="elevated" className="p-3">
+              <div className="flex items-start mb-2">
+                <div className="flex-1">
+                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                    {lang === 'AR' ? 'محادثات واتساب' : 'WhatsApp Conversations'}
+                  </p>
+                  <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
+                    {formatNum(whatsAppStats.conversationsCount)}
+                  </h3>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <i className="ph-fill ph-whatsapp-logo text-base"></i>
+                </div>
+              </div>
+              <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
+                {lang === 'AR' ? 'إجمالي المحادثات النشطة عبر واتساب' : 'Total active WhatsApp conversations'}
+              </p>
+            </SmartCard>
+
+            <SmartCard elevation="elevated" className="p-3">
+              <div className="flex items-start mb-2">
+                <div className="flex-1">
+                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                    {lang === 'AR' ? 'عملاء واتساب جدد' : 'New WhatsApp Leads'}
+                  </p>
+                  <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
+                    {formatNum(whatsAppStats.newLeadsCount)}
+                  </h3>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <i className="ph-fill ph-user-plus text-base"></i>
+                </div>
+              </div>
+              <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
+                {lang === 'AR' ? 'عملاء جدد من واتساب آخر 7 أيام' : 'New WhatsApp leads in last 7 days'}
+              </p>
+            </SmartCard>
+
+            {whatsAppStats.unreadMessagesCount > 0 && (
+              <SmartCard elevation="elevated" className="p-3">
+                <div className="flex items-start mb-2">
+                  <div className="flex-1">
+                    <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                      {lang === 'AR' ? 'رسائل غير مقروءة' : 'Unread Messages'}
+                    </p>
+                    <h3 className="text-xl font-black text-amber-400">
+                      {formatNum(whatsAppStats.unreadMessagesCount)}
+                    </h3>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <i className="ph-fill ph-chat-circle-dots text-base"></i>
+                  </div>
+                </div>
+                <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
+                  {lang === 'AR' ? 'رسائل واتساب واردة لم يتم الرد عليها' : 'Inbound WhatsApp messages pending reply'}
+                </p>
+              </SmartCard>
+            )}
+          </>
+        )}
 
         {/* ========================================================
             ROW 2: ACTION & AI (Action = 1 column, AI = 3 columns)
