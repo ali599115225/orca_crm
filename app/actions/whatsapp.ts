@@ -47,9 +47,11 @@ export async function getCloudAPIStatusAction() {
           status: "connected",
         };
       }
-    } catch {}
-
-    return { configured: true, provider: "meta", phoneNumberId, businessAccountId, status: "unknown" };
+      const errText = await res.text();
+      return { configured: true, provider: "meta", phoneNumberId, businessAccountId, status: "disconnected", error: `HTTP ${res.status}: ${errText.substring(0, 200)}` };
+    } catch (err: any) {
+      return { configured: true, provider: "meta", phoneNumberId, businessAccountId, status: "disconnected", error: err.message || "Network error" };
+    }
   } catch {
     return { configured: false, provider: "none", reason: "Status check failed" };
   }

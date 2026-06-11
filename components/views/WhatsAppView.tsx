@@ -138,18 +138,23 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
       {/* Cloud API Status */}
       <SmartCard className="p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            <span className="text-sm font-bold text-[var(--nc-text-primary)]">
-              {t.provider} — {connected ? t.connected : t.disconnected}
-            </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span className="text-sm font-bold text-[var(--nc-text-primary)]">
+                {t.provider} — {connected ? t.connected : t.disconnected}
+              </span>
+            </div>
+            {cloudStatus?.phoneNumberId && (
+              <span className="text-xs text-[var(--nc-text-dim)]">{t.phoneNumberLabel}: {cloudStatus.phoneNumberId}</span>
+            )}
+            {cloudStatus?.businessAccountId && (
+              <span className="text-xs text-[var(--nc-text-dim)]">{t.wabaLabel}: {cloudStatus.businessAccountId}</span>
+            )}
           </div>
-          {cloudStatus?.phoneNumberId && (
-            <span className="text-xs text-[var(--nc-text-dim)]">{t.phoneNumberLabel}: {cloudStatus.phoneNumberId}</span>
-          )}
-          {cloudStatus?.businessAccountId && (
-            <span className="text-xs text-[var(--nc-text-dim)]">{t.wabaLabel}: {cloudStatus.businessAccountId}</span>
+          {!connected && cloudStatus?.error && (
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-2 text-xs text-rose-400 font-mono">{cloudStatus.error}</div>
           )}
         </div>
       </SmartCard>
