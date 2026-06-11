@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { Menu, Search, Bell, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
+import { Menu, Search, Bell, ChevronLeft, Globe, Moon, Sun, LogOut, Bot } from 'lucide-react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
@@ -107,7 +107,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
           <input
             id="global-search"
             type="text"
-            placeholder="بحث شامل (العملاء، العقود)..."
+            placeholder="البحث داخل ORCA..."
             className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
           />
           <div className="absolute inset-y-0 left-0 flex items-center pl-2">
@@ -119,10 +119,10 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
       {/* Left: Quick actions, notifications, profile */}
       <div className="flex items-center justify-end gap-2 lg:gap-3 lg:w-1/3">
 
-        {/* Saher connection status */}
+        {/* AI Agents — neutral label */}
         <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-full text-xs font-medium text-[var(--nc-foreground)]">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]"></div>
-          <span>ساهر</span>
+          <Bot size={14} className="text-[var(--nc-foreground-muted)]" />
+          <span>الوكلاء الذكيون</span>
         </div>
 
         {/* Language toggle */}
@@ -182,7 +182,7 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
 
             router.replace('/login?logged_out=true');
           }}
-          className="flex items-center justify-center w-9 h-9 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg transition-all"
+          className="flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
           title="تسجيل الخروج"
           aria-label="تسجيل الخروج"
         >

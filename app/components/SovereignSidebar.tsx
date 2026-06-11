@@ -20,26 +20,71 @@ import {
   HelpCircle,
   Settings,
   Calculator,
+  Mail,
 } from "lucide-react";
 
-const menu = [
-  { label: "لوحة التحكم",            icon: LayoutDashboard, path: "/operations/dashboard", tab: "analytics"  },
-  { label: "العملاء المحتملين",       icon: Users,           path: "/operations/leads",     tab: "leads"      },
-  { label: "المشاريع العقارية",       icon: Building2,       path: "/operations/projects",  tab: "projects"   },
-  { label: "العقارات",               icon: Home,            path: "/operations/properties", tab: "properties" },
-  { label: "العقود والمدفوعات",       icon: Receipt,         path: "/operations/rental",     tab: "rental",    tooltip: "إدارة عقود الإيجار، إصدار الفواتير، وتسجيل الدفعات" },
-  { label: "حاسبة التمويل السكني",    icon: Calculator,      path: "/operations/calculator", tab: "calculator" },
-  { label: "العروض العقارية",         icon: Megaphone,       path: "/operations/offers",     tab: "offers"     },
-  { label: "الجولات العقارية",        icon: Map,             path: "/operations/tours",      tab: "tours",     tooltip: "تصفح الجولات العقارية المسجلة و360، حجز المواعيد ومحاكاة التمويل" },
-  { label: "الإعلان والتسويق",        icon: ShoppingBag,     path: "/operations/marketing",  tab: "marketing", tooltip: "المنصات الإعلانية والتسوق الإعلاني" },
-  { label: "الحملات",                icon: Megaphone,       path: "/operations/campaigns",  tab: "campaigns", tooltip: "حملات التسويق وتحليلات ROI" },
-  { label: "أداء المبيعات",           icon: PieChart,        path: "/operations/sales",      tab: "sales"      },
-  { label: "الوكلاء الذكيون",         icon: Bot,             path: "/operations/agents",     tab: "agents"     },
-  { label: "المهام والتذكيرات",       icon: Calendar,        path: "/operations/tasks",      tab: "tasks"      },
-  { label: "مستودع المستندات",        icon: FolderOpen,      path: "/operations/documents",  tab: "documents", tooltip: "مستندات المشاريع والعقود والبطاقات" },
-  { label: "قناة الواتساب",           icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp"   },
-  { label: "مركز الدعم",              icon: HelpCircle,      path: "/operations/helpdesk",   tab: "helpdesk",  tooltip: "تذاكر الدعم والوكيل الذكي المساعد" },
-  { label: "الإعدادات",              icon: Settings,        path: "/operations/settings",   tab: "settings"   },
+type MenuItem = {
+  label: string;
+  icon: any;
+  path: string;
+  tab: string;
+  tooltip?: string;
+};
+
+type MenuSection = {
+  title: string;
+  items: MenuItem[];
+};
+
+const menuSections: MenuSection[] = [
+  {
+    title: "المبيعات والعملاء",
+    items: [
+      { label: "لوحة التحكم",            icon: LayoutDashboard, path: "/operations/dashboard",  tab: "analytics" },
+      { label: "العملاء المحتملون",       icon: Users,           path: "/operations/leads",      tab: "leads" },
+      { label: "العروض العقارية",         icon: Megaphone,       path: "/operations/offers",     tab: "offers" },
+      { label: "الجولات العقارية",        icon: Map,             path: "/operations/tours",      tab: "tours",     tooltip: "تصفح الجولات العقارية المسجلة و360، حجز المواعيد ومحاكاة التمويل" },
+    ],
+  },
+  {
+    title: "العقارات والعقود",
+    items: [
+      { label: "المشاريع العقارية",       icon: Building2,       path: "/operations/projects",   tab: "projects" },
+      { label: "العقارات",               icon: Home,            path: "/operations/properties", tab: "properties" },
+      { label: "العقود والمدفوعات",       icon: Receipt,         path: "/operations/rental",     tab: "rental",    tooltip: "إدارة عقود الإيجار، إصدار الفواتير، وتسجيل الدفعات" },
+      { label: "حاسبة التمويل السكني",    icon: Calculator,      path: "/operations/calculator", tab: "calculator" },
+    ],
+  },
+  {
+    title: "التسويق والذكاء",
+    items: [
+      { label: "الإعلان والتسويق",        icon: ShoppingBag,     path: "/operations/marketing",  tab: "marketing", tooltip: "المنصات الإعلانية والتسوق الإعلاني" },
+      { label: "الحملات",                icon: Megaphone,       path: "/operations/campaigns",  tab: "campaigns", tooltip: "حملات التسويق وتحليلات ROI" },
+      { label: "أداء المبيعات",           icon: PieChart,        path: "/operations/sales",      tab: "sales" },
+      { label: "الوكلاء الذكيون",         icon: Bot,             path: "/operations/agents",     tab: "agents" },
+    ],
+  },
+  {
+    title: "العمليات",
+    items: [
+      { label: "المهام والتذكيرات",       icon: Calendar,        path: "/operations/tasks",      tab: "tasks" },
+      { label: "مستودع المستندات",        icon: FolderOpen,      path: "/operations/documents",  tab: "documents", tooltip: "مستندات المشاريع والعقود والبطاقات" },
+      { label: "مركز الدعم",              icon: HelpCircle,      path: "/operations/helpdesk",   tab: "helpdesk",  tooltip: "تذاكر الدعم والوكيل الذكي المساعد" },
+    ],
+  },
+  {
+    title: "القنوات",
+    items: [
+      { label: "البريد الإلكتروني",       icon: Mail,            path: "/operations/email",      tab: "email" },
+      { label: "واتساب",                 icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp" },
+    ],
+  },
+  {
+    title: "الإعدادات",
+    items: [
+      { label: "الإعدادات",              icon: Settings,        path: "/operations/settings",   tab: "settings" },
+    ],
+  },
 ];
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -49,48 +94,55 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      <ul className="space-y-0.5">
-        {menu.map((item, idx) => {
-          const isActive =
-            pathname === item.path ||
-            (pathname === "/operations" && currentTab === item.tab) ||
-            (item.path !== "/operations/dashboard" && pathname.startsWith(item.path));
+      {menuSections.map((section, sIdx) => (
+        <div key={sIdx} className="mb-1">
+          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-foreground-muted)]/60 uppercase md:hidden lg:block">
+            {section.title}
+          </div>
+          <ul className="space-y-0.5">
+            {section.items.map((item, idx) => {
+              const isActive =
+                pathname === item.path ||
+                (pathname === "/operations" && currentTab === item.tab) ||
+                (item.path !== "/operations/dashboard" && pathname.startsWith(item.path));
 
-          const Icon = item.icon;
-          const tooltip = "tooltip" in item ? item.tooltip : undefined;
+              const Icon = item.icon;
+              const tooltip = item.tooltip;
 
-          return (
-            <li key={idx}>
-              <Link
-                href={item.path}
-                title={tooltip}
-                onClick={() => onNavigate?.()}
-                className={[
-                  "flex items-center justify-start gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
-                  isActive
-                    ? "nav-item-active font-bold shadow-sm"
-                    : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface)] hover:text-[var(--nc-foreground)] md:hover:translate-x-0 lg:hover:translate-x-[-4px] transform",
-                ].join(" ")}
-              >
-                <Icon
-                  size={17}
-                  className={`shrink-0 transition-transform duration-200 ${
-                    isActive
-                      ? "scale-110 text-[var(--nc-accent)]"
-                      : "text-[var(--nc-foreground-muted)]"
-                  }`}
-                />
-                <span className="leading-tight flex-1 md:hidden lg:inline">{item.label}</span>
-                {item.tab === "rental" && (
-                  <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 animate-pulse md:hidden lg:inline">
-                    2
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+              return (
+                <li key={idx}>
+                  <Link
+                    href={item.path}
+                    title={tooltip}
+                    onClick={() => onNavigate?.()}
+                    className={[
+                      "flex items-center justify-start gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
+                      isActive
+                        ? "nav-item-active font-bold shadow-sm"
+                        : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface)] hover:text-[var(--nc-foreground)] md:hover:translate-x-0 lg:hover:translate-x-[-4px] transform",
+                    ].join(" ")}
+                  >
+                    <Icon
+                      size={17}
+                      className={`shrink-0 transition-transform duration-200 ${
+                        isActive
+                          ? "scale-110 text-[var(--nc-accent)]"
+                          : "text-[var(--nc-foreground-muted)]"
+                      }`}
+                    />
+                    <span className="leading-tight flex-1 md:hidden lg:inline">{item.label}</span>
+                    {item.tab === "rental" && (
+                      <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 animate-pulse md:hidden lg:inline">
+                        2
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 }

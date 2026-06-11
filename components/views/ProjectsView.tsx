@@ -1,5 +1,4 @@
 'use client';
-import { toast } from '@/app/context/ToastContext';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
@@ -8,15 +7,6 @@ import LayoutContainer from '../ui/LayoutContainer';
 import { getDetailedProjectsAction, getProjectUnitsAction } from '@/app/actions/projects';
 import ProjectsOverview from '@/components/projects/ProjectsOverview';
 import ProjectDetail from '@/components/projects/ProjectDetail';
-
-interface TelemetryEvent {
-  id: string;
-  type: string;
-  projectId: number | string;
-  timestamp: string;
-  actorId: string;
-  payload: any;
-}
 
 export default function ProjectsView() {
   const { hasPermission } = useAuth();
@@ -30,16 +20,6 @@ export default function ProjectsView() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
   const [projectUnits, setProjectUnits] = useState<any[]>([]);
-  const [telemetryLogs, setTelemetryLogs] = useState<TelemetryEvent[]>([
-    {
-      id: 'evt_init',
-      type: 'system.initialized',
-      projectId: 0,
-      timestamp: new Date().toISOString(),
-      actorId: 'system_core',
-      payload: { message: 'تهيئة منصة مراقبة المشاريع العقارية بنجاح' }
-    }
-  ]);
 
   useEffect(() => {
     async function loadProjects() {
@@ -56,17 +36,14 @@ export default function ProjectsView() {
             unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, progressPercent: p.progressPercent,
             description: p.description || '', createdAt: p.createdAt, updatedAt: p.createdAt,
           })));
-          addTelemetryEvent('api.projects_loaded', 0, { count: data.length });
         } else {
           setUsingFallback(true);
           setProjectsList([]);
-          addTelemetryEvent('api.projects_loaded_fallback', 0, { count: 0 });
         }
       } catch (err: any) {
         setUsingFallback(true);
         setFetchError(err.message);
         setProjectsList([]);
-        addTelemetryEvent('api.error', 0, { error: err.message });
       } finally {
         setIsLoading(false);
       }
@@ -74,16 +51,8 @@ export default function ProjectsView() {
     loadProjects();
   }, []);
 
-  const addTelemetryEvent = (type: string, projId: number | string, payload: any) => {
-    const newEvent: TelemetryEvent = {
-      id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      type,
-      projectId: projId,
-      timestamp: new Date().toISOString(),
-      actorId: 'usr_active',
-      payload
-    };
-    setTelemetryLogs(prev => [newEvent, ...prev]);
+  const addTelemetryEvent = (_type: string, _projId: number | string, _payload: any) => {
+    // Telemetry removed — production cleanup
   };
 
   const handleSelectProject = async (id: number | string) => {

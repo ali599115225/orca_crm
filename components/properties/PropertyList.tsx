@@ -138,15 +138,7 @@ export default function PropertyList({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
 
-  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([
-    {
-      id: 'evt_init',
-      type: 'units.initialized',
-      timestamp: new Date().toISOString(),
-      actorId: 'system_core',
-      payload: { message: 'تهيئة نظام إدارة سجل الوحدات والعقارات بنجاح' }
-    }
-  ]);
+  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadProperties() {
@@ -175,16 +167,8 @@ export default function PropertyList({
     loadProperties();
   }, []);
 
-  const logTelemetry = (type: string, payload?: any) => {
-    const newEvt = {
-      id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      type,
-      timestamp: new Date().toISOString(),
-      actorId: 'usr_active',
-      payload
-    };
-    setTelemetryLogs(prev => [newEvt, ...prev]);
-    addTelemetryEvent(type, payload);
+  const logTelemetry = (_type: string, _payload?: any) => {
+    // Telemetry removed — production cleanup
   };
 
   const filteredProperties = properties.filter(u => {

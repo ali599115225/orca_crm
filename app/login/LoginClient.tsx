@@ -14,18 +14,11 @@ interface LoginClientProps {
 export default function LoginClient({ tenantName = "منصة ORCA العقارية", host = "" }: LoginClientProps) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [lang, setLang] = useState<'AR' | 'EN'>('AR');
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState([
-    { text: 'مرحباً! أنا المساعد الذكي لمنصة ORCA العقارية. كيف يمكنني خدمتك اليوم؟', sender: 'bot' }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   const svgRef = useRef(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // التبديل بين الوضع الفاتح والداكن
   useEffect(() => {
@@ -50,25 +43,6 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       htmlElement.setAttribute('dir', 'ltr');
     }
   }, [lang]);
-
-  // تحديث الرسالة الترحيبية الافتراضية إذا لم تبدأ المحادثة بعد
-  useEffect(() => {
-    if (messages.length === 1 && (messages[0].text.startsWith('مرحباً') || messages[0].text.startsWith('Hello'))) {
-      setMessages([
-        { 
-          text: lang === 'AR' 
-            ? 'مرحباً! أنا المساعد الذكي لمنصة ORCA العقارية. كيف يمكنني خدمتك اليوم؟' 
-            : 'Hello! I am the smart assistant for the ORCA real estate platform. How can I assist you today?', 
-          sender: 'bot' 
-        }
-      ]);
-    }
-  }, [lang]);
-
-  // التمرير التلقائي لأسفل المحادثة
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
 
   // أنيميشن GSAP
   useEffect(() => {
@@ -157,31 +131,6 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       setLoading(false);
       setError(err.message || (lang === 'AR' ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "An unexpected error occurred during login."));
     }
-  };
-
-  const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const newMessages = [...messages, { text: chatInput, sender: 'user' }];
-    setMessages(newMessages);
-    setChatInput('');
-    setIsTyping(true);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      setMessages([...newMessages, { 
-        text: lang === 'AR' 
-          ? 'هذه استجابة تلقائية من المساعد الذكي.' 
-          : 'This is an automated response from the smart assistant.', 
-        sender: 'bot' 
-      }]);
-    }, 1500);
-  };
-
-  const handleNodeClick = (prompt: string) => {
-    if (!isChatOpen) setIsChatOpen(true);
-    setChatInput(prompt);
   };
 
   return (
@@ -291,62 +240,14 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                     <path d="M 20,350 Q 130,300 230,400 T 420,250" fill="none" style={{ stroke: 'var(--svg-cyan)' }} strokeWidth="1.5" className="data-line"/>
                     <path d="M 80,550 L 180,450 L 320,480 L 450,380" fill="none" style={{ stroke: 'var(--svg-cyan)' }} strokeWidth="1" className="data-line-2"/>
                     
-                    <circle cx="130" cy="300" r="4" className="tech-node" style={{ fill: 'var(--svg-cyan)', cursor: 'pointer' }} onClick={() => handleNodeClick(lang === 'AR' ? 'ما هي أبرز المشاريع الحالية؟' : 'What are the key current projects?')} />
-                    <circle cx="230" cy="400" r="6" className="tech-node" style={{ fill: 'var(--svg-cyan)', cursor: 'pointer' }} onClick={() => handleNodeClick(lang === 'AR' ? 'أحتاج مساعدة في الدخول للنظام' : 'I need help logging into the system')} />
-                    <circle cx="420" cy="250" r="5" className="tech-node" style={{ fill: 'var(--svg-cyan)', cursor: 'pointer' }} onClick={() => handleNodeClick(lang === 'AR' ? 'طلب تقرير مبيعات' : 'Request sales report')} />
+                    <circle cx="130" cy="300" r="4" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
+                    <circle cx="230" cy="400" r="6" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
+                    <circle cx="420" cy="250" r="5" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
                     
                     <circle cx="230" cy="400" r="12" fill="none" stroke="var(--svg-cyan)" strokeWidth="1" className="pulse-ring pointer-events-none" />
                   </g>
                 </g>
               </svg>
-
-              {/* Chat Toggle Button */}
-              <div className="absolute bottom-6 left-0 w-full text-center px-6 z-20">
-                <button onClick={() => setIsChatOpen(!isChatOpen)} className={`inline-flex items-center gap-2 backdrop-blur-sm border px-4 py-2 rounded-full cursor-pointer transition-colors shadow-sm focus:outline-none ${isDarkMode ? 'bg-void/80 border-slate-700 hover:bg-void' : 'bg-white/80 border-slate-350 hover:bg-slate-50'}`}>
-                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {lang === 'AR' ? 'تحدث مع المساعد الذكي العقاري' : 'Talk to the Real Estate AI Assistant'}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* AI Chat Overlay */}
-            <div className={`absolute inset-0 backdrop-blur-md z-30 flex flex-col transition-all duration-300 ${isChatOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} ${isDarkMode ? 'bg-void/90' : 'bg-white/90'}`}>
-              <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-slate-700/50 bg-void/50' : 'border-slate-200 bg-slate-50/90'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-corporate-blue/10 dark:bg-cyan-glow/10 flex items-center justify-center border border-corporate-blue/30 dark:border-cyan-glow/30 text-corporate-blue dark:text-cyan-glow font-bold">A</div>
-                  <div>
-                    <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {lang === 'AR' ? 'مساعد ORCA الذكي' : 'ORCA Smart Assistant'}
-                    </p>
-                  </div>
-                </div>
-                <button onClick={() => setIsChatOpen(false)} aria-label={lang === 'AR' ? 'إغلاق المحادثة' : 'Close chat'} className={`p-1 font-bold focus:outline-none ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>X</button>
-              </div>
-
-              <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-4">
-                {messages.map((msg, idx) => (
-                  <div key={idx} className={`max-w-[85%] p-3 rounded-2xl ${msg.sender === 'bot' ? `bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 self-end rounded-bl-none ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}` : `self-start rounded-br-none ${isDarkMode ? 'bg-void text-white border border-gray-800' : 'bg-[var(--nc-surface)] text-slate-900 border border-slate-300'}`}`}>
-                    {msg.text}
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className={`bg-corporate-blue/10 dark:bg-cyan-glow/10 border border-corporate-blue/20 dark:border-cyan-glow/20 self-end rounded-bl-none max-w-[85%] p-3 rounded-2xl text-sm ${isDarkMode ? 'text-slate-200' : 'text-slate-750'}`}>
-                    {lang === 'AR' ? 'يكتب...' : 'Typing...'}
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className={`p-4 border-t ${isDarkMode ? 'border-slate-700/50 bg-void/80' : 'border-slate-200 bg-slate-50'}`}>
-                <form onSubmit={handleChatSubmit} className="relative flex items-center">
-                  <label htmlFor="chat-input" className="sr-only">{lang === 'AR' ? 'الاستفسار عن العقارات' : 'Ask about properties'}</label>
-                  <input id="chat-input" type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} className={`w-full rounded-full pl-12 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-sm transition-colors ${isDarkMode ? 'bg-void text-white border-slate-700' : 'bg-white text-slate-900 border-slate-350'}`} placeholder={lang === 'AR' ? 'اسأل عن العقارات...' : 'Ask about properties...'} />
-                  <button type="submit" aria-label={lang === 'AR' ? 'إرسال الرسالة' : 'Send message'} className="absolute left-2 w-8 h-8 flex items-center justify-center bg-corporate-blue dark:bg-cyan-glow text-white dark:text-void rounded-full text-xs font-bold focus:outline-none">
-                    {lang === 'AR' ? 'إرسال' : 'Send'}
-                  </button>
-                </form>
-              </div>
             </div>
           </div>
 

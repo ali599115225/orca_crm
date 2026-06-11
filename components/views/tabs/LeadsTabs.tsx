@@ -1,7 +1,6 @@
 // components/views/tabs/LeadsTabs.tsx
 "use client";
-import { toast } from '@/app/context/ToastContext';
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useApp } from "@/app/context/AppContext";
 import LeadsPipelineV2 from "../pipeline/LeadsPipelineV2";
 import Contacts from "./Contacts";
@@ -13,7 +12,7 @@ import InsightsAutomation from "./InsightsAutomation";
 
 import { 
   Users, Activity, Calendar, DollarSign, Search, Plus, 
-  Settings, Bot, Sparkles, ChevronRight
+  Settings, Bot, Sparkles
 } from "lucide-react";
 import { Card, Button } from "../../ui/orca-components";
 import { LayoutContainer } from '../../ui/LayoutContainer';
@@ -24,51 +23,12 @@ export default function LeadsTabs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
-
-  useEffect(() => {
-    setTelemetryLogs([
-      {
-        id: "evt_leads_init",
-        type: "leads.initialized",
-        timestamp: new Date().toISOString(),
-        payload: { message: "تهيئة نظام إدارة الصفقات والعملاء بنجاح" }
-      }
-    ]);
-  }, []);
-
-  const addTelemetryEvent = (type: string, payload: any) => {
-    const newEvt = {
-      id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      type,
-      timestamp: new Date().toISOString(),
-      payload
-    };
-    setTelemetryLogs(prev => [newEvt, ...prev]);
-  };
-
-  const triggerLeadWebhookSimulation = () => {
-    const names = ["خالد بن فهد", "سارة الشمري", "محمد العتيبي", "ابتسام الرويلي"];
-    const randomName = names[Math.floor(Math.random() * names.length)];
-    const phone = "050" + Math.floor(1000000 + Math.random() * 9000000);
-    const score = Math.floor(65 + Math.random() * 30);
-    
-    addTelemetryEvent("lead.webhook_received", {
-      source: "Facebook Ads API",
-      name: randomName,
-      phone,
-      aiScore: score,
-      status: "Unassigned"
-    });
-    toast.success(`[WEBHOOK SIMULATOR]\nتم تلقي بيانات عميل جديد بنجاح من Facebook Ads:\nالاسم: ${randomName}\nالجوال: ${phone}\nالتقييم الأولي للـ AI: ${score}%`);
-  };
-
   const tabs = [
-    { id: "pipeline", labelAr: "متابعة الصفقات", labelEn: "Pipeline" },
-    { id: "contacts", labelAr: "دفتر العملاء", labelEn: "Contacts" },
+    { id: "pipeline", labelAr: "مسار الصفقات", labelEn: "Pipeline" },
+    { id: "contacts", labelAr: "جهات اتصال", labelEn: "Contacts" },
     { id: "opportunities", labelAr: "الفرص", labelEn: "Opportunities" },
     { id: "tours", labelAr: "الجولات العقارية", labelEn: "Property Tours" },
-    { id: "offers", labelAr: "العروض", labelEn: "Offers" },
+    { id: "offers", labelAr: "العروض العقارية", labelEn: "Offers" },
     { id: "tasks", labelAr: "المهام والأنشطة", labelEn: "Tasks" },
     { id: "insights", labelAr: "الرؤى والأتمتة", labelEn: "Insights" },
   ];
@@ -137,37 +97,22 @@ export default function LeadsTabs() {
           <Settings size={16} className="text-[var(--nc-text-secondary)]" />
           إجراءات العملاء السريعة
         </h4>
-        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">البحث الشامل ومحاكاة الويب هوك للعملاء</p>
+        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">البحث في العملاء المحتملين</p>
       </div>
 
       <div className="space-y-3 flex-grow pt-2">
         <div className="flex gap-2">
           <input 
-            placeholder={lang === 'AR' ? 'بحث شامل...' : 'Global search leads...'} 
+            placeholder={lang === 'AR' ? 'بحث في العملاء...' : 'Search leads...'} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]" 
           />
           <Button 
-            onClick={() => {
-              addTelemetryEvent("leads.search", { query: searchTerm });
-              toast.success(`تم تشغيل البحث الشامل عن: ${searchTerm}`);
-            }}
             className="px-4 py-2 text-xs font-bold"
           >
             {lang === 'AR' ? 'بحث' : 'Search'}
           </Button>
-        </div>
-
-        <div className="border-t border-white/5 my-3 pt-3 space-y-2">
-          <button 
-            type="button"
-            onClick={triggerLeadWebhookSimulation}
-            className="w-full py-2 text-right px-3 text-xs bg-[var(--nc-surface-solid)] border border-white/5 hover:border-[var(--nc-accent-border)] rounded-xl hover:text-white transition-all flex items-center justify-between"
-          >
-            <span>محاكاة webhook عميل جديد</span>
-            <ChevronRight size={14} className="opacity-50" />
-          </button>
         </div>
       </div>
     </Card>
