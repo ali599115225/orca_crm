@@ -15,6 +15,8 @@ export async function createWhatsAppTaskAction(formData: FormData) {
     const taskType = formData.get("taskType") as string;
     const contactPhone = formData.get("contactPhone") as string;
 
+    console.log("[WA_TASK] start", { tenantId: tenant.id, phone: contactPhone, title, taskType });
+
     if (!title || !taskType) {
       return { success: false, error: "جميع الحقول إلزامية" };
     }
@@ -33,7 +35,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
     // Find or create lead for this WhatsApp contact
     let leadId: string | null = null;
     if (contactPhone) {
-      const contact = await (prisma as any).whatsAppContact.findFirst({
+      const contact = await prisma.whatsAppContact.findFirst({
         where: { tenantId: tenant.id, phone: contactPhone },
         select: { leadId: true },
       });
@@ -41,7 +43,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
     }
     if (!leadId) {
       // Auto-create lead from WhatsApp
-      const newLead = await (prisma.lead as any).create({
+      const newLead = await prisma.lead.create({
         data: {
           tenantId: tenant.id,
           firstName: "WhatsApp",
@@ -55,7 +57,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       leadId = newLead.id;
       if (contactPhone) {
         try {
-          await (prisma as any).whatsAppContact.updateMany({
+          await prisma.whatsAppContact.updateMany({
             where: { tenantId: tenant.id, phone: contactPhone },
             data: { leadId },
           });
@@ -63,8 +65,10 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       }
     }
 
+    console.log("[WA_TASK] leadId:", leadId);
+
     // Get current user as assignee
-    let assignedTo = session?.userId;
+    let assignedTo = session?.userId as string | undefined;
     if (!assignedTo) {
       const anyUser = await prisma.user.findFirst({
         where: { tenantId: tenant.id },
@@ -72,11 +76,14 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       });
       assignedTo = anyUser?.id;
     }
+
+    console.log("[WA_TASK] assignedTo:", assignedTo);
+
     if (!assignedTo) {
       return { success: false, error: "لا يوجد مستخدم لتعيين المهمة" };
     }
 
-    await (prisma.task as any).create({
+    const task = await prisma.task.create({
       data: {
         tenantId: tenant.id,
         title,
@@ -89,11 +96,13 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       },
     });
 
+    console.log("[WA_TASK] success taskId:", task.id);
+
     revalidatePath("/operations/tasks");
     revalidatePath("/operations/whatsapp");
-    return { success: true };
+    return { success: true, taskId: task.id };
   } catch (error: any) {
-    console.error("[WhatsApp Task] Create error:", error.message);
+    console.error("[WA_TASK] error:", error.message);
     return { success: false, error: error.message };
   }
 }
@@ -105,7 +114,7 @@ export async function getWhatsAppDashboardStats() {
     const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
 
     const [conversationsCount, newLeadsCount, unreadMessagesCount] = await Promise.all([
-      (prisma as any).whatsAppContact.count({ where: { tenantId: tenant.id } }),
+      prisma.whatsAppContact.count({ where: { tenantId: tenant.id } }),
       prisma.lead.count({
         where: {
           tenantId: tenant.id,
@@ -113,7 +122,7 @@ export async function getWhatsAppDashboardStats() {
           createdAt: { gte: oneWeekAgo },
         },
       }),
-      (prisma as any).whatsAppMessage.count({
+      prisma.whatsAppMessage.count({
         where: { tenantId: tenant.id, direction: "inbound", readAt: null },
       }),
     ]);

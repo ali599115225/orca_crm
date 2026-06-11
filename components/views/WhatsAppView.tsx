@@ -1,6 +1,6 @@
 // components/views/WhatsAppView.tsx
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import PageHeader from '@/components/ui/PageHeader';
@@ -101,6 +101,7 @@ const TRANSLATIONS = {
 
 export default function WhatsAppView({ initialChats, tenant, cloudStatus, warning }: WhatsAppViewProps) {
   const { lang } = useApp();
+  const router = useRouter();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === "AR";
   const dir = isArabic ? "rtl" : "ltr";
@@ -117,6 +118,18 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const [taskType, setTaskType] = useState("Call");
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // مزامنة chats عند تغير initialChats (بعد Refresh/navigation)
+  useEffect(() => {
+    setChats(initialChats);
+    setActiveChatId(prev => {
+      // إذا كان activeChatId الحالي غير موجود في initialChats، اختر الأول
+      const exists = initialChats.find(c => c.id === prev);
+      if (!exists && initialChats.length > 0) return initialChats[0].id;
+      if (initialChats.length === 0) return null;
+      return prev;
+    });
+  }, [initialChats]);
 
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
@@ -137,22 +150,39 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   }
 
   async function handleCreateTask() {
-    if (!taskTitle.trim() || !taskChatId) return;
-    setIsCreatingTask(true);
+    if (!taskTitle.trim() || !taskChatId) {
+      toast.error("العنوان مطلوب");
+      return;
+    }
     const chat = chats.find(c => c.id === taskChatId);
-    const formData = new FormData();
-    formData.append("title", taskTitle.trim());
-    formData.append("taskType", taskType);
-    formData.append("contactPhone", chat?.contactPhone || "");
-    const result = await createWhatsAppTaskAction(formData);
-    setIsCreatingTask(false);
-    if (result.success) {
-      toast.success(t.taskCreated);
-      setTaskChatId(null);
-      setTaskTitle("");
-      setTaskType("Call");
-    } else {
-      toast.error(result.error || t.taskError);
+    if (!chat?.contactPhone) {
+      toast.error("رقم الهاتف غير متوفر");
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", taskTitle.trim());
+      formData.append("taskType", taskType);
+      formData.append("contactPhone", chat.contactPhone);
+
+      const result = await createWhatsAppTaskAction(formData);
+
+      if (result.success) {
+        setTaskChatId(null);
+        setTaskTitle("");
+        setTaskType("Call");
+        toast.success(`${t.taskCreated} — ${result.taskId?.slice(0, 8) || ""}`);
+        router.refresh();
+      } else {
+        toast.error(result.error || t.taskError);
+      }
+    } catch (err) {
+      console.error("[WA_TASK] Client error:", err);
+      toast.error("حدث خطأ غير متوقع");
+    } finally {
+      setIsCreatingTask(false);
     }
   }
 
@@ -165,8 +195,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     setIsDeleting(false);
     setDeleteConfirm(null);
     if (result.success) {
-      setChats(prev => prev.filter(c => c.id !== contactId));
-      if (activeChatId === contactId) setActiveChatId(null);
+      setChats(prev => {
+        const updated = prev.filter(c => c.id !== contactId);
+        // إذا كانت المحادثة المحذوفة هي النشطة، اختر أول محادثة متبقية
+        if (activeChatId === contactId && updated.length > 0) {
+          setActiveChatId(updated[0].id);
+        } else if (activeChatId === contactId) {
+          setActiveChatId(null);
+        }
+        return updated;
+      });
       toast.success("تم حذف المحادثة من ORCA");
     } else {
       toast.error(result.error || "تعذر حذف المحادثة");
@@ -299,11 +337,11 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
                 هل تريد حذف هذه المحادثة؟ سيتم حذف الرسائل من ORCA فقط، ولن تُحذف من واتساب.
               </p>
               <div className="flex gap-3">
-                <button onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting}
+                <button type="button" onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting}
                   className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl disabled:opacity-50">
                   {isDeleting ? "جاري الحذف..." : "حذف"}
                 </button>
-                <button onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
+                <button type="button" onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
                   className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
                   إلغاء
                 </button>
@@ -335,11 +373,11 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
                 </div>
               </div>
               <div className="flex gap-3">
-                <button onClick={handleCreateTask} disabled={isCreatingTask || !taskTitle.trim()}
+                <button type="button" onClick={handleCreateTask} disabled={isCreatingTask || !taskTitle.trim()}
                   className="flex-1 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-sm font-bold rounded-xl disabled:opacity-50">
                   {isCreatingTask ? "..." : t.createTaskBtn}
                 </button>
-                <button onClick={() => setTaskChatId(null)} disabled={isCreatingTask}
+                <button type="button" onClick={() => setTaskChatId(null)} disabled={isCreatingTask}
                   className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
                   {t.cancelBtn}
                 </button>
