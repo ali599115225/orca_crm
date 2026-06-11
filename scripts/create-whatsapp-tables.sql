@@ -1,5 +1,5 @@
--- Run this manually against the production Neon database:
--- npx prisma db execute --file scripts/create-whatsapp-tables.sql
+-- WhatsApp tables for ORCA CRM
+-- Run: npx prisma db execute --file scripts/create-whatsapp-tables.sql
 
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -8,12 +8,13 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
     name TEXT,
     provider TEXT DEFAULT 'meta',
     meta_contact_id TEXT,
-    lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
     last_message_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(tenant_id, phone)
 );
+
+ALTER TABLE whatsapp_contacts ADD COLUMN IF NOT EXISTS lead_id UUID REFERENCES leads(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_tenant_last 
     ON whatsapp_contacts(tenant_id, last_message_at);
@@ -29,12 +30,13 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
     meta_message_id TEXT,
     raw_payload JSONB,
     status TEXT DEFAULT 'received',
-    delivered_at TIMESTAMPTZ,
-    read_at TIMESTAMPTZ,
-    failed_at TIMESTAMPTZ,
-    ai_summary TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS failed_at TIMESTAMPTZ;
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS ai_summary TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_tenant_phone 
     ON whatsapp_messages(tenant_id, phone, created_at);
