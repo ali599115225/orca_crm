@@ -33,7 +33,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
     let assignedUserId: string | null = null;
 
     if (contactPhone) {
-      const contact = await prisma.whatsAppContact.findFirst({
+      const contact = await (prisma as any).whatsAppContact.findFirst({
         where: { tenantId: tenant.id, phone: contactPhone },
         select: { leadId: true },
       });
@@ -78,7 +78,7 @@ export async function getWhatsAppDashboardStats() {
     const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
 
     const [conversationsCount, newLeadsCount, unreadMessagesCount] = await Promise.all([
-      prisma.whatsAppContact.count({ where: { tenantId: tenant.id } }),
+      (prisma as any).whatsAppContact.count({ where: { tenantId: tenant.id } }),
       prisma.lead.count({
         where: {
           tenantId: tenant.id,
