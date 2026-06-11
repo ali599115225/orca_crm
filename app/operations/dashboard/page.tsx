@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     dbRecentTasks,
     dbProjects,
     whatsAppStatsResult,
-  ] = await Promise.all([
+  ] = await Promise.allSettled([
     prisma.lead.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
     prisma.task.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
     prisma.contract.aggregate({
@@ -48,21 +48,34 @@ export default async function DashboardPage() {
     getWhatsAppDashboardStats(),
   ]);
 
-  const leadCountMap = new Map(leadGroup.map(l => [l.status, l._count.id]));
-  const totalLeads = leadGroup.reduce((s, l) => s + l._count.id, 0);
+  // Extract values from Promise.allSettled results
+  const safeValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
+    result.status === 'fulfilled' ? result.value : fallback;
+
+  const leadGroupValue = safeValue(leadGroup, []);
+  const taskGroupValue = safeValue(taskGroup, []);
+  const contractStatsValue = safeValue(contractStats, { _sum: { totalVolumeSar: null }, _count: { id: 0 } });
+  const sourceGroupValue = safeValue(sourceGroup, []);
+  const dbRecentLeadsValue = safeValue(dbRecentLeads, []);
+  const dbRecentTasksValue = safeValue(dbRecentTasks, []);
+  const dbProjectsValue = safeValue(dbProjects, []);
+  const whatsAppStatsValue = safeValue(whatsAppStatsResult, { success: false, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0, error: null });
+
+  const leadCountMap = new Map(leadGroupValue.map(l => [l.status, l._count.id]));
+  const totalLeads = leadGroupValue.reduce((s, l) => s + l._count.id, 0);
   const activeBookings = leadCountMap.get('RESERVED') || 0;
   const closedSalesLeads = (leadCountMap.get('CONTRACT_SIGNED') || 0) + (leadCountMap.get('WON') || 0);
   const sentOffersCount = leadCountMap.get('OFFER_MADE') || 0;
-  const activeProjectsCount = dbProjects.filter(p => p.status !== 'SOLD_OUT').length;
-  const pendingTasksCount = taskGroup.find(t => t.status === 'PENDING')?._count.id || 0;
-  const overdueTasksCount = taskGroup.find(t => t.status === 'OVERDUE')?._count.id || 0;
-  const monthlySales = Number(contractStats._sum.totalVolumeSar || 0);
-  const closedContractsCount = contractStats._count.id;
+  const activeProjectsCount = dbProjectsValue.filter(p => p.status !== 'SOLD_OUT').length;
+  const pendingTasksCount = taskGroupValue.find(t => t.status === 'PENDING')?._count.id || 0;
+  const overdueTasksCount = taskGroupValue.find(t => t.status === 'OVERDUE')?._count.id || 0;
+  const monthlySales = Number(contractStatsValue._sum.totalVolumeSar || 0);
+  const closedContractsCount = contractStatsValue._count.id;
 
-  const recentLeads = dbRecentLeads.map(l => ({ id: l.id, firstName: l.firstName, lastName: l.lastName, phone: l.phone, status: l.status, city: l.city, createdAt: l.createdAt.toISOString(), project: l.project ? { name: l.project.name } : null }));
-  const recentTasks = dbRecentTasks.map(t => ({ id: t.id, title: t.title, dueDate: t.dueDate.toISOString(), priority: t.priority, status: t.status, lead: t.lead ? { firstName: t.lead.firstName, lastName: t.lead.lastName } : null }));
-  const projects = dbProjects.map(p => ({ id: p.id, name: p.name, city: p.city, status: p.status, unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, unitsBooked: p.unitsBooked, minPrice: p.minPrice ? Number(p.minPrice) : null }));
-  const leadSources = sourceGroup.map(s => ({ source: s.source || 'أخرى', count: s._count.id })).sort((a, b) => b.count - a.count);
+  const recentLeads = dbRecentLeadsValue.map(l => ({ id: l.id, firstName: l.firstName, lastName: l.lastName, phone: l.phone, status: l.status, city: l.city, createdAt: l.createdAt.toISOString(), project: l.project ? { name: l.project.name } : null }));
+  const recentTasks = dbRecentTasksValue.map(t => ({ id: t.id, title: t.title, dueDate: t.dueDate.toISOString(), priority: t.priority, status: t.status, lead: t.lead ? { firstName: t.lead.firstName, lastName: t.lead.lastName } : null }));
+  const projects = dbProjectsValue.map(p => ({ id: p.id, name: p.name, city: p.city, status: p.status, unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, unitsBooked: p.unitsBooked, minPrice: p.minPrice ? Number(p.minPrice) : null }));
+  const leadSources = sourceGroupValue.map(s => ({ source: s.source || 'أخرى', count: s._count.id })).sort((a, b) => b.count - a.count);
 
   const systemAlerts: Array<{ id: string; type: 'warning' | 'info' | 'critical'; messageAr: string; messageEn: string; date: string }> = [];
   if (overdueTasksCount > 0) systemAlerts.push({ id: 'overdue_tasks', type: 'warning', messageAr: `يوجد ${overdueTasksCount} مهام متأخرة.`, messageEn: `${overdueTasksCount} overdue tasks.`, date: new Date().toISOString() });
@@ -93,10 +106,10 @@ export default async function DashboardPage() {
       aiPredictions={{ bestContactTimes: [], expectedToClose: [], projectsNeedingCampaign: [], agentsNeedingSupport: [] }}
       pipelineStages={pipelineStages}
       todayTasks={todayTasks}
-      whatsAppStats={whatsAppStatsResult.success ? {
-        conversationsCount: whatsAppStatsResult.conversationsCount,
-        newLeadsCount: whatsAppStatsResult.newLeadsCount,
-        unreadMessagesCount: whatsAppStatsResult.unreadMessagesCount,
+      whatsAppStats={whatsAppStatsValue.success ? {
+        conversationsCount: whatsAppStatsValue.conversationsCount,
+        newLeadsCount: whatsAppStatsValue.newLeadsCount,
+        unreadMessagesCount: whatsAppStatsValue.unreadMessagesCount,
       } : undefined}
     />
   );
