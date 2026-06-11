@@ -1,11 +1,13 @@
 // components/views/WhatsAppView.tsx
 "use client";
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 import PageHeader from '@/components/ui/PageHeader';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction, deleteWhatsAppConversationAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
+import toast from 'react-hot-toast';
 
 interface Message {
   sender: string;
@@ -118,8 +120,11 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     setIsDeleting(false);
     setDeleteConfirm(null);
     if (result.success) {
-      if (activeChatId === contactId) setActiveChatId(null);
       setChats(prev => prev.filter(c => c.id !== contactId));
+      if (activeChatId === contactId) setActiveChatId(null);
+      toast.success("تم حذف المحادثة من ORCA");
+    } else {
+      toast.error(result.error || "تعذر حذف المحادثة");
     }
   }
 
