@@ -73,6 +73,8 @@ function createExtendedPrismaClient() {
             "JournalEntry",
             "PaymentTransaction",
             "CommissionPayment",
+            "WhatsAppContact",
+            "WhatsAppMessage",
           ];
 
           const hasTenantIsolation = tenantId && modelsWithTenantId.includes(model);

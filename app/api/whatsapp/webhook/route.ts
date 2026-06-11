@@ -232,11 +232,11 @@ async function handleMetaInbound(body: any) {
               where: { id: saherResult.leadId },
               data: { aiSummary: saherOutputStr },
             }).catch(() => {});
-            await (prisma as any).whatsAppMessage.updateMany({
+            await prisma.whatsAppMessage.updateMany({
               where: { tenantId: tenant.id, phone: senderPhone, metaMessageId },
               data: { aiSummary: saherOutputStr },
             }).catch(() => {});
-            await (prisma as any).whatsAppContact.updateMany({
+            await prisma.whatsAppContact.updateMany({
               where: { tenantId: tenant.id, phone: senderPhone },
               data: { leadId: saherResult.leadId },
             });
@@ -408,11 +408,11 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
         where: { id: finalLeadId },
         data: { aiSummary: saherOutputStr },
       }).catch(() => {});
-      await (prisma as any).whatsAppMessage.updateMany({
+      await prisma.whatsAppMessage.updateMany({
         where: { tenantId: tenant.id, phone: senderPhone, metaMessageId: body.idMessage },
         data: { aiSummary: saherOutputStr },
       }).catch(() => {});
-      await (prisma as any).whatsAppContact.updateMany({
+      await prisma.whatsAppContact.updateMany({
         where: { tenantId: tenant.id, phone: senderPhone },
         data: { leadId: finalLeadId },
       });

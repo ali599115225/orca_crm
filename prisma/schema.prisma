@@ -129,8 +129,8 @@ model Lead {
   stage           String?
   score           Int?
   priority        String?
-  aiSummary       String?        @map("ai_summary") @db.Text
-  assignedAgentId String?        @map("assigned_agent_id") @db.Uuid
+  aiSummary       String?          @map("ai_summary") @db.Text
+  assignedAgentId String?          @map("assigned_agent_id") @db.Uuid
   unitId          String?          @map("unit_id") @db.Uuid
   createdBy       String?          @map("created_by") @db.Uuid
   updatedBy       String?          @map("updated_by") @db.Uuid
@@ -849,14 +849,14 @@ model TelemetryEvent {
 }
 
 model WhatsAppAttachment {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  messageId   String          @map("message_id") @db.Uuid
-  message     WhatsAppMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  type        String
-  mimeType    String?         @map("mime_type")
-  url         String?
-  size        Int?
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId String          @map("message_id") @db.Uuid
+  message   WhatsAppMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  type      String
+  mimeType  String?         @map("mime_type")
+  url       String?
+  size      Int?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("whatsapp_attachments")
 }
@@ -935,22 +935,22 @@ model WhatsAppContact {
 }
 
 model WhatsAppMessage {
-  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String              @map("tenant_id") @db.Uuid
-  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String               @map("tenant_id") @db.Uuid
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone         String
-  direction     String              @default("inbound")
-  provider      String              @default("meta")
-  messageText   String?             @map("message_text") @db.Text
-  messageType   String?             @default("text") @map("message_type")
-  metaMessageId String?             @map("meta_message_id")
-  rawPayload    Json?               @map("raw_payload")
-  status        String?             @default("received")
-  aiSummary     String?             @map("ai_summary") @db.Text
-  deliveredAt   DateTime?           @map("delivered_at") @db.Timestamptz
-  readAt        DateTime?           @map("read_at") @db.Timestamptz
-  failedAt      DateTime?           @map("failed_at") @db.Timestamptz
-  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  direction     String               @default("inbound")
+  provider      String               @default("meta")
+  messageText   String?              @map("message_text") @db.Text
+  messageType   String?              @default("text") @map("message_type")
+  metaMessageId String?              @map("meta_message_id")
+  rawPayload    Json?                @map("raw_payload")
+  status        String?              @default("received")
+  aiSummary     String?              @map("ai_summary") @db.Text
+  deliveredAt   DateTime?            @map("delivered_at") @db.Timestamptz
+  readAt        DateTime?            @map("read_at") @db.Timestamptz
+  failedAt      DateTime?            @map("failed_at") @db.Timestamptz
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
   attachments   WhatsAppAttachment[]
 
   @@index([tenantId, phone, createdAt])

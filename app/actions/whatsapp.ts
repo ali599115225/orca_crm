@@ -74,7 +74,7 @@ export async function getWhatsAppChatsAction() {
       };
     }
 
-    const contacts = await (prisma as any).whatsAppContact.findMany({
+    const contacts = await prisma.whatsAppContact.findMany({
       where: { tenantId: tenant.id },
       select: { id: true, name: true, phone: true, leadId: true, lastMessageAt: true },
       orderBy: { lastMessageAt: "desc" },
@@ -82,18 +82,18 @@ export async function getWhatsAppChatsAction() {
     });
 
     const chats = await Promise.all(
-      contacts.map(async (c: any) => {
-        const messages = await (prisma as any).whatsAppMessage.findMany({
+      contacts.map(async (c) => {
+        const messages = await prisma.whatsAppMessage.findMany({
           where: { tenantId: tenant.id, phone: c.phone },
           orderBy: { createdAt: "asc" },
           take: 50,
         });
-        const lead = await (prisma as any).lead.findFirst({
+        const lead = await prisma.lead.findFirst({
           where: { tenantId: tenant.id, phone: c.phone },
           select: { id: true, status: true, source: true, priority: true },
         });
         const lastMsg = messages[messages.length - 1];
-        const safeText = (t: any) => typeof t === "string" ? t : String(t ?? "");
+        const safeText = (t: string | null | undefined) => typeof t === "string" ? t : String(t ?? "");
         return {
           id: c.id,
           contactName: c.name || c.phone,
@@ -105,7 +105,7 @@ export async function getWhatsAppChatsAction() {
           leadStatus: lead?.status || null,
           leadSource: lead?.source || null,
           leadPriority: lead?.priority || null,
-          messages: messages.map((m: any) => ({
+          messages: messages.map((m) => ({
             sender: m.direction === "inbound" ? "client" : "agent",
             text: safeText(m.messageText),
             time: m.createdAt?.toISOString() || "",
@@ -137,6 +137,40 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
       return { success: false, error: "WhatsApp Cloud API غير مفعل" };
     }
 
+    // Step 1: Save message to DB first with status "pending"
+    let savedMessageId: string | null = null;
+    try {
+      await prisma.whatsAppContact.upsert({
+        where: { tenantId_phone: { tenantId: tenant.id, phone: chatId } },
+        create: { tenantId: tenant.id, phone: chatId, provider: "meta", lastMessageAt: new Date() },
+        update: { lastMessageAt: new Date() },
+      });
+      const savedMessage = await prisma.whatsAppMessage.create({
+        data: {
+          tenantId: tenant.id,
+          phone: chatId,
+          direction: "outbound",
+          provider: "meta",
+          messageText,
+          messageType: "text",
+          metaMessageId: null,
+          status: "pending",
+        },
+      });
+      savedMessageId = savedMessage.id;
+
+      const lead = await prisma.lead.findFirst({
+        where: { tenantId: tenant.id, phone: chatId },
+      });
+      if (lead) {
+        await logWhatsAppActivity(tenant.id, lead.id, chatId, "outbound", messageText);
+      }
+    } catch (dbErr) {
+      console.error("[WhatsApp] Failed to save message to DB:", dbErr);
+      return { success: false, error: "فشل حفظ الرسالة في قاعدة البيانات" };
+    }
+
+    // Step 2: Call Meta API
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
       {
@@ -158,48 +192,50 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
     const result = await response.json();
     const metaMessageId = result.messages?.[0]?.id || null;
 
-      if (response.ok && metaMessageId) {
+    // Step 3: Update message status based on Meta API result
+    if (response.ok && metaMessageId && savedMessageId) {
       try {
-        await (prisma as any).whatsAppContact.upsert({
-          where: { tenantId_phone: { tenantId: tenant.id, phone: chatId } },
-          create: { tenantId: tenant.id, phone: chatId, provider: "meta", lastMessageAt: new Date() },
-          update: { lastMessageAt: new Date() },
-        });
-        await (prisma as any).whatsAppMessage.create({
+        await prisma.whatsAppMessage.update({
+          where: { id: savedMessageId },
           data: {
-            tenantId: tenant.id,
-            phone: chatId,
-            direction: "outbound",
-            provider: "meta",
-            messageText,
-            messageType: "text",
             metaMessageId,
-            rawPayload: result,
             status: "sent",
+            rawPayload: result,
           },
         });
-        const lead = await (prisma as any).lead.findFirst({
-          where: { tenantId: tenant.id, phone: chatId },
-        });
-        if (lead) {
-          await logWhatsAppActivity(tenant.id, lead.id, chatId, "outbound", messageText, metaMessageId);
-        }
         await prisma.auditLog.create({
           data: {
             tenantId: tenant.id,
             action: "WHATSAPP_MESSAGE_SENT",
             tableName: "WhatsAppMessage",
-            recordId: metaMessageId,
+            recordId: savedMessageId,
             details: JSON.stringify({ to: chatId, length: messageText.length, provider: "meta" }),
           },
         });
-      } catch {}
+      } catch (updateErr) {
+        console.error("[WhatsApp] Failed to update message status:", updateErr);
+      }
+    } else if (savedMessageId) {
+      // Meta API failed - update status to "failed"
+      try {
+        await prisma.whatsAppMessage.update({
+          where: { id: savedMessageId },
+          data: {
+            status: "failed",
+            failedAt: new Date(),
+            rawPayload: result,
+          },
+        });
+      } catch (updateErr) {
+        console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
+      }
     }
 
     return {
       success: response.ok,
       provider: "meta",
       metaMessageId,
+      messageId: savedMessageId,
       metaResponse: result,
     };
   } catch (error: any) {
@@ -211,15 +247,15 @@ export async function deleteWhatsAppConversationAction(contactId: string) {
   try {
     const tenant = await getActiveTenant();
 
-    const contact = await (prisma as any).whatsAppContact.findFirst({
+    const contact = await prisma.whatsAppContact.findFirst({
       where: { id: contactId, tenantId: tenant.id },
     });
     if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
-    await (prisma as any).whatsAppMessage.deleteMany({
+    await prisma.whatsAppMessage.deleteMany({
       where: { tenantId: tenant.id, phone: contact.phone },
     });
-    await (prisma as any).whatsAppContact.delete({
+    await prisma.whatsAppContact.delete({
       where: { id: contactId, tenantId: tenant.id },
     });
 
@@ -234,7 +270,7 @@ export async function deleteWhatsAppConversationAction(contactId: string) {
     });
 
     revalidatePath("/operations/whatsapp");
-    return { success: true };
+    return { success: true, deletedId: contactId };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
