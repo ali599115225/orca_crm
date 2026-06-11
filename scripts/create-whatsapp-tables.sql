@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
     delivered_at TIMESTAMPTZ,
     read_at TIMESTAMPTZ,
     failed_at TIMESTAMPTZ,
+    ai_summary TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
