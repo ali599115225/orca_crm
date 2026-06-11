@@ -35,8 +35,8 @@ interface WhatsAppViewProps {
 
 const TRANSLATIONS = {
   AR: {
-    title: "WhatsApp Cloud API",
-    subtitle: "Meta Cloud API — {companyName}",
+    title: "WhatsApp Cloud API v3",
+    subtitle: "Meta Cloud API v25.0 — {companyName}",
     connected: "متصل",
     disconnected: "غير متصل",
     cloudApiLabel: "Cloud API",
