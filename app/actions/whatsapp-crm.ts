@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 // Phase F: Quick task creation from WhatsApp conversation
 export async function createWhatsAppTaskAction(formData: FormData) {
@@ -42,19 +43,29 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       leadId = contact?.leadId || null;
     }
     if (!leadId) {
-      // Auto-create lead from WhatsApp
-      const newLead = await prisma.lead.create({
-        data: {
-          tenantId: tenant.id,
-          firstName: "WhatsApp",
-          lastName: contactPhone || "Lead",
-          phone: contactPhone || "",
-          city: "غير محدد",
-          source: "WHATSAPP",
-          status: "NEW",
-        },
-      });
-      leadId = newLead.id;
+      try {
+        const newLead = await prisma.$transaction(async (tx) => {
+          await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+          return tx.lead.create({
+            data: {
+              tenantId: tenant.id,
+              firstName: "WhatsApp",
+              lastName: contactPhone || "Lead",
+              phone: contactPhone || "",
+              city: "غير محدد",
+              source: "WHATSAPP",
+              status: "NEW",
+            },
+          });
+        });
+        leadId = newLead.id;
+      } catch (e) {
+        if (e instanceof PlanLimitError) {
+          await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
+          return { success: false, error: e.message, code: e.code };
+        }
+        throw e;
+      }
       if (contactPhone) {
         try {
           await prisma.whatsAppContact.updateMany({

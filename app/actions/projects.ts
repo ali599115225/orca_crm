@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 /**
  * جلب تفاصيل المشاريع مع حساب إحصائيات الحجوزات ونسب الإنجاز ديناميكياً من الوحدات
@@ -60,24 +61,31 @@ export async function createProjectAction(formData: FormData) {
       throw new Error("اسم المشروع، المدينة، والحالة حقول إلزامية.");
     }
 
-    await prisma.project.create({
-      data: {
-        tenantId: tenant.id,
-        name,
-        city,
-        status,
-        unitsTotal,
-        unitsSold: 0,
-        unitsBooked: 0,
-        minPrice,
-        maxPrice,
-      },
+    await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId: tenant.id, feature: "projects", tx });
+      await tx.project.create({
+        data: {
+          tenantId: tenant.id,
+          name,
+          city,
+          status,
+          unitsTotal,
+          unitsSold: 0,
+          unitsBooked: 0,
+          minPrice,
+          maxPrice,
+        },
+      });
     });
 
     revalidatePath("/operations/projects");
     return { success: true };
 
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     return { success: false, error: error.message };
   }
 }
@@ -101,16 +109,19 @@ export async function createProjectActionDirect(data: { name: string; city: stri
 
     const dbStatus = statusMap[data.status] || 'UNDER_CONSTRUCTION';
 
-    const newProject = await prisma.project.create({
-      data: {
-        tenantId: tenant.id,
-        name: data.name,
-        city: data.city,
-        status: dbStatus,
-        unitsTotal: Number(data.unitsTotal) || 0,
-        unitsSold: 0,
-        unitsBooked: 0,
-      },
+    const newProject = await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId: tenant.id, feature: "projects", tx });
+      return tx.project.create({
+        data: {
+          tenantId: tenant.id,
+          name: data.name,
+          city: data.city,
+          status: dbStatus,
+          unitsTotal: Number(data.unitsTotal) || 0,
+          unitsSold: 0,
+          unitsBooked: 0,
+        },
+      });
     });
 
     revalidatePath("/operations/projects");
@@ -126,6 +137,10 @@ export async function createProjectActionDirect(data: { name: string; city: stri
     }};
 
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     console.error("فشل إنشاء المشروع:", error);
     return { success: false, error: error.message };
   }

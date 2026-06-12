@@ -83,6 +83,12 @@ CREATE POLICY tickets_tenant_isolation ON tickets
 
 -- ─────────────────────────────────────────────────────────────────────
 -- القسم 3: Trigger - منع تجاوز سعة الوكلاء حسب الباقة
+-- ⚠️ DEPRECATED (2026-06-13): Replaced by unified trigger in
+--    database/patches/20260612_agent_slots_plan_alignment.sql
+--    and database/agent_systems.sql.
+--    This section uses a legacy plan taxonomy (basic/starter/pro/business/enterprise)
+--    that does not match the canonical plans (basic/silver/gold) in lib/plan-guard.ts.
+--    DO NOT re-apply this trigger. It has been dropped in production.
 -- ─────────────────────────────────────────────────────────────────────
 
 -- الدالة الأساسية للتحقق من سعة الوكلاء

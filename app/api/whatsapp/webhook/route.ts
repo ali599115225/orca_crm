@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
 import { logWhatsAppActivity, classifyWhatsAppLead } from "@/app/actions/whatsapp-crm";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 // ─── إعدادات Green API ───────────────────────────────────────────────────────
 const GREEN_API_ID_INSTANCE =
@@ -158,16 +159,27 @@ async function handleMetaInbound(body: any) {
         });
 
         if (!lead) {
-          lead = await prisma.lead.create({
-            data: {
-              tenantId,
-              firstName: `WhatsApp Lead ${senderPhone}`,
-              phone: senderPhone,
-              city: "Unknown",
-              source: "WHATSAPP",
-              status: "NEW",
-            },
-          });
+          try {
+            lead = await prisma.$transaction(async (tx) => {
+              await assertPlanLimit({ tenantId, feature: "leads", tx });
+              return tx.lead.create({
+                data: {
+                  tenantId,
+                  firstName: `WhatsApp Lead ${senderPhone}`,
+                  phone: senderPhone,
+                  city: "Unknown",
+                  source: "WHATSAPP",
+                  status: "NEW",
+                },
+              });
+            });
+          } catch (e) {
+            if (e instanceof PlanLimitError) {
+              await logPlanBlockedAttempt({ tenantId, error: e }).catch(() => {});
+              return NextResponse.json({ status: "ok", skipped: "plan_limit" });
+            }
+            throw e;
+          }
         } else {
           await prisma.lead.update({
             where: { id: lead.id },
@@ -328,23 +340,34 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
       });
 
       if (!lead) {
-        lead = await prisma.lead.create({
-          data: {
-            tenantId: tenant.id,
-            firstName: `WhatsApp Lead ${senderPhone}`,
-            phone: senderPhone,
-            city: "Unknown",
-            source: "WHATSAPP",
-              status: "NEW",
-            },
+        try {
+          lead = await prisma.$transaction(async (tx) => {
+            await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+            return tx.lead.create({
+              data: {
+                tenantId: tenant.id,
+                firstName: `WhatsApp Lead ${senderPhone}`,
+                phone: senderPhone,
+                city: "Unknown",
+                source: "WHATSAPP",
+                status: "NEW",
+              },
+            });
           });
-        } else {
-          await prisma.lead.update({
-            where: { id: lead.id },
-            data: { updatedAt: new Date() },
-          });
+        } catch (e) {
+          if (e instanceof PlanLimitError) {
+            await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
+            return NextResponse.json({ status: "ok", skipped: "plan_limit" });
+          }
+          throw e;
         }
-        leadId = lead.id;
+      } else {
+        await prisma.lead.update({
+          where: { id: lead.id },
+          data: { updatedAt: new Date() },
+        });
+      }
+      leadId = lead.id;
 
       let contact = await prisma.whatsAppContact.findUnique({
         where: { tenantId_phone: { tenantId: tenant.id, phone: senderPhone } },

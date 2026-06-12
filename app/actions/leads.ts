@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
 
 export async function getLeadsAction(page = 1, limit = 50) {
@@ -138,30 +139,7 @@ export async function createLeadAction(formData: FormData) {
     }
 
     // فحص حماية النظام وسعة باقة العملاء (System Protection Limit)
-    const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
-    let leadsLimit = 99999;
-    if (plan === "basic") {
-      leadsLimit = 100;
-    } else if (plan === "silver" || plan === "pro" || plan === "professional") {
-      leadsLimit = 1000;
-    }
-
-    const currentLeadsCount = await prisma.lead.count({
-      where: { tenantId: tenant.id }
-    });
-
-    if (currentLeadsCount >= leadsLimit) {
-      await prisma.auditLog.create({
-        data: {
-          tenantId: tenant.id,
-          action: "LIMIT_EXCEEDED_EMERGENCY",
-          tableName: "leads",
-          recordId: "SYSTEM",
-          details: `محاولة إضافة عميل جديد مرفوضة بسبب الوصول لـ 100% من سعة الباقة (${currentLeadsCount}/${leadsLimit}). حالة الطوارئ مفعلة.`
-        }
-      });
-      throw new Error(`حالة الطوارئ: لقد وصلت إلى الحد الأقصى لسعة العملاء المتاحة في باقتك (${leadsLimit} عميل). لا يمكن استقبال عملاء جدد.`);
-    }
+    let blockedError: PlanLimitError | null = null;
 
     const isDuplicate = await prisma.lead.findFirst({
       where: {
@@ -179,28 +157,22 @@ export async function createLeadAction(formData: FormData) {
       where: { tenantId: tenant.id, role: "SALES_EMPLOYEE" },
     });
 
-    // استخدام صيغة الـ connect المعتمدة في Prisma 7 للربط العلائقي الآمن بين الجداول [1]
-    const lead = await prisma.lead.create({
-      data: {
-        tenant: {
-          connect: { id: tenant.id } // ربط علائقي آمن بالشركة العقارية [1]
+    const lead = await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+      return tx.lead.create({
+        data: {
+          tenant: { connect: { id: tenant.id } },
+          firstName,
+          lastName: lastName || null,
+          phone,
+          email: email || null,
+          city: city || "الرياض",
+          source: source || "إعلانات سناب شات",
+          status: "NEW",
+          project: projectId ? { connect: { id: projectId } } : undefined,
+          assignedUser: randomSalesUser ? { connect: { id: randomSalesUser.id } } : undefined,
         },
-        firstName,
-        lastName: lastName || null,
-        phone,
-        email: email || null,
-        city: city || "الرياض",
-        source: source || "إعلانات سناب شات",
-        status: "NEW",
-        // ربط علائقي آمن بالمشروع في حال اختياره [1]
-        project: projectId ? {
-          connect: { id: projectId }
-        } : undefined,
-        // ربط علائقي آمن بمستشار المبيعات المكلف [1]
-        assignedUser: randomSalesUser ? {
-          connect: { id: randomSalesUser.id }
-        } : undefined,
-      },
+      });
     });
 
     const welcomeSMS = `مرحباً بك أ. ${firstName} في شركة صرح الوطن العقارية. سعدنا باهتمامك بمشاريعنا السكنية المميزة، سيتواصل معك مستشارك العقاري خلال دقائق لخدمتك.`;
@@ -217,6 +189,10 @@ export async function createLeadAction(formData: FormData) {
     return { success: true };
 
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     return { success: false, error: error.message };
   }
 }

@@ -6,25 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-
-// حد الموظفين المسموح لكل باقة
-const PLAN_LIMITS: Record<string, number> = {
-  basic: 2,
-  silver: 10,
-  gold: 99999, // لا محدود
-  platinum: 99999,
-  professional: 99999,
-  diamond: 99999,
-};
-
-const PLAN_NAMES: Record<string, string> = {
-  basic: "الباقة الأساسية (حد موظفين: 2)",
-  silver: "الباقة الفضية (حد موظفين: 10)",
-  gold: "الباقة الذهبية (موظفين لا محدود)",
-  platinum: "الباقة البلاتينية (موظفين لا محدود)",
-  professional: "الباقة الاحترافية (موظفين لا محدود)",
-  diamond: "الباقة الماسية (موظفين لا محدود)",
-};
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt, getPlanLimits, normalizePlan } from "@/lib/plan-guard";
 
 /**
  * دالة مساعدة للتحقق من هوية المشرف العقاري للشركة
@@ -95,21 +77,7 @@ export async function createTenantUserAction(formData: FormData) {
       throw new Error("جميع الحقول المطلوبة لإنشاء الموظف غير مكتملة.");
     }
 
-    // 1. التحقق من حد الموظفين في الباقة
-    const currentUsersCount = await prisma.user.count({
-      where: { tenantId: tenant.id },
-    });
-
-    const plan = (tenant.subscriptionPlan || "basic").toLowerCase();
-    const limit = PLAN_LIMITS[plan] || 2;
-
-    if (currentUsersCount >= limit) {
-      throw new Error(
-        `عذراً، لقد تجاوزت الحد الأقصى للموظفين المسموح به في باقتك الحالية (${PLAN_NAMES[plan] || limit}). يرجى ترقية الباقة من صفحة الترقيات لإضافة المزيد من الموظفين.`
-      );
-    }
-
-    // 2. التحقق من فرادة البريد الإلكتروني في النظام بأكمله
+    // 1. التحقق من فرادة البريد الإلكتروني في النظام بأكمله
     const emailExists = await prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
@@ -118,25 +86,32 @@ export async function createTenantUserAction(formData: FormData) {
       throw new Error("البريد الإلكتروني المدخل مسجل بالفعل لموظف آخر في النظام.");
     }
 
-    // 3. تشفير كلمة المرور
+    // 2. تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. إنشاء الموظف
-    await prisma.user.create({
-      data: {
-        tenantId: tenant.id,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        role: role,
-        passwordHash: hashedPassword,
-        isActive: true,
-      },
+    // 3. إنشاء الموظف داخل transaction مع فحص الحد للتأمين ضد race condition
+    await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId: tenant.id, feature: "staff", tx });
+      await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          role: role,
+          passwordHash: hashedPassword,
+          isActive: true,
+        },
+      });
     });
 
     revalidatePath("/operations/settings");
     revalidatePath("/operations/sales");
     return { success: true };
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     return { success: false, error: error.message };
   }
 }

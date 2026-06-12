@@ -1,6 +1,7 @@
 // app/api/v1/leads/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,20 +125,36 @@ export async function POST(request: NextRequest) {
     }
 
     // حفظ العميل الجديد في قاعدة البيانات
-    const newLead = await prisma.lead.create({
-      data: {
-        tenantId: tenant.id,
-        firstName,
-        lastName,
-        phone: cleanPhone,
-        email: email || null,
-        city: city,
-        source: campaignSource,
-        status: isHotLead ? "NEW" : "CONTACTED",
-        leadScore: intentScore,
-        assignedTo: assignedRepId,
+    let newLead: any;
+    try {
+      newLead = await prisma.$transaction(async (tx) => {
+        await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+        return tx.lead.create({
+          data: {
+            tenantId: tenant.id,
+            firstName,
+            lastName,
+            phone: cleanPhone,
+            email: email || null,
+            city: city,
+            source: campaignSource,
+            status: isHotLead ? "NEW" : "CONTACTED",
+            leadScore: intentScore,
+            assignedTo: assignedRepId,
+          }
+        });
+      });
+    } catch (e) {
+      if (e instanceof PlanLimitError) {
+        await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
+        return NextResponse.json({
+          success: false,
+          skipped: "plan_limit",
+          error: e.message,
+        }, { status: 403 });
       }
-    });
+      throw e;
+    }
 
     // 🛡️ تدوين سجل تتبع الوكيل ساهر غير القابل للتعديل ليتدفق لحظياً إلى لوحة التحكم
     const arabicLogMessage = `«قام الوكيل ساهر بفرز عميل جديد من حملة [${campaignSource}] وتوجيهه لفريق النخبة لارتفاع ملاءته المالية تلقائياً»`;

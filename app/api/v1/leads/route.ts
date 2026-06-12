@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,28 +43,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "الاسم الأول ورقم الهاتف مطلوبان." }, { status: 400 });
     }
 
-    const lead = await prisma.lead.create({
-      data: {
-        tenantId,
-        firstName,
-        lastName,
-        phone,
-        email,
-        city: city || "الرياض",
-        source: source || "مباشر",
-        status: "NEW", // Default Enum value
-        stage: stage || "New",
-        score: score || 50,
-        leadScore: score || 50,
-        projectId: projectId || null,
-        unitId: unitId || null,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-      },
+    const lead = await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId, feature: "leads", tx });
+      return tx.lead.create({
+        data: {
+          tenantId,
+          firstName,
+          lastName,
+          phone,
+          email,
+          city: city || "الرياض",
+          source: source || "مباشر",
+          status: "NEW",
+          stage: stage || "New",
+          score: score || 50,
+          leadScore: score || 50,
+          projectId: projectId || null,
+          unitId: unitId || null,
+          createdBy: userId || null,
+          updatedBy: userId || null,
+        },
+      });
     });
 
-    // --- AUTOMATION PLAYBOOK SIMULATION ---
-    // 1. Log Telemetry Event
+    // --- AUTOMATION PLAYBOOK SIMULATION (outside transaction — non-critical) ---
     await prisma.telemetryEvent.create({
       data: {
         tenantId,
@@ -73,7 +76,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 2. Add System/Audit Log
     await prisma.auditLog.create({
       data: {
         tenantId,
@@ -85,14 +87,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 3. Schedule Followup Task Automatically
     await prisma.task.create({
       data: {
         tenantId,
         leadId: lead.id,
         assignedTo: userId || (await prisma.user.findFirst({ where: { tenantId } }))?.id || "",
         title: `تواصل ترحيبي مع العميل: ${firstName}`,
-        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due in 24 hours
+        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
         priority: "MEDIUM",
         status: "PENDING",
       },
@@ -100,6 +101,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: lead }, { status: 201 });
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: error.message.includes("TENANT") ? "" : "", error }).catch(() => {});
+      return NextResponse.json(error.toJSON(), { status: 403 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

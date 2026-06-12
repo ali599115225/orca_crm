@@ -13,40 +13,58 @@ ALTER TABLE payroll_commissions ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================
 -- 2. دالة قفل السعة - check_agent_slots_cap()
--- تُشغَّل قبل إدراج أي مقعد وكيل جديد
--- تمنع الباقة الفضية من تجاوز 5 مقاعد
+-- تُشغَّل قبل إدراج أو تعديل أي مقعد وكيل جديد
+-- الحدود مطابقة لـ lib/plan-guard.ts
 -- ==============================================
 
 CREATE OR REPLACE FUNCTION check_agent_slots_cap()
 RETURNS TRIGGER AS $$
 DECLARE
-  tenant_plan VARCHAR(50);
+  tenant_plan TEXT;
   active_slots_count INT;
   max_slots INT;
 BEGIN
-  -- جلب خطة اشتراك الشركة
-  SELECT subscription_plan INTO tenant_plan
+  SELECT LOWER(COALESCE(subscription_plan, 'basic'))
+  INTO tenant_plan
   FROM tenants
   WHERE id = NEW.tenant_id;
 
-  -- تحديد الحد الأقصى للمقاعد بناءً على الباقة
+  IF tenant_plan IS NULL THEN
+    tenant_plan := 'basic';
+  END IF;
+
   CASE tenant_plan
-    WHEN 'basic'  THEN max_slots := 1;
-    WHEN 'silver' THEN max_slots := 5;
-    WHEN 'gold'   THEN max_slots := 999999; -- لا محدود
-    ELSE               max_slots := 1;
+    WHEN 'basic'       THEN max_slots := 1;
+    WHEN 'starter'     THEN max_slots := 1;
+    WHEN 'silver'      THEN max_slots := 2;
+    WHEN 'pro'         THEN max_slots := 2;
+    WHEN 'professional'THEN max_slots := 2;
+    WHEN 'gold'        THEN max_slots := 5;
+    WHEN 'diamond'     THEN max_slots := 5;
+    WHEN 'platinum'    THEN max_slots := 5;
+    WHEN 'enterprise'  THEN max_slots := 5;
+    ELSE max_slots := 1;
   END CASE;
 
-  -- حساب عدد المقاعد الحالية النشطة للشركة
-  SELECT COUNT(*) INTO active_slots_count
-  FROM agent_slots
-  WHERE tenant_id = NEW.tenant_id AND is_active = TRUE;
+  IF TG_OP = 'UPDATE' THEN
+    SELECT COUNT(*)
+    INTO active_slots_count
+    FROM agent_slots
+    WHERE tenant_id = NEW.tenant_id
+      AND is_active = TRUE
+      AND id <> NEW.id;
+  ELSE
+    SELECT COUNT(*)
+    INTO active_slots_count
+    FROM agent_slots
+    WHERE tenant_id = NEW.tenant_id
+      AND is_active = TRUE;
+  END IF;
 
-  -- تطبيق قفل السعة إذا تم الوصول للحد الأقصى
   IF active_slots_count >= max_slots THEN
-    RAISE EXCEPTION '🔒 CAP LOCK: تمت الاستفادة من كامل مقاعد الوكلاء المتاحة لباقة (%). الحد الأقصى هو % مقاعد. يرجى ترقية الباقة للحصول على مقاعد إضافية.', 
-      tenant_plan, max_slots
-    USING ERRCODE = 'check_violation';
+    RAISE EXCEPTION 'CAP LOCK: max % active agent slots for plan %. Current: %.',
+      max_slots, tenant_plan, active_slots_count
+    USING ERRCODE = '23514';
   END IF;
 
   RETURN NEW;
@@ -56,8 +74,10 @@ $$ LANGUAGE plpgsql;
 -- ربط الـ Trigger بجدول agent_slots
 DROP TRIGGER IF EXISTS trigger_check_agent_slots_cap ON agent_slots;
 CREATE TRIGGER trigger_check_agent_slots_cap
-  BEFORE INSERT ON agent_slots
+  BEFORE INSERT OR UPDATE OF is_active, tenant_id
+  ON agent_slots
   FOR EACH ROW
+  WHEN (NEW.is_active = TRUE)
   EXECUTE FUNCTION check_agent_slots_cap();
 
 -- ==============================================

@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 import { rateLimit } from "@/lib/rate-limit";
 import { tenantContext } from "@/lib/tenant-context";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -85,24 +86,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "حقول الاسم، المدينة، وحالة المشروع إلزامية." }, { status: 400 });
     }
 
-    const newProject = await prisma.project.create({
-      data: {
-        tenant: {
-          connect: { id: session.tenantId as string }
-        },
-        name,
-        city,
-        status,
-        unitsTotal: parseInt(unitsTotal) || 0,
-        unitsSold: 0,
-        unitsBooked: 0,
-        minPrice: minPrice ? parseFloat(minPrice) : null,
-        maxPrice: maxPrice ? parseFloat(maxPrice) : null,
-      }
+    const newProject = await prisma.$transaction(async (tx) => {
+      await assertPlanLimit({ tenantId: session.tenantId as string, feature: "projects", tx });
+      return tx.project.create({
+        data: {
+          tenant: {
+            connect: { id: session.tenantId as string }
+          },
+          name,
+          city,
+          status,
+          unitsTotal: parseInt(unitsTotal) || 0,
+          unitsSold: 0,
+          unitsBooked: 0,
+          minPrice: minPrice ? parseFloat(minPrice) : null,
+          maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+        }
+      });
     });
 
     return NextResponse.json({ success: true, data: newProject }, { status: 201 });
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: session.tenantId as string, error }).catch(() => {});
+      return NextResponse.json(error.toJSON(), { status: 403 });
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 /**
  * جدولة جولة عقارية جديدة وإسنادها لعميل وإدخالها في جدول Tour بقاعدة البيانات
@@ -37,17 +38,20 @@ export async function scheduleTourActionDirect(data: {
       const parts = userName.trim().split(/\s+/);
       const firstName = parts[0] || "عميل";
       const lastName = parts.slice(1).join(" ") || "جديد";
-      lead = await prisma.lead.create({
-        data: {
-          tenantId: tenant.id,
-          firstName,
-          lastName,
-          phone,
-          email: `${phone}@orca-crm.com`,
-          city: "الرياض",
-          status: "NEW",
-          source: "website",
-        },
+      lead = await prisma.$transaction(async (tx) => {
+        await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+        return tx.lead.create({
+          data: {
+            tenantId: tenant.id,
+            firstName,
+            lastName,
+            phone,
+            email: `${phone}@orca-crm.com`,
+            city: "الرياض",
+            status: "NEW",
+            source: "website",
+          },
+        });
       });
     }
 
@@ -116,6 +120,10 @@ export async function scheduleTourActionDirect(data: {
       },
     };
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     console.error("فشل جدولة الجولة عبر الـ Server Action:", error);
     return { success: false, error: error.message };
   }

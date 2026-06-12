@@ -5,10 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
+import { assertFeatureAccess, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
     const tenant = await getActiveTenant();
+    if (connected) {
+      await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
+    }
     await prisma.tenant.update({
       where: { id: tenant.id },
       data: { whatsappConnected: connected }
@@ -17,6 +21,10 @@ export async function toggleWhatsAppConnectionAction(connected: boolean) {
     revalidatePath("/operations/whatsapp");
     return { success: true };
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     return { success: false, error: error.message };
   }
 }
@@ -130,6 +138,7 @@ export async function getWhatsAppChatsAction() {
 export async function sendWhatsAppMessageAction(chatId: string, messageText: string) {
   try {
     const tenant = await getActiveTenant();
+    await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 
@@ -239,6 +248,10 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
       metaResponse: result,
     };
   } catch (error: any) {
+    if (error instanceof PlanLimitError) {
+      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      return { success: false, error: error.message, code: error.code };
+    }
     return { success: false, error: error.message };
   }
 }

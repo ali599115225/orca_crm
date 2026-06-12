@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
+import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import {
   buildSaherSystemPrompt,
   type SaherLeadOutput,
@@ -300,20 +301,36 @@ export async function processSaherWhatsAppLeadAction(
     // 5. إنشاء سجل العميل في قاعدة البيانات
     const leadData = saherOutput.lead_data;
 
-    const newLead = await prisma.lead.create({
-      data: {
-        tenantId: tenant.id,
-        firstName: leadData.first_name,
-        lastName: leadData.last_name || null,
-        phone: leadData.phone || message.senderPhone,
-        email: null,
-        city: leadData.city || "غير محدد",
-        source: leadData.source || "WHATSAPP",
-        status: "NEW",
-        leadScore: leadData.lead_score || 50,
-        assignedTo: assignedAgent?.id || null,
-      },
-    });
+    let newLead: any;
+    try {
+      newLead = await prisma.$transaction(async (tx) => {
+        await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+        return tx.lead.create({
+          data: {
+            tenantId: tenant.id,
+            firstName: leadData.first_name,
+            lastName: leadData.last_name || null,
+            phone: leadData.phone || message.senderPhone,
+            email: null,
+            city: leadData.city || "غير محدد",
+            source: leadData.source || "WHATSAPP",
+            status: "NEW",
+            leadScore: leadData.lead_score || 50,
+            assignedTo: assignedAgent?.id || null,
+          },
+        });
+      });
+    } catch (e) {
+      if (e instanceof PlanLimitError) {
+        await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
+        return {
+          success: false,
+          error: e.message,
+          responseToClient: "عذراً، لا يمكن استقبال عملاء جدد حالياً. يرجى التواصل مع الإدارة لترقية الباقة.",
+        };
+      }
+      throw e;
+    }
 
     // 6. تسجيل نشاط الإسناد التلقائي
     await prisma.leadActivity.create({
