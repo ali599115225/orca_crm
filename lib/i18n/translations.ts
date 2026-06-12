@@ -145,6 +145,13 @@ export const dict: TranslationDict = {
   'common.theme':               { ar: 'السمة',       en: 'Theme' },
   'common.language':            { ar: 'اللغة',       en: 'Language' },
   'common.profile':             { ar: 'الملف الشخصي', en: 'Profile' },
+
+  // ── Search ───────────────────────────────────────
+  'search.noResults':           { ar: 'لا توجد نتائج مطابقة', en: 'No matching results' },
+
+  // ── Preview / AI Section Labels ──────────────────
+  'dash.previewLabel':          { ar: 'معاينة محدودة',          en: 'Limited Preview' },
+  'dash.previewDesc':           { ar: 'هذه الميزة قيد التطوير وقد لا تعكس الحالة النهائية للمنتج.', en: 'This feature is under development and may not reflect the final product state.' },
 };
 
 // ── Translation Function ──────────────────────────

@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { useApp } from '../../app/context/AppContext';
 import SovereignHeader from '../../app/components/SovereignHeader';
 import SovereignSidebar from '../../app/components/SovereignSidebar';
 
@@ -17,11 +18,16 @@ export default function DashboardLayout({
   companyName,
 }: DashboardLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { lang } = useApp();
+  const isRTL = lang === 'AR';
 
   return (
-    <div className="h-screen w-full overflow-hidden flex bg-[var(--nc-bg)] font-sans" dir="rtl">
+    <div
+      className="h-screen w-full overflow-hidden flex bg-[var(--nc-bg)] font-sans"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
 
-      {/* ── Overlay للجوال ─────────────────────────────────────────────── */}
+      {/* ── Mobile Overlay ─────────────────────────────────────────────── */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 md:hidden"
@@ -29,24 +35,29 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* ── الشريط الجانبي ─────────────────────────────────────────────── */}
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      {/* Arabic: sidebar on right (order: sidebar first in flex, then main)
+          English: sidebar on left (order: sidebar first in flex, then main) */}
       <div
         className={`
-          fixed inset-y-0 right-0 z-50 transition-transform duration-300 ease-in-out
-          ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
+          fixed inset-y-0 z-50 transition-transform duration-300 ease-in-out
+          ${isRTL ? 'right-0' : 'left-0'}
+          ${isMobileMenuOpen
+            ? 'translate-x-0'
+            : isRTL ? 'translate-x-full' : '-translate-x-full'}
           md:translate-x-0 md:static md:z-auto shrink-0
         `}
       >
         <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} tenant={tenant} companyName={companyName} />
       </div>
 
-      {/* ── المحتوى الرئيسي ─────────────────────────────────────────────── */}
+      {/* ── Main Content ─────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
 
-        {/* الشريط العلوي — ثابت الارتفاع */}
+        {/* Header — fixed height */}
         <SovereignHeader onMenuClick={() => setIsMobileMenuOpen(true)} tenant={tenant} user={user} companyName={companyName} />
 
-        {/* منطقة العرض — تمرير داخلي فقط */}
+        {/* Content Area — internal scroll only */}
         <div className="flex-1 overflow-y-auto min-h-0 relative">
           {children}
         </div>

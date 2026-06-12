@@ -30,7 +30,7 @@ type MenuItem = {
   path: string;
   tab: string;
   tooltipKey?: string;
-  badgeKey?: string;       // translation key for badge text
+  badgeKey?: string;
   badgeVariant?: "preview" | "soon" | "paused";
 };
 
@@ -110,13 +110,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const searchParams = useSearchParams();
   const pathname     = usePathname();
   const currentTab   = searchParams.get("tab") || "analytics";
-  const { t } = useApp();
+  const { t, lang } = useApp();
+  const isRTL = lang === 'AR';
 
   return (
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {menuData.map((section, sIdx) => (
         <div key={sIdx} className="mb-1">
-          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-foreground-muted)]/60 uppercase md:hidden lg:block">
+          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-foreground-muted)]/60 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
             {t(section.titleKey)}
           </div>
           <ul className="space-y-0.5">
@@ -135,10 +136,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     title={item.tooltipKey ? t(item.tooltipKey) : undefined}
                     onClick={() => onNavigate?.()}
                     className={[
-                      "flex items-center justify-start gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
+                      "flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
+                      isRTL ? "justify-start" : "justify-start",
                       isActive
                         ? "nav-item-active font-bold shadow-sm"
-                        : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface)] hover:text-[var(--nc-foreground)] md:hover:translate-x-0 lg:hover:translate-x-[-4px] transform",
+                        : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface)] hover:text-[var(--nc-foreground)] transform",
                     ].join(" ")}
                   >
                     <Icon
@@ -163,11 +165,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export default function SovereignSidebar({ onLinkClick, tenant, companyName }: { onLinkClick?: () => void; tenant?: any; companyName?: string }) {
+  const { lang } = useApp();
+  const isRTL = lang === 'AR';
+
   return (
-    <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-l border-[var(--nc-glass-border)] flex flex-col transition-all duration-300">
+    <aside className={`w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl ${isRTL ? 'border-l' : 'border-r'} border-[var(--nc-glass-border)] flex flex-col transition-all duration-300`}>
       {/* Logo / Brand */}
       <div className="h-16 flex items-center justify-center lg:justify-start px-5 border-b border-[var(--nc-glass-border)] shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5" style={{ flexDirection: isRTL ? 'row' : 'row' }}>
           <span className="w-7 h-7 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)] font-black text-sm md:hidden lg:flex">
             O
           </span>

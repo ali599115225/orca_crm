@@ -1,11 +1,10 @@
 'use client';
 
-import React, { Suspense } from 'react';
-import { Menu, Search, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
+import React, { Suspense, useState, useRef, useEffect } from 'react';
+import { Menu, Search, ChevronLeft, ChevronRight, Globe, Moon, Sun, LogOut, X } from 'lucide-react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
-
 
 interface SovereignHeaderProps {
   onMenuClick?: () => void;
@@ -26,6 +25,8 @@ function HeaderBreadcrumbs() {
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
   const { t, lang } = useApp();
+  const isRTL = lang === 'AR';
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
 
   const tabKeyMap: Record<string, string> = {
     analytics: 'tab.analytics', leads: 'tab.leads', projects: 'tab.projects',
@@ -55,9 +56,9 @@ function HeaderBreadcrumbs() {
   }
 
   return (
-    <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]">
+    <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
       <span className="hover:text-[var(--nc-foreground)] cursor-pointer transition-colors">{t('header.operations')}</span>
-      <ChevronLeft size={16} className="mx-1 opacity-40" />
+      <ChevronIcon size={16} className="mx-1 opacity-40" />
       <span className="text-[var(--nc-accent)] font-bold">{t(activeKey)}</span>
     </div>
   );
@@ -66,18 +67,47 @@ function HeaderBreadcrumbs() {
 export default function SovereignHeader({ onMenuClick, tenant, user, companyName }: SovereignHeaderProps) {
   const { theme, toggleTheme, t, toggleLang, lang } = useApp();
   const router = useRouter();
+  const isRTL = lang === 'AR';
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
   const displayCompany = companyName || 'ORCA';
   const initials = getInitials(displayName);
 
-  return (
-    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-b border-[var(--nc-glass-border)] z-40 w-full dir-rtl text-[var(--nc-foreground)] transition-all">
+  // ── Dispatch search to custom event for Dashboard to listen ──
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('search-change', { detail: searchQuery }));
+    }
+  }, [searchQuery]);
 
-      {/* Right: Mobile menu + breadcrumbs */}
-      <div className="flex items-center gap-3 lg:w-1/3">
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ctrl+K / Cmd+K — focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      // Escape — clear search
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-b border-[var(--nc-glass-border)] z-40 w-full text-[var(--nc-foreground)] transition-all" dir={isRTL ? 'rtl' : 'ltr'}>
+
+      {/* Right: Mobile menu + breadcrumbs (in LTR this becomes left side) */}
+      <div className="flex items-center gap-3 lg:w-1/3" style={{ justifyContent: isRTL ? 'flex-start' : 'flex-start' }}>
         <button
-          className="md:hidden text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] transition-colors"
+          className="md:hidden text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] transition-colors flex-shrink-0"
           onClick={onMenuClick}
           aria-label={t('header.openMenu')}
         >
@@ -95,7 +125,7 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
       {/* Center: Global search bar */}
       <div className="hidden lg:flex justify-center w-1/3">
         <div className="relative w-full max-w-md group">
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <div className={`absolute inset-y-0 flex items-center pointer-events-none ${isRTL ? 'right-0 pr-3' : 'left-0 pl-3'}`}>
             <Search
               size={16}
               className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
@@ -103,19 +133,31 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
           </div>
           <label htmlFor="global-search" className="sr-only">{t('header.searchLabel')}</label>
           <input
+            ref={searchInputRef}
             id="global-search"
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('header.searchPlaceholder')}
-            className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
+            className={`w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner ${isRTL ? 'pr-10 pl-14' : 'pl-10 pr-14'}`}
           />
-          <div className="absolute inset-y-0 left-0 flex items-center pl-2">
+          <div className={`absolute inset-y-0 flex items-center ${isRTL ? 'left-0 pl-2' : 'right-0 pr-2'}`}>
+            {searchQuery ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] p-1"
+              >
+                <X size={14} />
+              </button>
+            ) : (
               <span className="text-[9px] font-mono text-[var(--nc-foreground-muted)] bg-[var(--nc-surface-strong)] px-1.5 py-0.5 rounded border border-[var(--nc-glass-border)]">Ctrl+K</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Left: Quick actions, profile */}
-      <div className="flex items-center justify-end gap-2 lg:gap-3 lg:w-1/3">
+      {/* Left: Quick actions, profile (in LTR this becomes right side) */}
+      <div className="flex items-center gap-2 lg:gap-3 lg:w-1/3" style={{ justifyContent: 'flex-end' }}>
 
         {/* Language toggle */}
         <button
@@ -140,10 +182,10 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
         </button>
 
         {/* User profile */}
-        <div className="flex items-center gap-3 pl-2 border-r border-[var(--nc-border)] ml-1 pr-1">
-          <div className="hidden md:block text-left mr-2">
-            <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight text-right">{displayName}</p>
-            <p className="text-[10px] text-[var(--nc-foreground-muted)] text-right mt-0.5">{displayCompany}</p>
+        <div className={`flex items-center gap-3 ${isRTL ? 'border-r pl-2 ml-1 pr-1' : 'border-l pr-2 mr-1 pl-1'} border-[var(--nc-border)]`}>
+          <div className="hidden md:block">
+            <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayName}</p>
+            <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayCompany}</p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent)] shadow-sm transition-colors cursor-pointer">
             {initials}
