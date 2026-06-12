@@ -1014,3 +1014,38 @@ model EmailMessage {
   @@index([contactId])
   @@map("email_messages")
 }
+
+model SentinelConfig {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  operatingMode String   @default("NORMAL_MODE") @map("operating_mode")
+  isActive      Boolean  @default(true) @map("is_active")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("sentinel_config")
+}
+
+model SentinelTaskOrder {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String?   @map("tenant_id") @db.Uuid
+  createdBy        String    @default("platform_sentinel") @map("created_by")
+  assignedToType   String    @map("assigned_to_type")
+  assignedToName   String    @map("assigned_to_name")
+  title            String
+  description      String?   @db.Text
+  priority         String    @default("MEDIUM")
+  riskLevel        String    @default("LOW") @map("risk_level")
+  approvalRequired Boolean   @default(false) @map("approval_required")
+  status           String    @default("OPEN")
+  source           String    @default("SYSTEM")
+  correlationId    String?   @map("correlation_id")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([assignedToType, status])
+  @@index([correlationId])
+  @@index([createdAt(sort: Desc)])
+  @@map("sentinel_task_orders")
+}

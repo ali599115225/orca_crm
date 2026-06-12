@@ -1,0 +1,137 @@
+// lib/sentinel/task-order.ts
+// Sentinel Task Order management
+import { prisma } from "@/lib/prisma";
+import { writeSentinelAudit } from "./audit";
+import { SENTINEL_PERMISSIONS, type TaskPriority, type TaskRiskLevel, type TaskStatus, type TaskSource, type TaskAssigneeType } from "./types";
+
+export interface CreateTaskOrderParams {
+  tenantId?: string;
+  assignedToType: TaskAssigneeType;
+  assignedToName: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  riskLevel?: TaskRiskLevel;
+  approvalRequired?: boolean;
+  source?: TaskSource;
+  correlationId?: string;
+  reason?: string;
+}
+
+export async function createTaskOrder(params: CreateTaskOrderParams) {
+  const isSensitive = params.approvalRequired || false;
+
+  const task = await prisma.sentinelTaskOrder.create({
+    data: {
+      tenantId: params.tenantId || null,
+      createdBy: "platform_sentinel",
+      assignedToType: params.assignedToType,
+      assignedToName: params.assignedToName,
+      title: params.title,
+      description: params.description || null,
+      priority: params.priority || "MEDIUM",
+      riskLevel: params.riskLevel || "LOW",
+      approvalRequired: isSensitive,
+      status: isSensitive ? "WAITING_APPROVAL" : "OPEN",
+      source: params.source || "SYSTEM",
+      correlationId: params.correlationId || null,
+    },
+  });
+
+  await writeSentinelAudit({
+    eventType: "SENTINEL_TASK_CREATED",
+    tenantId: params.tenantId,
+    source: params.source || "SYSTEM",
+    decision: `Task created: ${params.title}`,
+    reason: params.reason || "Sentinel automated task",
+    riskLevel: params.riskLevel || "LOW",
+    approvalRequired: isSensitive,
+    correlationId: task.id,
+  });
+
+  return task;
+}
+
+export async function getOpenTasks() {
+  return prisma.sentinelTaskOrder.findMany({
+    where: { status: { in: ["OPEN", "IN_PROGRESS", "WAITING_APPROVAL"] } },
+    orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+    take: 50,
+  });
+}
+
+export async function getPendingApprovals() {
+  return prisma.sentinelTaskOrder.findMany({
+    where: { status: "WAITING_APPROVAL" },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
+
+export async function getRecentAuditEvents(limit = 20) {
+  return prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { action: { startsWith: "SENTINEL_" } },
+        { tableName: "sentinel_command" },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
+export async function getOpenIncidents() {
+  return prisma.sentinelTaskOrder.findMany({
+    where: {
+      status: { in: ["OPEN", "IN_PROGRESS"] },
+      priority: { in: ["HIGH", "CRITICAL"] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
+
+export async function getOrCreateSentinelConfig() {
+  let config = await prisma.sentinelConfig.findFirst();
+  if (!config) {
+    config = await prisma.sentinelConfig.create({
+      data: { operatingMode: "NORMAL_MODE" },
+    });
+  }
+  return config;
+}
+
+export async function updateOperatingMode(mode: string) {
+  const config = await getOrCreateSentinelConfig();
+  const updated = await prisma.sentinelConfig.update({
+    where: { id: config.id },
+    data: { operatingMode: mode },
+  });
+
+  await writeSentinelAudit({
+    eventType: "SENTINEL_MODE_CHANGE",
+    decision: `Mode changed to ${mode}`,
+    reason: "Manual mode change by owner",
+    beforeState: config.operatingMode,
+    afterState: mode,
+  });
+
+  return updated;
+}
+
+export async function checkSentinelPermission(
+  action: string,
+  operatingMode: string
+): Promise<{ allowed: boolean; requiresApproval: boolean; reason?: string }> {
+  if (SENTINEL_PERMISSIONS.FORBIDDEN.includes(action as any)) {
+    return { allowed: false, requiresApproval: false, reason: "Action is forbidden for Sentinel" };
+  }
+  if (SENTINEL_PERMISSIONS.REQUIRES_APPROVAL.includes(action as any)) {
+    return { allowed: true, requiresApproval: true, reason: "Action requires owner approval" };
+  }
+  if (SENTINEL_PERMISSIONS.AUTO_ALLOWED.includes(action as any)) {
+    return { allowed: true, requiresApproval: false };
+  }
+  return { allowed: false, requiresApproval: false, reason: "Unknown action — denied by default" };
+}
