@@ -34,18 +34,19 @@ function HeaderBreadcrumbs() {
     marketing: 'tab.marketing', agents: 'tab.agents', tasks: 'tab.tasks',
     helpdesk: 'tab.helpdesk', whatsapp: 'tab.whatsapp', settings: 'tab.settings',
     offers: 'tab.offers', tours: 'tab.tours', documents: 'tab.documents',
-    email: 'tab.email', properties: 'tab.rental',
+    email: 'tab.email', properties: 'tab.properties', campaigns: 'tab.campaigns',
   };
 
   const routeKeyMap: Record<string, string> = {
     '/operations/dashboard': 'tab.analytics', '/operations/leads': 'tab.leads',
-    '/operations/projects': 'tab.projects', '/operations/properties': 'tab.rental',
+    '/operations/projects': 'tab.projects', '/operations/properties': 'tab.properties',
     '/operations/rental': 'tab.rental', '/operations/offers': 'tab.offers',
     '/operations/calculator': 'tab.calculator', '/operations/sales': 'tab.sales',
     '/operations/tours': 'tab.tours', '/operations/marketing': 'tab.marketing',
     '/operations/agents': 'tab.agents', '/operations/tasks': 'tab.tasks',
     '/operations/documents': 'tab.documents', '/operations/helpdesk': 'tab.helpdesk',
     '/operations/whatsapp': 'tab.whatsapp', '/operations/settings': 'tab.settings',
+    '/operations/email': 'tab.email', '/operations/campaigns': 'tab.campaigns',
   };
 
   let activeKey = 'header.overview';

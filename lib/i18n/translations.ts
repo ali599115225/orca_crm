@@ -122,12 +122,16 @@ export const dict: TranslationDict = {
   'status.pending':             { ar: 'معلق',     en: 'Pending' },
   'status.completed':           { ar: 'مكتمل',    en: 'Completed' },
   'status.expired':             { ar: 'منتهي',    en: 'Expired' },
+  'status.sent':                { ar: 'مرسل',     en: 'Sent' },
+  'status.failed':              { ar: 'فشل',      en: 'Failed' },
+  'status.draft':               { ar: 'مسودة',    en: 'Draft' },
 
   // ── Tab Names (Header breadcrumbs) ──────────────
   'tab.analytics':              { ar: 'لوحة التحكم',           en: 'Dashboard' },
   'tab.leads':                  { ar: 'العملاء المحتملين',      en: 'Leads' },
   'tab.projects':               { ar: 'المشاريع العقارية',      en: 'Projects' },
   'tab.rental':                 { ar: 'العقود والمدفوعات',      en: 'Contracts & Payments' },
+  'tab.properties':             { ar: 'العقارات',               en: 'Properties' },
   'tab.calculator':             { ar: 'حاسبة التمويل السكني',   en: 'Mortgage Calculator' },
   'tab.sales':                  { ar: 'أداء المبيعات',          en: 'Sales Performance' },
   'tab.marketing':              { ar: 'الإعلان والتسويق',       en: 'Advertising & Marketing' },
