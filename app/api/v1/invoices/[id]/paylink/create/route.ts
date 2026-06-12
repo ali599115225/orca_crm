@@ -43,7 +43,7 @@ async function authenticatePaylink(): Promise<{ success: boolean; idToken?: stri
       body: JSON.stringify({
         apiId: PAYLINK_API_ID,
         secretKey: PAYLINK_SECRET_KEY,
-        persistToken: false,
+        persistToken: "false",
       }),
     });
 
