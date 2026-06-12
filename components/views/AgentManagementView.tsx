@@ -132,12 +132,8 @@ export default function AgentManagementView({
 
   const getAgentStatus = (agentId: string) => {
     const allowedMap: Record<string, string[]> = {
-      enterprise: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
-      diamond: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
       gold: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
-      professional: ["SAHER", "SANAD", "MANSOUR"],
-      pro: ["SAHER", "SANAD", "MANSOUR"],
-      silver: ["SAHER", "SANAD", "MANSOUR"],
+      silver: ["SAHER", "MANSOUR"],
       basic: ["MANSOUR"]
     };
 
@@ -176,16 +172,16 @@ export default function AgentManagementView({
     let currentPlanPrice = 450;
     let nextPlanPrice = 900;
     let currentPlanName = isArabic ? "الباقة الأساسية" : "Basic Plan";
-    let nextPlanName = isArabic ? "الباقة الاحترافية" : "Professional Plan";
+    let nextPlanName = isArabic ? "الباقة الفضية" : "Silver Plan";
     let nextPlanBenefits = isArabic 
-      ? "موظفين أكثر (حتى ١٠) ومشاريع أكثر (حتى ١٠) مع وكيلين مفعلين دائماً (ساهر وسند)." 
-      : "More staff (up to 10), more projects (up to 10), and 2 permanent agents (Saher & Sanad).";
+      ? "موظفين أكثر (حتى ١٠) ومشاريع أكثر (حتى ١٠) مع وكيلين مفعلين دائماً (ساهر ومنصور)." 
+      : "More staff (up to 10), more projects (up to 10), and 2 permanent agents (Saher & Mansour).";
 
     if (plan === 'pro' || plan === 'professional' || plan === 'silver') {
       currentPlanPrice = 900;
       nextPlanPrice = 2400;
-      currentPlanName = isArabic ? "الباقة الاحترافية" : "Professional Plan";
-      nextPlanName = isArabic ? "الباقة الماسية" : "Diamond Plan";
+      currentPlanName = isArabic ? "الباقة الفضية" : "Silver Plan";
+      nextPlanName = isArabic ? "الباقة الذهبية" : "Gold Plan";
       nextPlanBenefits = isArabic 
         ? "وصول كامل ودائم لجميع الوكلاء الخمسة وإلغاء كافة قيود سعة العمليات والموظفين." 
         : "Permanent access to all 5 virtual agents, and unlimited staff seats/operational limits.";
@@ -232,13 +228,13 @@ export default function AgentManagementView({
               </div>
             )}
 
-            {plan !== 'gold' && plan !== 'enterprise' && plan !== 'diamond' && (
+            {plan !== 'gold' && (
               <a
                 href="/operations?tab=settings"
                 className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-brand-interactive to-brand-interactive-hover hover:shadow-[0_0_20px_rgba(142,177,209,0.35)] text-brand-bg font-bold text-xs transition-all cursor-pointer border border-brand-interactive/45 shrink-0"
               >
                 <i className="ph-bold ph-sparkle text-sm"></i>
-                <span>{isArabic ? "الترقية للباقة الماسية 💎" : "Upgrade to Diamond Tier 💎"}</span>
+                <span>{isArabic ? "الترقية للباقة الذهبية" : "Upgrade to Gold Tier"}</span>
               </a>
             )}
           </>
@@ -349,7 +345,7 @@ export default function AgentManagementView({
                             : (isArabic ? "استئجار الوكيل" : "Lease Agent")
                           }
                         </button>
-                        {(plan === 'basic' || plan === 'pro' || plan === 'professional' || plan === 'silver') && (
+                        {(plan === 'basic' || plan === 'silver') && (
                           <a
                             href="/operations?tab=settings"
                             className="px-3 py-2 rounded-xl bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] font-bold text-[10px] text-center cursor-pointer transition-colors"

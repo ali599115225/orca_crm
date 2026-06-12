@@ -32,7 +32,6 @@ const PLAN_LIMITS: Record<string, number> = {
   basic: 2,
   silver: 10,
   gold: 99999,
-  platinum: 99999,
 };
 
 const ROLE_TRANSLATIONS = {

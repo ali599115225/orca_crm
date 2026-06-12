@@ -25,7 +25,6 @@ const PLAN_LIMITS: Record<string, number> = {
   basic: 2,
   silver: 10,
   gold: 99999,
-  platinum: 99999,
 };
 
 const PLAN_TITLES = {
@@ -33,13 +32,11 @@ const PLAN_TITLES = {
     basic: "الباقة الأساسية",
     silver: "الباقة الفضية",
     gold: "الباقة الذهبية",
-    platinum: "الباقة البلاتينية",
   },
   EN: {
     basic: "Basic Plan",
     silver: "Silver Plan",
     gold: "Gold Plan",
-    platinum: "Platinum Plan",
   }
 };
 
@@ -55,15 +52,18 @@ const TRANSLATIONS = {
     planGold: "الباقة الذهبية",
     activePlan: "نشطة حالياً",
     priceMonth: " ر.س / شهرياً",
-    limitStaff: "✔ حد الموظفين: {count} موظفين (غير مطبق على الخادم بعد)",
-    limitStaffGold: "✔ حد الموظفين: لا محدود (Unlimited)",
-    limitLeads: "✔ إدخال حتى {count} عميل محتمل (غير مطبق على الخادم بعد)",
+    limitStaff: "✔ حد الموظفين: {count} موظفين",
+    limitStaffGold: "✔ حد الموظفين: غير محدود",
+    limitLeads: "✔ إدخال حتى {count} عميل محتمل",
     limitLeadsGold: "✔ عملاء ومشاريع استثمارية غير محدودة",
-    limitProjects: "✔ إدارة حتى {count} مشاريع عقارية (غير مطبق على الخادم بعد)",
+    limitProjects: "✔ إدارة حتى {count} مشاريع عقارية",
     limitProjectsGold: "✔ دعم فني كامل وتصميم عقود رسمي",
-    limitAgents: "✔ {count} وكيل ذكاء اصطناعي (مطبق)",
+    limitAgents: "✔ {count} وكيل ذكاء اصطناعي",
     limitAgentsGold: "✔ {count} وكلاء أذكياء وتكامل واتساب كامل",
     limitAgentsGoldEnterprise: "✔ {count} وكلاء ذكاء اصطناعي وتكامل سحابي",
+    limitWhatsApp: "✕ واتساب غير متاح",
+    limitWhatsAppGold: "✔ واتساب متكامل",
+    paylinkUnavailable: "بوابة الدفع الإلكتروني غير متاحة مؤقتًا. للتـرقية، يرجى التواصل مع الدعم الفني.",
     upgradeBtn: "تحويل للباقة (مدى / فيزا)",
     upgradeBtnSilver: "ترقية للباقة (مدى / فيزا)",
     upgradeBtnGold: "ترقية للباقة (مدى / فيزا)",
@@ -94,15 +94,18 @@ const TRANSLATIONS = {
     planGold: "Gold Plan",
     activePlan: "Active Plan",
     priceMonth: " SAR / month",
-    limitStaff: "✔ Staff limit: {count} users (not backend-enforced)",
+    limitStaff: "✔ Staff limit: {count} users",
     limitStaffGold: "✔ Staff limit: Unlimited",
-    limitLeads: "✔ Leads: Up to {count} prospects (not backend-enforced)",
+    limitLeads: "✔ Leads: Up to {count} prospects",
     limitLeadsGold: "✔ Leads: Unlimited prospects and projects",
-    limitProjects: "✔ Projects: Up to {count} developments (not backend-enforced)",
+    limitProjects: "✔ Projects: Up to {count} developments",
     limitProjectsGold: "✔ Projects: Unlimited developments and support",
-    limitAgents: "✔ {count} AI agents (enforced)",
-    limitAgentsGold: "✔ {count} AI agents & WhatsApp integrations",
+    limitAgents: "✔ {count} AI agents",
+    limitAgentsGold: "✔ {count} AI agents & WhatsApp",
     limitAgentsGoldEnterprise: "✔ {count} AI agents & cloud setups",
+    limitWhatsApp: "✕ WhatsApp unavailable",
+    limitWhatsAppGold: "✔ WhatsApp included",
+    paylinkUnavailable: "Online payment is temporarily unavailable. Please contact support to upgrade your plan.",
     upgradeBtn: "Switch Plan (Mada / Visa)",
     upgradeBtnSilver: "Upgrade Plan (Mada / Visa)",
     upgradeBtnGold: "Upgrade Plan (Mada / Visa)",
@@ -198,7 +201,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
 
     const allowedMap: Record<string, string[]> = {
       gold: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
-      silver: ["SAHER", "SANAD", "MANSOUR"],
+      silver: ["SAHER", "MANSOUR"],
       basic: ["MANSOUR"]
     };
 
@@ -330,17 +333,17 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                 <p>{t.limitLeads.replace('{count}', toArabicNumerals(100))}</p>
                 <p>{t.limitProjects.replace('{count}', toArabicNumerals(2))}</p>
                 <p>{t.limitAgents.replace('{count}', toArabicNumerals(1))}</p>
+                <p className="text-rose-400 dark:text-rose-500">{t.limitWhatsApp}</p>
               </div>
             </div>
 
             {plan !== 'basic' && (
-              <button
-                onClick={() => handleUpgrade('basic')}
-                disabled={loadingPlan !== null}
-                className="w-full py-3 rounded-xl bg-[var(--nc-surface)] hover:bg-[var(--nc-accent-soft)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-text-secondary)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loadingPlan === 'basic' ? t.actionUpgradePrep : t.upgradeBtn}
-              </button>
+              <div className="space-y-2">
+                <button disabled className="w-full py-3 rounded-xl bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] font-bold text-xs opacity-50 cursor-not-allowed">
+                  {t.upgradeBtn}
+                </button>
+                <p className="text-[10px] text-amber-400 text-center font-semibold">{t.paylinkUnavailable}</p>
+              </div>
             )}
           </div>
 
@@ -360,17 +363,17 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                 <p>{t.limitLeads.replace('{count}', toArabicNumerals(1000))}</p>
                 <p>{t.limitProjects.replace('{count}', toArabicNumerals(10))}</p>
                 <p>{t.limitAgents.replace('{count}', toArabicNumerals(2))}</p>
+                <p className="text-rose-400 dark:text-rose-500">{t.limitWhatsApp}</p>
               </div>
             </div>
 
             {plan !== 'silver' && (
-              <button
-                onClick={() => handleUpgradeClick('silver')}
-                disabled={loadingPlan !== null}
-                className="w-full py-3 rounded-xl bg-[var(--nc-surface)] hover:bg-[var(--nc-accent-soft)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-text-secondary)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loadingPlan === 'silver' ? t.actionUpgradePrep : t.upgradeBtnSilver}
-              </button>
+              <div className="space-y-2">
+                <button disabled className="w-full py-3 rounded-xl bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] font-bold text-xs opacity-50 cursor-not-allowed">
+                  {t.upgradeBtnSilver}
+                </button>
+                <p className="text-[10px] text-amber-400 text-center font-semibold">{t.paylinkUnavailable}</p>
+              </div>
             )}
           </div>
 
@@ -391,17 +394,17 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                 <p>{t.limitLeadsGold}</p>
                 <p>{t.limitProjectsGold}</p>
                 <p>{t.limitAgentsGold.replace('{count}', toArabicNumerals(5))}</p>
+                <p className="text-emerald-400 dark:text-emerald-500">{t.limitWhatsAppGold}</p>
               </div>
             </div>
 
             {plan !== 'gold' && (
-              <button
-                onClick={() => handleUpgradeClick('gold')}
-                disabled={loadingPlan !== null}
-                className="w-full py-3 rounded-xl bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-foreground)] font-bold text-xs transition-all cursor-pointer disabled:opacity-50 hover:shadow-md"
-              >
-                {loadingPlan === 'gold' ? t.actionUpgradePrep : t.upgradeBtnGold}
-              </button>
+              <div className="space-y-2">
+                <button disabled className="w-full py-3 rounded-xl bg-[var(--nc-accent)]/30 text-[var(--nc-foreground-muted)] font-bold text-xs opacity-50 cursor-not-allowed">
+                  {t.upgradeBtnGold}
+                </button>
+                <p className="text-[10px] text-amber-400 text-center font-semibold">{t.paylinkUnavailable}</p>
+              </div>
             )}
           </div>
 
@@ -516,18 +519,11 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
             </div>
 
             <button
-              onClick={handleAddonPurchase}
-              disabled={loadingAgent}
-              className="w-full py-3 rounded-xl bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-[var(--nc-foreground)] font-bold text-xs transition-all cursor-pointer disabled:opacity-55 hover:shadow-md flex items-center justify-center gap-2"
+              disabled
+              className="w-full py-3 rounded-xl bg-[var(--nc-accent)]/30 text-[var(--nc-foreground-muted)] font-bold text-xs opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loadingAgent ? (
-                <>{isArabic ? "جاري تحضير الدفع..." : "Preparing payment..."}</>
-              ) : (
-                <>
-                  <i className="ph-bold ph-shopping-cart"></i>
-                  {t.addonBuyBtn}
-                </>
-              )}
+              <i className="ph-bold ph-shopping-cart"></i>
+              {t.addonBuyBtn}
             </button>
           </div>
         </div>
@@ -589,7 +585,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                 <div>
                   <h4 className="text-[var(--nc-foreground)] text-xs font-black mb-1.5 flex items-center gap-1.5">
                     <i className="ph-bold ph-sparkle text-indigo-400"></i>
-                    {isArabic ? "الترقية للباقة الماسية" : "Upgrade to Diamond"}
+                    {isArabic ? "الترقية للباقة الذهبية" : "Upgrade to Gold"}
                   </h4>
                   <p className="text-[10px] text-[var(--nc-foreground-muted)] leading-relaxed">
                     {isArabic
@@ -599,14 +595,10 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                 </div>
 
                 <button
-                  onClick={() => {
-                    const targetPlan = showUpgradeCompareModal.targetPlan;
-                    setShowUpgradeCompareModal(null);
-                    handleUpgrade(targetPlan);
-                  }}
-                  className="w-full py-2 bg-gradient-to-r from-[var(--nc-accent)] to-[var(--nc-accent-hover)] text-[var(--nc-foreground)] font-bold text-[10px] rounded-lg cursor-pointer transition-all hover:shadow-[0_0_10px_rgba(223,123,98,0.25)]"
+                  disabled
+                  className="w-full py-2 bg-gradient-to-r from-[var(--nc-accent)]/30 to-[var(--nc-accent-hover)]/30 text-[var(--nc-foreground-muted)] font-bold text-[10px] rounded-lg opacity-50 cursor-not-allowed"
                 >
-                  {isArabic ? "الترقية وتأكيد الدفع ➔" : "Upgrade & Confirm ➔"}
+                  {isArabic ? "الترقية غير متاحة مؤقتاً" : "Upgrade Temporarily Unavailable"}
                 </button>
               </div>
             </div>
