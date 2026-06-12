@@ -22,6 +22,7 @@ import {
   Settings,
   Calculator,
   Mail,
+  Shield,
 } from "lucide-react";
 
 type MenuItem = {
@@ -106,6 +107,30 @@ function BadgeTag({ badgeKey, variant }: { badgeKey: string; variant: MenuItem["
   );
 }
 
+function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const { t, lang } = useApp();
+  const isRTL = lang === 'AR';
+  return (
+    <div className="border-t border-[var(--nc-glassy-border)] pt-2 mt-2">
+      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-amber-400/70 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+        {isRTL ? 'مالك المنصة' : 'Platform Owner'}
+      </div>
+      <ul className="space-y-0.5">
+        <li>
+          <Link
+            href="/admin/command-center"
+            onClick={() => onNavigate?.()}
+            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+          >
+            <Shield size={17} className="shrink-0" />
+            <span className="leading-tight flex-1 md:hidden lg:inline">{isRTL ? 'مركز القيادة' : 'Command Center'}</span>
+          </Link>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const searchParams = useSearchParams();
   const pathname     = usePathname();
@@ -164,7 +189,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export default function SovereignSidebar({ onLinkClick, tenant, companyName }: { onLinkClick?: () => void; tenant?: any; companyName?: string }) {
+export default function SovereignSidebar({ onLinkClick, tenant, companyName, isSuperAdmin }: { onLinkClick?: () => void; tenant?: any; companyName?: string; isSuperAdmin?: boolean }) {
   const { lang } = useApp();
   const isRTL = lang === 'AR';
 
@@ -199,6 +224,7 @@ export default function SovereignSidebar({ onLinkClick, tenant, companyName }: {
         }
       >
         <SidebarNav onNavigate={onLinkClick} />
+        {isSuperAdmin && <PlatformOwnerLinks onNavigate={onLinkClick} />}
       </Suspense>
     </aside>
   );

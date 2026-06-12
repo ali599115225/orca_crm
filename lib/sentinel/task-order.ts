@@ -120,18 +120,55 @@ export async function updateOperatingMode(mode: string) {
   return updated;
 }
 
-export async function checkSentinelPermission(
-  action: string,
-  operatingMode: string
-): Promise<{ allowed: boolean; requiresApproval: boolean; reason?: string }> {
-  if (SENTINEL_PERMISSIONS.FORBIDDEN.includes(action as any)) {
-    return { allowed: false, requiresApproval: false, reason: "Action is forbidden for Sentinel" };
-  }
-  if (SENTINEL_PERMISSIONS.REQUIRES_APPROVAL.includes(action as any)) {
-    return { allowed: true, requiresApproval: true, reason: "Action requires owner approval" };
-  }
-  if (SENTINEL_PERMISSIONS.AUTO_ALLOWED.includes(action as any)) {
-    return { allowed: true, requiresApproval: false };
-  }
-  return { allowed: false, requiresApproval: false, reason: "Unknown action — denied by default" };
+export async function updateDelegationLevel(level: string) {
+  const config = await getOrCreateSentinelConfig();
+  const updated = await prisma.sentinelConfig.update({
+    where: { id: config.id },
+    data: { delegationLevel: level },
+  });
+  await writeSentinelAudit({
+    eventType: "SENTINEL_DELEGATION_CHANGED",
+    decision: `Delegation level set to ${level}`,
+    beforeState: config.delegationLevel,
+    afterState: level,
+  });
+  return updated;
+}
+
+export async function updateFallbackPlan(active: boolean) {
+  const config = await getOrCreateSentinelConfig();
+  const updated = await prisma.sentinelConfig.update({
+    where: { id: config.id },
+    data: { fallbackPlanActive: active },
+  });
+  await writeSentinelAudit({
+    eventType: "SENTINEL_FALLBACK_TOGGLED",
+    decision: `Fallback plan ${active ? "activated" : "deactivated"}`,
+    beforeState: String(config.fallbackPlanActive),
+    afterState: String(active),
+  });
+  return updated;
+}
+
+export async function updateDeepRepairWait(minutes: number) {
+  const config = await getOrCreateSentinelConfig();
+  const updated = await prisma.sentinelConfig.update({
+    where: { id: config.id },
+    data: { deepRepairWaitMinutes: minutes },
+  });
+  return updated;
+}
+
+export async function getChatMessages(limit = 30) {
+  return prisma.sentinelChatMessage.findMany({
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+}
+
+export async function sendOwnerChatMessage(message: string) {
+  const msg = await prisma.sentinelChatMessage.create({
+    data: { sender: "OWNER", message },
+  });
+  return msg;
 }

@@ -1016,13 +1016,26 @@ model EmailMessage {
 }
 
 model SentinelConfig {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  operatingMode String   @default("NORMAL_MODE") @map("operating_mode")
-  isActive      Boolean  @default(true) @map("is_active")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  operatingMode         String   @default("NORMAL_MODE") @map("operating_mode")
+  delegationLevel       String   @default("MONITORING_ONLY") @map("delegation_level")
+  fallbackPlanActive    Boolean  @default(false) @map("fallback_plan_active")
+  deepRepairWaitMinutes Int      @default(15) @map("deep_repair_wait_minutes")
+  isActive              Boolean  @default(true) @map("is_active")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("sentinel_config")
+}
+
+model SentinelChatMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender    String
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt(sort: Desc)])
+  @@map("sentinel_chat_messages")
 }
 
 model SentinelTaskOrder {

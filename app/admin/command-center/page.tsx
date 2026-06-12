@@ -1,28 +1,50 @@
 // app/admin/command-center/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SmartCard } from '@/components/ui/SmartCard';
 
 interface SentinelData {
   status: string;
   isActive: boolean;
+  delegationLevel: string;
+  fallbackPlanActive: boolean;
+  deepRepairWaitMinutes: number;
   openTasks: number;
   pendingApprovals: number;
   openIncidents: number;
   data: {
-    config: { operatingMode: string; isActive: boolean; updatedAt: string };
+    config: any;
     openTasks: any[];
     pendingApprovals: any[];
     auditEvents: any[];
     incidents: any[];
+    chatMessages: any[];
   };
 }
+
+const DELEGATION_LEVELS = [
+  { key: 'MONITORING_ONLY', label: 'مراقبة فقط', desc: 'يراقب الأعطال والتذاكر والدفع والواتساب وأداء الوكلاء وأخطاء النظام. لا ينفذ أي إصلاح.' },
+  { key: 'MAINTENANCE_MONITORING', label: 'صيانة ومراقبة', desc: 'يفتح Incidents ويصنفها، يرسل تنبيهات، يوجه مهام للفريق الخارجي، يفعل رسائل fallback.' },
+  { key: 'SIMPLE_REPAIRS', label: 'إصلاحات بسيطة', desc: 'يعطل ردود آلية مكسورة، يفعل رسائل صيانة، يعيد محاولة مهام فاشلة، يغير status الخدمات.' },
+  { key: 'CONDITIONAL_DEEP_REPAIR', label: 'إصلاح عميق مشروط', desc: 'يعمل فقط في الحالات الحرجة بعد انتظار المالك، ضمن Runbook معتمد مسبقًا.' },
+];
+
+const WAIT_OPTIONS = [15, 30, 60, 180, 360];
+
+const MODES = [
+  { key: 'NORMAL_MODE', label: 'Normal', color: 'emerald' },
+  { key: 'VACATION_MODE', label: 'Vacation', color: 'amber' },
+  { key: 'EMERGENCY_MODE', label: 'Emergency', color: 'rose' },
+  { key: 'APPROVAL_MODE', label: 'Approval', color: 'indigo' },
+];
 
 export default function CommandCenterPage() {
   const [data, setData] = useState<SentinelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -38,26 +60,27 @@ export default function CommandCenterPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [data?.data?.chatMessages]);
 
-  const changeMode = async (mode: string) => {
+  const postAction = async (body: Record<string, unknown>) => {
     try {
       const res = await fetch('/api/admin/command-center', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'change-mode', mode }),
+        body: JSON.stringify(body),
       });
       if (res.ok) fetchData();
     } catch {}
   };
 
-  const MODES = [
-    { key: 'NORMAL_MODE', label: 'Normal', color: 'emerald' },
-    { key: 'VACATION_MODE', label: 'Vacation', color: 'amber' },
-    { key: 'EMERGENCY_MODE', label: 'Emergency', color: 'rose' },
-    { key: 'APPROVAL_MODE', label: 'Approval', color: 'indigo' },
-  ];
+  const sendChat = async () => {
+    if (!chatInput.trim()) return;
+    await postAction({ action: 'chat-send', message: chatInput.trim() });
+    setChatInput('');
+  };
 
   const formatDate = (d?: string) => d ? new Date(d).toLocaleString('ar-SA') : '—';
+  const waitLabel = (m: number) => m >= 60 ? `${m / 60} ساعات` : `${m} دقيقة`;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
@@ -68,29 +91,20 @@ export default function CommandCenterPage() {
         </div>
         {data && (
           <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-            data.isActive
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+            data.isActive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
           }`}>
             {data.isActive ? 'نشط' : 'متوقف'}
           </span>
         )}
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
-          {error}
-        </div>
-      )}
-
-      {loading && !data && (
-        <div className="text-center py-12 text-[var(--nc-foreground-muted)] text-sm">جاري تحميل مركز القيادة...</div>
-      )}
+      {error && <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">{error}</div>}
+      {loading && !data && <div className="text-center py-12 text-[var(--nc-foreground-muted)] text-sm">جاري تحميل مركز القيادة...</div>}
 
       {data && (
         <>
           {/* Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <SmartCard className="p-4 text-center">
               <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">المهام النشطة</p>
               <p className="text-2xl font-black text-[var(--nc-foreground)] mt-1">{data.openTasks}</p>
@@ -107,27 +121,124 @@ export default function CommandCenterPage() {
               <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">وضع التشغيل</p>
               <p className="text-sm font-black text-[var(--nc-foreground)] mt-1">{data.status}</p>
             </SmartCard>
+            <SmartCard className="p-4 text-center">
+              <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">خطة الطوارئ</p>
+              <p className={`text-sm font-black mt-1 ${data.fallbackPlanActive ? 'text-amber-400' : 'text-[var(--nc-foreground-muted)]'}`}>
+                {data.fallbackPlanActive ? 'مفعلة' : 'متوقفة'}
+              </p>
+            </SmartCard>
           </div>
 
-          {/* Mode Selector */}
+          {/* Operating Mode */}
           <SmartCard className="p-5">
-            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">تغيير وضع التشغيل</h3>
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">وضع التشغيل</h3>
             <div className="flex flex-wrap gap-2">
               {MODES.map(m => (
-                <button
-                  key={m.key}
-                  onClick={() => changeMode(m.key)}
+                <button key={m.key} onClick={() => postAction({ action: 'change-mode', mode: m.key })}
                   disabled={data.data.config.operatingMode === m.key}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                     data.data.config.operatingMode === m.key
                       ? `bg-${m.color}-500/20 border-${m.color}-500/30 text-${m.color}-400`
                       : 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
-                  } disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                  {m.label}
+                  }`}>{m.label}</button>
+              ))}
+            </div>
+          </SmartCard>
+
+          {/* Delegation Level Dropdown */}
+          <SmartCard className="p-5">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">وضع تفويض Sentinel أثناء غياب المالك</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {DELEGATION_LEVELS.map(dl => (
+                <button key={dl.key} onClick={() => postAction({ action: 'delegation-level', level: dl.key })}
+                  className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+                    data.delegationLevel === dl.key
+                      ? 'border-indigo-500/40 bg-indigo-500/10 text-[var(--nc-foreground)]'
+                      : 'border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
+                  }`}>
+                  <p className="text-xs font-bold">{dl.label}</p>
+                  <p className="text-[10px] mt-1 leading-relaxed">{dl.desc}</p>
                 </button>
               ))}
             </div>
+          </SmartCard>
+
+          {/* Deep Repair Wait Time + Fallback Plan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SmartCard className="p-5">
+              <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">وقت انتظار الإصلاح العميق</h3>
+              <div className="flex flex-wrap gap-2">
+                {WAIT_OPTIONS.map(m => (
+                  <button key={m} onClick={() => postAction({ action: 'deep-repair-wait', minutes: m })}
+                    disabled={data.deepRepairWaitMinutes === m}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                      data.deepRepairWaitMinutes === m
+                        ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'
+                        : 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
+                    }`}>{waitLabel(m)}</button>
+                ))}
+              </div>
+              <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-2">
+                في وضع الإصلاح العميق المشروط: لا ينفذ Sentinel أي إجراء إلا بعد مرور وقت الانتظار بدون رد من المالك.
+              </p>
+            </SmartCard>
+
+            <SmartCard className="p-5">
+              <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">الخطة البديلة عند الطوارئ</h3>
+              <button onClick={() => postAction({ action: 'fallback-plan', active: !data.fallbackPlanActive })}
+                className={`w-full py-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  data.fallbackPlanActive
+                    ? 'bg-amber-500/20 border-amber-500/30 text-amber-400'
+                    : 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
+                }`}>
+                {data.fallbackPlanActive ? '🛡️ الخطة البديلة مفعلة — إلغاء' : 'تفعيل خطة بديلة عند الطوارئ'}
+              </button>
+              <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-2">
+                عند التفعيل: Sentinel يحول الخدمة المتأثرة إلى Maintenance Mode، يظهر رسالة للمستخدمين، يوقف الميزة المكسورة فقط دون إسقاط المنصة كاملة.
+              </p>
+            </SmartCard>
+          </div>
+
+          {/* Sentinel Chat Card */}
+          <SmartCard className="p-5">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">محادثة Sentinel</h3>
+            <div className="bg-[var(--nc-surface)] rounded-xl border border-[var(--nc-border)] overflow-hidden">
+              <div className="max-h-64 overflow-y-auto p-4 space-y-3">
+                {data.data.chatMessages.length === 0 && (
+                  <p className="text-xs text-[var(--nc-foreground-muted)] text-center">لا توجد رسائل بعد.</p>
+                )}
+                {data.data.chatMessages.map((msg: any) => (
+                  <div key={msg.id} className={`flex ${msg.sender === 'OWNER' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] px-3 py-2 rounded-xl text-xs ${
+                      msg.sender === 'OWNER'
+                        ? 'bg-indigo-500/20 border border-indigo-500/30 text-[var(--nc-foreground)] rounded-br-sm'
+                        : 'bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] rounded-bl-sm'
+                    }`}>
+                      <p>{msg.message}</p>
+                      <p className="text-[9px] mt-1 opacity-60">
+                        {msg.sender === 'SENTINEL' ? 'Sentinel' : 'المالك'} · {formatDate(msg.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+              <div className="border-t border-[var(--nc-border)] p-3 flex gap-2">
+                <input
+                  type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                  placeholder="اكتب رسالة لـ Sentinel..."
+                  className="flex-1 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)]"
+                />
+                <button onClick={sendChat}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[var(--nc-foreground)] font-bold text-xs transition-all cursor-pointer">
+                  إرسال
+                </button>
+              </div>
+            </div>
+            <p className="text-[9px] text-[var(--nc-foreground-muted)] mt-2">
+              تحذير: لا تستخدم المحادثة لتنفيذ أوامر حساسة مباشرة. الأوامر الحساسة تتحول إلى TaskOrder أو Pending Approval.
+            </p>
           </SmartCard>
 
           {/* Open Tasks */}
@@ -141,15 +252,9 @@ export default function CommandCenterPage() {
                   <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-[var(--nc-surface)] border border-[var(--nc-border)] text-xs">
                     <div>
                       <p className="font-bold text-[var(--nc-foreground)]">{t.title}</p>
-                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">
-                        {t.assignedToType} → {t.assignedToName} · {t.priority} · {t.status}
-                      </p>
+                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">{t.assignedToType} → {t.assignedToName} · {t.priority} · {t.status}</p>
                     </div>
-                    {t.approvalRequired && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        ينتظر موافقة
-                      </span>
-                    )}
+                    {t.approvalRequired && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">ينتظر موافقة</span>}
                   </div>
                 ))}
               </div>

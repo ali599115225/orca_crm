@@ -42,6 +42,7 @@ export default async function OperationsLayout({
       tenant={tenant}
       user={{ name: userName, email: userEmail, role: userRoleKey }}
       companyName={rawCompanyName || "ORCA"}
+      isSuperAdmin={isSuperAdmin}
     >
       {children}
     </DashboardLayout>

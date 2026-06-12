@@ -9,6 +9,7 @@ interface DashboardLayoutProps {
   tenant?: any;
   user?: { name: string; email: string; role: string };
   companyName?: string;
+  isSuperAdmin?: boolean;
 }
 
 export default function DashboardLayout({
@@ -16,6 +17,7 @@ export default function DashboardLayout({
   tenant,
   user,
   companyName,
+  isSuperAdmin,
 }: DashboardLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { lang } = useApp();
@@ -48,7 +50,7 @@ export default function DashboardLayout({
           md:translate-x-0 md:static md:z-auto shrink-0
         `}
       >
-        <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} tenant={tenant} companyName={companyName} />
+        <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} tenant={tenant} companyName={companyName} isSuperAdmin={isSuperAdmin} />
       </div>
 
       {/* ── Main Content ─────────────────────────────────────────────── */}
