@@ -52,9 +52,10 @@ async function authenticatePaylink(): Promise<{ success: boolean; idToken?: stri
     try { data = JSON.parse(text); } catch {}
 
     if (!resp.ok) {
+      console.error('[Paylink Auth] Failed:', resp.status, text.substring(0, 300));
       return {
         success: false,
-        error: data.message || data.error || `Auth failed with status ${resp.status}`,
+        error: data.message || data.error || data.Message || `Auth HTTP ${resp.status}: ${text.substring(0, 100)}`,
         status: resp.status,
       };
     }
@@ -166,10 +167,14 @@ export async function POST(
       return NextResponse.json({
         success: false,
         error: 'PAYLINK_AUTH_FAILED',
-        message: 'فشل المصادقة مع بوابة Paylink',
+        message: 'فشل المصادقة مع بوابة Paylink — تحقق من صحة PAYLINK_API_ID و PAYLINK_SECRET_KEY',
         providerStatus: authResult.status,
         providerMessage: authResult.error,
-        diagnostics: getDiagnostics(),
+        diagnostics: {
+          ...getDiagnostics(),
+          authStatus: authResult.status,
+          authMessage: authResult.error,
+        },
       }, { status: 502 });
     }
 
