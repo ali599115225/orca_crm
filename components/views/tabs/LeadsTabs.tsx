@@ -1,7 +1,8 @@
 // components/views/tabs/LeadsTabs.tsx
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
+import { useRouter } from "next/navigation";
 import LeadsPipelineV2 from "../pipeline/LeadsPipelineV2";
 import Contacts from "./Contacts";
 import Opportunities from "./Opportunities";
@@ -10,213 +11,188 @@ import Offers from "./Offers";
 import Tasks from "./Tasks";
 import InsightsAutomation from "./InsightsAutomation";
 
-import { 
-  Users, Activity, Calendar, DollarSign, Search, Plus, 
-  Settings, Bot, Sparkles
-} from "lucide-react";
-import { Card, Button } from "../../ui/orca-components";
-import { LayoutContainer } from '../../ui/LayoutContainer';
+import { Search, Plus, Upload, Phone, MessageCircle, Mail, CheckSquare, MapPin, FileText, Target, FileCheck } from "lucide-react";
+import { SmartCard } from "../../ui/SmartCard";
 
-export default function LeadsTabs() {
-  const { lang } = useApp();
-  const [active, setActive] = useState("pipeline");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const tabs = [
-    { id: "pipeline", labelAr: "مسار الصفقات", labelEn: "Pipeline" },
-    { id: "contacts", labelAr: "جهات اتصال", labelEn: "Contacts" },
-    { id: "opportunities", labelAr: "الفرص", labelEn: "Opportunities" },
-    { id: "tours", labelAr: "الجولات العقارية", labelEn: "Property Tours" },
-    { id: "offers", labelAr: "العروض العقارية", labelEn: "Offers" },
-    { id: "tasks", labelAr: "المهام والأنشطة", labelEn: "Tasks" },
-    { id: "insights", labelAr: "الرؤى والأتمتة", labelEn: "Insights" },
-  ];
-
-  const handleTabChange = (tabId: string) => {
-    startTransition(() => {
-      setActive(tabId);
-    });
-  };
-
-  // KPIs
-  const kpisContent = (
-    <>
-      <Card className="p-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">العملاء الجدد (هذا الأسبوع)</p>
-            <h3 className="text-2xl font-black text-white">48</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
-            <Users size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الفرص النشطة</p>
-            <h3 className="text-2xl font-black text-amber-500">126</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
-            <Activity size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الجولات المجدولة</p>
-            <h3 className="text-2xl font-black text-emerald-500">14</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-            <Calendar size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">نسبة نجاح الصفقات</p>
-            <h3 className="text-2xl font-black text-cyan-400">76%</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-            <Sparkles size={18} />
-          </div>
-        </div>
-      </Card>
-    </>
-  );
-
-  // Actions
-  const actionsContent = (
-    <Card className="p-4 space-y-4 h-full flex flex-col justify-between">
-      <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Settings size={16} className="text-[var(--nc-text-secondary)]" />
-          إجراءات العملاء السريعة
-        </h4>
-        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">البحث في العملاء المحتملين</p>
-      </div>
-
-      <div className="space-y-3 flex-grow pt-2">
-        <div className="flex gap-2">
-          <input 
-            placeholder={lang === 'AR' ? 'بحث في العملاء...' : 'Search leads...'} 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]" 
-          />
-          <Button 
-            className="px-4 py-2 text-xs font-bold"
-          >
-            {lang === 'AR' ? 'بحث' : 'Search'}
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-
-  // Insights (AI Predictor)
-  const insightsContent = (
-    <Card className="p-4 space-y-4 h-full flex flex-col justify-between">
-      <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Bot size={16} className="text-cyan-400" />
-          مساعد أتمتة العملاء وتوقع الفوز (AI Predictor)
-        </h4>
-        <p className="text-xs text-slate-500 text-[var(--nc-text-dim)] font-medium mt-1">تقييم جودة العملاء (Lead Scoring) والرؤى الذكية والتوصيات</p>
-      </div>
-
-      <div className="space-y-4 flex-grow pt-2 text-xs">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1">
-            <span className="text-slate-400 block text-xs text-slate-500">العميل الأعلى اهتماماً متوقع</span>
-            <span className="font-semibold text-white text-lg">خالد الفيصل (معدل فوز: 92%)</span>
-            <p className="text-xs text-slate-500 text-emerald-400">التوصية: تم إرسال كتالوج مشروع النخيل، يرجى الاتصال هاتفياً اليوم.</p>
-          </div>
-          <div className="bg-[var(--nc-surface)] p-3 rounded-xl border border-white/5 space-y-1">
-            <span className="text-slate-400 block text-xs text-slate-500">حالة المهام التلقائية</span>
-            <span className="font-semibold text-white text-lg">تمت أتمتة 18 متابعة هذا اليوم</span>
-            <p className="text-xs text-slate-500 text-[var(--nc-text-secondary)]">تنبيه: يوجد عميل واحد معلق لم يتم تعيينه منذ 4 ساعات.</p>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-
-  // Details
-  const detailsContent = (
-    <div className="space-y-6">
-      {/* Tabs Selector Bar */}
-      <div className="tabs-row flex flex-wrap gap-2 border-b border-white/10 pb-3">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => handleTabChange(t.id)}
-            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              active === t.id 
-                ? "bg-[var(--nc-accent)] text-white shadow-sm" 
-                : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] border border-white/5 hover:text-white hover:bg-[var(--nc-surface-solid)]"
-            }`}
-          >
-            {lang === 'AR' ? t.labelAr : t.labelEn}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Area Content */}
-      <div className="tab-area">
-        {isPending ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-            <span className="text-xs text-slate-500 font-medium">جاري الانتقال للقسم المحدد...</span>
-          </div>
-        ) : (
-          <>
-            {active === "pipeline" && <LeadsPipelineV2 />}
-            {active === "contacts" && <Contacts />}
-            {active === "opportunities" && <Opportunities />}
-            {active === "tours" && <Tours />}
-            {active === "offers" && <Offers />}
-            {active === "tasks" && <Tasks />}
-            {active === "insights" && <InsightsAutomation />}
-          </>
-        )}
-      </div>
-    </div>
-  );
-
+// ── Flat row block (shared style) ──
+function FlatRowBlock({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="leads-page p-6 text-[var(--ds-text-primary)]" dir={lang === 'AR' ? 'rtl' : 'ltr'}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">
-            {lang === 'AR' ? 'إدارة علاقات العملاء' : 'Customer Relationship Management'}
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
-            {lang === 'AR' ? 'مركز إدارة العملاء والصفقات — ORCA' : 'Deals & Leads Hub — ORCA'}
-          </h1>
-        </div>
-      </div>
-
-      <LayoutContainer
-        kpis={kpisContent}
-        actions={actionsContent}
-        insights={insightsContent}
-        details={detailsContent}
-      />
+    <div className={`rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] hover:border-[var(--nc-accent-border)] transition-colors ${className}`}>
+      {children}
     </div>
   );
 }
 
+export default function LeadsTabs() {
+  const { lang, t } = useApp();
+  const router = useRouter();
+  const [active, setActive] = useState("pipeline");
+  const [isPending, startTransition] = useTransition();
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // ── Listen for search from Header ──
+  useEffect(() => {
+    const handler = (e: Event) => { setSearchQuery((e as CustomEvent).detail || ""); };
+    window.addEventListener("search-change", handler);
+    return () => window.removeEventListener("search-change", handler);
+  }, []);
 
+  // ── Filter state ──
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const toggleFilter = (key: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearFilters = () => setActiveFilters(new Set());
+  const hasFilters = activeFilters.size > 0 || searchQuery.length > 0;
 
+  // ── Filter chips (simulated counts) ──
+  const filterChips = [
+    { key: "total",      labelKey: "leads.totalLeads",      mockCount: 48 },
+    { key: "dueToday",   labelKey: "leads.dueToday",        mockCount: 7 },
+    { key: "highProb",   labelKey: "leads.highProbability", mockCount: 12 },
+    { key: "active",     labelKey: "leads.activeLeads",     mockCount: 31 },
+  ];
 
+  // Filter chip colors
+  const chipColors: Record<string, string> = {
+    total:    "border-blue-500/30 bg-blue-500/5 text-blue-400",
+    dueToday: "border-amber-500/30 bg-amber-500/5 text-amber-400",
+    highProb: "border-emerald-500/30 bg-emerald-500/5 text-emerald-400",
+    active:   "border-purple-500/30 bg-purple-500/5 text-purple-400",
+  };
 
+  const tabs = [
+    { id: "pipeline",     labelAr: "مسار الصفقات",    labelEn: "Pipeline" },
+    { id: "contacts",     labelAr: "جهات اتصال",      labelEn: "Contacts" },
+    { id: "opportunities",labelAr: "الفرص",           labelEn: "Opportunities" },
+    { id: "tours",        labelAr: "الجولات العقارية", labelEn: "Tours" },
+    { id: "offers",       labelAr: "العروض العقارية",  labelEn: "Offers" },
+    { id: "tasks",        labelAr: "المهام والأنشطة",  labelEn: "Tasks" },
+    { id: "insights",     labelAr: "الرؤى والأتمتة",   labelEn: "Insights" },
+  ];
 
+  const handleTabChange = (tabId: string) => startTransition(() => setActive(tabId));
 
+  return (
+    <div className="nc-stack" dir={lang === "AR" ? "rtl" : "ltr"} style={{ padding: "16px 24px 40px", maxWidth: 1600, margin: "0 auto", width: "100%" }}>
 
+      {/* ═══════════════════════════════════════
+          A. PAGE HEADER
+          ═══════════════════════════════════════ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="nc-heading-1">{t("leads.pageTitle")}</h1>
+          <p className="text-[var(--nc-text-dim)] text-sm mt-1">{t("leads.pageDesc")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="nc-btn nc-btn-ghost nc-btn-sm text-xs" onClick={() => router.push("/operations/leads?import=1")}>
+            <Upload size={14} />
+            <span>{t("leads.import")}</span>
+          </button>
+          <button className="nc-btn nc-btn-primary nc-btn-sm text-xs" onClick={() => router.push("/operations/leads?add=1")}>
+            <Plus size={14} />
+            <span>{t("leads.addLead")}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          B. MINI KPI / FILTER STRIP
+          ═══════════════════════════════════════ */}
+      <div className="flex flex-wrap items-center gap-2">
+        {filterChips.map((chip) => {
+          const isActive = activeFilters.has(chip.key);
+          return (
+            <button
+              key={chip.key}
+              onClick={() => toggleFilter(chip.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer
+                ${isActive
+                  ? `${chipColors[chip.key] || ""} border-current`
+                  : "border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)] hover:text-[var(--nc-foreground)]"}
+              `}
+            >
+              <span>{t(chip.labelKey)}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-current/10" : "bg-[var(--nc-surface-strong)]"}`}>
+                {chip.mockCount}
+              </span>
+            </button>
+          );
+        })}
+        {hasFilters && (
+          <button onClick={clearFilters} className="text-[10px] font-bold text-[var(--nc-accent)] hover:underline cursor-pointer px-2">
+            {t("leads.clearFilters")}
+          </button>
+        )}
+      </div>
+
+      {/* ═══════════════════════════════════════
+          C. VIEW SWITCH + TAB BAR
+          ═══════════════════════════════════════ */}
+      <div className="tabs-row flex flex-wrap gap-2 border-b border-[var(--nc-glass-border)] pb-2">
+        {tabs.map((t2) => (
+          <button
+            key={t2.id}
+            type="button"
+            onClick={() => handleTabChange(t2.id)}
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              active === t2.id
+                ? "bg-[var(--nc-accent)] text-white shadow-sm"
+                : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] border border-[var(--nc-glass-border)] hover:text-[var(--nc-foreground)]"
+            }`}
+          >
+            {lang === "AR" ? t2.labelAr : t2.labelEn}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══════════════════════════════════════
+          D. TAB CONTENT AREA
+          ═══════════════════════════════════════ */}
+      {isPending ? (
+        <div className="py-12 flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
+          <span className="text-xs text-[var(--nc-foreground-muted)]">{lang === "AR" ? "جاري الانتقال..." : "Loading..."}</span>
+        </div>
+      ) : (
+        <>
+          {active === "pipeline" && <LeadsPipelineV2 />}
+          {active === "contacts" && <Contacts />}
+          {active === "opportunities" && <Opportunities />}
+          {active === "tours" && <Tours />}
+          {active === "offers" && <Offers />}
+          {active === "tasks" && <Tasks />}
+          {active === "insights" && <InsightsAutomation />}
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════
+          E. AI / INSIGHTS — Limited Preview
+          ═══════════════════════════════════════ */}
+      {active !== "insights" && (
+        <SmartCard elevation="subtle" className="p-5 border-dashed border-purple-500/20">
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-purple-500/5 border border-purple-500/10">
+            <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center text-purple-400 flex-shrink-0">
+              <i className="ph-fill ph-eye text-xs"></i>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">{t("dash.previewLabel")}</p>
+              <p className="text-[9px] text-[var(--nc-text-dim)]">{t("dash.previewDesc")}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => startTransition(() => setActive("insights"))}
+            className="nc-btn nc-btn-ghost nc-btn-sm text-xs"
+          >
+            <span>{t("insights.title")} →</span>
+          </button>
+        </SmartCard>
+      )}
+
+    </div>
+  );
+}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useApp } from "@/app/context/AppContext";
 import type { LeadItem } from "./KanbanCard";
 
 const STAGES = [
@@ -61,7 +62,7 @@ const DEF_MOCK = genMockLeads();
 
 export default function LeadsPipelineV2() {
   const router = useRouter();
-  const [lang] = useState("AR");
+  const { t, lang } = useApp();
   const [leads, setLeads] = useState<LeadItem[]>(DEF_MOCK);
   const [filtered, setFiltered] = useState<LeadItem[]>(DEF_MOCK);
   const [selLead, setSelLead] = useState<LeadItem | null>(null);
@@ -70,8 +71,6 @@ export default function LeadsPipelineV2() {
   const [filterSource, setFilterSource] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
   const [detailData, setDetailData] = useState<any>(null);
-
-  const t = lang === "AR";
 
   const loadLeads = async () => {
     try {
@@ -153,27 +152,27 @@ export default function LeadsPipelineV2() {
         <div className="lv2-actionbar">
           <div className="lv2-action-item lv2-action-warn">
             <span className="lv2-action-num">{smartActions.followUp}</span>
-            <span className="lv2-action-lbl">{t ? "متابعة اليوم" : "Follow-up Today"}</span>
+            <span className="lv2-action-lbl">{t("leads.dueToday")}</span>
           </div>
           <div className="lv2-action-item lv2-action-hot">
             <span className="lv2-action-num">{smartActions.highProb}</span>
-            <span className="lv2-action-lbl">{t ? "احتمالية عالية" : "High Probability"}</span>
+            <span className="lv2-action-lbl">{t("leads.highProbability")}</span>
           </div>
           <div className="lv2-action-item lv2-action-stale">
             <span className="lv2-action-num">{smartActions.stale}</span>
-            <span className="lv2-action-lbl">{t ? "عملاء نشطون" : "Active Leads"}</span>
+            <span className="lv2-action-lbl">{t("leads.activeLeads")}</span>
           </div>
           <div className="lv2-action-item lv2-action-info">
             <span className="lv2-action-num">{smartActions.total}</span>
-            <span className="lv2-action-lbl">{t ? "إجمالي العملاء" : "Total Leads"}</span>
+            <span className="lv2-action-lbl">{t("leads.totalLeads")}</span>
           </div>
           <div className="lv2-filter-spacer" />
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="lv2-filter">
-            <option value="">{t ? "كل المصادر" : "All Sources"}</option>
+            <option value="">{t("leads.filterSource")}</option>
             {MOCK_SRC.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)} className="lv2-filter">
-            <option value="">{t ? "كل المستشارين" : "All Agents"}</option>
+            <option value="">{t("leads.filterOwner")}</option>
             {["رائد", "فواز", "عبدالرحمن", "سعود", "عمر", "بدر"].map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
@@ -187,7 +186,7 @@ export default function LeadsPipelineV2() {
                 <div className="lv2-stage-header" onClick={() => toggle(stage.id)}>
                   <div className="lv2-stage-left">
                     <span className="lv2-dot" style={{ background: STAGE_ACCENT[stage.id] }} />
-                    <span className="lv2-stage-title">{t ? stage.titleAr : stage.titleEn}</span>
+                    <span className="lv2-stage-title">{lang === "AR" ? stage.titleAr : stage.titleEn}</span>
                     <span className="lv2-stage-count">{stageLeads(stage.id).length}</span>
                   </div>
                   <span className={`lv2-chevron${collapsed.has(stage.id) ? "" : " lv2-chevron-open"}`}>▾</span>
@@ -230,57 +229,80 @@ export default function LeadsPipelineV2() {
           {/* Right: Detail Panel */}
           <div className="lv2-detail">
             {!selLead ? (
-              <div className="lv2-empty">{t ? "اختر عميلاً لعرض التفاصيل" : "Select a lead to view details"}</div>
+              <div className="lv2-empty">{t("leads.selectLeadHint")}</div>
             ) : (
               <>
                 <div className="lv2-detail-header">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                     <h3 className="lv2-detail-name">{selLead.firstName} {selLead.lastName || ""}</h3>
-                    <button
-                      onClick={() => router.push(`/operations/leads/${selLead.id}`)}
-                      style={{
-                        padding: "6px 12px",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        background: "rgba(59,130,246,0.1)",
-                        border: "1px solid rgba(59,130,246,0.2)",
-                        borderRadius: "6px",
-                        color: "#3B82F6",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {t ? "عرض التفاصيل الكاملة" : "View Full Details"} →
+                    <span className="lv2-detail-score" style={{ background: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)", borderColor: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)" }}>
+                      {detailData?.leadScore || selLead.leadScore}
+                    </span>
+                  </div>
+                  {/* ── Cross-module Action Buttons ── */}
+                  <div className="lv2-actions">
+                    <a href={`tel:${(detailData as any)?.phone || ""}`} className={`lv2-act-btn ${!(detailData as any)?.phone ? "lv2-act-disabled" : ""}`} title={!(detailData as any)?.phone ? t("action.noPhone") : ""}>
+                      <span className="lv2-act-icon">📞</span><span className="lv2-act-label">{t("action.call")}</span>
+                    </a>
+                    <button onClick={() => router.push(`/operations/whatsapp`)} className="lv2-act-btn lv2-act-soon" title={t("action.whatsappPending")}>
+                      <span className="lv2-act-icon">💬</span><span className="lv2-act-label">{t("action.whatsapp")}</span>
+                      <span className="lv2-act-badge">{t("action.whatsappPending")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/email`)} className={`lv2-act-btn ${!(detailData as any)?.email ? "lv2-act-disabled" : ""}`} title={!(detailData as any)?.email ? t("action.noEmail") : ""}>
+                      <span className="lv2-act-icon">✉️</span><span className="lv2-act-label">{t("action.email")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/tasks`)} className="lv2-act-btn">
+                      <span className="lv2-act-icon">✅</span><span className="lv2-act-label">{t("action.task")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/tours`)} className="lv2-act-btn">
+                      <span className="lv2-act-icon">🗺️</span><span className="lv2-act-label">{t("action.tour")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/offers`)} className="lv2-act-btn">
+                      <span className="lv2-act-icon">📋</span><span className="lv2-act-label">{t("action.offer")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/leads?tab=opportunities`)} className="lv2-act-btn">
+                      <span className="lv2-act-icon">🎯</span><span className="lv2-act-label">{t("action.opportunity")}</span>
+                    </button>
+                    <button onClick={() => router.push(`/operations/rental`)} className="lv2-act-btn lv2-act-soon" title={t("action.contractPending")}>
+                      <span className="lv2-act-icon">📄</span><span className="lv2-act-label">{t("action.contract")}</span>
                     </button>
                   </div>
-                  <span className="lv2-detail-score" style={{ background: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)", borderColor: (detailData?.leadScore || selLead.leadScore) >= 75 ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)" }}>
-                    {detailData?.leadScore || selLead.leadScore}
-                  </span>
+                  <button
+                    onClick={() => router.push(`/operations/leads/${selLead.id}`)}
+                    style={{
+                      padding: "6px 12px", fontSize: "11px", fontWeight: 600,
+                      background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)",
+                      borderRadius: "6px", color: "#3B82F6", cursor: "pointer", marginTop: "8px",
+                    }}
+                  >
+                    {t("leads.viewDetails") || (lang === "AR" ? "عرض التفاصيل الكاملة" : "View Full Details")} →
+                  </button>
                 </div>
                 <div className="lv2-detail-meta">
-                  <span>{selLead.city}</span><span>·</span><span>{selLead.source}</span><span>·</span><span>{selLead.assignedTo || (t ? "غير معين" : "Unassigned")}</span>
+                  <span>{selLead.city}</span><span>·</span><span>{selLead.source}</span><span>·</span><span>{selLead.assignedTo || t("leads.filterOwner")}</span>
                 </div>
                 <div className="lv2-tabs">
                   {["overview", "notes", "tasks", "activities"].map(tab => (
                     <button key={tab} onClick={() => setDetailTab(tab)}
                       className={`lv2-tab${detailTab === tab ? " lv2-tab-active" : ""}`}>
-                      {t ? { overview: "نظرة عامة", notes: "ملاحظات", tasks: "مهام", activities: "نشاطات" }[tab] : { overview: "Overview", notes: "Notes", tasks: "Tasks", activities: "Activities" }[tab]}
+                      {lang === "AR" ? { overview: "نظرة عامة", notes: "ملاحظات", tasks: "مهام", activities: "نشاطات" }[tab] : { overview: "Overview", notes: "Notes", tasks: "Tasks", activities: "Activities" }[tab]}
                     </button>
                   ))}
                 </div>
                 <div className="lv2-detail-body">
                   {detailTab === "overview" && (
                     <div className="lv2-overview">
-                      <div className="lv2-field"><label>{t ? "المرحلة" : "Stage"}</label><span>{selLead.stage}</span></div>
-                      <div className="lv2-field"><label>{t ? "المدينة" : "City"}</label><span>{selLead.city}</span></div>
-                      <div className="lv2-field"><label>{t ? "المصدر" : "Source"}</label><span>{selLead.source}</span></div>
-                      <div className="lv2-field"><label>{t ? "الاحتمالية" : "Score"}</label><span>{selLead.leadScore}</span></div>
-                      <div className="lv2-field"><label>{t ? "المستشار" : "Agent"}</label><span>{selLead.assignedTo || "—"}</span></div>
+                      <div className="lv2-field"><label>{t("lead.stage")}</label><span>{selLead.stage}</span></div>
+                      <div className="lv2-field"><label>{t("lead.city")}</label><span>{selLead.city}</span></div>
+                      <div className="lv2-field"><label>{t("lead.source")}</label><span>{selLead.source}</span></div>
+                      <div className="lv2-field"><label>{t("lead.score")}</label><span>{selLead.leadScore}</span></div>
+                      <div className="lv2-field"><label>{t("lead.assignedTo")}</label><span>{selLead.assignedTo || "—"}</span></div>
                       <div className="lv2-field"><label>ID</label><span className="lv2-mono">{selLead.id}</span></div>
                     </div>
                   )}
-                  {detailTab === "notes" && <div className="lv2-placeholder">{t ? "الملاحظات تظهر هنا" : "Notes will appear here"}</div>}
-                  {detailTab === "tasks" && <div className="lv2-placeholder">{t ? "المهام تظهر هنا" : "Tasks will appear here"}</div>}
-                  {detailTab === "activities" && <div className="lv2-placeholder">{t ? "النشاطات تظهر هنا" : "Activities will appear here"}</div>}
+                  {detailTab === "notes" && <div className="lv2-placeholder">{lang === "AR" ? "الملاحظات تظهر هنا" : "Notes will appear here"}</div>}
+                  {detailTab === "tasks" && <div className="lv2-placeholder">{lang === "AR" ? "المهام تظهر هنا" : "Tasks will appear here"}</div>}
+                  {detailTab === "activities" && <div className="lv2-placeholder">{lang === "AR" ? "النشاطات تظهر هنا" : "Activities will appear here"}</div>}
                 </div>
               </>
             )}
@@ -321,6 +343,16 @@ const STYLES = () => (
     .lv2-stage-count { font-size:10px; color:#64748B; font-weight:600; }
     .lv2-chevron { color:#64748B; font-size:10px; transition:transform 0.2s; }
     .lv2-chevron-open { transform:rotate(180deg); }
+
+    /* Cross-module action buttons */
+    .lv2-actions { display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; border-top:1px solid rgba(36,50,72,0.2); border-bottom:1px solid rgba(36,50,72,0.2); margin:8px 0; }
+    .lv2-act-btn { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 10px; border-radius:8px; background:rgba(15,23,42,0.5); border:1px solid rgba(36,50,72,0.3); color:#CBD5E1; font-size:10px; cursor:pointer; transition:all 0.15s; min-width:58px; }
+    .lv2-act-btn:hover { border-color:rgba(201,169,110,0.3); background:rgba(201,169,110,0.05); }
+    .lv2-act-disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+    .lv2-act-soon { opacity:0.6; }
+    .lv2-act-icon { font-size:14px; }
+    .lv2-act-label { font-weight:700; font-size:9px; }
+    .lv2-act-badge { font-size:7px; font-weight:800; padding:1px 4px; border-radius:99px; background:rgba(245,158,11,0.15); color:#F59E0B; border:1px solid rgba(245,158,11,0.2); }
 
     .lv2-stage-body { padding:4px 8px; min-height:8px; }
     .lv2-stage-dragover { background:rgba(201,169,110,0.03); }

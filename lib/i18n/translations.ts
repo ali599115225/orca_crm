@@ -152,6 +152,97 @@ export const dict: TranslationDict = {
   // ── Preview / AI Section Labels ──────────────────
   'dash.previewLabel':          { ar: 'معاينة محدودة',          en: 'Limited Preview' },
   'dash.previewDesc':           { ar: 'هذه الميزة قيد التطوير وقد لا تعكس الحالة النهائية للمنتج.', en: 'This feature is under development and may not reflect the final product state.' },
+
+  // ── Leads Page ────────────────────────────────────
+  'leads.pageTitle':            { ar: 'مركز العملاء المحتملين',     en: 'Leads Operating Hub' },
+  'leads.pageDesc':             { ar: 'إدارة العملاء من الاستفسار حتى الإغلاق وربطهم بالمهام والجولات والعروض.', en: 'Manage leads from inquiry to close with tasks, tours, offers, and follow-ups.' },
+  'leads.addLead':              { ar: 'إضافة عميل محتمل',          en: 'Add Lead' },
+  'leads.import':               { ar: 'استيراد',                 en: 'Import' },
+  'leads.totalLeads':           { ar: 'إجمالي العملاء',           en: 'Total Leads' },
+  'leads.dueToday':             { ar: 'متابعة اليوم',            en: 'Due Today' },
+  'leads.highProbability':      { ar: 'احتمالية عالية',          en: 'High Probability' },
+  'leads.activeLeads':          { ar: 'عملاء نشطون',             en: 'Active Leads' },
+  'leads.clearFilters':         { ar: 'مسح الفلاتر',             en: 'Clear Filters' },
+  'leads.viewPipeline':         { ar: 'المسار',                 en: 'Pipeline' },
+  'leads.viewList':             { ar: 'قائمة',                  en: 'List' },
+  'leads.viewBoard':            { ar: 'لوحة',                   en: 'Board' },
+  'leads.selectLeadHint':       { ar: 'اختر عميلاً لعرض التفاصيل والإجراءات', en: 'Select a lead to view details and actions' },
+  'leads.viewDetails':          { ar: 'عرض التفاصيل الكاملة',   en: 'View Full Details' },
+  'leads.filterOwner':          { ar: 'المسؤول',                 en: 'Owner' },
+  'leads.filterSource':         { ar: 'المصدر',                  en: 'Source' },
+  'leads.filterStage':          { ar: 'المرحلة',                 en: 'Stage' },
+  'leads.filterProject':        { ar: 'المشروع',                 en: 'Project' },
+  'leads.filterTemperature':    { ar: 'درجة الاحتمالية',          en: 'Score' },
+  'leads.filterOverdue':        { ar: 'المتأخرين فقط',           en: 'Overdue Only' },
+  'leads.searchInLeads':        { ar: 'ابحث في العملاء...',       en: 'Search leads...' },
+  'leads.resultsCount':         { ar: 'نتيجة',                  en: 'result' },
+  'leads.resultsCount.plural':  { ar: 'نتائج',                  en: 'results' },
+
+  // ── Lead Detail Fields ────────────────────────────
+  'lead.name':                  { ar: 'الاسم',       en: 'Name' },
+  'lead.phone':                 { ar: 'الجوال',      en: 'Phone' },
+  'lead.email':                 { ar: 'البريد الإلكتروني', en: 'Email' },
+  'lead.source':                { ar: 'المصدر',      en: 'Source' },
+  'lead.stage':                 { ar: 'المرحلة',     en: 'Stage' },
+  'lead.score':                 { ar: 'الاحتمالية',  en: 'Score' },
+  'lead.lastContact':           { ar: 'آخر تواصل',    en: 'Last Contact' },
+  'lead.nextFollowUp':          { ar: 'المتابعة القادمة', en: 'Next Follow-up' },
+  'lead.assignedTo':            { ar: 'المسؤول',     en: 'Assigned To' },
+  'lead.project':               { ar: 'المشروع المهتم به', en: 'Interested Project' },
+  'lead.city':                  { ar: 'المدينة',     en: 'City' },
+  'lead.createdAt':             { ar: 'تاريخ التسجيل', en: 'Registered' },
+
+  // ── Lead Actions ──────────────────────────────────
+  'action.call':                { ar: 'اتصال',       en: 'Call' },
+  'action.whatsapp':            { ar: 'واتساب',      en: 'WhatsApp' },
+  'action.email':               { ar: 'إيميل',       en: 'Email' },
+  'action.task':                { ar: 'مهمة',        en: 'Task' },
+  'action.tour':                { ar: 'جولة',        en: 'Tour' },
+  'action.offer':               { ar: 'عرض',         en: 'Offer' },
+  'action.opportunity':         { ar: 'فرصة',        en: 'Opportunity' },
+  'action.contract':            { ar: 'عقد',         en: 'Contract' },
+  'action.noPhone':              { ar: 'لا يوجد رقم جوال', en: 'No phone number' },
+  'action.noEmail':              { ar: 'لا يوجد بريد إلكتروني', en: 'No email address' },
+  'action.whatsappPending':      { ar: 'قيد التفعيل', en: 'Activation pending' },
+  'action.contractPending':      { ar: 'يحتاج ربط عقد', en: 'Contract requires setup' },
+
+  // ── Pipeline Stages (Leads) ───────────────────────
+  'leads.stage.inquiry':        { ar: 'استفسار',     en: 'Inquiry' },
+  'leads.stage.firstContact':   { ar: 'تواصل أولي',   en: 'First Contact' },
+  'leads.stage.tour':           { ar: 'جولة',        en: 'Tour' },
+  'leads.stage.offer':          { ar: 'عرض',         en: 'Offer' },
+  'leads.stage.negotiation':    { ar: 'تفاوض',       en: 'Negotiation' },
+  'leads.stage.closed':         { ar: 'إغلاق',       en: 'Closed' },
+  'leads.stage.lost':           { ar: 'مفقود',       en: 'Lost' },
+
+  // ── Contacts Tab ──────────────────────────────────
+  'contacts.title':             { ar: 'جهات اتصال',   en: 'Contacts' },
+  'contacts.create':            { ar: 'إضافة جهة اتصال', en: 'Add Contact' },
+  'contacts.noContacts':        { ar: 'لا توجد جهات اتصال', en: 'No contacts found' },
+
+  // ── Opportunities Tab ─────────────────────────────
+  'opps.title':                 { ar: 'الفرص',       en: 'Opportunities' },
+  'opps.create':                { ar: 'إنشاء فرصة',   en: 'Create Opportunity' },
+  'opps.noOpportunities':       { ar: 'لا توجد فرص',  en: 'No opportunities found' },
+
+  // ── Tours Tab ─────────────────────────────────────
+  'tours.title':                { ar: 'الجولات العقارية', en: 'Property Tours' },
+  'tours.create':               { ar: 'جدولة جولة',   en: 'Schedule Tour' },
+  'tours.noTours':              { ar: 'لا توجد جولات', en: 'No tours found' },
+
+  // ── Offers Tab ────────────────────────────────────
+  'offers.title':               { ar: 'العروض العقارية', en: 'Property Offers' },
+  'offers.create':              { ar: 'إنشاء عرض',    en: 'Create Offer' },
+  'offers.noOffers':            { ar: 'لا توجد عروض', en: 'No offers found' },
+
+  // ── Tasks Tab ─────────────────────────────────────
+  'tasksTab.title':             { ar: 'المهام والأنشطة', en: 'Tasks & Activities' },
+  'tasksTab.noTasks':           { ar: 'لا توجد مهام', en: 'No tasks found' },
+
+  // ── Insights Tab ──────────────────────────────────
+  'insights.title':             { ar: 'الرؤى الذكية',  en: 'Smart Insights' },
+  'insights.aiScore':           { ar: 'تقييم ذكي',    en: 'AI Score' },
+  'insights.recommendation':    { ar: 'التوصية',      en: 'Recommendation' },
 };
 
 // ── Translation Function ──────────────────────────
