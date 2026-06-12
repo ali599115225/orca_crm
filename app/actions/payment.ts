@@ -4,9 +4,9 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 
-const PAYLINK_SECRET = process.env.PAYLINK_SECRET || "test_secret_key_placeholder";
-const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || "https://paylink.sa/api/v1";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || "test_secret_key_placeholder";
+const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || "https://restpilot.paylink.sa";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://orca.az-ez.pro";
 
 function generateIdempotencyKey(): string {
   return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -20,7 +20,7 @@ async function createPaylinkInvoice(params: {
   const idempotencyKey = generateIdempotencyKey();
 
   try {
-    const response = await fetch(`${PAYLINK_BASE}/invoice`, {
+    const response = await fetch(`${PAYLINK_BASE}/api/v1/invoice`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${PAYLINK_SECRET}`,
