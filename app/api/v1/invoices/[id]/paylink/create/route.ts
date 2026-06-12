@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 
 const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
 const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || '';
+const PAYLINK_API_ID = process.env.PAYLINK_API_ID || '';
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -26,13 +27,24 @@ function generateIdempotencyKey(): string {
   return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
+// ── Debug: safe diagnostics (no secrets) ──
+function getDiagnostics() {
+  return {
+    hasBaseUrl: !!PAYLINK_BASE,
+    hasSecretKey: !!(PAYLINK_SECRET && PAYLINK_SECRET !== 'test_secret_key_placeholder'),
+    hasApiId: !!PAYLINK_API_ID,
+    baseUrlHost: PAYLINK_BASE ? new URL(PAYLINK_BASE).host : 'not-set',
+    endpointPath: `${PAYLINK_BASE}/api/v1/invoice`,
+  };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await authenticateRequest(request);
   if (!session) {
-    return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
   }
 
   const { id } = await params;
@@ -53,49 +65,95 @@ export async function POST(
     // Return existing Paylink URL if already created
     if (invoice.paymentUrl && invoice.gatewayProvider === 'paylink' && invoice.gatewayStatus === 'pending') {
       return NextResponse.json({
-        success: true,
-        status: 'existing',
-        paymentUrl: invoice.paymentUrl,
+        success: true, status: 'existing', paymentUrl: invoice.paymentUrl,
         message: 'رابط الدفع موجود مسبقاً',
       });
     }
 
+    // ── Check Paylink configuration ──
     if (!PAYLINK_SECRET || PAYLINK_SECRET === 'test_secret_key_placeholder') {
       return NextResponse.json({
         success: false,
-        error: 'بوابة الدفع Paylink غير مفعلة حالياً',
+        error: 'بوابة الدفع Paylink غير مفعلة حالياً — PAYLINK_SECRET_KEY غير مضبوط',
+        diagnostics: getDiagnostics(),
       }, { status: 503 });
     }
 
     const idempotencyKey = generateIdempotencyKey();
     const amountHalalas = Math.round(Number(invoice.totalAmount) * 100);
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/api/payment/callback`;
 
-    const paylinkResp = await fetch(`${PAYLINK_BASE}/api/v1/invoice`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PAYLINK_SECRET}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
-      },
-      body: JSON.stringify({
-        amount: amountHalalas,
-        currency: 'SAR',
-        description: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/api/payment/callback`,
-        metadata: { tenantId, invoiceId: id, invoiceNumber: String(invoice.invoiceNumber) },
-      }),
-    });
+    console.error('[Paylink] Attempting:', getDiagnostics().endpointPath);
 
-    if (!paylinkResp.ok) {
-      const errText = await paylinkResp.text();
-      console.error('[Paylink] Create failed:', errText);
-      return NextResponse.json({ success: false, error: 'فشل إنشاء رابط الدفع' }, { status: 502 });
+    // ── Call Paylink sandbox API ──
+    let paylinkResp: Response;
+    try {
+      paylinkResp = await fetch(`${PAYLINK_BASE}/api/v1/invoice`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PAYLINK_SECRET}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          amount: amountHalalas,
+          currency: 'SAR',
+          clientName: invoice.lease.tenantName,
+          clientMobile: '',
+          description: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
+          note: `ORCA invoice ${invoice.invoiceNumber}`,
+          orderNumber: String(invoice.invoiceNumber),
+          products: [{
+            title: `فاتورة #${invoice.invoiceNumber}`,
+            price: amountHalalas,
+            qty: 1,
+          }],
+          callbackUrl: callbackUrl,
+          cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/operations/rental`,
+          metadata: { tenantId, invoiceId: id, invoiceNumber: String(invoice.invoiceNumber) },
+        }),
+      });
+    } catch (fetchErr: any) {
+      console.error('[Paylink] Network error:', fetchErr.message);
+      return NextResponse.json({
+        success: false,
+        error: 'PAYLINK_NETWORK_ERROR',
+        message: 'تعذر الاتصال ببوابة Paylink',
+        diagnostics: getDiagnostics(),
+      }, { status: 502 });
     }
 
-    const paylinkData = await paylinkResp.json();
-    const paymentUrl = paylinkData.url || paylinkData.payment_url || '';
-    const paylinkInvoiceId = paylinkData.id || paylinkData.invoice_id || '';
-    const paylinkTransactionId = paylinkData.transaction_id || paylinkData.id || '';
+    // ── Handle Paylink response ──
+    const respText = await paylinkResp.text();
+    let respData: any = {};
+    try { respData = JSON.parse(respText); } catch {}
+
+    if (!paylinkResp.ok) {
+      console.error('[Paylink] Rejected:', paylinkResp.status, respText.substring(0, 200));
+      return NextResponse.json({
+        success: false,
+        error: 'PAYLINK_CREATE_FAILED',
+        message: 'فشل إنشاء رابط الدفع عبر Paylink',
+        providerStatus: paylinkResp.status,
+        providerMessage: respData.message || respData.error || respText.substring(0, 100),
+        diagnostics: getDiagnostics(),
+      }, { status: 502 });
+    }
+
+    const paymentUrl = respData.url || respData.payment_url || respData.checkout_url || '';
+    const paylinkInvoiceId = respData.id || respData.invoice_id || respData.transaction_id || '';
+
+    if (!paymentUrl) {
+      console.error('[Paylink] No URL in response:', Object.keys(respData).join(','));
+      return NextResponse.json({
+        success: false,
+        error: 'PAYLINK_NO_URL',
+        message: 'لم يتم استلام رابط الدفع من Paylink',
+        diagnostics: getDiagnostics(),
+      }, { status: 502 });
+    }
+
+    const paylinkTransactionId = respData.transaction_id || respData.id || '';
 
     await prisma.rentalInvoice.update({
       where: { id },
@@ -129,7 +187,12 @@ export async function POST(
       message: 'تم إنشاء رابط الدفع بنجاح',
     });
   } catch (error: any) {
-    console.error('[Paylink Create]', error.message);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('[Paylink Create] Unexpected:', error.message);
+    return NextResponse.json({
+      success: false,
+      error: 'PAYLINK_INTERNAL_ERROR',
+      message: 'حدث خطأ داخلي أثناء إنشاء رابط الدفع',
+      diagnostics: getDiagnostics(),
+    }, { status: 500 });
   }
 }

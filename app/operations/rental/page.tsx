@@ -1055,14 +1055,17 @@ export default function RentalPage() {
                                       <button
                                         onClick={async () => {
                                           try {
-                                            const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST' });
+                                            const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST', credentials: 'include' });
                                             const data = await res.json();
                                             if (data.success && data.paymentUrl) {
                                               window.open(data.paymentUrl, '_blank');
                                             } else {
-                                              alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create payment link'));
+                                              const msg = data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create payment link');
+                                              alert(msg);
                                             }
-                                          } catch { alert(isRTL ? 'فشل الاتصال' : 'Connection failed'); }
+                                          } catch (err: any) {
+                                            alert(isRTL ? 'تعذر إنشاء رابط الدفع عبر Paylink. تحقق من اتصالك.' : 'Could not create Paylink link. Check your connection.');
+                                          }
                                         }}
                                         className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
                                       >
@@ -1322,14 +1325,16 @@ export default function RentalPage() {
                               <button
                                 onClick={async () => {
                                   try {
-                                    const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST' });
+                                    const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST', credentials: 'include' });
                                     const data = await res.json();
                                     if (data.success && data.paymentUrl) {
                                       window.open(data.paymentUrl, '_blank');
                                     } else {
                                       alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create link'));
                                     }
-                                  } catch { alert(isRTL ? 'فشل الاتصال' : 'Connection failed'); }
+                                  } catch (err: any) {
+                                    alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من اتصالك.' : 'Could not create link. Check connection.');
+                                  }
                                 }}
                                 className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
                               >
