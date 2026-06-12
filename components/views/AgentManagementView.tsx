@@ -127,8 +127,17 @@ export default function AgentManagementView({
     }
   };
 
-  // Resolve plan definitions
-  const plan = tenantPlan.toLowerCase();
+  // Normalize legacy plan aliases to canonical basic/silver/gold
+  const CANONICAL_PLAN_MAP: Record<string, string> = {
+    basic: "basic", starter: "basic",
+    silver: "silver", pro: "silver", professional: "silver",
+    gold: "gold", diamond: "gold", platinum: "gold", enterprise: "gold",
+  };
+  const normalizePlanDisplay = (p: string): string =>
+    CANONICAL_PLAN_MAP[p] || "basic";
+
+  // Resolve plan — normalized for display & agent lookups
+  const plan = normalizePlanDisplay(tenantPlan.toLowerCase());
 
   const getAgentStatus = (agentId: string) => {
     const allowedMap: Record<string, string[]> = {
@@ -177,7 +186,7 @@ export default function AgentManagementView({
       ? "موظفين أكثر (حتى ١٠) ومشاريع أكثر (حتى ١٠) مع وكيلين مفعلين دائماً (ساهر ومنصور)." 
       : "More staff (up to 10), more projects (up to 10), and 2 permanent agents (Saher & Mansour).";
 
-    if (plan === 'pro' || plan === 'professional' || plan === 'silver') {
+    if (plan === 'silver') {
       currentPlanPrice = 900;
       nextPlanPrice = 2400;
       currentPlanName = isArabic ? "الباقة الفضية" : "Silver Plan";
