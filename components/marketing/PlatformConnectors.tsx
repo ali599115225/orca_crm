@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { SmartCard } from '@/components/ui/SmartCard';
+import { KpiCard } from '@/components/ui/KpiCard';
 import { Campaign } from '@/components/views/CampaignsView';
 
 /* ─── Types ──────────────────────────────────────────────────── */
@@ -417,28 +418,21 @@ export default function PlatformConnectors({
   return (
     <>
       {/* Tab 1: Marketing Marketplaces */}
-      {activeTab === 'marketing' && (
+          {activeTab === 'marketing' && (
         <div className="space-y-5 animate-[ncFadeIn_0.3s_ease]">
+          {/* Demo data badge */}
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+            <i className="ph-bold ph-warning text-amber-400"></i>
+            <p className="text-[11px] font-bold text-amber-400">{isArabic ? '⚠️ بيانات تجريبية — لم يتم ربطها بقاعدة البيانات' : '⚠️ Demo data — not connected to database'}</p>
+          </div>
           {/* KPI Row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { label: t.totalLeads,        value: totalLeads.toString(),           color: 'text-[var(--nc-accent)]',  icon: 'ph-users',          bg: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)]', ic: 'text-[var(--nc-accent)]' },
-              { label: t.totalSpend,        value: `${(totalSpend/1000).toFixed(1)}K`, color: 'text-indigo-500',       icon: 'ph-money',          bg: 'bg-indigo-500/10 border-indigo-500/20',   ic: 'text-indigo-500'  },
-              { label: t.avgCAC,            value: `${fmt(avgCAC, 0)}`,            color: 'text-amber-500',            icon: 'ph-coins',          bg: 'bg-amber-500/10 border-amber-500/20',     ic: 'text-amber-500'   },
-              { label: t.avgROI,            value: `${fmt(avgROI, 0)}%`,           color: 'text-emerald-500',          icon: 'ph-chart-line-up',  bg: 'bg-emerald-500/10 border-emerald-500/20', ic: 'text-emerald-500' },
-              { label: t.avgCVR,            value: `${fmt(avgCVR)}%`,              color: 'text-purple-500',           icon: 'ph-funnel',         bg: 'bg-purple-500/10 border-purple-500/20',   ic: 'text-purple-500'  },
-              { label: t.connectedPlatforms,value: `${connectedCnt}/${platforms.length}`, color:'text-blue-500',       icon: 'ph-link',           bg: 'bg-blue-500/10 border-blue-500/20',       ic: 'text-blue-500'    },
-            ].map(k => (
-              <SmartCard key={k.label} className="p-3 flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${k.bg}`}>
-                  <i className={`ph-bold ${k.icon} text-sm ${k.ic}`}></i>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold text-[var(--nc-foreground-muted)] uppercase tracking-wide leading-tight">{k.label}</p>
-                  <p className={`text-lg font-black leading-tight ${k.color}`}>{k.value}</p>
-                </div>
-              </SmartCard>
-            ))}
+            <KpiCard label={t.totalLeads} value={totalLeads.toString()} color="accent" />
+            <KpiCard label={t.totalSpend} value={`${(totalSpend/1000).toFixed(1)}K`} color="info" />
+            <KpiCard label={t.avgCAC} value={`${fmt(avgCAC, 0)}`} color="warning" />
+            <KpiCard label={t.avgROI} value={`${fmt(avgROI, 0)}%`} color="success" />
+            <KpiCard label={t.avgCVR} value={`${fmt(avgCVR)}%`} color="default" />
+            <KpiCard label={t.connectedPlatforms} value={`${connectedCnt}/${platforms.length}`} color="info" />
           </div>
 
           {/* Platform Cards Grid */}
@@ -447,11 +441,11 @@ export default function PlatformConnectors({
               <i className="ph-bold ph-storefront text-[var(--nc-accent)]"></i>
               {t.platformCards}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
               {platforms.map(p => {
                 const sb = statusBadge(p.integrationStatus);
                 return (
-                  <SmartCard key={p.id} className="p-5 space-y-4 hover:scale-[1.01] transition-transform duration-300">
+                  <SmartCard key={p.id} className="p-5 space-y-4 h-full flex flex-col">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -505,7 +499,7 @@ export default function PlatformConnectors({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 mt-auto">
                       <button
                         onClick={() => setModalPlatform(p)}
                         className="flex-1 py-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] hover:bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)] text-[10px] font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
