@@ -118,7 +118,7 @@ export default function CommandCenterPage() {
   const isMode = (key: string) => data?.data.config.operatingMode === key;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
+    <div className="p-6 pb-20 max-w-6xl mx-auto space-y-6 w-full" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-extrabold text-[var(--nc-foreground)]">مركز قيادة Sentinel</h1>

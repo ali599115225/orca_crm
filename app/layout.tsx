@@ -57,7 +57,7 @@ export default function RootLayout({
         <div className="fixed -top-40 -right-40 w-96 h-96 rounded-full bg-[var(--nc-coral-bg)] blur-[100px] pointer-events-none z-0 transition-colors duration-300" />
         <div className="fixed -bottom-40 -left-40 w-[30rem] h-[30rem] rounded-full bg-[var(--nc-coral-bg)] blur-[130px] pointer-events-none z-0 transition-colors duration-300" />
 
-        <div className="relative z-10 h-full flex flex-col">
+        <div className="relative z-10 h-full flex flex-col overflow-y-auto">
           <LanguageProvider>
             <ThemeProvider>
               <AuthProvider>
