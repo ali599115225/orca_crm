@@ -739,23 +739,20 @@ export default function RentalPage() {
         )}
         <div className="border-t border-white/5 pt-3 space-y-2">
           <p className="text-[var(--nc-text-dim)] font-bold text-[10px] uppercase tracking-wider">إجراءات ذكية</p>
-          <button
-            onClick={() => {
-              const overdueInvs = invoices.filter(i => i.status === "overdue");
-              if (overdueInvs.length === 0) { alert("لا يوجد فواتير متأخرة."); return; }
-              overdueInvs.forEach(inv => addTelemetryEvent("invoice.reminder_sent", { invoiceId: inv.id }));
-              alert("تم إرسال تذكيرات للفواتير المتأخرة.");
-            }}
-            className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-accent-text)] border border-[var(--nc-accent-border)]/30 hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
-          >
-            إرسال تنبيهات سداد الفواتير
-          </button>
-          <button
-            onClick={() => setActivePane("reconciliation")}
-            className="w-full py-1.5 text-[10px] font-bold text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 rounded-lg transition-all"
-          >
-            تشغيل مصالحة بنكية
-          </button>
+              <button
+                disabled
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed"
+                title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
+              >
+                {isRTL ? "إرسال تنبيهات سداد (قيد الربط)" : "Send Payment Reminders (pending)"}
+              </button>
+              <button
+                disabled
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed"
+                title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
+              >
+                {isRTL ? "تشغيل مصالحة بنكية (قيد الربط)" : "Run Bank Reconciliation (pending)"}
+              </button>
         </div>
       </div>
     </Card>
@@ -943,15 +940,13 @@ export default function RentalPage() {
                             طلب تسوية المالك Payout
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            addTelemetryEvent('lease.reminder_sent', { contractId: selectedLease.id });
-                            alert('تم إرسال تذكير سياقي آلي للمستأجر بنجاح.');
-                          }}
-                          className="px-3 py-1.5 bg-[var(--nc-surface)] border border-white/10 hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] text-[11px] font-black rounded-lg transition-all"
-                        >
-                          إرسال تذكير
-                        </button>
+                      <button
+                        disabled
+                        className="px-3 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] text-[11px] font-black rounded-lg transition-all opacity-60 cursor-not-allowed"
+                        title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
+                      >
+                        {isRTL ? "إرسال تذكير (قيد الربط)" : "Send Reminder (pending)"}
+                      </button>
                       </div>
                     </div>
 
@@ -1349,7 +1344,7 @@ export default function RentalPage() {
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                       <CheckCircle2 size={14} />
-                      المطابقات المقترحة (Match Recommendations)
+                      {isRTL ? "المطابقات المقترحة" : "Match Recommendations"}
                     </h4>
 
                     {reconcileMatches.map((match, idx) => (
@@ -1455,41 +1450,6 @@ export default function RentalPage() {
               </div>
             </div>
           )}
-
-          {/* ── Telemetry Event Bus Logger Console ── */}
-          <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-3xl p-5 shadow-2xl flex flex-col max-h-[400px] space-y-3 mt-6 fade-in-up">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-                <Bot size={15} />
-                سجل تتبع أحداث العقود والمدفوعات الفورية (Telemetry Event Bus Logs)
-              </h4>
-              <button 
-                onClick={() => setTelemetryLogs([])}
-                className="text-[10px] text-[var(--nc-text-dim)] hover:text-[var(--nc-text-dim)] border border-white/5 px-2 py-0.5 rounded"
-              >
-                مسح السجل
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto mt-3 space-y-2 pr-1 custom-scrollbar text-[10px] font-mono leading-relaxed max-h-[300px]">
-              {telemetryLogs.length === 0 ? (
-                <div className="text-center text-[var(--nc-text-dim)] py-8 text-[11px]">لا توجد أحداث مسجلة حالياً</div>
-              ) : (
-                telemetryLogs.map((log) => (
-                  <div key={log.id} className="p-2.5 bg-[var(--nc-surface)] dark:bg-white/5 border border-white/5 rounded-xl space-y-1">
-                    <div className="flex justify-between text-[9px]">
-                      <span className="text-[#8EB1D1] font-bold">[{log.type.toUpperCase()}]</span>
-                      <span className="text-[var(--nc-text-dim)]">{log.timestamp}</span>
-                    </div>
-                    <pre className="text-[9px] text-[var(--nc-text-dim)] bg-[var(--nc-surface)] border border-white/5 p-1.5 rounded overflow-x-auto">
-                      {JSON.stringify(log.payload, null, 2)}
-                    </pre>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
         </div>
       )}
 
