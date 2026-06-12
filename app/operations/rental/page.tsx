@@ -1,6 +1,7 @@
 'use client';
 import { toast } from '@/app/context/ToastContext';
 import { useRouter } from 'next/navigation';
+import { useApp } from '@/app/context/AppContext';
 
 import React, { useState, useTransition, useEffect } from 'react';
 import {
@@ -87,6 +88,8 @@ const initialSettlements: Settlement[] = [];
 const initialEvents: EventLog[] = [];
 
 export default function RentalPage() {
+  const { lang } = useApp();
+  const isRTL = lang === 'AR';
   const [mounted, setMounted] = useState(false);
   const [activePane, setActivePane] = useState<'dashboard' | 'leases' | 'invoices' | 'reconciliation' | 'settlements'>('leases');
   const [isPending, startTransition] = useTransition();
@@ -1496,7 +1499,7 @@ export default function RentalPage() {
   if (!mounted) return <div className="p-10 text-[var(--nc-foreground)]">جاري التهيئة...</div>;
 
   return (
-    <div className="nc-page nc-stack" dir="rtl">
+    <div className="nc-page nc-stack" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Header */}
       <PageHeader

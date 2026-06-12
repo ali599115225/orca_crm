@@ -4,9 +4,12 @@ import React, { useState } from 'react';
 import PropertyList from '../properties/PropertyList';
 import PropertyDetail from '../properties/PropertyDetail';
 import { useAuth } from '@/app/context/AuthContext';
+import { useApp } from '@/app/context/AppContext';
 
 export default function PropertiesView() {
   const { hasPermission } = useAuth();
+  const { lang } = useApp();
+  const isArabic = lang === 'AR';
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   const addTelemetryEvent = (_type: string, _payload?: any) => {
@@ -20,8 +23,8 @@ export default function PropertiesView() {
         onBack={() => setSelectedPropertyId(null)}
         hasPermission={hasPermission}
         addTelemetryEvent={addTelemetryEvent}
-        lang="AR"
-        isArabic={true}
+        lang={lang}
+        isArabic={isArabic}
       />
     );
   }
@@ -31,8 +34,8 @@ export default function PropertiesView() {
       onSelectProperty={(id) => setSelectedPropertyId(id)}
       hasPermission={hasPermission}
       addTelemetryEvent={addTelemetryEvent}
-      lang="AR"
-      isArabic={true}
+      lang={lang}
+      isArabic={isArabic}
     />
   );
 }

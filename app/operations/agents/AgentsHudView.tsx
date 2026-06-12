@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useApp } from '@/app/context/AppContext';
 import {
   createAgentSlotAction,
   deactivateAgentSlotAction,
@@ -66,6 +67,8 @@ export default function AgentsHudView({
   plan,
   tenant,
 }: Props) {
+  const { lang } = useApp();
+  const isRTL = lang === 'AR';
   const [slots, setSlots] = useState<AgentSlot[]>(initialSlots);
   const [activeCount, setActiveCount] = useState(initialActiveCount);
   const [isAtCap, setIsAtCap] = useState(initialIsAtCap);
@@ -218,7 +221,7 @@ export default function AgentsHudView({
   const capPercentage = maxSlots > 900000 ? 10 : Math.min(100, (activeCount / maxSlots) * 100);
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* هيدر الصفحة */}
       <SmartCard className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
