@@ -4,8 +4,8 @@ import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
 
 const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
-const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || '';
 const PAYLINK_API_ID = process.env.PAYLINK_API_ID || '';
+const PAYLINK_SECRET_KEY = process.env.PAYLINK_SECRET_KEY || '';
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -23,21 +23,102 @@ async function authenticateRequest(request: NextRequest) {
   return null;
 }
 
-function generateIdempotencyKey(): string {
-  return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-}
-
-// ── Debug: safe diagnostics (no secrets) ──
 function getDiagnostics() {
   return {
     hasBaseUrl: !!PAYLINK_BASE,
-    hasSecretKey: !!(PAYLINK_SECRET && PAYLINK_SECRET !== 'test_secret_key_placeholder'),
-    hasApiId: !!PAYLINK_API_ID,
+    hasApiId: !!(PAYLINK_API_ID && PAYLINK_API_ID.length > 0),
+    hasSecretKey: !!(PAYLINK_SECRET_KEY && PAYLINK_SECRET_KEY !== 'test_secret_key_placeholder'),
     baseUrlHost: PAYLINK_BASE ? new URL(PAYLINK_BASE).host : 'not-set',
-    endpointPath: `${PAYLINK_BASE}/api/v1/invoice`,
+    authEndpoint: `${PAYLINK_BASE}/api/auth`,
+    invoiceEndpoint: `${PAYLINK_BASE}/api/addInvoice`,
   };
 }
 
+// ── Step 1: Authenticate with Paylink ──
+async function authenticatePaylink(): Promise<{ success: boolean; idToken?: string; error?: string; status?: number }> {
+  try {
+    const resp = await fetch(`${PAYLINK_BASE}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        apiId: PAYLINK_API_ID,
+        secretKey: PAYLINK_SECRET_KEY,
+        persistToken: false,
+      }),
+    });
+
+    const text = await resp.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch {}
+
+    if (!resp.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Auth failed with status ${resp.status}`,
+        status: resp.status,
+      };
+    }
+
+    const idToken = data.id_token || data.token || data.access_token || '';
+    if (!idToken) {
+      return { success: false, error: 'لم يتم استلام id_token من Paylink', status: 502 };
+    }
+
+    return { success: true, idToken };
+  } catch (err: any) {
+    return { success: false, error: `Auth network error: ${err.message}`, status: 502 };
+  }
+}
+
+// ── Step 2: Create Paylink invoice ──
+async function createPaylinkInvoice(idToken: string, body: Record<string, any>): Promise<{
+  success: boolean;
+  transactionNo?: string;
+  url?: string;
+  orderStatus?: string;
+  rawResponse?: any;
+  error?: string;
+  status?: number;
+}> {
+  try {
+    const resp = await fetch(`${PAYLINK_BASE}/api/addInvoice`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const text = await resp.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch {}
+
+    if (!resp.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Invoice creation failed with status ${resp.status}`,
+        status: resp.status,
+      };
+    }
+
+    const url = data.url || data.payment_url || data.checkoutUrl || '';
+    const transactionNo = data.transactionNo || data.transaction_no || data.transactionId || '';
+
+    return {
+      success: true,
+      transactionNo,
+      url,
+      orderStatus: data.orderStatus || 'Pending',
+      rawResponse: data,
+    };
+  } catch (err: any) {
+    return { success: false, error: `Invoice network error: ${err.message}`, status: 502 };
+  }
+}
+
+// ── POST: Create Paylink payment link ──
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,7 +143,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'الفاتورة مدفوعة مسبقاً' }, { status: 409 });
     }
 
-    // Return existing Paylink URL if already created
+    // Return existing Paylink URL
     if (invoice.paymentUrl && invoice.gatewayProvider === 'paylink' && invoice.gatewayStatus === 'pending') {
       return NextResponse.json({
         success: true, status: 'existing', paymentUrl: invoice.paymentUrl,
@@ -70,91 +151,78 @@ export async function POST(
       });
     }
 
-    // ── Check Paylink configuration ──
-    if (!PAYLINK_SECRET || PAYLINK_SECRET === 'test_secret_key_placeholder') {
+    // Verify env vars
+    if (!PAYLINK_API_ID || !PAYLINK_SECRET_KEY || PAYLINK_SECRET_KEY === 'test_secret_key_placeholder') {
       return NextResponse.json({
         success: false,
-        error: 'بوابة الدفع Paylink غير مفعلة حالياً — PAYLINK_SECRET_KEY غير مضبوط',
+        error: 'بوابة الدفع Paylink غير مفعلة — PAYLINK_API_ID أو PAYLINK_SECRET_KEY غير مضبوط',
         diagnostics: getDiagnostics(),
       }, { status: 503 });
     }
 
-    const idempotencyKey = generateIdempotencyKey();
-    const amountHalalas = Math.round(Number(invoice.totalAmount) * 100);
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/api/payment/callback`;
-
-    console.error('[Paylink] Attempting:', getDiagnostics().endpointPath);
-
-    // ── Call Paylink sandbox API ──
-    let paylinkResp: Response;
-    try {
-      paylinkResp = await fetch(`${PAYLINK_BASE}/api/v1/invoice`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${PAYLINK_SECRET}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify({
-          amount: amountHalalas,
-          currency: 'SAR',
-          clientName: invoice.lease.tenantName,
-          clientMobile: '',
-          description: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
-          note: `ORCA invoice ${invoice.invoiceNumber}`,
-          orderNumber: String(invoice.invoiceNumber),
-          products: [{
-            title: `فاتورة #${invoice.invoiceNumber}`,
-            price: amountHalalas,
-            qty: 1,
-          }],
-          callbackUrl: callbackUrl,
-          cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/operations/rental`,
-          metadata: { tenantId, invoiceId: id, invoiceNumber: String(invoice.invoiceNumber) },
-        }),
-      });
-    } catch (fetchErr: any) {
-      console.error('[Paylink] Network error:', fetchErr.message);
+    // Step 1: Authenticate
+    const authResult = await authenticatePaylink();
+    if (!authResult.success) {
       return NextResponse.json({
         success: false,
-        error: 'PAYLINK_NETWORK_ERROR',
-        message: 'تعذر الاتصال ببوابة Paylink',
+        error: 'PAYLINK_AUTH_FAILED',
+        message: 'فشل المصادقة مع بوابة Paylink',
+        providerStatus: authResult.status,
+        providerMessage: authResult.error,
         diagnostics: getDiagnostics(),
       }, { status: 502 });
     }
 
-    // ── Handle Paylink response ──
-    const respText = await paylinkResp.text();
-    let respData: any = {};
-    try { respData = JSON.parse(respText); } catch {}
+    const idToken = authResult.idToken!;
+    const amountHalalas = Math.round(Number(invoice.totalAmount) * 100);
+    const orderNumber = `ORCA-${invoice.invoicePrefix || 'INV'}-${invoice.invoiceNumber}`;
 
-    if (!paylinkResp.ok) {
-      console.error('[Paylink] Rejected:', paylinkResp.status, respText.substring(0, 200));
+    // Step 2: Create invoice
+    const paylinkResult = await createPaylinkInvoice(idToken, {
+      amount: amountHalalas,
+      currency: 'SAR',
+      orderNumber,
+      clientName: invoice.lease.tenantName || 'عميل',
+      clientMobile: '0500000000', // Paylink requires mobile; fallback
+      callBackUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/api/payment/callback`,
+      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/operations/rental`,
+      products: [{
+        title: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
+        price: amountHalalas,
+        qty: 1,
+      }],
+      note: `ORCA invoice ${invoice.invoiceNumber} for ${invoice.lease.tenantName}`,
+    });
+
+    if (!paylinkResult.success) {
       return NextResponse.json({
         success: false,
         error: 'PAYLINK_CREATE_FAILED',
-        message: 'فشل إنشاء رابط الدفع عبر Paylink',
-        providerStatus: paylinkResp.status,
-        providerMessage: respData.message || respData.error || respText.substring(0, 100),
+        message: 'فشل إنشاء الفاتورة في Paylink',
+        providerStatus: paylinkResult.status,
+        providerMessage: paylinkResult.error,
         diagnostics: getDiagnostics(),
       }, { status: 502 });
     }
 
-    const paymentUrl = respData.url || respData.payment_url || respData.checkout_url || '';
-    const paylinkInvoiceId = respData.id || respData.invoice_id || respData.transaction_id || '';
-
-    if (!paymentUrl) {
-      console.error('[Paylink] No URL in response:', Object.keys(respData).join(','));
+    if (!paylinkResult.url) {
       return NextResponse.json({
         success: false,
         error: 'PAYLINK_NO_URL',
         message: 'لم يتم استلام رابط الدفع من Paylink',
-        diagnostics: getDiagnostics(),
+        diagnostics: {
+          ...getDiagnostics(),
+          hasTransactionNo: !!paylinkResult.transactionNo,
+          hasUrl: false,
+          orderStatus: paylinkResult.orderStatus,
+        },
       }, { status: 502 });
     }
 
-    const paylinkTransactionId = respData.transaction_id || respData.id || '';
+    const paymentUrl = paylinkResult.url;
+    const transactionNo = paylinkResult.transactionNo;
 
+    // Store on ORCA
     await prisma.rentalInvoice.update({
       where: { id },
       data: { gatewayProvider: 'paylink', gatewayStatus: 'pending', paymentUrl },
@@ -165,33 +233,33 @@ export async function POST(
         tenantId, invoiceId: id, amount: Number(invoice.totalAmount),
         fee: 0, netAmount: Number(invoice.totalAmount), currency: 'SAR',
         method: 'paylink', status: 'PENDING', provider: 'paylink',
-        providerTransactionId: paylinkTransactionId, providerInvoiceId: paylinkInvoiceId,
-        paymentUrl, gatewayStatus: 'pending', idempotencyKey,
+        providerTransactionId: transactionNo, providerInvoiceId: transactionNo,
+        paymentUrl, gatewayStatus: paylinkResult.orderStatus || 'Pending',
+        rawPayload: paylinkResult.rawResponse || undefined,
       },
     });
 
+    // Audit
     try {
       await prisma.auditLog.create({
         data: {
           tenantId, userId: (session as any).userId || null,
           action: 'PAYLINK_LINK_CREATED', tableName: 'rental_invoices', recordId: id,
-          details: `Paylink link created for invoice #${invoice.invoiceNumber}, Paylink: ${paylinkInvoiceId}`,
+          details: `Paylink link created, txn: ${transactionNo}`,
         },
       });
-    } catch (auditErr) {
-      console.error('[audit] Paylink log failed:', auditErr);
-    }
+    } catch {}
 
     return NextResponse.json({
-      success: true, status: 'created', paymentUrl, paylinkInvoiceId, paylinkTransactionId,
+      success: true, status: 'created', paymentUrl, paylinkTransactionNo: transactionNo,
       message: 'تم إنشاء رابط الدفع بنجاح',
     });
   } catch (error: any) {
-    console.error('[Paylink Create] Unexpected:', error.message);
+    console.error('[Paylink] Unexpected:', error.message);
     return NextResponse.json({
       success: false,
       error: 'PAYLINK_INTERNAL_ERROR',
-      message: 'حدث خطأ داخلي أثناء إنشاء رابط الدفع',
+      message: 'حدث خطأ داخلي',
       diagnostics: getDiagnostics(),
     }, { status: 500 });
   }
