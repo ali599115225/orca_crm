@@ -92,6 +92,22 @@ export async function POST(
       return receipt;
     });
 
+    // ── Audit log for manual payment recording ──
+    try {
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: (session as any).userId || null,
+          action: 'RECORD_PAYMENT',
+          tableName: 'rental_invoices',
+          recordId: id,
+          details: `Manual payment recorded for invoice ${id}, amount: ${amount} SAR, method: ${method}, receipt: ${result.id}`,
+        },
+      });
+    } catch (auditErr) {
+      console.error('[audit] Failed to log payment:', auditErr);
+    }
+
     const cashAccount = await findAccountByCode(tenantId, '1.1.1');
     const receivableAccount = await findAccountByCode(tenantId, '1.1.3');
 

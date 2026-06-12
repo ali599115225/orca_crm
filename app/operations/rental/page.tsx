@@ -696,7 +696,7 @@ export default function RentalPage() {
             className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1"
           >
             <Plus size={13} />
-            إصدار فاتورة دورية
+             {isRTL ? 'إصدار فاتورة دورية (تسجيل يدوي)' : 'Issue Invoice (Manual Record)'}
           </button>
         </div>
       </div>
@@ -929,15 +929,16 @@ export default function RentalPage() {
                           }}
                           className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
                         >
-                          إصدار فاتورة للعقد
+                           {isRTL ? 'إصدار فاتورة للعقد (تسجيل يدوي)' : 'Invoice Lease (Manual Record)'}
                         </button>
 
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
                           <button
-                            onClick={() => handleRequestSettlement(selectedLease.id, selectedLease.rent * 12)}
-                            className="px-3 py-1.5 bg-[#0081a7] hover:bg-[#007090] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
+                            disabled
+                            className="px-3 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] text-[11px] font-black rounded-lg opacity-60 cursor-not-allowed"
+                            title={isRTL ? "محاكاة غير إنتاجية — قيد التطوير" : "Non-production simulation — under development"}
                           >
-                            طلب تسوية المالك Payout
+                            {isRTL ? 'طلب تسوية المالك (محاكاة)' : 'Request Payout (Simulation)'}
                           </button>
                         )}
                       <button
@@ -1048,7 +1049,7 @@ export default function RentalPage() {
                                         }}
                                         className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
                                       >
-                                        سداد
+                                        {isRTL ? 'تسجيل سداد يدوي' : 'Record Manual Payment'}
                                       </button>
                                     )}
                                     <button
@@ -1323,6 +1324,10 @@ export default function RentalPage() {
               <div className="p-4 border-b border-white/5 bg-[var(--nc-surface-solid)]">
                 <h3 className="text-sm font-bold text-white">أداة المصالحة البنكية الفورية</h3>
                 <p className="text-[11px] text-[var(--nc-text-dim)] mt-0.5">تطابق وتدقيق الحسابات البنكية مع فواتير الإيجارات</p>
+                <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/5 border border-rose-500/10">
+                  <i className="ph-bold ph-flask text-rose-400 text-sm"></i>
+                  <span className="text-[10px] font-bold text-rose-400">{isRTL ? '⚠️ محاكاة غير إنتاجية — للمراجعة الداخلية فقط' : '⚠️ Non-production simulation — for internal review only'}</span>
+                </div>
               </div>
               <div className="p-6 space-y-6">
 
@@ -1410,6 +1415,10 @@ export default function RentalPage() {
               <div className="p-4 border-b border-white/5 bg-[var(--nc-surface-solid)]">
                 <h3 className="text-sm font-bold text-white">سجل تسويات إيرادات الملاك</h3>
                 <p className="text-[11px] text-[var(--nc-text-dim)] mt-0.5">تتبع الحوالات الموجهة لحسابات الملاك بعد استقطاع الرسوم</p>
+                <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/5 border border-rose-500/10">
+                  <i className="ph-bold ph-flask text-rose-400 text-sm"></i>
+                  <span className="text-[10px] font-bold text-rose-400">{isRTL ? '⚠️ محاكاة غير إنتاجية — للمراجعة الداخلية فقط' : '⚠️ Non-production simulation — for internal review only'}</span>
+                </div>
               </div>
               <div className="p-6 space-y-4">
 
@@ -1695,8 +1704,13 @@ export default function RentalPage() {
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
               <Key size={18} />
-              تسجيل تحصيل سداد الفاتورة
+              {isRTL ? 'تسجيل سداد يدوي للفاتورة' : 'Record Manual Payment for Invoice'}
             </h3>
+            {isRTL ? (
+              <p className="text-[10px] text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded-lg mb-3">⚠️ هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.</p>
+            ) : (
+              <p className="text-[10px] text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded-lg mb-3">⚠️ This records an internal/manual payment and does not process an online gateway payment.</p>
+            )}
             
             <div className="space-y-2 bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex justify-between">

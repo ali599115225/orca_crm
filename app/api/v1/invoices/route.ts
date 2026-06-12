@@ -137,6 +137,22 @@ export async function POST(request: NextRequest) {
       return { invoice, tenant };
     });
 
+    // ── Audit log for invoice creation ──
+    try {
+      await prisma.auditLog.create({
+        data: {
+          tenantId: session.tenantId as string,
+          userId: (session as any).userId || null,
+          action: 'CREATE_INVOICE',
+          tableName: 'rental_invoices',
+          recordId: result.invoice.id,
+          details: `Created invoice #${result.invoice.invoiceNumber} for lease ${leaseId}, total: ${vatBreakdown.totalAmount} SAR`,
+        },
+      });
+    } catch (auditErr) {
+      console.error('[audit] Failed to log invoice creation:', auditErr);
+    }
+
     const inv = result.invoice;
     return NextResponse.json({
       success: true,

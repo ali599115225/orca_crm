@@ -56,6 +56,11 @@ export default function CompliancePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-black text-white tracking-tight">ZATCA Compliance Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              ⚠️ بنية ZATCA موجودة — لم يتم اختبار الربط بعد
+            </span>
+          </div>
           <button onClick={fetchData} className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#3A3A3A] text-white text-sm rounded-lg transition-all">
             Refresh
           </button>
