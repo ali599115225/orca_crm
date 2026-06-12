@@ -2,7 +2,6 @@
 
 import React, { Suspense } from 'react';
 import { Menu, Search, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
-import Link from 'next/link';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
@@ -15,45 +14,8 @@ interface SovereignHeaderProps {
   companyName?: string;
 }
 
-const tabNames: Record<string, string> = {
-  analytics:  'لوحة التحكم',
-  leads:      'العملاء المحتملين',
-  projects:   'المشاريع العقارية',
-  rental:     'العقود والمدفوعات',
-  calculator: 'حاسبة التمويل السكني',
-  sales:      'أداء المبيعات',
-  marketing:  'الإعلان والتسويق',
-  shopping:   'الإعلان والتسويق — التسوق',
-  agents:     'الوكلاء الذكيون',
-  tasks:      'المهام والتذكيرات',
-  helpdesk:   'مركز الدعم والمستندات',
-  whatsapp:   'قناة الواتساب',
-  settings:   'الإعدادات',
-  offers:     'العروض العقارية',
-  tours:      'الجولات العقارية',
-};
-
-const routeNames: Record<string, string> = {
-  '/operations/dashboard':  'لوحة التحكم',
-  '/operations/leads':      'العملاء المحتملين',
-  '/operations/projects':   'المشاريع العقارية',
-  '/operations/properties': 'العقارات',
-  '/operations/rental':     'العقود والمدفوعات',
-  '/operations/offers':     'العروض العقارية',
-  '/operations/calculator': 'حاسبة التمويل السكني',
-  '/operations/sales':      'أداء المبيعات',
-  '/operations/tours':      'الجولات العقارية',
-  '/operations/marketing':  'الإعلان والتسويق',
-  '/operations/agents':     'الوكلاء الذكيون',
-  '/operations/tasks':      'المهام والتذكيرات',
-  '/operations/documents':  'مستودع المستندات',
-  '/operations/helpdesk':   'مركز الدعم والمستندات',
-  '/operations/whatsapp':   'قناة الواتساب',
-  '/operations/settings':   'الإعدادات',
-};
-
 function getInitials(name: string): string {
-  if (!name) return 'م';
+  if (!name) return 'U';
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].charAt(0);
   return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
@@ -63,28 +25,49 @@ function HeaderBreadcrumbs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
+  const { t, lang } = useApp();
 
-  let activeTabName = 'نظرة عامة';
+  const tabKeyMap: Record<string, string> = {
+    analytics: 'tab.analytics', leads: 'tab.leads', projects: 'tab.projects',
+    rental: 'tab.rental', calculator: 'tab.calculator', sales: 'tab.sales',
+    marketing: 'tab.marketing', agents: 'tab.agents', tasks: 'tab.tasks',
+    helpdesk: 'tab.helpdesk', whatsapp: 'tab.whatsapp', settings: 'tab.settings',
+    offers: 'tab.offers', tours: 'tab.tours', documents: 'tab.documents',
+    email: 'tab.email', properties: 'tab.rental',
+  };
+
+  const routeKeyMap: Record<string, string> = {
+    '/operations/dashboard': 'tab.analytics', '/operations/leads': 'tab.leads',
+    '/operations/projects': 'tab.projects', '/operations/properties': 'tab.rental',
+    '/operations/rental': 'tab.rental', '/operations/offers': 'tab.offers',
+    '/operations/calculator': 'tab.calculator', '/operations/sales': 'tab.sales',
+    '/operations/tours': 'tab.tours', '/operations/marketing': 'tab.marketing',
+    '/operations/agents': 'tab.agents', '/operations/tasks': 'tab.tasks',
+    '/operations/documents': 'tab.documents', '/operations/helpdesk': 'tab.helpdesk',
+    '/operations/whatsapp': 'tab.whatsapp', '/operations/settings': 'tab.settings',
+  };
+
+  let activeKey = 'header.overview';
   if (pathname === '/operations' && tab) {
-    activeTabName = tabNames[tab] || 'نظرة عامة';
+    activeKey = tabKeyMap[tab] || 'header.overview';
   } else {
-    activeTabName = routeNames[pathname] || tabNames[tab || 'analytics'] || 'نظرة عامة';
+    activeKey = routeKeyMap[pathname] || tabKeyMap[tab || 'analytics'] || 'header.overview';
   }
 
   return (
     <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]">
-      <span className="hover:text-[var(--nc-foreground)] cursor-pointer transition-colors">العمليات</span>
+      <span className="hover:text-[var(--nc-foreground)] cursor-pointer transition-colors">{t('header.operations')}</span>
       <ChevronLeft size={16} className="mx-1 opacity-40" />
-      <span className="text-[var(--nc-accent)] font-bold">{activeTabName}</span>
+      <span className="text-[var(--nc-accent)] font-bold">{t(activeKey)}</span>
     </div>
   );
 }
 
 export default function SovereignHeader({ onMenuClick, tenant, user, companyName }: SovereignHeaderProps) {
-  const { theme, toggleTheme, lang, toggleLang } = useApp();
+  const { theme, toggleTheme, t, toggleLang, lang } = useApp();
   const router = useRouter();
 
-  const displayName = user?.name || 'المستخدم';
+  const displayName = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
   const displayCompany = companyName || 'ORCA';
   const initials = getInitials(displayName);
 
@@ -96,13 +79,13 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
         <button
           className="md:hidden text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] transition-colors"
           onClick={onMenuClick}
-          aria-label="فتح القائمة"
+          aria-label={t('header.openMenu')}
         >
           <Menu size={24} />
         </button>
         <Suspense fallback={
           <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]">
-            <span>العمليات</span>
+            <span>{t('header.operations')}</span>
           </div>
         }>
           <HeaderBreadcrumbs />
@@ -118,11 +101,11 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
               className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
             />
           </div>
-          <label htmlFor="global-search" className="sr-only">بحث</label>
+          <label htmlFor="global-search" className="sr-only">{t('header.searchLabel')}</label>
           <input
             id="global-search"
             type="text"
-            placeholder="البحث داخل الصفحة الحالية..."
+            placeholder={t('header.searchPlaceholder')}
             className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
           />
           <div className="absolute inset-y-0 left-0 flex items-center pl-2">
@@ -138,8 +121,8 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
         <button
           onClick={toggleLang}
           className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
-          title="تغيير اللغة"
-          aria-label="تغيير اللغة"
+          title={t('header.changeLanguage')}
+          aria-label={t('header.changeLanguage')}
         >
           <Globe size={18} />
         </button>
@@ -148,8 +131,8 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
         <button
           onClick={toggleTheme}
           className="hidden sm:flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
-          title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-          aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+          title={theme === 'dark' ? t('header.lightMode') : t('header.darkMode')}
+          aria-label={theme === 'dark' ? t('header.lightMode') : t('header.darkMode')}
         >
           {theme === 'dark'
             ? <Sun size={18} className="text-amber-400" />
@@ -186,8 +169,8 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
             router.replace('/login?logged_out=true');
           }}
           className="flex items-center justify-center w-9 h-9 bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all"
-          title="تسجيل الخروج"
-          aria-label="تسجيل الخروج"
+          title={t('header.logout')}
+          aria-label={t('header.logout')}
         >
           <LogOut size={18} />
         </button>

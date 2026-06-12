@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { t as translate, type Lang } from '@/lib/i18n/translations';
 
 type Theme = 'dark' | 'light';
-type Lang = 'AR' | 'EN';
 
 interface ThemeContextType {
   theme: Theme;
@@ -102,5 +102,7 @@ export function useApp() {
     toggleTheme: themeContext.toggleTheme,
     lang: langContext.lang,
     toggleLang: langContext.toggleLang,
+    // ── Translation shorthand ──
+    t: (key: string) => translate(key, langContext.lang),
   };
 }

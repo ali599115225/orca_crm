@@ -121,7 +121,7 @@ export default function DashboardView({
   todayTasks = [],
   whatsAppStats,
 }: DashboardViewProps) {
-  const { theme, lang } = useApp();
+  const { theme, lang, t } = useApp();
   const router = useRouter();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
@@ -151,17 +151,11 @@ export default function DashboardView({
       
       {/* 1. Welcome Banner (البنر الترحيبي العام) */}
       <PageHeader 
-        title={lang === 'AR' 
-          ? `مرحباً بك، ${tenant?.companyName || 'علي'}`
-          : `Welcome back, ${tenant?.companyName || 'Ali'}`
-        }
-        description={lang === 'AR'
-          ? 'مراقبة فورية لمؤشرات المبيعات ونشاط الجولات، مدعومة بمكتبة الإجراءات السريعة ومساعد التنبؤات التلقائي المبني على الذكاء الاصطناعي.'
-          : 'Real-time sales, property tours tracking, quick workflow actions, and predictive AI analytics.'
-        }
+        title={`${t('dash.welcome')} ${tenant?.companyName || 'ORCA'}`}
+        description={t('dash.welcomeDesc')}
       >
         <div className="bg-[var(--nc-surface-strong)] backdrop-blur border border-[var(--nc-glass-border)] p-3 rounded-xl text-center md:min-w-[170px] shadow-sm">
-           <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-1">{lang === 'AR' ? 'تاريخ اليوم' : "Today's Date"}</p>
+           <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-1">{t('dash.todayDate')}</p>
            <p className="text-[var(--nc-accent)] font-bold text-base md:text-lg font-mono">
               {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
            </p>
@@ -175,12 +169,12 @@ export default function DashboardView({
             ROW 1: KPIs (4 elevated SmartCards - primary visual weight)
            ======================================================== */}
 
-        {/* Card 1: Closed Contracts (العقود المغلقة) */}
+        {/* Card 1: Closed Contracts */}
         <SmartCard elevation="elevated" className="p-3">
           <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                {lang === 'AR' ? 'العقود المغلقة' : 'Closed Contracts'}
+                {t('kpi.closedContracts')}
               </p>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(closedContractsCount)}
@@ -191,16 +185,16 @@ export default function DashboardView({
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-            {lang === 'AR' ? 'إجمالي عقود المبيعات الموثقة بالنظام' : 'Total validated sales agreements'}
+            {t('kpi.closedContracts.desc')}
           </p>
         </SmartCard>
 
-        {/* Card 2: Sent Offers (العروض المرسلة) */}
+        {/* Card 2: Sent Offers */}
         <SmartCard elevation="elevated" className="p-3">
           <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                {lang === 'AR' ? 'العروض المرسلة' : 'Sent Offers'}
+                {t('kpi.sentOffers')}
               </p>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(sentOffersCount)}
@@ -211,16 +205,16 @@ export default function DashboardView({
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-            {lang === 'AR' ? 'عروض الأسعار المكتوبة قيد التفاوض والمراجعة' : 'Outbound price quotations under negotiation'}
+            {t('kpi.sentOffers.desc')}
           </p>
         </SmartCard>
 
-        {/* Card 3: Daily Tours (الجولات اليوم) */}
+        {/* Card 3: Daily Tours */}
         <SmartCard elevation="elevated" className="p-3">
           <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                {lang === 'AR' ? 'جولات اليوم' : 'Daily Tours'}
+                {t('kpi.dailyTours')}
               </p>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(dailyToursCount)}
@@ -231,16 +225,16 @@ export default function DashboardView({
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-            {lang === 'AR' ? 'زيارات ومواعيد المعاينة الميدانية اليوم' : 'Tours and visits scheduled for today'}
+            {t('kpi.dailyTours.desc')}
           </p>
         </SmartCard>
 
-        {/* Card 4: Total Leads (إجمالي العملاء) */}
+        {/* Card 4: Total Leads */}
         <SmartCard elevation="elevated" className="p-3">
           <div className="flex items-start mb-2">
             <div className="flex-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                {lang === 'AR' ? 'إجمالي العملاء' : 'Total Leads'}
+                {t('kpi.totalLeads')}
               </p>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                 {formatNum(totalLeadsCount)}
@@ -251,7 +245,7 @@ export default function DashboardView({
             </div>
           </div>
           <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-            {lang === 'AR' ? 'العملاء المستثمرون المسجلون بقاعدة البيانات' : 'Total prospects registered in CRM database'}
+            {t('kpi.totalLeads.desc')}
           </p>
         </SmartCard>
 
@@ -262,7 +256,7 @@ export default function DashboardView({
               <div className="flex items-start mb-2">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                    {lang === 'AR' ? 'محادثات واتساب' : 'WhatsApp Conversations'}
+                    {t('kpi.whatsappConvos')}
                   </p>
                   <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                     {formatNum(whatsAppStats.conversationsCount)}
@@ -273,7 +267,7 @@ export default function DashboardView({
                 </div>
               </div>
               <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-                {lang === 'AR' ? 'إجمالي المحادثات النشطة عبر واتساب' : 'Total active WhatsApp conversations'}
+                {t('kpi.whatsappConvos.desc')}
               </p>
             </SmartCard>
 
@@ -281,7 +275,7 @@ export default function DashboardView({
               <div className="flex items-start mb-2">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                    {lang === 'AR' ? 'عملاء واتساب جدد' : 'New WhatsApp Leads'}
+                    {t('kpi.whatsappNewLeads')}
                   </p>
                   <h3 className="text-xl font-black text-[var(--nc-text-primary)]">
                     {formatNum(whatsAppStats.newLeadsCount)}
@@ -292,7 +286,7 @@ export default function DashboardView({
                 </div>
               </div>
               <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-                {lang === 'AR' ? 'عملاء جدد من واتساب آخر 7 أيام' : 'New WhatsApp leads in last 7 days'}
+                {t('kpi.whatsappNewLeads.desc')}
               </p>
             </SmartCard>
 
@@ -301,7 +295,7 @@ export default function DashboardView({
                 <div className="flex items-start mb-2">
                   <div className="flex-1">
                     <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                      {lang === 'AR' ? 'رسائل غير مقروءة' : 'Unread Messages'}
+                      {t('kpi.unreadMessages')}
                     </p>
                     <h3 className="text-xl font-black text-amber-400">
                       {formatNum(whatsAppStats.unreadMessagesCount)}
@@ -312,7 +306,7 @@ export default function DashboardView({
                   </div>
                 </div>
                 <p className="text-[var(--nc-text-dim)] text-[9px] leading-relaxed">
-                  {lang === 'AR' ? 'رسائل واتساب واردة لم يتم الرد عليها' : 'Inbound WhatsApp messages pending reply'}
+                  {t('kpi.unreadMessages.desc')}
                 </p>
               </SmartCard>
             )}
@@ -323,7 +317,7 @@ export default function DashboardView({
             ROW 2: ACTION & AI (Action = 1 column, AI = 3 columns)
            ======================================================== */}
 
-        {/* Action Card: إجراء سريع (col-span-1) */}
+        {/* Action Card: Quick Actions */}
         <SmartCard elevation="default" className="p-4 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[var(--nc-accent-soft)] via-transparent to-transparent">
           <div className="absolute -top-10 -left-10 w-24 h-24 bg-[var(--nc-coral-bg)] rounded-full blur-2xl"></div>
           
@@ -332,13 +326,10 @@ export default function DashboardView({
               <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
                 <i className="ph-bold ph-lightning text-base"></i>
               </div>
-              <h4 className="text-sm font-bold text-[var(--nc-text-primary)]">{lang === 'AR' ? 'إجراء سريع' : 'Quick Actions'}</h4>
+              <h4 className="text-sm font-bold text-[var(--nc-text-primary)]">{t('action.quick')}</h4>
             </div>
             <p className="text-[var(--nc-text-dim)] text-[11px] leading-relaxed mb-6">
-              {lang === 'AR' 
-                ? 'قم بإصدار العقود والوثائق للوحدات العقارية الشاغرة وربطها بالعميل فورا وتحديث البيانات بالخلفية.'
-                : 'Instantly generate new sales agreements, register buyer details and update inventory status.'
-              }
+              {t('action.quickDesc')}
             </p>
           </div>
 
@@ -347,11 +338,11 @@ export default function DashboardView({
             className="nc-btn nc-btn-primary w-full text-xs cursor-pointer"
           >
             <i className="ph-fill ph-file-plus text-sm"></i>
-            <span>{lang === 'AR' ? 'إصدار عقد جديد' : 'Issue New Contract'}</span>
+            <span>{t('action.issueContract')}</span>
           </button>
         </SmartCard>
 
-        {/* AI Assistant Panel (col-span-3) - secondary visual weight */}
+        {/* AI Assistant Panel - secondary visual weight */}
         <SmartCard elevation="subtle" className="xl:col-span-3 p-4">
           <div>
             <div className="flex items-center justify-between border-b border-[var(--nc-glass-border)] pb-3.5 mb-4">
@@ -361,15 +352,15 @@ export default function DashboardView({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-[var(--nc-text-primary)] leading-tight">
-                    {lang === 'AR' ? 'مساعد التنبؤات والذكاء الاصطناعي' : 'Predictive AI Assistant'}
+                    {t('ai.title')}
                   </h4>
                   <p className="text-[var(--nc-text-dim)] text-[10px]">
-                    {lang === 'AR' ? 'مؤشرات توقعات الإغلاق، قنوات الجذب والتوصيات المقترحة' : 'Sales closure, optimal contact windows & automated recommendations'}
+                    {t('ai.title.sub')}
                   </p>
                 </div>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)]">
-                {lang === 'AR' ? 'محدث ونشط' : 'Synced'}
+                {t('ai.status')}
               </span>
             </div>
 
@@ -379,7 +370,7 @@ export default function DashboardView({
               <div className="nc-card-default p-3.5">
                 <div className="flex items-center gap-1.5 mb-2 text-[var(--nc-accent)] font-bold text-[11px]">
                   <i className="ph-bold ph-phone-call text-xs"></i>
-                  <span>{lang === 'AR' ? 'أفضل أوقات التواصل' : 'Optimal Call Window'}</span>
+                  <span>{t('ai.contactTimes')}</span>
                 </div>
                 <div className="space-y-1.5">
                   {aiPredictions?.bestContactTimes && aiPredictions.bestContactTimes.slice(0, 2).map((item, idx) => (
@@ -389,7 +380,7 @@ export default function DashboardView({
                     </div>
                   ))}
                   {(!aiPredictions?.bestContactTimes || aiPredictions.bestContactTimes.length === 0) && (
-                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{lang === 'AR' ? 'لا توجد أوقات مقترحة.' : 'No slots computed.'}</div>
+                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{t('ai.noSlots')}</div>
                   )}
                 </div>
               </div>
@@ -398,7 +389,7 @@ export default function DashboardView({
               <div className="nc-card-default p-3.5">
                 <div className="flex items-center gap-1.5 mb-2 text-[var(--nc-accent)] font-bold text-[11px]">
                   <i className="ph-bold ph-trend-up text-xs"></i>
-                  <span>{lang === 'AR' ? 'المتوقع إغلاقهم' : 'Propensity to Close'}</span>
+                  <span>{t('ai.closePrediction')}</span>
                 </div>
                 <div className="space-y-1.5">
                   {aiPredictions?.expectedToClose && aiPredictions.expectedToClose.slice(0, 2).map((item, idx) => (
@@ -408,7 +399,7 @@ export default function DashboardView({
                     </div>
                   ))}
                   {(!aiPredictions?.expectedToClose || aiPredictions.expectedToClose.length === 0) && (
-                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{lang === 'AR' ? 'لا توجد صفقات مرشحة.' : 'No closing candidates.'}</div>
+                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{t('ai.noCandidates')}</div>
                   )}
                 </div>
               </div>
@@ -417,7 +408,7 @@ export default function DashboardView({
               <div className="nc-card-default p-3.5">
                 <div className="flex items-center gap-1.5 mb-2 text-[var(--nc-accent)] font-bold text-[11px]">
                   <i className="ph-bold ph-megaphone text-xs"></i>
-                  <span>{lang === 'AR' ? 'التسويق المقترح' : 'Campaign Guidance'}</span>
+                  <span>{t('ai.campaignGuidance')}</span>
                 </div>
                 <div className="space-y-1.5">
                   {aiPredictions?.projectsNeedingCampaign && aiPredictions.projectsNeedingCampaign.slice(0, 1).map((item, idx) => (
@@ -427,7 +418,7 @@ export default function DashboardView({
                     </div>
                   ))}
                   {(!aiPredictions?.projectsNeedingCampaign || aiPredictions.projectsNeedingCampaign.length === 0) && (
-                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{lang === 'AR' ? 'المبيعات مستقرة.' : 'Sales are optimal.'}</div>
+                    <div className="text-[var(--nc-text-dim)] text-[9px] py-1 text-center">{t('ai.salesOptimal')}</div>
                   )}
                 </div>
               </div>
@@ -436,7 +427,7 @@ export default function DashboardView({
           </div>
           
           <div className="text-[9px] text-[var(--nc-text-dim)] mt-4 border-t border-[var(--nc-glass-border)] pt-2 flex justify-between items-center">
-            <span>{lang === 'AR' ? 'معالجة التنبؤات قائمة على خوارزميات التعلم الآلي والبيانات السابقة.' : 'Calculated automatically based on operational machine learning inputs.'}</span>
+            <span>{t('ai.footer')}</span>
             <span className="font-bold font-en">OrcaAI v1.6</span>
           </div>
         </SmartCard>
@@ -448,7 +439,7 @@ export default function DashboardView({
       {/* 3. Pipeline Snapshot + Today's Tasks Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
-        {/* Pipeline Snapshot (col-span-2) - default card */}
+        {/* Pipeline Snapshot (col-span-2) */}
         <SmartCard elevation="default" className="xl:col-span-2 p-4">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
@@ -457,16 +448,16 @@ export default function DashboardView({
               </div>
               <div>
                 <h4 className="nc-heading-3">
-                  {lang === "AR" ? "مسار الصفقات الحية" : "Pipeline Snapshot"}
+                  {t("pipeline.title")}
                 </h4>
                 <p className="text-[var(--nc-text-dim)] text-[10px]">
-                  {lang === "AR" ? "توزيع العملاء حسب مرحلة البيع" : "Lead distribution by sales stage"}
+                  {t("pipeline.desc")}
                 </p>
               </div>
             </div>
             {pipelineStages.length > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-500 border border-green-500/20">
-                {lang === "AR" ? "بيانات حية" : "Live"}
+                {t("pipeline.live")}
               </span>
             )}
           </div>
@@ -475,6 +466,11 @@ export default function DashboardView({
             {pipelineStages.map((stage) => {
               const total = pipelineStages.reduce((s, p) => s + p.count, 0);
               const percent = total > 0 ? Math.round((stage.count / total) * 100) : 0;
+              const stageKeyMap: Record<string, string> = {
+                inquiry: 'pipeline.inquiry', tour: 'pipeline.tour',
+                offer: 'pipeline.offer', close: 'pipeline.close',
+              };
+              const stageLabel = t(stageKeyMap[stage.key] || stage.key);
               return (
                 <div
                   key={stage.key}
@@ -483,7 +479,7 @@ export default function DashboardView({
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                      {lang === "AR" ? stage.labelAr : stage.labelEn}
+                      {stageLabel}
                     </span>
                     <span
                       className="text-lg font-black"
@@ -503,7 +499,7 @@ export default function DashboardView({
                     />
                   </div>
                   <p className="text-[9px] text-[var(--nc-text-dim)] mt-1.5">
-                    {lang === "AR" ? `${percent}% من الإجمالي` : `${percent}% of total`}
+                    {percent}% {t("pipeline.percent")}
                   </p>
                 </div>
               );
@@ -512,12 +508,12 @@ export default function DashboardView({
 
           {pipelineStages.length === 0 && (
             <div className="text-center py-6 text-[var(--nc-text-dim)] text-xs">
-              {lang === "AR" ? "لا توجد بيانات متاحة لعرض مسار الصفقات." : "No pipeline data available."}
+              {t("pipeline.empty")}
             </div>
           )}
         </SmartCard>
 
-        {/* Today's Urgent Tasks (col-span-1) */}
+        {/* Today's Tasks */}
         <SmartCard elevation="default" className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
@@ -526,12 +522,10 @@ export default function DashboardView({
               </div>
               <div>
                 <h4 className="nc-heading-3">
-                  {lang === "AR" ? "مهام اليوم العاجلة" : "Today's Urgent Tasks"}
+                  {t("tasks.title")}
                 </h4>
                 <p className="text-[var(--nc-text-dim)] text-[10px]">
-                  {lang === "AR"
-                    ? `${formatNum(todayTasks.length)} ${todayTasks.length === 1 ? "مهمة" : "مهام"} مستحقة اليوم`
-                    : `${todayTasks.length} task${todayTasks.length !== 1 ? "s" : ""} due today`}
+                  {formatNum(todayTasks.length)} {todayTasks.length === 1 ? t("tasks.singular") : t("tasks.plural")} {t("tasks.count")}
                 </p>
               </div>
             </div>
@@ -548,8 +542,8 @@ export default function DashboardView({
                 task.priority === "HIGH" ? "#EF4444" :
                 task.priority === "MEDIUM" ? "#F59E0B" : "#3B82F6";
               const priorityLabel =
-                task.priority === "HIGH" ? (lang === "AR" ? "عالية" : "High") :
-                task.priority === "MEDIUM" ? (lang === "AR" ? "متوسطة" : "Medium") : (lang === "AR" ? "منخفضة" : "Low");
+                task.priority === "HIGH" ? t("tasks.priority.high") :
+                task.priority === "MEDIUM" ? t("tasks.priority.medium") : t("tasks.priority.low");
 
               return (
                 <div
@@ -597,10 +591,10 @@ export default function DashboardView({
                   <i className="ph-bold ph-check-circle text-green-400 text-xl"></i>
                 </div>
                 <p className="text-[var(--nc-text-dim)] text-xs font-medium">
-                  {lang === "AR" ? "لا توجد مهام مستحقة اليوم" : "No tasks due today"}
+                  {t("tasks.empty")}
                 </p>
                 <p className="text-[var(--nc-text-dim)] text-[10px] mt-1">
-                  {lang === "AR" ? "جميع المهام منجزة في وقتها" : "All tasks are on schedule"}
+                  {t("tasks.empty.sub")}
                 </p>
               </div>
             )}
@@ -609,7 +603,7 @@ export default function DashboardView({
 
       </div>
 
-      {/* 4. Recent Requests Grid (أحدث الطلبات الاستثمارية) */}
+      {/* 4. Recent Requests Grid */}
       <div className="grid grid-cols-1 gap-4">
         <SmartCard elevation="default" className="p-4">
           <div className="flex items-center justify-between mb-5">
@@ -619,10 +613,10 @@ export default function DashboardView({
               </div>
               <div>
                 <h4 className="nc-heading-3">
-                  {lang === "AR" ? "أحدث الطلبات الاستثمارية" : "Recent Requests"}
+                  {t("requests.title")}
                 </h4>
                 <p className="text-[var(--nc-text-dim)] text-[10px]">
-                  {lang === "AR" ? "آخر العملاء المسجلين في النظام" : "Latest leads registered"}
+                  {t("requests.desc")}
                 </p>
               </div>
             </div>
@@ -642,15 +636,14 @@ export default function DashboardView({
                 </div>
                 <div className="text-right">
                   <span className="inline-block px-2 py-1 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">
-                    {lead.status === 'NEW' ? (lang === 'AR' ? 'جديد' : 'New') : lead.status}
-                  </span>
+                    {lead.status === 'NEW' ? t('status.new') : lead.status}</span>
                   {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-1 truncate max-w-[100px]">{lead.project.name}</p>}
                 </div>
               </div>
             ))}
             {recentLeads.length === 0 && (
               <div className="text-center py-6 text-[var(--nc-text-dim)] text-xs">
-                {lang === 'AR' ? 'لا توجد طلبات حديثة' : 'No recent requests'}
+                {t('requests.empty')}
               </div>
             )}
           </div>

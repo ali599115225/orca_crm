@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useApp } from "@/app/context/AppContext";
 import {
   LayoutDashboard,
   Users,
@@ -21,76 +22,76 @@ import {
   Settings,
   Calculator,
   Mail,
-  Eye,
 } from "lucide-react";
 
 type MenuItem = {
-  label: string;
+  labelKey: string;
   icon: any;
   path: string;
   tab: string;
-  tooltip?: string;
-  badge?: { text: string; variant: "preview" | "soon" | "paused" };
+  tooltipKey?: string;
+  badgeKey?: string;       // translation key for badge text
+  badgeVariant?: "preview" | "soon" | "paused";
 };
 
 type MenuSection = {
-  title: string;
+  titleKey: string;
   items: MenuItem[];
 };
 
-const menuSections: MenuSection[] = [
+const menuData: MenuSection[] = [
   {
-    title: "المبيعات والعملاء",
+    titleKey: "sidebar.sales",
     items: [
-      { label: "لوحة التحكم",            icon: LayoutDashboard, path: "/operations/dashboard",  tab: "analytics" },
-      { label: "العملاء المحتملون",       icon: Users,           path: "/operations/leads",      tab: "leads" },
-      { label: "العروض العقارية",         icon: Megaphone,       path: "/operations/offers",     tab: "offers" },
-      { label: "الجولات العقارية",        icon: Map,             path: "/operations/tours",      tab: "tours",     tooltip: "تصفح الجولات العقارية المسجلة و360، حجز المواعيد ومحاكاة التمويل" },
+      { labelKey: "nav.dashboard",  icon: LayoutDashboard, path: "/operations/dashboard",  tab: "analytics" },
+      { labelKey: "nav.leads",      icon: Users,           path: "/operations/leads",      tab: "leads" },
+      { labelKey: "nav.offers",     icon: Megaphone,       path: "/operations/offers",     tab: "offers" },
+      { labelKey: "nav.tours",      icon: Map,             path: "/operations/tours",      tab: "tours",     tooltipKey: "nav.tours" },
     ],
   },
   {
-    title: "العقارات والعقود",
+    titleKey: "sidebar.properties",
     items: [
-      { label: "المشاريع العقارية",       icon: Building2,       path: "/operations/projects",   tab: "projects" },
-      { label: "العقارات",               icon: Home,            path: "/operations/properties", tab: "properties" },
-      { label: "العقود والمدفوعات",       icon: Receipt,         path: "/operations/rental",     tab: "rental",    tooltip: "إدارة عقود الإيجار، إصدار الفواتير، وتسجيل الدفعات" },
-      { label: "حاسبة التمويل السكني",    icon: Calculator,      path: "/operations/calculator", tab: "calculator" },
+      { labelKey: "nav.projects",   icon: Building2,       path: "/operations/projects",   tab: "projects" },
+      { labelKey: "nav.properties", icon: Home,            path: "/operations/properties", tab: "properties" },
+      { labelKey: "nav.rental",     icon: Receipt,         path: "/operations/rental",     tab: "rental",    tooltipKey: "nav.rental" },
+      { labelKey: "nav.calculator", icon: Calculator,      path: "/operations/calculator", tab: "calculator" },
     ],
   },
   {
-    title: "التسويق والذكاء",
+    titleKey: "sidebar.marketing",
     items: [
-      { label: "الإعلان والتسويق",        icon: ShoppingBag,     path: "/operations/marketing",  tab: "marketing", tooltip: "المنصات الإعلانية والتسوق الإعلاني" },
-      { label: "الحملات",                icon: Megaphone,       path: "/operations/campaigns",  tab: "campaigns", tooltip: "حملات التسويق وتحليلات ROI" },
-      { label: "أداء المبيعات",           icon: PieChart,        path: "/operations/sales",      tab: "sales" },
+      { labelKey: "nav.marketing",  icon: ShoppingBag,     path: "/operations/marketing",  tab: "marketing", tooltipKey: "nav.marketing" },
+      { labelKey: "nav.campaigns",  icon: Megaphone,       path: "/operations/campaigns",  tab: "campaigns", tooltipKey: "nav.campaigns" },
+      { labelKey: "nav.sales",      icon: PieChart,        path: "/operations/sales",      tab: "sales" },
     ],
   },
   {
-    title: "العمليات",
+    titleKey: "sidebar.operations",
     items: [
-      { label: "المهام والتذكيرات",       icon: Calendar,        path: "/operations/tasks",      tab: "tasks" },
-      { label: "مستودع المستندات",        icon: FolderOpen,      path: "/operations/documents",  tab: "documents", tooltip: "مستندات المشاريع والعقود والبطاقات" },
-      { label: "مركز الدعم",              icon: HelpCircle,      path: "/operations/helpdesk",   tab: "helpdesk",  tooltip: "تذاكر الدعم والوكيل الذكي المساعد" },
+      { labelKey: "nav.tasks",      icon: Calendar,        path: "/operations/tasks",      tab: "tasks" },
+      { labelKey: "nav.documents",  icon: FolderOpen,      path: "/operations/documents",  tab: "documents", tooltipKey: "nav.documents" },
+      { labelKey: "nav.helpdesk",   icon: HelpCircle,      path: "/operations/helpdesk",   tab: "helpdesk",  tooltipKey: "nav.helpdesk" },
     ],
   },
   {
-    title: "معاينة محدودة",
+    titleKey: "sidebar.preview",
     items: [
-      { label: "الوكلاء الذكيون",         icon: Bot,             path: "/operations/agents",     tab: "agents",    badge: { text: "معاينة", variant: "preview" } },
-      { label: "البريد الإلكتروني",       icon: Mail,            path: "/operations/email",      tab: "email",     badge: { text: "قريباً", variant: "soon" } },
-      { label: "واتساب",                 icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp",  badge: { text: "متوقف", variant: "paused" } },
+      { labelKey: "nav.agents",     icon: Bot,             path: "/operations/agents",     tab: "agents",    badgeKey: "badge.preview", badgeVariant: "preview" },
+      { labelKey: "nav.email",      icon: Mail,            path: "/operations/email",      tab: "email",     badgeKey: "badge.comingSoon", badgeVariant: "soon" },
+      { labelKey: "nav.whatsapp",   icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp",  badgeKey: "badge.paused", badgeVariant: "paused" },
     ],
   },
   {
-    title: "الإعدادات",
+    titleKey: "sidebar.settings",
     items: [
-      { label: "الإعدادات",              icon: Settings,        path: "/operations/settings",   tab: "settings" },
+      { labelKey: "nav.settings",   icon: Settings,        path: "/operations/settings",   tab: "settings" },
     ],
   },
 ];
 
-function BadgeTag({ badge }: { badge: MenuItem["badge"] }) {
-  if (!badge) return null;
+function BadgeTag({ badgeKey, variant }: { badgeKey: string; variant: MenuItem["badgeVariant"] }) {
+  const { t } = useApp();
 
   const variantStyles: Record<string, string> = {
     preview: "bg-purple-500/10 text-purple-400 border-purple-500/20",
@@ -99,8 +100,8 @@ function BadgeTag({ badge }: { badge: MenuItem["badge"] }) {
   };
 
   return (
-    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[badge.variant] || variantStyles.preview}`}>
-      {badge.text}
+    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[variant || "preview"]}`}>
+      {t(badgeKey)}
     </span>
   );
 }
@@ -109,13 +110,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const searchParams = useSearchParams();
   const pathname     = usePathname();
   const currentTab   = searchParams.get("tab") || "analytics";
+  const { t } = useApp();
 
   return (
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {menuSections.map((section, sIdx) => (
+      {menuData.map((section, sIdx) => (
         <div key={sIdx} className="mb-1">
           <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-foreground-muted)]/60 uppercase md:hidden lg:block">
-            {section.title}
+            {t(section.titleKey)}
           </div>
           <ul className="space-y-0.5">
             {section.items.map((item, idx) => {
@@ -125,13 +127,12 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 (item.path !== "/operations/dashboard" && pathname.startsWith(item.path));
 
               const Icon = item.icon;
-              const tooltip = item.tooltip;
 
               return (
                 <li key={idx}>
                   <Link
                     href={item.path}
-                    title={tooltip}
+                    title={item.tooltipKey ? t(item.tooltipKey) : undefined}
                     onClick={() => onNavigate?.()}
                     className={[
                       "flex items-center justify-start gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
@@ -148,8 +149,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                           : "text-[var(--nc-foreground-muted)]"
                       }`}
                     />
-                    <span className="leading-tight flex-1 md:hidden lg:inline">{item.label}</span>
-                    {item.badge && <BadgeTag badge={item.badge} />}
+                    <span className="leading-tight flex-1 md:hidden lg:inline">{t(item.labelKey)}</span>
+                    {item.badgeKey && <BadgeTag badgeKey={item.badgeKey} variant={item.badgeVariant} />}
                   </Link>
                 </li>
               );
