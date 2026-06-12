@@ -442,6 +442,11 @@ model RentalInvoice {
   paidAt        DateTime? @map("paid_at") @db.Timestamptz
   paymentMethod String?   @map("payment_method")
   paymentRef    String?   @map("payment_ref")
+  // ── Paylink sandbox gateway fields ──
+  gatewayProvider String? @map("gateway_provider")
+  gatewayStatus   String? @map("gateway_status")
+  paymentUrl      String? @map("payment_url") @db.Text
+
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -732,12 +737,28 @@ model PaymentTransaction {
   gatewayRef      String?  @map("gateway_ref")
   gatewayResponse String?  @map("gateway_response") @db.Text
   paidAt          DateTime @default(now()) @map("paid_at") @db.Timestamptz
+  // ── Paylink sandbox gateway fields ──
+  provider              String?   @default("manual")  @map("provider")
+  providerTransactionId String?                        @map("provider_transaction_id")
+  providerInvoiceId     String?                        @map("provider_invoice_id")
+  providerReference     String?                        @map("provider_reference")
+  paymentUrl            String?                        @map("payment_url")          @db.Text
+  gatewayStatus         String?                        @map("gateway_status")
+  rawPayload            Json?                          @map("raw_payload")
+  webhookReceivedAt     DateTime?                      @map("webhook_received_at")  @db.Timestamptz
+  failureReason         String?                        @map("failure_reason")       @db.Text
+  idempotencyKey        String?                        @map("idempotency_key")
+
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([tenantId])
   @@index([invoiceId])
   @@index([installmentId])
   @@index([status])
+  @@index([provider])
+  @@index([providerTransactionId])
+  @@index([providerInvoiceId])
+  @@index([idempotencyKey])
   @@map("payment_transactions")
 }
 
