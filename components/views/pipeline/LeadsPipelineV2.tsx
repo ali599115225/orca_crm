@@ -60,7 +60,7 @@ function genMockLeads(): LeadItem[] {
 }
 const DEF_MOCK = genMockLeads();
 
-export default function LeadsPipelineV2({ wiredFilter }: { wiredFilter?: string | null }) {
+export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilter?: string | null; refreshKey?: number }) {
   const router = useRouter();
   const { t, lang } = useApp();
   const [leads, setLeads] = useState<LeadItem[]>(DEF_MOCK);
@@ -92,6 +92,8 @@ export default function LeadsPipelineV2({ wiredFilter }: { wiredFilter?: string 
   };
 
   useEffect(() => { loadLeads(); }, []);
+  // ── Refresh when a new lead is added ──
+  useEffect(() => { if (refreshKey && refreshKey > 0) loadLeads(); }, [refreshKey]);
   useEffect(() => {
     let r = leads;
     if (filterAgent) r = r.filter(l => l.assignedTo?.includes(filterAgent));
