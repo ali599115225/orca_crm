@@ -1,6 +1,16 @@
 import { prisma } from "./prisma";
 import { getActiveTenant } from "./tenant";
 import { getSession } from "./session";
+import { normalizePlan, PLAN_LIMITS, type CanonicalPlan } from "./plan-guard";
+
+// AI agent lists by canonical plan — order reflects graduated access tiers
+const ALL_AGENTS = ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"];
+
+function getAllowedAgents(agentCount: number): string[] {
+  if (agentCount >= 5) return [...ALL_AGENTS];
+  if (agentCount >= 2) return ["SAHER", "MANSOUR"];
+  return ["MANSOUR"];
+}
 
 /**
  * دالة التحقق من رخصة وصول المستأجر للوكلاء الذكيين
@@ -15,7 +25,7 @@ export async function authorizeAgentAccess(agentName: string): Promise<{
 
   let tenantId = "";
   let userId = null;
-  let plan = "basic";
+  let canonicalPlan: CanonicalPlan = "basic";
   let authorized = false;
   let message = "";
 
@@ -27,18 +37,13 @@ export async function authorizeAgentAccess(agentName: string): Promise<{
 
     const tenant = await getActiveTenant();
     tenantId = tenant.id;
-    plan = (tenant.subscriptionPlan || "basic").toLowerCase();
+    canonicalPlan = normalizePlan(tenant.subscriptionPlan);
+    const agentLimit = PLAN_LIMITS[canonicalPlan].aiAgents ?? 1;
 
-    const allowedAgents: Record<string, string[]> = {
-      diamond: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
-      pro: ["SAHER", "SANAD", "MANSOUR"], // 3 agents max
-      basic: ["MANSOUR"] // 1 agent only
-    };
-
+    const allowedAgents = getAllowedAgents(agentLimit);
     const requestedAgent = agentName.toUpperCase();
-    const allowedList = allowedAgents[plan] || allowedAgents["basic"];
 
-    if (allowedList.includes(requestedAgent)) {
+    if (allowedAgents.includes(requestedAgent)) {
       authorized = true;
     } else if (tenantId) {
       // Check if there is a valid active lease for this agent
@@ -54,15 +59,15 @@ export async function authorizeAgentAccess(agentName: string): Promise<{
         authorized = true;
       } else {
         authorized = false;
-        message = `الوكيل ${agentName} غير متاح في الباقة الحالية (${plan}). يرجى الترقية للباقة الماسية أو استئجار الوكيل لتفعيله.`;
+        message = `الوكيل ${agentName} غير متاح في الباقة الحالية (${canonicalPlan}). يرجى الترقية للباقة الذهبية أو استئجار الوكيل لتفعيله.`;
       }
     } else {
       authorized = false;
-      message = `الوكيل ${agentName} غير متاح في الباقة الحالية (${plan}). يرجى الترقية للباقة الماسية لتفعيل هذا الوكيل.`;
+      message = `الوكيل ${agentName} غير متاح في الباقة الحالية (${canonicalPlan}). يرجى الترقية للباقة الذهبية لتفعيل هذا الوكيل.`;
     }
 
     // للباقة الأساسية: حد أقصى 10 رسائل/محادثات
-    if (authorized && plan === "basic" && requestedAgent === "MANSOUR") {
+    if (authorized && canonicalPlan === "basic" && requestedAgent === "MANSOUR") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const dailyChatsCount = await prisma.mansourChat.count({
