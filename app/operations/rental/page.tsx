@@ -1041,6 +1041,7 @@ export default function RentalPage() {
                                   </td>
                                   <td className="py-2.5 text-left space-x-2">
                                     {inv.status !== 'paid' && (
+                                      <>
                                       <button
                                         onClick={() => {
                                           setSelectedInvoice(inv);
@@ -1051,6 +1052,23 @@ export default function RentalPage() {
                                       >
                                         {isRTL ? 'تسجيل سداد يدوي' : 'Record Manual Payment'}
                                       </button>
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST' });
+                                            const data = await res.json();
+                                            if (data.success && data.paymentUrl) {
+                                              window.open(data.paymentUrl, '_blank');
+                                            } else {
+                                              alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create payment link'));
+                                            }
+                                          } catch { alert(isRTL ? 'فشل الاتصال' : 'Connection failed'); }
+                                        }}
+                                        className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
+                                      >
+                                        {isRTL ? 'الدفع عبر Paylink' : 'Pay via Paylink'}
+                                      </button>
+                                      </>
                                     )}
                                     <button
                                       onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
@@ -1290,6 +1308,7 @@ export default function RentalPage() {
                           </td>
                           <td className="py-3.5 px-4 text-center space-x-2">
                             {inv.status !== 'paid' && (
+                              <>
                               <button
                                 onClick={() => {
                                   setSelectedInvoice(inv);
@@ -1298,8 +1317,25 @@ export default function RentalPage() {
                                 }}
                                 className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
                               >
-                                سداد
+                                {isRTL ? 'تسجيل سداد يدوي' : 'Manual'}
                               </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.success && data.paymentUrl) {
+                                      window.open(data.paymentUrl, '_blank');
+                                    } else {
+                                      alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create link'));
+                                    }
+                                  } catch { alert(isRTL ? 'فشل الاتصال' : 'Connection failed'); }
+                                }}
+                                className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
+                              >
+                                {isRTL ? 'Paylink' : 'Paylink'}
+                              </button>
+                              </>
                             )}
                             <button
                               onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
