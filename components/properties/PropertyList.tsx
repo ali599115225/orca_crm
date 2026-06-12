@@ -5,9 +5,11 @@ import {
   Home, Plus, Search, CheckCircle2, Clock, Landmark,
   Activity, Eye
 } from 'lucide-react';
-import { Button, Card } from '../ui/orca-components';
+import { Button } from '../ui/orca-components';
+import { SmartCard } from '@/components/ui/SmartCard';
 import { toast } from '@/app/context/ToastContext';
 import LayoutContainer from '../ui/LayoutContainer';
+import { KpiCard } from '../ui/KpiCard';
 import { getPropertiesAction, createUnitActionDirect } from '@/app/actions/properties';
 import { getDetailedProjectsAction } from '@/app/actions/projects';
 
@@ -222,55 +224,15 @@ export default function PropertyList({
 
   const kpisContent = (
     <>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">إجمالي الوحدات</p>
-            <h3 className="text-2xl font-black text-white">{properties.length}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-text-secondary)]">
-            <Home size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المتاحة</p>
-            <h3 className="text-2xl font-black text-emerald-500">{properties.filter(p => p.status === 'Available').length}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-            <CheckCircle2 size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المحجوزة</p>
-            <h3 className="text-2xl font-black text-amber-500">{properties.filter(p => p.status === 'Hold').length}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
-            <Clock size={18} />
-          </div>
-        </div>
-      </Card>
-      <Card className="p-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[var(--nc-text-dim)] font-medium text-xs font-bold mb-1">الوحدات المباعة</p>
-            <h3 className="text-2xl font-black text-rose-400">{properties.filter(p => p.status === 'Sold').length}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
-            <Landmark size={18} />
-          </div>
-        </div>
-      </Card>
+      <KpiCard label={isArabic ? 'إجمالي الوحدات' : 'Total Units'} value={properties.length} icon={Home} color="default" />
+      <KpiCard label={isArabic ? 'الوحدات المتاحة' : 'Available'} value={properties.filter(p => p.status === 'Available').length} icon={CheckCircle2} color="success" />
+      <KpiCard label={isArabic ? 'الوحدات المحجوزة' : 'On Hold'} value={properties.filter(p => p.status === 'Hold').length} icon={Clock} color="warning" />
+      <KpiCard label={isArabic ? 'الوحدات المباعة' : 'Sold'} value={properties.filter(p => p.status === 'Sold').length} icon={Landmark} color="danger" />
     </>
   );
 
   const actionsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <SmartCard elevation="default" className="p-5 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
           <h4 className="text-lg font-semibold text-white flex items-center gap-2">
             <Search size={16} className="text-[var(--nc-text-secondary)]" />
@@ -326,12 +288,12 @@ export default function PropertyList({
           </Button>
         </div>
       </div>
-    </Card>
+    </SmartCard>
   );
 
   const detailsContent = (
     <div className="space-y-6">
-      <Card className="overflow-hidden border border-white/5">
+      <SmartCard elevation="default" className="overflow-hidden border border-[var(--nc-glass-border)] p-0">
         <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
           <h4 className="font-bold text-white">{isArabic ? 'قائمة الوحدات العقارية' : 'Property Units List'}</h4>
           <span className="text-xs text-[var(--nc-text-dim)] font-medium">{isArabic ? `${filteredProperties.length} وحدة` : `${filteredProperties.length} units`}</span>
@@ -414,7 +376,7 @@ export default function PropertyList({
             </table>
           </div>
         )}
-      </Card>
+      </SmartCard>
     </div>
   );
 
