@@ -83,8 +83,8 @@ export default function MarketingView() {
     }
   }, [searchParams]);
 
-  const addTelemetryEvent = useCallback((type: string, payload?: any) => {
-    console.log('[Telemetry]', type, payload);
+  const addTelemetryEvent = useCallback((_type: string, _payload?: any) => {
+    // Telemetry disabled — production cleanup
   }, []);
 
   return (
@@ -98,7 +98,7 @@ export default function MarketingView() {
             {usingFallback && activeTab === 'marketing' && (
               <span className="mr-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
                 <i className="ph-bold ph-warning-circle"></i>
-                بيانات تجريبية
+                {isArabic ? 'بيانات تجريبية' : 'Demo data'}
               </span>
             )}
           </h1>

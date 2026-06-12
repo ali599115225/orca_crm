@@ -296,7 +296,7 @@ export default function CampaignsView({
               {usingFallback && (
                 <span className="mr-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
                   <i className="ph-bold ph-warning-circle"></i>
-                  بيانات تجريبية
+                  {isArabic ? 'بيانات تجريبية' : 'Demo data'}
                 </span>
               )}
             </h1>
@@ -309,7 +309,7 @@ export default function CampaignsView({
       {usingFallback && (
         <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs font-bold">
           <i className="ph-bold ph-warning text-base"></i>
-          <span>⚠️ هذه بيانات توضيحية (Demo) — لم يتم ربطها بقاعدة البيانات بعد</span>
+          <span>{isArabic ? '⚠️ هذه بيانات توضيحية (Demo) — لم يتم ربطها بقاعدة البيانات بعد' : '⚠️ This is demo data — not connected to database'}</span>
         </div>
       )}
 

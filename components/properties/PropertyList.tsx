@@ -272,17 +272,17 @@ export default function PropertyList({
   const actionsContent = (
     <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
-        <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Search size={16} className="text-[var(--nc-text-secondary)]" />
-          البحث والتصفية
-        </h4>
-        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">ابحث عن الوحدات السكنية عبر الفلاتر المتقدمة</p>
+          <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Search size={16} className="text-[var(--nc-text-secondary)]" />
+            {isArabic ? 'البحث والتصفية' : 'Search & Filter'}
+          </h4>
+          <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">{isArabic ? 'ابحث عن الوحدات السكنية عبر الفلاتر' : 'Search properties via advanced filters'}</p>
       </div>
 
       <div className="space-y-3 flex-grow pt-2">
         <div className="flex gap-2">
           <input 
-            placeholder="بحث برقم الوحدة أو المشروع..."
+            placeholder={isArabic ? "بحث برقم الوحدة أو المشروع..." : "Search unit number or project..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]" 
@@ -294,17 +294,17 @@ export default function PropertyList({
             onChange={(e) => setStatusFilter(e.target.value)}
             className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
           >
-            <option value="">كل الحالات</option>
-            <option value="Available">متاحة</option>
-            <option value="Hold">محجوزة مؤقتاً</option>
-            <option value="Sold">مباعة</option>
+            <option value="">{isArabic ? 'كل الحالات' : 'All statuses'}</option>
+            <option value="Available">{isArabic ? 'متاحة' : 'Available'}</option>
+            <option value="Hold">{isArabic ? 'محجوزة مؤقتاً' : 'On Hold'}</option>
+            <option value="Sold">{isArabic ? 'مباعة' : 'Sold'}</option>
           </select>
           <select 
             value={projectFilter}
             onChange={(e) => setProjectFilter(e.target.value)}
             className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
           >
-            <option value="">كل المشاريع</option>
+            <option value="">{isArabic ? 'كل المشاريع' : 'All projects'}</option>
             <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
             <option value="واحة الخليج">واحة الخليج</option>
           </select>
@@ -333,8 +333,8 @@ export default function PropertyList({
     <div className="space-y-6">
       <Card className="overflow-hidden border border-white/5">
         <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
-          <h4 className="font-bold text-white">قائمة الوحدات العقارية</h4>
-          <span className="text-xs text-[var(--nc-text-dim)] font-medium">{filteredProperties.length} وحدة متطابقة</span>
+          <h4 className="font-bold text-white">{isArabic ? 'قائمة الوحدات العقارية' : 'Property Units List'}</h4>
+          <span className="text-xs text-[var(--nc-text-dim)] font-medium">{isArabic ? `${filteredProperties.length} وحدة` : `${filteredProperties.length} units`}</span>
         </div>
 
         {isLoading && (
@@ -419,17 +419,17 @@ export default function PropertyList({
   );
 
   return (
-    <div className="properties-page p-6 text-[var(--ds-text-primary)]" dir="rtl">
+    <div className="nc-stack p-6 text-[var(--ds-text-primary)]" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">
-            العمليات
+            {isArabic ? 'العمليات' : 'Operations'}
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
-            سجل العقارات والوحدات
+            {isArabic ? 'سجل العقارات والوحدات' : 'Properties Registry'}
             {usingFallback && (
-              <span className="mr-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
-                بيانات تجريبية
+              <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
+                {isArabic ? 'بيانات تجريبية' : 'Demo data'}
               </span>
             )}
           </h1>
@@ -450,7 +450,7 @@ export default function PropertyList({
             >
               <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
                 <Plus size={18} />
-                إضافة وحدة عقارية جديدة
+            {isArabic ? 'إضافة وحدة عقارية جديدة' : 'Add New Property Unit'}
               </h3>
 
               <div className="space-y-1">
