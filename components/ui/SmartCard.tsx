@@ -10,7 +10,7 @@ interface SmartCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const elevationMap: Record<Elevation, string> = {
   elevated: 'nc-card-elevated',
-  default: 'card-modern border border-slate-200/50 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-none',
+  default: 'nc-card-default',
   subtle: 'nc-card-subtle',
 };
 
