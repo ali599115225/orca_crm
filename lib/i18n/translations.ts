@@ -158,6 +158,7 @@ export const dict: TranslationDict = {
   'leads.pageDesc':             { ar: 'إدارة العملاء من الاستفسار حتى الإغلاق وربطهم بالمهام والجولات والعروض.', en: 'Manage leads from inquiry to close with tasks, tours, offers, and follow-ups.' },
   'leads.addLead':              { ar: 'إضافة عميل محتمل',          en: 'Add Lead' },
   'leads.import':               { ar: 'استيراد',                 en: 'Import' },
+  'leads.importPending':         { ar: 'يحتاج تفعيل لاحق',         en: 'requires activation' },
   'leads.totalLeads':           { ar: 'إجمالي العملاء',           en: 'Total Leads' },
   'leads.dueToday':             { ar: 'متابعة اليوم',            en: 'Due Today' },
   'leads.highProbability':      { ar: 'احتمالية عالية',          en: 'High Probability' },

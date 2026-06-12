@@ -12,6 +12,8 @@ export type LeadItem = {
   stage: string;
   projectId: string | null;
   assignedTo: string | null;
+  phone?: string | null;
+  email?: string | null;
 };
 
 interface Props {

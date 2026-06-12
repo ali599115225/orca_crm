@@ -1,4 +1,5 @@
 import React from 'react';
+import { useApp } from '@/app/context/AppContext';
 
 interface LayoutContainerProps {
   kpis?: React.ReactNode;
@@ -9,17 +10,20 @@ interface LayoutContainerProps {
 }
 
 export const LayoutContainer: React.FC<LayoutContainerProps> = ({ kpis, actions, insights, details, children }) => {
-  return (
-    <div className="nc-page nc-stack" dir="rtl">
+  const { lang } = useApp();
+  const isRTL = lang === 'AR';
 
-      {/* 1. KPIs Top Row — إحصائيات الصفحة العليا */}
+  return (
+    <div className="nc-page nc-stack" dir={isRTL ? 'rtl' : 'ltr'}>
+
+      {/* 1. KPIs Top Row */}
       {kpis && (
         <section className="nc-stagger-enter grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {kpis}
         </section>
       )}
 
-      {/* 2. Middle Section — أعمدة الإجراءات والرؤى */}
+      {/* 2. Middle Section */}
       {(actions || insights) && (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {actions && (
@@ -35,14 +39,14 @@ export const LayoutContainer: React.FC<LayoutContainerProps> = ({ kpis, actions,
         </section>
       )}
 
-      {/* 3. Bottom Section — التفاصيل والسجلات */}
+      {/* 3. Bottom Section */}
       {details && (
         <section className="w-full">
           {details}
         </section>
       )}
 
-      {/* 4. Children — محتوى إضافي اختياري */}
+      {/* 4. Children */}
       {children && (
         <section className="w-full">
           {children}

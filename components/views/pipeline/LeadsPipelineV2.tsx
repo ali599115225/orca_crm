@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useApp } from "@/app/context/AppContext";
@@ -60,7 +60,7 @@ function genMockLeads(): LeadItem[] {
 }
 const DEF_MOCK = genMockLeads();
 
-export default function LeadsPipelineV2() {
+export default function LeadsPipelineV2({ wiredFilter }: { wiredFilter?: string | null }) {
   const router = useRouter();
   const { t, lang } = useApp();
   const [leads, setLeads] = useState<LeadItem[]>(DEF_MOCK);
@@ -96,8 +96,13 @@ export default function LeadsPipelineV2() {
     let r = leads;
     if (filterAgent) r = r.filter(l => l.assignedTo?.includes(filterAgent));
     if (filterSource) r = r.filter(l => l.source.includes(filterSource));
+    // ── Apply wiredFilter from LeadsTabs chips ──
+    if (wiredFilter === "highProb") r = r.filter(l => l.leadScore >= 75);
+    if (wiredFilter === "dueToday") r = r.filter(l => l.leadScore > 60);
+    if (wiredFilter === "active") r = r.filter(l => l.stage !== "Closed" && l.stage !== "New");
+    // "total" shows all — no filter needed
     setFiltered(r);
-  }, [leads, filterSource, filterAgent]);
+  }, [leads, filterSource, filterAgent, wiredFilter]);
 
   const stageLeads = (stage: string) => filtered.filter(l => l.stage === stage);
   const toggle = (stage: string) => setCollapsed(prev => {
@@ -134,39 +139,12 @@ export default function LeadsPipelineV2() {
     }
   };
 
-  const smartActions = useMemo(() => {
-    const now = Date.now();
-    return {
-      followUp: filtered.filter(l => l.leadScore && l.leadScore > 60).length,
-      highProb: filtered.filter(l => l.leadScore && l.leadScore >= 75).length,
-      stale: filtered.filter(l => l.stage !== "Closed" && l.stage !== "New").length,
-      total: filtered.length,
-    };
-  }, [filtered]);
-
   return (
     <div style={{ height: "calc(100vh - 160px)", display: "flex", flexDirection: "column", gap: 0 }}>
       <STYLES />
       <DragDropContext onDragEnd={onDragEnd}>
-        {/* Smart Action Bar */}
+        {/* Filter Bar — Source + Agent dropdowns only (chips are in LeadsTabs) */}
         <div className="lv2-actionbar">
-          <div className="lv2-action-item lv2-action-warn">
-            <span className="lv2-action-num">{smartActions.followUp}</span>
-            <span className="lv2-action-lbl">{t("leads.dueToday")}</span>
-          </div>
-          <div className="lv2-action-item lv2-action-hot">
-            <span className="lv2-action-num">{smartActions.highProb}</span>
-            <span className="lv2-action-lbl">{t("leads.highProbability")}</span>
-          </div>
-          <div className="lv2-action-item lv2-action-stale">
-            <span className="lv2-action-num">{smartActions.stale}</span>
-            <span className="lv2-action-lbl">{t("leads.activeLeads")}</span>
-          </div>
-          <div className="lv2-action-item lv2-action-info">
-            <span className="lv2-action-num">{smartActions.total}</span>
-            <span className="lv2-action-lbl">{t("leads.totalLeads")}</span>
-          </div>
-          <div className="lv2-filter-spacer" />
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="lv2-filter">
             <option value="">{t("leads.filterSource")}</option>
             {MOCK_SRC.map(s => <option key={s} value={s}>{s}</option>)}
@@ -175,6 +153,10 @@ export default function LeadsPipelineV2() {
             <option value="">{t("leads.filterOwner")}</option>
             {["رائد", "فواز", "عبدالرحمن", "سعود", "عمر", "بدر"].map(a => <option key={a} value={a}>{a}</option>)}
           </select>
+          <span className="lv2-action-item lv2-action-info" style={{ marginLeft: 'auto', cursor: 'default' }}>
+            <span className="lv2-action-num">{filtered.length}</span>
+            <span className="lv2-action-lbl">{t("leads.totalLeads")}</span>
+          </span>
         </div>
 
         {/* Main split */}
@@ -241,31 +223,42 @@ export default function LeadsPipelineV2() {
                   </div>
                   {/* ── Cross-module Action Buttons ── */}
                   <div className="lv2-actions">
-                    <a href={`tel:${(detailData as any)?.phone || ""}`} className={`lv2-act-btn ${!(detailData as any)?.phone ? "lv2-act-disabled" : ""}`} title={!(detailData as any)?.phone ? t("action.noPhone") : ""}>
+                    {(() => {
+                      const d = detailData as any;
+                      const lid = selLead.id;
+                      const lname = `${selLead.firstName} ${selLead.lastName || ""}`.trim();
+                      const lphone = d?.phone || "";
+                      const lemail = d?.email || "";
+                      return (
+                        <>
+                    <a href={`tel:${lphone}`} className={`lv2-act-btn ${!lphone ? "lv2-act-disabled" : ""}`} title={!lphone ? t("action.noPhone") : t("action.call")}>
                       <span className="lv2-act-icon">📞</span><span className="lv2-act-label">{t("action.call")}</span>
                     </a>
-                    <button onClick={() => router.push(`/operations/whatsapp`)} className="lv2-act-btn lv2-act-soon" title={t("action.whatsappPending")}>
+                    <button onClick={() => router.push(`/operations/whatsapp?leadId=${lid}&phone=${encodeURIComponent(lphone)}&name=${encodeURIComponent(lname)}`)} className="lv2-act-btn lv2-act-soon" title={t("action.whatsappPending")}>
                       <span className="lv2-act-icon">💬</span><span className="lv2-act-label">{t("action.whatsapp")}</span>
                       <span className="lv2-act-badge">{t("action.whatsappPending")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/email`)} className={`lv2-act-btn ${!(detailData as any)?.email ? "lv2-act-disabled" : ""}`} title={!(detailData as any)?.email ? t("action.noEmail") : ""}>
+                    <button onClick={() => router.push(`/operations/email?leadId=${lid}&email=${encodeURIComponent(lemail)}&name=${encodeURIComponent(lname)}`)} className={`lv2-act-btn ${!lemail ? "lv2-act-disabled" : ""}`} title={!lemail ? t("action.noEmail") : t("action.email")}>
                       <span className="lv2-act-icon">✉️</span><span className="lv2-act-label">{t("action.email")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/tasks`)} className="lv2-act-btn">
+                    <button onClick={() => router.push(`/operations/tasks?leadId=${lid}&name=${encodeURIComponent(lname)}`)} className="lv2-act-btn">
                       <span className="lv2-act-icon">✅</span><span className="lv2-act-label">{t("action.task")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/tours`)} className="lv2-act-btn">
+                    <button onClick={() => router.push(`/operations/tours?leadId=${lid}&name=${encodeURIComponent(lname)}`)} className="lv2-act-btn">
                       <span className="lv2-act-icon">🗺️</span><span className="lv2-act-label">{t("action.tour")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/offers`)} className="lv2-act-btn">
+                    <button onClick={() => router.push(`/operations/offers?leadId=${lid}&name=${encodeURIComponent(lname)}`)} className="lv2-act-btn">
                       <span className="lv2-act-icon">📋</span><span className="lv2-act-label">{t("action.offer")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/leads?tab=opportunities`)} className="lv2-act-btn">
+                    <button onClick={() => router.push(`/operations/leads?tab=opportunities&leadId=${lid}`)} className="lv2-act-btn">
                       <span className="lv2-act-icon">🎯</span><span className="lv2-act-label">{t("action.opportunity")}</span>
                     </button>
-                    <button onClick={() => router.push(`/operations/rental`)} className="lv2-act-btn lv2-act-soon" title={t("action.contractPending")}>
+                    <button onClick={() => router.push(`/operations/rental?leadId=${lid}&name=${encodeURIComponent(lname)}`)} className="lv2-act-btn lv2-act-soon" title={t("action.contractPending")}>
                       <span className="lv2-act-icon">📄</span><span className="lv2-act-label">{t("action.contract")}</span>
                     </button>
+                        </>
+                      );
+                    })()}
                   </div>
                   <button
                     onClick={() => router.push(`/operations/leads/${selLead.id}`)}

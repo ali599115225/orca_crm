@@ -1,6 +1,6 @@
 // components/views/tabs/LeadsTabs.tsx
 "use client";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useApp } from "@/app/context/AppContext";
 import { useRouter } from "next/navigation";
 import LeadsPipelineV2 from "../pipeline/LeadsPipelineV2";
@@ -11,17 +11,8 @@ import Offers from "./Offers";
 import Tasks from "./Tasks";
 import InsightsAutomation from "./InsightsAutomation";
 
-import { Search, Plus, Upload, Phone, MessageCircle, Mail, CheckSquare, MapPin, FileText, Target, FileCheck } from "lucide-react";
+import { Search, Plus, Upload } from "lucide-react";
 import { SmartCard } from "../../ui/SmartCard";
-
-// ── Flat row block (shared style) ──
-function FlatRowBlock({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] hover:border-[var(--nc-accent-border)] transition-colors ${className}`}>
-      {children}
-    </div>
-  );
-}
 
 export default function LeadsTabs() {
   const { lang, t } = useApp();
@@ -37,27 +28,19 @@ export default function LeadsTabs() {
     return () => window.removeEventListener("search-change", handler);
   }, []);
 
-  // ── Filter state ──
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
-  const toggleFilter = (key: string) => {
-    setActiveFilters(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-  const clearFilters = () => setActiveFilters(new Set());
-  const hasFilters = activeFilters.size > 0 || searchQuery.length > 0;
+  // ── Functional Filter Chips ──
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const toggleFilter = (key: string) => setActiveFilter(prev => prev === key ? null : key);
+  const clearFilters = () => setActiveFilter(null);
+  const hasFilters = activeFilter !== null || searchQuery.length > 0;
 
-  // ── Filter chips (simulated counts) ──
   const filterChips = [
-    { key: "total",      labelKey: "leads.totalLeads",      mockCount: 48 },
-    { key: "dueToday",   labelKey: "leads.dueToday",        mockCount: 7 },
-    { key: "highProb",   labelKey: "leads.highProbability", mockCount: 12 },
-    { key: "active",     labelKey: "leads.activeLeads",     mockCount: 31 },
-  ];
+    { key: "total",      labelKey: "leads.totalLeads" },
+    { key: "dueToday",   labelKey: "leads.dueToday" },
+    { key: "highProb",   labelKey: "leads.highProbability" },
+    { key: "active",     labelKey: "leads.activeLeads" },
+  ] as const;
 
-  // Filter chip colors
   const chipColors: Record<string, string> = {
     total:    "border-blue-500/30 bg-blue-500/5 text-blue-400",
     dueToday: "border-amber-500/30 bg-amber-500/5 text-amber-400",
@@ -89,11 +72,19 @@ export default function LeadsTabs() {
           <p className="text-[var(--nc-text-dim)] text-sm mt-1">{t("leads.pageDesc")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="nc-btn nc-btn-ghost nc-btn-sm text-xs" onClick={() => router.push("/operations/leads?import=1")}>
+          <button
+            className="nc-btn nc-btn-ghost nc-btn-sm text-xs opacity-60 cursor-not-allowed"
+            disabled
+            title={t("leads.import") + " — " + (lang === "AR" ? "يحتاج تفعيل لاحق" : "requires activation")}
+          >
             <Upload size={14} />
             <span>{t("leads.import")}</span>
           </button>
-          <button className="nc-btn nc-btn-primary nc-btn-sm text-xs" onClick={() => router.push("/operations/leads?add=1")}>
+          <button
+            className="nc-btn nc-btn-ghost nc-btn-sm text-xs opacity-60 cursor-not-allowed"
+            disabled
+            title={t("leads.addLead") + " — " + (lang === "AR" ? "يحتاج تفعيل لاحق" : "requires activation")}
+          >
             <Plus size={14} />
             <span>{t("leads.addLead")}</span>
           </button>
@@ -101,11 +92,11 @@ export default function LeadsTabs() {
       </div>
 
       {/* ═══════════════════════════════════════
-          B. MINI KPI / FILTER STRIP
+          B. MINI KPI / FILTER STRIP — functional
           ═══════════════════════════════════════ */}
       <div className="flex flex-wrap items-center gap-2">
         {filterChips.map((chip) => {
-          const isActive = activeFilters.has(chip.key);
+          const isActive = activeFilter === chip.key;
           return (
             <button
               key={chip.key}
@@ -117,9 +108,6 @@ export default function LeadsTabs() {
               `}
             >
               <span>{t(chip.labelKey)}</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-current/10" : "bg-[var(--nc-surface-strong)]"}`}>
-                {chip.mockCount}
-              </span>
             </button>
           );
         })}
@@ -160,7 +148,7 @@ export default function LeadsTabs() {
         </div>
       ) : (
         <>
-          {active === "pipeline" && <LeadsPipelineV2 />}
+          {active === "pipeline" && <LeadsPipelineV2 wiredFilter={activeFilter} />}
           {active === "contacts" && <Contacts />}
           {active === "opportunities" && <Opportunities />}
           {active === "tours" && <Tours />}
