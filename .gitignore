@@ -15,9 +15,8 @@ out/
 .env.production.local
 .env.production
 
-# ملفات النظام الأخرى
-.DS_Store
-thumbs.db
+# تجاهل ملفات بناء TypeScript
+tsconfig.tsbuildinfo
 
 # حماية ملفات المشروع الحساسة
 recovery-codes.txt

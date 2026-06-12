@@ -1,7 +1,8 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { Menu, Search, Bell, ChevronLeft, Globe, Moon, Sun, LogOut, Bot } from 'lucide-react';
+import { Menu, Search, ChevronLeft, Globe, Moon, Sun, LogOut } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
@@ -9,6 +10,9 @@ import { logoutAction } from '@/app/actions/auth';
 
 interface SovereignHeaderProps {
   onMenuClick?: () => void;
+  tenant?: any;
+  user?: { name: string; email: string; role: string };
+  companyName?: string;
 }
 
 const tabNames: Record<string, string> = {
@@ -48,6 +52,13 @@ const routeNames: Record<string, string> = {
   '/operations/settings':   'الإعدادات',
 };
 
+function getInitials(name: string): string {
+  if (!name) return 'م';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0);
+  return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
+}
+
 function HeaderBreadcrumbs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,9 +80,13 @@ function HeaderBreadcrumbs() {
   );
 }
 
-export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
+export default function SovereignHeader({ onMenuClick, tenant, user, companyName }: SovereignHeaderProps) {
   const { theme, toggleTheme, lang, toggleLang } = useApp();
   const router = useRouter();
+
+  const displayName = user?.name || 'المستخدم';
+  const displayCompany = companyName || 'ORCA';
+  const initials = getInitials(displayName);
 
   return (
     <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-b border-[var(--nc-glass-border)] z-40 w-full dir-rtl text-[var(--nc-foreground)] transition-all">
@@ -103,11 +118,11 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
               className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
             />
           </div>
-          <label htmlFor="global-search" className="sr-only">بحث شامل</label>
+          <label htmlFor="global-search" className="sr-only">بحث</label>
           <input
             id="global-search"
             type="text"
-            placeholder="البحث داخل ORCA..."
+            placeholder="البحث داخل الصفحة الحالية..."
             className="w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] focus:border-[var(--nc-accent-border)] rounded-xl py-2 pl-14 pr-10 text-sm text-[var(--nc-foreground)] outline-none transition-all placeholder:text-[var(--nc-foreground-muted)] shadow-inner"
           />
           <div className="absolute inset-y-0 left-0 flex items-center pl-2">
@@ -116,14 +131,8 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
         </div>
       </div>
 
-      {/* Left: Quick actions, notifications, profile */}
+      {/* Left: Quick actions, profile */}
       <div className="flex items-center justify-end gap-2 lg:gap-3 lg:w-1/3">
-
-        {/* AI Agents — neutral label */}
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-full text-xs font-medium text-[var(--nc-foreground)]">
-          <Bot size={14} className="text-[var(--nc-foreground-muted)]" />
-          <span>الوكلاء الذكيون</span>
-        </div>
 
         {/* Language toggle */}
         <button
@@ -147,20 +156,14 @@ export default function SovereignHeader({ onMenuClick }: SovereignHeaderProps) {
             : <Moon size={18} />}
         </button>
 
-        {/* Notifications */}
-        <button className="relative w-9 h-9 flex items-center justify-center bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-lg transition-all" aria-label="الإشعارات">
-          <Bell size={18} />
-          <span className="absolute top-1.5 left-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--nc-surface-strong)]"></span>
-        </button>
-
         {/* User profile */}
         <div className="flex items-center gap-3 pl-2 border-r border-[var(--nc-border)] ml-1 pr-1">
           <div className="hidden md:block text-left mr-2">
-            <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight text-right">علي زيلع</p>
-            <p className="text-[10px] text-[var(--nc-foreground-muted)] text-right mt-0.5">شركة دار الأعمار</p>
+            <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight text-right">{displayName}</p>
+            <p className="text-[10px] text-[var(--nc-foreground-muted)] text-right mt-0.5">{displayCompany}</p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent)] shadow-sm transition-colors cursor-pointer">
-            ع.ز
+            {initials}
           </div>
         </div>
 

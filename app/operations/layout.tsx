@@ -25,11 +25,12 @@ export default async function OperationsLayout({
   // جلب المنشأة العقارية النشطة ديناميكياً
   const tenant = await getActiveTenant();
 
-  // جلب البريد الإلكتروني للمستخدم الحالي
+  // جلب بيانات المستخدم الحالي
   const user = await prisma.user.findUnique({
     where: { id: session.userId as string }
   });
   const userEmail = user?.email || "";
+  const userName = user?.name || "";
   const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
 
   const rawCompanyName = tenant?.companyName || "";
@@ -37,7 +38,11 @@ export default async function OperationsLayout({
   const userRoleKey = session.role as string || "READ_ONLY";
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      tenant={tenant}
+      user={{ name: userName, email: userEmail, role: userRoleKey }}
+      companyName={rawCompanyName || "ORCA"}
+    >
       {children}
     </DashboardLayout>
   );

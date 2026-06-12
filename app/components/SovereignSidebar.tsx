@@ -21,6 +21,7 @@ import {
   Settings,
   Calculator,
   Mail,
+  Eye,
 } from "lucide-react";
 
 type MenuItem = {
@@ -29,6 +30,7 @@ type MenuItem = {
   path: string;
   tab: string;
   tooltip?: string;
+  badge?: { text: string; variant: "preview" | "soon" | "paused" };
 };
 
 type MenuSection = {
@@ -61,7 +63,6 @@ const menuSections: MenuSection[] = [
       { label: "الإعلان والتسويق",        icon: ShoppingBag,     path: "/operations/marketing",  tab: "marketing", tooltip: "المنصات الإعلانية والتسوق الإعلاني" },
       { label: "الحملات",                icon: Megaphone,       path: "/operations/campaigns",  tab: "campaigns", tooltip: "حملات التسويق وتحليلات ROI" },
       { label: "أداء المبيعات",           icon: PieChart,        path: "/operations/sales",      tab: "sales" },
-      { label: "الوكلاء الذكيون",         icon: Bot,             path: "/operations/agents",     tab: "agents" },
     ],
   },
   {
@@ -73,10 +74,11 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    title: "القنوات",
+    title: "معاينة محدودة",
     items: [
-      { label: "البريد الإلكتروني",       icon: Mail,            path: "/operations/email",      tab: "email" },
-      { label: "واتساب",                 icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp" },
+      { label: "الوكلاء الذكيون",         icon: Bot,             path: "/operations/agents",     tab: "agents",    badge: { text: "معاينة", variant: "preview" } },
+      { label: "البريد الإلكتروني",       icon: Mail,            path: "/operations/email",      tab: "email",     badge: { text: "قريباً", variant: "soon" } },
+      { label: "واتساب",                 icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp",  badge: { text: "متوقف", variant: "paused" } },
     ],
   },
   {
@@ -86,6 +88,22 @@ const menuSections: MenuSection[] = [
     ],
   },
 ];
+
+function BadgeTag({ badge }: { badge: MenuItem["badge"] }) {
+  if (!badge) return null;
+
+  const variantStyles: Record<string, string> = {
+    preview: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    soon: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    paused: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  };
+
+  return (
+    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[badge.variant] || variantStyles.preview}`}>
+      {badge.text}
+    </span>
+  );
+}
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const searchParams = useSearchParams();
@@ -131,11 +149,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                       }`}
                     />
                     <span className="leading-tight flex-1 md:hidden lg:inline">{item.label}</span>
-                    {item.tab === "rental" && (
-                      <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 animate-pulse md:hidden lg:inline">
-                        2
-                      </span>
-                    )}
+                    {item.badge && <BadgeTag badge={item.badge} />}
                   </Link>
                 </li>
               );
@@ -147,7 +161,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export default function SovereignSidebar({ onLinkClick }: { onLinkClick?: () => void }) {
+export default function SovereignSidebar({ onLinkClick, tenant, companyName }: { onLinkClick?: () => void; tenant?: any; companyName?: string }) {
   return (
     <aside className="w-[255px] md:w-[80px] lg:w-[255px] h-screen bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-l border-[var(--nc-glass-border)] flex flex-col transition-all duration-300">
       {/* Logo / Brand */}
@@ -156,9 +170,16 @@ export default function SovereignSidebar({ onLinkClick }: { onLinkClick?: () => 
           <span className="w-7 h-7 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)] font-black text-sm md:hidden lg:flex">
             O
           </span>
-          <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase md:hidden lg:inline">
-            ORCA
-          </span>
+          <div className="md:hidden lg:block">
+            <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase">
+              ORCA
+            </span>
+            {companyName && companyName !== "ORCA" && (
+              <span className="text-[9px] text-[var(--nc-foreground-muted)]/60 block truncate max-w-[140px]">
+                {companyName}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

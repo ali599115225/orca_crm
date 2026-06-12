@@ -3,11 +3,19 @@ import React, { useState } from 'react';
 import SovereignHeader from '../../app/components/SovereignHeader';
 import SovereignSidebar from '../../app/components/SovereignSidebar';
 
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+  tenant?: any;
+  user?: { name: string; email: string; role: string };
+  companyName?: string;
+}
+
 export default function DashboardLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  tenant,
+  user,
+  companyName,
+}: DashboardLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -29,14 +37,14 @@ export default function DashboardLayout({
           md:translate-x-0 md:static md:z-auto shrink-0
         `}
       >
-        <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} />
+        <SovereignSidebar onLinkClick={() => setIsMobileMenuOpen(false)} tenant={tenant} companyName={companyName} />
       </div>
 
       {/* ── المحتوى الرئيسي ─────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
 
         {/* الشريط العلوي — ثابت الارتفاع */}
-        <SovereignHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
+        <SovereignHeader onMenuClick={() => setIsMobileMenuOpen(true)} tenant={tenant} user={user} companyName={companyName} />
 
         {/* منطقة العرض — تمرير داخلي فقط */}
         <div className="flex-1 overflow-y-auto min-h-0 relative">
