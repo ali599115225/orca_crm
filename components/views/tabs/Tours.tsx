@@ -25,7 +25,7 @@ export default function Tours() {
 
   return (
     <div className="tab-pane space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <SmartCard className="p-4">
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("tours.createTitle")}</h3>
           <form onSubmit={handleCreateTour} className="space-y-4 text-xs">
