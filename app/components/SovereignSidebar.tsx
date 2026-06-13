@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -205,11 +206,6 @@ export default function SovereignSidebar({ onLinkClick, tenant, companyName, isS
             <span className="text-[11px] font-black text-[var(--nc-foreground-muted)] tracking-widest uppercase">
               ORCA
             </span>
-            {companyName && companyName !== "ORCA" && (
-              <span className="text-[9px] text-[var(--nc-foreground-muted)]/60 block truncate max-w-[140px]">
-                {companyName}
-              </span>
-            )}
           </div>
         </div>
       </div>
