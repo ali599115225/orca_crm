@@ -655,29 +655,13 @@ export default function RentalPage() {
     <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Search size={16} className="text-[var(--nc-text-secondary)]" />
-          البحث والتصفية
+          <Plus size={16} className="text-[var(--nc-text-secondary)]" />
+          إجراءات سريعة
         </h4>
-        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">ابحث بالعقد أو المستأجر أو الوحدة</p>
+        <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">إضافة عقود وفواتير جديدة</p>
       </div>
       <div className="space-y-3 flex-grow pt-2">
-        <input
-          placeholder="بحث بالعقد، المستأجر أو الوحدة..."
-          value={leaseSearch}
-          onChange={(e) => setLeaseSearch(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
-        />
-        <select
-          value={leaseStatusFilter}
-          onChange={(e) => setLeaseStatusFilter(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none"
-        >
-          <option value="">كل العقود</option>
-          <option value="active">نشط</option>
-          <option value="expired">منتهي</option>
-          <option value="terminated">ملغى</option>
-        </select>
-        <div className="border-t border-white/5 pt-3 space-y-2">
+        <div className="space-y-2">
           <Button
             onClick={() => {
               if (!isAllowed("CREATE_LEASE")) { alert("عذراً، لا تملك الصلاحية لإضافة عقد جديد."); return; }
@@ -842,14 +826,14 @@ export default function RentalPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-right border-collapse text-xs">
+                  <table className="nc-table text-xs">
                     <thead>
-                      <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
-                        <th className="py-3 px-3">رقم العقد</th>
-                        <th className="py-3 px-3">الوحدة</th>
-                        <th className="py-3 px-3">المستأجر</th>
-                        <th className="py-3 px-3">الحالة</th>
-                        <th className="py-3 px-3 text-left">الإيجار</th>
+                      <tr>
+                        <th>رقم العقد</th>
+                        <th>الوحدة</th>
+                        <th>المستأجر</th>
+                        <th>الحالة</th>
+                        <th className="text-left">الإيجار</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -861,14 +845,14 @@ export default function RentalPage() {
                              setDetailActiveTab('summary');
                              addTelemetryEvent('lease.opened', { contractId: l.id, status: l.status });
                            }}
-                           className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
+                           className={`cursor-pointer ${
                              selectedLeaseId === l.id ? 'bg-[#8EB1D1]/10 border-r-4 border-[#8EB1D1]' : ''
                            }`}
                         >
-                          <td className="py-3.5 px-2 font-bold text-white">{l.id}</td>
-                          <td className="py-3.5 px-2 text-[var(--nc-text-dim)] font-mono">{l.unit}</td>
-                          <td className="py-3.5 px-2 text-[var(--nc-text-dim)]">{l.tenant}</td>
-                          <td className="py-3.5 px-2">
+                          <td className="font-bold text-[var(--nc-foreground)]">{l.id}</td>
+                          <td className="text-[var(--nc-text-dim)] font-mono">{l.unit}</td>
+                          <td className="text-[var(--nc-text-dim)]">{l.tenant}</td>
+                          <td>
                             <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
                               l.status === 'active' 
                                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
@@ -879,7 +863,7 @@ export default function RentalPage() {
                               {l.status === 'active' ? 'نشط' : l.status === 'expired' ? 'منتهي' : 'ملغى'}
                             </span>
                           </td>
-                          <td className="py-3.5 px-2 text-left text-white font-bold">{l.rent.toLocaleString()} ر.س</td>
+                          <td className="text-left text-[var(--nc-foreground)] font-bold">{l.rent.toLocaleString()} ر.س</td>
                         </tr>
                       ))}
                     </tbody>

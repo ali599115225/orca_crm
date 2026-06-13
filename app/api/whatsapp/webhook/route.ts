@@ -9,6 +9,7 @@ import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
 import { logWhatsAppActivity, classifyWhatsAppLead } from "@/app/actions/whatsapp-crm";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { rateLimit } from "@/lib/rate-limit";
+import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
 
 // ─── إعدادات Green API ───────────────────────────────────────────────────────
 const GREEN_API_ID_INSTANCE =
@@ -157,7 +158,7 @@ async function handleMetaInbound(body: any) {
       try {
         // Phase I — Contact Resolution (Dedup)
         let contact = await prisma.whatsAppContact.findUnique({
-          where: { tenantId_phone: { tenantId, phone: senderPhone } },
+          where: { tenantId_phoneHash: { tenantId, phoneHash: hashPhone(tenantId, senderPhone) } },
         });
 
         // Phase A — Lead Auto Creation
@@ -174,6 +175,7 @@ async function handleMetaInbound(body: any) {
                   tenantId,
                   firstName: `WhatsApp Lead ${senderPhone}`,
                   phone: senderPhone,
+                  phoneHash: hashPhone(tenantId, senderPhone),
                   city: "Unknown",
                   source: "WHATSAPP",
                   status: "NEW",
@@ -199,6 +201,7 @@ async function handleMetaInbound(body: any) {
             data: {
               tenantId,
               phone: senderPhone,
+              phoneHash: hashPhone(tenantId, senderPhone),
               name: value.contacts?.[0]?.profile?.name || undefined,
               provider: "meta",
               leadId: lead.id,
@@ -220,12 +223,13 @@ async function handleMetaInbound(body: any) {
           data: {
             tenantId,
             phone: senderPhone,
+            phoneHash: hashPhone(tenantId, senderPhone),
             direction: "inbound",
             provider: "meta",
             messageText,
             messageType: msgType,
             metaMessageId,
-            rawPayload: msg,
+            rawPayload: redactPiiFromPayload(msg) as any,
             status: "received",
           },
         });
@@ -256,12 +260,21 @@ async function handleMetaInbound(body: any) {
               data: { aiSummary: saherOutputStr },
             }).catch(() => {});
             await prisma.whatsAppContact.updateMany({
-              where: { tenantId: tenant.id, phone: senderPhone },
+              where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, senderPhone) },
               data: { leadId: saherResult.leadId },
             });
           }
 
           await classifyWhatsAppLead(saherResult.leadId, messageText);
+        } else if (saherResult.approvalRequired) {
+          // Lead creation pending approval — no auto-reply, no lead updates
+          if (saherResult.saherOutput) {
+            const saherOutputStr = JSON.stringify(saherResult.saherOutput);
+            await prisma.whatsAppMessage.updateMany({
+              where: { tenantId: tenant.id, phone: senderPhone, metaMessageId },
+              data: { aiSummary: saherOutputStr },
+            }).catch(() => {});
+          }
         }
       }
     }
@@ -355,6 +368,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
                 tenantId: tenant.id,
                 firstName: `WhatsApp Lead ${senderPhone}`,
                 phone: senderPhone,
+                phoneHash: hashPhone(tenant.id, senderPhone),
                 city: "Unknown",
                 source: "WHATSAPP",
                 status: "NEW",
@@ -377,7 +391,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
       leadId = lead.id;
 
       let contact = await prisma.whatsAppContact.findUnique({
-        where: { tenantId_phone: { tenantId: tenant.id, phone: senderPhone } },
+        where: { tenantId_phoneHash: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, senderPhone) } },
       });
 
       if (!contact) {
@@ -385,6 +399,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
           data: {
             tenantId: tenant.id,
             phone: senderPhone,
+            phoneHash: hashPhone(tenant.id, senderPhone),
             name: senderName,
             provider: "greenapi",
             leadId: lead.id,
@@ -406,11 +421,12 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
         data: {
           tenantId: tenant.id,
           phone: senderPhone,
+          phoneHash: hashPhone(tenant.id, senderPhone),
           direction: "inbound",
           provider: "greenapi",
           messageText: textMessage,
           messageType: body.messageData?.typeMessage || "text",
-          rawPayload: body,
+          rawPayload: redactPiiFromPayload(body) as any,
           status: "received",
         },
       });
@@ -443,7 +459,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
         data: { aiSummary: saherOutputStr },
       }).catch(() => {});
       await prisma.whatsAppContact.updateMany({
-        where: { tenantId: tenant.id, phone: senderPhone },
+        where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, senderPhone) },
         data: { leadId: finalLeadId },
       });
     }
@@ -451,7 +467,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
     await classifyWhatsAppLead(finalLeadId, textMessage);
   }
 
-  if (saherResult.responseToClient) {
+  if (saherResult.responseToClient && !saherResult.approvalRequired) {
     await sendWhatsAppReply(chatId, saherResult.responseToClient);
   }
 

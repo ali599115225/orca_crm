@@ -193,11 +193,11 @@ export default function SalesView() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2">
-                <div className="nc-card-default p-3 text-center">
+                <div className="p-3 text-center">
                   <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'فريق المبيعات' : 'Sales Team'}</p>
                   <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(salesReps.length)}</p>
                 </div>
-                <div className="nc-card-default p-3 text-center">
+                <div className="p-3 text-center">
                   <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'إجمالي الصفقات' : 'Total Deals'}</p>
                   <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(totalDeals)}</p>
                 </div>

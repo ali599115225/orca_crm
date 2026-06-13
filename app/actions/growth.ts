@@ -6,7 +6,15 @@ import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { encryptText, decryptText } from "@/lib/crypto";
+import { hashPhone } from "@/lib/privacy-mask";
 import { authorizeAgentAccess } from "@/lib/licensing";
+import { assertAgentCanRun } from "@/lib/agents/guard";
+import {
+  sanitizeAgentInput,
+  detectInjectionPatterns,
+  wrapUntrustedContent,
+  safeJsonParseAgentOutput,
+} from "@/lib/agents/prompt-guard";
 import {
   buildMansourSystemPrompt,
   type MansourOutput,
@@ -282,6 +290,15 @@ export async function getMansourChatsAction() {
 
     const tenant = await getActiveTenant();
 
+    const runtimeGuard = await assertAgentCanRun({
+      tenantId: tenant.id,
+      agentName: "MANSOUR",
+      actionType: "ANALYSIS",
+    });
+    if (!runtimeGuard.allowed) {
+      return { success: false, chats: [], error: "الوكلاء الذكيون معطلون مؤقتًا." };
+    }
+
     let chats = await prisma.mansourChat.findMany({
       where: { tenantId: tenant.id },
       orderBy: { updatedAt: "desc" }
@@ -330,6 +347,7 @@ export async function getMansourChatsAction() {
               leadId: c.leadId,
               contactName: c.contactName,
               contactPhone: c.contactPhone,
+              contactPhoneHash: hashPhone(tenant.id, c.contactPhone),
               lastMessage: c.lastMessage,
               status: c.status,
               messagesJson: encryptedJson
@@ -383,14 +401,36 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
       return { success: false, error: authCheck.message || "Access Denied", isRestricted: true };
     }
 
-    // 1. جلب الشات الحالي
-    const chat = await prisma.mansourChat.findUnique({
-      where: { id: chatId, tenantId: tenant.id }
+    const runtimeGuard = await assertAgentCanRun({
+      tenantId: tenant.id,
+      agentName: "MANSOUR",
+      actionType: "RECOMMENDATION",
+    });
+    if (!runtimeGuard.allowed) {
+      return { success: false, error: "الوكلاء الذكيون معطلون مؤقتًا.", isRestricted: true };
+    }
+
+    // Check MANSOUR plan limits (basic = max 10 messages/day)
+    if (tenant.subscriptionPlan === "basic") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayChatsCount = await prisma.mansourChat.count({
+        where: {
+          tenantId: tenant.id,
+          updatedAt: { gte: today }
+        }
+      });
+      if (todayChatsCount >= 10) {
+        return { success: false, error: "تم استنفاد الحد اليومي (10 رسائل) لباقة الأساسية.", isRestricted: true };
+      }
+    }
+
+        const chat = await prisma.mansourChat.findUnique({
+      where: { id: chatId }
     });
 
     if (!chat) throw new Error("المحادثة غير موجودة.");
 
-    // 2. فك تشفير الرسائل السابقة
     let messages = [];
     try {
       const decrypted = decryptText(chat.messagesJson);
@@ -399,7 +439,6 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
       console.error("فشل فك تشفير شات منصور للرسالة الجديدة:", e);
     }
 
-    // 3. إضافة رسالة العميل
     const nowTime = new Date().toLocaleTimeString("ar-SA", { hour: '2-digit', minute: '2-digit' });
     messages.push({
       sender: "client",
@@ -408,12 +447,21 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
     });
 
     // 4. استدعاء وكيل منصور الحقيقي عبر Gemini API
+    const sanitizedMsg = sanitizeAgentInput(messageText, { maxLength: 4000 });
+    const injectionCheck = detectInjectionPatterns(messageText);
+
     const previousMessages = messages.slice(-10);
     const systemPrompt = buildMansourSystemPrompt({
       companyName: tenant.companyName,
       subscriptionPlan: tenant.subscriptionPlan,
-      previousMessages,
+      previousMessages: undefined, // Chat history moved to user content (safer)
     });
+
+    let userContent = `رسالة جديدة من عميل محتمل:\n\n${sanitizedMsg.sanitized}`;
+    if (previousMessages.length > 0) {
+      userContent += `\n\nسجل المحادثة السابقة:\n${previousMessages.map((m: any) => `- ${m.sender === "client" ? "العميل" : "منصور"}: ${m.text}`).join("\n")}`;
+    }
+    userContent = `${userContent}\n\nأعطني الرد بصيغة JSON نظيفة فقط دون أي نص إضافي.`;
 
     let replyText = "";
     let mansourOutput: MansourOutput | null = null;
@@ -436,7 +484,7 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
                   role: "user",
                   parts: [
                     {
-                      text: `رسالة جديدة من عميل محتمل:\n\n${messageText}\n\nأعطني الرد بصيغة JSON نظيفة فقط دون أي نص إضافي.`,
+                      text: userContent,
                     },
                   ],
                 },
@@ -454,16 +502,12 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
         if (response.ok) {
           const data = await response.json();
           const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-          const cleanJson = rawText
-            .replace(/```json\n?/g, "")
-            .replace(/```\n?/g, "")
-            .trim();
-
-          try {
-            mansourOutput = JSON.parse(cleanJson) as MansourOutput;
-            replyText = mansourOutput.reply_to_client_ar || "";
-          } catch (parseErr) {
-            console.warn("[منصور] JSON غير صالح من Gemini:", parseErr);
+          const parseResult = safeJsonParseAgentOutput(rawText);
+          if (parseResult.ok && parseResult.data) {
+            mansourOutput = parseResult.data as MansourOutput;
+            replyText = (mansourOutput as any).reply_to_client_ar || "";
+          } else {
+            console.warn("[منصور] JSON غير صالح من Gemini:", parseResult.error);
           }
         } else {
           console.warn("[منصور] فشل استدعاء Gemini API:", response.status);
@@ -491,16 +535,23 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
 
     // تحديث بيانات تأهيل العميل إذا توفرت من Gemini
     if (mansourOutput && chat.leadId) {
-      try {
-        const qual = mansourOutput.lead_qualification;
-        await prisma.lead.update({
-          where: { id: chat.leadId },
-          data: {
-            leadScore: qual.lead_score || 50,
-          },
-        });
-      } catch (updateErr) {
-        console.warn("[منصور] فشل تحديث درجة العميل:", updateErr);
+      const runtimeExecCheck = await assertAgentCanRun({
+        tenantId: tenant.id,
+        agentName: "MANSOUR",
+        actionType: "EXECUTION",
+      });
+      if (runtimeExecCheck.allowed) {
+        try {
+          const qual = mansourOutput.lead_qualification;
+          await prisma.lead.update({
+            where: { id: chat.leadId },
+            data: {
+              leadScore: qual.lead_score || 50,
+            },
+          });
+        } catch (updateErr) {
+          console.warn("[منصور] فشل تحديث درجة العميل:", updateErr);
+        }
       }
     }
 
@@ -540,6 +591,16 @@ export async function getBaseerInsightAction() {
     const authCheck = await authorizeAgentAccess("BASEER");
     if (!authCheck.authorized) {
       return { success: false, error: authCheck.message || "Access Denied", isRestricted: true };
+    }
+
+    const tenant = await getActiveTenant();
+    const runtimeGuard = await assertAgentCanRun({
+      tenantId: tenant.id,
+      agentName: "BASEER",
+      actionType: "ANALYSIS",
+    });
+    if (!runtimeGuard.allowed) {
+      return { success: false, error: "الوكلاء الذكيون معطلون مؤقتًا.", isRestricted: true };
     }
 
     const statsResult = await getGrowthMarketingStatsAction();

@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { hashPhone } from "@/lib/privacy-mask";
 
 /**
  * جلب العقارات والوحدات التابعة للشركاء والمشاريع الخاصة بالمنشأة الحالية
@@ -200,6 +201,7 @@ export async function bookUnitActionDirect(data: {
           unitId: data.unitId,
           buyerName,
           buyerPhone,
+          buyerPhoneHash: hashPhone(tenant.id, buyerPhone),
           totalVolumeSar: data.offerPrice,
           signedAt: bookingDateObj,
         },

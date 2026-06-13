@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { hashPhone } from "@/lib/privacy-mask";
 
 // Phase F: Quick task creation from WhatsApp conversation
 export async function createWhatsAppTaskAction(formData: FormData) {
@@ -37,7 +38,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
     let leadId: string | null = null;
     if (contactPhone) {
       const contact = await prisma.whatsAppContact.findFirst({
-        where: { tenantId: tenant.id, phone: contactPhone },
+        where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contactPhone) },
         select: { leadId: true },
       });
       leadId = contact?.leadId || null;
@@ -52,6 +53,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
               firstName: "WhatsApp",
               lastName: contactPhone || "Lead",
               phone: contactPhone || "",
+              phoneHash: hashPhone(tenant.id, contactPhone),
               city: "غير محدد",
               source: "WHATSAPP",
               status: "NEW",
@@ -69,7 +71,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
       if (contactPhone) {
         try {
           await prisma.whatsAppContact.updateMany({
-            where: { tenantId: tenant.id, phone: contactPhone },
+            where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contactPhone) },
             data: { leadId },
           });
         } catch {}

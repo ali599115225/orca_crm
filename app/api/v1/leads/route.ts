@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { hashPhone, hashEmail } from "@/lib/privacy-mask";
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
           firstName,
           lastName,
           phone,
+          phoneHash: hashPhone(tenantId, phone),
           email,
+          emailHash: email ? hashEmail(email, tenantId) : null,
           city: city || "الرياض",
           source: source || "مباشر",
           status: "NEW",

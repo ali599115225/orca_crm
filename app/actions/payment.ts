@@ -61,7 +61,7 @@ export async function initiateSubscriptionPaymentAction(plan: "basic" | "silver"
 
     const amountInHalalas = planPrices[plan] || 45000;
 
-    if (!PAYLINK_SECRET || PAYLINK_SECRET === "test_secret_key_placeholder") {
+    if (!PAYLINK_SECRET) {
       return {
         success: false,
         error: "بوابة الدفع Paylink غير مفعلة حالياً. يرجى التواصل مع الدعم الفني.",
@@ -95,7 +95,7 @@ export async function initiateAddonPaymentAction(agentCount: number) {
     const pricePerAgent = 25000;
     const amountInHalalas = pricePerAgent * agentCount;
 
-    if (!PAYLINK_SECRET || PAYLINK_SECRET === "test_secret_key_placeholder") {
+    if (!PAYLINK_SECRET) {
       return {
         success: false,
         error: "بوابة الدفع Paylink غير مفعلة حالياً. يرجى التواصل مع الدعم الفني.",

@@ -71,6 +71,7 @@ model User {
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name           String
   email          String              @unique
+  emailHash      String?             @map("email_hash")
   passwordHash   String              @map("password_hash")
   role           Role
   isActive       Boolean             @default(true) @map("is_active")
@@ -81,6 +82,7 @@ model User {
   commissions    PayrollCommission[]
   emailMessages  EmailMessage[]
 
+  @@index([emailHash])
   @@map("users")
 }
 
@@ -114,7 +116,9 @@ model Lead {
   firstName       String           @map("first_name")
   lastName        String?          @map("last_name")
   phone           String
+  phoneHash       String?          @map("phone_hash")
   email           String?
+  emailHash       String?          @map("email_hash")
   city            String
   source          String
   status          LeadStatus
@@ -138,6 +142,7 @@ model Lead {
   updatedBy       String?          @map("updated_by") @db.Uuid
   auditLog        String?          @map("audit_log") @db.Text
 
+  @@index([tenantId, phoneHash])
   @@map("leads")
 }
 
@@ -347,6 +352,7 @@ model Contract {
   unit           Unit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
   buyerName      String        @map("buyer_name")
   buyerPhone     String        @map("buyer_phone")
+  buyerPhoneHash String?       @map("buyer_phone_hash")
   totalVolumeSar Decimal       @map("total_volume_sar") @db.Decimal(12, 2)
   signedAt       DateTime      @default(now()) @map("signed_at") @db.Timestamptz
   endDate        DateTime?     @map("end_date") @db.Timestamptz
@@ -358,6 +364,7 @@ model Contract {
 
   @@index([unitId], map: "idx_contracts_unit_id")
   @@index([tenantId], map: "idx_contracts_tenant_id")
+  @@index([tenantId, buyerPhoneHash])
   @@map("contracts")
 }
 
@@ -552,12 +559,14 @@ model MansourChat {
   lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
   contactName  String   @map("contact_name")
   contactPhone String   @map("contact_phone")
+  contactPhoneHash String? @map("contact_phone_hash")
   lastMessage  String   @map("last_message") @db.Text
   status       String   @default("INTERESTED")
   messagesJson String   @map("messages_json") @db.Text
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  @@index([tenantId, contactPhoneHash])
   @@map("mansour_chats")
 }
 
@@ -769,7 +778,9 @@ model Contact {
   leadId               String?  @map("lead_id") @db.Uuid
   name                 String
   phone                String
+  phoneHash            String?  @map("phone_hash")
   email                String?
+  emailHash            String?  @map("email_hash")
   preferredContactTime String?  @map("preferred_contact_time")
   budgetRange          String?  @map("budget_range")
   notes                String?  @db.Text
@@ -780,6 +791,7 @@ model Contact {
   auditLog             String?          @map("audit_log") @db.Text
   emailMessages        EmailMessage[]
 
+  @@index([tenantId, phoneHash])
   @@map("contacts")
 }
 
@@ -945,6 +957,7 @@ model WhatsAppContact {
   tenantId      String    @map("tenant_id") @db.Uuid
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone         String
+  phoneHash     String?   @map("phone_hash")
   name          String?
   provider      String    @default("meta")
   metaContactId String?   @map("meta_contact_id")
@@ -954,8 +967,9 @@ model WhatsAppContact {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([tenantId, phone])
+  @@unique([tenantId, phoneHash])
   @@index([tenantId, lastMessageAt])
+  @@index([tenantId, phoneHash])
   @@map("whatsapp_contacts")
 }
 
@@ -964,6 +978,7 @@ model WhatsAppMessage {
   tenantId      String               @map("tenant_id") @db.Uuid
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone         String
+  phoneHash     String?   @map("phone_hash")
   direction     String               @default("inbound")
   provider      String               @default("meta")
   messageText   String?              @map("message_text") @db.Text
@@ -979,6 +994,7 @@ model WhatsAppMessage {
   attachments   WhatsAppAttachment[]
 
   @@index([tenantId, phone, createdAt])
+  @@index([tenantId, phoneHash])
   @@index([metaMessageId])
   @@map("whatsapp_messages")
 }
@@ -1046,6 +1062,7 @@ model SentinelTaskOrder {
   assignedToName   String    @map("assigned_to_name")
   title            String
   description      String?   @db.Text
+  executionPayload String?   @map("execution_payload") @db.Text
   priority         String    @default("MEDIUM")
   riskLevel        String    @default("LOW") @map("risk_level")
   approvalRequired Boolean   @default(false) @map("approval_required")

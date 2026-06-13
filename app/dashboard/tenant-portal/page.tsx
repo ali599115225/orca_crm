@@ -180,24 +180,24 @@ export default async function TenantPortalPage() {
         <div className={cardClass}>
           <h2 className="text-sm font-bold text-[var(--nc-text-primary)] mb-4">الفواتير ({invoices.length})</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">رقم الفاتورة</th>
-                  <th className="pb-2 px-2">تاريخ الإصدار</th>
-                  <th className="pb-2 px-2">تاريخ الاستحقاق</th>
-                  <th className="pb-2 px-2">الإجمالي</th>
-                  <th className="pb-2 px-2">الحالة</th>
+                <tr >
+                  <th >رقم الفاتورة</th>
+                  <th >تاريخ الإصدار</th>
+                  <th >تاريخ الاستحقاق</th>
+                  <th >الإجمالي</th>
+                  <th >الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.slice(0, 10).map(inv => (
-                  <tr key={inv.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 font-mono font-bold text-[var(--nc-text-primary)]">{inv.invoicePrefix}-{inv.invoiceNumber}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{formatDate(inv.issueDate)}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{formatDate(inv.dueDate)}</td>
-                    <td className="py-2.5 px-2 font-bold">{Number(inv.totalAmount).toLocaleString()} ر.س</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={inv.id} >
+                    <td className="font-mono font-bold text-[var(--nc-text-primary)]">{inv.invoicePrefix}-{inv.invoiceNumber}</td>
+                    <td className="text-[var(--nc-text-dim)]">{formatDate(inv.issueDate)}</td>
+                    <td className="text-[var(--nc-text-dim)]">{formatDate(inv.dueDate)}</td>
+                    <td className="font-bold">{Number(inv.totalAmount).toLocaleString()} ر.س</td>
+                    <td >
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${statusClass(inv.status)}`}>{statusAr(inv.status)}</span>
                     </td>
                   </tr>
@@ -216,26 +216,26 @@ export default async function TenantPortalPage() {
         <div className={cardClass}>
           <h2 className="text-sm font-bold text-[var(--nc-text-primary)] mb-4">سجل المدفوعات ({payments.length})</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">تاريخ الدفع</th>
-                  <th className="pb-2 px-2">المبلغ</th>
-                  <th className="pb-2 px-2">الرسوم</th>
-                  <th className="pb-2 px-2">الصافي</th>
-                  <th className="pb-2 px-2">الطريقة</th>
-                  <th className="pb-2 px-2">الحالة</th>
+                <tr >
+                  <th >تاريخ الدفع</th>
+                  <th >المبلغ</th>
+                  <th >الرسوم</th>
+                  <th >الصافي</th>
+                  <th >الطريقة</th>
+                  <th >الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.slice(0, 10).map(p => (
-                  <tr key={p.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{formatDate(p.paidAt)}</td>
-                    <td className="py-2.5 px-2 font-bold">{Number(p.amount).toLocaleString()} ر.س</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{Number(p.fee).toLocaleString()}</td>
-                    <td className="py-2.5 px-2 font-bold text-emerald-400">{Number(p.netAmount).toLocaleString()} ر.س</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{p.method === 'bank' ? 'تحويل بنكي' : p.method === 'card' ? 'بطاقة' : p.method}</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={p.id} >
+                    <td className="text-[var(--nc-text-dim)]">{formatDate(p.paidAt)}</td>
+                    <td className="font-bold">{Number(p.amount).toLocaleString()} ر.س</td>
+                    <td className="text-[var(--nc-text-dim)]">{Number(p.fee).toLocaleString()}</td>
+                    <td className="font-bold text-emerald-400">{Number(p.netAmount).toLocaleString()} ر.س</td>
+                    <td className="text-[var(--nc-text-dim)]">{p.method === 'bank' ? 'تحويل بنكي' : p.method === 'card' ? 'بطاقة' : p.method}</td>
+                    <td >
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${statusClass(p.status)}`}>{statusAr(p.status)}</span>
                     </td>
                   </tr>
@@ -254,34 +254,34 @@ export default async function TenantPortalPage() {
           <p className="text-xs text-[var(--nc-text-dim)]">لا توجد طلبات صيانة حالياً</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">العنوان</th>
-                  <th className="pb-2 px-2">الفئة</th>
-                  <th className="pb-2 px-2">الأولوية</th>
-                  <th className="pb-2 px-2">الحالة</th>
-                  <th className="pb-2 px-2">الفني</th>
-                  <th className="pb-2 px-2">التكلفة التقديرية</th>
-                  <th className="pb-2 px-2">التاريخ</th>
+                <tr >
+                  <th >العنوان</th>
+                  <th >الفئة</th>
+                  <th >الأولوية</th>
+                  <th >الحالة</th>
+                  <th >الفني</th>
+                  <th >التكلفة التقديرية</th>
+                  <th >التاريخ</th>
                 </tr>
               </thead>
               <tbody>
                 {maintenanceTickets.map(t => (
-                  <tr key={t.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 font-bold text-[var(--nc-text-primary)]">{t.title}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{categoryAr(t.category)}</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={t.id} >
+                    <td className="font-bold text-[var(--nc-text-primary)]">{t.title}</td>
+                    <td className="text-[var(--nc-text-dim)]">{categoryAr(t.category)}</td>
+                    <td >
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${t.priority === 'HIGH' ? 'bg-rose-500/20 text-rose-400' : t.priority === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-500/20 text-slate-400'}`}>
                         {priorityAr(t.priority)}
                       </span>
                     </td>
-                    <td className="py-2.5 px-2">
+                    <td >
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusClass(t.status)}`}>{statusAr(t.status)}</span>
                     </td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{t.assignedTo || '—'}</td>
-                    <td className="py-2.5 px-2 font-bold">{t.estimatedCost ? `${Number(t.estimatedCost).toLocaleString()} ر.س` : '—'}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{formatDate(t.createdAt)}</td>
+                    <td className="text-[var(--nc-text-dim)]">{t.assignedTo || '—'}</td>
+                    <td className="font-bold">{t.estimatedCost ? `${Number(t.estimatedCost).toLocaleString()} ر.س` : '—'}</td>
+                    <td className="text-[var(--nc-text-dim)]">{formatDate(t.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

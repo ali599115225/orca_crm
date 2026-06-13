@@ -16,6 +16,24 @@ import {
   saherReplayEngine,
   type DLQEntry,
 } from "@/lib/saher/replayEngine";
+import { writeAuditLog } from "@/lib/audit";
+import { assertAgentCanRun } from "@/lib/agents/guard";
+import {
+  sanitizeAgentInput,
+  detectInjectionPatterns,
+  wrapUntrustedContent,
+  safeJsonParseAgentOutput,
+  validateAllowedAction,
+} from "@/lib/agents/prompt-guard";
+import {
+  maskPhone,
+  maskName,
+  redactPiiFromPayload,
+  sanitizeAuditDetails,
+  shortHash,
+  hashPhone,
+} from "@/lib/privacy-mask";
+import { encryptText, decryptText } from "@/lib/crypto";
 
 // ─── نموذج الطلب الوارد من واتساب ─────────────────────────────────────────
 export interface WhatsAppIncomingMessage {
@@ -216,11 +234,22 @@ export async function processSaherWhatsAppLeadAction(
   leadId?: string;
   assignedTo?: string;
   responseToClient?: string;
-  saherOutput?: SaherLeadOutput;
+  saherOutput?: SaherLeadOutput | null;
+  approvalRequired?: boolean;
+  taskOrderId?: string;
   error?: string;
 }> {
   try {
     const tenant = await getActiveTenant();
+
+    const runtimeGuard = await assertAgentCanRun({
+      tenantId: tenant.id,
+      agentName: "SAHER",
+      actionType: "ANALYSIS",
+    });
+    if (!runtimeGuard.allowed) {
+      return { success: false, error: "الوكلاء الذكيون معطلون مؤقتًا." };
+    }
 
     // 1. جلب المستشارين المتاحين لإدراجهم في سياق ساهر
     const availableAgents = await prisma.$queryRaw<
@@ -250,33 +279,143 @@ export async function processSaherWhatsAppLeadAction(
       })),
     });
 
-    // 3. استدعاء ساهر (Gemini) لتحليل الرسالة وتأهيل العميل
-    const userContext = `
-المرسِل: ${message.senderName || "غير معروف"}
-رقم الهاتف: ${message.senderPhone}
-الرسالة: ${message.messageText}
-التوقيت: ${message.timestamp}
-    `.trim();
+    // 3. Sanitize input + detect threats before Gemini
+    const sanitizedMessage = sanitizeAgentInput(message.messageText, { maxLength: 2000 });
+    const sanitizedName = sanitizeAgentInput(message.senderName || "", { maxLength: 100 });
+    const injectionCheck = detectInjectionPatterns(message.messageText);
+    if (injectionCheck.suspicious) {
+      await writeAuditLog({
+        tenantId: tenant.id,
+        userId: null,
+        action: "PROMPT_INJECTION_DETECTED" as any,
+        tableName: "sentinel_command",
+        recordId: shortHash(message.senderPhone),
+        details: JSON.stringify({
+          agentName: "SAHER",
+          source: "WHATSAPP",
+          riskLevel: injectionCheck.riskLevel,
+          patterns: injectionCheck.patterns,
+          originalLength: sanitizedMessage.originalLength,
+          sanitizedLength: sanitizedMessage.sanitizedLength,
+        }),
+      });
+
+      if (injectionCheck.riskLevel === "HIGH") {
+        return {
+          success: false,
+          error: "High risk prompt injection blocked",
+          responseToClient: "عذراً، لا يمكننا معالجة طلبك حالياً لدواعي أمنية."
+        };
+      }
+    }
+
+    const userContext = wrapUntrustedContent("WHATSAPP_MESSAGE", [
+      `المرسِل: ${sanitizedName.sanitized}`,
+      `الرسالة: ${sanitizedMessage.sanitized}`,
+      `التوقيت: ${message.timestamp}`,
+    ].join("\n"));
 
     const saherOutput = await callGeminiForLeadQualification(
       systemPrompt,
       userContext
     );
 
+    // 4. Validate AI output before trusting it
+    if (saherOutput) {
+      const validActions = ["LEAD_QUALIFIED", "LEAD_REJECTED", "MORE_INFO_NEEDED"];
+      if (!validateAllowedAction(saherOutput.action, validActions)) {
+        await writeAuditLog({
+          tenantId: tenant.id,
+          userId: null,
+          action: "AGENT_UNSAFE_ACTION_REJECTED" as any,
+          tableName: "sentinel_command",
+          recordId: shortHash(message.senderPhone),
+          details: JSON.stringify({
+            agentName: "SAHER",
+            invalidAction: saherOutput.action,
+            expectedActions: validActions,
+          }),
+        });
+        saherOutput.action = "MORE_INFO_NEEDED";
+        await writeAuditLog({
+          tenantId: tenant.id,
+          userId: null,
+          action: "AGENT_SAFE_FALLBACK_USED" as any,
+          tableName: "sentinel_command",
+          recordId: shortHash(message.senderPhone),
+          details: JSON.stringify({
+            agentName: "SAHER",
+            reason: "INVALID_ACTION",
+            fallbackType: "MORE_INFO_NEEDED",
+            source: "WHATSAPP",
+          }),
+        });
+      }
+      if (saherOutput.lead_data && typeof saherOutput.lead_data.lead_score === "number") {
+        saherOutput.lead_data.lead_score = Math.max(0, Math.min(100, saherOutput.lead_data.lead_score));
+      }
+      if (typeof saherOutput.confidence === "number") {
+        saherOutput.confidence = Math.max(0, Math.min(1, saherOutput.confidence));
+      }
+    }
+
+    const isSuspicious = injectionCheck.suspicious;
+    const elevatedRisk = injectionCheck.riskLevel === "HIGH" ? "HIGH" : injectionCheck.suspicious ? "MEDIUM" : "LOW";
+
     if (!saherOutput || saherOutput.action === "MORE_INFO_NEEDED") {
-      // تسجيل Telemetry للرسائل غير المكتملة
       await logTelemetryEvent(
         tenant.id,
         "SAHER",
         "Lead_Screening",
-        `رسالة واتساب من ${message.senderPhone} تحتاج معلومات إضافية — درجة الثقة: ${saherOutput?.confidence || 0}`,
+        `رسالة واتساب من ${maskPhone(message.senderPhone)} تحتاج معلومات إضافية — درجة الثقة: ${saherOutput?.confidence || 0}`,
         "Info"
       );
 
+      const replyText = saherOutput?.response_to_client_ar ||
+        "شكراً لتواصلكم! هل يمكنكم مشاركتنا المزيد من التفاصيل لنتمكن من خدمتكم بشكل أفضل؟";
+
+      const displaySummary = redactPiiFromPayload({
+        actionType: "SEND_WHATSAPP_REPLY",
+        senderPhone: message.senderPhone,
+      });
+      const executionPayloadRaw = {
+        actionType: "SEND_WHATSAPP_REPLY",
+        responseToClient: replyText,
+        senderPhone: message.senderPhone,
+      };
+
+      const taskOrder = await prisma.sentinelTaskOrder.create({
+        data: {
+          tenantId: tenant.id,
+          createdBy: "SAHER",
+          assignedToType: "OWNER",
+          assignedToName: "Customer Admin",
+          title: `SAHER: رد تلقائي — ${maskName(message.senderName) || maskPhone(message.senderPhone)}`,
+          description: JSON.stringify(displaySummary),
+          executionPayload: encryptText(JSON.stringify(executionPayloadRaw)),
+          priority: "MEDIUM",
+          riskLevel: "LOW",
+          approvalRequired: true,
+          status: "WAITING_APPROVAL",
+          source: "WHATSAPP",
+          correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
+        },
+      });
+
+      await writeAuditLog({
+        tenantId: tenant.id,
+        userId: null,
+        action: "SAHER_APPROVAL_REQUESTED",
+        tableName: "sentinel_task_orders",
+        recordId: taskOrder.id,
+        details: sanitizeAuditDetails(`SAHER proposed info-request reply to ${maskPhone(message.senderPhone)}`),
+      });
+
       return {
         success: true,
-        responseToClient: saherOutput?.response_to_client_ar ||
-          "شكراً لتواصلكم! هل يمكنكم مشاركتنا المزيد من التفاصيل لنتمكن من خدمتكم بشكل أفضل؟",
+        approvalRequired: true,
+        taskOrderId: taskOrder.id,
+        saherOutput,
       };
     }
 
@@ -285,97 +424,125 @@ export async function processSaherWhatsAppLeadAction(
         tenant.id,
         "SAHER",
         "Lead_Screening",
-        `رسالة مرفوضة من ${message.senderPhone}: ${saherOutput.internal_notes_ar}`,
+        `رسالة مرفوضة من ${maskPhone(message.senderPhone)}: ${saherOutput.internal_notes_ar?.substring(0, 100) || "—"}`,
         "Info"
       );
+
+      const taskOrder = await prisma.sentinelTaskOrder.create({
+        data: {
+          tenantId: tenant.id,
+          createdBy: "SAHER",
+          assignedToType: "OWNER",
+          assignedToName: "Customer Admin",
+          title: `SAHER: رد رفض — ${maskName(message.senderName) || maskPhone(message.senderPhone)}`,
+          description: JSON.stringify(redactPiiFromPayload({ actionType: "SEND_WHATSAPP_REPLY", senderPhone: message.senderPhone })),
+          executionPayload: encryptText(JSON.stringify({ actionType: "SEND_WHATSAPP_REPLY", responseToClient: saherOutput.response_to_client_ar, senderPhone: message.senderPhone })),
+          priority: "LOW",
+          riskLevel: "LOW",
+          approvalRequired: true,
+          status: "WAITING_APPROVAL",
+          source: "WHATSAPP",
+          correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
+        },
+      });
+
+      await writeAuditLog({
+        tenantId: tenant.id,
+        userId: null,
+        action: "SAHER_APPROVAL_REQUESTED",
+        tableName: "sentinel_task_orders",
+        recordId: taskOrder.id,
+        details: sanitizeAuditDetails(`SAHER proposed rejection reply to ${maskPhone(message.senderPhone)}`),
+      });
+
       return {
         success: true,
-        responseToClient: saherOutput.response_to_client_ar,
+        approvalRequired: true,
+        taskOrderId: taskOrder.id,
         saherOutput,
       };
     }
 
-    // 4. عميل مؤهل → تطبيق Round-Robin وإسناد المستشار
+    // 4. عميل مؤهل → إنشاء Approval بدل التنفيذ المباشر
     const assignedAgent = await getNextAvailableAgentRoundRobin(tenant.id);
-
-    // 5. إنشاء سجل العميل في قاعدة البيانات
     const leadData = saherOutput.lead_data;
 
-    let newLead: any;
-    try {
-      newLead = await prisma.$transaction(async (tx) => {
-        await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
-        return tx.lead.create({
-          data: {
-            tenantId: tenant.id,
-            firstName: leadData.first_name,
-            lastName: leadData.last_name || null,
-            phone: leadData.phone || message.senderPhone,
-            email: null,
-            city: leadData.city || "غير محدد",
-            source: leadData.source || "WHATSAPP",
-            status: "NEW",
-            leadScore: leadData.lead_score || 50,
-            assignedTo: assignedAgent?.id || null,
-          },
-        });
+    // Idempotency: منع تكرار approval لنفس الرسالة
+    const idempotencyKey = `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`;
+    const existingApproval = await prisma.sentinelTaskOrder.findFirst({
+      where: {
+        tenantId: tenant.id,
+        source: "WHATSAPP",
+        status: { in: ["WAITING_APPROVAL", "OPEN", "IN_PROGRESS"] },
+        correlationId: idempotencyKey,
+      },
+    });
+    if (existingApproval) {
+      await writeAuditLog({
+        tenantId: tenant.id,
+        userId: null,
+        action: "SAHER_DUPLICATE_APPROVAL_BLOCKED",
+        tableName: "sentinel_task_orders",
+        recordId: existingApproval.id,
+        details: sanitizeAuditDetails(`Duplicate approval blocked for sender ${maskPhone(message.senderPhone)}`),
       });
-    } catch (e) {
-      if (e instanceof PlanLimitError) {
-        await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
-        return {
-          success: false,
-          error: e.message,
-          responseToClient: "عذراً، لا يمكن استقبال عملاء جدد حالياً. يرجى التواصل مع الإدارة لترقية الباقة.",
-        };
-      }
-      throw e;
+      return {
+        success: true,
+        approvalRequired: true,
+        taskOrderId: existingApproval.id,
+      };
     }
 
-    // 6. تسجيل نشاط الإسناد التلقائي
-    await prisma.leadActivity.create({
+    const proposedPayload = {
+      actionType: "CREATE_LEAD_AND_SEND_REPLY",
+      leadData: { ...leadData, phone: leadData.phone || message.senderPhone },
+      assignedAgentId: assignedAgent?.id || null,
+      assignedAgentName: assignedAgent?.name || null,
+      responseToClient: saherOutput.response_to_client_ar,
+      saherConfidence: saherOutput.confidence,
+      senderPhone: message.senderPhone,
+      senderName: message.senderName,
+    };
+
+    const taskOrder = await prisma.sentinelTaskOrder.create({
       data: {
         tenantId: tenant.id,
-        leadId: newLead.id,
-        userId: null, // وكيل آلي
-        activityType: "AUTO_ASSIGNED_BY_SAHER",
-        description: assignedAgent
-          ? `تم إسناد العميل تلقائياً بواسطة الوكيل ساهر عبر خوارزمية Round-Robin إلى المستشار: ${assignedAgent.name}`
-          : "تم إنشاء العميل بواسطة الوكيل ساهر — لا يوجد مستشار متاح للإسناد حالياً",
+        createdBy: "SAHER",
+        assignedToType: "OWNER",
+        assignedToName: "Customer Admin",
+        title: `SAHER: ${maskName(leadData.first_name)} — ${leadData.lead_score}/100${isSuspicious ? " ⚠" : ""}`,
+        description: JSON.stringify(redactPiiFromPayload(proposedPayload)),
+        executionPayload: encryptText(JSON.stringify(proposedPayload)),
+        priority: leadData.urgency_level === "URGENT" ? "HIGH" : isSuspicious ? "HIGH" : "MEDIUM",
+        riskLevel: elevatedRisk,
+        approvalRequired: true,
+        status: "WAITING_APPROVAL",
+        source: "WHATSAPP",
+        correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
       },
     });
 
-    // 7. تسجيل Audit Log لإنشاء العميل من واتساب
-    await prisma.auditLog.create({
-      data: {
-        tenantId: tenant.id,
-        action: "WHATSAPP_LEAD_CREATED",
-        tableName: "Lead",
-        recordId: newLead.id,
-        details: JSON.stringify({
-          source: "whatsapp",
-          senderPhone: message.senderPhone,
-          senderName: message.senderName,
-          leadScore: leadData.lead_score,
-          assignedAgent: assignedAgent?.name || "unassigned",
-        }),
-      },
+    await writeAuditLog({
+      tenantId: tenant.id,
+      userId: null,
+      action: "SAHER_APPROVAL_REQUESTED",
+      tableName: "sentinel_task_orders",
+      recordId: taskOrder.id,
+      details: sanitizeAuditDetails(`SAHER proposed lead creation: ${maskName(leadData.first_name)}, score ${leadData.lead_score}, confidence ${saherOutput.confidence}`),
     });
 
-    // 8. تسجيل Telemetry للعملية الناجحة
     await logTelemetryEvent(
       tenant.id,
       "SAHER",
       "Lead_Screening",
-      `✅ عميل جديد من واتساب: ${leadData.first_name} | درجة التأهيل: ${leadData.lead_score}/100 | مُسند إلى: ${assignedAgent?.name || "—"}`,
+      `🔄 اقتراح إنشاء عميل: ${maskName(leadData.first_name)} | درجة: ${leadData.lead_score}/100 | بانتظار الموافقة`,
       "Info"
     );
 
     return {
       success: true,
-      leadId: newLead.id,
-      assignedTo: assignedAgent?.name,
-      responseToClient: saherOutput.response_to_client_ar,
+      approvalRequired: true,
+      taskOrderId: taskOrder.id,
       saherOutput,
     };
   } catch (error: any) {
@@ -405,6 +572,231 @@ export async function processSaherWhatsAppLeadAction(
       );
     } catch {}
 
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── تنفيذ إجراء SAHER بعد الموافقة ──────────────────────────────────────────
+
+const WHATSAPP_API_SENDER = process.env.GREEN_API_TOKEN_INSTANCE && process.env.GREEN_API_ID_INSTANCE
+  ? {
+      token: process.env.GREEN_API_TOKEN_INSTANCE,
+      instanceId: process.env.GREEN_API_ID_INSTANCE,
+      url: process.env.GREEN_API_URL || "https://7107.api.greenapi.com",
+    }
+  : null;
+
+async function sendApprovedWhatsAppReply(chatId: string, message: string): Promise<void> {
+  if (WHATSAPP_API_SENDER && WHATSAPP_API_SENDER.token && !WHATSAPP_API_SENDER.token.startsWith("ضع_هنا")) {
+    try {
+      await fetch(
+        `${WHATSAPP_API_SENDER.url}/waInstance${WHATSAPP_API_SENDER.instanceId}/sendMessage/${WHATSAPP_API_SENDER.token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId: `${chatId}@c.us`, message, linkPreview: false }),
+        }
+      );
+    } catch {}
+  }
+  console.log(`[SAHER Approved] WhatsApp reply to ${maskPhone(chatId)}: ${message.substring(0, 50)}`);
+}
+
+export async function executeApprovedSaherAction(
+  taskOrderId: string,
+  approverUserId: string
+): Promise<{ success: boolean; leadId?: string; error?: string }> {
+  const session = await getSession();
+  if (!session || !session.tenantId) {
+    throw new Error("Unauthorized");
+  }
+
+  const taskOrder = await prisma.sentinelTaskOrder.findFirst({
+    where: { id: taskOrderId },
+  });
+  if (!taskOrder) return { success: false, error: "Task order not found" };
+
+  const tenantId = taskOrder.tenantId;
+  if (!tenantId) return { success: false, error: "Task order has no tenant" };
+
+  if (session.tenantId !== tenantId) {
+    throw new Error("Unauthorized: Cross-tenant execution blocked");
+  }
+
+  const runtimeGuard = await assertAgentCanRun({
+    tenantId,
+    userId: approverUserId,
+    agentName: "SAHER",
+    actionType: "EXECUTION",
+    source: "APPROVAL",
+  });
+  if (!runtimeGuard.allowed) {
+    return { success: false, error: `Agent blocked: ${runtimeGuard.reason}` };
+  }
+
+  if (taskOrder.status !== "WAITING_APPROVAL" && taskOrder.status !== "OPEN") {
+    await writeAuditLog({
+      tenantId,
+      userId: approverUserId,
+      action: "SAHER_DUPLICATE_EXECUTION_BLOCKED",
+      tableName: "sentinel_task_orders",
+      recordId: taskOrderId,
+      details: `Task already in status ${taskOrder.status}`,
+    });
+    return { success: false, error: `Task already ${taskOrder.status}` };
+  }
+
+  let payload: any;
+  if (taskOrder.executionPayload) {
+    const decrypted = decryptText(taskOrder.executionPayload);
+    if (!decrypted) {
+      await writeAuditLog({
+        tenantId,
+        userId: approverUserId,
+        action: "SAHER_ACTION_EXECUTION_FAILED" as any,
+        tableName: "sentinel_task_orders",
+        recordId: taskOrderId,
+        details: "Failed to decrypt execution payload",
+      });
+      return { success: false, error: "Execution payload decryption failed" };
+    }
+    try { payload = JSON.parse(decrypted); } catch {
+      await writeAuditLog({
+        tenantId,
+        userId: approverUserId,
+        action: "SAHER_ACTION_EXECUTION_FAILED" as any,
+        tableName: "sentinel_task_orders",
+        recordId: taskOrderId,
+        details: "Failed to parse execution payload JSON",
+      });
+      return { success: false, error: "Execution payload JSON parse failed" };
+    }
+  } else {
+    await writeAuditLog({
+      tenantId,
+      userId: approverUserId,
+      action: "SAHER_ACTION_EXECUTION_FAILED" as any,
+      tableName: "sentinel_task_orders",
+      recordId: taskOrderId,
+      details: "Missing execution payload — old approval, requires manual handling",
+    });
+    return { success: false, error: "Missing execution payload. This is an old approval that must be recreated." };
+  }
+
+  const actionType = payload.actionType as string;
+
+  // Mark as IN_PROGRESS
+  await prisma.sentinelTaskOrder.update({
+    where: { id: taskOrderId },
+    data: { status: "IN_PROGRESS" },
+  });
+
+  try {
+    if (actionType === "CREATE_LEAD_AND_SEND_REPLY") {
+      const leadData = payload.leadData;
+
+      const newLead = await prisma.$transaction(async (tx) => {
+        await assertPlanLimit({ tenantId, feature: "leads", tx });
+        return tx.lead.create({
+          data: {
+            tenantId,
+            firstName: leadData.first_name,
+            lastName: leadData.last_name || null,
+            phone: leadData.phone || payload.senderPhone,
+            phoneHash: hashPhone(tenantId, leadData.phone || payload.senderPhone),
+            email: null,
+            city: leadData.city || "غير محدد",
+            source: leadData.source || "WHATSAPP",
+            status: "NEW",
+            leadScore: leadData.lead_score || 50,
+            assignedTo: payload.assignedAgentId || null,
+          },
+        });
+      });
+
+      await prisma.leadActivity.create({
+        data: {
+          tenantId,
+          leadId: newLead.id,
+          userId: null,
+          activityType: "APPROVED_BY_ADMIN_VIA_SAHER",
+          description: payload.assignedAgentName
+            ? `تمت الموافقة على إنشاء العميل وإسناده إلى ${payload.assignedAgentName}`
+            : "تمت الموافقة على إنشاء العميل",
+        },
+      });
+
+      await writeAuditLog({
+        tenantId,
+        userId: approverUserId,
+        action: "SAHER_ACTION_EXECUTED",
+        tableName: "leads",
+        recordId: newLead.id,
+        details: `Lead created via SAHER approval: ${leadData.first_name}, assigned to ${payload.assignedAgentName || "unassigned"}`,
+      });
+
+      // Send the approved reply
+      if (payload.responseToClient && payload.senderPhone) {
+        await sendApprovedWhatsAppReply(payload.senderPhone, payload.responseToClient);
+        await writeAuditLog({
+          tenantId,
+          userId: approverUserId,
+          action: "SAHER_ACTION_EXECUTED",
+          tableName: "whatsapp_messages",
+          recordId: newLead.id,
+          details: `WhatsApp reply sent to ${maskPhone(payload.senderPhone)} after approval`,
+        });
+      }
+
+      await prisma.sentinelTaskOrder.update({
+        where: { id: taskOrderId },
+        data: { status: "DONE", completedAt: new Date() },
+      });
+
+      return { success: true, leadId: newLead.id };
+    }
+
+    if (actionType === "SEND_WHATSAPP_REPLY") {
+      if (payload.responseToClient && payload.senderPhone) {
+        await sendApprovedWhatsAppReply(payload.senderPhone, payload.responseToClient);
+      }
+      await writeAuditLog({
+        tenantId,
+        userId: approverUserId,
+        action: "SAHER_ACTION_EXECUTED",
+        tableName: "whatsapp_messages",
+        recordId: taskOrderId,
+        details: `WhatsApp reply sent to ${maskPhone(payload.senderPhone)} after approval`,
+      });
+
+      await prisma.sentinelTaskOrder.update({
+        where: { id: taskOrderId },
+        data: { status: "DONE", completedAt: new Date() },
+      });
+
+      return { success: true };
+    }
+
+    return { success: false, error: `Unknown action type: ${actionType}` };
+
+  } catch (error: any) {
+    await prisma.sentinelTaskOrder.update({
+      where: { id: taskOrderId },
+      data: { status: "OPEN" },
+    }).catch(() => {});
+
+    await writeAuditLog({
+      tenantId,
+      userId: approverUserId,
+      action: "SAHER_ACTION_EXECUTION_FAILED",
+      tableName: "sentinel_task_orders",
+      recordId: taskOrderId,
+      details: error.message,
+    });
+
+    if (error instanceof PlanLimitError) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: error.message };
   }
 }

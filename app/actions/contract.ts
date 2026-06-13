@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { hashPhone } from "@/lib/privacy-mask";
 
 export async function saveContractTermsAction(terms: string) {
   try {
@@ -173,6 +174,7 @@ export async function issueContractActionDirect(data: {
           unitId: propertyId,
           buyerName,
           buyerPhone,
+          buyerPhoneHash: hashPhone(tenant.id, buyerPhone),
           totalVolumeSar: Number(amount),
         },
       }),

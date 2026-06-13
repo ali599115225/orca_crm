@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { prisma } from '@/lib/prisma';
+import { hashPhone, redactPiiFromPayload } from '@/lib/privacy-mask';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,20 +54,21 @@ export async function POST(request: NextRequest) {
     // Store outbound message
     try {
       await prisma.whatsAppContact.upsert({
-        where: { tenantId_phone: { tenantId, phone: chatId } },
-        create: { tenantId, phone: chatId, provider: "meta", lastMessageAt: new Date() },
+        where: { tenantId_phoneHash: { tenantId, phoneHash: hashPhone(tenantId, chatId) } },
+        create: { tenantId, phone: chatId, phoneHash: hashPhone(tenantId, chatId), provider: "meta", lastMessageAt: new Date() },
         update: { lastMessageAt: new Date() },
       });
       await prisma.whatsAppMessage.create({
         data: {
           tenantId,
           phone: chatId,
+          phoneHash: hashPhone(tenantId, chatId),
           direction: "outbound",
           provider: "meta",
           messageText: message,
           messageType: "text",
           metaMessageId: result.messages?.[0]?.id || null,
-          rawPayload: result,
+          rawPayload: redactPiiFromPayload(result) as any,
           status: response.ok ? "sent" : "failed",
         },
       });

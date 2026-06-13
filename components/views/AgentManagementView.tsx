@@ -316,9 +316,16 @@ export default function AgentManagementView({
                       <div className="w-10 h-10 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center text-[var(--nc-foreground)] text-lg">
                         <i className={`ph-fill ${ag.icon}`}></i>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase ${badgeColor}`}>
-                        {statusInfo.label}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {ag.id === "MANSOUR" && (
+                          <span className="px-2 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase bg-amber-500/10 border-amber-500/20 text-amber-400">
+                            Preview
+                          </span>
+                        )}
+                        <span className={`px-2.5 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase ${badgeColor}`}>
+                          {statusInfo.label}
+                        </span>
+                      </div>
                     </div>
 
                     <h3 className="text-[var(--nc-foreground)] font-extrabold text-sm tracking-wide mb-2">

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { hashPhone } from "@/lib/privacy-mask";
 
 export async function GET(request: NextRequest) {
   try {
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
           unitId: propertyId,
           buyerName,
           buyerPhone,
+          buyerPhoneHash: hashPhone(tenantId, buyerPhone),
           totalVolumeSar: Number(amount),
         },
       }),

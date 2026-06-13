@@ -340,14 +340,6 @@ export default function CampaignsView({
         <KpiCard label={t.activeCampaigns} value={`${activeCampaigns}`} color="warning" />
       </div>
 
-      {/* ── KPI Cards Row 2: Calculated Metrics ─────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiCard label={t.avgCTR} value={`${fmt(avgCTR)}%`} color="info" />
-        <KpiCard label={t.avgCVR} value={`${fmt(avgCVR)}%`} color="default" />
-        <KpiCard label={t.avgROAS} value={`${fmt(avgROAS, 1)}×`} color="success" />
-        <KpiCard label={t.avgCPL} value={`${fmt(avgCPL, 0)} ${t.currency}`} color="warning" />
-      </div>
-
       {/* ── Main Grid: Table + Platform Insights ────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
 
@@ -526,23 +518,21 @@ export default function CampaignsView({
             <p className="text-sm text-[var(--nc-foreground-muted)]">{t.noRec}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="space-y-0">
             {recommendations.map(rec => {
               const ri = recIcon(rec.type);
               return (
-                <div key={rec.campaignId} className={`p-4 rounded-xl border space-y-2 ${ri.cls.split(' ').slice(0,2).join(' ')}`}>
-                  <div className="flex items-start gap-2.5">
-                    <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${ri.cls}`}>
-                      <i className={`ph-bold ${ri.icon} text-sm`}></i>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-extrabold text-[var(--nc-foreground)] leading-tight truncate">
-                        {isArabic ? rec.campaignName.split(' — ')[0] : rec.campaignName.split(' — ')[0]}
-                      </p>
-                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5 leading-snug">{rec.reason}</p>
-                    </div>
+                <div key={rec.campaignId} className="flex flex-wrap items-center gap-3 py-3 border-b border-[var(--nc-border)] last:border-b-0">
+                  <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${ri.cls}`}>
+                    <i className={`ph-bold ${ri.icon} text-sm`}></i>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-extrabold text-[var(--nc-foreground)] leading-tight truncate">
+                      {isArabic ? rec.campaignName.split(' — ')[0] : rec.campaignName.split(' — ')[0]}
+                    </p>
+                    <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5 leading-snug">{rec.reason}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${ri.cls}`}>
                       {rec.action}
                     </span>

@@ -7,6 +7,13 @@ import {
   buildKhabeerSystemPrompt,
   type KhabeerOutput,
 } from "./khabeerPrompt";
+import { authorizeAgentAccess } from "../licensing";
+import { assertAgentCanRun } from "./guard";
+import {
+  sanitizeAgentInput,
+  detectInjectionPatterns,
+  safeJsonParseAgentOutput,
+} from "./prompt-guard";
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent";
@@ -137,10 +144,38 @@ export async function askKhabeer(
   companyName: string,
   question: string
 ): Promise<{ output: KhabeerOutput; isAI: boolean }> {
+  const authCheck = await authorizeAgentAccess("KHABEER");
+  if (!authCheck.authorized) {
+    const fallback = getFallbackResponse(question);
+    return { output: fallback, isAI: false };
+  }
+
+  const runtimeCheck = await assertAgentCanRun({
+    agentName: "KHABEER",
+    actionType: "RECOMMENDATION",
+  });
+  if (!runtimeCheck.allowed) {
+    const fallback = getFallbackResponse(question);
+    return { output: fallback, isAI: false };
+  }
+
+  const sanitizedQuestion = sanitizeAgentInput(question, { maxLength: 3000 });
+  const injectionCheck = detectInjectionPatterns(question);
+
   const systemPrompt = buildKhabeerSystemPrompt({ companyName });
 
+  // If user tries to extract system prompt/secrets, skip Gemini entirely
+  const isExtractionAttempt = injectionCheck.patterns.some(p =>
+    p === "PROMPT_EXTRACTION" || p === "PROMPT_EXTRACTION_AR" ||
+    p === "DISABLE_AUDIT" || p === "DISABLE_AUDIT_AR"
+  );
+  if (isExtractionAttempt) {
+    const fallback = getFallbackResponse(question);
+    return { output: fallback, isAI: false };
+  }
+
   try {
-    const aiResult = await callGeminiForKhabeer(systemPrompt, question);
+    const aiResult = await callGeminiForKhabeer(systemPrompt, sanitizedQuestion.sanitized);
     if (aiResult) {
       return { output: aiResult, isAI: true };
     }

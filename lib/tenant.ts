@@ -41,12 +41,6 @@ export const getActiveTenant = cache(async function getActiveTenantInternal(host
   });
 
   if (!tenant) {
-    tenant = await prisma.tenant.findFirst({
-      where: { isActive: true },
-    });
-  }
-
-  if (!tenant) {
     throw new Error("عذراً، لا يوجد أي منشأة عقارية مسجلة أو نشطة في هذا النظام حالياً.");
   }
 

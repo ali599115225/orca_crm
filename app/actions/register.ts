@@ -7,6 +7,7 @@ import { encrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 import { sendSMSNotification } from "@/lib/notifications"; // استدعاء إشعارات الجوال
 import { sendAdminEmailAlert } from "@/lib/email"; // استدعاء إشعارات البريد
+import { hashEmail } from "@/lib/privacy-mask";
 
 export async function registerTenantAction(formData: FormData) {
   try {
@@ -66,6 +67,7 @@ export async function registerTenantAction(formData: FormData) {
           tenantId: newTenant.id,
           name: adminName,
           email: adminEmail.trim().toLowerCase(),
+          emailHash: hashEmail(adminEmail.trim().toLowerCase()),
           passwordHash: hashedPassword,
           role: "ADMIN",
         },

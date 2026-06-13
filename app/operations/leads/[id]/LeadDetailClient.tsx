@@ -244,9 +244,9 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                 لا توجد رسائل بريد مسجلة لهذا العميل
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+              <div className="overflow-x-auto">
+                <table className="nc-table">
+                  <thead>
                     <tr>
                       <th className="px-4 py-3 text-right font-medium text-gray-700">التاريخ</th>
                       <th className="px-4 py-3 text-right font-medium text-gray-700">الاتجاه</th>
@@ -255,7 +255,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                       <th className="px-4 py-3 text-right font-medium text-gray-700">الحالة</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody>
                     {lead.emailMessages.map((msg) => (
                       <tr key={msg.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-gray-600">

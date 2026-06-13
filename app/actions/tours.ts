@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { hashPhone } from "@/lib/privacy-mask";
 
 /**
  * جدولة جولة عقارية جديدة وإسنادها لعميل وإدخالها في جدول Tour بقاعدة البيانات
@@ -46,6 +47,7 @@ export async function scheduleTourActionDirect(data: {
             firstName,
             lastName,
             phone,
+            phoneHash: hashPhone(tenant.id, phone),
             email: `${phone}@orca-crm.com`,
             city: "الرياض",
             status: "NEW",

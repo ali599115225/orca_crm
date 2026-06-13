@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
 import { assertFeatureAccess, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
@@ -150,14 +151,15 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
     let savedMessageId: string | null = null;
     try {
       await prisma.whatsAppContact.upsert({
-        where: { tenantId_phone: { tenantId: tenant.id, phone: chatId } },
-        create: { tenantId: tenant.id, phone: chatId, provider: "meta", lastMessageAt: new Date() },
+        where: { tenantId_phoneHash: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, chatId) } },
+        create: { tenantId: tenant.id, phone: chatId, phoneHash: hashPhone(tenant.id, chatId), provider: "meta", lastMessageAt: new Date() },
         update: { lastMessageAt: new Date() },
       });
       const savedMessage = await prisma.whatsAppMessage.create({
         data: {
           tenantId: tenant.id,
           phone: chatId,
+          phoneHash: hashPhone(tenant.id, chatId),
           direction: "outbound",
           provider: "meta",
           messageText,
@@ -209,10 +211,10 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
           data: {
             metaMessageId,
             status: "sent",
-            rawPayload: result,
-          },
-        });
-        await prisma.auditLog.create({
+          rawPayload: redactPiiFromPayload(result) as any,
+        },
+      });
+      await prisma.auditLog.create({
           data: {
             tenantId: tenant.id,
             action: "WHATSAPP_MESSAGE_SENT",
@@ -232,10 +234,10 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
           data: {
             status: "failed",
             failedAt: new Date(),
-            rawPayload: result,
-          },
-        });
-      } catch (updateErr) {
+          rawPayload: redactPiiFromPayload(result) as any,
+        },
+      });
+    } catch (updateErr) {
         console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
       }
     }
@@ -266,7 +268,7 @@ export async function deleteWhatsAppConversationAction(contactId: string) {
     if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
     await prisma.whatsAppMessage.deleteMany({
-      where: { tenantId: tenant.id, phone: contact.phone },
+      where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contact.phone) },
     });
     await prisma.whatsAppContact.delete({
       where: { id: contactId, tenantId: tenant.id },

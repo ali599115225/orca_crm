@@ -39,3 +39,23 @@ export function decrypt(text: string): string | null {
 
 export const encryptText = encrypt;
 export const decryptText = decrypt;
+
+export function isEncryptedValue(value: string): boolean {
+  if (!value || !value.includes(":")) return false;
+  const colonIndex = value.indexOf(":");
+  const ivPart = value.substring(0, colonIndex);
+  if (ivPart.length !== 32) return false;
+  if (!/^[0-9a-f]{32}$/i.test(ivPart)) return false;
+  const cipherPart = value.substring(colonIndex + 1);
+  if (cipherPart.length === 0) return false;
+  return /^[0-9a-f]+$/i.test(cipherPart);
+}
+
+export function decryptIfEncrypted(value: string): string {
+  if (!value) return value;
+  if (isEncryptedValue(value)) {
+    const decrypted = decrypt(value);
+    if (decrypted !== null) return decrypted;
+  }
+  return value;
+}

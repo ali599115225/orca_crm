@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { tenantContext } from "./tenant-context";
+import { redactPrismaArgs } from "./privacy-mask";
 
 function createRawPrismaClient(): PrismaClient {
   const rawUrl = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/gi, "");
@@ -128,7 +129,7 @@ function createExtendedPrismaClient() {
                     action: operation.toUpperCase(),
                     tableName: model,
                     recordId,
-                    details: JSON.stringify({ args }),
+                    details: JSON.stringify({ args: redactPrismaArgs(args) }),
                   },
                 });
               } catch (e) {

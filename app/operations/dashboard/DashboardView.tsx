@@ -33,7 +33,7 @@ interface DashboardViewProps {
 // ── Shared flat-row block (no glow, no nested card, just border transition on hover) ──
 function FlatRowBlock({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] hover:border-[var(--nc-accent-border)] transition-colors ${className}`}>
+    <div className={`hover:bg-[var(--nc-accent-soft)] transition-colors rounded-lg ${className}`}>
       {children}
     </div>
   );

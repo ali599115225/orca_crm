@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
+import { hashPhone, hashEmail } from "@/lib/privacy-mask";
 
 export async function getLeadsAction(page = 1, limit = 50) {
   try {
@@ -165,7 +166,9 @@ export async function createLeadAction(formData: FormData) {
           firstName,
           lastName: lastName || null,
           phone,
+          phoneHash: hashPhone(tenant.id, phone),
           email: email || null,
+          emailHash: email ? hashEmail(email, tenant.id) : null,
           city: city || "الرياض",
           source: source || "إعلانات سناب شات",
           status: "NEW",

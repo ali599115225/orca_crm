@@ -166,26 +166,26 @@ export default async function OwnerPortalPage() {
         <div className={cardClass}>
           <h2 className="text-sm font-bold text-[var(--nc-text-primary)] mb-4">العقود ({contracts.length})</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">رقم العقد</th>
-                  <th className="pb-2 px-2">المشتري</th>
-                  <th className="pb-2 px-2">الوحدة</th>
-                  <th className="pb-2 px-2">المشروع</th>
-                  <th className="pb-2 px-2">القيمة</th>
-                  <th className="pb-2 px-2">الحالة</th>
+                <tr>
+                  <th>رقم العقد</th>
+                  <th>المشتري</th>
+                  <th>الوحدة</th>
+                  <th>المشروع</th>
+                  <th>القيمة</th>
+                  <th>الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {contracts.slice(0, 10).map(c => (
-                  <tr key={c.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 font-mono text-[var(--nc-text-dim)]">{c.id.slice(0, 8)}...</td>
-                    <td className="py-2.5 px-2 font-bold text-[var(--nc-text-primary)]">{c.buyerName}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{c.unit.unitNumber}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{c.unit.project.name}</td>
-                    <td className="py-2.5 px-2 font-bold">{Number(c.totalVolumeSar).toLocaleString()} ر.س</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={c.id}>
+                    <td className="font-mono text-[var(--nc-text-dim)]">{c.id.slice(0, 8)}...</td>
+                    <td className="font-bold text-[var(--nc-text-primary)]">{c.buyerName}</td>
+                    <td className="text-[var(--nc-text-dim)]">{c.unit.unitNumber}</td>
+                    <td className="text-[var(--nc-text-dim)]">{c.unit.project.name}</td>
+                    <td className="font-bold">{Number(c.totalVolumeSar).toLocaleString()} ر.س</td>
+                    <td>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${c.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
                         {c.status === 'Active' ? 'نشط' : c.status}
                       </span>
@@ -201,30 +201,30 @@ export default async function OwnerPortalPage() {
         <div className={cardClass}>
           <h2 className="text-sm font-bold text-[var(--nc-text-primary)] mb-4">الوحدات ({units.length})</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">رقم الوحدة</th>
-                  <th className="pb-2 px-2">المشروع</th>
-                  <th className="pb-2 px-2">النوع</th>
-                  <th className="pb-2 px-2">السعر</th>
-                  <th className="pb-2 px-2">الحالة</th>
-                  <th className="pb-2 px-2">المالك</th>
+                <tr>
+                  <th>رقم الوحدة</th>
+                  <th>المشروع</th>
+                  <th>النوع</th>
+                  <th>السعر</th>
+                  <th>الحالة</th>
+                  <th>المالك</th>
                 </tr>
               </thead>
               <tbody>
                 {ownerUnits.slice(0, 10).map(u => (
-                  <tr key={u.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 font-bold text-[var(--nc-text-primary)]">{u.unitNumber}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{u.project.name}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{u.type || '—'}</td>
-                    <td className="py-2.5 px-2 font-bold">{Number(u.priceSar).toLocaleString()} ر.س</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={u.id}>
+                    <td className="font-bold text-[var(--nc-text-primary)]">{u.unitNumber}</td>
+                    <td className="text-[var(--nc-text-dim)]">{u.project.name}</td>
+                    <td className="text-[var(--nc-text-dim)]">{u.type || '—'}</td>
+                    <td className="font-bold">{Number(u.priceSar).toLocaleString()} ر.س</td>
+                    <td>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${u.contract ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         {u.contract ? 'مباعة' : (u.status || 'متاحة')}
                       </span>
                     </td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{u.contract?.buyerName || '—'}</td>
+                    <td className="text-[var(--nc-text-dim)]">{u.contract?.buyerName || '—'}</td>
                   </tr>
                 ))}
                 {ownerUnits.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-[var(--nc-text-dim)]">لا توجد وحدات بعد</td></tr>}
@@ -241,34 +241,34 @@ export default async function OwnerPortalPage() {
           <p className="text-xs text-[var(--nc-text-dim)]">لا توجد بلاغات صيانة حالياً</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className="nc-table text-xs">
               <thead>
-                <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                  <th className="pb-2 px-2">العنوان</th>
-                  <th className="pb-2 px-2">الفئة</th>
-                  <th className="pb-2 px-2">الأولوية</th>
-                  <th className="pb-2 px-2">الحالة</th>
-                  <th className="pb-2 px-2">الفني المعين</th>
-                  <th className="pb-2 px-2">التكلفة</th>
+                <tr>
+                  <th>العنوان</th>
+                  <th>الفئة</th>
+                  <th>الأولوية</th>
+                  <th>الحالة</th>
+                  <th>الفني المعين</th>
+                  <th>التكلفة</th>
                 </tr>
               </thead>
               <tbody>
                 {maintenanceTickets.map(t => (
-                  <tr key={t.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                    <td className="py-2.5 px-2 font-bold text-[var(--nc-text-primary)]">{t.title}</td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{t.category === 'electrical' ? 'كهرباء' : t.category === 'plumbing' ? 'سباكة' : t.category === 'hvac' ? 'تكييف' : t.category === 'structural' ? 'إنشائي' : 'أخرى'}</td>
-                    <td className="py-2.5 px-2">
+                  <tr key={t.id}>
+                    <td className="font-bold text-[var(--nc-text-primary)]">{t.title}</td>
+                    <td className="text-[var(--nc-text-dim)]">{t.category === 'electrical' ? 'كهرباء' : t.category === 'plumbing' ? 'سباكة' : t.category === 'hvac' ? 'تكييف' : t.category === 'structural' ? 'إنشائي' : 'أخرى'}</td>
+                    <td>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${t.priority === 'HIGH' ? 'bg-rose-500/20 text-rose-400' : t.priority === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-500/20 text-slate-400'}`}>
                         {t.priority === 'HIGH' ? 'عاجل' : t.priority === 'MEDIUM' ? 'متوسط' : 'منخفض'}
                       </span>
                     </td>
-                    <td className="py-2.5 px-2">
+                    <td>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${t.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : t.status === 'in_progress' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         {t.status === 'pending' ? 'معلق' : t.status === 'in_progress' ? 'قيد التنفيذ' : t.status === 'completed' ? 'مكتمل' : t.status}
                       </span>
                     </td>
-                    <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{t.assignedTo || '—'}</td>
-                    <td className="py-2.5 px-2 font-bold">{t.estimatedCost ? `${Number(t.estimatedCost).toLocaleString()} ر.س` : '—'}</td>
+                    <td className="text-[var(--nc-text-dim)]">{t.assignedTo || '—'}</td>
+                    <td className="font-bold">{t.estimatedCost ? `${Number(t.estimatedCost).toLocaleString()} ر.س` : '—'}</td>
                   </tr>
                 ))}
               </tbody>

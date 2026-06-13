@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
     const payments = await prisma.paymentTransaction.findMany({
       where: { tenantId, status: 'COMPLETED' },
       orderBy: { paidAt: 'desc' },
+      select: { id: true, invoiceId: true, amount: true, paidAt: true, status: true },
       take: 50,
     });
 

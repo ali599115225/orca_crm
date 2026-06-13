@@ -589,8 +589,8 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                   </h4>
                   <p className="text-[10px] text-[var(--nc-foreground-muted)] leading-relaxed">
                     {isArabic
-                      ? "احصل على وصول دائم وغير محدود لكافة الوكلاء الخمسة (ساهر، سند، بصير، خبير، منصور) مع تكامل واتساب كامل وإدارة غير محدودة."
-                      : "Unlock permanent, unlimited access to all 5 agents (Saher, Sanad, Baseer, Khabeer, Mansour) with full WhatsApp integration."}
+                      ? "احصل على وصول دائم وغير محدود لكافة الوكلاء الخمسة (ساهر، سند، بصير، خبير، منصور [معاينة]) مع تكامل واتساب كامل وإدارة غير محدودة."
+                      : "Unlock permanent, unlimited access to all 5 agents (Saher, Sanad, Baseer, Khabeer, Mansour [Preview]) with full WhatsApp integration."}
                   </p>
                 </div>
 

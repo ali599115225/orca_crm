@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Lead, LeadStatus } from '@prisma/client';
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { hashPhone, hashEmail } from "@/lib/privacy-mask";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -26,7 +27,7 @@ export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedA
     const { tenantId: _, ...safeData } = data as any;
     const newLead = await prisma.$transaction(async (tx) => {
       await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
-      return tx.lead.create({ data: { ...safeData, tenantId: tenant.id, leadScore: Math.floor(Math.random() * 40) + 40 } });
+      return tx.lead.create({ data: { ...safeData, tenantId: tenant.id, phoneHash: hashPhone(tenant.id, data.phone), emailHash: data.email ? hashEmail(data.email, tenant.id) : null, leadScore: Math.floor(Math.random() * 40) + 40 } });
     });
     revalidatePath('/leads');
     return { success: true, lead: newLead };

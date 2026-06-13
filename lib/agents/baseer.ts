@@ -151,6 +151,7 @@ export async function runBaseerStrategyReport(
     // 1. جلب كافة العقود والأقساط التابعة للمستأجر
     // نستخدم prisma المحدودة بالعزل للحفاظ على أمان البيانات
     const contracts = await prisma.contract.findMany({
+      where: { tenantId },
       include: {
         installments: true,
         unit: {

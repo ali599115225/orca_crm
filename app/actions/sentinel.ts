@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { sendAdminEmailAlert } from "@/lib/email";
+import { assertAgentCanRun } from "@/lib/agents/guard";
 import { exec } from "child_process";
 import { promisify } from "util";
 import dns from "dns";
@@ -63,6 +64,14 @@ export async function runSystemDiagnosticsAction(): Promise<{ success: boolean; 
     const isSuperAdmin = session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa";
     const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     if (!isSuperAdmin && !superAdminEmails.includes(String(session.email).toLowerCase())) throw new Error("غير مصرح لك بتشغيل وكيل المراقبة.");
+
+    const runtimeGuard = await assertAgentCanRun({
+      agentName: "SENTINEL",
+      actionType: "ANALYSIS",
+    });
+    if (!runtimeGuard.allowed) {
+      return { success: false, error: `Sentinel blocked: ${runtimeGuard.reason}` };
+    }
 
     const anomalies: string[] = [];
     const recommendations: string[] = [];

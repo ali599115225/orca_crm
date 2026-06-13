@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { postJournalEntry, findAccountByCode } from "@/lib/accounting";
 import { rateLimit } from "@/lib/rate-limit";
+import { redactPiiFromPayload } from "@/lib/privacy-mask";
 
 const PAYLINK_WEBHOOK_SECRET = process.env.PAYLINK_WEBHOOK_SECRET || "";
 
@@ -100,13 +101,12 @@ export async function POST(request: NextRequest) {
               status: 'COMPLETED',
               gatewayStatus: 'completed',
               gatewayRef: paymentRef,
-              gatewayResponse: JSON.stringify(body),
               paidAt: new Date(),
               webhookReceivedAt: new Date(),
-              rawPayload: body,
-            },
-          })
-        : await prisma.paymentTransaction.create({
+          rawPayload: redactPiiFromPayload(body) as any,
+        },
+      })
+    : await prisma.paymentTransaction.create({
             data: {
               tenantId,
               invoiceId: invoiceId || undefined,
@@ -120,15 +120,14 @@ export async function POST(request: NextRequest) {
               providerTransactionId: paymentRef,
               providerInvoiceId: paylinkInvoiceId,
               gatewayRef: paymentRef,
-              gatewayResponse: JSON.stringify(body),
               gatewayStatus: 'completed',
               paidAt: new Date(),
               webhookReceivedAt: new Date(),
-              rawPayload: body,
-            },
-          });
+          rawPayload: redactPiiFromPayload(body) as any,
+        },
+      });
 
-      // Post accounting entries
+  // Post accounting entries
       if (amountSar > 0) {
         try {
           const cashAcct = await findAccountByCode(tenantId, "1.1.1");
@@ -167,9 +166,8 @@ export async function POST(request: NextRequest) {
         data: {
           status: paymentStatus === 'failed' ? 'FAILED' : paymentStatus === 'expired' ? 'EXPIRED' : 'CANCELLED',
           gatewayStatus: paymentStatus,
-          gatewayResponse: JSON.stringify(body),
-          rawPayload: body,
-          webhookReceivedAt: new Date(),
+      rawPayload: redactPiiFromPayload(body) as any,
+      webhookReceivedAt: new Date(),
           failureReason: body.failure_reason || body.error || null,
         },
       });

@@ -259,7 +259,7 @@ export default function ProjectDetail({
       </div>
 
       {/* Tabs Section */}
-      <div className="bg-[#1C2B48] border border-white/5 rounded-3xl p-6 shadow-xl">
+      <div className="space-y-4">
         {/* Tabs Bar */}
         <div className="flex flex-wrap gap-2 border-b border-[#A7C7E7]/20 pb-3 mb-6">
           {[

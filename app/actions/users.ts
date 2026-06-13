@@ -7,6 +7,7 @@ import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt, getPlanLimits, normalizePlan } from "@/lib/plan-guard";
+import { hashEmail } from "@/lib/privacy-mask";
 
 /**
  * دالة مساعدة للتحقق من هوية المشرف العقاري للشركة
@@ -97,6 +98,7 @@ export async function createTenantUserAction(formData: FormData) {
           tenantId: tenant.id,
           name: name.trim(),
           email: email.trim().toLowerCase(),
+          emailHash: hashEmail(email.trim().toLowerCase()),
           role: role,
           passwordHash: hashedPassword,
           isActive: true,

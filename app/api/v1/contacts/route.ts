@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { hashPhone, hashEmail } from "@/lib/privacy-mask";
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
         leadId: leadId || null,
         name,
         phone,
+        phoneHash: hashPhone(tenantId, phone),
         email: email || null,
+        emailHash: email ? hashEmail(email, tenantId) : null,
         preferredContactTime: preferredContactTime || null,
         budgetRange: budgetRange || null,
         notes: notes || null,

@@ -112,7 +112,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
   const isRTL = lang === 'AR';
   return (
     <div className="border-t border-[var(--nc-glassy-border)] pt-2 mt-2">
-      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-amber-400/70 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-accent)]/70 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
         {isRTL ? 'مالك المنصة' : 'Platform Owner'}
       </div>
       <ul className="space-y-0.5">
@@ -120,7 +120,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/admin/command-center"
             onClick={() => onNavigate?.()}
-            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 text-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
           >
             <Shield size={17} className="shrink-0" />
             <span className="leading-tight flex-1 md:hidden lg:inline">{isRTL ? 'مركز القيادة' : 'Command Center'}</span>

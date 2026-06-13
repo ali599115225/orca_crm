@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { redactPiiFromPayload } from '@/lib/privacy-mask';
 
 const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
 const PAYLINK_API_ID = process.env.PAYLINK_API_ID || '';
@@ -240,7 +241,7 @@ export async function POST(
         method: 'paylink', status: 'PENDING', provider: 'paylink',
         providerTransactionId: transactionNo, providerInvoiceId: transactionNo,
         paymentUrl, gatewayStatus: paylinkResult.orderStatus || 'Pending',
-        rawPayload: paylinkResult.rawResponse || undefined,
+        rawPayload: redactPiiFromPayload(paylinkResult.rawResponse || undefined) as any,
       },
     });
 

@@ -232,63 +232,46 @@ export default function PropertyList({
   );
 
   const actionsContent = (
-    <SmartCard elevation="default" className="p-5 space-y-4 h-full flex flex-col justify-between">
-      <div className="border-b border-[var(--nc-glass-border)] pb-3">
-          <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Search size={16} className="text-[var(--nc-text-secondary)]" />
-            {isArabic ? 'البحث والتصفية' : 'Search & Filter'}
-          </h4>
-          <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">{isArabic ? 'ابحث عن الوحدات السكنية عبر الفلاتر' : 'Search properties via advanced filters'}</p>
-      </div>
-
-      <div className="space-y-3 flex-grow pt-2">
-        <div className="flex gap-2">
-          <input 
-            placeholder={isArabic ? "بحث برقم الوحدة أو المشروع..." : "Search unit number or project..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]" 
-          />
-        </div>
-        <div className="flex gap-2">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
-          >
-            <option value="">{isArabic ? 'كل الحالات' : 'All statuses'}</option>
-            <option value="Available">{isArabic ? 'متاحة' : 'Available'}</option>
-            <option value="Hold">{isArabic ? 'محجوزة مؤقتاً' : 'On Hold'}</option>
-            <option value="Sold">{isArabic ? 'مباعة' : 'Sold'}</option>
-          </select>
-          <select 
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="w-1/2 px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
-          >
-            <option value="">{isArabic ? 'كل المشاريع' : 'All projects'}</option>
-            <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
-            <option value="واحة الخليج">واحة الخليج</option>
-          </select>
-        </div>
-
-        <div className="border-t border-white/5 my-3 pt-3">
-          <Button 
-            onClick={() => {
-              if (!hasPermission('CREATE_UNIT')) {
-                toast.error('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
-                return;
-              }
-              setActiveModal('new_unit');
-            }}
-            className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2"
-          >
-            <Plus size={16} />
-            إضافة وحدة عقارية جديدة
-          </Button>
-        </div>
-      </div>
-    </SmartCard>
+    <div className="flex flex-wrap items-center gap-2">
+      <input 
+        placeholder={isArabic ? "بحث برقم الوحدة أو المشروع..." : "Search unit number or project..."}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]" 
+      />
+      <select 
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+        className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
+      >
+        <option value="">{isArabic ? 'كل الحالات' : 'All statuses'}</option>
+        <option value="Available">{isArabic ? 'متاحة' : 'Available'}</option>
+        <option value="Hold">{isArabic ? 'محجوزة مؤقتاً' : 'On Hold'}</option>
+        <option value="Sold">{isArabic ? 'مباعة' : 'Sold'}</option>
+      </select>
+      <select 
+        value={projectFilter}
+        onChange={(e) => setProjectFilter(e.target.value)}
+        className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
+      >
+        <option value="">{isArabic ? 'كل المشاريع' : 'All projects'}</option>
+        <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
+        <option value="واحة الخليج">واحة الخليج</option>
+      </select>
+      <Button 
+        onClick={() => {
+          if (!hasPermission('CREATE_UNIT')) {
+            toast.error('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
+            return;
+          }
+          setActiveModal('new_unit');
+        }}
+        className="py-2 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
+      >
+        <Plus size={14} />
+        {isArabic ? 'إضافة وحدة' : 'Add Unit'}
+      </Button>
+    </div>
   );
 
   const detailsContent = (
@@ -327,7 +310,7 @@ export default function PropertyList({
         )}
 
         {!isLoading && !fetchError && filteredProperties.length > 0 && (
-          <div className="overflow-x-auto max-h-[450px] overflow-y-auto custom-scrollbar">
+          <div className="overflow-x-auto custom-scrollbar">
             <table className="nc-table">
               <thead>
                 <tr>

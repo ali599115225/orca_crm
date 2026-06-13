@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { hashPhone } from "@/lib/privacy-mask";
 
 export async function POST(
   request: NextRequest,
@@ -92,6 +93,7 @@ export async function POST(
               unitId,
               buyerName: `${lead.firstName} ${lead.lastName || ""}`.trim(),
               buyerPhone: lead.phone,
+              buyerPhoneHash: hashPhone(tenantId, lead.phone),
               totalVolumeSar: offer.price,
               signedAt: new Date(),
             },

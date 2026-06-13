@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { rateLimit } from "@/lib/rate-limit";
+import { hashPhone, hashEmail } from "@/lib/privacy-mask";
 
 export async function POST(request: NextRequest) {
   try {
@@ -141,7 +142,9 @@ export async function POST(request: NextRequest) {
             firstName,
             lastName,
             phone: cleanPhone,
+            phoneHash: hashPhone(tenant.id, cleanPhone),
             email: email || null,
+            emailHash: email ? hashEmail(email, tenant.id) : null,
             city: city,
             source: campaignSource,
             status: isHotLead ? "NEW" : "CONTACTED",

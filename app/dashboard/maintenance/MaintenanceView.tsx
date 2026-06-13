@@ -279,40 +279,40 @@ export default function MaintenanceView({ tenantId, tickets: initialTickets, uni
       {/* Tickets Table */}
       <div className={cardClass}>
         <div className="overflow-x-auto">
-          <table className="w-full text-right border-collapse text-xs">
+          <table className="nc-table text-xs">
             <thead>
-              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                <th className="pb-2 px-2">العنوان</th>
-                <th className="pb-2 px-2">الفئة</th>
-                <th className="pb-2 px-2">الأولوية</th>
-                <th className="pb-2 px-2">الحالة</th>
-                <th className="pb-2 px-2">الفني</th>
-                <th className="pb-2 px-2">تكلفة تقديرية</th>
-                <th className="pb-2 px-2">تكلفة فعلية</th>
-                <th className="pb-2 px-2">تاريخ</th>
-                <th className="pb-2 px-2">إجراءات</th>
+              <tr>
+                <th>العنوان</th>
+                <th>الفئة</th>
+                <th>الأولوية</th>
+                <th>الحالة</th>
+                <th>الفني</th>
+                <th>تكلفة تقديرية</th>
+                <th>تكلفة فعلية</th>
+                <th>تاريخ</th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {filteredTickets.map(t => (
-                <tr key={t.id} className="border-b border-[var(--nc-glass-border)] hover:bg-white/5">
-                  <td className="py-3 px-2 font-bold text-[var(--nc-text-primary)] max-w-[200px] truncate" title={t.title}>{t.title}</td>
-                  <td className="py-3 px-2 text-[var(--nc-text-dim)]">{categoryAr(t.category)}</td>
-                  <td className="py-3 px-2">
+                <tr key={t.id}>
+                  <td className="font-bold text-[var(--nc-text-primary)] max-w-[200px] truncate" title={t.title}>{t.title}</td>
+                  <td className="text-[var(--nc-text-dim)]">{categoryAr(t.category)}</td>
+                  <td>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${priorityColor(t.priority)}`}>{priorityAr(t.priority)}</span>
                   </td>
-                  <td className="py-3 px-2">
+                  <td>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusColor(t.status)}`}>{statusAr(t.status)}</span>
                   </td>
-                  <td className="py-3 px-2">
+                  <td>
                     <button onClick={() => handleAssignTechnician(t.id, t.assignedTo || '')} className="text-cyan-400 font-bold hover:underline text-[11px]">
                       {t.assignedTo || 'تعيين فني'}
                     </button>
                   </td>
-                  <td className="py-3 px-2 font-bold">{t.estimatedCost ? `${t.estimatedCost.toLocaleString()} ر.س` : '—'}</td>
-                  <td className="py-3 px-2 font-bold text-emerald-400">{t.actualCost ? `${t.actualCost.toLocaleString()} ر.س` : '—'}</td>
-                  <td className="py-3 px-2 text-[var(--nc-text-dim)]">{formatDate(t.createdAt)}</td>
-                  <td className="py-3 px-2">
+                  <td className="font-bold">{t.estimatedCost ? `${t.estimatedCost.toLocaleString()} ر.س` : '—'}</td>
+                  <td className="font-bold text-emerald-400">{t.actualCost ? `${t.actualCost.toLocaleString()} ر.س` : '—'}</td>
+                  <td className="text-[var(--nc-text-dim)]">{formatDate(t.createdAt)}</td>
+                  <td>
                     <div className="flex gap-1">
                       {t.status === 'pending' && (
                         <button onClick={() => handleUpdateStatus(t.id, 'in_progress')} className="px-2 py-1 bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded-lg hover:bg-cyan-500/30">
