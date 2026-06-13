@@ -50,3 +50,23 @@ export function EmptyTableRow({ colSpan, message }: { colSpan: number; message: 
     </tr>
   );
 }
+
+export function CompactEmptyState({
+  title,
+  description,
+  icon,
+  className = '',
+}: {
+  title?: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col items-center justify-center py-5 text-center ${className}`}>
+      {icon && <div className="mb-2 text-[var(--nc-text-dim)] text-xl flex items-center justify-center">{icon}</div>}
+      {title && <h4 className="text-xs font-bold text-[var(--nc-text-primary)] mb-1">{title}</h4>}
+      {description && <p className="text-[11px] text-[var(--nc-text-dim)] max-w-[200px] leading-relaxed mx-auto">{description}</p>}
+    </div>
+  );
+}
