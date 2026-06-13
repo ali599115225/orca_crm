@@ -10,9 +10,9 @@ import MarketingCampaigns from '@/components/marketing/MarketingCampaigns';
 /* ─── Translations (tab labels only) ─────────────────────────── */
 const T = {
   AR: {
-    title: 'منصات التسوّق الإعلاني',
+    title: 'منصات التسويق الإعلاني',
     desc: 'تتبع أداء المنصات العقارية المتخصصة — مؤشرات CAC وROI والتحويل مع إدارة التكامل.',
-    tabMarketing: 'منصات التسوّق الإعلاني',
+    tabMarketing: 'منصات التسويق الإعلاني',
     tabCampaigns: 'مركز الحملات',
     tabConnect: 'ربط منصة جديدة',
     tabCampaignsDesc: 'تحليل أداء الحملات التسويقية النشطة وتكاليف الاستحواذ ونسب العائد لجميع القنوات.',
