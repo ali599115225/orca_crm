@@ -25,7 +25,7 @@ export default function Contacts() {
 
   return (
     <div className="tab-pane space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
           <SmartCard className="p-4">
             <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("contacts.createTitle")}</h3>
@@ -46,7 +46,7 @@ export default function Contacts() {
           </SmartCard>
         </div>
         <div className="space-y-6">
-          <SmartCard className="p-4 min-h-[400px] flex flex-col justify-between">
+          <SmartCard className="p-4">
             <div><h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4 pb-2 flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>{t("contacts.timeline")}</span></h3>
               {selectedContact ? (<div className="space-y-4"><div className="text-xs"><p className="text-[var(--nc-foreground)] font-bold text-sm mb-1">{selectedContact.name}</p><p className="text-[var(--nc-text-dim)] font-medium font-en">{selectedContact.phone}</p>{selectedContact.preferredContactTime && (<p className="text-[var(--nc-text-dim)] font-medium mt-1">{t("contacts.prefTimeLabel")} <span className="text-[var(--nc-foreground)]">{selectedContact.preferredContactTime}</span></p>)}</div><div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">{getTimelineItems(selectedContact.notes).map((item, idx) => (<div key={idx} className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] p-2.5 rounded-xl text-xs text-[var(--nc-text-dim)] font-medium leading-relaxed shadow-sm">{item}</div>))}{getTimelineItems(selectedContact.notes).length === 0 && (<div className="text-center py-6 text-[var(--nc-text-dim)] font-medium text-xs">{t("contacts.noTimeline")}</div>)}</div></div>) : (<div className="flex flex-col items-center justify-center py-16 text-center text-[var(--nc-text-dim)] font-medium"><i className="ph ph-chat-circle-dots text-3xl mb-2 text-[var(--nc-text-dim)] font-medium"></i><p className="text-xs">{t("contacts.selectHint")}</p></div>)}</div>
             {selectedContact && (<form onSubmit={handleAddNote} className="border-t border-[var(--nc-border)] pt-4 mt-4 text-xs space-y-2"><textarea placeholder={t("contacts.notePlaceholder")} value={newNote} onChange={(e) => setNewNote(e.target.value)} className="w-full bg-[var(--nc-surface-solid)] border border-[var(--nc-border)] rounded-lg p-2 text-[var(--nc-foreground)] h-16 resize-none" required /><div className="flex gap-2"><button type="submit" disabled={btnLoading} className="flex-1 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center">{t("contacts.addNote")}</button><button type="button" className="bg-[#0ea5e9]/20 hover:bg-[#0ea5e9]/35 text-[#0ea5e9] rounded px-3 py-2 text-center font-bold">{t("contacts.uploadDoc")}</button></div></form>)}

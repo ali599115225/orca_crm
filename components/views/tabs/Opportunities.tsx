@@ -24,8 +24,8 @@ export default function Opportunities() {
 
   return (
     <div className="tab-pane space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <SmartCard className="p-4 flex flex-col justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <SmartCard className="p-4">
           <div><h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("opps.createTitle")}</h3>
             <form onSubmit={handleCreateOpportunity} className="space-y-3.5 text-xs">
               <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.selectLead")}</label><select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("opps.selectLeadPlaceholder")}</option>{leads.map((l) => (<option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}</option>))}</select></div>
