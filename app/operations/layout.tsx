@@ -23,7 +23,13 @@ export default async function OperationsLayout({
   }
 
   // جلب المنشأة العقارية النشطة ديناميكياً
-  const tenant = await getActiveTenant();
+  let tenant: any;
+  try {
+    tenant = await getActiveTenant();
+  } catch {
+    console.warn("[OperationsLayout] No active tenant — redirecting to login");
+    redirect("/login");
+  }
 
   // جلب بيانات المستخدم الحالي
   const user = await prisma.user.findUnique({
