@@ -396,17 +396,17 @@ export default function PlatformConnectors({
 
   /* ── Status badge ──────────────────────────────────────────── */
   const statusBadge = (status: IntegrationStatus) => ({
-    connected:    { cls: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: t.connected },
-    pending:      { cls: 'bg-amber-500/10 text-amber-500 border-amber-500/20',       label: t.pending   },
-    disconnected: { cls: 'bg-rose-500/10 text-rose-500 border-rose-500/20',          label: t.disconnected },
+    connected:    { cls: 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border-[var(--nc-accent-border)]', label: t.connected },
+    pending:      { cls: 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]',  label: t.pending   },
+    disconnected: { cls: 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]',  label: t.disconnected },
   }[status]);
 
   /* ── Rec icon/style ────────────────────────────────────────── */
   const recStyle = (type: RecType) => ({
-    connect: { icon: 'ph-plug', cls: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-500' },
-    budget:  { icon: 'ph-currency-circle-dollar', cls: 'bg-amber-500/10 border-amber-500/20 text-amber-500' },
-    scale:   { icon: 'ph-trend-up', cls: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' },
-    update:  { icon: 'ph-arrows-clockwise', cls: 'bg-rose-500/10 border-rose-500/20 text-rose-500' },
+    connect: { icon: 'ph-plug', cls: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent)]' },
+    budget:  { icon: 'ph-currency-circle-dollar', cls: 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)]' },
+    scale:   { icon: 'ph-trend-up', cls: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent)]' },
+    update:  { icon: 'ph-arrows-clockwise', cls: 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)]' },
   }[type]);
 
   /* ── Format date ───────────────────────────────────────────── */
@@ -445,11 +445,11 @@ export default function PlatformConnectors({
               {platforms.map(p => {
                 const sb = statusBadge(p.integrationStatus);
                 return (
-                  <SmartCard key={p.id} className="p-5 space-y-4 h-full flex flex-col">
+                  <SmartCard key={p.id} className="p-4 space-y-3 h-full flex flex-col">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center text-xl shrink-0 ${p.bg}`}>
+                        <div className="w-11 h-11 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] flex items-center justify-center text-xl shrink-0">
                           {p.emoji}
                         </div>
                         <div>
@@ -464,18 +464,18 @@ export default function PlatformConnectors({
 
                     {/* Metrics grid */}
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-xl p-2 text-center">
+                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-lg p-2 text-center">
                         <p className="text-[8px] text-[var(--nc-foreground-muted)] font-bold uppercase">{t.leads}</p>
-                        <p className="text-lg font-black text-[var(--nc-accent)]">{p.leads}</p>
+                        <p className="text-lg font-black text-[var(--nc-foreground)]">{p.leads}</p>
                       </div>
-                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-xl p-2 text-center">
+                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-lg p-2 text-center">
                         <p className="text-[8px] text-[var(--nc-foreground-muted)] font-bold uppercase">{t.cac}</p>
-                        <p className="text-base font-black text-amber-500">{fmt(p.cac, 0)}</p>
+                        <p className="text-base font-black text-[var(--nc-foreground)]">{fmt(p.cac, 0)}</p>
                         <p className="text-[7px] text-[var(--nc-foreground-muted)]">{t.currency}</p>
                       </div>
-                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-xl p-2 text-center">
+                      <div className="bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-lg p-2 text-center">
                         <p className="text-[8px] text-[var(--nc-foreground-muted)] font-bold uppercase">{t.cvr}</p>
-                        <p className="text-base font-black text-purple-500">{fmt(p.cvr)}%</p>
+                        <p className="text-base font-black text-[var(--nc-foreground)]">{fmt(p.cvr)}%</p>
                       </div>
                     </div>
 
@@ -483,17 +483,16 @@ export default function PlatformConnectors({
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-[var(--nc-foreground-muted)]">{t.roi}</span>
-                        <span className={`font-black ${p.roi >= 2000 ? 'text-emerald-500' : p.roi >= 1000 ? 'text-blue-500' : 'text-amber-500'}`}>
+                        <span className="font-black text-[var(--nc-foreground)]">
                           {fmt(p.roi, 0)}%
                         </span>
                       </div>
                       <div className="h-1.5 bg-[var(--nc-border)] rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${Math.min(100, p.roi / 50)}%`,
-                            background: p.roi >= 2000 ? '#22c55e' : p.roi >= 1000 ? '#3b82f6' : '#f59e0b',
-                          }}
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            p.roi >= 2000 ? 'bg-[var(--nc-accent)]' : p.roi >= 1000 ? 'bg-[var(--nc-foreground-muted)]' : 'bg-amber-500/60'
+                          }`}
+                          style={{ width: `${Math.min(100, p.roi / 50)}%` }}
                         ></div>
                       </div>
                     </div>
@@ -509,7 +508,7 @@ export default function PlatformConnectors({
                       </button>
                       <button
                         onClick={() => goToCampaigns(p.platformId)}
-                        className={`flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 hover:scale-[1.02] cursor-pointer ${p.bg} ${p.color}`}
+                        className="flex-1 py-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-[10px] font-bold transition-colors flex items-center justify-center gap-1.5 hover:border-[var(--nc-accent-border)] hover:text-[var(--nc-accent)] cursor-pointer"
                       >
                         <i className="ph-bold ph-megaphone text-sm"></i>
                         {t.viewCampaigns}
@@ -537,24 +536,24 @@ export default function PlatformConnectors({
                 <p className="text-sm text-[var(--nc-foreground-muted)]">{t.noRec}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className="space-y-0">
                 {recommendations.map(rec => {
                   const rs = recStyle(rec.type);
                   return (
-                    <div key={rec.platformId} className={`p-4 rounded-xl border space-y-2.5 ${rs.cls.split(' ').slice(0, 2).join(' ')}`}>
-                      <div className="flex items-center gap-2">
+                    <div key={rec.platformId} className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-[var(--nc-border)] last:border-b-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${rs.cls}`}>
                           <i className={`ph-bold ${rs.icon} text-sm`}></i>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-xs font-extrabold text-[var(--nc-foreground)] leading-tight">
                             {rec.platformEmoji} {rec.platformName}
                           </p>
                           <p className="text-[9px] text-[var(--nc-foreground-muted)] leading-tight">{rec.reason}</p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${rs.cls}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)]">
                           {rec.action}
                         </span>
                         <span className="text-[9px] text-[var(--nc-foreground-muted)] font-en">{rec.metric}</span>
@@ -766,7 +765,7 @@ export default function PlatformConnectors({
             {/* Modal header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl border flex items-center justify-center text-xl ${modalPlatform.bg}`}>
+                <div className="w-10 h-10 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] flex items-center justify-center text-xl">
                   {modalPlatform.emoji}
                 </div>
                 <div>
@@ -837,7 +836,7 @@ export default function PlatformConnectors({
               </button>
               <button
                 onClick={() => { setModalPlatform(null); goToCampaigns(modalPlatform.platformId); }}
-                className={`flex-1 py-2.5 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-2 hover:scale-[1.02] cursor-pointer ${modalPlatform.bg} ${modalPlatform.color}`}
+                className="flex-1 py-2.5 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] font-bold text-xs transition-colors flex items-center justify-center gap-2 hover:border-[var(--nc-accent-border)] hover:text-[var(--nc-accent)] cursor-pointer"
               >
                 <i className="ph-bold ph-megaphone text-sm"></i>
                 {t.viewCampaigns}
