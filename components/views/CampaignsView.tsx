@@ -261,8 +261,8 @@ export default function CampaignsView({
 
   /* ── Status Badge ───────────────────────────────────────── */
   const statusBadge = (status: string) => {
-    if (status === 'نشطة') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-    if (status === 'متوقفة') return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+    if (status === 'نشطة') return 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border-[var(--nc-accent-border)]';
+    if (status === 'متوقفة') return 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]';
     return 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]';
   };
 
@@ -273,16 +273,16 @@ export default function CampaignsView({
   };
 
   const scoreLabel = (score: number) => {
-    if (score >= 80) return { label: t.excellent, cls: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
-    if (score >= 60) return { label: t.good,      cls: 'text-blue-500 bg-blue-500/10 border-blue-500/20'         };
-    if (score >= 40) return { label: t.fair,      cls: 'text-amber-500 bg-amber-500/10 border-amber-500/20'      };
-    return              { label: t.poor,     cls: 'text-rose-500 bg-rose-500/10 border-rose-500/20'         };
+    if (score >= 80) return { label: t.excellent, cls: 'text-[var(--nc-accent)] bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)]' };
+    if (score >= 60) return { label: t.good,      cls: 'text-[var(--nc-foreground)] bg-[var(--nc-surface)] border-[var(--nc-border)]'         };
+    if (score >= 40) return { label: t.fair,      cls: 'text-[var(--nc-foreground-muted)] bg-[var(--nc-surface)] border-[var(--nc-border)]'   };
+    return              { label: t.poor,     cls: 'text-[var(--nc-foreground-muted)] bg-[var(--nc-surface)] border-[var(--nc-border)]'   };
   };
 
   const recIcon = (type: RecType) => {
-    if (type === 'reduce') return { icon: 'ph-trend-down', cls: 'bg-rose-500/10 border-rose-500/20 text-rose-500'  };
-    if (type === 'scale')  return { icon: 'ph-trend-up',   cls: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' };
-    return                        { icon: 'ph-lightbulb',  cls: 'bg-amber-500/10 border-amber-500/20 text-amber-500'   };
+    if (type === 'reduce') return { icon: 'ph-trend-down', cls: 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)]' };
+    if (type === 'scale')  return { icon: 'ph-trend-up',   cls: 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent)]' };
+    return                        { icon: 'ph-lightbulb',  cls: 'bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)]' };
   };
 
   return (
@@ -395,7 +395,7 @@ export default function CampaignsView({
                     {/* Campaign Name + Platform */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <span className={`w-7 h-7 rounded-lg border text-sm flex items-center justify-center shrink-0 ${c.platformBg}`}>
+                        <span className="w-7 h-7 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] text-sm flex items-center justify-center shrink-0">
                           {c.platformEmoji}
                         </span>
                         <div>
@@ -411,23 +411,23 @@ export default function CampaignsView({
                     {/* Leads */}
                     <td className="py-3 px-3 font-black text-[var(--nc-accent)] text-center">{c.leads}</td>
                     {/* CTR */}
-                    <td className="py-3 px-3 font-bold text-blue-500 whitespace-nowrap">
+                    <td className="py-3 px-3 font-bold text-[var(--nc-foreground)] whitespace-nowrap">
                       {fmt(c.ctr)}%
                       <div className="w-12 h-1 bg-[var(--nc-border)] rounded-full mt-1">
-                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, c.ctr * 20)}%` }}></div>
+                        <div className="h-full bg-[var(--nc-accent)] rounded-full" style={{ width: `${Math.min(100, c.ctr * 20)}%` }}></div>
                       </div>
                     </td>
                     {/* CVR */}
-                    <td className="py-3 px-3 font-bold text-purple-500 whitespace-nowrap">
+                    <td className="py-3 px-3 font-bold text-[var(--nc-foreground)] whitespace-nowrap">
                       {fmt(c.cvr)}%
                       <div className="w-12 h-1 bg-[var(--nc-border)] rounded-full mt-1">
-                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(100, c.cvr * 15)}%` }}></div>
+                        <div className="h-full bg-[var(--nc-accent)] rounded-full" style={{ width: `${Math.min(100, c.cvr * 15)}%` }}></div>
                       </div>
                     </td>
                     {/* ROAS */}
-                    <td className="py-3 px-3 font-bold text-emerald-500 whitespace-nowrap">{fmt(c.roas, 1)}×</td>
+                    <td className="py-3 px-3 font-bold text-[var(--nc-foreground)] whitespace-nowrap">{fmt(c.roas, 1)}×</td>
                     {/* CPL */}
-                    <td className="py-3 px-3 font-bold text-amber-500 whitespace-nowrap">
+                    <td className="py-3 px-3 font-bold text-[var(--nc-foreground)] whitespace-nowrap">
                       {fmt(c.cpl, 0)} <span className="text-[9px] text-[var(--nc-foreground-muted)]">{t.currency}</span>
                     </td>
                     {/* Status */}
@@ -442,7 +442,7 @@ export default function CampaignsView({
                         href={c.platformUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold transition-all hover:scale-[1.05] ${c.platformBg} ${c.platformColor}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] hover:bg-[var(--nc-surface-strong)] text-[10px] font-bold transition-colors"
                         title={t.openPlatform}
                       >
                         <i className="ph-bold ph-arrow-square-out text-sm"></i>
@@ -470,7 +470,7 @@ export default function CampaignsView({
                 <div key={p.platform} className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${p.platformBg}`}>
+                      <span className="w-6 h-6 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] text-xs flex items-center justify-center">
                         {p.platformEmoji}
                       </span>
                       <span className="text-xs font-bold text-[var(--nc-foreground)]">{p.platform}</span>
@@ -482,18 +482,25 @@ export default function CampaignsView({
                   {/* Score Bar */}
                   <div className="h-1.5 bg-[var(--nc-border)] rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${p.score}%`,
-                        background: p.score >= 80 ? '#22c55e' : p.score >= 60 ? '#3b82f6' : p.score >= 40 ? '#f59e0b' : '#ef4444',
                       }}
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        p.score >= 80
+                          ? 'bg-[var(--nc-accent)]'
+                          : p.score >= 60
+                            ? 'bg-[var(--nc-foreground-muted)]'
+                            : p.score >= 40
+                              ? 'bg-amber-500/60'
+                              : 'bg-[var(--nc-border)]'
+                      }`}
                     ></div>
                   </div>
                   {/* Stats row */}
                   <div className="flex justify-between text-[9px] text-[var(--nc-foreground-muted)] font-en">
                     <span>{t.leads}: <strong className="text-[var(--nc-foreground)]">{p.leads}</strong></span>
-                    <span>CAC: <strong className="text-amber-500">{fmt(p.cac, 0)}{t.currency}</strong></span>
-                    <span>ROAS: <strong className="text-emerald-500">{fmt(p.roas, 1)}×</strong></span>
+                    <span>CAC: <strong className="text-[var(--nc-foreground)]">{fmt(p.cac, 0)}{t.currency}</strong></span>
+                    <span>ROAS: <strong className="text-[var(--nc-foreground)]">{fmt(p.roas, 1)}×</strong></span>
                   </div>
                 </div>
               );
@@ -533,7 +540,7 @@ export default function CampaignsView({
                     <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5 leading-snug">{rec.reason}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${ri.cls}`}>
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)]">
                       {rec.action}
                     </span>
                     <span className="text-[9px] text-[var(--nc-foreground-muted)] font-en">{rec.metric}</span>
