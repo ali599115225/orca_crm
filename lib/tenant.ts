@@ -41,10 +41,12 @@ export const getActiveTenant = cache(async function getActiveTenantInternal(host
   });
 
   if (!tenant) {
-    // Fallback: try ANY active tenant before throwing
-    tenant = await prisma.tenant.findFirst({
-      where: { isActive: true },
-    });
+    // Fallback for super-admin or system-level only — NOT for regular users
+    if (isSuperAdmin) {
+      tenant = await prisma.tenant.findFirst({
+        where: { isActive: true },
+      });
+    }
   }
 
   if (!tenant) {
