@@ -310,7 +310,7 @@ export default function PropertyList({
         )}
 
         {!isLoading && !fetchError && filteredProperties.length > 0 && (
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="overflow-x-auto md:max-h-[calc(100vh-360px)] md:overflow-y-auto custom-scrollbar">
             <table className="nc-table">
               <thead>
                 <tr>
