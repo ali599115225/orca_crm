@@ -48,7 +48,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "معرف العميل وعنوان المهمة مطلوبان." }, { status: 400 });
     }
 
-    // Resolve priority mapping
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, tenantId },
+    });
+    if (!lead) {
+      return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
+    }
+
     let priorityEnum: Priority = "MEDIUM";
     if (priority === "HIGH") priorityEnum = "HIGH";
     if (priority === "LOW") priorityEnum = "LOW";

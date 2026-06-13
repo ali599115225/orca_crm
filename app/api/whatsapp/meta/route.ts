@@ -39,10 +39,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const signature = request.headers.get("x-hub-signature") || "";
+    if (!WHATSAPP_WEBHOOK_SECRET) {
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    const signature = request.headers.get("x-hub-signature-256") || "";
     const queryToken = new URL(request.url).searchParams.get("token") || "";
 
-    if (WHATSAPP_WEBHOOK_SECRET && !signature.includes(WHATSAPP_WEBHOOK_SECRET) && queryToken !== WHATSAPP_WEBHOOK_SECRET && WHATSAPP_VERIFY_TOKEN && queryToken !== WHATSAPP_VERIFY_TOKEN) {
+    if (queryToken !== WHATSAPP_WEBHOOK_SECRET) {
       console.warn("[WhatsApp Meta] POST rejected: invalid auth");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

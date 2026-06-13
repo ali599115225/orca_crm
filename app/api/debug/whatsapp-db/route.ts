@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
+  }
   try {
     const prismaAny = prisma as any;
 

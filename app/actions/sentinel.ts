@@ -61,7 +61,8 @@ export async function runSystemDiagnosticsAction(): Promise<{ success: boolean; 
     if (!session) throw new Error("يجب تسجيل الدخول كمسؤول أولاً.");
 
     const isSuperAdmin = session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa";
-    if (!isSuperAdmin) throw new Error("غير مصرح لك بتشغيل وكيل المراقبة.");
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (!isSuperAdmin && !superAdminEmails.includes(String(session.email).toLowerCase())) throw new Error("غير مصرح لك بتشغيل وكيل المراقبة.");
 
     const anomalies: string[] = [];
     const recommendations: string[] = [];

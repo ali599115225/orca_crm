@@ -41,7 +41,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "معرف العميل ووقت وموقع الجولة مطلوبين." }, { status: 400 });
     }
 
-    // Default assignee to the creator if not specified
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, tenantId },
+    });
+    if (!lead) {
+      return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
+    }
+
     const agentId = assignedTo || userId || (await prisma.user.findFirst({ where: { tenantId } }))?.id || "";
 
     const tour = await prisma.tour.create({

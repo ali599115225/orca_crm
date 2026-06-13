@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
+  }
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
   const businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "";
@@ -11,9 +14,7 @@ export async function GET() {
     hasAccessToken: !!accessToken,
     hasPhoneNumberId: !!phoneNumberId,
     hasBusinessAccountId: !!businessAccountId,
-    tokenPreview: accessToken ? accessToken.substring(0, 8) + "..." : "MISSING",
     phoneNumberId,
-    businessAccountId,
   };
 
   if (accessToken && phoneNumberId) {

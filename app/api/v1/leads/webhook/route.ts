@@ -2,9 +2,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = await rateLimit("leads:webhook", 20, 60000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+    }
+
     // 🛡️ التحقق من رمز الويب هوك الخاص بالمستأجر (الـ API Key أو التوكن)
     // نعتمد على التحقق من وجود التوكن الممرر في الهيدر X-Webhook-Token أو كمعامل استعلام
     const webhookToken = 

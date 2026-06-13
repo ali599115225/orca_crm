@@ -53,8 +53,7 @@ export async function loginAction(formData: FormData) {
     }
 
     const host = formData.get("clientHost") as string || "orca.az-ez.pro";
-    const proto = formData.get("clientProto") as string || "https";
-    const isSecureConnection = proto === "https";
+    const isSecureConnection = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production" || (formData.get("clientProto") as string || "https") === "https";
 
     const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
     const isSuperAdmin = superAdminEmails.includes(user.email.toLowerCase());

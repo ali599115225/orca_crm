@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 
-const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || "test_secret_key_placeholder";
+const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || "";
 const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || "https://restpilot.paylink.sa";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://orca.az-ez.pro";
 

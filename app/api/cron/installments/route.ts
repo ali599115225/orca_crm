@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runInstallmentAgentAction } from "@/app/actions/sanadAgent";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -13,6 +14,11 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await rateLimit("cron:installments", 1, 300000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
 
   try {

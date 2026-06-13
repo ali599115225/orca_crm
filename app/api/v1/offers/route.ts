@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "الفرصة المرتبطة وسعر العرض وتاريخ الصلاحية مطلوبين." }, { status: 400 });
     }
 
+    const linkedOpp = await prisma.opportunity.findFirst({
+      where: { id: linkedOpportunityId, tenantId },
+    });
+    if (!linkedOpp) {
+      return NextResponse.json({ error: "الفرصة المرتبطة غير موجودة أو لا تتبع منشأتك." }, { status: 403 });
+    }
+
     const offer = await prisma.offer.create({
       data: {
         tenantId,

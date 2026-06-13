@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "الاسم ورقم الهاتف مطلوبان." }, { status: 400 });
     }
 
+    if (leadId) {
+      const lead = await prisma.lead.findFirst({
+        where: { id: leadId, tenantId },
+      });
+      if (!lead) {
+        return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
+      }
+    }
+
     const contact = await prisma.contact.create({
       data: {
         tenantId,

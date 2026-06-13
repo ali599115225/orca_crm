@@ -1,9 +1,9 @@
 ﻿import crypto from 'crypto';
 
 function getEncryptionKey(): string {
-  const key = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
+  const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    throw new Error("ENCRYPTION_KEY environment variable is required.");
+    throw new Error("ENCRYPTION_KEY environment variable is required for data encryption.");
   }
   return key;
 }

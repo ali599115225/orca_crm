@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "معرف العميل وقيمة الصفقة مطلوبان." }, { status: 400 });
     }
 
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, tenantId },
+    });
+    if (!lead) {
+      return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
+    }
+
     const opp = await prisma.opportunity.create({
       data: {
         tenantId,

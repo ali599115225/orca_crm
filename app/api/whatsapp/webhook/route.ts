@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
 import { logWhatsAppActivity, classifyWhatsAppLead } from "@/app/actions/whatsapp-crm";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
+import { rateLimit } from "@/lib/rate-limit";
 
 // ─── إعدادات Green API ───────────────────────────────────────────────────────
 const GREEN_API_ID_INSTANCE =
@@ -77,6 +78,12 @@ export async function GET(request: NextRequest) {
 // ═══════════════════════════════════════════════════════════════════
 export async function POST(request: NextRequest) {
   ensureWebhookSecret();
+
+  const rl = await rateLimit("whatsapp:webhook", 30, 60000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+  }
+
   try {
     const signature = request.headers.get("x-greenapi-signature") || request.headers.get("x-hub-signature") || "";
     const authHeader = request.headers.get("authorization") || "";

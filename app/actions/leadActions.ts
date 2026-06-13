@@ -62,6 +62,9 @@ interface AIInsightLead {
 
 export async function generateAIInsight(lead: AIInsightLead) {
   try {
+    const session = await getSession();
+    if (!session) return { insight: "يجب تسجيل الدخول", message: "غير مصرح." };
+
     if (!process.env.GEMINI_API_KEY) {
       return { insight: "مفتاح API غير متوفر في ملف .env", message: "لا يوجد اتصال." };
     }

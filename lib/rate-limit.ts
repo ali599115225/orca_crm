@@ -44,7 +44,7 @@ export async function rateLimit(
       });
       return { allowed: true, remaining: limit - existing.count - 1, resetIn: existing.resetAt.getTime() - now };
     } catch {
-      return { allowed: true, remaining: limit - 1, resetIn: windowMs };
+      return { allowed: false, remaining: 0, resetIn: windowMs };
     }
   }
 

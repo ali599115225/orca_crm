@@ -6,9 +6,10 @@ import { submitReporting, submitClearance } from '@/lib/zatca/api';
 import { rateLimit } from '@/lib/rate-limit';
 import { writeAuditLog } from '@/lib/audit';
 
-const CRON_SECRET = process.env.CRON_SECRET || '';
+const CRON_SECRET = process.env.CRON_SECRET;
 
 function authorizeRequest(request: NextRequest): boolean {
+  if (!CRON_SECRET) return false;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.substring(7);
@@ -16,6 +17,9 @@ function authorizeRequest(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
   if (!authorizeRequest(request)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }

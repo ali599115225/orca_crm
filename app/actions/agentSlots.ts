@@ -134,11 +134,14 @@ export async function deactivateAgentSlotAction(slotId: string) {
 /**
  * جلب الوكيل التالي بطريقة Round-Robin (طبقة TypeScript)
  */
-export async function getNextAvailableAgentAction(tenantId: string) {
+export async function getNextAvailableAgentAction() {
   try {
-    // استدعاء الـ SQL Function مباشرةً
+    const session = await getSession();
+    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
+    const tenant = await getActiveTenant();
+
     const result = await prisma.$queryRaw<Array<{ get_next_available_agent: string }>>`
-      SELECT get_next_available_agent(${tenantId}::uuid) as get_next_available_agent
+      SELECT get_next_available_agent(${tenant.id}::uuid) as get_next_available_agent
     `;
 
     const agentId = result[0]?.get_next_available_agent ?? null;

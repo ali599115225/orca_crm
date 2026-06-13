@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 let healingAttempts = 0;
 const MAX_HEALING_ATTEMPTS = 3;
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await rateLimit("cron:sentinel", 1, 300000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
 
   const report = {

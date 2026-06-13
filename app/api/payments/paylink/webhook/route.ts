@@ -4,12 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { postJournalEntry, findAccountByCode } from "@/lib/accounting";
+import { rateLimit } from "@/lib/rate-limit";
 
 const PAYLINK_WEBHOOK_SECRET = process.env.PAYLINK_WEBHOOK_SECRET || "";
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Security: Authorization: Bearer check ──
+    const rl = await rateLimit("paylink:webhook", 30, 60000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+    }
+
     const authHeader = request.headers.get("authorization") || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 

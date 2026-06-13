@@ -1,6 +1,11 @@
 'use server';
 
+import { getSession } from "@/lib/session";
+
 export async function analyzeLeadAI(lead: any) {
+  const session = await getSession();
+  if (!session) return { recommendation: "غير مصرح", actionText: "", priority: "medium", confidence: 0 };
+
   try {
     await new Promise(resolve => setTimeout(resolve, 1500));
 
