@@ -102,12 +102,12 @@ export default function DashboardView({
           title={`${t('dash.welcome')} ${tenant?.companyName || 'ORCA'}`}
           description={t('dash.welcomeDesc')}
         >
-          <SmartCard elevation="default" className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center">
+          <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
              <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-0.5 whitespace-nowrap">{t('dash.todayDate')}</p>
              <p className="text-[var(--nc-accent)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
                 {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
              </p>
-          </SmartCard>
+          </div>
         </PageHeader>
       )}
 
@@ -206,7 +206,7 @@ export default function DashboardView({
       {/* ═══════════════════════════════════════
           D. OPERATING SECTION — Pipeline + Tasks
           ═══════════════════════════════════════ */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
 
         {/* Pipeline Snapshot — 2/3 width */}
         {matchesSearch(t('pipeline.title'), t('pipeline.inquiry'), t('pipeline.tour'), t('pipeline.offer'), t('pipeline.close')) && (
@@ -274,7 +274,7 @@ export default function DashboardView({
                 );
               })}
               {todayTasks.length === 0 && (
-                <div className="text-center py-10">
+                <div className="text-center py-4">
                   <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
                     <i className="ph-bold ph-check-circle text-green-400 text-lg"></i>
                   </div>
