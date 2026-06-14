@@ -241,6 +241,7 @@ export default function PropertyList({
       />
       <select 
         value={statusFilter}
+        aria-label="تصفية حسب الحالة"
         onChange={(e) => setStatusFilter(e.target.value)}
         className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
       >
@@ -251,6 +252,7 @@ export default function PropertyList({
       </select>
       <select 
         value={projectFilter}
+        aria-label="تصفية حسب المشروع"
         onChange={(e) => setProjectFilter(e.target.value)}
         className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
       >

@@ -815,6 +815,7 @@ export default function RentalPage() {
                   </div>
                   <select
                     value={leaseStatusFilter}
+                    aria-label="تصفية حالة العقد"
                     onChange={(e) => setLeaseStatusFilter(e.target.value)}
                     className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none"
                   >
@@ -1233,6 +1234,7 @@ export default function RentalPage() {
                   </div>
                   <select
                     value={invoiceStatusFilter}
+                    aria-label="تصفية حالة الفاتورة"
                     onChange={(e) => setInvoiceStatusFilter(e.target.value)}
                     className="bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
                   >

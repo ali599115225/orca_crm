@@ -77,6 +77,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">{isRTL ? 'ربط بعميل (اختياري)' : 'Link to Lead (optional)'}</label>
               <select value={leadId} onChange={e => { setLeadId(e.target.value); const l = leads.find(ll => ll.id === e.target.value); if (l?.email) setTo(l.email); }}
+                aria-label={isRTL ? 'اختيار العميل' : 'Select lead'}
                 className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg px-3 py-2 text-[var(--nc-foreground)]">
                 <option value="">{isRTL ? '-- اختر عميلاً --' : '-- Select lead --'}</option>
                 {leads.map(l => (<option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}{l.email ? ` (${l.email})` : ""}</option>))}
@@ -85,12 +86,14 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
             <div className="flex flex-col gap-1">
               <label className="text-[var(--nc-text-dim)] font-medium">{isRTL ? 'إلى *' : 'To *'}</label>
               <input type="email" value={to} onChange={e => setTo(e.target.value)} required dir="ltr"
+                aria-label={isRTL ? 'البريد الإلكتروني للمستلم' : 'Recipient email'}
                 className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg px-3 py-2 text-[var(--nc-foreground)]" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[var(--nc-text-dim)] font-medium">{isRTL ? 'الموضوع *' : 'Subject *'}</label>
             <input type="text" value={subject} onChange={e => setSubject(e.target.value)} required
+              aria-label={isRTL ? 'موضوع البريد' : 'Email subject'}
               className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg px-3 py-2 text-[var(--nc-foreground)]" />
           </div>
           <div className="flex flex-col gap-1">

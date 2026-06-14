@@ -147,11 +147,11 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
       <DragDropContext onDragEnd={onDragEnd}>
         {/* Filter Bar — Source + Agent dropdowns only (chips are in LeadsTabs) */}
         <div className="lv2-actionbar">
-          <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="lv2-filter">
+          <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="lv2-filter" aria-label="تصفية حسب المصدر">
             <option value="">{t("leads.filterSource")}</option>
             {MOCK_SRC.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)} className="lv2-filter">
+          <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)} className="lv2-filter" aria-label="تصفية حسب المالك">
             <option value="">{t("leads.filterOwner")}</option>
             {["رائد", "فواز", "عبدالرحمن", "سعود", "عمر", "بدر"].map(a => <option key={a} value={a}>{a}</option>)}
           </select>

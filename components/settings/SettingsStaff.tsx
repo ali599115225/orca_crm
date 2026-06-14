@@ -285,6 +285,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                     type="text"
                     name="name"
                     required
+                    aria-label={t.staffName}
                     className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
@@ -295,6 +296,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                     type="email"
                     name="email"
                     required
+                    aria-label={t.staffEmail}
                     className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
@@ -304,6 +306,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                   <select
                     name="role"
                     required
+                    aria-label={t.staffRole}
                     className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)]"
                   >
                     <option value="SALES_EMPLOYEE">{t.roleEmployee}</option>
@@ -321,6 +324,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                     name="password"
                     required
                     placeholder="••••••••"
+                    aria-label={t.staffPassword}
                     className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)]"
                   />
                 </div>
@@ -351,6 +355,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                     name="name"
                     required
                     defaultValue={editingUser.name}
+                    aria-label={t.editStaffName}
                     className="w-full rounded-lg bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-foreground)] focus:outline-none"
                   />
                 </div>
@@ -360,6 +365,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                     name="role"
                     required
                     defaultValue={editingUser.role}
+                    aria-label={t.editStaffRole}
                     className="w-full rounded-lg bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-foreground)] focus:outline-none"
                   >
                     <option value="SALES_EMPLOYEE">{t.roleEmployee}</option>
