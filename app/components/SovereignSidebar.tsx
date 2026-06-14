@@ -113,7 +113,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
   const isRTL = lang === 'AR';
   return (
     <div className="border-t border-[var(--nc-glassy-border)] pt-2 mt-2">
-      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-accent)]/70 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-accent)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
         {isRTL ? 'مالك المنصة' : 'Platform Owner'}
       </div>
       <ul className="space-y-0.5">
@@ -143,7 +143,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {menuData.map((section, sIdx) => (
         <div key={sIdx} className="mb-1">
-          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-foreground-muted)]/60 uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-text-disabled)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
             {t(section.titleKey)}
           </div>
           <ul className="space-y-0.5">

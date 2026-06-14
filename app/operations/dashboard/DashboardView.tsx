@@ -104,7 +104,7 @@ export default function DashboardView({
         >
           <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
              <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-0.5 whitespace-nowrap">{t('dash.todayDate')}</p>
-             <p className="text-[var(--nc-accent)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
+              <p className="text-[var(--nc-accent-text)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
                 {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
              </p>
           </div>
