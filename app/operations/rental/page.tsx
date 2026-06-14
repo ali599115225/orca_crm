@@ -606,7 +606,7 @@ export default function RentalPage() {
             <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">المستحقات المفوترة</p>
             <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">{totalReceivables.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
+          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent-text)]">
             <FileText size={18} />
           </div>
         </div>
@@ -1502,7 +1502,7 @@ export default function RentalPage() {
         title="نظام العقود والمدفوعات والتسويات"
         description="إدارة عقود الإيجار، الفواتير، تحصيل المدفوعات والتسوية المالية مع خدمة المحاسبة."
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent)] text-xs font-semibold">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent-text)] text-xs font-semibold">
           <i className="ph-bold ph-file-text"></i>
           {isLoading ? 'جاري التحميل...' : `${leases.length} عقد نشط`}
         </div>
