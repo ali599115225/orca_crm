@@ -97,13 +97,13 @@
   --nc-glass-blur: 16px;
   --nc-text-primary: #1e293b;
   --nc-text-secondary: #475569;
-  --nc-text-dim: #94a3b8;
+  --nc-text-dim: #617080;
   /* ── Identity Accent (Gold) ─── */
   --nc-accent: #B8892E;
   --nc-accent-hover: #9A6F1F;
   --nc-accent-soft: rgba(184, 137, 46, 0.12);
   --nc-accent-border: rgba(184, 137, 46, 0.2);
-  --nc-accent-text: #B8892E;
+  --nc-accent-text: #8a6a1a;
   /* ── Operational Blue ─── */
   --nc-op-blue: #0284C7;
   --nc-op-blue-hover: #0369A1;
@@ -120,7 +120,8 @@
   /* ── Semantic Aliases ─── */
   --nc-border: rgba(30, 41, 59, 0.1);
   --nc-foreground: #1e293b;
-  --nc-foreground-muted: #64748b;
+  --nc-foreground-muted: #546374;
+  --nc-text-disabled: #6b7280;
 }
 
 .dark {
@@ -148,9 +149,9 @@
   --nc-op-blue-soft: rgba(56, 189, 248, 0.14);
   --nc-op-blue-border: rgba(56, 189, 248, 0.2);
   /* ── AI Purple ─── */
-  --nc-ai: #8B5CF6;
-  --nc-ai-soft: rgba(139, 92, 246, 0.14);
-  --nc-ai-border: rgba(139, 92, 246, 0.2);
+  --nc-ai: #a78bfa;
+  --nc-ai-soft: rgba(167, 139, 250, 0.14);
+  --nc-ai-border: rgba(167, 139, 250, 0.2);
   --nc-glow: 0 0 16px rgba(201, 169, 110, 0.12);
   --nc-glow-strong: 0 0 24px rgba(201, 169, 110, 0.22);
   --nc-gradient-hud: linear-gradient(135deg, #38BDF8, #0EA5E9);
@@ -159,6 +160,7 @@
   --nc-border: rgba(148, 163, 184, 0.1);
   --nc-foreground: #f1f5f9;
   --nc-foreground-muted: #94a3b8;
+  --nc-text-disabled: #7c8ba0;
 }
 
 /* ════════════════════════════════════════════════════════════

@@ -725,14 +725,14 @@ export default function RentalPage() {
           <p className="text-[var(--nc-text-dim)] font-bold text-[10px] uppercase tracking-wider">إجراءات ذكية</p>
               <button
                 disabled
-                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed min-h-[44px]"
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-text-disabled)] border border-[var(--nc-glass-border)] rounded-lg cursor-not-allowed min-h-[44px]"
                 title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
               >
                 {isRTL ? "إرسال تنبيهات سداد (قيد الربط)" : "Send Payment Reminders (pending)"}
               </button>
               <button
                 disabled
-                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed min-h-[44px]"
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-text-disabled)] border border-[var(--nc-glass-border)] rounded-lg cursor-not-allowed min-h-[44px]"
                 title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
               >
                 {isRTL ? "تشغيل مصالحة بنكية (قيد الربط)" : "Run Bank Reconciliation (pending)"}
@@ -920,7 +920,7 @@ export default function RentalPage() {
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
                           <button
                             disabled
-                            className="px-3 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] text-[11px] font-black rounded-lg opacity-60 cursor-not-allowed"
+                            className="px-3 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-text-disabled)] text-[11px] font-black rounded-lg cursor-not-allowed"
                             title={isRTL ? "محاكاة غير إنتاجية — قيد التطوير" : "Non-production simulation — under development"}
                           >
                             {isRTL ? 'طلب تسوية المالك (محاكاة)' : 'Request Payout (Simulation)'}
