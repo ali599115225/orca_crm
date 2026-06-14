@@ -826,7 +826,7 @@ export default function RentalPage() {
                   </select>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" tabIndex={0} aria-label="جدول العقود قابل للتمرير أفقيًا">
                   <table className="nc-table text-xs">
                     <thead>
                       <tr>

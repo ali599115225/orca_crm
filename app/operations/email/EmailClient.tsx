@@ -111,7 +111,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
 
       <SmartCard elevation="default" className="p-5">
         <h3 className="text-sm font-bold text-[var(--nc-foreground)] mb-4">{isRTL ? `آخر الرسائل (${messages.length})` : `Recent Messages (${messages.length})`}</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} aria-label="جدول البريد قابل للتمرير أفقيًا">
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
