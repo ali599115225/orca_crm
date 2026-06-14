@@ -1502,7 +1502,7 @@ export default function RentalPage() {
         title="نظام العقود والمدفوعات والتسويات"
         description="إدارة عقود الإيجار، الفواتير، تحصيل المدفوعات والتسوية المالية مع خدمة المحاسبة."
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent-text)] text-xs font-semibold">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-foreground)] text-xs font-semibold">
           <i className="ph-bold ph-file-text"></i>
           {isLoading ? 'جاري التحميل...' : `${leases.length} عقد نشط`}
         </div>
