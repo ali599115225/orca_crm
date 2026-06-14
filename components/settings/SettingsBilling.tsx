@@ -288,7 +288,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
           </div>
           <div className="space-y-1">
             <span className="text-[var(--nc-foreground-muted)] text-xs font-semibold">{t.subdomainLabel}:</span>
-            <p className="font-bold text-indigo-500 text-base font-en">{tenant.subdomain}.orca.az-ez.pro</p>
+            <p className="font-bold text-[var(--nc-ai)] text-base font-en">{tenant.subdomain}.orca.az-ez.pro</p>
           </div>
         </div>
       </SmartCard>

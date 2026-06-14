@@ -60,7 +60,7 @@ function HeaderBreadcrumbs() {
     <div className="hidden sm:flex items-center text-sm font-medium text-[var(--nc-foreground-muted)]" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
       <span className="hover:text-[var(--nc-foreground)] cursor-pointer transition-colors">{t('header.operations')}</span>
       <ChevronIcon size={16} className="mx-1 opacity-40" />
-      <span className="text-[var(--nc-accent)] font-bold">{t(activeKey)}</span>
+      <span className="text-[var(--nc-accent-text)] font-bold">{t(activeKey)}</span>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
           <div className={`absolute inset-y-0 flex items-center pointer-events-none ${isRTL ? 'right-0 pr-3' : 'left-0 pl-3'}`}>
             <Search
               size={16}
-              className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent)] transition-colors"
+              className="text-[var(--nc-foreground-muted)] group-focus-within:text-[var(--nc-accent-text)] transition-colors"
             />
           </div>
           <label htmlFor="global-search" className="sr-only">{t('header.searchLabel')}</label>
@@ -188,7 +188,7 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
             <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayName}</p>
             <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayCompany}</p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent)] shadow-sm transition-colors cursor-pointer">
+          <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent-text)] shadow-sm transition-colors cursor-pointer">
             {initials}
           </div>
         </div>
