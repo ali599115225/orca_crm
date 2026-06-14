@@ -200,7 +200,7 @@ export default function ProjectsOverview({
                   }
                   setActiveModal('new_project');
                 }}
-                className="whitespace-nowrap py-2 text-xs font-bold flex items-center gap-2"
+                className="whitespace-nowrap py-2 text-xs font-bold flex items-center gap-2 min-h-[44px]"
               >
                 <Plus size={16} />
                 مشروع عقاري جديد
@@ -214,7 +214,7 @@ export default function ProjectsOverview({
                   }
                   setActiveModal('new_phase');
                 }}
-                className="whitespace-nowrap py-2 text-xs font-bold flex items-center gap-2"
+                className="whitespace-nowrap py-2 text-xs font-bold flex items-center gap-2 min-h-[44px]"
               >
                 <Calendar size={16} />
                 إضافة مرحلة
@@ -234,7 +234,7 @@ export default function ProjectsOverview({
               </div>
               <button
                 disabled={true}
-                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-[11px] font-bold rounded-lg cursor-not-allowed shrink-0"
+                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-[11px] font-bold rounded-lg cursor-not-allowed shrink-0 min-h-[44px] flex items-center"
               >
                 <DollarSign size={14} className="inline ml-1" />
                 محاكاة webhook (قيد التطوير)

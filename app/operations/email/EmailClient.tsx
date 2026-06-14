@@ -99,7 +99,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
               className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg p-3 text-[var(--nc-foreground)] font-mono" />
           </div>
           <button type="submit" disabled={isSending || !to || !subject}
-            className="nc-btn nc-btn-primary text-xs cursor-pointer">
+            className="nc-btn nc-btn-primary text-xs cursor-pointer min-h-[44px]">
             {isSending ? (isRTL ? 'جاري الإرسال...' : 'Sending...') : (isRTL ? 'إرسال البريد' : 'Send Email')}
           </button>
         </form>

@@ -266,7 +266,7 @@ export default function PropertyList({
           }
           setActiveModal('new_unit');
         }}
-        className="py-2 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
+        className="py-2 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 min-h-[44px]"
       >
         <Plus size={14} />
         {isArabic ? 'إضافة وحدة' : 'Add Unit'}

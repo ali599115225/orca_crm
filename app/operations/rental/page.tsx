@@ -667,7 +667,7 @@ export default function RentalPage() {
               if (!isAllowed("CREATE_LEASE")) { alert("عذراً، لا تملك الصلاحية لإضافة عقد جديد."); return; }
               setActiveModal("new_lease");
             }}
-            className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2"
+            className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2 min-h-[44px]"
           >
             <Plus size={16} />
             عقد إيجار جديد
@@ -677,7 +677,7 @@ export default function RentalPage() {
               if (!isAllowed("CREATE_INVOICE")) { alert("عذراً، لا تملك الصلاحية لإصدار فواتير."); return; }
               setActiveModal("new_invoice");
             }}
-            className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1"
+            className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 min-h-[44px]"
           >
             <Plus size={13} />
              {isRTL ? 'إصدار فاتورة (تسجيل يدوي)' : 'إصدار فاتورة (تسجيل يدوي)'}
@@ -725,14 +725,14 @@ export default function RentalPage() {
           <p className="text-[var(--nc-text-dim)] font-bold text-[10px] uppercase tracking-wider">إجراءات ذكية</p>
               <button
                 disabled
-                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed"
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed min-h-[44px]"
                 title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
               >
                 {isRTL ? "إرسال تنبيهات سداد (قيد الربط)" : "Send Payment Reminders (pending)"}
               </button>
               <button
                 disabled
-                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed"
+                className="w-full py-1.5 text-[10px] font-bold text-[var(--nc-foreground-muted)] border border-[var(--nc-glass-border)] rounded-lg opacity-60 cursor-not-allowed min-h-[44px]"
                 title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
               >
                 {isRTL ? "تشغيل مصالحة بنكية (قيد الربط)" : "Run Bank Reconciliation (pending)"}
