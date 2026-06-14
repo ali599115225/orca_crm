@@ -706,7 +706,7 @@ export default function RentalPage() {
         {expiredLeasesCount > 0 && (
           <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
             <Clock size={14} className="text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-amber-300">{expiredLeasesCount} عقود إيجارية منتهية تحتاج تجديد</p>
+            <p className="text-[var(--nc-text-secondary)]">{expiredLeasesCount} عقود إيجارية منتهية تحتاج تجديد</p>
           </div>
         )}
         {pendingSettlementsCount > 0 && (
