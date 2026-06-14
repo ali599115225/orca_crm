@@ -129,7 +129,7 @@ export default function DashboardView({
           <SmartCard elevation="elevated" className="p-4">
             <div className="flex items-start justify-between mb-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.dailyTours')}</p>
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0"><i className="ph-fill ph-calendar-check text-base"></i></div>
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0"><i className="ph-fill ph-calendar-check text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(dailyToursCount)}</h3>
             <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.dailyTours.desc')}</p>
@@ -149,7 +149,7 @@ export default function DashboardView({
           <SmartCard elevation="elevated" className="p-4">
             <div className="flex items-start justify-between mb-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.closedContracts')}</p>
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0"><i className="ph-fill ph-file-lock text-base"></i></div>
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0"><i className="ph-fill ph-file-lock text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(closedContractsCount)}</h3>
             <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.closedContracts.desc')}</p>
@@ -164,7 +164,7 @@ export default function DashboardView({
             <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappConvos')}</span>
-                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
+                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.conversationsCount)}</h3>
             </SmartCard>
@@ -173,7 +173,7 @@ export default function DashboardView({
             <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappNewLeads')}</span>
-                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
+                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.newLeadsCount)}</h3>
             </SmartCard>
@@ -249,7 +249,7 @@ export default function DashboardView({
             <div className="flex items-center justify-between mb-4">
               <h4 className="nc-heading-3">{t("tasks.title")}</h4>
               {todayTasks.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20">{formatNum(todayTasks.length)}</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-500 border border-amber-500/20">{formatNum(todayTasks.length)}</span>
               )}
             </div>
             <div className="space-y-2 max-h-[340px] overflow-y-auto custom-scrollbar">
@@ -331,11 +331,11 @@ export default function DashboardView({
         <SmartCard elevation="subtle" className="p-5 border-dashed border-purple-500/20">
           {/* Preview badge header */}
           <div className="flex items-center gap-2 mb-5 px-4 py-2.5 rounded-lg bg-purple-500/5 border border-purple-500/10">
-            <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center text-purple-400 flex-shrink-0">
+            <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center text-purple-700 dark:text-purple-400 flex-shrink-0">
               <i className="ph-fill ph-eye text-xs"></i>
             </div>
             <div>
-              <p className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">{t('dash.previewLabel')}</p>
+              <p className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider">{t('dash.previewLabel')}</p>
               <p className="text-[9px] text-[var(--nc-text-dim)]">{t('dash.previewDesc')}</p>
             </div>
           </div>
