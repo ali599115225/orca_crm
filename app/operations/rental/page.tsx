@@ -1033,7 +1033,7 @@ export default function RentalPage() {
                                           setPayDate(new Date().toISOString().split('T')[0]);
                                           setActiveModal('register_payment');
                                         }}
-                                        className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
+                                        className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[var(--nc-op-blue)] rounded text-[10px] font-bold transition-all"
                                       >
                                         {isRTL ? 'تسجيل دفعة يدوية' : 'تسجيل دفعة يدوية'}
                                       </button>

@@ -381,7 +381,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
           <div className={`bg-[#0f172a] border rounded-2xl p-6 flex flex-col justify-between gap-6 relative shadow-lg ${
             plan === 'gold' ? 'border-[var(--nc-accent-border)] ring-1 ring-[var(--nc-accent-border)]' : 'border-[var(--nc-border)]'
           }`}>
-            <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-[var(--nc-accent)] text-[var(--nc-foreground)] text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider">POPULAR</div>
+            <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-[var(--nc-accent)] text-[#1e293b] text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider">POPULAR</div>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h4 className="text-[var(--nc-foreground)] font-bold text-base">{t.planGold}</h4>

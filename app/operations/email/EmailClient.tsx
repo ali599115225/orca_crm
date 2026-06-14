@@ -130,7 +130,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
                   <td className="py-2.5 px-2 text-[var(--nc-foreground)]">{m.to}</td>
                   <td className="py-2.5 px-2 text-[var(--nc-text-dim)] max-w-[200px] truncate">{m.subject}</td>
                   <td className="py-2.5 px-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400' : m.status === 'FAILED' ? 'bg-rose-500/10 text-rose-400' : m.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400' : m.status === 'FAILED' ? 'bg-rose-500/10 text-rose-400' : m.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-[var(--nc-surface-soft)] text-[var(--nc-text-disabled)]'}`}>
                       {t(getStatusKey(m.status))}
                     </span>
                   </td>
