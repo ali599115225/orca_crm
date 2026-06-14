@@ -121,7 +121,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/admin/command-center"
             onClick={() => onNavigate?.()}
-            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 text-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
+            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px] text-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
           >
             <Shield size={17} className="shrink-0" />
             <span className="leading-tight flex-1 md:hidden lg:inline">{isRTL ? 'مركز القيادة' : 'Command Center'}</span>
@@ -162,7 +162,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     title={item.tooltipKey ? t(item.tooltipKey) : undefined}
                     onClick={() => onNavigate?.()}
                     className={[
-                      "flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4",
+                      "flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px]",
                       isRTL ? "justify-start" : "justify-start",
                       isActive
                         ? "nav-item-active font-bold shadow-sm"

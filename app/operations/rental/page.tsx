@@ -661,7 +661,7 @@ export default function RentalPage() {
         <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">إضافة عقود وفواتير جديدة</p>
       </div>
       <div className="space-y-3 flex-grow pt-2">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Button
             onClick={() => {
               if (!isAllowed("CREATE_LEASE")) { alert("عذراً، لا تملك الصلاحية لإضافة عقد جديد."); return; }
