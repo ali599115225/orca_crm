@@ -758,7 +758,7 @@ export default function RentalPage() {
             onClick={() => startTransition(() => setActivePane(t.id as any))}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activePane === t.id
-                ? 'bg-[var(--nc-accent)] text-white shadow-sm'
+                ? 'bg-[var(--nc-accent)] text-[#1e293b] shadow-sm'
                 : 'bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] hover:border-[var(--nc-accent-border)]'
             }`}
           >
@@ -951,7 +951,7 @@ export default function RentalPage() {
                           onClick={() => setDetailActiveTab(tab.id)}
                           className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                             detailActiveTab === tab.id 
-                              ? 'bg-[#8EB1D1] text-white shadow-sm' 
+                              ? 'bg-[#8EB1D1] text-[#1e293b] shadow-sm' 
                               : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:text-white'
                           }`}
                         >
