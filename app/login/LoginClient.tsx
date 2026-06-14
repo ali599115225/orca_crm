@@ -157,13 +157,13 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
         <div className="flex items-center gap-3">
           <span className="font-bold tracking-widest text-lg">ORCA</span>
           <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
-          <span className={`border text-xs px-2 py-1 rounded transition-colors ${isDarkMode ? 'border-slate-700 text-[var(--nc-foreground)] font-medium bg-white/5' : 'border-slate-300 text-[var(--nc-foreground)] font-medium bg-white/50'}`}>Secure Edition</span>
+          <span className={`border text-xs px-2 py-1 rounded transition-colors ${isDarkMode ? 'border-slate-700 text-slate-300 font-medium bg-white/5' : 'border-slate-300 text-slate-800 font-medium bg-white/50'}`}>Secure Edition</span>
         </div>
         <div className="flex items-center gap-4 text-sm">
           {/* Language Selector Button */}
           <button 
             onClick={() => setLang(prev => prev === 'AR' ? 'EN' : 'AR')}
-            className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors focus:outline-none text-[var(--nc-foreground)] hover:text-[var(--nc-accent-text)]`}
+            className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors focus:outline-none ${isDarkMode ? 'text-slate-300 font-medium hover:text-white' : 'text-slate-800 font-medium hover:text-slate-900'}`}
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-2" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="10" />
@@ -176,7 +176,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
           <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
 
           <div className="flex items-center gap-2">
-            <span className={isDarkMode ? 'text-[var(--nc-foreground)] font-medium' : 'text-[var(--nc-foreground)] font-medium'}>
+            <span className={isDarkMode ? 'text-slate-300 font-medium' : 'text-slate-800 font-medium'}>
               {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
             </span>
             <button onClick={() => setIsDarkMode(!isDarkMode)} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
@@ -257,7 +257,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               <h1 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 {lang === 'AR' ? 'تسجيل الدخول' : 'Sign In'}
               </h1>
-              <p className="text-sm text-[var(--nc-foreground)] dark:text-[var(--nc-foreground)] font-medium">
+              <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
                 {lang === 'AR' ? (
                   <>أهلاً بك في البوابة الإلكترونية لمنشأة <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{tenantName}</span>.</>
                 ) : (
@@ -274,26 +274,26 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               )}
 
               <div className="space-y-1.5 text-right">
-                <label htmlFor="email" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-[var(--nc-foreground)]'}`}>
+                <label htmlFor="email" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                   {lang === 'AR' ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <input id="email" type="email" name="email" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="example@domain.com" required />
               </div>
 
               <div className="space-y-1.5 text-right">
-                <label htmlFor="password" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-[var(--nc-foreground)]'}`}>
+                <label htmlFor="password" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                   {lang === 'AR' ? 'كلمة المرور' : 'Password'}
                 </label>
                 <input id="password" type="password" name="password" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="••••••••" required />
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <a href="#" className={`text-sm font-semibold hover:underline ${isDarkMode ? 'text-[var(--nc-foreground)] hover:text-white' : 'text-[var(--nc-foreground)] hover:text-slate-900'}`}>
+                <a href="#" className={`text-sm font-semibold hover:underline ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-800 hover:text-slate-900'}`}>
                   {lang === 'AR' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
                 </a>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id="remember-me" defaultChecked className="custom-checkbox" aria-label={lang === 'AR' ? 'تذكرني' : 'Remember Me'} />
-                  <label htmlFor="remember-me" className={`text-sm cursor-pointer ${isDarkMode ? 'text-[var(--nc-foreground)] font-medium' : 'text-[var(--nc-foreground)] font-medium'}`}>
+                  <label htmlFor="remember-me" className={`text-sm cursor-pointer ${isDarkMode ? 'text-slate-300 font-medium' : 'text-slate-800 font-medium'}`}>
                     {lang === 'AR' ? 'تذكرني' : 'Remember Me'}
                   </label>
                 </div>
@@ -311,15 +311,15 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
       {/* Footer المحدّث بروابط Next.js الديناميكية */}
       <footer className="w-full p-6 text-center text-xs md:text-sm text-[var(--nc-text-dim)] font-medium flex items-center justify-center gap-4 z-10 relative">
-        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-[var(--nc-foreground)]'}`}>
+        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-800'}`}>
           {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
         </Link>
         <span>|</span>
-        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-[var(--nc-foreground)]'}`}>
+        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-800'}`}>
           {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
         </Link>
         <span>|</span>
-        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-[var(--nc-foreground)]'}`}>
+        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-[var(--nc-text-dim)] font-medium' : 'hover:text-slate-800'}`}>
           {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
         </Link>
       </footer>
