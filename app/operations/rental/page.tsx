@@ -616,7 +616,7 @@ export default function RentalPage() {
         <div className="flex items-start mb-3">
           <div className="flex-1">
             <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">متأخرات السداد</p>
-            <h3 className="nc-metric-lg font-black text-rose-400">{totalOverdue.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
+            <h3 className="nc-metric-lg font-black text-[var(--nc-foreground)]">{totalOverdue.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
           <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
             <AlertCircle size={18} />
@@ -628,7 +628,7 @@ export default function RentalPage() {
         <div className="flex items-start mb-3">
           <div className="flex-1">
             <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">محصل هذا الشهر</p>
-            <h3 className="nc-metric-lg font-black text-emerald-400">{collectedThisMonth.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
+            <h3 className="nc-metric-lg font-black text-[var(--nc-foreground)]">{collectedThisMonth.toLocaleString()} <span className="text-sm font-medium">ر.س</span></h3>
           </div>
           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
             <CheckCircle2 size={18} />
