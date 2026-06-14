@@ -493,6 +493,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
                   type="number"
                   min={1}
                   max={ADDON_MAX_PER_ORDER}
+                  aria-label="عدد الوكلاء الإضافيين"
                   value={agentCount}
                   onChange={(e) => {
                     const val = parseInt(e.target.value) || 1;

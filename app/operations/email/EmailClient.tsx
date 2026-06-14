@@ -99,6 +99,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
           <div className="flex flex-col gap-1">
             <label className="text-[var(--nc-text-dim)] font-medium">{isRTL ? 'محتوى البريد (HTML)' : 'Email Content (HTML)'}</label>
             <textarea value={htmlBody} onChange={e => setHtmlBody(e.target.value)} rows={5}
+              aria-label={isRTL ? 'محتوى البريد' : 'Email content'}
               className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg p-3 text-[var(--nc-foreground)] font-mono" />
           </div>
           <button type="submit" disabled={isSending || !to || !subject}
