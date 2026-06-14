@@ -794,7 +794,7 @@ export default function RentalPage() {
                         }
                         setActiveModal('new_lease');
                       }}
-                      className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
                     >
                       <Plus size={13} />
                       عقد جديد
@@ -912,7 +912,7 @@ export default function RentalPage() {
                             setInvVatType('STANDARD');
                             setActiveModal('create_invoice');
                           }}
-                          className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
+                          className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] text-[11px] font-black rounded-lg transition-all border border-white/10"
                         >
                            {isRTL ? 'فاتورة عقد إيجار (تسجيل يدوي)' : 'فاتورة عقد إيجار (تسجيل يدوي)'}
                         </button>
@@ -1595,7 +1595,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all"
               >
                 تأكيد وتسجيل العقد
               </button>
@@ -1702,7 +1702,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all"
               >
                 إصدار الفاتورة (مع QR + PDF)
               </button>
@@ -1798,7 +1798,7 @@ export default function RentalPage() {
               <button 
                 type="submit"
                 disabled={isPaying}
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPaying ? 'جاري التسجيل...' : 'تأكيد التحصيل والتسوية'}
               </button>
