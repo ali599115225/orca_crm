@@ -326,10 +326,20 @@ export default function PropertyList({
                 {filteredProperties.map(u => (
                   <tr 
                     key={u.id}
-                    className="hover:bg-[var(--nc-accent-soft)] transition-colors cursor-pointer"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`فتح تفاصيل العقار: ${u.sku}`}
+                    className="hover:bg-[var(--nc-accent-soft)] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--nc-accent)] rounded"
                     onClick={() => {
                       onSelectProperty(String(u.id));
                       logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectProperty(String(u.id));
+                        logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
+                      }
                     }}
                   >
                     <td className="py-3 px-4 font-bold text-white text-xs">{u.sku} — {u.type}</td>
@@ -346,12 +356,7 @@ export default function PropertyList({
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent-text)] rounded-lg text-[10px] font-bold transition-all"
-                      >
-                        <Eye size={12} />
-                        تحديد
-                      </button>
+                      <Eye size={12} className="inline text-[var(--nc-text-dim)]" />
                     </td>
                   </tr>
                 ))}
