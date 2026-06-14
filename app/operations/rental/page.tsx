@@ -680,7 +680,7 @@ export default function RentalPage() {
             className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1"
           >
             <Plus size={13} />
-             {isRTL ? 'إصدار فاتورة دورية (تسجيل يدوي)' : 'Issue Invoice (Manual Record)'}
+             {isRTL ? 'إصدار فاتورة (تسجيل يدوي)' : 'إصدار فاتورة (تسجيل يدوي)'}
           </button>
         </div>
       </div>
@@ -913,7 +913,7 @@ export default function RentalPage() {
                           }}
                           className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
                         >
-                           {isRTL ? 'إصدار فاتورة للعقد (تسجيل يدوي)' : 'Invoice Lease (Manual Record)'}
+                           {isRTL ? 'فاتورة عقد إيجار (تسجيل يدوي)' : 'فاتورة عقد إيجار (تسجيل يدوي)'}
                         </button>
 
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
@@ -1034,7 +1034,7 @@ export default function RentalPage() {
                                         }}
                                         className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
                                       >
-                                        {isRTL ? 'تسجيل سداد يدوي' : 'Record Manual Payment'}
+                                        {isRTL ? 'تسجيل دفعة يدوية' : 'تسجيل دفعة يدوية'}
                                       </button>
                                       <button
                                         onClick={async () => {
@@ -1048,12 +1048,12 @@ export default function RentalPage() {
                                               alert(msg);
                                             }
                                           } catch (err: any) {
-                                            alert(isRTL ? 'تعذر إنشاء رابط الدفع عبر Paylink. تحقق من اتصالك.' : 'Could not create Paylink link. Check your connection.');
+                                            alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.' : 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.');
                                           }
                                         }}
                                         className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
                                       >
-                                        {isRTL ? 'الدفع عبر Paylink' : 'Pay via Paylink'}
+                                        {isRTL ? 'الدفع عبر رابط Paylink' : 'الدفع عبر رابط Paylink'}
                                       </button>
                                       </>
                                     )}
@@ -1061,7 +1061,7 @@ export default function RentalPage() {
                                       onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
                                       className="px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all"
                                     >
-                                      PDF
+                                      ملف PDF
                                     </button>
                                   </td>
                                 </tr>
@@ -1317,12 +1317,12 @@ export default function RentalPage() {
                                       alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create link'));
                                     }
                                   } catch (err: any) {
-                                    alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من اتصالك.' : 'Could not create link. Check connection.');
+                                    alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.' : 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.');
                                   }
                                 }}
                                 className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
                               >
-                                {isRTL ? 'Paylink' : 'Paylink'}
+                                {isRTL ? 'رابط الدفع' : 'رابط الدفع'}
                               </button>
                               </>
                             )}
@@ -1331,8 +1331,8 @@ export default function RentalPage() {
                               className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all"
                               title="تحميل PDF"
                             >
-                              <Download size={12} className="inline ml-1" />
-                              PDF
+                               <Download size={12} className="inline ml-1" />
+                               ملف PDF
                             </button>
                           </td>
                         </tr>
@@ -1729,7 +1729,7 @@ export default function RentalPage() {
           >
             <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
               <Key size={18} />
-              {isRTL ? 'تسجيل سداد يدوي للفاتورة' : 'Record Manual Payment for Invoice'}
+              {isRTL ? 'تسجيل دفعة يدوية للفاتورة' : 'تسجيل دفعة يدوية للفاتورة'}
             </h3>
             {isRTL ? (
               <p className="text-[10px] text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded-lg mb-3">⚠️ هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.</p>
