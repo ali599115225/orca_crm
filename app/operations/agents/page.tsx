@@ -1,25 +1,16 @@
 // app/operations/agents/page.tsx
 import { prisma } from '@/lib/prisma';
+import { getActiveTenant } from '@/lib/tenant';
 import AgentManagementView from '@/components/views/AgentManagementView';
 
 export default async function AgentsPage() {
-  // ─── جلب بيانات المستأجر الحقيقية ────────────────────────────────────────
-  let tenantPlan = 'diamond'; // fallback
+  let tenantPlan = 'diamond';
   let totalLeads = 0;
   let totalUsers = 0;
 
   try {
-    const tenant = await prisma.tenant.findFirst({
-      select: {
-        subscriptionPlan: true,
-        _count: {
-          select: { leads: true, users: true }
-        }
-      }
-    });
-
+    const tenant = await getActiveTenant();
     if (tenant) {
-      // نُحوّل SUPER إلى diamond لأن SettingsView لا تعرف SUPER
       const planMap: Record<string, string> = {
         BASIC: 'basic',
         SILVER: 'pro',
@@ -30,12 +21,16 @@ export default async function AgentsPage() {
         diamond: 'diamond',
       };
       tenantPlan = planMap[tenant.subscriptionPlan] ?? 'basic';
-      totalLeads = tenant._count.leads;
-      totalUsers = tenant._count.users;
+
+      const [leadCount, userCount] = await Promise.all([
+        prisma.lead.count({ where: { tenantId: tenant.id } }),
+        prisma.user.count({ where: { tenantId: tenant.id } }),
+      ]);
+      totalLeads = leadCount;
+      totalUsers = userCount;
     }
   } catch (err) {
-    console.error('[AgentsPage] DB fetch error:', err);
-    // نستمر مع القيم الافتراضية
+    console.error('[AgentsPage] tenant fetch error:', err);
   }
 
   return (
