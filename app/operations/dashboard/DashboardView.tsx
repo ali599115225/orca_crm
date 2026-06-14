@@ -119,7 +119,7 @@ export default function DashboardView({
           <SmartCard elevation="elevated" className="p-4">
             <div className="flex items-start justify-between mb-1">
               <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.totalLeads')}</p>
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0"><i className="ph-fill ph-users-three text-base"></i></div>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0"><i className="ph-fill ph-users-three text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(totalLeadsCount)}</h3>
             <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.totalLeads.desc')}</p>
@@ -181,7 +181,7 @@ export default function DashboardView({
           {whatsAppStats.unreadMessagesCount > 0 && matchesSearch(t('kpi.unreadMessages')) && (
             <SmartCard elevation="elevated" className="p-3">
               <span className="text-[var(--nc-text-dim)] text-[10px] font-bold block mb-1">{t('kpi.unreadMessages')}</span>
-              <h3 className="text-xl font-black text-amber-400">{formatNum(whatsAppStats.unreadMessagesCount)}</h3>
+              <h3 className="text-xl font-black text-amber-700 dark:text-amber-400">{formatNum(whatsAppStats.unreadMessagesCount)}</h3>
             </SmartCard>
           )}
         </div>
