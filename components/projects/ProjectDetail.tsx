@@ -654,13 +654,6 @@ export default function ProjectDetail({
                       <span>المبالغ المعلقة (Outstanding):</span>
                       <span className="font-bold text-amber-500">{localAccounting.outstanding.toLocaleString()} ر.س</span>
                     </div>
-                    <button
-                      disabled={true}
-                      className="w-full py-2 mt-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-1"
-                    >
-                      <DollarSign size={14} />
-                      محاكاة استلام دفعة مالية (قريباً)
-                    </button>
                   </Card>
                 </div>
               </div>
@@ -732,7 +725,7 @@ export default function ProjectDetail({
               <button
                 type="submit"
                 disabled={true}
-                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed hidden"
               >
                 حفظ الحجز وإصدار العقد (قريباً)
               </button>
@@ -799,7 +792,7 @@ export default function ProjectDetail({
               <button
                 type="submit"
                 disabled={true}
-                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed hidden"
               >
                 حفظ المرحلة التنفيذية (قريباً)
               </button>
@@ -875,7 +868,7 @@ export default function ProjectDetail({
               <button
                 type="submit"
                 disabled={true}
-                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed hidden"
               >
                 تسجيل التقرير (قريباً)
               </button>
@@ -911,7 +904,7 @@ export default function ProjectDetail({
             <div className="flex gap-2 pt-2">
               <button
                 disabled={true}
-                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[#8EB1D1]/40 text-white/50 font-bold rounded-xl cursor-not-allowed hidden"
               >
                 محاكاة رفع ملف (قريباً)
               </button>

@@ -1052,7 +1052,7 @@ export default function OffersView() {
             <div className="flex gap-2 justify-end pt-2 border-t border-[var(--nc-border)]">
               <button
                 disabled={true}
-                className="flex-1 py-2.5 bg-cyan-600/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
+                className="flex-1 py-2.5 bg-cyan-600/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed hidden"
               >
                 تأكيد وإرسال للشركاء (قريباً)
               </button>
@@ -1212,7 +1212,7 @@ export default function OffersView() {
                 <button
                   type="submit"
                   disabled={true}
-                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed hidden"
                 >
                   إدراج العرض ونشره (قريباً)
                 </button>
@@ -1398,7 +1398,7 @@ export default function OffersView() {
                 <button
                   type="submit"
                   disabled={true}
-                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed"
+                  className="flex-1 py-2.5 bg-[var(--nc-accent)]/40 text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-not-allowed hidden"
                 >
                   إرسال الطلب الآن (قريباً)
                 </button>

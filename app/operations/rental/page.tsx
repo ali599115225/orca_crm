@@ -1093,8 +1093,8 @@ export default function RentalPage() {
                             <tbody>
                               {payments.filter(p => invoices.some(i => i.id === p.invoiceId && i.contractId === selectedLease.id)).map(pay => (
                                 <tr key={pay.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                  <td className="py-2.5 font-bold text-white">{pay.id}</td>
-                                  <td className="py-2.5 font-mono text-cyan-400">{pay.invoiceId}</td>
+                                  <td className="py-2.5 font-bold text-white font-mono text-xs">دفع-{pay.id.slice(-6).toUpperCase()}</td>
+                                  <td className="py-2.5 font-mono text-cyan-400 text-xs">{pay.invoiceId.slice(-8).toUpperCase()}</td>
                                   <td className="py-2.5 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(pay.date)}</td>
                                   <td className="py-2.5 text-[var(--nc-text-dim)]">{pay.method === 'bank' ? 'تحويل بنكي' : pay.method === 'card' ? 'بطاقة ائتمانية' : 'نقدي'}</td>
                                   <td className="py-2.5 text-left text-white font-bold">{pay.amount.toLocaleString()} ر.س</td>
@@ -1160,7 +1160,7 @@ export default function RentalPage() {
                             <tbody>
                               {settlements.filter(s => s.contractId === selectedLease.id).map(settle => (
                                 <tr key={settle.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                  <td className="py-2.5 font-bold text-white">{settle.id}</td>
+                                  <td className="py-2.5 font-bold text-white font-mono text-xs">تسو-{settle.id.slice(-6).toUpperCase()}</td>
                                   <td className="py-2.5 text-[var(--nc-text-dim)]">{settle.gross.toLocaleString()} SAR</td>
                                   <td className="py-2.5 text-rose-400 font-mono">-{settle.deductions.toLocaleString()} SAR</td>
                                   <td className="py-2.5 text-emerald-400 font-bold">{settle.net.toLocaleString()} SAR</td>
@@ -1464,8 +1464,8 @@ export default function RentalPage() {
                   <tbody>
                     {settlements.map(s => (
                       <tr key={s.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-white">{s.id}</td>
-                        <td className="py-3.5 px-4 font-mono text-cyan-400">{s.contractId}</td>
+                        <td className="py-3.5 px-4 font-bold text-white font-mono text-xs">تسو-{s.id.slice(-6).toUpperCase()}</td>
+                        <td className="py-3.5 px-4 font-mono text-cyan-400 text-xs">{s.contractId.slice(-8).toUpperCase()}</td>
                         <td className="py-3.5 px-4 text-[var(--nc-text-dim)]">{s.gross.toLocaleString()} SAR</td>
                         <td className="py-3.5 px-4 text-rose-400 font-mono">-{s.deductions.toLocaleString()} SAR</td>
                         <td className="py-3.5 px-4 text-emerald-400 font-bold">{s.net.toLocaleString()} SAR</td>
@@ -1742,7 +1742,7 @@ export default function RentalPage() {
             <div className="space-y-2 bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex justify-between">
                 <span className="text-[var(--nc-text-dim)]">رقم الفاتورة:</span>
-                <span className="text-white font-bold">{selectedInvoice.id}</span>
+                <span className="text-white font-bold">{selectedInvoice.invoiceLabel || `فاتورة-${selectedInvoice.id.slice(-8).toUpperCase()}`}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--nc-text-dim)]">القيمة الإجمالية المطلوبة:</span>

@@ -318,7 +318,7 @@ export default function DashboardView({
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{lead.status === 'NEW' ? t('status.new') : lead.status}</span>
+                    <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{((): string => { const m: Record<string, string> = { NEW: t('status.new'), CONTACTED: 'تم التواصل', VISIT_SCHEDULED: 'مجدول', VISITED: 'تمت الزيارة', OFFER_MADE: 'عرض', RESERVED: 'محجوز', CONTRACT_SIGNED: 'موقّع', WON: 'مكتمل', LOST: 'ملغي' }; return m[lead.status] || lead.status; })()}</span>
                     {lead.project && <p className="text-[9px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{lead.project.name}</p>}
                   </div>
                 </FlatRowBlock>

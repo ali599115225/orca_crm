@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import { sendEmailAction } from "@/app/actions/email";
 import { toast } from "@/app/context/ToastContext";
 
+const STATUS_NAMES: Record<string, string> = {
+  NEW: "جديد", CONTACTED: "تم التواصل", QUALIFIED: "مؤهل",
+  VISIT_SCHEDULED: "مجدول للزيارة", VISITED: "تمت الزيارة",
+  OFFER_MADE: "تم العرض", RESERVED: "محجوز",
+  CONTRACT_SIGNED: "تم التوقيع", WON: "مكتمل", LOST: "ملغي",
+  OPEN: "مفتوح", NEGOTIATION: "تفاوض", CLOSED_WON: "مغلق مكتمل", CLOSED_LOST: "مغلق ملغي",
+  PENDING: "معلق", COMPLETED: "مكتمل", ACTIVE: "نشط", INACTIVE: "غير نشط",
+  SCHEDULED: "مجدول", CANCELLED: "ملغي", DRAFT: "مسودة", SENT: "مرسل", FAILED: "فشل",
+};
+
 interface EmailMessage {
   id: string;
   to: string;
@@ -125,7 +135,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
           </p>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getLeadStatusBadge(lead.status)}`}>
-          {lead.status}
+          {STATUS_NAMES[lead.status] || lead.status}
         </span>
       </div>
 
@@ -270,7 +280,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                         <td className="px-4 py-3 text-gray-900 max-w-xs truncate">{msg.subject}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadge(msg.status)}`}>
-                            {msg.status}
+                            {STATUS_NAMES[msg.status] || msg.status}
                           </span>
                           {msg.status === "FAILED" && msg.errorMessage && (
                             <span className="ml-2 text-xs text-red-600" title={msg.errorMessage}>
