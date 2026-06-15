@@ -164,7 +164,6 @@ export default function DashboardView({
             <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappConvos')}</span>
-                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.conversationsCount)}</h3>
             </SmartCard>
@@ -173,7 +172,6 @@ export default function DashboardView({
             <SmartCard elevation="elevated" className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappNewLeads')}</span>
-                <span className="text-[7px] font-black px-1.5 py-0.5 rounded border bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20">{t('badge.preview')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.newLeadsCount)}</h3>
             </SmartCard>
@@ -325,9 +323,10 @@ export default function DashboardView({
       )}
 
       {/* ═══════════════════════════════════════
-          F. AI / PREVIEW PANEL — secondary tier
+          F. AI / PREVIEW PANEL — shown only when real data exists
           ═══════════════════════════════════════ */}
-      {matchesSearch(t('ai.title'), t('dash.previewLabel')) && (
+      {aiPredictions && (
+        (aiPredictions.bestContactTimes?.length > 0 || aiPredictions.expectedToClose?.length > 0 || aiPredictions.projectsNeedingCampaign?.length > 0) && matchesSearch(t('ai.title'), t('dash.previewLabel')) && (
         <SmartCard elevation="subtle" className="p-5 border-dashed border-purple-500/20">
           {/* Preview badge header */}
           <div className="flex items-center gap-2 mb-5 px-4 py-2.5 rounded-lg bg-purple-500/5 border border-purple-500/10">
@@ -395,10 +394,10 @@ export default function DashboardView({
 
           <div className="text-[9px] text-[var(--nc-text-dim)] mt-4 pt-3 border-t border-[var(--nc-glass-border)] flex justify-between items-center">
             <span>{t('ai.footer')}</span>
-            <span className="font-bold font-mono text-[10px]">OrcaAI v1.6</span>
+            <span className="font-bold font-mono text-[10px]">ORCA AI</span>
           </div>
         </SmartCard>
-      )}
+      ))}
 
       {/* Contract Wizard Modal */}
       <ContractWizard isOpen={isWizardOpen} onClose={() => setIsWizardOpen(false)} onSuccess={handleWizardSuccess} />

@@ -22,49 +22,12 @@ const STAGE_ACCENT: Record<string, string> = {
   Negotiation: "#F97316", Closed: "#22C55E",
 };
 
-const MOCK_NAMES = [
-  { first: "عبدالرحمن", last: "المالكي" }, { first: "سلطان", last: "العتيبي" },
-  { first: "فهد", last: "الدوسري" }, { first: "تركي", last: "الشمراني" },
-  { first: "بدر", last: "القحطاني" }, { first: "ماجد", last: "الزهراني" },
-  { first: "خالد", last: "الحربي" }, { first: "ناصر", last: "الغامدي" },
-  { first: "سعود", last: "السديري" }, { first: "عمر", last: "الشمري" },
-  { first: "يوسف", last: "المطيري" }, { first: "راشد", last: "البقمي" },
-  { first: "حمد", last: "البلوي" }, { first: "مشعل", last: "العتيبي" },
-  { first: "وليد", last: "الأحمدي" }, { first: "عبدالعزيز", last: "الفهيد" },
-  { first: "صالح", last: "الراجحي" }, { first: "محمد", last: "العمري" },
-  { first: "أحمد", last: "السبيعي" }, { first: "إبراهيم", last: "الموسى" },
-  { first: "سامي", last: "الحازمي" }, { first: "نايف", last: "الشمري" },
-  { first: "عبدالله", last: "الغامدي" }, { first: "فيصل", last: "الزهراني" },
-  { first: "موسى", last: "القحطاني" }, { first: "هاني", last: "الدوسري" },
-  { first: "وائل", last: "الحربي" }, { first: "جابر", last: "العتيبي" },
-  { first: "سعد", last: "المطيري" }, { first: "فواز", last: "الشهري" },
-  { first: "نواف", last: "الرشيد" }, { first: "عاصم", last: "البلوي" },
-];
-const MOCK_SRC = ["إعلانات سناب", "حملة ميتا", "زيارة مباشرة", "إحالة عميل", "موقع إلكتروني", "واتساب", "إعلانات جوجل"];
-const MOCK_CITIES = ["الرياض", "جدة", "الدمام", "مكة", "تبوك", "أبها", "الخبر"];
-
-function genMockLeads(): LeadItem[] {
-  const r: LeadItem[] = [];
-  let idx = 0;
-  for (const s of STAGES) {
-    for (let i = 0; i < 6; i++) {
-      const p = MOCK_NAMES[idx % MOCK_NAMES.length];
-      r.push({ id: `mock_${s.id}_${i}`, firstName: p.first, lastName: p.last,
-        city: MOCK_CITIES[i % MOCK_CITIES.length], source: MOCK_SRC[i % MOCK_SRC.length],
-        leadScore: 40 + Math.floor(Math.random() * 55), stage: s.id, projectId: null,
-        assignedTo: ["رائد", "فواز", "عبدالرحمن", "سعود", "عمر", "بدر"][i % 6] });
-      idx++;
-    }
-  }
-  return r;
-}
-const DEF_MOCK = genMockLeads();
-
 export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilter?: string | null; refreshKey?: number }) {
   const router = useRouter();
   const { t, lang } = useApp();
-  const [leads, setLeads] = useState<LeadItem[]>(DEF_MOCK);
-  const [filtered, setFiltered] = useState<LeadItem[]>(DEF_MOCK);
+  const [leads, setLeads] = useState<LeadItem[]>([]);
+  const [filtered, setFiltered] = useState<LeadItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selLead, setSelLead] = useState<LeadItem | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [detailTab, setDetailTab] = useState("overview");
@@ -73,27 +36,26 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
   const [detailData, setDetailData] = useState<any>(null);
 
   const loadLeads = async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/v1/leads");
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const merged = [...json.data];
-        for (const s of STAGES) {
-          const real = json.data.filter((l: LeadItem) => (l.stage || "New") === s.id);
-          const need = 6 - real.length;
-          for (let i = 0; i < need; i++) {
-            const m = DEF_MOCK.find(l => l.stage === s.id && !merged.some(x => x.id === l.id));
-            if (m) merged.push({ ...m, id: `${m.id}_${Date.now()}_${i}` });
-          }
-        }
-        setLeads(merged);
+      if (json.success && Array.isArray(json.data)) {
+        setLeads(json.data);
       }
-    } catch {}
+    } catch {} finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadLeads(); }, []);
   // ── Refresh when a new lead is added ──
   useEffect(() => { if (refreshKey && refreshKey > 0) loadLeads(); }, [refreshKey]);
+
+  // Derive filter options from real leads
+  const sourceOptions = [...new Set(leads.map(l => l.source).filter((s): s is string => !!s))];
+  const agentOptions = [...new Set(leads.map(l => l.assignedTo).filter((s): s is string => !!s))];
+
   useEffect(() => {
     let r = leads;
     if (filterAgent) r = r.filter(l => l.assignedTo?.includes(filterAgent));
@@ -130,15 +92,13 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
     if (!moved) return;
     const optimistic = leads.map(l => l.id === draggableId ? { ...l, stage: destination.droppableId } : l);
     setLeads(optimistic);
-    if (!draggableId.startsWith("mock_")) {
-      try {
-        await fetch(`/api/v1/leads/${draggableId}/move`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: destination.droppableId }),
-        });
-      } catch { loadLeads(); }
-    }
+    try {
+      await fetch(`/api/v1/leads/${draggableId}/move`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: destination.droppableId }),
+      });
+    } catch { loadLeads(); }
   };
 
   return (
@@ -149,11 +109,11 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
         <div className="lv2-actionbar">
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="lv2-filter" aria-label="تصفية حسب المصدر">
             <option value="">{t("leads.filterSource")}</option>
-            {MOCK_SRC.map(s => <option key={s} value={s}>{s}</option>)}
+            {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select value={filterAgent} onChange={e => setFilterAgent(e.target.value)} className="lv2-filter" aria-label="تصفية حسب المالك">
             <option value="">{t("leads.filterOwner")}</option>
-            {["رائد", "فواز", "عبدالرحمن", "سعود", "عمر", "بدر"].map(a => <option key={a} value={a}>{a}</option>)}
+            {agentOptions.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <span className="lv2-action-item lv2-action-info" style={{ marginLeft: 'auto', cursor: 'default' }}>
             <span className="lv2-action-num">{filtered.length}</span>
@@ -162,7 +122,17 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
         </div>
 
         {/* Main split */}
-        <div className="lv2-main">
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-[var(--nc-text-dim)] text-sm">
+            {t("common.loading") || "جاري تحميل البيانات..."}
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-[var(--nc-text-dim)]">
+            <span className="text-lg mb-2">📋</span>
+            <span className="text-sm">{t("leads.emptyPipeline") || "لا يوجد عملاء محتملون بعد. أضف أول عميل للبدء."}</span>
+          </div>
+        ) : (
+          <div className="lv2-main">
           {/* Left: Pipeline List */}
           <div className="lv2-pipeline">
             {STAGES.map(stage => (
@@ -292,7 +262,7 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
                       <div className="lv2-field"><label>{t("lead.source")}</label><span>{selLead.source}</span></div>
                       <div className="lv2-field"><label>{t("lead.score")}</label><span>{selLead.leadScore}</span></div>
                       <div className="lv2-field"><label>{t("lead.assignedTo")}</label><span>{selLead.assignedTo || "—"}</span></div>
-                      <div className="lv2-field"><label>ID</label><span className="lv2-mono">{selLead.id}</span></div>
+                      <div className="lv2-field"><label>{t("leads.id") || "المعرّف"}</label><span className="lv2-mono">{selLead.id}</span></div>
                     </div>
                   )}
                   {detailTab === "notes" && <div className="lv2-placeholder">{lang === "AR" ? "الملاحظات تظهر هنا" : "Notes will appear here"}</div>}
@@ -303,6 +273,7 @@ export default function LeadsPipelineV2({ wiredFilter, refreshKey }: { wiredFilt
             )}
           </div>
         </div>
+        )}
       </DragDropContext>
     </div>
   );
