@@ -46,7 +46,6 @@ type Copy = {
   source: string;
   owner: string;
   score: string;
-  action: string;
   open: string;
   page: string;
   of: string;
@@ -97,7 +96,6 @@ const copy: Record<"ar" | "en", Copy> = {
     source: "المصدر",
     owner: "المسؤول",
     score: "الدرجة",
-    action: "الإجراء",
     open: "فتح",
     page: "صفحة",
     of: "من",
@@ -146,7 +144,6 @@ const copy: Record<"ar" | "en", Copy> = {
     source: "Source",
     owner: "Owner",
     score: "Score",
-    action: "Action",
     open: "Open",
     page: "Page",
     of: "of",
@@ -365,6 +362,10 @@ export default function LeadsWorkspace() {
 
       if (json.success && Array.isArray(json.data)) {
         setLeads(json.data);
+        if (!selectedLead && json.data.length > 0) {
+          setSelectedLead(json.data[0]);
+          setDetailData(json.data[0]);
+        }
       } else {
         setLeads([]);
       }
@@ -618,7 +619,7 @@ export default function LeadsWorkspace() {
 
             {filteredLeads.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[680px] text-sm">
                   <thead>
                     <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
                       <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
@@ -626,7 +627,6 @@ export default function LeadsWorkspace() {
                       <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
                       <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
                       <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.score}</th>
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.action}</th>
                     </tr>
                   </thead>
 
@@ -637,10 +637,21 @@ export default function LeadsWorkspace() {
                       return (
                         <tr
                           key={lead.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            void handleSelect(lead);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              void handleSelect(lead);
+                            }
+                          }}
                           className={
                             selected
-                              ? "border-b border-[var(--nc-border)] bg-[var(--nc-surface-soft)]"
-                              : "border-b border-[var(--nc-border)]"
+                              ? "cursor-pointer border-b border-[var(--nc-border)] bg-[var(--nc-surface-soft)] outline-none"
+                              : "cursor-pointer border-b border-[var(--nc-border)] outline-none transition-colors hover:bg-[var(--nc-surface-soft)]"
                           }
                         >
                           <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
@@ -661,18 +672,6 @@ export default function LeadsWorkspace() {
 
                           <td className="px-3 py-3 font-mono text-xs text-[var(--nc-text-secondary)]">
                             {formatNumber(lead.leadScore || 0, isArabic)}/100
-                          </td>
-
-                          <td className="px-3 py-3">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void handleSelect(lead);
-                              }}
-                              className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                            >
-                              {labels.open}
-                            </button>
                           </td>
                         </tr>
                       );
