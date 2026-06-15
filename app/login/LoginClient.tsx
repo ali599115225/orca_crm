@@ -311,15 +311,15 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
       {/* Footer المحدّث بروابط Next.js الديناميكية */}
       <footer className="w-full p-6 text-center text-xs md:text-sm text-[var(--nc-text-dim)] font-medium flex items-center justify-center gap-4 z-10 relative">
-        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-slate-300 font-medium' : 'hover:text-slate-700'}`}>
+        <Link href="/privacy-policy" prefetch={false} className={`transition-colors text-[var(--nc-text-secondary)] hover:text-[var(--nc-foreground)] font-medium`}>
           {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
         </Link>
         <span>|</span>
-        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-slate-300 font-medium' : 'hover:text-slate-700'}`}>
+        <Link href="/disclaimer" prefetch={false} className={`transition-colors text-[var(--nc-text-secondary)] hover:text-[var(--nc-foreground)] font-medium`}>
           {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
         </Link>
         <span>|</span>
-        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'hover:text-slate-300 font-medium' : 'hover:text-slate-700'}`}>
+        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors text-[var(--nc-text-secondary)] hover:text-[var(--nc-foreground)] font-medium`}>
           {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
         </Link>
       </footer>

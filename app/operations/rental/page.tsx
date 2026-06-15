@@ -850,7 +850,7 @@ export default function RentalPage() {
                              selectedLeaseId === l.id ? 'bg-[#8EB1D1]/10 border-r-4 border-[#8EB1D1]' : ''
                            }`}
                         >
-                          <td className="font-bold text-[var(--nc-foreground)]">{l.id}</td>
+                          <td className="font-bold text-[var(--nc-foreground)] font-mono text-xs">{l.id.slice(-8).toUpperCase()}</td>
                           <td className="text-[var(--nc-text-dim)] font-mono">{l.unit}</td>
                           <td className="text-[var(--nc-text-dim)]">{l.tenant}</td>
                           <td>
@@ -873,7 +873,7 @@ export default function RentalPage() {
               </div>
 
               {/* Lease Detail Panel (Detail) */}
-              <div className="flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden min-h-[460px] fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden min-h-[200px] fade-in-up" style={{ animationDelay: '100ms' }}>
               <div className="p-6">
                 {!selectedLease ? (
                   <div className="h-full flex flex-col items-center justify-center text-[var(--nc-text-dim)] text-xs py-20">
@@ -887,7 +887,7 @@ export default function RentalPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
                       <div>
                         <h3 className="text-base font-black text-white flex items-center gap-2">
-                          {selectedLease.id}
+                          عقد-{selectedLease.id.slice(-8).toUpperCase()} — {selectedLease.tenant}
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                             selectedLease.status === 'active' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
@@ -978,7 +978,7 @@ export default function RentalPage() {
                               <span className="font-bold text-white mt-1.5 block">{selectedLease.rent.toLocaleString()} {selectedLease.currency}</span>
                             </div>
                             <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
-                              <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">تأمين مسترد Locked</span>
+                              <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">تأمين محتجز</span>
                               <span className="font-bold text-white mt-1.5 block">{selectedLease.deposit.toLocaleString()} {selectedLease.currency}</span>
                             </div>
                           </div>
@@ -1581,7 +1581,7 @@ export default function RentalPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">قيمة التأمين Locked (SAR):</label>
+                <label className="text-[var(--nc-text-dim)] block">قيمة التأمين المحتجز (ر.س):</label>
                 <input 
                   type="number"
                   required

@@ -88,7 +88,7 @@ export default function DashboardView({
 
       {/* Search badge */}
       {searchActive && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] rounded-xl text-xs font-bold text-[var(--nc-accent)]">
+        <div className="flex items-center gap-2 px-4 py-2 bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] rounded-xl text-xs font-bold text-[var(--nc-foreground)]">
           <span>{t('header.searchLabel')}: &quot;{searchQuery}&quot;</span>
           {!anyWidgetVisible && <span className="text-[var(--nc-foreground-muted)]">— {t('search.noResults')}</span>}
         </div>
@@ -311,14 +311,14 @@ export default function DashboardView({
               return (
                 <FlatRowBlock key={lead.id} className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
+                    <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
                     <div>
                       <h5 className="text-xs font-bold text-[var(--nc-text-primary)]">{lead.firstName} {lead.lastName}</h5>
                       <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {lead.city}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">{lead.status === 'NEW' ? t('status.new') : lead.status}</span>
+                    <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{lead.status === 'NEW' ? t('status.new') : lead.status}</span>
                     {lead.project && <p className="text-[9px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{lead.project.name}</p>}
                   </div>
                 </FlatRowBlock>
@@ -350,10 +350,10 @@ export default function DashboardView({
 
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <i className="ph-fill ph-sparkles text-[var(--nc-accent)] text-sm"></i>
+              <i className="ph-fill ph-sparkles text-[var(--nc-foreground)] text-sm"></i>
               <h4 className="text-sm font-bold text-[var(--nc-text-primary)]">{t('ai.title')}</h4>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)]">{t('ai.status')}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)] border border-[var(--nc-accent-border)]">{t('ai.status')}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -363,7 +363,7 @@ export default function DashboardView({
                 {aiPredictions?.bestContactTimes && aiPredictions.bestContactTimes.slice(0, 2).map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[11px] bg-[var(--nc-surface)] p-2 rounded-md">
                     <span className="font-semibold text-[var(--nc-text-primary)] truncate">{item.name}</span>
-                    <span className="text-[var(--nc-accent)] font-bold text-[10px]">{lang === 'AR' ? item.slotAr : item.slotEn}</span>
+                    <span className="text-[var(--nc-foreground)] font-bold text-[10px]">{lang === 'AR' ? item.slotAr : item.slotEn}</span>
                   </div>
                 ))}
                 {(!aiPredictions?.bestContactTimes || aiPredictions.bestContactTimes.length === 0) && (
@@ -377,7 +377,7 @@ export default function DashboardView({
                 {aiPredictions?.expectedToClose && aiPredictions.expectedToClose.slice(0, 2).map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[11px] bg-[var(--nc-surface)] p-2 rounded-md">
                     <span className="font-semibold text-[var(--nc-text-primary)] truncate">{item.name}</span>
-                    <span className="bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] px-1.5 py-0.5 rounded font-bold text-[10px]">{formatNum(item.score)}%</span>
+                    <span className="bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)] px-1.5 py-0.5 rounded font-bold text-[10px]">{formatNum(item.score)}%</span>
                   </div>
                 ))}
                 {(!aiPredictions?.expectedToClose || aiPredictions.expectedToClose.length === 0) && (
