@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "@/app/context/AppContext";
 import { SmartCard } from "@/components/ui/SmartCard";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
-import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
-import { formatLeadStatus, formatTaskStatus, formatTourStatus, formatOfferStatus, formatOpportunityStatus } from "@/lib/ui-status";
-import { formatShortId } from "@/lib/ui-formatters";
+import { formatLeadStatus } from "@/lib/ui-status";
 import type { LeadItem } from "./pipeline/KanbanCard";
 
 const STAGES = [
@@ -20,7 +17,7 @@ const STAGES = [
   { id: "Closed", titleAr: "مغلق", titleEn: "Closed" },
 ];
 
-function formatSource(source: string): string {
+function formatSource(source?: string | null): string {
   const map: Record<string, string> = {
     WHATSAPP: "واتساب", WEBSITE: "موقع إلكتروني", REFERRAL: "إحالة",
     "Google Ads": "إعلانات Google", "Meta Ads": "إعلانات Meta",
@@ -30,18 +27,32 @@ function formatSource(source: string): string {
     "إعلانات Google": "إعلانات Google", "Google إعلانات": "إعلانات Google",
     "إعلانات Snapchat": "إعلانات سناب", "Snapchat إعلانات": "إعلانات سناب",
   };
-  return map[source] || source || "غير محدد";
+  const normalized = String(source || "").trim();
+  return map[normalized] || normalized || "غير محدد";
 }
 
 // Check if a value looks like a UUID/hash and should not be shown to users
-function isTechnicalId(value: string): boolean {
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
+function isTechnicalId(value?: string | null): boolean {
+  if (!value) return false;
+  const normalized = String(value).trim();
+  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(normalized);
 }
 
-function formatOwner(value: string | null): string {
+function formatOwner(value?: string | null): string {
   if (!value) return "غير محدد";
-  if (isTechnicalId(value)) return "غير محدد";
-  return value;
+  const normalized = String(value).trim();
+  if (!normalized || normalized === "—" || normalized === "-") return "غير محدد";
+  if (isTechnicalId(normalized)) return "غير محدد";
+  return normalized;
+}
+
+function LeadStatusBadge({ status }: { status?: string | null }) {
+  const label = formatLeadStatus(status);
+  return (
+    <span className="inline-flex h-7 min-w-[86px] items-center justify-center rounded-full border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] px-3 text-xs font-bold text-[var(--nc-foreground)]">
+      {label}
+    </span>
+  );
 }
 
 function getStageCounts(leads: LeadItem[]) {
@@ -96,7 +107,7 @@ export default function LeadsWorkspace() {
 
   const columns = [
     { header: isArabic ? "العميل" : "Lead", accessor: (l: LeadItem) => <span className="font-extrabold text-sm">{l.firstName} {l.lastName || ""}</span> },
-    { header: isArabic ? "الحالة" : "Status", accessor: (l: LeadItem) => <StatusCell status={l.stage} format={formatLeadStatus} />, headerClassName: "text-center" },
+    { header: isArabic ? "الحالة" : "Status", accessor: (l: LeadItem) => <LeadStatusBadge status={l.stage} />, headerClassName: "text-center" },
     { header: isArabic ? "المصدر" : "Source", accessor: (l: LeadItem) => <span className="text-xs text-[var(--nc-text-dim)]">{formatSource(l.source)}</span> },
     { header: isArabic ? "مسؤول" : "Owner", accessor: (l: LeadItem) => <span className="text-xs">{formatOwner(l.assignedTo)}</span> },
     { header: isArabic ? "الدرجة" : "Score", accessor: (l: LeadItem) => <span className="font-mono text-xs">{l.leadScore}/100</span> },
@@ -158,7 +169,7 @@ export default function LeadsWorkspace() {
                     <h4 className="font-black text-lg truncate">{selectedLead.firstName} {selectedLead.lastName || ""}</h4>
                     <p className="text-xs text-[var(--nc-text-dim)] truncate">{selectedLead.city || "غير محدد"} · {formatSource(selectedLead.source)}</p>
                   </div>
-                  <StatusCell status={selectedLead.stage} format={formatLeadStatus} />
+                  <LeadStatusBadge status={selectedLead.stage} />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[

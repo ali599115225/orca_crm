@@ -1,11 +1,38 @@
 // lib/ui-status.ts — centralized status display formatters
-// No raw English statuses exposed to users. Any unknown status shows "غير معروف".
+// No raw English statuses exposed to users. Any unknown or empty status shows "غير محدد".
 
 const LEAD_STATUS: Record<string, string> = {
-  NEW: 'جديد', CONTACTED: 'تم التواصل', QUALIFIED: 'مؤهل',
-  VISIT_SCHEDULED: 'مجدول للزيارة', VISITED: 'تمت الزيارة',
-  OFFER_MADE: 'تم العرض', RESERVED: 'محجوز',
-  CONTRACT_SIGNED: 'تم التوقيع', WON: 'مكتمل', LOST: 'ملغي',
+  NEW: 'جديد',
+  New: 'جديد',
+  new: 'جديد',
+  CONTACTED: 'تم التواصل',
+  Contacted: 'تم التواصل',
+  contacted: 'تم التواصل',
+  QUALIFIED: 'مؤهل',
+  Qualified: 'مؤهل',
+  qualified: 'مؤهل',
+  VISIT_SCHEDULED: 'مجدول للزيارة',
+  'Tour Scheduled': 'مجدول للزيارة',
+  tour_scheduled: 'مجدول للزيارة',
+  VISITED: 'تمت الزيارة',
+  OFFER_MADE: 'تم العرض',
+  'Offer Sent': 'أرسل العرض',
+  offer_sent: 'أرسل العرض',
+  RESERVED: 'محجوز',
+  NEGOTIATION: 'تفاوض',
+  Negotiation: 'تفاوض',
+  negotiation: 'تفاوض',
+  CONTRACT_SIGNED: 'تم التوقيع',
+  CLOSED: 'مغلق',
+  Closed: 'مغلق',
+  closed: 'مغلق',
+  WON: 'مكتمل',
+  LOST: 'ملغي',
+  COLD: 'بارد',
+  cold: 'بارد',
+  'غير محدد': 'غير محدد',
+  '—': 'غير محدد',
+  '-': 'غير محدد',
 };
 
 const TASK_STATUS: Record<string, string> = {
@@ -38,8 +65,9 @@ const GENERIC_STATUS: Record<string, string> = {
 };
 
 function resolve(map: Record<string, string>, status?: string | null): string {
-  if (!status) return 'غير محدد';
-  return map[status] || GENERIC_STATUS[status] || 'غير محدد';
+  const normalized = String(status || '').trim();
+  if (!normalized || normalized === '—' || normalized === '-') return 'غير محدد';
+  return map[normalized] || GENERIC_STATUS[normalized] || 'غير محدد';
 }
 
 export function formatLeadStatus(status?: string | null): string {
@@ -68,7 +96,7 @@ export function formatOpportunityStatus(status?: string | null): string {
 
 export function formatLeaseStatus(status?: string | null): string {
   const map: Record<string, string> = { active: 'نشط', expired: 'منتهي', terminated: 'ملغي' };
-  return map[status || ''] || status || '—';
+  return map[status || ''] || status || 'غير محدد';
 }
 
 const TOUR_STATUS_MAP: Record<string, string> = {
@@ -76,18 +104,18 @@ const TOUR_STATUS_MAP: Record<string, string> = {
 };
 
 export function formatTourStatus(status?: string | null): string {
-  if (!status) return '—';
+  if (!status) return 'غير محدد';
   return TOUR_STATUS_MAP[status] || status;
 }
 
 export function formatPropertyStatus(status?: string | null): string {
   const map: Record<string, string> = { Available: 'متاحة', Hold: 'محجوزة مؤقتاً', Sold: 'مباعة' };
-  return map[status || ''] || status || '—';
+  return map[status || ''] || status || 'غير محدد';
 }
 
 export function formatEmailStatus(status?: string | null): string {
   const map: Record<string, string> = { SENT: 'مرسل', FAILED: 'فشل', PENDING: 'معلق', DRAFT: 'مسودة' };
-  if (!status) return '—';
+  if (!status) return 'غير محدد';
   return map[status] || status;
 }
 
@@ -98,6 +126,6 @@ export function formatWhatsAppStatus(status?: string | null): string {
     SENT: 'مرسل', DELIVERED: 'مُسلَّم', READ: 'مقروء', RECEIVED: 'مُستلَم',
     FAILED: 'فشل', PENDING: 'معلق',
   };
-  if (!status) return '—';
+  if (!status) return 'غير محدد';
   return map[status] || status;
 }
