@@ -61,6 +61,7 @@ export default function Opportunities() {
               columns={columns}
               data={opportunities}
               emptyMessage={t("opps.noData")}
+              pageSize={15}
             />
           )}
         </SmartCard>
