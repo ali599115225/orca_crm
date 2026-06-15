@@ -30,7 +30,7 @@ export const dict: TranslationDict = {
   'nav.dashboard':              { ar: 'لوحة التحكم',            en: 'Dashboard' },
   'nav.leads':                  { ar: 'العملاء المحتملون',       en: 'Leads' },
   'nav.offers':                 { ar: 'العروض العقارية',         en: 'Offers' },
-  'nav.tours':                  { ar: 'الجولات العقارية',        en: 'Property Tours' },
+  'nav.tours':                  { ar: 'الجولات العقارية',        en: 'Tours' },
   'nav.projects':               { ar: 'المشاريع العقارية',       en: 'Projects' },
   'nav.properties':             { ar: 'العقارات',               en: 'Properties' },
   'nav.rental':                 { ar: 'العقود والمدفوعات',       en: 'Contracts & Payments' },
@@ -141,7 +141,7 @@ export const dict: TranslationDict = {
   'tab.whatsapp':               { ar: 'واتساب',                en: 'WhatsApp' },
   'tab.settings':               { ar: 'الإعدادات',             en: 'Settings' },
   'tab.offers':                 { ar: 'العروض العقارية',        en: 'Offers' },
-  'tab.tours':                  { ar: 'الجولات العقارية',       en: 'Property Tours' },
+  'tab.tours':                  { ar: 'الجولات العقارية',       en: 'Tours' },
   'tab.documents':              { ar: 'مستودع المستندات',       en: 'Documents' },
   'tab.email':                  { ar: 'البريد الإلكتروني',      en: 'Email' },
 
