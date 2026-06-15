@@ -25,6 +25,10 @@ function formatSource(source: string): string {
     WHATSAPP: "واتساب", WEBSITE: "موقع إلكتروني", REFERRAL: "إحالة",
     "Google Ads": "إعلانات Google", "Meta Ads": "إعلانات Meta",
     "Snapchat Ads": "إعلانات سناب", "TikTok Ads": "إعلانات TikTok",
+    "إعلانات TikTok": "إعلانات TikTok", "TikTok إعلانات": "إعلانات TikTok",
+    "إعلانات Meta": "إعلانات Meta", "Meta إعلانات": "إعلانات Meta",
+    "إعلانات Google": "إعلانات Google", "Google إعلانات": "إعلانات Google",
+    "إعلانات Snapchat": "إعلانات سناب", "Snapchat إعلانات": "إعلانات سناب",
   };
   return map[source] || source || "غير محدد";
 }

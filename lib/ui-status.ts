@@ -38,8 +38,8 @@ const GENERIC_STATUS: Record<string, string> = {
 };
 
 function resolve(map: Record<string, string>, status?: string | null): string {
-  if (!status) return '—';
-  return map[status] || GENERIC_STATUS[status] || status;
+  if (!status) return 'غير محدد';
+  return map[status] || GENERIC_STATUS[status] || 'غير محدد';
 }
 
 export function formatLeadStatus(status?: string | null): string {
