@@ -17,8 +17,10 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ShortIdCell } from '@/components/ui/orca-table/cells/ShortIdCell';
 import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
+import { DateCell } from '@/components/ui/orca-table/cells/DateCell';
 import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
-import { formatLeaseStatus } from '@/lib/ui-status';
+import { formatLeaseStatus, formatInvoiceStatus } from '@/lib/ui-status';
+import { formatCurrency, formatShortId } from '@/lib/ui-formatters';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -1232,102 +1234,46 @@ export default function RentalPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                  <table className="w-full text-right border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
-                        <th className="py-3 px-4">رقم الفاتورة</th>
-                        <th className="py-3 px-4">العميل / الوحدة</th>
-                        <th className="py-3 px-4">تاريخ الاستحقاق</th>
-                        <th className="py-3 px-4">قبل الضريبة</th>
-                        <th className="py-3 px-4">الضريبة</th>
-                        <th className="py-3 px-4">الإجمالي</th>
-                        <th className="py-3 px-4">الحالة</th>
-                        <th className="py-3 px-4 text-center">QR</th>
-                        <th className="py-3 px-4 text-center">إجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredInvoices.map(inv => (
-                        <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="py-3.5 px-4 font-bold text-white">{inv.invoiceLabel || inv.id}</td>
-                          <td className="py-3.5 px-4">
-                            <div className="text-white text-xs">{inv.customerName || '-'}</div>
-                            <div className="text-[var(--nc-text-dim)] text-[10px]">{inv.unitName || ''}</div>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(inv.due)}</td>
-                          <td className="py-3.5 px-4">{inv.subtotal.toLocaleString()} ر.س</td>
-                          <td className="py-3.5 px-4 text-amber-400">{inv.vatAmount.toLocaleString()} ر.س</td>
-                          <td className="py-3.5 px-4 font-bold text-white">{inv.totalAmount.toLocaleString()} ر.س</td>
-                          <td className="py-3.5 px-4">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                              inv.status === 'paid' 
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                : inv.status === 'overdue'
-                                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            }`}>
-                              {inv.status === 'paid' ? 'مدفوعة' : inv.status === 'overdue' ? 'متأخرة عن الدفع' : 'غير مدفوعة'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            {inv.qrImage && (
-                              <button
-                                onClick={() => window.open(`/api/v1/invoices/${inv.id}/qr`, '_blank')}
-                                className="text-[#8EB1D1] hover:text-white transition-colors"
-                                title="عرض QR"
-                              >
-                                <QrCode size={14} />
-                              </button>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 text-center space-x-2">
-                            {inv.status !== 'paid' && (
-                              <>
-                              <button
-                                onClick={() => {
-                                  setSelectedInvoice(inv);
-                                  setPayDate(new Date().toISOString().split('T')[0]);
-                                  setActiveModal('register_payment');
-                                }}
-                                className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all"
-                              >
-                                {isRTL ? 'تسجيل سداد يدوي' : 'Manual'}
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST', credentials: 'include' });
-                                    const data = await res.json();
-                                    if (data.success && data.paymentUrl) {
-                                      window.open(data.paymentUrl, '_blank');
-                                    } else {
-                                      alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'Failed to create link'));
-                                    }
-                                  } catch (err: any) {
-                                    alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.' : 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.');
-                                  }
-                                }}
-                                className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
-                              >
-                                {isRTL ? 'رابط الدفع' : 'رابط الدفع'}
-                              </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
-                              className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all"
-                              title="تحميل PDF"
-                            >
-                               <Download size={12} className="inline ml-1" />
-                               ملف PDF
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-              </div>
+              <DataTable
+                columns={[
+                  { header: 'رقم الفاتورة', accessor: (inv) => <span className="font-bold text-white">{inv.invoiceLabel || formatShortId(inv.id)}</span> },
+                  { header: 'العميل / الوحدة', accessor: (inv) => <><div className="text-white text-xs">{inv.customerName || '-'}</div><div className="text-[var(--nc-text-dim)] text-[10px]">{inv.unitName || ''}</div></> },
+                  { header: 'تاريخ الاستحقاق', accessor: (inv) => <DateCell value={inv.due} /> },
+                  { header: 'قبل الضريبة', accessor: (inv) => <MoneyCell amount={inv.subtotal} /> },
+                  { header: 'الضريبة', accessor: (inv) => <MoneyCell amount={inv.vatAmount} /> },
+                  { header: 'الإجمالي', accessor: (inv) => <MoneyCell amount={inv.totalAmount} /> },
+                  { header: 'الحالة', accessor: (inv) => <StatusCell status={inv.status} format={formatInvoiceStatus}
+                    activeClass="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    badgeClass={inv.status === 'overdue' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'} /> },
+                  { header: 'QR', accessor: (inv) => inv.qrImage ? (
+                    <button onClick={() => window.open(`/api/v1/invoices/${inv.id}/qr`, '_blank')}
+                      className="text-[#8EB1D1] hover:text-white transition-colors" title="عرض QR">
+                      <QrCode size={14} />
+                    </button>) : null, className: 'text-center', headerClassName: 'text-center' },
+                  { header: 'إجراءات', accessor: (inv) => (
+                    <div className="flex gap-2">
+                      {inv.status !== 'paid' && (<>
+                        <button onClick={() => { setSelectedInvoice(inv); setPayDate(new Date().toISOString().split('T')[0]); setActiveModal('register_payment'); }}
+                          className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-[#8EB1D1]/20 hover:border-[#8EB1D1]/40 text-[#8EB1D1] rounded text-[10px] font-bold transition-all">
+                          {isRTL ? 'تسجيل سداد يدوي' : 'تسجيل سداد يدوي'}
+                        </button>
+                        <button onClick={async () => {
+                          try { const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST', credentials: 'include' }); const data = await res.json(); if (data.success && data.paymentUrl) { window.open(data.paymentUrl, '_blank'); } else { alert(data.error || (isRTL ? 'فشل إنشاء رابط الدفع' : 'فشل إنشاء رابط الدفع')); } } catch { alert(isRTL ? 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.' : 'تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.'); }
+                        }} className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all">
+                          {isRTL ? 'رابط الدفع' : 'رابط الدفع'}
+                        </button>
+                      </>)}
+                      <button onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
+                        className="px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-white rounded text-[10px] font-bold transition-all" title="تحميل PDF">
+                        <Download size={12} className="inline ml-1" /> ملف PDF
+                      </button>
+                    </div>
+                  ), className: 'text-center', headerClassName: 'text-center' },
+                ] as Column<Invoice>[]}
+                data={filteredInvoices}
+                pageSize={15}
+                emptyMessage="لا توجد فواتير مطابقة"
+              />
             </div>
           )}
 

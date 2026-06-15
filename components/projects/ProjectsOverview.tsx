@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '../ui/orca-components';
 import PageHeader from '../ui/PageHeader';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
+import { formatProjectStatus } from '@/lib/ui-status';
 import { createProjectActionDirect } from '@/app/actions/projects';
 
 interface ProjectItem {
@@ -274,57 +277,32 @@ export default function ProjectsOverview({
         )}
 
         {!isLoading && filteredProjects.length > 0 && (
-          <div className="overflow-x-auto max-h-[450px] overflow-y-auto custom-scrollbar">
-            <table className="nc-table">
-              <thead>
-                <tr>
-                  <th>اسم المشروع</th>
-                  <th>الموقع</th>
-                  <th>الحالة</th>
-                  <th>مبيعات الوحدات</th>
-                  <th>تقدم التشييد</th>
-                  <th className="text-center">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((p) => (
-                  <tr key={p.id} className="hover:bg-[var(--nc-accent-soft)] transition-colors group">
-                    <td className="py-3 px-4 font-bold text-white text-xs">{p.name}</td>
-                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">
-                      <div className="flex items-center gap-1.5"><MapPin size={11} />{p.location}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        p.status === 'مكتمل' ? 'bg-emerald-500/25 text-emerald-400' : 'bg-amber-500/25 text-amber-400'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs">
-                      <span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5">
-                          <div className="bg-[var(--nc-accent)] h-1.5 rounded-full" style={{ width: p.progressPercent + '%' }}></div>
-                        </div>
-                        <span className="text-[11px] font-bold text-[var(--nc-accent-text)]">{p.progressPercent}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => onSelectProject(p.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent-text)] rounded-lg text-[10px] font-bold transition-all"
-                      >
-                        <Eye size={12} />
-                        استعراض
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { header: 'اسم المشروع', accessor: 'name' as keyof typeof filteredProjects[0], className: 'font-bold text-white text-xs' },
+              { header: 'الموقع', accessor: (p) => <div className="flex items-center gap-1.5"><MapPin size={11} />{p.location}</div>, className: 'text-xs text-[var(--nc-text-dim)]' },
+              { header: 'الحالة', accessor: (p) => <StatusCell status={p.status} format={formatProjectStatus}
+                activeClass="bg-emerald-500/25 text-emerald-400" /> },
+              { header: 'مبيعات الوحدات', accessor: (p) => <span className="text-xs"><span className="font-bold text-white">{p.unitsSold}</span> / {p.unitsTotal} وحدة</span> },
+              { header: 'تقدم التشييد', accessor: (p) => (
+                <div className="flex items-center gap-2">
+                  <div className="w-16 bg-[var(--nc-surface-solid)] rounded-full h-1.5">
+                    <div className="bg-[var(--nc-accent)] h-1.5 rounded-full" style={{ width: (p.progressPercent || 0) + '%' }}></div>
+                  </div>
+                  <span className="text-[11px] font-bold text-[var(--nc-accent-text)]">{p.progressPercent || 0}%</span>
+                </div>
+              )},
+              { header: 'إجراءات', accessor: (p) => (
+                <button onClick={() => onSelectProject(p.id)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent-text)] rounded-lg text-[10px] font-bold transition-all">
+                  <Eye size={12} /> استعراض
+                </button>
+              ), className: 'text-center', headerClassName: 'text-center' },
+            ] as Column<typeof filteredProjects[0]>[]}
+            data={filteredProjects}
+            pageSize={15}
+            emptyMessage="لا توجد مشاريع"
+          />
         )}
       </Card>
 
