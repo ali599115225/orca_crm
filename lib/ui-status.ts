@@ -90,3 +90,14 @@ export function formatEmailStatus(status?: string | null): string {
   if (!status) return '—';
   return map[status] || status;
 }
+
+export function formatWhatsAppStatus(status?: string | null): string {
+  const map: Record<string, string> = {
+    sent: 'مرسل', delivered: 'مُسلَّم', read: 'مقروء', received: 'مُستلَم',
+    failed: 'فشل', pending: 'معلق',
+    SENT: 'مرسل', DELIVERED: 'مُسلَّم', READ: 'مقروء', RECEIVED: 'مُستلَم',
+    FAILED: 'فشل', PENDING: 'معلق',
+  };
+  if (!status) return '—';
+  return map[status] || status;
+}

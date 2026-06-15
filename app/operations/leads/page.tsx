@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import LeadsTabs from "@/components/views/tabs/LeadsTabs";
+import LeadsWorkspace from "@/components/views/LeadsWorkspace";
 
 export default function LEADSPage() {
-  return <LeadsTabs />;
+  return <LeadsWorkspace />;
 }

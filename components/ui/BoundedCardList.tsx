@@ -7,8 +7,9 @@ interface BoundedCardListProps {
   pageSize?: number;
   emptyMessage?: string;
   className?: string;
-  /** If true, renders cards in a scroll container without pagination. Use only when items < 5. */
   compact?: boolean;
+  /** Fixed height for each card. Applies 'h-[Xpx] overflow-hidden' to each child wrapper. */
+  cardHeight?: string;
 }
 
 export function BoundedCardList({
@@ -17,6 +18,7 @@ export function BoundedCardList({
   emptyMessage = 'لا توجد بيانات',
   className = '',
   compact = false,
+  cardHeight,
 }: BoundedCardListProps) {
   const items = React.Children.toArray(children).filter(Boolean);
   const [page, setPage] = useState(0);
@@ -42,9 +44,20 @@ export function BoundedCardList({
   const start = page * pageSize;
   const displayItems = items.slice(start, start + pageSize);
 
+  const renderCard = (child: React.ReactNode, i: number) => {
+    if (cardHeight) {
+      return (
+        <div key={i} className="overflow-hidden flex-shrink-0" style={{ height: cardHeight }}>
+          {child}
+        </div>
+      );
+    }
+    return <React.Fragment key={i}>{child}</React.Fragment>;
+  };
+
   return (
     <div className={className}>
-      {displayItems}
+      {displayItems.map((child, i) => renderCard(child, i))}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-3 px-1 text-xs text-[var(--nc-text-dim)] border-t border-[var(--nc-glass-border)] mt-3">
           <span>
