@@ -223,12 +223,21 @@ export default function DashboardView({
                 const total = pipelineStages.reduce((s2, p) => s2 + p.count, 0);
                 const percent = total > 0 ? Math.round((stage.count / total) * 100) : 0;
                 const stageKeyMap: Record<string, string> = { inquiry: 'pipeline.inquiry', tour: 'pipeline.tour', offer: 'pipeline.offer', close: 'pipeline.close' };
+                const stageColorMap: Record<string, string> = {
+                  inquiry: 'text-blue-700 dark:text-blue-400',
+                  tour: 'text-amber-700 dark:text-amber-400',
+                  offer: 'text-purple-700 dark:text-purple-400',
+                  close: 'text-emerald-700 dark:text-emerald-400',
+                };
+                const bgColorMap: Record<string, string> = {
+                  inquiry: '#3B82F6', tour: '#F59E0B', offer: '#8B5CF6', close: '#10B981',
+                };
                 return (
                   <FlatRowBlock key={stage.key} className="p-3 text-center">
                     <span className="text-[10px] font-bold text-[var(--nc-text-secondary)] block mb-1">{t(stageKeyMap[stage.key] || stage.key)}</span>
-                    <span className="text-xl font-black block mb-1" style={{ color: stage.color }}>{formatNum(stage.count)}</span>
+                    <span className={`text-xl font-black block mb-1 ${stageColorMap[stage.key] || 'text-[var(--nc-foreground)]'}`}>{formatNum(stage.count)}</span>
                     <div className="w-full h-1 rounded-full bg-[var(--nc-glass-border)] overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percent}%`, backgroundColor: stage.color }} />
+                      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percent}%`, backgroundColor: bgColorMap[stage.key] || '#3B82F6' }} />
                     </div>
                     <span className="text-[9px] text-[var(--nc-text-dim)] mt-1 block">{percent}%</span>
                   </FlatRowBlock>
