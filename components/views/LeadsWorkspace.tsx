@@ -337,6 +337,12 @@ function formatNumber(value: unknown, isArabic: boolean): string {
     : "0";
 }
 
+function formatPipelineCount(value: unknown): string {
+  const numberValue = Number(value || 0);
+
+  return Number.isFinite(numberValue) ? numberValue.toLocaleString("en-US") : "0";
+}
+
 function getLeadName(lead: LeadItem, isArabic = true): string {
   const original = `${lead.firstName || ""} ${lead.lastName || ""}`.trim();
 
@@ -532,7 +538,7 @@ export default function LeadsWorkspace() {
 
   if (loading) {
     return (
-      <section dir={direction} className="min-h-full px-4 pb-8 pt-6 lg:px-6">
+      <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
         <div className="mx-auto flex min-h-[240px] w-full max-w-[1500px] items-center justify-center rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)]">
           <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
         </div>
@@ -541,7 +547,7 @@ export default function LeadsWorkspace() {
   }
 
   return (
-    <section dir={direction} className="min-h-full px-4 pb-8 pt-6 lg:px-6">
+    <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
       <div className="mx-auto w-full max-w-[1500px] space-y-5">
         <div>
           <p className="text-xs text-[var(--nc-text-secondary)]">{labels.breadcrumb}</p>
@@ -688,7 +694,7 @@ export default function LeadsWorkspace() {
                     <div
                       tabIndex={0}
                       aria-label={labels.pipeline}
-                      className="max-h-[260px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="max-h-[220px] space-y-1.5 overflow-y-auto pr-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                     >
                       {STAGES.map((stage) => {
                         const count = stageCounts[stage.id] || 0;
@@ -696,19 +702,19 @@ export default function LeadsWorkspace() {
                         return (
                           <div
                             key={stage.id}
-                            className="grid min-h-[48px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2.5"
+                            className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2"
                           >
                             <span className="truncate text-sm font-semibold text-[var(--nc-text-primary)]">
                               {getStageLabel(stage.id, isArabic)}
                             </span>
                             <span className="whitespace-nowrap text-xs text-[var(--nc-text-secondary)]">
-                              {formatNumber(count, isArabic)} {labels.leadsUnit}
+                              {formatPipelineCount(count)} {labels.leadsUnit}
                             </span>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-2xl bg-gradient-to-t from-[var(--nc-surface)] to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 rounded-b-2xl bg-gradient-to-t from-[var(--nc-surface)] to-transparent" />
                   </div>
                 )}
               </div>
