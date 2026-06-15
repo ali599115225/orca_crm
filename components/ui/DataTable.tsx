@@ -83,7 +83,7 @@ export function DataTable<T extends Record<string, any>>({
                     <td key={colIdx} className={col.className || ''}>
                       {typeof col.accessor === 'function'
                         ? col.accessor(row)
-                        : row[col.accessor] ?? '-'}
+                        : <span className="text-[var(--nc-text-dim)]">{row[col.accessor] ?? '—'}</span>}
                     </td>
                   ))}
                 </tr>

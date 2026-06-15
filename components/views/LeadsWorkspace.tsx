@@ -108,6 +108,13 @@ export default function LeadsWorkspace() {
       .leads-scroll-soft:hover::-webkit-scrollbar-track, .leads-scroll-soft:focus-within::-webkit-scrollbar-track { background: transparent; }
     `}</style>
     <div className="flex flex-col gap-4 px-5 py-4" style={{ height: "calc(100vh - 76px)", maxWidth: 1600, margin: "0 auto" }} dir={isArabic ? 'rtl' : 'ltr'}>
+      {/* Page Header */}
+      <div className="shrink-0">
+        <div className="text-xs text-[var(--nc-text-dim)] mb-1">{isArabic ? "العمليات / العملاء المحتملين" : "Operations / Leads"}</div>
+        <h1 className="text-2xl font-black text-[var(--nc-foreground)]">{isArabic ? "إدارة العملاء المحتملين" : "Leads Management"}</h1>
+        <p className="text-sm text-[var(--nc-text-dim)] mt-1">{isArabic ? "مركز تشغيل ثابت: اختر عميلاً من القائمة لعرض التفاصيل والمتابعة" : "Fixed workspace: select a lead to view details and follow up"}</p>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 shrink-0" style={{ height: 104 }}>
         {[
