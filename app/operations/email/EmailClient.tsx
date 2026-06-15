@@ -129,6 +129,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
           pageSize={15}
           emptyMessage={isRTL ? 'لا توجد رسائل بعد' : 'No messages yet'}
         />
+      </SmartCard>
     </div>
   );
 }
