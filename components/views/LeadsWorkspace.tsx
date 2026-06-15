@@ -1,11 +1,12 @@
-// components/views/LeadsWorkspace.tsx — v4 Fixed Operating Workspace
+// components/views/LeadsWorkspace.tsx — ORCA Leads visual contract
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
-import { SmartCard } from "@/components/ui/SmartCard";
-import { DataTable, type Column } from "@/components/ui/DataTable";
 import { formatLeadStatus } from "@/lib/ui-status";
 import type { LeadItem } from "./pipeline/KanbanCard";
+
+const PAGE_SIZE = 10;
 
 const STAGES = [
   { id: "New", titleAr: "جديد", titleEn: "New" },
@@ -17,255 +18,683 @@ const STAGES = [
   { id: "Closed", titleAr: "مغلق", titleEn: "Closed" },
 ];
 
-function formatSource(source?: string | null): string {
-  const map: Record<string, string> = {
-    WHATSAPP: "واتساب", WEBSITE: "موقع إلكتروني", REFERRAL: "إحالة",
-    "Google Ads": "إعلانات Google", "Meta Ads": "إعلانات Meta",
-    "Snapchat Ads": "إعلانات سناب", "TikTok Ads": "إعلانات TikTok",
-    "إعلانات TikTok": "إعلانات TikTok", "TikTok إعلانات": "إعلانات TikTok",
-    "إعلانات Meta": "إعلانات Meta", "Meta إعلانات": "إعلانات Meta",
-    "إعلانات Google": "إعلانات Google", "Google إعلانات": "إعلانات Google",
-    "إعلانات Snapchat": "إعلانات سناب", "Snapchat إعلانات": "إعلانات سناب",
+type DetailTab =
+  | "summary"
+  | "contacts"
+  | "tasks"
+  | "tours"
+  | "offers"
+  | "opportunities"
+  | "pipeline";
+
+type Copy = {
+  breadcrumb: string;
+  title: string;
+  subtitle: string;
+  totalLeads: string;
+  newLeads: string;
+  qualified: string;
+  conversion: string;
+  leadRegistry: string;
+  thisWeek: string;
+  readyFollowUp: string;
+  closedRate: string;
+  searchPlaceholder: string;
+  leadsList: string;
+  lead: string;
+  status: string;
+  source: string;
+  owner: string;
+  score: string;
+  action: string;
+  open: string;
+  page: string;
+  of: string;
+  previous: string;
+  next: string;
+  loading: string;
+  noLeads: string;
+  selectLead: string;
+  city: string;
+  notSpecified: string;
+  summary: string;
+  contacts: string;
+  tasks: string;
+  tours: string;
+  offers: string;
+  opportunities: string;
+  pipeline: string;
+  leadInfo: string;
+  currentStatus: string;
+  lastActivity: string;
+  assignedTo: string;
+  stage: string;
+  noContacts: string;
+  noTasks: string;
+  noTours: string;
+  noOffers: string;
+  noOpportunities: string;
+  leadsUnit: string;
+};
+
+const copy: Record<"ar" | "en", Copy> = {
+  ar: {
+    breadcrumb: "العمليات / العملاء المحتملين",
+    title: "إدارة العملاء المحتملين",
+    subtitle: "مركز تشغيل العملاء المحتملين: اختر عميلاً من القائمة لعرض التفاصيل والمتابعة.",
+    totalLeads: "إجمالي العملاء",
+    newLeads: "عملاء جدد",
+    qualified: "عملاء مؤهلون",
+    conversion: "معدل التحويل",
+    leadRegistry: "سجل العملاء المحتملين",
+    thisWeek: "الأسبوع الحالي",
+    readyFollowUp: "جاهزون للمتابعة",
+    closedRate: "نسبة الصفقات المغلقة",
+    searchPlaceholder: "ابحث باسم العميل أو المدينة أو المصدر أو المسؤول",
+    leadsList: "قائمة العملاء",
+    lead: "العميل",
+    status: "الحالة",
+    source: "المصدر",
+    owner: "المسؤول",
+    score: "الدرجة",
+    action: "الإجراء",
+    open: "فتح",
+    page: "صفحة",
+    of: "من",
+    previous: "السابق",
+    next: "التالي",
+    loading: "جاري تحميل العملاء المحتملين...",
+    noLeads: "لا يوجد عملاء محتملون مطابقون للبحث الحالي.",
+    selectLead: "اختر عميلاً من القائمة لعرض التفاصيل هنا",
+    city: "المدينة",
+    notSpecified: "غير محدد",
+    summary: "الملخص",
+    contacts: "جهات الاتصال",
+    tasks: "المهام",
+    tours: "الجولات",
+    offers: "العروض",
+    opportunities: "الفرص",
+    pipeline: "مسار الصفقات",
+    leadInfo: "بيانات العميل",
+    currentStatus: "الحالة الحالية",
+    lastActivity: "آخر نشاط",
+    assignedTo: "المسؤول",
+    stage: "المرحلة",
+    noContacts: "لا توجد جهات اتصال مرتبطة بهذا العميل",
+    noTasks: "لا توجد مهام مرتبطة بهذا العميل",
+    noTours: "لا توجد جولات مجدولة لهذا العميل",
+    noOffers: "لا توجد عروض مرتبطة بهذا العميل",
+    noOpportunities: "لا توجد فرص مرتبطة بهذا العميل",
+    leadsUnit: "عميل",
+  },
+  en: {
+    breadcrumb: "Operations / Leads",
+    title: "Leads Management",
+    subtitle: "Lead operating workspace: select a lead from the list to view details and follow up.",
+    totalLeads: "Total Leads",
+    newLeads: "New Leads",
+    qualified: "Qualified",
+    conversion: "Conversion",
+    leadRegistry: "Lead registry",
+    thisWeek: "This week",
+    readyFollowUp: "Ready to follow up",
+    closedRate: "Closed deal rate",
+    searchPlaceholder: "Search by lead name, city, source, or owner",
+    leadsList: "Leads List",
+    lead: "Lead",
+    status: "Status",
+    source: "Source",
+    owner: "Owner",
+    score: "Score",
+    action: "Action",
+    open: "Open",
+    page: "Page",
+    of: "of",
+    previous: "Previous",
+    next: "Next",
+    loading: "Loading leads...",
+    noLeads: "No leads match the current search.",
+    selectLead: "Select a lead from the list to view details here",
+    city: "City",
+    notSpecified: "Not specified",
+    summary: "Summary",
+    contacts: "Contacts",
+    tasks: "Tasks",
+    tours: "Tours",
+    offers: "Offers",
+    opportunities: "Opportunities",
+    pipeline: "Pipeline",
+    leadInfo: "Lead Info",
+    currentStatus: "Current Status",
+    lastActivity: "Last Activity",
+    assignedTo: "Assigned To",
+    stage: "Stage",
+    noContacts: "No contacts linked to this lead",
+    noTasks: "No tasks linked to this lead",
+    noTours: "No tours scheduled for this lead",
+    noOffers: "No offers linked to this lead",
+    noOpportunities: "No opportunities linked to this lead",
+    leadsUnit: "leads",
+  },
+};
+
+const detailTabs: Array<{ id: DetailTab; labelKey: keyof Copy }> = [
+  { id: "summary", labelKey: "summary" },
+  { id: "contacts", labelKey: "contacts" },
+  { id: "tasks", labelKey: "tasks" },
+  { id: "tours", labelKey: "tours" },
+  { id: "offers", labelKey: "offers" },
+  { id: "opportunities", labelKey: "opportunities" },
+  { id: "pipeline", labelKey: "pipeline" },
+];
+
+function formatSource(source?: string | null, isArabic = true): string {
+  const arMap: Record<string, string> = {
+    WHATSAPP: "واتساب",
+    WEBSITE: "موقع إلكتروني",
+    REFERRAL: "إحالة",
+    "Google Ads": "إعلانات Google",
+    "Meta Ads": "إعلانات Meta",
+    "Snapchat Ads": "إعلانات سناب",
+    "TikTok Ads": "إعلانات TikTok",
+    "إعلانات TikTok": "إعلانات TikTok",
+    "TikTok إعلانات": "إعلانات TikTok",
+    "إعلانات Meta": "إعلانات Meta",
+    "Meta إعلانات": "إعلانات Meta",
+    "إعلانات Google": "إعلانات Google",
+    "Google إعلانات": "إعلانات Google",
+    "إعلانات Snapchat": "إعلانات سناب",
+    "Snapchat إعلانات": "إعلانات سناب",
   };
+
+  const enMap: Record<string, string> = {
+    WHATSAPP: "WhatsApp",
+    WEBSITE: "Website",
+    REFERRAL: "Referral",
+    "إعلانات TikTok": "TikTok Ads",
+    "TikTok إعلانات": "TikTok Ads",
+    "إعلانات Meta": "Meta Ads",
+    "Meta إعلانات": "Meta Ads",
+    "إعلانات Google": "Google Ads",
+    "Google إعلانات": "Google Ads",
+    "إعلانات Snapchat": "Snapchat Ads",
+    "Snapchat إعلانات": "Snapchat Ads",
+  };
+
   const normalized = String(source || "").trim();
-  return map[normalized] || normalized || "غير محدد";
+  const map = isArabic ? arMap : enMap;
+
+  return map[normalized] || normalized || (isArabic ? "غير محدد" : "Not specified");
 }
 
-// Check if a value looks like a UUID/hash and should not be shown to users
 function isTechnicalId(value?: string | null): boolean {
   if (!value) return false;
+
   const normalized = String(value).trim();
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(normalized);
+
+  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+    normalized,
+  );
 }
 
-function formatOwner(value?: string | null): string {
-  if (!value) return "غير محدد";
+function formatOwner(value: unknown, notSpecified: string): string {
+  if (!value) return notSpecified;
+
   const normalized = String(value).trim();
-  if (!normalized || normalized === "—" || normalized === "-") return "غير محدد";
-  if (isTechnicalId(normalized)) return "غير محدد";
+
+  if (!normalized || normalized === "—" || normalized === "-") return notSpecified;
+  if (isTechnicalId(normalized)) return notSpecified;
+
   return normalized;
+}
+
+function formatNumber(value: unknown, isArabic: boolean): string {
+  const numberValue = Number(value || 0);
+
+  return Number.isFinite(numberValue)
+    ? numberValue.toLocaleString(isArabic ? "ar-SA" : "en-US")
+    : "0";
+}
+
+function getLeadName(lead: LeadItem): string {
+  return `${lead.firstName || ""} ${lead.lastName || ""}`.trim() || "—";
+}
+
+function getStageLabel(stageId: string, isArabic: boolean): string {
+  const stage = STAGES.find((item) => item.id === stageId);
+
+  return stage ? (isArabic ? stage.titleAr : stage.titleEn) : stageId;
+}
+
+function getStageCounts(leads: LeadItem[]) {
+  const map: Record<string, number> = {};
+
+  STAGES.forEach((stage) => {
+    map[stage.id] = leads.filter((lead) => lead.stage === stage.id).length;
+  });
+
+  return map;
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-6 text-center">
+      <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{message}</p>
+    </div>
+  );
 }
 
 function LeadStatusBadge({ status }: { status?: string | null }) {
   const label = formatLeadStatus(status);
+
   return (
-    <span className="inline-flex h-7 min-w-[86px] items-center justify-center rounded-full border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] px-3 text-xs font-bold text-[var(--nc-foreground)]">
+    <span className="inline-flex min-h-[28px] min-w-[92px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
       {label}
     </span>
   );
 }
 
-function getStageCounts(leads: LeadItem[]) {
-  const map: Record<string, number> = {};
-  STAGES.forEach(s => { map[s.id] = leads.filter(l => l.stage === s.id).length; });
-  return map;
+function PaginationBar({
+  page,
+  totalPages,
+  labels,
+  isArabic,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  labels: Copy;
+  isArabic: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
+        {formatNumber(totalPages, isArabic)}
+      </span>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={onPrevious}
+          className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {labels.previous}
+        </button>
+
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={onNext}
+          className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {labels.next}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function LeadsWorkspace() {
-  const { t, lang } = useApp();
-  const isArabic = lang === 'AR';
+  const { lang } = useApp();
+  const isArabic = lang === "AR";
+  const labels = isArabic ? copy.ar : copy.en;
+  const direction = isArabic ? "rtl" : "ltr";
+  const textAlign = isArabic ? "text-right" : "text-left";
+
   const [leads, setLeads] = useState<LeadItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
-  const [detailTab, setDetailTab] = useState("summary");
+  const [detailTab, setDetailTab] = useState<DetailTab>("summary");
   const [detailData, setDetailData] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [leadPage, setLeadPage] = useState(1);
 
   const loadLeads = async () => {
     try {
+      setLoading(true);
+
       const res = await fetch("/api/v1/leads");
       const json = await res.json();
-      if (json.success && Array.isArray(json.data)) setLeads(json.data);
-    } catch {} finally { setLoading(false); }
+
+      if (json.success && Array.isArray(json.data)) {
+        setLeads(json.data);
+      } else {
+        setLeads([]);
+      }
+    } catch {
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { loadLeads(); }, []);
+
+  useEffect(() => {
+    void loadLeads();
+  }, []);
 
   const handleSelect = async (lead: LeadItem) => {
     setSelectedLead(lead);
     setDetailTab("summary");
+
     try {
       const res = await fetch("/api/v1/leads");
       const json = await res.json();
-      const found = (json.data || []).find((l: any) => l.id === lead.id);
+      const found = (json.data || []).find((item: any) => item.id === lead.id);
+
       setDetailData(found || lead);
-    } catch { setDetailData(lead); }
+    } catch {
+      setDetailData(lead);
+    }
   };
 
+  const filteredLeads = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    if (!term) return leads;
+
+    return leads.filter((lead) => {
+      return (
+        getLeadName(lead).toLowerCase().includes(term) ||
+        String(lead.city || "").toLowerCase().includes(term) ||
+        formatSource(lead.source, isArabic).toLowerCase().includes(term) ||
+        formatOwner(lead.assignedTo, labels.notSpecified).toLowerCase().includes(term) ||
+        formatLeadStatus(lead.stage).toLowerCase().includes(term)
+      );
+    });
+  }, [leads, searchTerm, isArabic, labels.notSpecified]);
+
+  const leadTotalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const pagedLeads = filteredLeads.slice((leadPage - 1) * PAGE_SIZE, leadPage * PAGE_SIZE);
   const stageCounts = getStageCounts(leads);
   const totalLeads = leads.length;
-  const newLeads = stageCounts["New"] || 0;
-  const qualified = stageCounts["Qualified"] || 0;
-
-  const tabs = [
-    { id: "summary", label: isArabic ? "الملخص" : "Summary" },
-    { id: "contacts", label: isArabic ? "جهات اتصال" : "Contacts" },
-    { id: "tasks", label: isArabic ? "المهام" : "Tasks" },
-    { id: "tours", label: isArabic ? "الجولات" : "Tours" },
-    { id: "offers", label: isArabic ? "العروض" : "Offers" },
-    { id: "opportunities", label: isArabic ? "الفرص" : "Opportunities" },
-    { id: "pipeline", label: isArabic ? "مسار الصفقات" : "Pipeline" },
-  ];
-
-  const columns = [
-    { header: isArabic ? "العميل" : "Lead", accessor: (l: LeadItem) => <span className="font-extrabold text-sm">{l.firstName} {l.lastName || ""}</span> },
-    { header: isArabic ? "الحالة" : "Status", accessor: (l: LeadItem) => <LeadStatusBadge status={l.stage} />, headerClassName: "text-center" },
-    { header: isArabic ? "المصدر" : "Source", accessor: (l: LeadItem) => <span className="text-xs text-[var(--nc-text-dim)]">{formatSource(l.source)}</span> },
-    { header: isArabic ? "مسؤول" : "Owner", accessor: (l: LeadItem) => <span className="text-xs">{formatOwner(l.assignedTo)}</span> },
-    { header: isArabic ? "الدرجة" : "Score", accessor: (l: LeadItem) => <span className="font-mono text-xs">{l.leadScore}/100</span> },
-  ] as Column<LeadItem>[];
-
-  const renderEmptyTab = (message: string) => (
-    <div className="flex items-center justify-center h-40 border border-dashed border-[var(--nc-glass-border)] rounded-2xl text-[var(--nc-text-dim)] text-sm px-4 text-center">
-      {message}
-    </div>
-  );
+  const newLeads = stageCounts.New || 0;
+  const qualified = stageCounts.Qualified || 0;
+  const conversion = totalLeads > 0 ? Math.round(((stageCounts.Closed || 0) / totalLeads) * 100) : 0;
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-[var(--nc-text-dim)]">{isArabic ? "جاري التحميل..." : "Loading..."}</div>;
+    return (
+      <section dir={direction} className="min-h-full px-4 pb-8 pt-6 lg:px-6">
+        <div className="mx-auto flex min-h-[240px] w-full max-w-[1500px] items-center justify-center rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)]">
+          <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <>
-    <style>{`
-      .leads-scroll-hidden { scrollbar-width: none; -ms-overflow-style: none; }
-      .leads-scroll-hidden::-webkit-scrollbar { display: none; width: 0; height: 0; }
-    `}</style>
-    <div className="flex flex-col gap-4 px-5 py-4" style={{ height: "calc(100vh - 76px)", maxWidth: 1600, margin: "0 auto" }} dir={isArabic ? 'rtl' : 'ltr'}>
-      {/* Page Header */}
-      <div className="shrink-0">
-        <div className="text-xs text-[var(--nc-text-dim)] mb-1">{isArabic ? "العمليات / العملاء المحتملين" : "Operations / Leads"}</div>
-        <h1 className="text-2xl font-black text-[var(--nc-foreground)]">{isArabic ? "إدارة العملاء المحتملين" : "Leads Management"}</h1>
-        <p className="text-sm text-[var(--nc-text-dim)] mt-1">{isArabic ? "مركز تشغيل ثابت: اختر عميلاً من القائمة لعرض التفاصيل والمتابعة" : "Fixed workspace: select a lead to view details and follow up"}</p>
-      </div>
+    <section dir={direction} className="min-h-full px-4 pb-8 pt-6 lg:px-6">
+      <div className="mx-auto w-full max-w-[1500px] space-y-5">
+        <div>
+          <p className="text-xs text-[var(--nc-text-secondary)]">{labels.breadcrumb}</p>
+          <h1 className="mt-1 text-2xl font-bold text-[var(--nc-text-primary)]">{labels.title}</h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.subtitle}</p>
+        </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 shrink-0" style={{ height: 104 }}>
-        {[
-          { label: isArabic ? "إجمالي العملاء" : "Total Leads", val: totalLeads, note: isArabic ? "سجل العملاء المحتملين" : "Lead registry" },
-          { label: isArabic ? "عملاء جدد" : "New Leads", val: newLeads, note: isArabic ? "الأسبوع الحالي" : "This week" },
-          { label: isArabic ? "عملاء مؤهلون" : "Qualified", val: qualified, note: isArabic ? "جاهزون للمتابعة" : "Ready to follow up" },
-          { label: isArabic ? "معدل التحويل" : "Conversion", val: totalLeads > 0 ? Math.round((stageCounts["Closed"] || 0) / totalLeads * 100) + '%' : '0%', note: isArabic ? "نسبة الصفقات المغلقة" : "Closed deal rate" },
-        ].map((kpi, i) => (
-          <SmartCard key={i} elevation="elevated" className="p-4 flex flex-col justify-between overflow-hidden">
-            <span className="text-xs text-[var(--nc-text-dim)] truncate">{kpi.label}</span>
-            <span className="text-3xl font-black">{kpi.val}</span>
-            <span className="text-xs text-[var(--nc-text-dim)] truncate">{kpi.note}</span>
-          </SmartCard>
-        ))}
-      </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: labels.totalLeads, value: totalLeads, note: labels.leadRegistry },
+            { label: labels.newLeads, value: newLeads, note: labels.thisWeek },
+            { label: labels.qualified, value: qualified, note: labels.readyFollowUp },
+            { label: labels.conversion, value: `${conversion}%`, note: labels.closedRate },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="flex min-h-[104px] flex-col justify-between rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm"
+            >
+              <span className="text-sm text-[var(--nc-text-secondary)]">{kpi.label}</span>
+              <span className="text-2xl font-bold text-[var(--nc-text-primary)]">
+                {typeof kpi.value === "number" ? formatNumber(kpi.value, isArabic) : kpi.value}
+              </span>
+              <span className="text-xs text-[var(--nc-text-secondary)]">{kpi.note}</span>
+            </div>
+          ))}
+        </div>
 
-      {/* Master-Detail Workspace */}
-      <div className="flex-1 grid gap-4 min-h-0" style={{ gridTemplateColumns: "minmax(0, 0.54fr) minmax(0, 0.46fr)" }}>
-        {/* Detail Panel */}
-        <SmartCard elevation="default" className="flex flex-col min-h-0 overflow-hidden">
-          {selectedLead ? (
-            <>
-              {/* Detail Header */}
-              <div className="px-4 py-3 border-b border-[var(--nc-glass-border)] shrink-0">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)] font-black text-xl shrink-0">
-                    {selectedLead.firstName?.[0] || "؟"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-black text-lg truncate">{selectedLead.firstName} {selectedLead.lastName || ""}</h4>
-                    <p className="text-xs text-[var(--nc-text-dim)] truncate">{selectedLead.city || "غير محدد"} · {formatSource(selectedLead.source)}</p>
-                  </div>
-                  <LeadStatusBadge status={selectedLead.stage} />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: isArabic ? "الدرجة" : "Score", value: selectedLead.leadScore ? `${selectedLead.leadScore}/100` : "غير محدد" },
-                    { label: isArabic ? "المدينة" : "City", value: selectedLead.city || "غير محدد" },
-                    { label: isArabic ? "المصدر" : "Source", value: formatSource(selectedLead.source) },
-                  ].map((stat, i) => (
-                    <div key={i} className="h-11 border border-[var(--nc-glass-border)] rounded-xl bg-[var(--nc-surface)] px-3 flex flex-col justify-center overflow-hidden">
-                      <span className="text-[9px] text-[var(--nc-text-dim)] truncate">{stat.label}</span>
-                      <span className="text-sm font-bold truncate">{stat.value}</span>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
+          <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+            {selectedLead ? (
+              <div className="space-y-4">
+                <div className="border-b border-[var(--nc-border)] pb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-xl font-bold text-[var(--nc-text-primary)]">
+                      {selectedLead.firstName?.[0] || "؟"}
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Tabs */}
-              <div className="flex gap-1 px-3 py-2 border-b border-[var(--nc-glass-border)] shrink-0 flex-wrap" style={{ maxHeight: 80, overflow: 'hidden' }}>
-                {tabs.map(tab => (
-                  <button key={tab.id} onClick={() => setDetailTab(tab.id)}
-                    className={`h-8 px-3 rounded-full text-xs font-bold border transition-colors ${
-                      detailTab === tab.id
-                        ? 'bg-[var(--nc-foreground)] text-[var(--nc-bg)] border-[var(--nc-foreground)]'
-                        : 'bg-[var(--nc-surface)] border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'
-                    }`}
-                  >{tab.label}</button>
-                ))}
-              </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-lg font-bold text-[var(--nc-text-primary)]">
+                        {getLeadName(selectedLead)}
+                      </h2>
+                      <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
+                        {selectedLead.city || labels.notSpecified} · {formatSource(selectedLead.source, isArabic)}
+                      </p>
+                    </div>
 
-              {/* Detail Body */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 leads-scroll-hidden">
-                {detailTab === "summary" && (
-                  <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                    <LeadStatusBadge status={selectedLead.stage} />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
                     {[
-                      { title: isArabic ? "بيانات العميل" : "Lead Info", body: `${selectedLead.firstName} ${selectedLead.lastName || ""}${selectedLead.city ? " · " + selectedLead.city : ""} · ${formatSource(selectedLead.source)}` },
-                      { title: isArabic ? "الحالة الحالية" : "Current Status", body: `المرحلة: ${formatLeadStatus(selectedLead.stage)} · الدرجة: ${selectedLead.leadScore}/100` },
-                      { title: isArabic ? "آخر نشاط" : "Last Activity", body: (detailData as any)?.updatedAt ? new Date((detailData as any).updatedAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : "غير محدد" },
-                      { title: isArabic ? "المسؤول" : "Assigned To", body: formatOwner(selectedLead.assignedTo) },
-                    ].map((card, i) => (
-                      <div key={i} className="border border-[var(--nc-glass-border)] rounded-2xl bg-[var(--nc-surface)] p-4 flex flex-col justify-between overflow-hidden" style={{ height: 148 }}>
-                        <div>
-                          <h4 className="font-bold text-sm mb-2 truncate">{card.title}</h4>
-                          <p className="text-xs text-[var(--nc-text-dim)] line-clamp-3">{card.body}</p>
-                        </div>
+                      {
+                        label: labels.score,
+                        value: selectedLead.leadScore ? `${selectedLead.leadScore}/100` : labels.notSpecified,
+                      },
+                      { label: labels.city, value: selectedLead.city || labels.notSpecified },
+                      { label: labels.source, value: formatSource(selectedLead.source, isArabic) },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="min-h-[56px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3"
+                      >
+                        <p className="truncate text-xs text-[var(--nc-text-secondary)]">{stat.label}</p>
+                        <p className="mt-1 truncate text-sm font-semibold text-[var(--nc-text-primary)]">
+                          {stat.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {detailTabs.map((tab) => {
+                    const active = detailTab === tab.id;
+
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setDetailTab(tab.id)}
+                        className={
+                          active
+                            ? "nc-btn-primary min-h-[38px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                            : "nc-btn-ghost min-h-[38px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                        }
+                      >
+                        {labels[tab.labelKey]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {detailTab === "summary" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      {
+                        title: labels.leadInfo,
+                        body: `${getLeadName(selectedLead)} · ${selectedLead.city || labels.notSpecified} · ${formatSource(
+                          selectedLead.source,
+                          isArabic,
+                        )}`,
+                      },
+                      {
+                        title: labels.currentStatus,
+                        body: `${labels.stage}: ${formatLeadStatus(selectedLead.stage)} · ${labels.score}: ${
+                          selectedLead.leadScore || 0
+                        }/100`,
+                      },
+                      {
+                        title: labels.lastActivity,
+                        body: (detailData as any)?.updatedAt
+                          ? new Date((detailData as any).updatedAt).toLocaleDateString(
+                              isArabic ? "ar-SA" : "en-US",
+                              { year: "numeric", month: "long", day: "numeric" },
+                            )
+                          : labels.notSpecified,
+                      },
+                      {
+                        title: labels.assignedTo,
+                        body: formatOwner(selectedLead.assignedTo, labels.notSpecified),
+                      },
+                    ].map((card) => (
+                      <div
+                        key={card.title}
+                        className="min-h-[132px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4"
+                      >
+                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{card.title}</h3>
+                        <p className="mt-2 text-xs leading-6 text-[var(--nc-text-secondary)]">{card.body}</p>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {detailTab === "contacts" && renderEmptyTab(isArabic ? "لا توجد جهات اتصال مرتبطة بهذا العميل" : "No contacts linked to this lead")}
-                {detailTab === "tasks" && renderEmptyTab(isArabic ? "لا توجد مهام مرتبطة بهذا العميل" : "No tasks linked to this lead")}
-                {detailTab === "tours" && renderEmptyTab(isArabic ? "لا توجد جولات مجدولة لهذا العميل" : "No tours scheduled for this lead")}
-                {detailTab === "offers" && renderEmptyTab(isArabic ? "لا توجد عروض مرتبطة بهذا العميل" : "No offers linked to this lead")}
-                {detailTab === "opportunities" && renderEmptyTab(isArabic ? "لا توجد فرص مرتبطة بهذا العميل" : "No opportunities linked to this lead")}
+                {detailTab === "contacts" && <EmptyState message={labels.noContacts} />}
+                {detailTab === "tasks" && <EmptyState message={labels.noTasks} />}
+                {detailTab === "tours" && <EmptyState message={labels.noTours} />}
+                {detailTab === "offers" && <EmptyState message={labels.noOffers} />}
+                {detailTab === "opportunities" && <EmptyState message={labels.noOpportunities} />}
 
                 {detailTab === "pipeline" && (
                   <div className="space-y-2">
-                    {STAGES.map(stage => {
+                    {STAGES.map((stage) => {
                       const count = stageCounts[stage.id] || 0;
+
                       return (
-                        <div key={stage.id} className="h-14 border border-[var(--nc-glass-border)] rounded-xl bg-[var(--nc-surface)] px-4 flex items-center justify-between">
-                          <span className="font-bold text-sm">{lang === 'AR' ? stage.titleAr : stage.titleEn}</span>
-                          <span className="text-xs text-[var(--nc-text-dim)]">{count} {isArabic ? "عميل" : "leads"}</span>
+                        <div
+                          key={stage.id}
+                          className="flex min-h-[56px] items-center justify-between rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3"
+                        >
+                          <span className="text-sm font-semibold text-[var(--nc-text-primary)]">
+                            {getStageLabel(stage.id, isArabic)}
+                          </span>
+                          <span className="text-xs text-[var(--nc-text-secondary)]">
+                            {formatNumber(count, isArabic)} {labels.leadsUnit}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-[var(--nc-text-dim)] text-sm p-8">
-              <p className="text-center">{isArabic ? "اختر عميلاً من القائمة لعرض التفاصيل هنا" : "Select a lead from the list to view details here"}</p>
-            </div>
-          )}
-        </SmartCard>
+            ) : (
+              <EmptyState message={labels.selectLead} />
+            )}
+          </div>
 
-        {/* Master Table */}
-        <SmartCard elevation="default" className="flex flex-col min-h-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--nc-glass-border)] flex items-center justify-between shrink-0">
-            <h3 className="font-extrabold text-base">{isArabic ? "قائمة العملاء" : "Leads List"}</h3>
-            <span className="text-xs text-[var(--nc-text-dim)]">{totalLeads} {isArabic ? "عميل" : "leads"}</span>
+          <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.leadsList}</h2>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                  {formatNumber(filteredLeads.length, isArabic)} {labels.leadsUnit}
+                </p>
+              </div>
+
+              <input
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setLeadPage(1);
+                }}
+                placeholder={labels.searchPlaceholder}
+                className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm text-[var(--nc-text-primary)] outline-none lg:max-w-md"
+              />
+            </div>
+
+            {filteredLeads.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.score}</th>
+                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.action}</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {pagedLeads.map((lead) => {
+                      const selected = selectedLead?.id === lead.id;
+
+                      return (
+                        <tr
+                          key={lead.id}
+                          className={
+                            selected
+                              ? "border-b border-[var(--nc-border)] bg-[var(--nc-surface-soft)]"
+                              : "border-b border-[var(--nc-border)]"
+                          }
+                        >
+                          <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
+                            {getLeadName(lead)}
+                          </td>
+
+                          <td className="px-3 py-3">
+                            <LeadStatusBadge status={lead.stage} />
+                          </td>
+
+                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                            {formatSource(lead.source, isArabic)}
+                          </td>
+
+                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                            {formatOwner(lead.assignedTo, labels.notSpecified)}
+                          </td>
+
+                          <td className="px-3 py-3 font-mono text-xs text-[var(--nc-text-secondary)]">
+                            {formatNumber(lead.leadScore || 0, isArabic)}/100
+                          </td>
+
+                          <td className="px-3 py-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleSelect(lead);
+                              }}
+                              className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                            >
+                              {labels.open}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <PaginationBar
+                  page={leadPage}
+                  totalPages={leadTotalPages}
+                  labels={labels}
+                  isArabic={isArabic}
+                  onPrevious={() => setLeadPage((page) => Math.max(1, page - 1))}
+                  onNext={() => setLeadPage((page) => Math.min(leadTotalPages, page + 1))}
+                />
+              </div>
+            ) : (
+              <EmptyState message={labels.noLeads} />
+            )}
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-hidden">
-            <DataTable
-              columns={columns}
-              data={leads}
-              pageSize={10}
-              selectedId={selectedLead?.id}
-              getId={(l) => l.id}
-              onRowClick={(l) => handleSelect(l)}
-              emptyMessage={isArabic ? "لا يوجد عملاء" : "No leads"}
-            />
-          </div>
-        </SmartCard>
+        </div>
       </div>
-    </div>
-    </>
+    </section>
   );
 }
