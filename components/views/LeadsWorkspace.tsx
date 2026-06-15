@@ -29,6 +29,17 @@ function formatSource(source: string): string {
   return map[source] || source || "غير محدد";
 }
 
+// Check if a value looks like a UUID/hash and should not be shown to users
+function isTechnicalId(value: string): boolean {
+  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
+}
+
+function formatOwner(value: string | null): string {
+  if (!value) return "غير محدد";
+  if (isTechnicalId(value)) return "غير محدد";
+  return value;
+}
+
 function getStageCounts(leads: LeadItem[]) {
   const map: Record<string, number> = {};
   STAGES.forEach(s => { map[s.id] = leads.filter(l => l.stage === s.id).length; });
@@ -83,7 +94,7 @@ export default function LeadsWorkspace() {
     { header: isArabic ? "العميل" : "Lead", accessor: (l: LeadItem) => <span className="font-extrabold text-sm">{l.firstName} {l.lastName || ""}</span> },
     { header: isArabic ? "الحالة" : "Status", accessor: (l: LeadItem) => <StatusCell status={l.stage} format={formatLeadStatus} />, headerClassName: "text-center" },
     { header: isArabic ? "المصدر" : "Source", accessor: (l: LeadItem) => <span className="text-xs text-[var(--nc-text-dim)]">{formatSource(l.source)}</span> },
-    { header: isArabic ? "مسؤول" : "Owner", accessor: (l: LeadItem) => <span className="text-xs">{l.assignedTo || "غير محدد"}</span> },
+    { header: isArabic ? "مسؤول" : "Owner", accessor: (l: LeadItem) => <span className="text-xs">{formatOwner(l.assignedTo)}</span> },
     { header: isArabic ? "الدرجة" : "Score", accessor: (l: LeadItem) => <span className="font-mono text-xs">{l.leadScore}/100</span> },
   ] as Column<LeadItem>[];
 
@@ -100,12 +111,8 @@ export default function LeadsWorkspace() {
   return (
     <>
     <style>{`
-      .leads-scroll-soft { scrollbar-width: none; -ms-overflow-style: none; }
-      .leads-scroll-soft::-webkit-scrollbar { width: 0; height: 0; }
-      .leads-scroll-soft:hover, .leads-scroll-soft:focus-within { scrollbar-width: thin; scrollbar-color: var(--nc-text-dim) transparent; }
-      .leads-scroll-soft:hover::-webkit-scrollbar, .leads-scroll-soft:focus-within::-webkit-scrollbar { width: 5px; height: 5px; }
-      .leads-scroll-soft:hover::-webkit-scrollbar-thumb, .leads-scroll-soft:focus-within::-webkit-scrollbar-thumb { background: var(--nc-text-dim); border-radius: 999px; opacity: 0.3; }
-      .leads-scroll-soft:hover::-webkit-scrollbar-track, .leads-scroll-soft:focus-within::-webkit-scrollbar-track { background: transparent; }
+      .leads-scroll-hidden { scrollbar-width: none; -ms-overflow-style: none; }
+      .leads-scroll-hidden::-webkit-scrollbar { display: none; width: 0; height: 0; }
     `}</style>
     <div className="flex flex-col gap-4 px-5 py-4" style={{ height: "calc(100vh - 76px)", maxWidth: 1600, margin: "0 auto" }} dir={isArabic ? 'rtl' : 'ltr'}>
       {/* Page Header */}
@@ -177,14 +184,14 @@ export default function LeadsWorkspace() {
               </div>
 
               {/* Detail Body */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 leads-scroll-soft">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 leads-scroll-hidden">
                 {detailTab === "summary" && (
                   <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
                     {[
                       { title: isArabic ? "بيانات العميل" : "Lead Info", body: `${selectedLead.firstName} ${selectedLead.lastName || ""}${selectedLead.city ? " · " + selectedLead.city : ""} · ${formatSource(selectedLead.source)}` },
                       { title: isArabic ? "الحالة الحالية" : "Current Status", body: `المرحلة: ${formatLeadStatus(selectedLead.stage)} · الدرجة: ${selectedLead.leadScore}/100` },
                       { title: isArabic ? "آخر نشاط" : "Last Activity", body: (detailData as any)?.updatedAt ? new Date((detailData as any).updatedAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : "غير محدد" },
-                      { title: isArabic ? "المسؤول" : "Assigned To", body: selectedLead.assignedTo || "غير معين" },
+                      { title: isArabic ? "المسؤول" : "Assigned To", body: formatOwner(selectedLead.assignedTo) },
                     ].map((card, i) => (
                       <div key={i} className="border border-[var(--nc-glass-border)] rounded-2xl bg-[var(--nc-surface)] p-4 flex flex-col justify-between overflow-hidden" style={{ height: 148 }}>
                         <div>
@@ -219,10 +226,7 @@ export default function LeadsWorkspace() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-[var(--nc-text-dim)] text-sm p-8">
-              <div className="text-center">
-                <div className="text-4xl mb-3 opacity-30">👤</div>
-                <p className="text-sm">{isArabic ? "اختر عميلاً من القائمة لعرض التفاصيل هنا" : "Select a lead from the list to view details here"}</p>
-              </div>
+              <p className="text-center">{isArabic ? "اختر عميلاً من القائمة لعرض التفاصيل هنا" : "Select a lead from the list to view details here"}</p>
             </div>
           )}
         </SmartCard>
@@ -233,7 +237,7 @@ export default function LeadsWorkspace() {
             <h3 className="font-extrabold text-base">{isArabic ? "قائمة العملاء" : "Leads List"}</h3>
             <span className="text-xs text-[var(--nc-text-dim)]">{totalLeads} {isArabic ? "عميل" : "leads"}</span>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-soft">
+          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-hidden">
             <DataTable
               columns={columns}
               data={leads}
