@@ -55,6 +55,7 @@ type Copy = {
   selectLead: string;
   city: string;
   notSpecified: string;
+  statusFallback: string;
   summary: string;
   contacts: string;
   tasks: string;
@@ -104,6 +105,7 @@ const copy: Record<"ar" | "en", Copy> = {
     selectLead: "اختر عميلاً من القائمة لعرض التفاصيل هنا",
     city: "المدينة",
     notSpecified: "غير محدد",
+    statusFallback: "غير محدد",
     summary: "الملخص",
     contacts: "جهات الاتصال",
     tasks: "المهام",
@@ -151,6 +153,7 @@ const copy: Record<"ar" | "en", Copy> = {
     selectLead: "Select a lead from the list to view details here",
     city: "City",
     notSpecified: "Not specified",
+    statusFallback: "Unspecified",
     summary: "Summary",
     contacts: "Contacts",
     tasks: "Tasks",
@@ -187,38 +190,122 @@ function formatSource(source?: string | null, isArabic = true): string {
     WHATSAPP: "واتساب",
     WEBSITE: "موقع إلكتروني",
     REFERRAL: "إحالة",
+    WhatsApp: "واتساب",
     "Google Ads": "إعلانات Google",
     "Meta Ads": "إعلانات Meta",
     "Snapchat Ads": "إعلانات سناب",
     "TikTok Ads": "إعلانات TikTok",
     "إعلانات TikTok": "إعلانات TikTok",
     "TikTok إعلانات": "إعلانات TikTok",
+    "إعلانات تيك توك": "إعلانات TikTok",
     "إعلانات Meta": "إعلانات Meta",
     "Meta إعلانات": "إعلانات Meta",
     "إعلانات Google": "إعلانات Google",
     "Google إعلانات": "إعلانات Google",
+    "إعلانات سناب": "إعلانات سناب",
     "إعلانات Snapchat": "إعلانات سناب",
     "Snapchat إعلانات": "إعلانات سناب",
+    "إحالة": "إحالة",
+    "واتساب": "واتساب",
   };
 
   const enMap: Record<string, string> = {
     WHATSAPP: "WhatsApp",
     WEBSITE: "Website",
     REFERRAL: "Referral",
+    WhatsApp: "WhatsApp",
+    "Google Ads": "Google Ads",
+    "Meta Ads": "Meta Ads",
+    "Snapchat Ads": "Snapchat Ads",
+    "TikTok Ads": "TikTok Ads",
     "إعلانات TikTok": "TikTok Ads",
     "TikTok إعلانات": "TikTok Ads",
+    "إعلانات تيك توك": "TikTok Ads",
     "إعلانات Meta": "Meta Ads",
     "Meta إعلانات": "Meta Ads",
     "إعلانات Google": "Google Ads",
     "Google إعلانات": "Google Ads",
+    "إعلانات سناب": "Snapchat Ads",
     "إعلانات Snapchat": "Snapchat Ads",
     "Snapchat إعلانات": "Snapchat Ads",
+    "إحالة": "Referral",
+    "واتساب": "WhatsApp",
   };
 
   const normalized = String(source || "").trim();
   const map = isArabic ? arMap : enMap;
 
   return map[normalized] || normalized || (isArabic ? "غير محدد" : "Not specified");
+}
+
+function formatCity(city: unknown, isArabic: boolean, notSpecified: string): string {
+  const normalized = String(city || "").trim();
+
+  if (!normalized || normalized === "—" || normalized === "-") return notSpecified;
+
+  const arMap: Record<string, string> = {
+    Jeddah: "جدة",
+    Riyadh: "الرياض",
+    Dammam: "الدمام",
+    Makkah: "مكة",
+    Madinah: "المدينة",
+    Khobar: "الخبر",
+    Tabuk: "تبوك",
+    Taif: "الطائف",
+  };
+
+  const enMap: Record<string, string> = {
+    "جدة": "Jeddah",
+    "الرياض": "Riyadh",
+    "الدمام": "Dammam",
+    "مكة": "Makkah",
+    "المدينة": "Madinah",
+    "الخبر": "Khobar",
+    "تبوك": "Tabuk",
+    "الطائف": "Taif",
+  };
+
+  return (isArabic ? arMap[normalized] : enMap[normalized]) || normalized;
+}
+
+function formatStatus(status: unknown, isArabic: boolean, fallback: string): string {
+  const normalized = String(status || "").trim();
+
+  if (
+    !normalized ||
+    normalized === "—" ||
+    normalized === "-" ||
+    normalized.toLowerCase() === "undefined" ||
+    normalized.toLowerCase() === "null" ||
+    normalized === "غير محدد" ||
+    normalized === "غير معروف" ||
+    normalized.toLowerCase() === "not specified" ||
+    normalized.toLowerCase() === "unspecified"
+  ) {
+    return fallback;
+  }
+
+  const map: Record<string, { ar: string; en: string }> = {
+    New: { ar: "جديد", en: "New" },
+    Contacted: { ar: "تم التواصل", en: "Contacted" },
+    Qualified: { ar: "مؤهل", en: "Qualified" },
+    "Tour Scheduled": { ar: "مجدول للزيارة", en: "Tour Scheduled" },
+    "Offer Sent": { ar: "أرسل العرض", en: "Offer Sent" },
+    Negotiation: { ar: "تفاوض", en: "Negotiation" },
+    Closed: { ar: "مغلق", en: "Closed" },
+    "جديد": { ar: "جديد", en: "New" },
+    "تم التواصل": { ar: "تم التواصل", en: "Contacted" },
+    "مؤهل": { ar: "مؤهل", en: "Qualified" },
+    "مجدول للزيارة": { ar: "مجدول للزيارة", en: "Tour Scheduled" },
+    "أرسل العرض": { ar: "أرسل العرض", en: "Offer Sent" },
+    "تفاوض": { ar: "تفاوض", en: "Negotiation" },
+    "مغلق": { ar: "مغلق", en: "Closed" },
+  };
+
+  const mapped = map[normalized];
+  if (mapped) return isArabic ? mapped.ar : mapped.en;
+
+  return isArabic ? formatLeadStatus(normalized) : normalized;
 }
 
 function isTechnicalId(value?: string | null): boolean {
@@ -250,8 +337,27 @@ function formatNumber(value: unknown, isArabic: boolean): string {
     : "0";
 }
 
-function getLeadName(lead: LeadItem): string {
-  return `${lead.firstName || ""} ${lead.lastName || ""}`.trim() || "—";
+function getLeadName(lead: LeadItem, isArabic = true): string {
+  const original = `${lead.firstName || ""} ${lead.lastName || ""}`.trim();
+
+  if (!original) return "—";
+  if (isArabic) return original;
+
+  const demoNameMap: Record<string, string> = {
+    "بدر الغامدي": "Badr Al-Ghamdi",
+    "عبدالله العتيبي": "Abdullah Al-Otaibi",
+    "تركي الغامدي": "Turki Al-Ghamdi",
+    "سارة الشمري": "Sarah Al-Shammari",
+    "خالد السلمي": "Khalid Al-Sulami",
+    "راشد الزهراني": "Rashed Al-Zahrani",
+    "تركي المطيري": "Turki Al-Mutairi",
+    "فيصل العتيبي": "Faisal Al-Otaibi",
+    "فيصل الغامدي": "Faisal Al-Ghamdi",
+    "عبدالله الحربي": "Abdullah Al-Harbi",
+    "هند السلمي": "Hind Al-Sulami",
+  };
+
+  return demoNameMap[original] || original;
 }
 
 function getStageLabel(stageId: string, isArabic: boolean): string {
@@ -278,11 +384,19 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function LeadStatusBadge({ status }: { status?: string | null }) {
-  const label = formatLeadStatus(status);
+function LeadStatusBadge({
+  status,
+  isArabic,
+  fallback,
+}: {
+  status?: string | null;
+  isArabic: boolean;
+  fallback: string;
+}) {
+  const label = formatStatus(status, isArabic, fallback);
 
   return (
-    <span className="inline-flex min-h-[28px] min-w-[92px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
+    <span className="inline-flex min-h-[28px] min-w-[96px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
       {label}
     </span>
   );
@@ -399,14 +513,14 @@ export default function LeadsWorkspace() {
 
     return leads.filter((lead) => {
       return (
-        getLeadName(lead).toLowerCase().includes(term) ||
-        String(lead.city || "").toLowerCase().includes(term) ||
+        getLeadName(lead, isArabic).toLowerCase().includes(term) ||
+        formatCity(lead.city, isArabic, labels.notSpecified).toLowerCase().includes(term) ||
         formatSource(lead.source, isArabic).toLowerCase().includes(term) ||
         formatOwner(lead.assignedTo, labels.notSpecified).toLowerCase().includes(term) ||
-        formatLeadStatus(lead.stage).toLowerCase().includes(term)
+        formatStatus(lead.stage, isArabic, labels.statusFallback).toLowerCase().includes(term)
       );
     });
-  }, [leads, searchTerm, isArabic, labels.notSpecified]);
+  }, [leads, searchTerm, isArabic, labels.notSpecified, labels.statusFallback]);
 
   const leadTotalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
   const pagedLeads = filteredLeads.slice((leadPage - 1) * PAGE_SIZE, leadPage * PAGE_SIZE);
@@ -458,8 +572,8 @@ export default function LeadsWorkspace() {
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
           <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
             {selectedLead ? (
-              <div className="space-y-4">
-                <div className="border-b border-[var(--nc-border)] pb-4">
+              <div className="space-y-3">
+                <div className="border-b border-[var(--nc-border)] pb-3">
                   <div className="flex items-start gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-xl font-bold text-[var(--nc-text-primary)]">
                       {selectedLead.firstName?.[0] || "؟"}
@@ -467,28 +581,28 @@ export default function LeadsWorkspace() {
 
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate text-lg font-bold text-[var(--nc-text-primary)]">
-                        {getLeadName(selectedLead)}
+                        {getLeadName(selectedLead, isArabic)}
                       </h2>
                       <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                        {selectedLead.city || labels.notSpecified} · {formatSource(selectedLead.source, isArabic)}
+                        {formatCity(selectedLead.city, isArabic, labels.notSpecified)} · {formatSource(selectedLead.source, isArabic)}
                       </p>
                     </div>
 
-                    <LeadStatusBadge status={selectedLead.stage} />
+                    <LeadStatusBadge status={selectedLead.stage} isArabic={isArabic} fallback={labels.statusFallback} />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     {[
                       {
                         label: labels.score,
                         value: selectedLead.leadScore ? `${selectedLead.leadScore}/100` : labels.notSpecified,
                       },
-                      { label: labels.city, value: selectedLead.city || labels.notSpecified },
+                      { label: labels.city, value: formatCity(selectedLead.city, isArabic, labels.notSpecified) },
                       { label: labels.source, value: formatSource(selectedLead.source, isArabic) },
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className="min-h-[56px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3"
+                        className="min-h-[52px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3"
                       >
                         <p className="truncate text-xs text-[var(--nc-text-secondary)]">{stat.label}</p>
                         <p className="mt-1 truncate text-sm font-semibold text-[var(--nc-text-primary)]">
@@ -510,8 +624,8 @@ export default function LeadsWorkspace() {
                         onClick={() => setDetailTab(tab.id)}
                         className={
                           active
-                            ? "nc-btn-primary min-h-[38px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                            : "nc-btn-ghost min-h-[38px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                            ? "nc-btn-primary min-h-[34px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                            : "nc-btn-ghost min-h-[34px] rounded-xl px-3 py-1.5 text-xs font-semibold"
                         }
                       >
                         {labels[tab.labelKey]}
@@ -521,18 +635,18 @@ export default function LeadsWorkspace() {
                 </div>
 
                 {detailTab === "summary" && (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
                     {[
                       {
                         title: labels.leadInfo,
-                        body: `${getLeadName(selectedLead)} · ${selectedLead.city || labels.notSpecified} · ${formatSource(
+                        body: `${getLeadName(selectedLead, isArabic)} · ${formatCity(selectedLead.city, isArabic, labels.notSpecified)} · ${formatSource(
                           selectedLead.source,
                           isArabic,
                         )}`,
                       },
                       {
                         title: labels.currentStatus,
-                        body: `${labels.stage}: ${formatLeadStatus(selectedLead.stage)} · ${labels.score}: ${
+                        body: `${labels.stage}: ${formatStatus(selectedLead.stage, isArabic, labels.statusFallback)} · ${labels.score}: ${
                           selectedLead.leadScore || 0
                         }/100`,
                       },
@@ -549,13 +663,15 @@ export default function LeadsWorkspace() {
                         title: labels.assignedTo,
                         body: formatOwner(selectedLead.assignedTo, labels.notSpecified),
                       },
-                    ].map((card) => (
+                    ].map((row, index, rows) => (
                       <div
-                        key={card.title}
-                        className="min-h-[132px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4"
+                        key={row.title}
+                        className={`grid min-h-[48px] grid-cols-[minmax(110px,0.34fr)_minmax(0,1fr)] items-center gap-3 py-2 ${
+                          index < rows.length - 1 ? "border-b border-[var(--nc-border)]" : ""
+                        }`}
                       >
-                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{card.title}</h3>
-                        <p className="mt-2 text-xs leading-6 text-[var(--nc-text-secondary)]">{card.body}</p>
+                        <span className="text-xs font-bold text-[var(--nc-text-primary)]">{row.title}</span>
+                        <span className="truncate text-xs leading-6 text-[var(--nc-text-secondary)]">{row.body}</span>
                       </div>
                     ))}
                   </div>
@@ -568,24 +684,31 @@ export default function LeadsWorkspace() {
                 {detailTab === "opportunities" && <EmptyState message={labels.noOpportunities} />}
 
                 {detailTab === "pipeline" && (
-                  <div className="space-y-2">
-                    {STAGES.map((stage) => {
-                      const count = stageCounts[stage.id] || 0;
+                  <div className="relative">
+                    <div
+                      tabIndex={0}
+                      aria-label={labels.pipeline}
+                      className="max-h-[260px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {STAGES.map((stage) => {
+                        const count = stageCounts[stage.id] || 0;
 
-                      return (
-                        <div
-                          key={stage.id}
-                          className="flex min-h-[56px] items-center justify-between rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3"
-                        >
-                          <span className="text-sm font-semibold text-[var(--nc-text-primary)]">
-                            {getStageLabel(stage.id, isArabic)}
-                          </span>
-                          <span className="text-xs text-[var(--nc-text-secondary)]">
-                            {formatNumber(count, isArabic)} {labels.leadsUnit}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        return (
+                          <div
+                            key={stage.id}
+                            className="grid min-h-[48px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2.5"
+                          >
+                            <span className="truncate text-sm font-semibold text-[var(--nc-text-primary)]">
+                              {getStageLabel(stage.id, isArabic)}
+                            </span>
+                            <span className="whitespace-nowrap text-xs text-[var(--nc-text-secondary)]">
+                              {formatNumber(count, isArabic)} {labels.leadsUnit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 rounded-b-2xl bg-gradient-to-t from-[var(--nc-surface)] to-transparent" />
                   </div>
                 )}
               </div>
@@ -619,11 +742,11 @@ export default function LeadsWorkspace() {
                 <table className="w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                      <th className={`w-[28%] px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
-                      <th className={`w-[18%] px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
+                      <th className={`w-[30%] px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
+                      <th className={`w-[16%] px-3 py-3 text-center font-semibold`}>{labels.status}</th>
                       <th className={`w-[22%] px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
                       <th className={`w-[18%] px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
-                      <th className={`w-[14%] px-3 py-3 ${textAlign} font-semibold`}>{labels.score}</th>
+                      <th className={`w-[14%] px-3 py-3 text-center font-semibold`}>{labels.score}</th>
                     </tr>
                   </thead>
 
@@ -652,11 +775,13 @@ export default function LeadsWorkspace() {
                           }
                         >
                           <td className="truncate px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                            {getLeadName(lead)}
+                            {getLeadName(lead, isArabic)}
                           </td>
 
-                          <td className="px-3 py-3">
-                            <LeadStatusBadge status={lead.stage} />
+                          <td className="px-3 py-3 text-center">
+                            <span className="inline-flex justify-center">
+                              <LeadStatusBadge status={lead.stage} isArabic={isArabic} fallback={labels.statusFallback} />
+                            </span>
                           </td>
 
                           <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
@@ -667,7 +792,7 @@ export default function LeadsWorkspace() {
                             {formatOwner(lead.assignedTo, labels.notSpecified)}
                           </td>
 
-                          <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-[var(--nc-text-secondary)]">
+                          <td className="whitespace-nowrap px-3 py-3 text-center font-mono text-xs text-[var(--nc-text-secondary)]">
                             {formatNumber(lead.leadScore || 0, isArabic)}/100
                           </td>
                         </tr>
