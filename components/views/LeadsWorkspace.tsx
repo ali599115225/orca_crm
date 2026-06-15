@@ -6,7 +6,7 @@ import { useApp } from "@/app/context/AppContext";
 import { formatLeadStatus } from "@/lib/ui-status";
 import type { LeadItem } from "./pipeline/KanbanCard";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 const STAGES = [
   { id: "New", titleAr: "جديد", titleEn: "New" },
@@ -46,7 +46,6 @@ type Copy = {
   source: string;
   owner: string;
   score: string;
-  open: string;
   page: string;
   of: string;
   previous: string;
@@ -96,7 +95,6 @@ const copy: Record<"ar" | "en", Copy> = {
     source: "المصدر",
     owner: "المسؤول",
     score: "الدرجة",
-    open: "فتح",
     page: "صفحة",
     of: "من",
     previous: "السابق",
@@ -144,7 +142,6 @@ const copy: Record<"ar" | "en", Copy> = {
     source: "Source",
     owner: "Owner",
     score: "Score",
-    open: "Open",
     page: "Page",
     of: "of",
     previous: "Previous",
@@ -458,8 +455,8 @@ export default function LeadsWorkspace() {
           ))}
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
-          <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
+          <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
             {selectedLead ? (
               <div className="space-y-4">
                 <div className="border-b border-[var(--nc-border)] pb-4">
@@ -597,7 +594,7 @@ export default function LeadsWorkspace() {
             )}
           </div>
 
-          <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+          <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.leadsList}</h2>
@@ -618,15 +615,15 @@ export default function LeadsWorkspace() {
             </div>
 
             {filteredLeads.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] text-sm">
+              <div className="overflow-hidden">
+                <table className="w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
-                      <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.score}</th>
+                      <th className={`w-[28%] px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
+                      <th className={`w-[18%] px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
+                      <th className={`w-[22%] px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
+                      <th className={`w-[18%] px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
+                      <th className={`w-[14%] px-3 py-3 ${textAlign} font-semibold`}>{labels.score}</th>
                     </tr>
                   </thead>
 
@@ -654,7 +651,7 @@ export default function LeadsWorkspace() {
                               : "cursor-pointer border-b border-[var(--nc-border)] outline-none transition-colors hover:bg-[var(--nc-surface-soft)]"
                           }
                         >
-                          <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
+                          <td className="truncate px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
                             {getLeadName(lead)}
                           </td>
 
@@ -662,15 +659,15 @@ export default function LeadsWorkspace() {
                             <LeadStatusBadge status={lead.stage} />
                           </td>
 
-                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                          <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
                             {formatSource(lead.source, isArabic)}
                           </td>
 
-                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                          <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
                             {formatOwner(lead.assignedTo, labels.notSpecified)}
                           </td>
 
-                          <td className="px-3 py-3 font-mono text-xs text-[var(--nc-text-secondary)]">
+                          <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-[var(--nc-text-secondary)]">
                             {formatNumber(lead.leadScore || 0, isArabic)}/100
                           </td>
                         </tr>
