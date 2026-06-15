@@ -192,7 +192,7 @@ export const DateField: React.FC<DateFieldProps> = ({
           type="button"
           onClick={openNativePicker}
           disabled={disabled}
-          className="absolute left-3.5 top-2.5 text-[var(--nc-text-dim)] font-medium hover:text-white transition-colors cursor-pointer"
+          className="absolute left-3.5 top-2.5 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-primary)] transition-colors cursor-pointer"
           aria-label="فتح التقويم"
         >
           <Calendar size={15} />

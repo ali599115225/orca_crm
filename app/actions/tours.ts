@@ -7,175 +7,279 @@ import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone } from "@/lib/privacy-mask";
 
-export interface TourListItem {
+export type TourListItem = {
   id: string;
   startAt: string;
-  endAt: string;
+  endAt: string | null;
   location: string;
   status: string;
-  attendees: number;
+  attendees: number | null;
   notes: string | null;
   leadName: string;
   assignedToName: string;
-  createdAt: string;
-}
+  createdAt: string | null;
+};
 
-export interface TourStats {
+export type TourStats = {
   today: number;
   upcoming: number;
   completed: number;
   needsFollowUp: number;
+};
+
+export type GetToursActionResult =
+  | {
+      success: true;
+      data: {
+        tours: TourListItem[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
+        stats: TourStats;
+      };
+    }
+  | { success: false; error: string };
+
+function sanitizePage(page: number) {
+  const parsed = Number(page);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.floor(parsed);
 }
 
-export interface GetToursResult {
-  success: true;
-  data: {
-    tours: TourListItem[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-    stats: TourStats;
-  };
+function sanitizeLimit(limit: number) {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed) || parsed < 1) return 10;
+  return Math.min(Math.floor(parsed), 200);
 }
 
-export interface GetToursError {
-  success: false;
-  error: string;
+function fullLeadName(lead: any) {
+  const first = String(lead?.firstName || "").trim();
+  const last = String(lead?.lastName || "").trim();
+  const joined = `${first} ${last}`.trim();
+  return joined || "غير محدد";
+}
+
+function fullUserName(user: any) {
+  const explicitName = String(user?.name || "").trim();
+  if (explicitName) return explicitName;
+
+  const first = String(user?.firstName || "").trim();
+  const last = String(user?.lastName || "").trim();
+  const joined = `${first} ${last}`.trim();
+  if (joined) return joined;
+
+  const email = String(user?.email || "").trim();
+  return email || "غير معين";
+}
+
+function toIso(value: unknown) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 export async function getToursAction(
-  filters?: { search?: string; status?: string; fromDate?: string; toDate?: string },
+  filters?: {
+    search?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+  },
   page = 1,
   limit = 10
-): Promise<GetToursResult | GetToursError> {
+): Promise<GetToursActionResult> {
   try {
     const tenant = await getActiveTenant();
-    const skip = (page - 1) * limit;
+    const safePage = sanitizePage(page);
+    const safeLimit = sanitizeLimit(limit);
+    const skip = (safePage - 1) * safeLimit;
+
+    const search = String(filters?.search || "").trim();
+    const status = String(filters?.status || "").trim();
+    const fromDate = String(filters?.fromDate || "").trim();
+    const toDate = String(filters?.toDate || "").trim();
 
     const where: any = { tenantId: tenant.id };
 
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-    if (filters?.fromDate || filters?.toDate) {
-      where.startAt = {};
-      if (filters?.fromDate) where.startAt.gte = new Date(filters.fromDate);
-      if (filters?.toDate) where.startAt.lte = new Date(filters.toDate);
+    if (status) {
+      where.status = status;
     }
 
-    const [tours, total] = await Promise.all([
+    if (fromDate || toDate) {
+      where.startAt = {};
+      if (fromDate) {
+        const from = new Date(`${fromDate}T00:00:00`);
+        if (!Number.isNaN(from.getTime())) where.startAt.gte = from;
+      }
+      if (toDate) {
+        const to = new Date(`${toDate}T23:59:59.999`);
+        if (!Number.isNaN(to.getTime())) where.startAt.lte = to;
+      }
+      if (Object.keys(where.startAt).length === 0) delete where.startAt;
+    }
+
+    if (search) {
+      const matchingLeads = await prisma.lead.findMany({
+        where: {
+          tenantId: tenant.id,
+          OR: [
+            { firstName: { contains: search, mode: "insensitive" } },
+            { lastName: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      });
+
+      const leadIds = matchingLeads.map((lead) => lead.id);
+      where.OR = [
+        { location: { contains: search, mode: "insensitive" } },
+        { notes: { contains: search, mode: "insensitive" } },
+        ...(leadIds.length > 0 ? [{ leadId: { in: leadIds } }] : []),
+      ];
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(todayStart.getDate() + 1);
+
+    const [tours, total, today, upcoming, completed, needsFollowUp] = await Promise.all([
       prisma.tour.findMany({
         where,
-        orderBy: { startAt: 'desc' },
+        orderBy: { startAt: "desc" },
         skip,
-        take: limit,
+        take: safeLimit,
       }),
       prisma.tour.count({ where }),
+      prisma.tour.count({
+        where: {
+          tenantId: tenant.id,
+          startAt: { gte: todayStart, lt: tomorrowStart },
+        },
+      }),
+      prisma.tour.count({
+        where: {
+          tenantId: tenant.id,
+          status: "SCHEDULED",
+          startAt: { gte: now },
+        },
+      }),
+      prisma.tour.count({
+        where: {
+          tenantId: tenant.id,
+          status: "COMPLETED",
+        },
+      }),
+      prisma.tour.count({
+        where: {
+          tenantId: tenant.id,
+          status: { in: ["CANCELLED", "NO_SHOW", "FOLLOW_UP"] },
+        },
+      }),
     ]);
 
-    const leadIds = [...new Set(tours.map((t) => t.leadId).filter(Boolean))];
-    const userIds = [...new Set(tours.map((t) => t.assignedTo).filter(Boolean))];
+    const leadIds = Array.from(new Set(tours.map((tour: any) => tour.leadId).filter(Boolean)));
+    const userIds = Array.from(new Set(tours.map((tour: any) => tour.assignedTo).filter(Boolean)));
 
     const [leads, users] = await Promise.all([
-      leadIds.length ? prisma.lead.findMany({ where: { id: { in: leadIds } }, select: { id: true, firstName: true, lastName: true } }) : [],
-      userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } }) : [],
+      leadIds.length > 0
+        ? prisma.lead.findMany({ where: { tenantId: tenant.id, id: { in: leadIds as string[] } } })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.user.findMany({ where: { tenantId: tenant.id, id: { in: userIds as string[] } } })
+        : Promise.resolve([]),
     ]);
 
-    const leadMap = new Map(leads.map((l) => [l.id, `${l.firstName} ${l.lastName}`.trim()]));
-    const userMap = new Map(users.map((u) => [u.id, u.name || 'غير معين']));
+    const leadNameById = new Map(leads.map((lead: any) => [lead.id, fullLeadName(lead)]));
+    const userNameById = new Map(users.map((user: any) => [user.id, fullUserName(user)]));
 
-    let list: TourListItem[] = tours.map((t) => ({
-      id: t.id,
-      startAt: t.startAt.toISOString(),
-      endAt: t.endAt.toISOString(),
-      location: t.location || 'غير محدد',
-      status: t.status,
-      attendees: t.attendees,
-      notes: t.notes ?? null,
-      leadName: leadMap.get(t.leadId) || 'غير محدد',
-      assignedToName: userMap.get(t.assignedTo) || 'غير معين',
-      createdAt: t.createdAt.toISOString(),
+    const list: TourListItem[] = tours.map((tour: any) => ({
+      id: tour.id,
+      startAt: toIso(tour.startAt) || "",
+      endAt: toIso(tour.endAt),
+      location: String(tour.location || "غير محدد"),
+      status: String(tour.status || "SCHEDULED"),
+      attendees: typeof tour.attendees === "number" ? tour.attendees : null,
+      notes: tour.notes ? String(tour.notes) : null,
+      leadName: tour.leadId ? leadNameById.get(tour.leadId) || "غير محدد" : "غير محدد",
+      assignedToName: tour.assignedTo ? userNameById.get(tour.assignedTo) || "غير معين" : "غير معين",
+      createdAt: toIso((tour as any).createdAt),
     }));
-
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      list = list.filter(
-        (t) =>
-          t.location.toLowerCase().includes(q) ||
-          t.leadName.toLowerCase().includes(q) ||
-          (t.notes && t.notes.toLowerCase().includes(q))
-      );
-    }
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-
-    const todayTours = await prisma.tour.count({
-      where: { tenantId: tenant.id, startAt: { gte: todayStart, lt: todayEnd } },
-    });
-    const upcomingTours = await prisma.tour.count({
-      where: { tenantId: tenant.id, status: 'SCHEDULED', startAt: { gte: todayEnd } },
-    });
-    const completedTours = await prisma.tour.count({
-      where: { tenantId: tenant.id, status: 'COMPLETED' },
-    });
-    const needsFollowUpTours = await prisma.tour.count({
-      where: { tenantId: tenant.id, status: { in: ['CANCELLED', 'NO_SHOW', 'FOLLOW_UP'] } },
-    });
-
-    const stats: TourStats = {
-      today: todayTours,
-      upcoming: upcomingTours,
-      completed: completedTours,
-      needsFollowUp: needsFollowUpTours,
-    };
 
     return {
       success: true,
       data: {
         tours: list,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        stats,
+        pagination: {
+          page: safePage,
+          limit: safeLimit,
+          total,
+          totalPages: Math.ceil(total / safeLimit),
+        },
+        stats: {
+          today,
+          upcoming,
+          completed,
+          needsFollowUp,
+        },
       },
     };
   } catch (error: any) {
-    console.error('فشل جلب الجولات:', error);
-    return { success: false, error: error.message };
+    console.error("فشل جلب الجولات العقارية:", error);
+    return { success: false, error: error?.message || "تعذر تحميل الجولات العقارية" };
   }
 }
 
 /**
- * جدولة جولة عقارية جديدة وإسنادها لعميل وإدخالها في جدول Tour بقاعدة البيانات
+ * جدولة جولة عقارية جديدة وإسنادها لعميل وإدخالها في جدول Tour بقاعدة البيانات.
+ * يدعم الاستدعاء القديم عبر propertyId، ويدعم جدولة مباشرة بموقع نصي من صفحة الجولات.
  */
 export async function scheduleTourActionDirect(data: {
-  propertyId: string;
+  propertyId?: string;
+  location?: string;
   userName: string;
   phone: string;
   datetime: string;
 }) {
+  let tenantIdForLog = "";
+
   try {
     const tenant = await getActiveTenant();
-    const { propertyId, userName, phone, datetime } = data;
+    tenantIdForLog = tenant.id;
 
-    if (!userName || userName.trim().length < 2) {
+    const propertyId = String(data.propertyId || "").trim();
+    const locationInput = String(data.location || "").trim();
+    const userName = String(data.userName || "").trim();
+    const phone = String(data.phone || "").trim();
+    const datetime = String(data.datetime || "").trim();
+
+    if (!userName || userName.length < 2) {
       throw new Error("اسم العميل مطلوب ويجب أن يكون أكثر من حرفين.");
     }
-    if (!phone || !/^\d{9,15}$/.test(phone.replace(/\D/g, ''))) {
+    if (!phone || !/^\d{9,15}$/.test(phone.replace(/\D/g, ""))) {
       throw new Error("رقم الهاتف غير صحيح. يجب أن يكون بين 9 و15 رقماً.");
     }
-    if (!datetime || isNaN(Date.parse(datetime))) {
+    if (!datetime || Number.isNaN(Date.parse(datetime))) {
       throw new Error("التاريخ والوقت غير صحيحين.");
     }
+    if (!propertyId && !locationInput) {
+      throw new Error("موقع الجولة أو الوحدة مطلوب.");
+    }
 
-    // 1. البحث عن أو إنشاء العميل المشتري (Lead)
     let lead = await prisma.lead.findFirst({
       where: { phone, tenantId: tenant.id },
     });
 
     if (!lead) {
-      const parts = userName.trim().split(/\s+/);
+      const parts = userName.split(/\s+/);
       const firstName = parts[0] || "عميل";
       const lastName = parts.slice(1).join(" ") || "جديد";
+
       lead = await prisma.$transaction(async (tx) => {
         await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
         return tx.lead.create({
@@ -194,56 +298,55 @@ export async function scheduleTourActionDirect(data: {
       });
     }
 
-    // 2. جلب بيانات الوحدة العقارية لتحديد الموقع بدقة
-    const unit = await prisma.unit.findFirst({
-      where: { id: propertyId, project: { tenantId: tenant.id } },
-      include: { project: true },
-    });
+    const unit = propertyId
+      ? await prisma.unit.findFirst({
+          where: { id: propertyId, project: { tenantId: tenant.id } },
+          include: { project: true },
+        })
+      : null;
 
-    const location = unit
-      ? `${unit.project?.name || "مشروع عقاري"} - وحدة رقم ${unit.unitNumber}`
-      : "موقع عام للوحدة";
+    const location = locationInput || (unit ? `${unit.project?.name || "مشروع عقاري"} - وحدة رقم ${unit.unitNumber}` : "موقع الجولة");
 
-    // 3. البحث عن مستخدم لتعيين الجولة له (المشرف الافتراضي)
-    const defaultUser = await prisma.user.findFirst({
-      where: { tenantId: tenant.id },
-    });
+    const defaultUser = await prisma.user.findFirst({ where: { tenantId: tenant.id } });
     const assignedTo = defaultUser?.id || "";
+    const startAt = new Date(datetime);
+    const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
 
-    // 4. إنشاء سجل الجولة الفعلي
     const tour = await prisma.tour.create({
       data: {
         tenantId: tenant.id,
         leadId: lead.id,
         assignedTo,
-        startAt: new Date(datetime),
-        endAt: new Date(new Date(datetime).getTime() + 60 * 60 * 1000), // 1 hour duration
+        startAt,
+        endAt,
         location,
         status: "SCHEDULED",
         attendees: 1,
-        notes: `جولة عقارية افتراضية مجدولة للوحدة المعرفة بـ ${propertyId} عبر بوابة الجولات الافتراضية`,
+        notes: "جولة عقارية مجدولة من صفحة الجولات.",
       },
     });
 
-    // 5. تسجيل حدث تيليميتري
-    await prisma.telemetryEvent.create({
-      data: {
-        tenantId: tenant.id,
-        eventType: "tour.scheduled",
-        eventDataJson: JSON.stringify({ tourId: tour.id, leadId: lead.id, startAt: datetime }),
-      },
-    });
+    await prisma.telemetryEvent
+      .create({
+        data: {
+          tenantId: tenant.id,
+          eventType: "tour.scheduled",
+          eventDataJson: JSON.stringify({ tourId: tour.id, leadId: lead.id, startAt: datetime }),
+        },
+      })
+      .catch(() => {});
 
-    // 6. تسجيل إشعار تذكير افتراضي بالواتساب
-    await prisma.agentTelemetryLog.create({
-      data: {
-        tenantId: tenant.id,
-        agentId: "Saher_WhatsApp",
-        actionType: "WhatsApp_Reminder",
-        logMessageAr: `«تم جدولة إرسال تذكيرات الواتساب التلقائية قبل الجولة بـ ٢٤ ساعة و١ ساعة للعميل تلقائياً للعميل ${userName}»`,
-        severity: "Info",
-      },
-    }).catch(() => {});
+    await prisma.agentTelemetryLog
+      .create({
+        data: {
+          tenantId: tenant.id,
+          agentId: "Saher_WhatsApp",
+          actionType: "WhatsApp_Reminder",
+          logMessageAr: `تم جدولة جولة عقارية للعميل ${userName}.`,
+          severity: "Info",
+        },
+      })
+      .catch(() => {});
 
     revalidatePath("/operations/tours");
     revalidatePath("/operations/dashboard");
@@ -254,16 +357,15 @@ export async function scheduleTourActionDirect(data: {
       confirmation: {
         message: "تم تسجيل حجز الجولة بنجاح.",
         datetime,
-        propertyId,
-        reminder: "سيصلك تذكير قبل ساعتين من موعد الجولة عبر الواتساب.",
+        reminder: "سيظهر الموعد ضمن قائمة الجولات العقارية.",
       },
     };
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
-      await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
+      await logPlanBlockedAttempt({ tenantId: tenantIdForLog, error }).catch(() => {});
       return { success: false, error: error.message, code: error.code };
     }
-    console.error("فشل جدولة الجولة عبر الـ Server Action:", error);
-    return { success: false, error: error.message };
+    console.error("فشل جدولة الجولة عبر Server Action:", error);
+    return { success: false, error: error?.message || "تعذر جدولة الجولة" };
   }
 }
