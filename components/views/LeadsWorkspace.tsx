@@ -83,6 +83,15 @@ export default function LeadsWorkspace() {
   }
 
   return (
+    <>
+    <style>{`
+      .leads-scroll-soft { scrollbar-width: none; -ms-overflow-style: none; }
+      .leads-scroll-soft::-webkit-scrollbar { width: 0; height: 0; }
+      .leads-scroll-soft:hover, .leads-scroll-soft:focus-within { scrollbar-width: thin; scrollbar-color: var(--nc-text-dim) transparent; }
+      .leads-scroll-soft:hover::-webkit-scrollbar, .leads-scroll-soft:focus-within::-webkit-scrollbar { width: 5px; height: 5px; }
+      .leads-scroll-soft:hover::-webkit-scrollbar-thumb, .leads-scroll-soft:focus-within::-webkit-scrollbar-thumb { background: var(--nc-text-dim); border-radius: 999px; opacity: 0.3; }
+      .leads-scroll-soft:hover::-webkit-scrollbar-track, .leads-scroll-soft:focus-within::-webkit-scrollbar-track { background: transparent; }
+    `}</style>
     <div className="flex flex-col gap-4 px-5 py-4" style={{ height: "calc(100vh - 76px)", maxWidth: 1600, margin: "0 auto" }} dir={isArabic ? 'rtl' : 'ltr'}>
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 shrink-0" style={{ height: 104 }}>
@@ -116,7 +125,7 @@ export default function LeadsWorkspace() {
             <h3 className="font-extrabold text-base">{isArabic ? "قائمة العملاء" : "Leads List"}</h3>
             <span className="text-xs text-[var(--nc-text-dim)]">{totalLeads} {isArabic ? "عميل" : "leads"}</span>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-soft">
             <DataTable
               columns={columns}
               data={leads}
@@ -231,5 +240,6 @@ export default function LeadsWorkspace() {
         </SmartCard>
       </div>
     </div>
+    </>
   );
 }
