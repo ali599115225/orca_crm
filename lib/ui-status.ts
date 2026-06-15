@@ -79,3 +79,14 @@ export function formatTourStatus(status?: string | null): string {
   if (!status) return '—';
   return TOUR_STATUS_MAP[status] || status;
 }
+
+export function formatPropertyStatus(status?: string | null): string {
+  const map: Record<string, string> = { Available: 'متاحة', Hold: 'محجوزة مؤقتاً', Sold: 'مباعة' };
+  return map[status || ''] || status || '—';
+}
+
+export function formatEmailStatus(status?: string | null): string {
+  const map: Record<string, string> = { SENT: 'مرسل', FAILED: 'فشل', PENDING: 'معلق', DRAFT: 'مسودة' };
+  if (!status) return '—';
+  return map[status] || status;
+}

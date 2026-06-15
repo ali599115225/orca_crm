@@ -6,6 +6,10 @@ import { sendEmailAction, getEmailMessagesAction } from "@/app/actions/email";
 import { useApp } from "@/app/context/AppContext";
 import { useSearchParams } from "next/navigation";
 import { SmartCard } from "@/components/ui/SmartCard";
+import { DataTable, type Column } from "@/components/ui/DataTable";
+import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
+import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
+import { formatEmailStatus } from "@/lib/ui-status";
 
 interface EmailMessage {
   id: string; to: string; subject: string; status: string;
@@ -111,39 +115,20 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
 
       <SmartCard elevation="default" className="p-5">
         <h3 className="text-sm font-bold text-[var(--nc-foreground)] mb-4">{isRTL ? `آخر الرسائل (${messages.length})` : `Recent Messages (${messages.length})`}</h3>
-        <div className="overflow-x-auto" tabIndex={0} aria-label="جدول البريد قابل للتمرير أفقيًا">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-bold">
-                <th className="py-2 px-2 text-left">{isRTL ? 'إلى' : 'To'}</th>
-                <th className="py-2 px-2 text-left">{isRTL ? 'الموضوع' : 'Subject'}</th>
-                <th className="py-2 px-2 text-left">{isRTL ? 'الحالة' : 'Status'}</th>
-                <th className="py-2 px-2 text-left">{isRTL ? 'العميل' : 'Lead'}</th>
-                <th className="py-2 px-2 text-left">{isRTL ? 'التاريخ' : 'Date'}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--nc-glass-border)]">
-              {messages.length === 0 ? (
-                <tr><td colSpan={5} className="py-8 text-center text-[var(--nc-text-dim)]">{isRTL ? 'لا توجد رسائل بعد' : 'No messages yet'}</td></tr>
-              ) : messages.map(m => (
-                <tr key={m.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors">
-                  <td className="py-2.5 px-2 text-[var(--nc-foreground)]">{m.to}</td>
-                  <td className="py-2.5 px-2 text-[var(--nc-text-dim)] max-w-[200px] truncate">{m.subject}</td>
-                  <td className="py-2.5 px-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400' : m.status === 'FAILED' ? 'bg-rose-500/10 text-rose-400' : m.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-[var(--nc-surface-soft)] text-[var(--nc-text-disabled)]'}`}>
-                      {t(getStatusKey(m.status))}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-2 text-[var(--nc-text-dim)]">{m.lead ? `${m.lead.firstName} ${m.lead.lastName || ""}` : "—"}</td>
-                  <td className="py-2.5 px-2 text-[var(--nc-text-dim)] font-mono text-[10px]">
-                    {new Date(m.createdAt).toLocaleDateString(lang === 'AR' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </SmartCard>
+        <DataTable
+          columns={[
+            { header: isRTL ? 'إلى' : 'To', accessor: 'to' as keyof EmailMessage, className: 'text-[var(--nc-foreground)]' },
+            { header: isRTL ? 'الموضوع' : 'Subject', accessor: (m) => <span className="max-w-[200px] truncate block">{m.subject}</span>, className: 'text-[var(--nc-text-dim)]' },
+            { header: isRTL ? 'الحالة' : 'Status', accessor: (m) => <StatusCell status={m.status} format={formatEmailStatus}
+              activeClass="bg-emerald-500/10 text-emerald-400"
+              badgeClass={m.status === 'FAILED' ? 'bg-rose-500/10 text-rose-400' : m.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-[var(--nc-surface-soft)] text-[var(--nc-text-disabled)]'} /> },
+            { header: isRTL ? 'العميل' : 'Lead', accessor: (m) => m.lead ? `${m.lead.firstName} ${m.lead.lastName || ""}` : '—', className: 'text-[var(--nc-text-dim)]' },
+            { header: isRTL ? 'التاريخ' : 'Date', accessor: (m) => <DateCell value={m.createdAt} /> },
+          ] as Column<EmailMessage>[]}
+          data={messages}
+          pageSize={15}
+          emptyMessage={isRTL ? 'لا توجد رسائل بعد' : 'No messages yet'}
+        />
     </div>
   );
 }

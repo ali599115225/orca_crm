@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/orca-components';
 import { SmartCard } from '@/components/ui/SmartCard';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
+import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
+import { formatPropertyStatus } from '@/lib/ui-status';
 import { toast } from '@/app/context/ToastContext';
 import LayoutContainer from '../ui/LayoutContainer';
 import { KpiCard } from '../ui/KpiCard';
@@ -312,59 +316,27 @@ export default function PropertyList({
         )}
 
         {!isLoading && !fetchError && filteredProperties.length > 0 && (
-          <div className="overflow-x-auto md:max-h-[calc(100vh-360px)] md:overflow-y-auto custom-scrollbar">
-            <table className="nc-table">
-              <thead>
-                <tr>
-                  <th>رقم الوحدة</th>
-                  <th>المشروع</th>
-                  <th>المساحة</th>
-                  <th>السعر المطلوب</th>
-                  <th>الحالة</th>
-                  <th className="text-center">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProperties.map(u => (
-                  <tr 
-                    key={u.id}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`فتح تفاصيل العقار: ${u.sku}`}
-                    className="hover:bg-[var(--nc-accent-soft)] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--nc-accent)] rounded"
-                    onClick={() => {
-                      onSelectProperty(String(u.id));
-                      logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onSelectProperty(String(u.id));
-                        logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
-                      }
-                    }}
-                  >
-                    <td className="py-3 px-4 font-bold text-white text-xs">{u.sku} — {u.type}</td>
-                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">{u.project}</td>
-                    <td className="py-3 px-4 text-xs text-[var(--nc-text-dim)]">{u.area}</td>
-                    <td className="py-3 px-4 text-xs font-bold text-[var(--nc-accent-text)]">{u.price.toLocaleString()} ر.س</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                        u.status === 'Available' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        u.status === 'Hold' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                        'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      }`}>
-                        {u.status === 'Available' ? 'متاحة' : u.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <Eye size={12} className="inline text-[var(--nc-text-dim)]" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { header: 'رقم الوحدة', accessor: (u) => <span className="font-bold text-white text-xs">{u.sku} — {u.type}</span> },
+              { header: 'المشروع', accessor: 'project' as keyof typeof filteredProperties[0], className: 'text-xs text-[var(--nc-text-dim)]' },
+              { header: 'المساحة', accessor: 'area' as keyof typeof filteredProperties[0], className: 'text-xs text-[var(--nc-text-dim)]' },
+              { header: 'السعر المطلوب', accessor: (u) => <MoneyCell amount={u.price} /> },
+              { header: 'الحالة', accessor: (u) => (
+                <StatusCell status={u.status} format={formatPropertyStatus}
+                  activeClass="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  badgeClass={u.status === 'Hold' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : u.status === 'Sold' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : undefined} />
+              )},
+              { header: 'إجراءات', accessor: () => <Eye size={12} className="inline text-[var(--nc-text-dim)]" />, className: 'text-center', headerClassName: 'text-center' },
+            ] as Column<typeof filteredProperties[0]>[]}
+            data={filteredProperties}
+            onRowClick={(u) => {
+              onSelectProperty(String(u.id));
+              logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
+            }}
+            pageSize={15}
+            emptyMessage="لا توجد وحدات عقارية مسجلة حالياً."
+          />
         )}
       </SmartCard>
     </div>
