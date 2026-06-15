@@ -132,26 +132,7 @@ export default function LeadsWorkspace() {
       </div>
 
       {/* Master-Detail Workspace */}
-      <div className="flex-1 grid gap-4 min-h-0" style={{ gridTemplateColumns: "minmax(0, 0.46fr) minmax(0, 0.54fr)" }}>
-        {/* Master Table */}
-        <SmartCard elevation="default" className="flex flex-col min-h-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--nc-glass-border)] flex items-center justify-between shrink-0">
-            <h3 className="font-extrabold text-base">{isArabic ? "قائمة العملاء" : "Leads List"}</h3>
-            <span className="text-xs text-[var(--nc-text-dim)]">{totalLeads} {isArabic ? "عميل" : "leads"}</span>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-soft">
-            <DataTable
-              columns={columns}
-              data={leads}
-              pageSize={10}
-              selectedId={selectedLead?.id}
-              getId={(l) => l.id}
-              onRowClick={(l) => handleSelect(l)}
-              emptyMessage={isArabic ? "لا يوجد عملاء" : "No leads"}
-            />
-          </div>
-        </SmartCard>
-
+      <div className="flex-1 grid gap-4 min-h-0" style={{ gridTemplateColumns: "minmax(0, 0.54fr) minmax(0, 0.46fr)" }}>
         {/* Detail Panel */}
         <SmartCard elevation="default" className="flex flex-col min-h-0 overflow-hidden">
           {selectedLead ? (
@@ -237,11 +218,32 @@ export default function LeadsWorkspace() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[var(--nc-text-dim)] text-sm gap-3">
-              <span className="text-3xl">👈</span>
-              <span>{isArabic ? "اختر عميلاً من الجدول لعرض التفاصيل" : "Select a lead to view details"}</span>
+            <div className="flex-1 flex items-center justify-center text-[var(--nc-text-dim)] text-sm p-8">
+              <div className="text-center">
+                <div className="text-4xl mb-3 opacity-30">👤</div>
+                <p className="text-sm">{isArabic ? "اختر عميلاً من القائمة لعرض التفاصيل هنا" : "Select a lead from the list to view details here"}</p>
+              </div>
             </div>
           )}
+        </SmartCard>
+
+        {/* Master Table */}
+        <SmartCard elevation="default" className="flex flex-col min-h-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--nc-glass-border)] flex items-center justify-between shrink-0">
+            <h3 className="font-extrabold text-base">{isArabic ? "قائمة العملاء" : "Leads List"}</h3>
+            <span className="text-xs text-[var(--nc-text-dim)]">{totalLeads} {isArabic ? "عميل" : "leads"}</span>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto leads-scroll-soft">
+            <DataTable
+              columns={columns}
+              data={leads}
+              pageSize={10}
+              selectedId={selectedLead?.id}
+              getId={(l) => l.id}
+              onRowClick={(l) => handleSelect(l)}
+              emptyMessage={isArabic ? "لا يوجد عملاء" : "No leads"}
+            />
+          </div>
         </SmartCard>
       </div>
     </div>
