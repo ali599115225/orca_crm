@@ -652,7 +652,7 @@ export default function RentalPage() {
   );
 
   const actionsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col justify-between">
+    <Card className="p-5 space-y-4 flex flex-col">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Plus size={16} className="text-[var(--nc-text-secondary)]" />
@@ -660,7 +660,7 @@ export default function RentalPage() {
         </h4>
         <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">إضافة عقود وفواتير جديدة</p>
       </div>
-      <div className="space-y-3 flex-grow pt-2">
+      <div className="space-y-3 pt-2">
         <div className="space-y-3">
           <Button
             onClick={() => {
@@ -688,7 +688,7 @@ export default function RentalPage() {
   );
 
   const insightsContent = (
-    <Card className="p-5 space-y-4 h-full flex flex-col">
+    <Card className="p-5 space-y-4 flex flex-col">
       <div className="border-b border-[var(--nc-glass-border)] pb-3">
         <h4 className="text-lg font-semibold text-white flex items-center gap-2">
           <Bot size={16} className="text-cyan-400" />
@@ -696,7 +696,7 @@ export default function RentalPage() {
         </h4>
         <p className="text-xs text-[var(--nc-text-dim)] font-medium mt-1">إشعارات عاجلة وإجراءات مقترحة</p>
       </div>
-      <div className="space-y-3 flex-grow text-xs">
+      <div className="space-y-3 text-xs">
         {overdueInvoicesCount > 0 && (
           <div className="flex items-start gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
             <AlertCircle size={14} className="text-rose-400 shrink-0 mt-0.5" />

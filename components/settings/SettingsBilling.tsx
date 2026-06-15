@@ -315,7 +315,7 @@ export default function SettingsBilling({ tenant, lang, isArabic }: SettingsBill
       <div className="space-y-4">
         <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.pricingTitle}</h3>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
           {/* Basic Plan */}
           <div className={`bg-[var(--nc-surface-strong)] border rounded-2xl p-6 flex flex-col justify-between gap-6 relative ${

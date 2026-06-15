@@ -25,7 +25,7 @@ export const LayoutContainer: React.FC<LayoutContainerProps> = ({ kpis, actions,
 
       {/* 2. Middle Section */}
       {(actions || insights) && (
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           {actions && (
             <div className="flex flex-col gap-4 w-full min-h-0">
               {actions}
