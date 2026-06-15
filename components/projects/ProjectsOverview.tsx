@@ -234,7 +234,7 @@ export default function ProjectsOverview({
               </div>
               <button
                 disabled={true}
-                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-[11px] font-bold rounded-lg cursor-not-allowed shrink-0 min-h-[44px] flex items-center"
+                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400/50 text-[11px] font-bold rounded-lg cursor-not-allowed shrink-0 min-h-[44px] flex items-center hidden"
               >
                 <DollarSign size={14} className="inline ml-1" />
                 محاكاة webhook (قيد التطوير)
