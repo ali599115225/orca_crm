@@ -11,15 +11,6 @@ import { useApp } from '@/app/context/AppContext';
 type Tour = { id: string; leadId: string | null; assignedTo: string | null; startAt: string; endAt: string; location: string; status: string; attendees: number | null; notes: string | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
 
-const TOUR_STATUS_MAP: Record<string, string> = {
-  SCHEDULED: 'مجدول', COMPLETED: 'مكتمل', CANCELLED: 'ملغي',
-};
-
-function formatTourStatus(s?: string | null): string {
-  if (!s) return '—';
-  return TOUR_STATUS_MAP[s] || s;
-}
-
 export default function Tours() {
   const { t, lang } = useApp();
   const [tours, setTours] = useState<Tour[]>([]);

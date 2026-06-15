@@ -70,3 +70,12 @@ export function formatLeaseStatus(status?: string | null): string {
   const map: Record<string, string> = { active: 'نشط', expired: 'منتهي', terminated: 'ملغي' };
   return map[status || ''] || status || '—';
 }
+
+const TOUR_STATUS_MAP: Record<string, string> = {
+  SCHEDULED: 'مجدول', COMPLETED: 'مكتمل', CANCELLED: 'ملغي',
+};
+
+export function formatTourStatus(status?: string | null): string {
+  if (!status) return '—';
+  return TOUR_STATUS_MAP[status] || status;
+}
