@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeVariant = 'preview' | 'soon' | 'paused' | 'demo' | 'pending' | 'active' | 'draft' | 'sent' | 'excellent' | 'connected' | 'notConnected' | 'default';
+export type BadgeVariant = 'preview' | 'soon' | 'paused' | 'demo' | 'pending' | 'active' | 'draft' | 'sent' | 'excellent' | 'connected' | 'notConnected' | 'default' | 'scheduled' | 'completed' | 'cancelled' | 'noShow' | 'followUp';
 
 interface StatusBadgeProps {
   variant: BadgeVariant;
@@ -21,6 +21,11 @@ const badgeMap: Record<BadgeVariant, { ar: string; en: string; style: string }> 
   connected:   { ar: 'مربوط',          en: 'Connected',           style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
   notConnected:{ ar: 'غير مربوط',      en: 'Not connected',       style: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
   default:     { ar: 'افتراضي',        en: 'Default',             style: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  scheduled:   { ar: 'مجدولة',         en: 'Scheduled',           style: 'bg-sky-600/15 text-sky-700 border-sky-600/25 dark:text-sky-400 dark:bg-sky-500/15' },
+  completed:   { ar: 'مكتملة',         en: 'Completed',           style: 'bg-emerald-600/15 text-emerald-700 border-emerald-600/25 dark:text-emerald-400 dark:bg-emerald-500/15' },
+  cancelled:   { ar: 'ملغاة',          en: 'Cancelled',           style: 'bg-rose-600/15 text-rose-700 border-rose-600/25 dark:text-rose-400 dark:bg-rose-500/15' },
+  noShow:      { ar: 'لم يحضر',        en: 'No Show',             style: 'bg-amber-600/15 text-amber-700 border-amber-600/25 dark:text-amber-400 dark:bg-amber-500/15' },
+  followUp:    { ar: 'تحتاج متابعة',   en: 'Follow-up',           style: 'bg-purple-600/15 text-purple-700 border-purple-600/25 dark:text-purple-400 dark:bg-purple-500/15' },
 };
 
 export function StatusBadge({ variant, lang = 'AR', className = '' }: StatusBadgeProps) {

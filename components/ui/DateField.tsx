@@ -167,10 +167,10 @@ export const DateField: React.FC<DateFieldProps> = ({
           onBlur={handleBlur}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full bg-[var(--nc-surface-strong)] border rounded-xl py-2 px-3 pl-10 text-xs text-white outline-none transition-all text-center font-mono tracking-wider ${
+          className={`w-full bg-[var(--nc-surface-strong)] border rounded-xl py-2 px-3 pl-10 text-xs text-[var(--nc-text-primary)] outline-none transition-all text-center font-mono tracking-wider ${
             error || customError
               ? 'border-rose-500 focus:border-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.25)]'
-              : 'border-white/10 focus:border-[var(--nc-accent-border)]/50'
+              : 'border-[var(--nc-border)] focus:border-[var(--nc-accent-border)]/50'
           }`}
           dir="ltr"
         />

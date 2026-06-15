@@ -7,6 +7,143 @@ import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone } from "@/lib/privacy-mask";
 
+export interface TourListItem {
+  id: string;
+  startAt: string;
+  endAt: string;
+  location: string;
+  status: string;
+  attendees: number;
+  notes: string | null;
+  leadName: string;
+  assignedToName: string;
+  createdAt: string;
+}
+
+export interface TourStats {
+  today: number;
+  upcoming: number;
+  completed: number;
+  needsFollowUp: number;
+}
+
+export interface GetToursResult {
+  success: true;
+  data: {
+    tours: TourListItem[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+    stats: TourStats;
+  };
+}
+
+export interface GetToursError {
+  success: false;
+  error: string;
+}
+
+export async function getToursAction(
+  filters?: { search?: string; status?: string; fromDate?: string; toDate?: string },
+  page = 1,
+  limit = 10
+): Promise<GetToursResult | GetToursError> {
+  try {
+    const tenant = await getActiveTenant();
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenantId: tenant.id };
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+    if (filters?.fromDate || filters?.toDate) {
+      where.startAt = {};
+      if (filters?.fromDate) where.startAt.gte = new Date(filters.fromDate);
+      if (filters?.toDate) where.startAt.lte = new Date(filters.toDate);
+    }
+
+    const [tours, total] = await Promise.all([
+      prisma.tour.findMany({
+        where,
+        orderBy: { startAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.tour.count({ where }),
+    ]);
+
+    const leadIds = [...new Set(tours.map((t) => t.leadId).filter(Boolean))];
+    const userIds = [...new Set(tours.map((t) => t.assignedTo).filter(Boolean))];
+
+    const [leads, users] = await Promise.all([
+      leadIds.length ? prisma.lead.findMany({ where: { id: { in: leadIds } }, select: { id: true, firstName: true, lastName: true } }) : [],
+      userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } }) : [],
+    ]);
+
+    const leadMap = new Map(leads.map((l) => [l.id, `${l.firstName} ${l.lastName}`.trim()]));
+    const userMap = new Map(users.map((u) => [u.id, u.name || 'غير معين']));
+
+    let list: TourListItem[] = tours.map((t) => ({
+      id: t.id,
+      startAt: t.startAt.toISOString(),
+      endAt: t.endAt.toISOString(),
+      location: t.location || 'غير محدد',
+      status: t.status,
+      attendees: t.attendees,
+      notes: t.notes ?? null,
+      leadName: leadMap.get(t.leadId) || 'غير محدد',
+      assignedToName: userMap.get(t.assignedTo) || 'غير معين',
+      createdAt: t.createdAt.toISOString(),
+    }));
+
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.location.toLowerCase().includes(q) ||
+          t.leadName.toLowerCase().includes(q) ||
+          (t.notes && t.notes.toLowerCase().includes(q))
+      );
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const todayTours = await prisma.tour.count({
+      where: { tenantId: tenant.id, startAt: { gte: todayStart, lt: todayEnd } },
+    });
+    const upcomingTours = await prisma.tour.count({
+      where: { tenantId: tenant.id, status: 'SCHEDULED', startAt: { gte: todayEnd } },
+    });
+    const completedTours = await prisma.tour.count({
+      where: { tenantId: tenant.id, status: 'COMPLETED' },
+    });
+    const needsFollowUpTours = await prisma.tour.count({
+      where: { tenantId: tenant.id, status: { in: ['CANCELLED', 'NO_SHOW', 'FOLLOW_UP'] } },
+    });
+
+    const stats: TourStats = {
+      today: todayTours,
+      upcoming: upcomingTours,
+      completed: completedTours,
+      needsFollowUp: needsFollowUpTours,
+    };
+
+    return {
+      success: true,
+      data: {
+        tours: list,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        stats,
+      },
+    };
+  } catch (error: any) {
+    console.error('فشل جلب الجولات:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * جدولة جولة عقارية جديدة وإسنادها لعميل وإدخالها في جدول Tour بقاعدة البيانات
  */
