@@ -2,6 +2,12 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { SmartCard } from "@/components/ui/SmartCard";
+import { BoundedCardList } from "@/components/ui/BoundedCardList";
+import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
+import { MoneyCell } from "@/components/ui/orca-table/cells/MoneyCell";
+import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
+import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
+import { formatOfferStatus } from '@/lib/ui-status';
 import { useApp } from '@/app/context/AppContext';
 
 type Offer = { id: string; linkedOpportunityId: string; price: number; validUntil: string; status: string; documentUrl: string | null; };
@@ -9,7 +15,7 @@ type Opportunity = { id: string; leadId: string; value: number; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
 
 export default function Offers() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -21,8 +27,7 @@ export default function Offers() {
 
   const handleCreateOffer = async (e: React.FormEvent) => { e.preventDefault(); if (!oppId || !price || !validUntil) return; try { setBtnLoading(true); await fetch("/api/v1/offers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ linkedOpportunityId: oppId, price, validUntil }) }); setOppId(""); setPrice(""); setValidUntil(""); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
   const handleAcceptOffer = async (offerId: string) => { try { setBtnLoading(true); await fetch(`/api/v1/offers/${offerId}/accept`, { method: "POST", headers: { "Content-Type": "application/json" } }); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
-  const getOpportunityLeadName = (oId: string) => { const opp = opportunities.find(o => o.id === oId); if (!opp) return t("offers.unknownOpp"); const lead = leads.find(l => l.id === opp.leadId); return lead ? `${lead.firstName} ${lead.lastName || ""}`.trim() : t("opps.unknownLead"); };
-  const statusText = (st: string) => st === "PENDING" ? t("offers.statusPending") : st === "ACCEPTED" ? t("offers.statusAccepted") : st;
+  const getOpportunityLeadName = (oId: string) => { const opp = opportunities.find(o => o.id === oId); if (!opp) return null; const lead = leads.find(l => l.id === opp.leadId); return lead ? `${lead.firstName} ${lead.lastName || ""}`.trim() : null; };
 
   return (
     <div className="tab-pane space-y-6">
@@ -38,13 +43,27 @@ export default function Offers() {
         </SmartCard>
         <SmartCard className="lg:col-span-2 p-4">
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("offers.listTitle")}</h3>
-          {loading ? (<div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("offers.loading")}</div>) : offers.length === 0 ? (<div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("offers.noData")}</div>) : (
-            <div className="space-y-3.5 max-h-[440px] overflow-y-auto pr-1 scrollbar-fade">
-              {offers.map((offer) => (<div key={offer.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl hover:border-[var(--nc-accent-border)]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="space-y-1 text-xs"><div className="flex items-center gap-2"><span className="text-[var(--nc-foreground)] font-bold">{getOpportunityLeadName(offer.linkedOpportunityId)}</span><span className={`text-xs px-2 py-1 rounded-full font-bold ${offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-[var(--nc-surface)] text-[var(--nc-text-dim)] font-medium"}`}>{statusText(offer.status)}</span></div><p className="text-slate-450">{t("offers.negotiationPrice")} <span className="text-[var(--nc-foreground)] font-semibold font-en">{Number(offer.price).toLocaleString()} ر.س</span></p><p className="text-slate-450 font-en">{t("offers.validityLabel")} <span className="text-indigo-400 font-semibold">{offer.validUntil.slice(0, 10)}</span></p>{offer.documentUrl && (<a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-xs mt-1 font-en">{t("offers.viewPDF")}</a>)}</div>
-                {offer.status === "PENDING" && (<button onClick={() => handleAcceptOffer(offer.id)} disabled={btnLoading} className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded text-xs transition-colors font-bold">{t("offers.accept")}</button>)}
-              </div>))}
-            </div>
+          {loading ? (
+            <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("offers.loading")}</div>
+          ) : (
+            <BoundedCardList pageSize={15} emptyMessage={t("offers.noData")}>
+              {offers.map((offer) => (
+                <div key={offer.id} className="p-4 bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl hover:border-[var(--nc-accent-border)]/40 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--nc-foreground)] font-bold"><RelationCell name={getOpportunityLeadName(offer.linkedOpportunityId)} /></span>
+                      <StatusCell status={offer.status} format={formatOfferStatus}
+                        activeClass="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        badgeClass={offer.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : undefined} />
+                    </div>
+                    <p className="text-slate-450">{t("offers.negotiationPrice")} <MoneyCell amount={offer.price} lang={lang} /></p>
+                    <p className="text-slate-450 font-en">{t("offers.validityLabel")} <DateCell value={offer.validUntil} /></p>
+                    {offer.documentUrl && (<a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-xs mt-1 font-en">{t("offers.viewPDF")}</a>)}
+                  </div>
+                  {offer.status === "PENDING" && (<button onClick={() => handleAcceptOffer(offer.id)} disabled={btnLoading} className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded text-xs transition-colors font-bold">{t("offers.accept")}</button>)}
+                </div>
+              ))}
+            </BoundedCardList>
           )}
         </SmartCard>
       </div>

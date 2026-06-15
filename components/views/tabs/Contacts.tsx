@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { SmartCard } from '@/components/ui/SmartCard';
+import { DataTable, type Column } from '@/components/ui/DataTable';
 import { useApp } from '@/app/context/AppContext';
 
 type Contact = { id: string; name: string; phone: string; email: string | null; preferredContactTime: string | null; budgetRange: string | null; notes: string | null; createdAt: string; };
@@ -40,8 +41,21 @@ export default function Contacts() {
           </SmartCard>
           <SmartCard className="p-4">
             <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("contacts.directory")}</h3>
-            {loading ? (<div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("contacts.loading")}</div>) : contacts.length === 0 ? (<div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("contacts.noContacts")}</div>) : (
-              <div className="overflow-x-auto"><table className="w-full text-right border-collapse text-xs"><thead><tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium font-semibold"><th className="py-2 px-1">{t("contacts.tableName")}</th><th className="py-2 px-1">{t("contacts.tablePhone")}</th><th className="py-2 px-1">{t("contacts.tableBudget")}</th><th className="py-2 px-1">{t("contacts.tableEmail")}</th><th className="py-2 px-1">{t("contacts.tableAction")}</th></tr></thead><tbody className="divide-y divide-slate-800/60 text-slate-200">{contacts.map((c) => (<tr key={c.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors"><td className="py-2 px-1 font-bold text-[var(--nc-foreground)]">{c.name}</td><td className="py-2 px-1 font-en">{c.phone}</td><td className="py-2 px-1">{c.budgetRange || "—"}</td><td className="py-2 px-1 font-en">{c.email || "—"}</td><td className="py-2 px-1"><button onClick={() => setSelectedContact(c)} className="bg-[#0ea5e9]/20 hover:bg-[#0ea5e9]/35 text-[#0ea5e9] px-2.5 py-1 rounded">{t("contacts.viewHistory")}</button></td></tr>))}</tbody></table></div>
+            {loading ? (<div className="py-8 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("contacts.loading")}</div>) : (
+              <DataTable
+                columns={[
+                  { header: t("contacts.tableName"), accessor: (c) => <span className="font-bold text-[var(--nc-foreground)]">{c.name}</span> },
+                  { header: t("contacts.tablePhone"), accessor: 'phone' as keyof Contact, className: 'font-en' },
+                  { header: t("contacts.tableBudget"), accessor: (c) => c.budgetRange || '—' },
+                  { header: t("contacts.tableEmail"), accessor: (c) => c.email || '—', className: 'font-en' },
+                  { header: t("contacts.tableAction"), accessor: (c) => (
+                    <button onClick={() => setSelectedContact(c)} className="bg-[#0ea5e9]/20 hover:bg-[#0ea5e9]/35 text-[#0ea5e9] px-2.5 py-1 rounded">{t("contacts.viewHistory")}</button>
+                  )},
+                ] as Column<Contact>[]}
+                data={contacts}
+                pageSize={15}
+                emptyMessage={t("contacts.noContacts")}
+              />
             )}
           </SmartCard>
         </div>

@@ -857,6 +857,7 @@ export default function RentalPage() {
                   selectedId={selectedLeaseId || undefined}
                   getId={(l) => l.id}
                   emptyMessage="لا توجد عقود إيجار مسجلة"
+                  pageSize={15}
                 />
               </div>
 
