@@ -7,6 +7,7 @@ import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
 import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
 import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
 import { useApp } from '@/app/context/AppContext';
+import { formatTourStatus } from '@/lib/ui-status';
 
 type Tour = { id: string; leadId: string | null; assignedTo: string | null; startAt: string; endAt: string; location: string; status: string; attendees: number | null; notes: string | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
