@@ -14,6 +14,11 @@ import { useAuth } from '@/app/context/AuthContext';
 import { Button, Card } from '@/components/ui/orca-components';
 import LayoutContainer from '@/components/ui/LayoutContainer';
 import PageHeader from '@/components/ui/PageHeader';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { ShortIdCell } from '@/components/ui/orca-table/cells/ShortIdCell';
+import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
+import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
+import { formatLeaseStatus } from '@/lib/ui-status';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -826,50 +831,31 @@ export default function RentalPage() {
                   </select>
                 </div>
 
-                <div className="overflow-x-auto" tabIndex={0} aria-label="جدول العقود قابل للتمرير أفقيًا">
-                  <table className="nc-table text-xs">
-                    <thead>
-                      <tr>
-                        <th>رقم العقد</th>
-                        <th>الوحدة</th>
-                        <th>المستأجر</th>
-                        <th>الحالة</th>
-                        <th className="text-left">الإيجار</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLeases.map(l => (
-                        <tr 
-                           key={l.id}
-                           onClick={() => {
-                             setSelectedLeaseId(l.id);
-                             setDetailActiveTab('summary');
-                             addTelemetryEvent('lease.opened', { contractId: l.id, status: l.status });
-                           }}
-                           className={`cursor-pointer ${
-                             selectedLeaseId === l.id ? 'bg-[#8EB1D1]/10 border-r-4 border-[#8EB1D1]' : ''
-                           }`}
-                        >
-                          <td className="font-bold text-[var(--nc-foreground)] font-mono text-xs">{l.id.slice(-8).toUpperCase()}</td>
-                          <td className="text-[var(--nc-text-dim)] font-mono">{l.unit}</td>
-                          <td className="text-[var(--nc-text-dim)]">{l.tenant}</td>
-                          <td>
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-                              l.status === 'active' 
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                : l.status === 'expired'
-                                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                  : 'bg-[var(--nc-surface)] text-[var(--nc-text-dim)] border border-slate-500/30'
-                            }`}>
-                              {l.status === 'active' ? 'نشط' : l.status === 'expired' ? 'منتهي' : 'ملغى'}
-                            </span>
-                          </td>
-                          <td className="text-left text-[var(--nc-foreground)] font-bold">{l.rent.toLocaleString()} ر.س</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={[
+                    { header: 'رقم العقد', accessor: (l) => <ShortIdCell id={l.id} prefix="عقد" /> },
+                    { header: 'الوحدة', accessor: 'unit' as keyof Lease, className: 'text-[var(--nc-text-dim)] font-mono' },
+                    { header: 'المستأجر', accessor: 'tenant' as keyof Lease, className: 'text-[var(--nc-text-dim)]' },
+                    { header: 'الحالة', accessor: (l) => (
+                      <StatusCell
+                        status={l.status}
+                        format={formatLeaseStatus}
+                        activeClass="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        badgeClass={l.status === 'expired' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : undefined}
+                      />
+                    )},
+                    { header: 'الإيجار', accessor: (l) => <MoneyCell amount={l.rent} lang={isRTL ? 'AR' : 'EN'} />, className: 'text-left', headerClassName: 'text-left' },
+                  ] as Column<Lease>[]}
+                  data={filteredLeases}
+                  onRowClick={(l) => {
+                    setSelectedLeaseId(l.id);
+                    setDetailActiveTab('summary');
+                    addTelemetryEvent('lease.opened', { contractId: l.id, status: l.status });
+                  }}
+                  selectedId={selectedLeaseId || undefined}
+                  getId={(l) => l.id}
+                  emptyMessage="لا توجد عقود إيجار مسجلة"
+                />
               </div>
 
               {/* Lease Detail Panel (Detail) */}

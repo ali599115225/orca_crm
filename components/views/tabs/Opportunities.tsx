@@ -3,12 +3,18 @@
 import { useState, useEffect } from "react";
 import { SmartCard } from "@/components/ui/SmartCard";
 import { useApp } from "@/app/context/AppContext";
+import { DataTable, type Column } from "@/components/ui/DataTable";
+import { MoneyCell } from "@/components/ui/orca-table/cells/MoneyCell";
+import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
+import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
+import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
+import { formatOpportunityStatus } from "@/lib/ui-status";
 
 type Opportunity = { id: string; leadId: string; value: number; probability: number; closeDate: string; status: string; linkedUnitIds: string | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
 
 export default function Opportunities() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true); const [btnLoading, setBtnLoading] = useState(false);
@@ -20,7 +26,15 @@ export default function Opportunities() {
 
   const handleCreateOpportunity = async (e: React.FormEvent) => { e.preventDefault(); if (!leadId || !value) return; try { setBtnLoading(true); await fetch("/api/v1/opportunities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadId, value, probability, closeDate, linkedUnitIds: unitIds }) }); setLeadId(""); setValue(""); setProbability("50"); setCloseDate(""); setUnitIds(""); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
   const optimizeOfferPrice = async () => { if (!value) return; try { setBtnLoading(true); const res = await fetch("/api/v1/ai/offer-optimize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ basePrice: value, probability }) }); const json = await res.json(); if (json.success) { setAiPrice(json.suggestedPrice); setAiRationale(json.rationaleAr); } } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
-  const getLeadName = (lid: string) => { const l = leads.find(lead => lead.id === lid); return l ? `${l.firstName} ${l.lastName || ""}`.trim() : t("opps.unknownLead"); };
+  const getLeadName = (lid: string) => { const l = leads.find(lead => lead.id === lid); return l ? `${l.firstName} ${l.lastName || ""}`.trim() : null; };
+
+  const columns: Column<Opportunity>[] = [
+    { header: t("opps.tableLead"), accessor: (opp) => <RelationCell name={getLeadName(opp.leadId)} /> },
+    { header: t("opps.tableValue"), accessor: (opp) => <MoneyCell amount={opp.value} lang={lang} /> },
+    { header: t("opps.tableProbability"), accessor: (opp) => <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded font-en">{opp.probability}%</span>, className: 'text-center', headerClassName: 'text-center' },
+    { header: t("opps.tableCloseDate"), accessor: (opp) => <DateCell value={opp.closeDate} /> },
+    { header: t("opps.tableStatus"), accessor: (opp) => <StatusCell status={opp.status} format={formatOpportunityStatus} activeClass="bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/20" /> },
+  ];
 
   return (
     <div className="tab-pane space-y-6">
@@ -40,8 +54,14 @@ export default function Opportunities() {
         </SmartCard>
         <SmartCard className="lg:col-span-2 p-4">
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("opps.listTitle")}</h3>
-          {loading ? (<div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.loading")}</div>) : opportunities.length === 0 ? (<div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.noData")}</div>) : (
-            <div className="overflow-x-auto"><table className="w-full text-right border-collapse text-xs"><thead><tr className="border-b border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] font-medium font-semibold"><th className="py-2 px-1">{t("opps.tableLead")}</th><th className="py-2 px-1">{t("opps.tableValue")}</th><th className="py-2 px-1 text-center">{t("opps.tableProbability")}</th><th className="py-2 px-1">{t("opps.tableCloseDate")}</th><th className="py-2 px-1">{t("opps.tableStatus")}</th></tr></thead><tbody className="divide-y divide-slate-800/60 text-slate-200">{opportunities.map((opp) => (<tr key={opp.id} className="hover:bg-[var(--nc-surface-strong)] transition-colors"><td className="py-2 px-1 font-bold text-[var(--nc-foreground)]">{getLeadName(opp.leadId)}</td><td className="py-2 px-1 font-en">{Number(opp.value).toLocaleString()} ر.س</td><td className="py-2 px-1 text-center"><span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded font-en">{opp.probability}%</span></td><td className="py-2 px-1 font-en">{opp.closeDate.slice(0, 10)}</td><td className="py-2 px-1"><span className="bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/20 px-2 py-1 rounded">{opp.status}</span></td></tr>))}</tbody></table></div>
+          {loading ? (
+            <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.loading")}</div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={opportunities}
+              emptyMessage={t("opps.noData")}
+            />
           )}
         </SmartCard>
       </div>
