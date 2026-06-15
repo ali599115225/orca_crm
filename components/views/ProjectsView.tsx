@@ -31,6 +31,8 @@ type UnitItem = {
 
 type TabKey = 'overview' | 'phases' | 'units' | 'bookings' | 'documents' | 'reports';
 
+const PAGE_SIZE = 10;
+
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'overview', label: 'نظرة عامة' },
   { key: 'phases', label: 'المراحل' },
@@ -54,10 +56,27 @@ function extractArray(result: unknown): any[] {
 function normalizeStatus(status?: string): string {
   if (!status) return 'قيد الإنشاء';
 
-  if (status === 'COMPLETED') return 'مكتمل';
-  if (status === 'PLANNING') return 'مخطط له';
-  if (status === 'ACTIVE') return 'نشط';
-  if (status === 'IN_PROGRESS') return 'قيد الإنشاء';
+  const value = String(status).toUpperCase();
+
+  if (value === 'COMPLETED') return 'مكتمل';
+  if (value === 'PLANNING') return 'مخطط له';
+  if (value === 'ACTIVE') return 'نشط';
+  if (value === 'IN_PROGRESS') return 'قيد الإنشاء';
+  if (value === 'UNDER_CONSTRUCTION') return 'قيد الإنشاء';
+
+  return status;
+}
+
+function normalizeUnitStatus(status?: string): string {
+  if (!status) return 'متاحة';
+
+  const value = String(status).toUpperCase();
+
+  if (value === 'AVAILABLE') return 'متاحة';
+  if (value === 'HOLD') return 'محجوزة مؤقتًا';
+  if (value === 'SOLD') return 'مباعة';
+  if (value === 'RESERVED') return 'محجوزة';
+  if (value === 'BLOCKED') return 'متوقفة';
 
   return status;
 }
@@ -118,6 +137,8 @@ export default function ProjectsView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+  const [projectPage, setProjectPage] = useState(1);
+  const [unitPage, setUnitPage] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -164,9 +185,18 @@ export default function ProjectsView() {
     });
   }, [projects, searchTerm]);
 
+  const projectTotalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
+  const pagedProjects = filteredProjects.slice(
+    (projectPage - 1) * PAGE_SIZE,
+    projectPage * PAGE_SIZE,
+  );
+
   const selectedProject = useMemo(() => {
     return projects.find((project) => project.id === selectedProjectId) || null;
   }, [projects, selectedProjectId]);
+
+  const unitTotalPages = Math.max(1, Math.ceil(units.length / PAGE_SIZE));
+  const pagedUnits = units.slice((unitPage - 1) * PAGE_SIZE, unitPage * PAGE_SIZE);
 
   const totalUnits = projects.reduce((sum, project) => sum + Number(project.unitsTotal || 0), 0);
   const soldUnits = projects.reduce((sum, project) => sum + Number(project.unitsSold || 0), 0);
@@ -176,6 +206,7 @@ export default function ProjectsView() {
     setSelectedProjectId(projectId);
     setActiveTab('overview');
     setUnits([]);
+    setUnitPage(1);
 
     try {
       setIsLoadingUnits(true);
@@ -192,11 +223,12 @@ export default function ProjectsView() {
     setSelectedProjectId(null);
     setActiveTab('overview');
     setUnits([]);
+    setUnitPage(1);
   }
 
   if (selectedProject) {
     return (
-      <section dir={isArabic ? 'rtl' : 'ltr'} className="space-y-5">
+      <section dir={isArabic ? 'rtl' : 'ltr'} className="space-y-5 px-4 pb-8 pt-4 lg:px-6">
         <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-3">
@@ -297,49 +329,81 @@ export default function ProjectsView() {
             {isLoadingUnits ? (
               <EmptyState message="جاري تحميل وحدات المشروع..." />
             ) : units.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                      <th className="px-3 py-3 text-right font-semibold">رقم الوحدة</th>
-                      <th className="px-3 py-3 text-right font-semibold">النوع</th>
-                      <th className="px-3 py-3 text-right font-semibold">المساحة</th>
-                      <th className="px-3 py-3 text-right font-semibold">السعر</th>
-                      <th className="px-3 py-3 text-right font-semibold">الحالة</th>
-                      <th className="px-3 py-3 text-right font-semibold">الإجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {units.slice(0, 10).map((unit, index) => (
-                      <tr key={unit.id || index} className="border-b border-[var(--nc-border)]">
-                        <td className="px-3 py-3 text-[var(--nc-text-primary)]">
-                          {unit.unitNumber || unit.number || `وحدة ${index + 1}`}
-                        </td>
-                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          {unit.type || 'غير محدد'}
-                        </td>
-                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          {unit.area ? `${unit.area} م²` : 'غير محدد'}
-                        </td>
-                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          {formatCurrency(unit.price)}
-                        </td>
-                        <td className="px-3 py-3">
-                          <StatusBadge>{unit.status || 'متاحة'}</StatusBadge>
-                        </td>
-                        <td className="px-3 py-3">
-                          <button
-                            type="button"
-                            className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                          >
-                            حجز وحدة
-                          </button>
-                        </td>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
+                        <th className="px-3 py-3 text-right font-semibold">رقم الوحدة</th>
+                        <th className="px-3 py-3 text-right font-semibold">النوع</th>
+                        <th className="px-3 py-3 text-right font-semibold">المساحة</th>
+                        <th className="px-3 py-3 text-right font-semibold">السعر</th>
+                        <th className="px-3 py-3 text-right font-semibold">الحالة</th>
+                        <th className="px-3 py-3 text-right font-semibold">الإجراء</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {pagedUnits.map((unit, index) => (
+                        <tr key={unit.id || index} className="border-b border-[var(--nc-border)]">
+                          <td className="px-3 py-3 text-[var(--nc-text-primary)]">
+                            {unit.unitNumber ||
+                              unit.number ||
+                              `وحدة ${(unitPage - 1) * PAGE_SIZE + index + 1}`}
+                          </td>
+                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                            {unit.type || 'غير محدد'}
+                          </td>
+                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                            {unit.area ? `${unit.area} م²` : 'غير محدد'}
+                          </td>
+                          <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                            {formatCurrency(unit.price)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <StatusBadge>{normalizeUnitStatus(unit.status)}</StatusBadge>
+                          </td>
+                          <td className="px-3 py-3">
+                            <button
+                              type="button"
+                              className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                            >
+                              حجز وحدة
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {units.length > PAGE_SIZE && (
+                  <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)]">
+                    <span>
+                      صفحة {formatNumber(unitPage)} من {formatNumber(unitTotalPages)}
+                    </span>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={unitPage <= 1}
+                        onClick={() => setUnitPage((page) => Math.max(1, page - 1))}
+                        className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      >
+                        السابق
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={unitPage >= unitTotalPages}
+                        onClick={() => setUnitPage((page) => Math.min(unitTotalPages, page + 1))}
+                        className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      >
+                        التالي
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : Number(selectedProject.unitsTotal || 0) > 0 ? (
               <EmptyState
                 message={`بيانات الوحدات لم تُحمّل بعد من قاعدة البيانات. إجمالي الوحدات المتوقع: ${formatNumber(
@@ -378,7 +442,7 @@ export default function ProjectsView() {
   }
 
   return (
-    <section dir={isArabic ? 'rtl' : 'ltr'} className="space-y-5">
+    <section dir={isArabic ? 'rtl' : 'ltr'} className="space-y-5 px-4 pb-8 pt-4 lg:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">المشاريع العقارية</h1>
@@ -427,7 +491,10 @@ export default function ProjectsView() {
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <input
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              setProjectPage(1);
+            }}
             placeholder="ابحث باسم المشروع أو الموقع أو الحالة"
             className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm text-[var(--nc-text-primary)] outline-none lg:max-w-md"
           />
@@ -449,7 +516,7 @@ export default function ProjectsView() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProjects.slice(0, 10).map((project) => (
+                {pagedProjects.map((project) => (
                   <tr key={project.id} className="border-b border-[var(--nc-border)]">
                     <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
                       {project.name}
@@ -482,9 +549,31 @@ export default function ProjectsView() {
               </tbody>
             </table>
 
-            {filteredProjects.length > 10 && (
-              <div className="mt-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)]">
-                يتم عرض أول 10 مشاريع من أصل {formatNumber(filteredProjects.length)}.
+            {filteredProjects.length > PAGE_SIZE && (
+              <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)]">
+                <span>
+                  صفحة {formatNumber(projectPage)} من {formatNumber(projectTotalPages)}
+                </span>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={projectPage <= 1}
+                    onClick={() => setProjectPage((page) => Math.max(1, page - 1))}
+                    className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                  >
+                    السابق
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={projectPage >= projectTotalPages}
+                    onClick={() => setProjectPage((page) => Math.min(projectTotalPages, page + 1))}
+                    className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                  >
+                    التالي
+                  </button>
+                </div>
               </div>
             )}
           </div>
