@@ -163,34 +163,40 @@ export default function ToursView() {
     {
       header: 'الموعد',
       accessor: (t) => <span className="font-bold text-xs whitespace-nowrap">{formatDateTime(t.startAt)}</span>,
+      className: 'whitespace-nowrap',
+      headerClassName: 'whitespace-nowrap',
     },
     {
       header: 'العميل',
       accessor: 'leadName',
+      className: 'min-w-[140px]',
     },
     {
       header: 'الموقع',
       accessor: 'location',
+      className: 'min-w-[140px]',
     },
     {
       header: 'الحالة',
       accessor: (t) => <StatusBadge variant={toBadgeVariant(t.status)} />,
+      className: 'whitespace-nowrap',
     },
     {
       header: 'المسؤول',
       accessor: 'assignedToName',
+      className: 'min-w-[130px]',
     },
     {
-      header: '',
+      header: 'الإجراء',
       accessor: (t) => (
         <button
           onClick={(e) => { e.stopPropagation(); setSelectedTour(t); }}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded nc-btn nc-btn-ghost nc-btn-sm text-[10px] font-bold"
+          className="nc-btn nc-btn-ghost nc-btn-sm text-[11px] font-bold"
         >
-          <Eye size={11} /> تفاصيل
+          <Eye size={13} /> تفاصيل
         </button>
       ),
-      className: 'text-center',
+      className: 'text-center whitespace-nowrap',
       headerClassName: 'text-center',
     },
   ];
@@ -310,15 +316,21 @@ export default function ToursView() {
         )}
 
         {!isLoading && !fetchError && tours.length > 0 && (
-          <DataTable
-            columns={columns as Column<TourListItem>[]}
-            data={tours}
-            onRowClick={handleRowClick}
-            selectedId={selectedTour?.id}
-            getId={(t) => t.id}
-            pageSize={10}
-            emptyMessage="لا توجد جولات مطابقة للفلاتر"
-          />
+          <SmartCard elevation="default" className="overflow-hidden">
+            <div className="px-5 py-3 border-b border-[var(--nc-glass-border)] flex items-center justify-between bg-[var(--nc-surface-soft)]">
+              <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">قائمة الجولات</h3>
+              <span className="text-xs text-[var(--nc-text-dim)] font-medium">{pagination.total} جولة</span>
+            </div>
+            <DataTable
+              columns={columns as Column<TourListItem>[]}
+              data={tours}
+              onRowClick={handleRowClick}
+              selectedId={selectedTour?.id}
+              getId={(t) => t.id}
+              pageSize={10}
+              emptyMessage="لا توجد جولات مطابقة للفلاتر"
+            />
+          </SmartCard>
         )}
 
         {selectedTour && (

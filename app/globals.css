@@ -605,6 +605,10 @@ html { scroll-behavior: smooth; }
   background: var(--nc-coral-bg);
   border-left: 3px solid var(--nc-accent);
 }
+[dir="rtl"] .nc-table tbody tr.nc-row-selected {
+  border-left: none;
+  border-right: 3px solid var(--nc-accent);
+}
 .nc-table .nc-cell-actions {
   text-align: center;
   white-space: nowrap;
