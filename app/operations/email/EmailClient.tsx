@@ -19,6 +19,7 @@ interface EmailMessage {
 }
 interface Lead { id: string; firstName: string; lastName: string; email: string | null; }
 interface EmailClientProps { initialMessages: EmailMessage[]; leads: Lead[]; emailFrom: string; }
+const EMAIL_PAGE_SIZE = 8;
 
 export default function EmailClient({ initialMessages, leads, emailFrom }: EmailClientProps) {
   const { t, lang } = useApp();
@@ -31,6 +32,17 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
   const [htmlBody, setHtmlBody] = useState("");
   const [leadId, setLeadId] = useState(searchParams.get('leadId') || "");
   const [isSending, setIsSending] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(messages.length / EMAIL_PAGE_SIZE) || 1;
+  const startIndex = (currentPage - 1) * EMAIL_PAGE_SIZE;
+  const paginatedMessages = messages.slice(startIndex, startIndex + EMAIL_PAGE_SIZE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [messages.length, currentPage, totalPages]);
 
   useEffect(() => {
     const leadParam = searchParams.get('leadId');
@@ -74,7 +86,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
         <p className="text-[var(--nc-text-dim)] text-sm mt-1">{isRTL ? 'إرسال وإدارة البريد الإلكتروني من ORCA' : 'Send and manage emails from ORCA'}</p>
       </div>
 
-      <SmartCard elevation="default" className="p-5">
+      <SmartCard elevation="default" className="p-4 h-fit mb-4">
         <h3 className="text-sm font-bold text-[var(--nc-foreground)] mb-4">{isRTL ? 'إرسال بريد جديد' : 'Send New Email'}</h3>
         <form onSubmit={handleSend} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -102,7 +114,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[var(--nc-text-dim)] font-medium">{isRTL ? 'محتوى البريد (HTML)' : 'Email Content (HTML)'}</label>
-            <textarea value={htmlBody} onChange={e => setHtmlBody(e.target.value)} rows={5}
+            <textarea value={htmlBody} onChange={e => setHtmlBody(e.target.value)} rows={3}
               aria-label={isRTL ? 'محتوى البريد' : 'Email content'}
               className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-lg p-3 text-[var(--nc-foreground)] font-mono" />
           </div>
@@ -113,8 +125,8 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
         </form>
       </SmartCard>
 
-      <SmartCard elevation="default" className="p-5">
-        <h3 className="text-sm font-bold text-[var(--nc-foreground)] mb-4">{isRTL ? `آخر الرسائل (${messages.length})` : `Recent Messages (${messages.length})`}</h3>
+      <SmartCard elevation="default" className="p-4">
+        <h3 className="text-sm font-bold text-[var(--nc-foreground)] mb-3">{isRTL ? `آخر الرسائل (${messages.length})` : `Recent Messages (${messages.length})`}</h3>
         <DataTable
           columns={[
             { header: isRTL ? 'إلى' : 'To', accessor: 'to' as keyof EmailMessage, className: 'text-[var(--nc-foreground)]' },
@@ -125,10 +137,36 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
             { header: isRTL ? 'العميل' : 'Lead', accessor: (m) => m.lead ? `${m.lead.firstName} ${m.lead.lastName || ""}` : '—', className: 'text-[var(--nc-text-dim)]' },
             { header: isRTL ? 'التاريخ' : 'Date', accessor: (m) => <DateCell value={m.createdAt} /> },
           ] as Column<EmailMessage>[]}
-          data={messages}
-          pageSize={15}
+          data={paginatedMessages}
+          pageSize={0}
           emptyMessage={isRTL ? 'لا توجد رسائل بعد' : 'No messages yet'}
         />
+        {messages.length > 0 && (
+          <div className="flex items-center justify-between py-3 border-t border-[var(--nc-glass-border)] mt-2">
+            <span className="text-xs text-[var(--nc-text-dim)]">
+              {isRTL ? `${startIndex + 1}-${Math.min(startIndex + EMAIL_PAGE_SIZE, messages.length)} من ${messages.length}` : `${startIndex + 1}-${Math.min(startIndex + EMAIL_PAGE_SIZE, messages.length)} of ${messages.length}`}
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs rounded bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--nc-surface-strong)] transition-colors"
+              >
+                {isRTL ? 'السابق' : 'Previous'}
+              </button>
+              <span className="text-xs text-[var(--nc-text-dim)] font-mono">
+                {isRTL ? `صفحة ${currentPage} من ${totalPages}` : `Page ${currentPage} of ${totalPages}`}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-3 py-1.5 text-xs rounded bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--nc-surface-strong)] transition-colors"
+              >
+                {isRTL ? 'التالي' : 'Next'}
+              </button>
+            </div>
+          </div>
+        )}
       </SmartCard>
     </div>
   );
