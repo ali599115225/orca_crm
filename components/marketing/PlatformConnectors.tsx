@@ -420,11 +420,6 @@ export default function PlatformConnectors({
       {/* Tab 1: Marketing Marketplaces */}
           {activeTab === 'marketing' && (
         <div className="space-y-5 animate-[ncFadeIn_0.3s_ease]">
-          {/* Demo data badge */}
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
-            <i className="ph-bold ph-warning text-amber-400"></i>
-            <p className="text-[11px] font-bold text-amber-400">{isArabic ? '⚠️ بيانات تجريبية — لم يتم ربطها بقاعدة البيانات' : '⚠️ Demo data — not connected to database'}</p>
-          </div>
           {/* KPI Row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <KpiCard label={t.totalLeads} value={totalLeads.toString()} color="accent" />
@@ -441,11 +436,12 @@ export default function PlatformConnectors({
               <i className="ph-bold ph-storefront text-[var(--nc-accent)]"></i>
               {t.platformCards}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
-              {platforms.map(p => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+              {platforms.map((p, index) => {
                 const sb = statusBadge(p.integrationStatus);
+                const isLastAndOdd = platforms.length % 2 !== 0 && index === platforms.length - 1;
                 return (
-                  <SmartCard key={p.id} className="p-4 space-y-3 h-full flex flex-col">
+                  <SmartCard key={p.id} className={`p-4 space-y-3 flex flex-col ${isLastAndOdd ? 'md:col-span-2' : ''}`}>
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -521,8 +517,8 @@ export default function PlatformConnectors({
           </div>
 
           {/* AI Recommendations */}
-          <SmartCard className="p-5 space-y-4">
-            <div className="flex items-center gap-2 border-b border-[var(--nc-border)] pb-3">
+          <SmartCard className="p-4 space-y-3 h-fit">
+            <div className="flex items-center gap-2 border-b border-[var(--nc-border)] pb-2.5">
               <i className="ph-bold ph-robot text-[var(--nc-accent)] text-base"></i>
               <h3 className="text-sm font-extrabold text-[var(--nc-foreground)]">{t.aiRec}</h3>
               <span className="text-[9px] font-black bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)] px-1.5 py-0.5 rounded-full">
@@ -540,7 +536,7 @@ export default function PlatformConnectors({
                 {recommendations.map(rec => {
                   const rs = recStyle(rec.type);
                   return (
-                    <div key={rec.platformId} className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-[var(--nc-border)] last:border-b-0">
+                    <div key={rec.platformId} className="flex flex-wrap items-center justify-between gap-2 py-1.5 border-b border-[var(--nc-border)] last:border-b-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${rs.cls}`}>
                           <i className={`ph-bold ${rs.icon} text-sm`}></i>
@@ -646,7 +642,7 @@ export default function PlatformConnectors({
                       type="text"
                       value={formAccountId}
                       onChange={(e) => setFormAccountId(e.target.value)}
-                      placeholder="e.g. 884-991-2234"
+                      placeholder={isArabic ? "مثال: 884-991-2234" : "e.g. 884-991-2234"}
                       required
                       className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-3.5 py-2.5 text-xs text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] font-mono"
                     />
@@ -672,7 +668,7 @@ export default function PlatformConnectors({
                       type="number"
                       value={formBudget}
                       onChange={(e) => setFormBudget(e.target.value)}
-                      placeholder="e.g. 15000"
+                      placeholder={isArabic ? "مثال: 15000" : "e.g. 15000"}
                       required
                       className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-3.5 py-2.5 text-xs text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] font-semibold"
                     />
