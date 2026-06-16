@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Home, Plus, Search, CheckCircle2, Clock, Landmark,
-  Activity, Eye
-} from 'lucide-react';
+import { Home, Plus, CheckCircle2, Clock, Landmark, Eye } from 'lucide-react';
 import { Button } from '../ui/orca-components';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -12,27 +9,9 @@ import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
 import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
 import { formatPropertyStatus } from '@/lib/ui-status';
 import { toast } from '@/app/context/ToastContext';
-import LayoutContainer from '../ui/LayoutContainer';
 import { KpiCard } from '../ui/KpiCard';
 import { getPropertiesAction, createUnitActionDirect } from '@/app/actions/properties';
 import { getDetailedProjectsAction } from '@/app/actions/projects';
-
-interface UnitEvent {
-  id: string;
-  type: string;
-  at: string;
-  note: string;
-  media?: string[];
-}
-
-interface HandoverRecord {
-  id: string;
-  scheduledAt: string;
-  status: string;
-  checklist: string;
-  media?: string[];
-  completedAt?: string;
-}
 
 interface PropertyUnit {
   id: number | string;
@@ -54,65 +33,6 @@ interface PropertyUnit {
   priceScenarioDraft?: any;
 }
 
-const initialProperties: PropertyUnit[] = [
-  {
-    id: 1,
-    sku: 'A-101',
-    type: 'شقة سكنية',
-    project: 'مشروع النخيل السكني',
-    area: '120 م²',
-    price: 1200000,
-    priceStr: '1,200,000 ر.س',
-    status: 'Available',
-    desc: 'شقة فاخرة تقع في الدور الأول بتشطيبات سوبر ديلوكس، تكييف مركزي متكامل، وتطل مباشرة على المساحات الخضراء والبحيرة الصناعية.',
-    media: ['https://picsum.photos/seed/1/400/300', 'https://picsum.photos/seed/2/400/300'],
-    docs: ['مخطط_الطابق_الداخلي.pdf', 'رخصة_البناء_البلدية.pdf'],
-    events: [
-      { id: 'ev_1', type: 'إدراج الوحدة', at: '2025-12-01', note: 'تم إدراج الوحدة بنجاح في نظام إدارة العقارات' },
-      { id: 'ev_2', type: 'توثيق صور فوتوغرافية', at: '2026-01-10', note: 'تم تصوير الوحدة واعتمادها من موظف الجودة', media: ['https://picsum.photos/seed/1/400/300'] }
-    ],
-    handovers: [],
-  },
-  {
-    id: 2,
-    sku: 'A-102',
-    type: 'شقة سكنية',
-    project: 'مشروع النخيل السكني',
-    area: '95 م²',
-    price: 950000,
-    priceStr: '950,000 ر.س',
-    status: 'Hold',
-    desc: 'شقة نموذجية مريحة بمساحة عملية وتخطيط ذكي للوحدات المفتوحة مع تهوية ممتازة وإضاءة طبيعية واسعة.',
-    media: ['https://picsum.photos/seed/3/400/300'],
-    docs: ['مخطط_طابق_الملحق.pdf'],
-    events: [
-      { id: 'ev_3', type: 'حجز مؤقت', at: '2026-05-12', note: 'وضع الوحدة بحالة الحجز المؤقت بطلب من موظف المبيعات' }
-    ],
-    handovers: [],
-    contractId: 'ct_abaad_8891'
-  },
-  {
-    id: 3,
-    sku: 'B-201',
-    type: 'فيلا مستقلة',
-    project: 'واحة الخليج',
-    area: '320 م²',
-    price: 4500000,
-    priceStr: '4,500,000 ر.س',
-    status: 'Sold',
-    desc: 'فيلا فاخرة بتصميم مودرن تضم 5 غرف نوم ماستر، مسبح خارجي دافئ، حديقة منسقة ومواقف تتسع لسيارتين ذكيتين.',
-    media: ['https://picsum.photos/seed/4/400/300', 'https://picsum.photos/seed/5/400/300'],
-    docs: ['عقد_البيع_النهائي.pdf', 'رسم_المساقط_الأفقي.pdf'],
-    events: [
-      { id: 'ev_4', type: 'صب القواعد الهيكلية للوحدة', at: '2025-10-01', note: 'اكتمال صب القواعد الخرسانية واختبار الضغط' },
-      { id: 'ev_5', type: 'توقيع عقد البيع النهائي', at: '2026-03-15', note: 'تم توقيع العقد النهائي مع المشتري وتحويل الدفعة للمحاسبة' }
-    ],
-    handovers: [],
-    contractId: 'ct_abaad_7721',
-    financialSettlementId: 'fs_abaad_9921'
-  }
-];
-
 interface PropertyListProps {
   onSelectProperty: (id: string) => void;
   hasPermission: (action: string) => boolean;
@@ -121,19 +41,29 @@ interface PropertyListProps {
   isArabic: boolean;
 }
 
+const primaryButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--nc-op-blue)] text-white text-xs font-bold transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
+const secondaryButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-text-primary)] text-xs font-bold transition-all hover:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-60';
+const inputClass =
+  'w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2.5 text-[var(--nc-text-primary)] text-xs outline-none transition-colors placeholder:text-[var(--nc-text-dim)] focus:border-[var(--nc-accent-border)]';
+const selectClass =
+  'w-auto min-w-[130px] rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2 text-[var(--nc-text-primary)] text-xs outline-none focus:border-[var(--nc-accent-border)]';
+const labelClass = 'block text-xs font-medium text-[var(--nc-text-secondary)]';
+const modalClass =
+  'relative w-full max-w-md rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-6 text-right text-xs shadow-2xl space-y-4';
+
 export default function PropertyList({
   onSelectProperty,
   hasPermission,
   addTelemetryEvent,
   lang,
-  isArabic
+  isArabic,
 }: PropertyListProps) {
   const [properties, setProperties] = useState<PropertyUnit[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
-  const [filterFromDate, setFilterFromDate] = useState('');
-  const [filterToDate, setFilterToDate] = useState('');
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [newSku, setNewSku] = useState('');
   const [newType, setNewType] = useState('شقة سكنية');
@@ -142,9 +72,8 @@ export default function PropertyList({
   const [newArea, setNewArea] = useState('120 م²');
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [usingFallback, setUsingFallback] = useState(false);
-
-  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     async function loadProperties() {
@@ -152,20 +81,13 @@ export default function PropertyList({
         setIsLoading(true);
         setFetchError(null);
         const result = await getPropertiesAction();
-        const data = result && 'data' in result ? result.data : (Array.isArray(result) ? result : []);
-        if (data && data.length > 0) {
-          setProperties(data);
-          addTelemetryEvent('api.properties_loaded', { count: data.length });
-        } else {
-          setUsingFallback(true);
-          setProperties(initialProperties);
-          addTelemetryEvent('api.properties_loaded_fallback', { count: initialProperties.length });
-        }
+        const data = result && 'data' in result ? result.data : Array.isArray(result) ? result : [];
+        setProperties(Array.isArray(data) ? data : []);
+        addTelemetryEvent('api.properties_loaded', { count: Array.isArray(data) ? data.length : 0 });
       } catch (err: any) {
-        setUsingFallback(true);
-        setFetchError(err.message);
+        setFetchError(err.message || 'تعذر تحميل الوحدات العقارية.');
         addTelemetryEvent('api.error', { error: err.message });
-        setProperties(initialProperties);
+        setProperties([]);
       } finally {
         setIsLoading(false);
       }
@@ -177,16 +99,23 @@ export default function PropertyList({
     // Telemetry removed — production cleanup
   };
 
-  const filteredProperties = properties.filter(u => {
-    const matchSearch = !searchTerm || (u.sku + ' ' + u.type + ' ' + u.project).toLowerCase().includes(searchTerm.toLowerCase());
+  const projectOptions = Array.from(new Set(properties.map((u) => u.project).filter(Boolean)));
+
+  const filteredProperties = properties.filter((u) => {
+    const searchable = `${u.sku || ''} ${u.type || ''} ${u.project || ''}`.toLowerCase();
+    const matchSearch = !searchTerm || searchable.includes(searchTerm.toLowerCase());
     const matchStatus = !statusFilter || u.status === statusFilter;
     const matchProject = !projectFilter || u.project === projectFilter;
-    let matchDates = true;
-    if (filterFromDate || filterToDate) {
-      matchDates = true;
-    }
-    return matchSearch && matchStatus && matchProject && matchDates;
+    return matchSearch && matchStatus && matchProject;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, projectFilter]);
+
+  const totalPages = Math.ceil(filteredProperties.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProperties = filteredProperties.slice(startIndex, startIndex + itemsPerPage);
 
   const handleCreateUnit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,9 +125,9 @@ export default function PropertyList({
     }
 
     try {
-      const projectsResult2 = await getDetailedProjectsAction();
-      const projectsList2 = projectsResult2 && 'data' in projectsResult2 ? projectsResult2.data : (Array.isArray(projectsResult2) ? projectsResult2 : []);
-      const firstProject = projectsList2?.[0];
+      const projectsResult = await getDetailedProjectsAction();
+      const projectsList = projectsResult && 'data' in projectsResult ? projectsResult.data : Array.isArray(projectsResult) ? projectsResult : [];
+      const firstProject = projectsList?.[0];
       if (!firstProject) {
         toast.error('الرجاء إنشاء مشروع عقاري أولاً قبل إضافة وحدات.');
         return;
@@ -210,13 +139,14 @@ export default function PropertyList({
         priceSar: newPrice,
         type: newType,
         area: newArea,
-        description: 'وحدة سكنية مضافة حديثاً إلى مستودع العقارات.'
+        description: 'وحدة سكنية مضافة حديثاً إلى مستودع العقارات.',
       });
 
       if (!res.success || !res.data) throw new Error(res.error || 'حدث خطأ في قاعدة البيانات');
 
-      setProperties(prev => [...prev, res.data]);
+      setProperties((prev) => [...prev, res.data]);
       logTelemetry('unit.created', { unitId: res.data.id, sku: newSku, price: newPrice });
+      toast.success('تمت إضافة الوحدة بنجاح.');
     } catch (err: any) {
       toast.error('خطأ في إنشاء الوحدة: ' + err.message);
     }
@@ -226,237 +156,226 @@ export default function PropertyList({
     setActiveModal(null);
   };
 
-  const kpisContent = (
-    <>
-      <KpiCard label={isArabic ? 'إجمالي الوحدات' : 'Total Units'} value={properties.length} icon={Home} color="default" />
-      <KpiCard label={isArabic ? 'الوحدات المتاحة' : 'Available'} value={properties.filter(p => p.status === 'Available').length} icon={CheckCircle2} color="success" />
-      <KpiCard label={isArabic ? 'الوحدات المحجوزة' : 'On Hold'} value={properties.filter(p => p.status === 'Hold').length} icon={Clock} color="warning" />
-      <KpiCard label={isArabic ? 'الوحدات المباعة' : 'Sold'} value={properties.filter(p => p.status === 'Sold').length} icon={Landmark} color="danger" />
-    </>
-  );
-
-  const actionsContent = (
-    <div className="flex flex-wrap items-center gap-2">
-      <input 
-        placeholder={isArabic ? "بحث برقم الوحدة أو المشروع..." : "Search unit number or project..."}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]" 
-      />
-      <select 
-        value={statusFilter}
-        aria-label="تصفية حسب الحالة"
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
-      >
-        <option value="">{isArabic ? 'كل الحالات' : 'All statuses'}</option>
-        <option value="Available">{isArabic ? 'متاحة' : 'Available'}</option>
-        <option value="Hold">{isArabic ? 'محجوزة مؤقتاً' : 'On Hold'}</option>
-        <option value="Sold">{isArabic ? 'مباعة' : 'Sold'}</option>
-      </select>
-      <select 
-        value={projectFilter}
-        aria-label="تصفية حسب المشروع"
-        onChange={(e) => setProjectFilter(e.target.value)}
-        className="w-auto min-w-[130px] px-3 py-2 rounded-lg bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground)] text-xs outline-none focus:border-[var(--nc-accent-border)]"
-      >
-        <option value="">{isArabic ? 'كل المشاريع' : 'All projects'}</option>
-        <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
-        <option value="واحة الخليج">واحة الخليج</option>
-      </select>
-      <Button 
-        onClick={() => {
-          if (!hasPermission('CREATE_UNIT')) {
-            toast.error('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
-            return;
-          }
-          setActiveModal('new_unit');
-        }}
-        className="py-2 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 min-h-[44px]"
-      >
-        <Plus size={14} />
-        {isArabic ? 'إضافة وحدة' : 'Add Unit'}
-      </Button>
-    </div>
-  );
-
-  const detailsContent = (
-    <div className="space-y-6">
-      <SmartCard elevation="default" className="overflow-hidden border border-[var(--nc-glass-border)] p-0">
-        <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
-          <h4 className="font-bold text-white">{isArabic ? 'قائمة الوحدات العقارية' : 'Property Units List'}</h4>
-          <span className="text-xs text-[var(--nc-text-dim)] font-medium">{isArabic ? `${filteredProperties.length} وحدة` : `${filteredProperties.length} units`}</span>
-        </div>
-
-        {isLoading && (
-          <div className="py-12 flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
-            <span className="text-xs text-slate-500 font-medium">جاري تحميل العقارات من قاعدة البيانات...</span>
-          </div>
-        )}
-
-        {fetchError && !isLoading && (
-          <div className="py-8 text-center">
-            <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl inline-block">
-              {fetchError}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="block mx-auto mt-3 text-xs text-[#8EB1D1] hover:underline"
-            >
-              إعادة المحاولة
-            </button>
-          </div>
-        )}
-
-        {!isLoading && !fetchError && filteredProperties.length === 0 && (
-          <div className="py-8 text-center text-xs text-[#C4D8E5] font-medium">
-            لا توجد وحدات عقارية مسجلة حالياً.
-          </div>
-        )}
-
-        {!isLoading && !fetchError && filteredProperties.length > 0 && (
-          <DataTable
-            columns={[
-              { header: 'رقم الوحدة', accessor: (u) => <span className="font-bold text-white text-xs">{u.sku} — {u.type}</span> },
-              { header: 'المشروع', accessor: 'project' as keyof typeof filteredProperties[0], className: 'text-xs text-[var(--nc-text-dim)]' },
-              { header: 'المساحة', accessor: 'area' as keyof typeof filteredProperties[0], className: 'text-xs text-[var(--nc-text-dim)]' },
-              { header: 'السعر المطلوب', accessor: (u) => <MoneyCell amount={u.price} /> },
-              { header: 'الحالة', accessor: (u) => (
-                <StatusCell status={u.status} format={formatPropertyStatus}
-                  activeClass="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  badgeClass={u.status === 'Hold' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : u.status === 'Sold' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : undefined} />
-              )},
-              { header: 'إجراءات', accessor: () => <Eye size={12} className="inline text-[var(--nc-text-dim)]" />, className: 'text-center', headerClassName: 'text-center' },
-            ] as Column<typeof filteredProperties[0]>[]}
-            data={filteredProperties}
-            onRowClick={(u) => {
-              onSelectProperty(String(u.id));
-              logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
-            }}
-            pageSize={15}
-            emptyMessage="لا توجد وحدات عقارية مسجلة حالياً."
-          />
-        )}
-      </SmartCard>
-    </div>
-  );
+  const formatNumber = (val: number) => val.toLocaleString('ar-SA');
 
   return (
-    <div className="nc-stack p-6 text-[var(--ds-text-primary)]" dir={isArabic ? 'rtl' : 'ltr'}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <section dir="rtl" className="space-y-5 px-4 pb-8 pt-4 lg:px-6 text-[var(--nc-text-primary)]">
+      <div className="flex flex-wrap items-center gap-4 justify-between">
         <div>
-          <div className="text-xs text-[#94A3B8] font-bold tracking-wider uppercase">
-            {isArabic ? 'العمليات' : 'Operations'}
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-white mt-1">
-            {isArabic ? 'سجل العقارات والوحدات' : 'Properties Registry'}
-            {usingFallback && (
-              <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
-                {isArabic ? 'بيانات تجريبية' : 'Demo data'}
-              </span>
-            )}
-          </h1>
+          <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">سجل العقارات والوحدات</h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">إدارة الوحدات السكنية والتجارية ومتابعة الحالات.</p>
+        </div>
+
+        <button
+          onClick={() => {
+            if (!hasPermission('CREATE_UNIT')) {
+              toast.error('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء وحدة.');
+              return;
+            }
+            setActiveModal('new_unit');
+          }}
+          className="nc-btn-primary min-h-[40px] rounded-xl px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
+        >
+          إضافة وحدة
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-4">
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+          <p className="text-sm text-[var(--nc-text-secondary)]">إجمالي الوحدات</p>
+          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            {formatNumber(properties.length)}
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+          <p className="text-sm text-[var(--nc-text-secondary)]">المتاحة</p>
+          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            {formatNumber(properties.filter((p) => p.status === 'Available').length)}
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+          <p className="text-sm text-[var(--nc-text-secondary)]">محجوزة مؤقتاً</p>
+          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            {formatNumber(properties.filter((p) => p.status === 'Hold').length)}
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+          <p className="text-sm text-[var(--nc-text-secondary)]">مباعة</p>
+          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            {formatNumber(properties.filter((p) => p.status === 'Sold').length)}
+          </p>
         </div>
       </div>
 
-      <LayoutContainer
-        kpis={kpisContent}
-        actions={actionsContent}
-        details={detailsContent}
-      >
-        {activeModal === 'new_unit' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-            <form 
-              onSubmit={handleCreateUnit}
-              className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
-            >
-              <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
-                <Plus size={18} />
-            {isArabic ? 'إضافة وحدة عقارية جديدة' : 'Add New Property Unit'}
-              </h3>
+      <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm flex flex-col">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+          <input
+            placeholder="ابحث برقم الوحدة أو المشروع..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm text-[var(--nc-text-primary)] outline-none lg:max-w-md"
+          />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm outline-none w-full lg:w-48">
+            <option value="">كل الحالات</option>
+            <option value="Available">المتاحة</option>
+            <option value="Hold">محجوزة مؤقتاً</option>
+            <option value="Sold">مباعة</option>
+          </select>
+          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm outline-none w-full lg:w-48">
+            <option value="">كل المشاريع</option>
+            {projectOptions.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium block">رقم الوحدة (SKU / Unit No):</label>
-                <input 
-                  type="text"
-                  required
-                  value={newSku}
-                  onChange={(e) => setNewSku(e.target.value)}
-                  placeholder="مثال: A-103"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium block">نوع العقار:</label>
-                <select 
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value)}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-                >
-                  <option value="شقة سكنية">شقة سكنية</option>
-                  <option value="فيلا مستقلة">فيلا مستقلة</option>
-                  <option value="فيلا علوية">فيلا علوية</option>
-                  <option value="مكتب تجاري">مكتب تجاري</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium block">المشروع السكني:</label>
-                <select 
-                  value={newProject}
-                  onChange={(e) => setNewProject(e.target.value)}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-                >
-                  <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
-                  <option value="واحة الخليج">واحة الخليج</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium block">المساحة الإجمالية:</label>
-                <input 
-                  type="text"
-                  required
-                  value={newArea}
-                  onChange={(e) => setNewArea(e.target.value)}
-                  placeholder="مثال: 120 م²"
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[#C4D8E5] font-medium block">السعر المطلوب (ر.س):</label>
-                <input 
-                  type="number"
-                  required
-                  value={newPrice}
-                  onChange={(e) => setNewPrice(Number(e.target.value))}
-                  className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
+        {isLoading ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent" />
+            <span className="text-xs font-medium text-[var(--nc-text-secondary)]">جاري تحميل العقارات...</span>
+          </div>
+        ) : fetchError ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center">
+            <p className="inline-block rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-300">{fetchError}</p>
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center px-4 text-center text-sm font-medium text-[var(--nc-text-secondary)]">
+            لا توجد وحدات عقارية مطابقة للبحث.
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="overflow-x-auto min-h-[500px]">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
+                    <th className="px-3 py-3 text-start font-semibold">رقم الوحدة</th>
+                    <th className="px-3 py-3 text-start font-semibold">المشروع</th>
+                    <th className="px-3 py-3 text-start font-semibold">المساحة</th>
+                    <th className="px-3 py-3 text-start font-semibold">السعر</th>
+                    <th className="px-3 py-3 text-start font-semibold">الحالة</th>
+                    <th className="px-3 py-3 text-center font-semibold">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedProperties.map((u) => (
+                    <tr key={u.id} className="border-b border-[var(--nc-border)] hover:bg-[var(--nc-surface-solid)] transition-colors cursor-pointer" onClick={() => {
+                      onSelectProperty(String(u.id));
+                      logTelemetry('unit.opened', { unitId: u.id, sku: u.sku });
+                    }}>
+                      <td className="px-3 py-4 text-sm font-bold text-[var(--nc-text-primary)]">{u.sku} — {u.type}</td>
+                      <td className="px-3 py-4 text-sm text-[var(--nc-text-secondary)]">{u.project}</td>
+                      <td className="px-3 py-4 text-sm text-[var(--nc-text-secondary)]">{u.area}</td>
+                      <td className="px-3 py-4 text-sm font-bold text-[var(--nc-text-primary)]">{Number(u.price).toLocaleString('ar-SA')} ر.س</td>
+                      <td className="px-3 py-4">
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+                          u.status === 'Hold' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20' : 
+                          u.status === 'Sold' ? 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20' : 
+                          'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
+                        }`}>
+                          {u.status === 'Available' ? 'متاحة' : u.status === 'Hold' ? 'محجوزة مؤقتاً' : 'مباعة'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4 text-center">
+                        <button type="button" className="nc-btn-primary min-h-[32px] rounded-lg px-3 py-1 text-xs font-semibold">فتح</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 flex flex-col md:flex-row items-center justify-between border-t border-[var(--nc-border)] pt-4 text-sm text-[var(--nc-text-secondary)]">
+              <span>عرض {Math.min(startIndex + 1, filteredProperties.length)}-{Math.min(startIndex + itemsPerPage, filteredProperties.length)} من {filteredProperties.length}</span>
+              <div className="flex items-center gap-2 mt-3 md:mt-0">
                 <button 
-                  type="submit"
-                  className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1} 
+                  className="px-3 py-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] disabled:opacity-50 hover:bg-[var(--nc-surface)] transition-colors"
                 >
-                  حفظ الوحدة بالـ Inventory
+                  السابق
                 </button>
+                <span className="px-2">رقم الصفحة {currentPage} من {totalPages}</span>
                 <button 
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0} 
+                  className="px-3 py-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] disabled:opacity-50 hover:bg-[var(--nc-surface)] transition-colors"
                 >
-                  إلغاء
+                  التالي
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         )}
-      </LayoutContainer>
-    </div>
+      </div>
+
+      {activeModal === 'new_unit' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <form onSubmit={handleCreateUnit} className={modalClass}>
+            <h3 className="flex items-center gap-2 border-b border-[var(--nc-glass-border)] pb-2 text-base font-extrabold text-[var(--nc-text-primary)]">
+              <Plus size={18} />
+              {isArabic ? 'إضافة وحدة عقارية جديدة' : 'Add New Property Unit'}
+            </h3>
+
+            <div className="space-y-1">
+              <label className={labelClass}>رقم الوحدة:</label>
+              <input type="text" required value={newSku} onChange={(e) => setNewSku(e.target.value)} placeholder="مثال: A-103" className={inputClass} />
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelClass}>نوع العقار:</label>
+              <select value={newType} onChange={(e) => setNewType(e.target.value)} className={inputClass}>
+                <option value="شقة سكنية">شقة سكنية</option>
+                <option value="فيلا مستقلة">فيلا مستقلة</option>
+                <option value="فيلا علوية">فيلا علوية</option>
+                <option value="مكتب تجاري">مكتب تجاري</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelClass}>المشروع السكني:</label>
+              <select value={newProject} onChange={(e) => setNewProject(e.target.value)} className={inputClass}>
+                {projectOptions.length > 0 ? (
+                  projectOptions.map((project) => (
+                    <option key={project} value={project}>
+                      {project}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="مشروع النخيل السكني">مشروع النخيل السكني</option>
+                    <option value="واحة الخليج">واحة الخليج</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelClass}>المساحة الإجمالية:</label>
+              <input type="text" required value={newArea} onChange={(e) => setNewArea(e.target.value)} placeholder="مثال: 120 م²" className={inputClass} />
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelClass}>السعر المطلوب (ر.س):</label>
+              <input type="number" required value={newPrice} onChange={(e) => setNewPrice(Number(e.target.value))} className={inputClass} />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="submit" className={`${primaryButtonClass} flex-1`}>
+                حفظ الوحدة
+              </button>
+              <button type="button" onClick={() => setActiveModal(null)} className={`${secondaryButtonClass} flex-1`}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
   );
 }

@@ -2,11 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Home, MapPin, FileText, CheckCircle2, ChevronRight,
-  Activity, DollarSign, FileCheck, Clock,
-  Key
+  Home,
+  MapPin,
+  FileText,
+  ChevronRight,
+  Activity,
+  DollarSign,
+  FileCheck,
+  Clock,
+  Key,
 } from 'lucide-react';
-import { Card } from '../ui/orca-components';
 import { toast } from '@/app/context/ToastContext';
 import { DateField } from '../ui/DateField';
 import { getPropertiesAction, bookUnitActionDirect, completeHandoverActionDirect } from '@/app/actions/properties';
@@ -20,13 +25,29 @@ interface PropertyDetailProps {
   isArabic: boolean;
 }
 
+const primaryButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--nc-op-blue)] text-white text-xs font-bold transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
+const accentButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--nc-accent)] text-[#0B1220] text-xs font-bold transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60';
+const secondaryButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-text-primary)] text-xs font-bold transition-all hover:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-60';
+const ghostButtonClass =
+  'inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 rounded-xl bg-transparent text-[var(--nc-text-secondary)] text-xs font-bold transition-all hover:text-[var(--nc-text-primary)] hover:bg-[var(--nc-surface-solid)]';
+const inputClass =
+  'w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2.5 text-[var(--nc-text-primary)] text-xs outline-none transition-colors placeholder:text-[var(--nc-text-dim)] focus:border-[var(--nc-accent-border)]';
+const labelClass = 'block text-xs font-medium text-[var(--nc-text-secondary)]';
+const modalClass =
+  'relative w-full max-w-md rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-6 text-right text-xs shadow-2xl space-y-4';
+const compactEmptyClass =
+  'py-6 rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] flex items-center justify-center px-4 text-center text-sm text-[var(--nc-text-secondary)]';
+
 export default function PropertyDetail({
   propertyId,
   onBack,
   hasPermission,
   addTelemetryEvent,
   lang,
-  isArabic
+  isArabic,
 }: PropertyDetailProps) {
   const [property, setProperty] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +64,9 @@ export default function PropertyDetail({
   const [bookingOfferPrice, setBookingOfferPrice] = useState(0);
 
   const [handoverDate, setHandoverDate] = useState('');
-  const [handoverChecklist, setHandoverChecklist] = useState('1. فحص تمديدات الكهرباء والإنارة\n2. فحص السباكة ومنافذ الصرف وضغط المياه\n3. نظافة الأبواب والمقابض الخشبية والألمنيوم');
+  const [handoverChecklist, setHandoverChecklist] = useState(
+    '1. فحص تمديدات الكهرباء والإنارة\n2. فحص السباكة ومنافذ الصرف وضغط المياه\n3. نظافة الأبواب والمقابض الخشبية والألمنيوم'
+  );
   const [handoverPhoto, setHandoverPhoto] = useState('https://picsum.photos/seed/handover/400/300');
 
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -53,11 +76,11 @@ export default function PropertyDetail({
       try {
         setLoading(true);
         const prResult = await getPropertiesAction();
-        const propsList = prResult && 'data' in prResult ? prResult.data : (Array.isArray(prResult) ? prResult : []);
+        const propsList = prResult && 'data' in prResult ? prResult.data : Array.isArray(prResult) ? prResult : [];
         const found = propsList?.find((p: any) => String(p.id) === String(propertyId));
         if (found) {
           setProperty(found);
-          setSimulatedPrice(found.price);
+          setSimulatedPrice(found.price || 0);
         } else {
           toast.error('لم يتم العثور على الوحدة العقارية');
         }
@@ -87,39 +110,43 @@ export default function PropertyDetail({
         unitId: String(property.id),
         clientId: bookingLeadId,
         offerPrice: bookingOfferPrice,
-        bookingDate: bookingDate,
+        bookingDate,
       });
 
       if (!res.success || !res.contractId) {
         throw new Error(res.error || 'حدث خطأ في قاعدة البيانات');
       }
 
-      const ctId = res.contractId;
+      const contractId = res.contractId;
       const dateObj = new Date(bookingDate);
       const visibleDateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
       setProperty((prev: any) => ({
         ...prev,
         status: 'Sold',
-        contractId: ctId,
+        contractId,
         events: [
-          ...prev.events,
-          { id: `ev_bk_${Date.now()}`, type: 'إنشاء حجز وعقد', at: bookingDate, note: `حجز للعميل المعرف بـ ${bookingLeadId} بقيمة تعاقدية ${bookingOfferPrice.toLocaleString()} ر.س` }
-        ]
+          ...(prev.events || []),
+          {
+            id: `ev_bk_${Date.now()}`,
+            type: 'إنشاء حجز وعقد',
+            at: bookingDate,
+            note: `حجز للعميل ${bookingLeadId || 'غير محدد'} بقيمة ${bookingOfferPrice.toLocaleString()} ر.س`,
+          },
+        ],
       }));
 
       addTelemetryEvent('booking.created', {
-        bookingId: `bk_${Date.now()}`,
         unitId: property.id,
         leadId: bookingLeadId,
         offerPrice: bookingOfferPrice,
         bookingDateNative: bookingDate,
         bookingDateVisible: visibleDateStr,
-        bookingBirthDate: bookingBirthDate,
-        contractId: ctId
+        bookingBirthDate,
+        contractId,
       });
 
-      toast.success(`تم إنشاء الحجز بنجاح! رقم مرجع العقد المصدر للمبيعات: ${ctId}`);
+      toast.success('تم إنشاء الحجز بنجاح.');
     } catch (err: any) {
       toast.error('خطأ في إتمام الحجز: ' + err.message);
     }
@@ -146,58 +173,53 @@ export default function PropertyDetail({
     try {
       const res = await completeHandoverActionDirect({
         unitId: String(property.id),
-        handoverDate: handoverDate,
+        handoverDate,
         checklist: handoverChecklist,
-        photoUrl: handoverPhoto
+        photoUrl: handoverPhoto,
       });
 
       if (!res.success || !res.handoverId) {
         throw new Error(res.error || 'حدث خطأ في قاعدة البيانات');
       }
 
-      const hoId = res.handoverId;
-      const fsId = `fs_abaad_${Date.now().toString().slice(-4)}`;
+      const handoverId = res.handoverId;
       const dateObj = new Date(handoverDate);
       const visibleDateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
       setProperty((prev: any) => ({
         ...prev,
-        financialSettlementId: fsId,
+        handoverCompleted: true,
         handovers: [
-          ...prev.handovers,
+          ...(prev.handovers || []),
           {
-            id: hoId,
+            id: handoverId,
             scheduledAt: visibleDateStr,
             status: 'Completed',
             checklist: handoverChecklist,
             media: [handoverPhoto],
-            completedAt: new Date().toISOString()
-          }
+            completedAt: new Date().toISOString(),
+          },
         ],
         events: [
-          ...prev.events,
-          { id: `ev_ho_${Date.now()}`, type: 'إتمام معاينة والتسليم النهائي', at: handoverDate, note: 'تم تسليم الوحدة وإمضاء محضر الاستلام الخالي من الملاحظات' }
-        ]
+          ...(prev.events || []),
+          {
+            id: `ev_ho_${Date.now()}`,
+            type: 'إتمام معاينة وتسليم نهائي',
+            at: handoverDate,
+            note: 'تم تسجيل التسليم وإرفاق بيانات المعاينة.',
+          },
+        ],
       }));
 
       addTelemetryEvent('handover.completed', {
-        handoverId: hoId,
+        handoverId,
         unitId: property.id,
         scheduledNative: handoverDate,
         scheduledVisible: visibleDateStr,
-        checklistCount: handoverChecklist.split('\n').length
+        checklistCount: handoverChecklist.split('\n').length,
       });
 
-      setTimeout(() => {
-        addTelemetryEvent('accounting.settlement', {
-          financialSettlementId: fsId,
-          grossAmount: property.price,
-          taxes: Math.round(property.price * 0.05),
-          commissions: Math.round(property.price * 0.03),
-          netToOwner: Math.round(property.price * 0.92)
-        });
-        toast.success(`تمت تسوية الإيرادات المالية مع خدمة الحسابات. رقم التسوية المرجعي: ${fsId}`);
-      }, 1000);
+      toast.success('تم تسجيل التسليم بنجاح.');
     } catch (err: any) {
       toast.error('خطأ في إتمام التسليم: ' + err.message);
     }
@@ -206,7 +228,7 @@ export default function PropertyDetail({
     setActiveModal(null);
   };
 
-  const handlePriceSimulation = () => {
+  const handlePriceCalculation = () => {
     if (!property) return;
     const discounted = Math.round(simulatedPrice * (1 - discountPercent / 100));
     const commission = Math.round(discounted * 0.03);
@@ -218,25 +240,6 @@ export default function PropertyDetail({
     );
   };
 
-  const handleSavePriceDraft = () => {
-    if (!property) return;
-    setProperty((prev: any) => ({
-      ...prev,
-      priceScenarioDraft: {
-        simulatedPrice,
-        discountPercent,
-        result: priceSimResult,
-        createdAt: new Date().toISOString()
-      }
-    }));
-    addTelemetryEvent('price_scenario.saved', {
-      unitId: property.id,
-      simulatedPrice,
-      discountPercent
-    });
-    toast.success('تم حفظ سيناريو تسعير الوحدة كمسودة تسعير مؤقتة بنجاح.');
-  };
-
   const showFinancialSummary = () => {
     if (!property) return;
     if (!hasPermission('VIEW_FINANCE')) {
@@ -244,28 +247,20 @@ export default function PropertyDetail({
       return;
     }
 
-    const summary = {
-      financialSettlementId: property.financialSettlementId || 'N/A',
-      grossAmount: property.price,
-      collected: property.status === 'Sold' ? property.price : 0,
-      outstanding: property.status === 'Sold' ? 0 : property.price,
-      commissionTaxTotal: Math.round(property.price * 0.08)
-    };
+    const grossAmount = property.price || 0;
+    const collected = property.status === 'Sold' ? grossAmount : 0;
+    const outstanding = property.status === 'Sold' ? 0 : grossAmount;
+    const commissionTaxTotal = Math.round(grossAmount * 0.08);
 
-    toast.success(`[ACCOUNTING PROXY]
-رقم التسوية: ${summary.financialSettlementId}
-القيمة الإجمالية للعقد: ${summary.grossAmount.toLocaleString()} ر.س
-المبالغ المحصلة: ${summary.collected.toLocaleString()} ر.س
-الأقساط المتبقية: ${summary.outstanding.toLocaleString()} ر.س
-إجمالي الضرائب والعمولة (8%): ${summary.commissionTaxTotal.toLocaleString()} ر.س`);
+    toast.success(`ملخص مالي للوحدة\nالقيمة الإجمالية: ${grossAmount.toLocaleString()} ر.س\nالمبالغ المحصلة: ${collected.toLocaleString()} ر.س\nالأقساط المتبقية: ${outstanding.toLocaleString()} ر.س\nإجمالي الضرائب والعمولة: ${commissionTaxTotal.toLocaleString()} ر.س`);
   };
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-xs text-slate-500 font-medium">جاري تحميل بيانات الوحدة...</p>
+      <div className="flex min-h-[240px] items-center justify-center p-6">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent" />
+          <p className="text-xs font-medium text-[var(--nc-text-secondary)]">جاري تحميل بيانات الوحدة...</p>
         </div>
       </div>
     );
@@ -273,9 +268,14 @@ export default function PropertyDetail({
 
   if (!property) {
     return (
-      <div className="p-6">
-        <button onClick={onBack} className="text-xs text-[#8EB1D1] hover:underline mb-4">&larr; العودة إلى القائمة</button>
-        <p className="text-xs text-rose-400">لم يتم العثور على الوحدة العقارية.</p>
+      <div className="p-6" dir="rtl">
+        <button onClick={onBack} className={ghostButtonClass}>
+          <ChevronRight size={14} />
+          العودة إلى القائمة
+        </button>
+        <div className="mt-4 rounded-xl border border-rose-500/25 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-300">
+          لم يتم العثور على الوحدة العقارية.
+        </div>
       </div>
     );
   }
@@ -283,63 +283,68 @@ export default function PropertyDetail({
   const statusLabels: Record<string, string> = {
     Available: 'متاحة',
     Hold: 'محجوزة مؤقتاً',
-    Sold: 'مباعة'
+    Sold: 'مباعة',
   };
   const statusBadgeClasses: Record<string, string> = {
-    Available: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-    Hold: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-    Sold: 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+    Available: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20',
+    Hold: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20',
+    Sold: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20',
   };
+  const hasCompletedHandover = Boolean(
+    property.handoverCompleted || property.financialSettlementId || property.handovers?.some((h: any) => h.status === 'Completed')
+  );
 
   return (
-    <div className="properties-page p-6 text-[var(--ds-text-primary)]" dir="rtl">
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1 text-xs text-[#8EB1D1] hover:text-white font-medium mb-4 transition-colors"
-      >
+    <div className="properties-page p-6 text-[var(--nc-text-primary)]" dir="rtl">
+      <button onClick={onBack} className={`${ghostButtonClass} mb-4`}>
         <ChevronRight size={14} />
         العودة إلى قائمة الوحدات
       </button>
 
-      <Card className="p-5 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="w-full md:w-48 h-36 rounded-xl overflow-hidden bg-[var(--nc-surface-solid)] flex-shrink-0">
-            {property.media?.[0] ? (
-              <img src={property.media[0]} alt={property.sku} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[var(--nc-text-dim)]">
-                <Home size={32} />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 space-y-2">
+      <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm mb-6">
+        <div className="flex flex-col gap-5 md:flex-row md:items-start">
+          <div className="flex-1 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h2 className="text-xl font-extrabold text-white">{property.sku} — {property.type}</h2>
-                <p className="text-xs text-[var(--nc-text-dim)] mt-1">
-                  <MapPin size={12} className="inline ml-1" />
+                <h2 className="text-xl font-extrabold text-[var(--nc-text-primary)]">
+                  {property.sku} — {property.type}
+                </h2>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                  <MapPin size={12} className="ml-1 inline" />
                   {property.project} | {property.area}
                 </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${statusBadgeClasses[property.status] || ''}`}>
-                {statusLabels[property.status]}
+              <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${statusBadgeClasses[property.status] || ''}`}>
+                {statusLabels[property.status] || property.status}
               </span>
             </div>
-            <p className="text-xs text-[var(--nc-text-dim)] leading-relaxed line-clamp-2">{property.desc}</p>
-            <div className="flex items-center gap-4 pt-1">
-              <span className="text-lg font-black text-[var(--nc-accent-text)]">{property.price.toLocaleString()} ر.س</span>
+            <p className="line-clamp-2 text-xs leading-relaxed text-[var(--nc-text-secondary)]">{property.desc}</p>
+            <div className="flex flex-wrap items-center gap-4 pt-1">
+              <span className="text-lg font-black text-[var(--nc-text-primary)]">{Number(property.price || 0).toLocaleString('ar-SA')} ر.س</span>
               {property.contractId && (
-                <span className="text-[10px] text-[var(--nc-text-dim)]">العقد: {property.contractId}</span>
+                <span className="rounded-full border border-[var(--nc-glass-border)] px-2 py-1 text-[10px] text-[var(--nc-text-secondary)]">
+                  عقد مرتبط
+                </span>
               )}
-              {property.financialSettlementId && (
-                <span className="text-[10px] text-[var(--nc-text-dim)]">التسوية: {property.financialSettlementId}</span>
+              {hasCompletedHandover && (
+                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-700 dark:text-emerald-300">
+                  تم تسجيل التسليم
+                </span>
               )}
             </div>
           </div>
+          
+          <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-[var(--nc-surface-solid)] flex items-center justify-center border border-[var(--nc-border)]">
+            {property.media?.[0] ? (
+              <img src={property.media[0]} alt={property.sku} className="h-full w-full object-cover" />
+            ) : (
+              <Home size={24} className="text-[var(--nc-text-dim)]" />
+            )}
+          </div>
         </div>
-      </Card>
+      </div>
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         {property.status === 'Available' && (
           <button
             onClick={() => {
@@ -347,15 +352,15 @@ export default function PropertyDetail({
                 toast.error('عذراً! دورك الحالي لا يمتلك الصلاحية لإنشاء حجز.');
                 return;
               }
-              setBookingOfferPrice(property.price);
+              setBookingOfferPrice(property.price || 0);
               setActiveModal('book_unit');
             }}
-            className="flex-1 min-w-[140px] py-3 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
+            className="nc-btn-primary min-h-[40px] rounded-xl px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
           >
             إنشاء حجز فوري
           </button>
         )}
-        {property.status === 'Sold' && !property.financialSettlementId && (
+        {property.status === 'Sold' && !hasCompletedHandover && (
           <button
             onClick={() => {
               if (!hasPermission('START_HANDOVER')) {
@@ -364,35 +369,32 @@ export default function PropertyDetail({
               }
               setActiveModal('handover_assistant');
             }}
-            className="flex-1 min-w-[140px] py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all"
+            className="nc-btn-primary min-h-[40px] rounded-xl px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
           >
-            بدء تسليم الوحدة (Handover)
+            بدء تسليم الوحدة
           </button>
         )}
-        {property.status === 'Sold' && property.financialSettlementId && (
-          <button
-            onClick={showFinancialSummary}
-            className="flex-1 min-w-[140px] py-3 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all"
-          >
-            عرض تفاصيل الإيرادات المحدثة
+        {property.status === 'Sold' && hasCompletedHandover && (
+          <button onClick={showFinancialSummary} className="min-h-[40px] rounded-xl px-5 py-2 text-sm font-semibold bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] text-[var(--nc-text-primary)] hover:border-[var(--nc-accent-border)]">
+            عرض ملخص الإيرادات
           </button>
         )}
       </div>
 
-      <div className="flex border-b border-white/10 mb-4 gap-1 overflow-x-auto">
+      <div className="mb-4 flex flex-wrap gap-1 border-b border-[var(--nc-glass-border)]">
         {[
           { key: 'events', label: 'الأحداث', icon: Activity },
-          { key: 'simulator', label: 'محاكي التسعير', icon: DollarSign },
-          { key: 'accounting', label: 'المحاسبة', icon: FileText },
+          { key: 'pricing', label: 'التسعير', icon: DollarSign },
+          { key: 'accounting', label: 'المالية', icon: FileText },
           { key: 'docs', label: 'المستندات', icon: FileCheck },
-        ].map(tab => (
+        ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all flex items-center gap-1.5 flex-shrink-0 ${
+            className={`flex min-h-[44px] items-center gap-1.5 rounded-t-xl px-4 py-2 text-xs font-bold transition-all ${
               activeTab === tab.key
-                ? 'text-[var(--nc-accent-text)] border-b-2 border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)]'
-                : 'text-[var(--nc-text-dim)] hover:text-white'
+                ? 'border-b-2 border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent-text)]'
+                : 'text-[var(--nc-text-secondary)] hover:bg-[var(--nc-surface-solid)] hover:text-[var(--nc-text-primary)]'
             }`}
           >
             <tab.icon size={14} />
@@ -401,29 +403,29 @@ export default function PropertyDetail({
         ))}
       </div>
 
-      <Card className="p-5 min-h-[250px]">
+      <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
         {activeTab === 'events' && (
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white mb-3">سجل الأحداث</h4>
-            {property.events.length === 0 ? (
-              <p className="text-xs text-[var(--nc-text-dim)]">لا توجد أحداث مسجلة لهذه الوحدة.</p>
+            <h4 className="mb-3 text-sm font-bold text-[var(--nc-text-primary)]">سجل الأحداث</h4>
+            {(property.events || []).length === 0 ? (
+              <div className={compactEmptyClass}>لا توجد أحداث مسجلة لهذه الوحدة.</div>
             ) : (
               <div className="space-y-2">
-                {[...property.events].reverse().map((evt: any) => (
-                  <div key={evt.id} className="flex gap-3 p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
-                    <div className="w-8 h-8 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center flex-shrink-0">
+                {[...(property.events || [])].reverse().map((evt: any) => (
+                  <div key={evt.id} className="flex gap-3 rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--nc-accent-soft)]">
                       <Clock size={14} className="text-[var(--nc-accent-text)]" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-bold text-white">{evt.type}</span>
-                        <span className="text-[10px] text-[var(--nc-text-dim)]">{evt.at}</span>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-xs font-bold text-[var(--nc-text-primary)]">{evt.type}</span>
+                        <span className="text-[10px] text-[var(--nc-text-secondary)]">{evt.at}</span>
                       </div>
-                      <p className="text-[11px] text-[var(--nc-text-dim)] mt-0.5">{evt.note}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--nc-text-secondary)]">{evt.note}</p>
                       {evt.media && evt.media.length > 0 && (
-                        <div className="flex gap-1 mt-1">
+                        <div className="mt-1 flex gap-1">
                           {evt.media.map((m: string, i: number) => (
-                            <img key={i} src={m} alt="" className="w-12 h-8 rounded object-cover" />
+                            <img key={i} src={m} alt="" className="h-8 w-12 rounded object-cover" />
                           ))}
                         </div>
                       )}
@@ -435,52 +437,27 @@ export default function PropertyDetail({
           </div>
         )}
 
-        {activeTab === 'simulator' && (
+        {activeTab === 'pricing' && (
           <div className="space-y-4">
-            <h4 className="text-sm font-bold text-white mb-3">محاكي التسعير</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h4 className="mb-3 text-sm font-bold text-[var(--nc-text-primary)]">حاسبة التسعير</h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs text-[var(--nc-text-dim)]">السعر الأساسي (ر.س)</label>
-                <input
-                  type="number"
-                  value={simulatedPrice}
-                  onChange={(e) => setSimulatedPrice(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
-                />
+                <label className={labelClass}>السعر الأساسي (ر.س)</label>
+                <input type="number" value={simulatedPrice} onChange={(e) => setSimulatedPrice(Number(e.target.value))} className={inputClass} />
               </div>
               <div className="space-y-2">
-                <label className="text-xs text-[var(--nc-text-dim)]">نسبة الخصم (%)</label>
-                <input
-                  type="number"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--nc-surface-solid)] border border-white/10 text-white text-xs outline-none focus:border-[var(--nc-accent-border)]"
-                />
+                <label className={labelClass}>نسبة الخصم (%)</label>
+                <input type="number" value={discountPercent} onChange={(e) => setDiscountPercent(Number(e.target.value))} className={inputClass} />
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handlePriceSimulation}
-                className="px-4 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
-              >
+            <div className="flex flex-wrap gap-2">
+              <button onClick={handlePriceCalculation} className={primaryButtonClass}>
                 احتساب السعر
-              </button>
-              <button
-                onClick={handleSavePriceDraft}
-                className="px-4 py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all"
-              >
-                حفظ كمسودة
               </button>
             </div>
             {priceSimResult && (
-              <div className="p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5 text-xs text-[var(--nc-text-secondary)] leading-relaxed">
+              <div className="rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3 text-xs leading-relaxed text-[var(--nc-text-secondary)]">
                 {priceSimResult}
-              </div>
-            )}
-            {property.priceScenarioDraft && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                <p className="text-[10px] text-amber-400 font-bold">مسودة تسعير محفوظة مسبقاً</p>
-                <p className="text-[10px] text-[var(--nc-text-dim)] mt-1">{property.priceScenarioDraft.result}</p>
               </div>
             )}
           </div>
@@ -488,124 +465,112 @@ export default function PropertyDetail({
 
         {activeTab === 'accounting' && (
           <div className="space-y-4">
-            <h4 className="text-sm font-bold text-white mb-3">الملخص المالي</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
-                <p className="text-[10px] text-[var(--nc-text-dim)]">القيمة الإجمالية</p>
-                <p className="text-sm font-bold text-white mt-1">{property.price.toLocaleString()} ر.س</p>
+            <h4 className="mb-3 text-sm font-bold text-[var(--nc-text-primary)]">الملخص المالي</h4>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3">
+                <p className="text-[10px] text-[var(--nc-text-secondary)]">القيمة الإجمالية</p>
+                <p className="mt-1 text-sm font-bold text-[var(--nc-text-primary)]">{Number(property.price || 0).toLocaleString()} ر.س</p>
               </div>
-              <div className="p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
-                <p className="text-[10px] text-[var(--nc-text-dim)]">المحصل</p>
-                <p className="text-sm font-bold text-emerald-400 mt-1">{property.status === 'Sold' ? property.price.toLocaleString() : '0'} ر.س</p>
+              <div className="rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3">
+                <p className="text-[10px] text-[var(--nc-text-secondary)]">المحصل</p>
+                <p className="mt-1 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  {property.status === 'Sold' ? Number(property.price || 0).toLocaleString() : '0'} ر.س
+                </p>
               </div>
-              <div className="p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
-                <p className="text-[10px] text-[var(--nc-text-dim)]">المتبقي</p>
-                <p className="text-sm font-bold text-amber-400 mt-1">{property.status === 'Sold' ? '0' : property.price.toLocaleString()} ر.س</p>
+              <div className="rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3">
+                <p className="text-[10px] text-[var(--nc-text-secondary)]">المتبقي</p>
+                <p className="mt-1 text-sm font-bold text-amber-700 dark:text-amber-300">
+                  {property.status === 'Sold' ? '0' : Number(property.price || 0).toLocaleString()} ر.س
+                </p>
               </div>
-              <div className="p-3 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
-                <p className="text-[10px] text-[var(--nc-text-dim)]">الضرائب والعمولة</p>
-                <p className="text-sm font-bold text-rose-400 mt-1">{Math.round(property.price * 0.08).toLocaleString()} ر.س</p>
+              <div className="rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-3">
+                <p className="text-[10px] text-[var(--nc-text-secondary)]">الضرائب والعمولة</p>
+                <p className="mt-1 text-sm font-bold text-rose-700 dark:text-rose-300">
+                  {Math.round(Number(property.price || 0) * 0.08).toLocaleString()} ر.س
+                </p>
               </div>
             </div>
-            <button
-              onClick={showFinancialSummary}
-              className="px-4 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-xs font-bold rounded-xl transition-all"
-            >
-              عرض تفاصيل الإيرادات الكاملة
+            <button onClick={showFinancialSummary} className={secondaryButtonClass}>
+              عرض تفاصيل الإيرادات
             </button>
           </div>
         )}
 
         {activeTab === 'docs' && (
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-white mb-3">المستندات</h4>
-            {property.docs.length === 0 ? (
-              <p className="text-xs text-[var(--nc-text-dim)]">لا توجد مستندات مرفوعة.</p>
+            <h4 className="mb-3 text-sm font-bold text-[var(--nc-text-primary)]">المستندات</h4>
+            {(property.docs || []).length === 0 ? (
+              <div className={compactEmptyClass}>لا توجد مستندات مرفوعة.</div>
             ) : (
               <div className="space-y-2">
-                {property.docs.map((doc: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 p-2.5 bg-[var(--nc-surface-solid)] rounded-xl border border-white/5">
+                {(property.docs || []).map((doc: string, i: number) => (
+                  <div key={i} className="flex items-center gap-2 rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-2.5">
                     <FileText size={14} className="text-[var(--nc-accent-text)]" />
-                    <span className="text-xs text-white">{doc}</span>
+                    <span className="text-xs text-[var(--nc-text-primary)]">{doc}</span>
                   </div>
                 ))}
               </div>
             )}
             {property.media && property.media.length > 0 && (
               <>
-                <h5 className="text-xs font-bold text-white mt-4 mb-2">الصور</h5>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <h5 className="mb-2 mt-4 text-xs font-bold text-[var(--nc-text-primary)]">الصور</h5>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                   {property.media.map((m: string, i: number) => (
-                    <img key={i} src={m} alt="" className="w-full h-24 rounded-xl object-cover border border-white/5" />
+                    <img key={i} src={m} alt="" className="h-24 w-full rounded-xl border border-[var(--nc-glass-border)] object-cover" />
                   ))}
                 </div>
               </>
             )}
           </div>
         )}
-      </Card>
+      </div>
 
       {activeModal === 'book_unit' && property && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <form
-            onSubmit={handleCreateBooking}
-            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
-          >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <form onSubmit={handleCreateBooking} className={modalClass}>
+            <h3 className="flex items-center gap-2 border-b border-[var(--nc-glass-border)] pb-2 text-base font-extrabold text-[var(--nc-text-primary)]">
               <FileCheck size={18} />
               حجز وحدة عقارية وإصدار عقد
             </h3>
 
             <div className="space-y-1">
-              <label className="text-[#C4D8E5] font-medium block">الوحدة المحددة:</label>
-              <p className="font-bold text-white">{property.sku} — {property.type} ({property.project})</p>
+              <label className={labelClass}>الوحدة المحددة:</label>
+              <p className="font-bold text-[var(--nc-text-primary)]">
+                {property.sku} — {property.type} ({property.project})
+              </p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[#C4D8E5] font-medium block">اسم المشتري أو معرف العميل (Lead ID):</label>
+              <label className={labelClass}>اسم المشتري أو معرف العميل:</label>
               <input
                 type="text"
                 required
                 value={bookingLeadId}
                 onChange={(e) => setBookingLeadId(e.target.value)}
                 placeholder="الاسم الرباعي للمشتري..."
-                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                className={inputClass}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[#C4D8E5] font-medium block">القيمة التعاقدية للبيع (ر.س):</label>
-              <input
-                type="number"
-                required
-                value={bookingOfferPrice}
-                onChange={(e) => setBookingOfferPrice(Number(e.target.value))}
-                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-              />
+              <label className={labelClass}>القيمة التعاقدية للبيع (ر.س):</label>
+              <input type="number" required value={bookingOfferPrice} onChange={(e) => setBookingOfferPrice(Number(e.target.value))} className={inputClass} />
             </div>
 
             <div className="space-y-1">
-              <DateField
-                value={bookingDate}
-                onChange={(val) => setBookingDate(val)}
-                label="تاريخ الحجز والتعاقد (DateField)"
-              />
+              <DateField value={bookingDate} onChange={(val) => setBookingDate(val)} label="تاريخ الحجز والتعاقد" />
             </div>
 
             <div className="space-y-1">
-              <DateField
-                value={bookingBirthDate}
-                onChange={(val) => setBookingBirthDate(val)}
-                label="تاريخ ميلاد العميل (DateField)"
-              />
+              <DateField value={bookingBirthDate} onChange={(val) => setBookingBirthDate(val)} label="تاريخ ميلاد العميل" />
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all">
+              <button type="submit" className={`${primaryButtonClass} flex-1`}>
                 تأكيد وإمضاء العقد
               </button>
-              <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all">
+              <button type="button" onClick={() => setActiveModal(null)} className={`${secondaryButtonClass} flex-1`}>
                 إلغاء
               </button>
             </div>
@@ -615,53 +580,36 @@ export default function PropertyDetail({
 
       {activeModal === 'handover_assistant' && property && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <form
-            onSubmit={handleCompleteHandover}
-            className="relative bg-[#1C2B48] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
-          >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-[#A7C7E7]/20 pb-2 flex items-center gap-2">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <form onSubmit={handleCompleteHandover} className={modalClass}>
+            <h3 className="flex items-center gap-2 border-b border-[var(--nc-glass-border)] pb-2 text-base font-extrabold text-[var(--nc-text-primary)]">
               <Key size={18} />
-              معالج التسليم الذكي (Live Handover Assistant)
+              تسجيل تسليم الوحدة
             </h3>
 
-            <p className="text-[#C4D8E5] font-medium">يقوم هذا المعالج بتسجيل تاريخ التسليم المعتمد، ومراجعة قوائم العيوب وتصوير المعاينة الميدانية لإصدار مخالصة الاستلام.</p>
+            <p className="font-medium text-[var(--nc-text-secondary)]">
+              سجّل تاريخ التسليم المعتمد، وأرفق قائمة الملاحظات وصورة المعاينة الميدانية.
+            </p>
 
             <div className="space-y-1">
-              <DateField
-                value={handoverDate}
-                onChange={(val) => setHandoverDate(val)}
-                label="تاريخ الاستلام النهائي المعتمد (DateField)"
-              />
+              <DateField value={handoverDate} onChange={(val) => setHandoverDate(val)} label="تاريخ الاستلام النهائي المعتمد" />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[#C4D8E5] font-medium block">قائمة فحص الملاحظات والعيوب (Checklist):</label>
-              <textarea
-                rows={3}
-                required
-                value={handoverChecklist}
-                onChange={(e) => setHandoverChecklist(e.target.value)}
-                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] font-sans"
-              />
+              <label className={labelClass}>قائمة فحص الملاحظات والعيوب:</label>
+              <textarea rows={3} required value={handoverChecklist} onChange={(e) => setHandoverChecklist(e.target.value)} className={`${inputClass} font-sans`} />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[#C4D8E5] font-medium block">رابط صورة المعاينة الميدانية الموثقة:</label>
-              <input
-                type="text"
-                required
-                value={handoverPhoto}
-                onChange={(e) => setHandoverPhoto(e.target.value)}
-                className="w-full bg-[#1C2B48] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
-              />
+              <label className={labelClass}>رابط صورة المعاينة الميدانية الموثقة:</label>
+              <input type="text" required value={handoverPhoto} onChange={(e) => setHandoverPhoto(e.target.value)} className={inputClass} />
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-white font-bold rounded-xl transition-all">
-                توقيع مخالصة الاستلام وإصدار تسوية مالية
+              <button type="submit" className={`${accentButtonClass} flex-1`}>
+                تسجيل التسليم
               </button>
-              <button type="button" onClick={() => setActiveModal(null)} className="flex-1 py-2.5 bg-[#1C2B48] hover:bg-slate-700 text-[#C4D8E5] font-medium rounded-xl transition-all">
+              <button type="button" onClick={() => setActiveModal(null)} className={`${secondaryButtonClass} flex-1`}>
                 إلغاء
               </button>
             </div>
