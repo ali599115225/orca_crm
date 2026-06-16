@@ -6,7 +6,6 @@ import { Calendar, Eye, Loader2, Search, X } from 'lucide-react';
 
 import { toast } from '@/app/context/ToastContext';
 import { getToursAction, scheduleTourActionDirect } from '@/app/actions/tours';
-import PageHeader from '@/components/ui/PageHeader';
 import { DateField } from '@/components/ui/DateField';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SmartCard } from '@/components/ui/SmartCard';
@@ -261,34 +260,44 @@ export default function ToursView() {
   ];
 
   return (
-    <div className="space-y-5" dir="rtl">
-      <PageHeader
-        title="الجولات العقارية"
-        description="متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة."
-      >
-        <button
-          type="button"
-          onClick={() => setIsScheduleOpen(true)}
-          className="nc-btn nc-btn-primary nc-btn-sm whitespace-nowrap"
-        >
-          <Calendar size={14} />
-          جدولة جولة
-        </button>
-      </PageHeader>
+    <div className="space-y-4 px-3 pb-6 text-[var(--nc-text-primary)] sm:px-4 lg:px-5" dir="rtl">
+      <section className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 text-right">
+            <p className="mb-1 text-[11px] font-black uppercase tracking-wide text-[var(--nc-accent)]">العمليات / الجولات العقارية</p>
+            <h1 className="text-2xl font-black leading-tight text-[var(--nc-text-primary)]">الجولات العقارية</h1>
+            <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[var(--nc-text-secondary)]">
+              متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsScheduleOpen(true)}
+            className="nc-btn nc-btn-primary nc-btn-sm w-full justify-center whitespace-nowrap shadow-sm lg:w-auto"
+          >
+            <Calendar size={14} />
+            جدولة جولة
+          </button>
+        </div>
+      </section>
 
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((item) => (
-          <SmartCard key={item.label} className="px-4 py-4 min-h-[86px] flex flex-col justify-between">
-            <span className="text-[11px] font-bold text-[var(--nc-text-dim)]">{item.label}</span>
+          <SmartCard key={item.label} className="min-h-[90px] px-4 py-4 flex flex-col justify-between">
+            <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">{item.label}</span>
             <strong className={`text-2xl font-black leading-none ${item.tone}`}>{item.value}</strong>
           </SmartCard>
         ))}
       </section>
 
       <SmartCard className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-end">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] pb-3">
+          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">فلاتر الجولات</h2>
+          <span className="text-[11px] font-bold text-[var(--nc-text-secondary)]">{tours.length} جولة</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6 items-end">
           <div className="xl:col-span-2">
-            <label className="block mb-1.5 text-[11px] font-bold text-[var(--nc-text-dim)]">بحث</label>
+            <label className="block mb-1.5 text-[11px] font-black text-[var(--nc-text-secondary)]">بحث</label>
             <div className="relative">
               <input
                 value={filters.search}
@@ -296,12 +305,12 @@ export default function ToursView() {
                 placeholder="بحث بالموقع أو العميل..."
                 className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 pr-9 text-xs font-medium text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
               />
-              <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)]" />
+              <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nc-text-secondary)]" />
             </div>
           </div>
 
           <div>
-            <label className="block mb-1.5 text-[11px] font-bold text-[var(--nc-text-dim)]">الحالة</label>
+            <label className="block mb-1.5 text-[11px] font-black text-[var(--nc-text-secondary)]">الحالة</label>
             <select
               value={filters.status}
               onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
@@ -340,19 +349,19 @@ export default function ToursView() {
         </div>
       </SmartCard>
 
-      <SmartCard className="overflow-hidden p-0">
+      <SmartCard className="overflow-hidden p-0 border-[var(--nc-border)]">
         <div className="flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
           <div>
             <h2 className="text-sm font-black text-[var(--nc-text-primary)]">قائمة الجولات</h2>
-            <p className="mt-0.5 text-[11px] font-medium text-[var(--nc-text-dim)]">{tours.length} جولة</p>
+            <p className="mt-0.5 text-[11px] font-bold text-[var(--nc-text-secondary)]">{tours.length} جولة</p>
           </div>
-          <span className="rounded-full border border-[var(--nc-border)] px-2.5 py-1 text-[11px] font-bold text-[var(--nc-text-dim)]">
+          <span className="rounded-full border border-[var(--nc-border)] px-2.5 py-1 text-[11px] font-black text-[var(--nc-text-secondary)]">
             صفحة {Math.min(page, totalPages)} من {totalPages}
           </span>
         </div>
 
         {loading ? (
-          <div className="flex min-h-[280px] items-center justify-center gap-2 text-sm font-bold text-[var(--nc-text-dim)]">
+          <div className="flex min-h-[280px] items-center justify-center gap-2 text-sm font-bold text-[var(--nc-text-secondary)]">
             <Loader2 size={18} className="animate-spin" />
             جاري تحميل الجولات...
           </div>
@@ -372,19 +381,19 @@ export default function ToursView() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] table-fixed border-collapse">
+              <table className="w-full min-w-[980px] table-fixed border-collapse">
                 <colgroup>
-                  <col className="w-[180px]" />
+                  <col className="w-[190px]" />
                   <col className="w-[180px]" />
                   <col className="w-[190px]" />
-                  <col className="w-[120px]" />
-                  <col className="w-[160px]" />
-                  <col className="w-[110px]" />
+                  <col className="w-[125px]" />
+                  <col className="w-[170px]" />
+                  <col className="w-[125px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)]">
                     {['الموعد', 'العميل', 'الموقع', 'الحالة', 'المسؤول', 'الإجراء'].map((header) => (
-                      <th key={header} className="px-4 py-3 text-right text-[11px] font-black text-[var(--nc-text-secondary)]">
+                      <th key={header} className="px-4 py-3 text-right text-[11px] font-black text-[var(--nc-text-primary)]">
                         {header}
                       </th>
                     ))}
@@ -399,23 +408,23 @@ export default function ToursView() {
                         onClick={() => setSelectedTourId(tour.id)}
                         className={`cursor-pointer border-b border-[var(--nc-glass-border)] transition-colors ${
                           selected
-                            ? 'border-r-[3px] border-r-[var(--nc-accent)] bg-[var(--nc-surface-strong)]'
+                            ? 'border-r-[3px] border-r-[var(--nc-accent)] bg-[var(--nc-accent-soft)]/40'
                             : 'border-r-[3px] border-r-transparent hover:bg-[var(--nc-surface-soft)]'
                         }`}
                       >
                         <td className="px-4 py-3 text-right text-xs font-black text-[var(--nc-text-primary)] whitespace-nowrap">
                           {formatDateTime(tour.startAt)}
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--nc-text-secondary)] truncate">
+                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
                           {safeText(tour.leadName)}
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--nc-text-secondary)] truncate">
+                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
                           {safeText(tour.location)}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <StatusBadge variant={statusToBadge(tour.status)} />
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--nc-text-secondary)] truncate">
+                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
                           {safeText(tour.assignedToName, 'غير معين')}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -425,7 +434,7 @@ export default function ToursView() {
                               event.stopPropagation();
                               setSelectedTourId(tour.id);
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-2.5 py-1.5 text-[11px] font-black text-[var(--nc-text-primary)] transition-colors hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-surface-strong)]"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-1.5 text-[12px] font-black text-[var(--nc-text-primary)] transition-colors hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-surface-strong)]"
                           >
                             <Eye size={13} />
                             تفاصيل
@@ -439,7 +448,7 @@ export default function ToursView() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex flex-col gap-3 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-dim)] sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-bold">
                   عرض {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, tours.length)} من {tours.length}
                 </span>
@@ -475,12 +484,12 @@ export default function ToursView() {
           <div className="mb-4 flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] pb-3">
             <div>
               <h2 className="text-sm font-black text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
-              <p className="mt-0.5 text-[11px] font-medium text-[var(--nc-text-dim)]">مراجعة بيانات الجولة والإجراء التالي.</p>
+              <p className="mt-0.5 text-[11px] font-medium text-[var(--nc-text-secondary)]">مراجعة بيانات الجولة والإجراء التالي.</p>
             </div>
             <button
               type="button"
               onClick={() => setSelectedTourId(null)}
-              className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-dim)] transition-colors hover:text-[var(--nc-text-primary)]"
+              className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
               aria-label="إغلاق التفاصيل"
             >
               <X size={15} />
@@ -495,7 +504,7 @@ export default function ToursView() {
             <DetailItem label="الموقع" value={safeText(selectedTour.location)} strong />
             <DetailItem label="المسؤول" value={safeText(selectedTour.assignedToName, 'غير معين')} />
             <div className="space-y-1">
-              <span className="text-[11px] font-bold text-[var(--nc-text-dim)]">الحالة</span>
+              <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">الحالة</span>
               <div><StatusBadge variant={statusToBadge(selectedTour.status)} /></div>
             </div>
             <DetailItem label="تاريخ الإنشاء" value={formatDateOnly(selectedTour.createdAt)} />
@@ -503,7 +512,7 @@ export default function ToursView() {
           </div>
 
           <div className="mt-4 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-3">
-            <span className="mb-2 block text-[11px] font-bold text-[var(--nc-text-dim)]">الملاحظات</span>
+            <span className="mb-2 block text-[11px] font-black text-[var(--nc-text-secondary)]">الملاحظات</span>
             <p className="text-xs font-semibold leading-relaxed text-[var(--nc-text-secondary)]">
               {safeText(selectedTour.notes, 'لا توجد ملاحظات مسجلة لهذه الجولة.')}
             </p>
@@ -517,12 +526,12 @@ export default function ToursView() {
             <div className="flex items-center justify-between border-b border-[var(--nc-glass-border)] px-5 py-4">
               <div>
                 <h2 className="text-base font-black text-[var(--nc-text-primary)]">جدولة جولة عقارية</h2>
-                <p className="mt-1 text-xs text-[var(--nc-text-dim)]">أدخل بيانات العميل والموقع والموعد.</p>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">أدخل بيانات العميل والموقع والموعد.</p>
               </div>
               <button
                 type="button"
                 onClick={closeScheduleModal}
-                className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-dim)] hover:text-[var(--nc-text-primary)]"
+                className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-secondary)] hover:text-[var(--nc-text-primary)]"
                 aria-label="إغلاق"
               >
                 <X size={15} />
@@ -561,7 +570,7 @@ export default function ToursView() {
                   placeholder="يوم/شهر/سنة"
                 />
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-dim)]">وقت الجولة</label>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">وقت الجولة</label>
                   <input
                     type="time"
                     value={scheduleForm.time}
@@ -592,8 +601,8 @@ export default function ToursView() {
 function DetailItem({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="space-y-1">
-      <span className="text-[11px] font-bold text-[var(--nc-text-dim)]">{label}</span>
-      <p className={`text-xs leading-relaxed ${strong ? 'font-black text-[var(--nc-text-primary)]' : 'font-semibold text-[var(--nc-text-secondary)]'}`}>
+      <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">{label}</span>
+      <p className={`text-xs leading-relaxed ${strong ? 'font-black text-[var(--nc-text-primary)]' : 'font-bold text-[var(--nc-text-primary)]'}`}>
         {value}
       </p>
     </div>
@@ -615,7 +624,7 @@ function TextInput({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-dim)]">{label}</label>
+      <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{label}</label>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
