@@ -42,16 +42,16 @@ interface WhatsAppViewProps {
 
 const TRANSLATIONS = {
   AR: {
-    title: "WhatsApp Cloud API v3",
-    subtitle: "Meta Cloud API v25.0 — {companyName}",
+    title: "إدارة المحادثات",
+    subtitle: "واتساب للأعمال — {companyName}",
     connected: "متصل",
     disconnected: "غير متصل",
-    cloudApiLabel: "Cloud API",
-    phoneNumberLabel: "Phone Number ID",
-    wabaLabel: "WABA ID",
-    provider: "Meta Cloud API v25.0",
+    cloudApiLabel: "الربط",
+    phoneNumberLabel: "رقم الهاتف",
+    wabaLabel: "الحساب",
+    provider: "واتساب",
     conversationsTitle: "المحادثات",
-    emptyState: "لا توجد محادثات بعد. أرسل رسالة من واتساب إلى رقم الأعمال لبدء محادثة.",
+    emptyState: "لا توجد محادثات بعد.",
     newChatTitle: "محادثة جديدة",
     phonePlaceholder: "أدخل رقم الهاتف (مثال: 966501234567)",
     startChatBtn: "بدء المحادثة",
@@ -59,7 +59,7 @@ const TRANSLATIONS = {
     inputPlaceholder: "اكتب رسالة...",
     sendBtn: "إرسال",
     selectConversation: "اختر محادثة من القائمة",
-    configureWarning: "WhatsApp Cloud API غير مفعل. أضف WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID في Vercel.",
+    configureWarning: "يلزم إكمال إعدادات الربط من لوحة الإعدادات قبل استخدام المحادثات.",
     createTask: "إنشاء مهمة",
     taskTitleLabel: "عنوان المهمة",
     taskTypeLabel: "نوع المهمة",
@@ -70,16 +70,16 @@ const TRANSLATIONS = {
     taskError: "تعذر إنشاء المهمة",
   },
   EN: {
-    title: "WhatsApp Cloud API",
-    subtitle: "Meta Cloud API — {companyName}",
+    title: "Chat Management",
+    subtitle: "WhatsApp Business — {companyName}",
     connected: "Connected",
     disconnected: "Disconnected",
-    cloudApiLabel: "Cloud API",
-    phoneNumberLabel: "Phone Number ID",
-    wabaLabel: "WABA ID",
-    provider: "Meta Cloud API v25.0",
+    cloudApiLabel: "Connection",
+    phoneNumberLabel: "Phone",
+    wabaLabel: "Account",
+    provider: "WhatsApp",
     conversationsTitle: "Conversations",
-    emptyState: "No conversations yet. Send a WhatsApp message to the business number to start.",
+    emptyState: "No conversations yet.",
     newChatTitle: "New Chat",
     phonePlaceholder: "Enter phone number (e.g. 966501234567)",
     startChatBtn: "Start Chat",
@@ -87,7 +87,7 @@ const TRANSLATIONS = {
     inputPlaceholder: "Type a message...",
     sendBtn: "Send",
     selectConversation: "Select a conversation",
-    configureWarning: "WhatsApp Cloud API is not configured. Add WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID in Vercel.",
+    configureWarning: "Connection settings are incomplete. Please review settings.",
     createTask: "Create Task",
     taskTitleLabel: "Task Title",
     taskTypeLabel: "Task Type",
@@ -261,31 +261,26 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       {/* Cloud API Status */}
       <SmartCard className="p-4">
         <div className="flex flex-col gap-2">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className="text-sm font-bold text-[var(--nc-text-primary)]">
-                {t.provider} — {connected ? t.connected : t.disconnected}
-              </span>
-            </div>
-            {cloudStatus?.phoneNumberId && (
-              <span className="text-xs text-[var(--nc-text-dim)]">{t.phoneNumberLabel}: {cloudStatus.phoneNumberId}</span>
-            )}
-            {cloudStatus?.businessAccountId && (
-              <span className="text-xs text-[var(--nc-text-dim)]">{t.wabaLabel}: {cloudStatus.businessAccountId}</span>
-            )}
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            <span className="text-sm font-bold text-[var(--nc-text-primary)]">
+              {t.provider} — {connected ? t.connected : t.disconnected}
+            </span>
           </div>
-          {!connected && cloudStatus?.error && (
-            <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-2 text-xs text-rose-400 font-mono">{cloudStatus.error}</div>
+          {!connected && (
+            <div className="text-xs text-[var(--nc-text-dim)]">{t.configureWarning}</div>
           )}
         </div>
       </SmartCard>
 
-      {warning && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-sm text-amber-400">{warning}</div>
-      )}
-
-      {/* Conversations */}
+      {/* Conversations or Disconnected State */}
+      {!connected ? (
+        <SmartCard className="p-4 flex flex-col items-center justify-center text-center h-fit py-12 border-dashed border border-[var(--nc-border)]">
+           <i className="ph-bold ph-whatsapp-logo text-4xl text-[var(--nc-text-dim)] mb-3 opacity-50"></i>
+           <p className="text-sm text-[var(--nc-text-primary)] font-bold mb-1">{t.disconnected}</p>
+           <p className="text-xs text-[var(--nc-text-dim)]">{t.configureWarning}</p>
+        </SmartCard>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1 space-y-2">
           <div className="flex items-center justify-between mb-2">
@@ -387,9 +382,12 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
         )}
 
         <div className="lg:col-span-2">
-          <SmartCard className="p-4 flex flex-col" style={{ minHeight: "400px", maxHeight: "500px" }}>
+          <SmartCard className={`p-4 flex flex-col ${activeChat ? '' : 'h-fit'}`} style={activeChat ? { minHeight: "400px", maxHeight: "500px" } : {}}>
             {!activeChat ? (
-              <div className="flex-1 flex items-center justify-center text-sm text-[var(--nc-text-dim)]">{t.selectConversation}</div>
+              <div className="flex flex-col items-center justify-center py-10 text-center text-[var(--nc-text-dim)]">
+                  <i className="ph-bold ph-chat-circle-dots text-3xl mb-2 opacity-50"></i>
+                  <p className="text-sm">{t.emptyState}</p>
+              </div>
             ) : (
               <>
                 <div className="flex-1 overflow-y-auto space-y-3 mb-3">
@@ -422,6 +420,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
           </SmartCard>
         </div>
       </div>
+      )}
     </div>
   );
 }
