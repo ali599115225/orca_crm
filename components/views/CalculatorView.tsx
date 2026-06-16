@@ -475,13 +475,13 @@ export default function CalculatorView() {
           </SmartCard>
 
           {/* Card 2: SAMA DSR limits compliance audit box */}
-          <SmartCard className="p-6 shadow-sm space-y-4">
-            <h4 className="text-[var(--nc-foreground)] font-bold text-base border-b border-[var(--nc-border)] pb-3 flex items-center gap-2">
+          <SmartCard className="p-5 shadow-sm space-y-3">
+            <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-2 flex items-center gap-2">
               <i className="ph-bold ph-shield-check text-[var(--nc-text-secondary)]"></i>
               {t.samaComplianceTitle}
             </h4>
 
-            <div className="space-y-2.5 text-xs text-[var(--nc-text-dim)] font-medium">
+            <div className="space-y-1.5 text-xs text-[var(--nc-text-dim)] font-medium">
               <div className="flex justify-between">
                 <span>{t.propertyPriceCol}</span>
                 <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(propertyPrice)}</span>
@@ -494,13 +494,13 @@ export default function CalculatorView() {
                 <span>{t.commitmentsCol}</span>
                 <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(existingCommitments)}</span>
               </div>
-              <div className="flex justify-between border-t border-[var(--nc-border)] pt-2.5">
+              <div className="flex justify-between border-t border-[var(--nc-border)] pt-2 mt-1">
                 <span>{t.totalCostCol}</span>
                 <span className="font-bold text-[var(--nc-foreground)] font-bold font-en">{formatCurrency(totalPropertyCost)}</span>
               </div>
 
               {/* DSR Indicator progress bar */}
-              <div className="space-y-2 pt-3 border-t border-[var(--nc-border)]">
+              <div className="space-y-1.5 pt-2 border-t border-[var(--nc-border)]">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold">{t.dsrLabel}</span>
                   <span className={`font-bold font-en text-sm ${isCompliant ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -523,7 +523,7 @@ export default function CalculatorView() {
             </div>
 
             {/* Compliance message badge */}
-            <div className={`p-3 rounded-xl border text-xs font-semibold leading-relaxed flex items-start gap-2 ${
+            <div className={`p-2.5 rounded-lg border text-[11px] font-semibold leading-relaxed flex items-start gap-2 ${
               isCompliant 
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
                 : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
@@ -537,21 +537,21 @@ export default function CalculatorView() {
       />
 
       {/* Comparison Matrix Table */}
-      <SmartCard className="shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
-          <h3 className="text-[var(--nc-foreground)] font-bold text-base">{t.matrixTitle}</h3>
-          <p className="text-xs text-[var(--nc-foreground-muted)] font-medium mt-1">{t.matrixSub}</p>
+      <SmartCard className="shadow-sm overflow-hidden mt-2">
+        <div className="px-5 py-3 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
+          <h3 className="text-[var(--nc-foreground)] font-bold text-sm">{t.matrixTitle}</h3>
+          <p className="text-[11px] text-[var(--nc-text-dim)] font-medium mt-0.5">{t.matrixSub}</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="nc-table text-sm">
-            <thead>
+          <table className="w-full text-xs text-start">
+            <thead className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] border-b border-[var(--nc-border)]">
               <tr>
-                <th>{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
-                <th>{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
-                <th>{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
-                <th>{t.netMonthlyInstallmentLabel}</th>
-                <th>{isArabic ? 'الإجراء' : 'Action'}</th>
+                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
+                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
+                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
+                <th className="py-2.5 px-4 font-semibold text-start">{t.netMonthlyInstallmentLabel}</th>
+                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'الإجراء' : 'Action'}</th>
               </tr>
             </thead>
             <tbody>
@@ -571,22 +571,24 @@ export default function CalculatorView() {
                   <tr 
                     key={key} 
                     onClick={() => setSelectedBank(key)}
-                    className={`nc-hover-glow cursor-pointer ${isActive ? 'nc-row-selected' : ''}`}
+                    className={`border-b border-[var(--nc-border)] hover:bg-[var(--nc-surface-solid)] transition-colors cursor-pointer ${isActive ? 'bg-[var(--nc-accent-soft)]/10' : ''}`}
                   >
-                    <td className="font-bold text-[var(--nc-text-primary)] flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[var(--nc-accent)]' : 'bg-transparent'}`}></div>
-                      {data.name}
+                    <td className="py-3 px-4 font-bold text-[var(--nc-text-primary)]">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-transparent'}`}></div>
+                        {data.name}
+                      </div>
                     </td>
-                    <td className="font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
-                    <td className="text-xs max-w-xs truncate" title={isArabic ? data.promo : data.promoEn}>
+                    <td className="py-3 px-4 font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
+                    <td className="py-3 px-4 text-[11px] max-w-xs truncate text-[var(--nc-text-secondary)]" title={isArabic ? data.promo : data.promoEn}>
                       {isArabic ? data.promo : data.promoEn}
                     </td>
-                    <td className="font-en font-black text-sm text-[var(--nc-text-primary)]">{formatCurrency(bNetInstallment)}</td>
-                    <td className="nc-cell-actions">
-                      <span className={`text-xs font-bold transition-all px-3 py-1.5 rounded-lg border ${
+                    <td className="py-3 px-4 font-en font-black text-[var(--nc-text-primary)]">{formatCurrency(bNetInstallment)}</td>
+                    <td className="py-3 px-4 whitespace-nowrap align-middle">
+                      <span className={`inline-block text-[11px] font-bold transition-all px-3 py-1.5 rounded-md border ${
                         isActive 
-                          ? 'bg-[var(--nc-accent)] text-[#1C2B48] border-transparent' 
-                          : 'bg-[var(--nc-accent-soft)] text-[var(--nc-text-secondary)] border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-hover)] hover:text-[#1C2B48]'
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' 
+                          : 'bg-transparent text-[var(--nc-text-dim)] border-[var(--nc-border)] hover:bg-[var(--nc-surface-solid)] hover:text-[var(--nc-text-primary)]'
                       }`}>
                         {isActive ? t.bankSelected : t.bankSelectDetails}
                       </span>
