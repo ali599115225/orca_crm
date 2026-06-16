@@ -144,6 +144,7 @@ export const dict: TranslationDict = {
   'tab.tours':                  { ar: 'الجولات العقارية',       en: 'Tours' },
   'tab.documents':              { ar: 'مستودع المستندات',       en: 'Documents' },
   'tab.email':                  { ar: 'البريد الإلكتروني',      en: 'Email' },
+  'tab.campaigns':              { ar: 'الحملات',                en: 'Campaigns' },
 
   // ── Common ──────────────────────────────────────
   'common.theme':               { ar: 'السمة',       en: 'Theme' },

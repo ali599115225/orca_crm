@@ -102,7 +102,7 @@ function BadgeTag({ badgeKey, variant }: { badgeKey: string; variant: MenuItem["
   };
 
   return (
-    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[variant || "preview"]}`}>
+    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[variant || "preview"]}`}>
       {t(badgeKey)}
     </span>
   );
@@ -113,7 +113,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
   const isRTL = lang === 'AR';
   return (
     <div className="border-t border-[var(--nc-glassy-border)] pt-2 mt-2">
-      <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-accent)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+      <div className="px-5 py-2 text-[11px] font-black tracking-widest text-[var(--nc-accent)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
         {isRTL ? 'مالك المنصة' : 'Platform Owner'}
       </div>
       <ul className="space-y-0.5">
@@ -121,7 +121,7 @@ function PlatformOwnerLinks({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/admin/command-center"
             onClick={() => onNavigate?.()}
-            className="flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px] text-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
+            className="flex items-center gap-3 px-4 py-2 text-[13px] transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px] text-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
           >
             <Shield size={17} className="shrink-0" />
             <span className="leading-tight flex-1 md:hidden lg:inline">{isRTL ? 'مركز القيادة' : 'Command Center'}</span>
@@ -143,7 +143,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {menuData.map((section, sIdx) => (
         <div key={sIdx} className="mb-1">
-          <div className="px-5 py-2 text-[9px] font-black tracking-widest text-[var(--nc-text-disabled)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+          <div className="px-5 py-2 text-[11px] font-black tracking-widest text-[var(--nc-text-disabled)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
             {t(section.titleKey)}
           </div>
           <ul className="space-y-0.5">
@@ -162,7 +162,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     title={item.tooltipKey ? t(item.tooltipKey) : undefined}
                     onClick={() => onNavigate?.()}
                     className={[
-                      "flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px]",
+                      "flex items-center gap-3 px-4 py-2 text-[13px] transition-all duration-200 cursor-pointer rounded-lg mx-2 my-0.5 md:justify-center lg:justify-start md:px-2 lg:px-4 min-h-[44px]",
                       isRTL ? "justify-start" : "justify-start",
                       isActive
                         ? "nav-item-active font-bold shadow-sm"

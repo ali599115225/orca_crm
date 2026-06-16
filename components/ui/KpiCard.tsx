@@ -25,8 +25,8 @@ export function KpiCard({ label, value, icon: Icon, trend, trendLabel, color = '
   return (
     <div className={`nc-card-default p-4 flex items-start justify-between gap-3 ${className}`}>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)] mb-1 truncate">{label}</p>
-        <h3 className={`text-xl font-black ${colors.text} truncate`}>{value}</h3>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)] mb-1 leading-normal truncate">{label}</p>
+        <h3 className={`text-[22px] font-bold leading-7 ${colors.text} truncate`}>{value}</h3>
         {trendLabel && (
           <p className={`text-[10px] font-medium mt-1 ${trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-rose-400' : 'text-[var(--nc-text-dim)]'}`}>
             {trend === 'up' ? '↑ ' : trend === 'down' ? '↓ ' : ''}{trendLabel}
