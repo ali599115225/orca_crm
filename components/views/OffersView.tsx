@@ -8,6 +8,9 @@ import { getPropertiesAction } from '@/app/actions/properties';
 import { scheduleTourActionDirect } from '@/app/actions/tours';
 import { toast } from '@/app/context/ToastContext';
 import { DateField } from '@/components/ui/DateField';
+import { useApp } from '@/app/context/AppContext';
+import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 type OfferStatus = 'available' | 'reserved' | 'sold' | 'unknown';
 type OfferType = 'apartment' | 'villa' | 'land' | 'unknown';
@@ -95,13 +98,6 @@ function normalizeType(value: unknown): OfferType {
   return 'unknown';
 }
 
-function typeLabel(type: OfferType): string {
-  if (type === 'villa') return 'فيلا';
-  if (type === 'land') return 'أرض';
-  if (type === 'apartment') return 'شقة';
-  return 'غير محدد';
-}
-
 function normalizeStatus(value: unknown): OfferStatus {
   const text = String(value || '').trim().toLowerCase();
   if (text === 'available' || text === 'متاح') return 'available';
@@ -110,11 +106,12 @@ function normalizeStatus(value: unknown): OfferStatus {
   return 'unknown';
 }
 
-function statusLabel(status: OfferStatus): string {
-  if (status === 'available') return 'متاح';
-  if (status === 'reserved') return 'محجوز';
-  if (status === 'sold') return 'مباع';
-  return 'غير محدد';
+function displayTypeLabel(type: OfferType, locale: DisplayLocale): string {
+  return displayEntity(String(type), 'property', locale) || (locale === 'ar' ? 'غير محدد' : 'Unspecified');
+}
+
+function displayStatusLabel(status: OfferStatus, locale: DisplayLocale): string {
+  return displayEnum(String(status), 'propertyStatus', locale) || (locale === 'ar' ? 'غير محدد' : 'Unspecified');
 }
 
 function statusClass(status: OfferStatus): string {
@@ -180,6 +177,10 @@ function mapPropertyToOffer(item: any): PropertyOffer {
 }
 
 export default function OffersView() {
+  const { lang } = useApp();
+  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
+  const isArabic = displayLocale === 'ar';
+
   const [offers, setOffers] = useState<PropertyOffer[]>([]);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -189,6 +190,9 @@ export default function OffersView() {
   const [isVisitOpen, setIsVisitOpen] = useState(false);
   const [visitSaving, setVisitSaving] = useState(false);
   const [visitForm, setVisitForm] = useState<VisitForm>(INITIAL_VISIT_FORM);
+
+  const offerTypeLabel = (type: OfferType) => displayTypeLabel(type, displayLocale);
+  const offerStatusLabel = (status: OfferStatus) => displayStatusLabel(status, displayLocale);
 
   useEffect(() => {
     async function loadOffers() {
@@ -219,7 +223,7 @@ export default function OffersView() {
     const list = offers.filter((offer) => {
       const matchesSearch =
         !term ||
-        [offer.title, offer.city, offer.district, offer.agent, typeLabel(offer.type), statusLabel(offer.status)]
+        [offer.title, offer.city, offer.district, offer.agent, offerTypeLabel(offer.type), offerStatusLabel(offer.status)]
           .join(' ')
           .toLowerCase()
           .includes(term);
@@ -485,13 +489,13 @@ export default function OffersView() {
                               <span className="block min-w-0 truncate">{offer.city} - {offer.district}</span>
                             </td>
                             <td className="px-2 py-3 text-[var(--nc-text-secondary)]">
-                              <span className="block min-w-0 truncate">{typeLabel(offer.type)}</span>
+                              <span className="block min-w-0 truncate">{offerTypeLabel(offer.type)}</span>
                             </td>
                             <td className="px-2 py-3 font-semibold text-[var(--nc-text-primary)]">
                               <span className="block min-w-0 truncate">{formatCurrency(offer.price)}</span>
                             </td>
                             <td className="px-1.5 py-3">
-                              <StatusPill status={offer.status} />
+                              <StatusPill status={offer.status} label={offerStatusLabel(offer.status)} />
                             </td>
                             <td className="px-2 py-3 text-[var(--nc-text-secondary)]">
                               <span className="block min-w-0 truncate">{offer.agent}</span>
@@ -555,14 +559,14 @@ export default function OffersView() {
                     <h2 className="truncate text-base font-bold text-[var(--nc-text-primary)]">{selectedOffer.title}</h2>
                     <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{selectedOffer.city} - {selectedOffer.district}</p>
                   </div>
-                  <StatusPill status={selectedOffer.status} />
+                  <StatusPill status={selectedOffer.status} label={offerStatusLabel(selectedOffer.status)} />
                 </div>
               </div>
 
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 pt-4">
                 <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
                   <DetailRow label="السعر" value={formatCurrency(selectedOffer.price)} />
-                  <DetailRow label="النوع" value={typeLabel(selectedOffer.type)} />
+                  <DetailRow label="النوع" value={offerTypeLabel(selectedOffer.type)} />
                   <DetailRow label="المساحة" value={selectedOffer.area ? `${formatNumber(selectedOffer.area)} م²` : 'غير محدد'} />
                   <DetailRow label="غرف النوم" value={selectedOffer.beds ? formatNumber(selectedOffer.beds) : 'غير محدد'} />
                   <DetailRow label="الوكيل" value={selectedOffer.agent} />
@@ -675,10 +679,10 @@ export default function OffersView() {
   );
 }
 
-function StatusPill({ status }: { status: OfferStatus }) {
+function StatusPill({ status, label }: { status: OfferStatus; label: string }) {
   return (
     <span className={`inline-flex min-h-[26px] w-full min-w-0 max-w-full items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full border px-1.5 text-[10px] font-black ${statusClass(status)}`}>
-      {statusLabel(status)}
+      {label}
     </span>
   );
 }
