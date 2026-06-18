@@ -294,23 +294,9 @@ export default function CampaignsView({
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
               {t.title}
-              {usingFallback && (
-                <span className="mr-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[10px] font-bold">
-                  <i className="ph-bold ph-warning-circle"></i>
-                  {isArabic ? 'بيانات تجريبية' : 'Demo data'}
-                </span>
-              )}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5 font-medium">{t.desc}</p>
           </div>
-        </div>
-      )}
-
-      {/* ── Demo Data Warning Banner ──────────────────────── */}
-      {usingFallback && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs font-bold">
-          <i className="ph-bold ph-warning text-base"></i>
-          <span>{isArabic ? '⚠️ هذه بيانات توضيحية (Demo) — لم يتم ربطها بقاعدة البيانات بعد' : '⚠️ This is demo data — not connected to database'}</span>
         </div>
       )}
 
