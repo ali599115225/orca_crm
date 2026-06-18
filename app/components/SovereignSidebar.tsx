@@ -102,7 +102,7 @@ function BadgeTag({ badgeKey, variant }: { badgeKey: string; variant: MenuItem["
   };
 
   return (
-    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[variant || "preview"]}`}>
+    <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border shrink-0 md:hidden lg:inline ${variantStyles[variant || "preview"]}`}>
       {t(badgeKey)}
     </span>
   );
@@ -143,7 +143,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex-1 py-3 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {menuData.map((section, sIdx) => (
         <div key={sIdx} className="mb-1">
-          <div className="px-5 py-2 text-[11px] font-black tracking-widest text-[var(--nc-text-disabled)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+          <div className="px-5 py-2 text-[11px] font-black tracking-widest text-[var(--nc-text-secondary)] uppercase md:hidden lg:block" style={{ textAlign: isRTL ? 'right' : 'left' }}>
             {t(section.titleKey)}
           </div>
           <ul className="space-y-0.5">

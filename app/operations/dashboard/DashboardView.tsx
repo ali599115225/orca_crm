@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 import ContractWizard from '@/components/features/ContractWizard';
 import { SmartCard } from '@/components/ui/SmartCard';
@@ -30,13 +31,44 @@ interface DashboardViewProps {
   whatsAppStats?: { conversationsCount: number; newLeadsCount: number; unreadMessagesCount: number; };
 }
 
-// ── Shared flat-row block (no glow, no nested card, just border transition on hover) ──
-function FlatRowBlock({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+// ── Shared flat-row block ──
+function FlatRowBlock({ children, className = '', onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
   return (
-    <div className={`hover:bg-[var(--nc-accent-soft)] transition-colors rounded-lg ${className}`}>
+    <div
+      className={`hover:bg-[var(--nc-accent-soft)] transition-colors rounded-lg ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      aria-label={onClick ? undefined : undefined}
+    >
       {children}
     </div>
   );
+}
+
+function cleanTenantName(raw?: string): string {
+  if (!raw) return 'ORCA';
+  return raw
+    .replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim() || 'ORCA';
+}
+
+function leadStatusLabel(status: string, t: (key: string) => string): string {
+  const m: Record<string, string> = {
+    NEW: 'status.new',
+    CONTACTED: 'status.contacted',
+    VISIT_SCHEDULED: 'status.scheduled',
+    VISITED: 'status.visited',
+    OFFER_MADE: 'status.offered',
+    RESERVED: 'status.reserved',
+    CONTRACT_SIGNED: 'status.signed',
+    WON: 'status.won',
+    LOST: 'status.lost',
+  };
+  const key = m[status];
+  return key ? t(key) : status;
 }
 
 export default function DashboardView({
@@ -45,9 +77,14 @@ export default function DashboardView({
   recentTasks, projects, agentPerformance, leadSources, systemAlerts,
 }: DashboardViewProps) {
   const { lang, t } = useApp();
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const displayTenant = cleanTenantName(tenant?.companyName);
+
+  const navTo = (path: string) => router.push(path);
 
   // ── Listen for search from Header ──
   useEffect(() => {
@@ -84,7 +121,7 @@ export default function DashboardView({
   );
 
   return (
-    <div className="nc-stack" dir={lang === 'AR' ? 'rtl' : 'ltr'} style={{ padding: '16px 24px 40px', maxWidth: 1600, margin: '0 auto', width: '100%' }}>
+    <div className="nc-stack overflow-x-hidden" dir={lang === 'AR' ? 'rtl' : 'ltr'} style={{ padding: '16px 24px 40px', maxWidth: 1600, margin: '0 auto', width: '100%' }}>
 
       {/* Search badge */}
       {searchActive && (
@@ -99,7 +136,7 @@ export default function DashboardView({
           ═══════════════════════════════════════ */}
       {matchesSearch(t('dash.welcome'), t('dash.welcomeDesc')) && (
         <PageHeader
-          title={`${t('dash.welcome')} ${tenant?.companyName || 'ORCA'}`}
+          title={`${t('dash.welcome')} ${displayTenant}`}
           description={t('dash.welcomeDesc')}
         >
           <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
@@ -116,43 +153,43 @@ export default function DashboardView({
           ═══════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {matchesSearch(t('kpi.totalLeads')) && (
-          <SmartCard elevation="elevated" className="p-4">
+          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/leads')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/leads'); } }} aria-label={t('kpi.totalLeads')}>
             <div className="flex items-start justify-between mb-1">
-              <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.totalLeads')}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs font-bold uppercase tracking-wider">{t('kpi.totalLeads')}</p>
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0"><i className="ph-fill ph-users-three text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(totalLeadsCount)}</h3>
-            <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.totalLeads.desc')}</p>
+            <p className="text-[var(--nc-text-dim)] text-xs leading-snug">{t('kpi.totalLeads.desc')}</p>
           </SmartCard>
         )}
         {matchesSearch(t('kpi.dailyTours')) && (
-          <SmartCard elevation="elevated" className="p-4">
+          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/tours')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/tours'); } }} aria-label={t('kpi.dailyTours')}>
             <div className="flex items-start justify-between mb-1">
-              <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.dailyTours')}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs font-bold uppercase tracking-wider">{t('kpi.dailyTours')}</p>
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0"><i className="ph-fill ph-calendar-check text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(dailyToursCount)}</h3>
-            <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.dailyTours.desc')}</p>
+            <p className="text-[var(--nc-text-dim)] text-xs leading-snug">{t('kpi.dailyTours.desc')}</p>
           </SmartCard>
         )}
         {matchesSearch(t('kpi.sentOffers')) && (
-          <SmartCard elevation="elevated" className="p-4">
+          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/offers')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/offers'); } }} aria-label={t('kpi.sentOffers')}>
             <div className="flex items-start justify-between mb-1">
-              <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.sentOffers')}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs font-bold uppercase tracking-wider">{t('kpi.sentOffers')}</p>
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0"><i className="ph-fill ph-paper-plane-tilt text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(sentOffersCount)}</h3>
-            <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.sentOffers.desc')}</p>
+            <p className="text-[var(--nc-text-dim)] text-xs leading-snug">{t('kpi.sentOffers.desc')}</p>
           </SmartCard>
         )}
         {matchesSearch(t('kpi.closedContracts')) && (
-          <SmartCard elevation="elevated" className="p-4">
+          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/rental')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/rental'); } }} aria-label={t('kpi.closedContracts')}>
             <div className="flex items-start justify-between mb-1">
-              <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider">{t('kpi.closedContracts')}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs font-bold uppercase tracking-wider">{t('kpi.closedContracts')}</p>
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0"><i className="ph-fill ph-file-lock text-base"></i></div>
             </div>
             <h3 className="text-2xl font-black text-[var(--nc-text-primary)] mb-1">{formatNum(closedContractsCount)}</h3>
-            <p className="text-[var(--nc-text-dim)] text-[10px] leading-snug">{t('kpi.closedContracts.desc')}</p>
+            <p className="text-[var(--nc-text-dim)] text-xs leading-snug">{t('kpi.closedContracts.desc')}</p>
           </SmartCard>
         )}
       </div>
@@ -161,24 +198,24 @@ export default function DashboardView({
       {whatsAppStats && (matchesSearch(t('kpi.whatsappConvos')) || matchesSearch(t('kpi.whatsappNewLeads')) || matchesSearch(t('kpi.unreadMessages'))) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {matchesSearch(t('kpi.whatsappConvos')) && (
-            <SmartCard elevation="elevated" className="p-3">
+            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.whatsappConvos')}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappConvos')}</span>
+                <span className="text-[var(--nc-text-dim)] text-xs font-bold">{t('kpi.whatsappConvos')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.conversationsCount)}</h3>
             </SmartCard>
           )}
           {matchesSearch(t('kpi.whatsappNewLeads')) && (
-            <SmartCard elevation="elevated" className="p-3">
+            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.whatsappNewLeads')}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[var(--nc-text-dim)] text-[10px] font-bold">{t('kpi.whatsappNewLeads')}</span>
+                <span className="text-[var(--nc-text-dim)] text-xs font-bold">{t('kpi.whatsappNewLeads')}</span>
               </div>
               <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.newLeadsCount)}</h3>
             </SmartCard>
           )}
           {whatsAppStats.unreadMessagesCount > 0 && matchesSearch(t('kpi.unreadMessages')) && (
-            <SmartCard elevation="elevated" className="p-3">
-              <span className="text-[var(--nc-text-dim)] text-[10px] font-bold block mb-1">{t('kpi.unreadMessages')}</span>
+            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.unreadMessages')}>
+              <span className="text-[var(--nc-text-dim)] text-xs font-bold block mb-1">{t('kpi.unreadMessages')}</span>
               <h3 className="text-xl font-black text-amber-700 dark:text-amber-400">{formatNum(whatsAppStats.unreadMessagesCount)}</h3>
             </SmartCard>
           )}
@@ -192,7 +229,7 @@ export default function DashboardView({
         <SmartCard elevation="default" className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h4 className="text-sm font-bold text-[var(--nc-text-primary)] mb-0.5">{t('action.quick')}</h4>
-            <p className="text-[var(--nc-text-dim)] text-[11px] leading-relaxed max-w-lg">{t('action.quickDesc')}</p>
+            <p className="text-[var(--nc-text-dim)] text-xs leading-relaxed max-w-lg">{t('action.quickDesc')}</p>
           </div>
           <button onClick={() => setIsWizardOpen(true)} className="nc-btn nc-btn-primary text-xs cursor-pointer flex-shrink-0">
             <i className="ph-fill ph-file-plus text-sm"></i>
@@ -216,7 +253,7 @@ export default function DashboardView({
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-500 border border-green-500/20">{t("pipeline.live")}</span>
                 )}
               </div>
-              <p className="text-[var(--nc-text-dim)] text-[11px]">{t("pipeline.desc")}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs">{t("pipeline.desc")}</p>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {pipelineStages.map((stage) => {
@@ -233,13 +270,13 @@ export default function DashboardView({
                   inquiry: '#3B82F6', tour: '#F59E0B', offer: '#8B5CF6', close: '#10B981',
                 };
                 return (
-                  <FlatRowBlock key={stage.key} className="p-3 text-center">
-                    <span className="text-[10px] font-bold text-[var(--nc-text-secondary)] block mb-1">{t(stageKeyMap[stage.key] || stage.key)}</span>
+                  <FlatRowBlock key={stage.key} className="p-3 text-center" onClick={() => navTo('/operations/leads')}>
+                    <span className="text-xs font-bold text-[var(--nc-text-secondary)] block mb-1">{t(stageKeyMap[stage.key] || stage.key)}</span>
                     <span className={`text-xl font-black block mb-1 ${stageColorMap[stage.key] || 'text-[var(--nc-foreground)]'}`}>{formatNum(stage.count)}</span>
                     <div className="w-full h-1 rounded-full bg-[var(--nc-glass-border)] overflow-hidden">
                       <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percent}%`, backgroundColor: bgColorMap[stage.key] || '#3B82F6' }} />
                     </div>
-                    <span className="text-[9px] text-[var(--nc-text-dim)] mt-1 block">{percent}%</span>
+                    <span className="text-[11px] text-[var(--nc-text-dim)] mt-1 block">{percent}%</span>
                   </FlatRowBlock>
                 );
               })}
@@ -268,13 +305,13 @@ export default function DashboardView({
                   <FlatRowBlock key={task.id} className="p-3">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs font-bold text-[var(--nc-text-primary)] leading-snug line-clamp-2">{task.title}</p>
-                      <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: priorityColor }}>{priorityLabel}</span>
+                       <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: priorityColor }}>{priorityLabel}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-2 text-[10px] text-[var(--nc-text-dim)]">
-                      {task.leadName && <span className="flex items-center gap-1"><i className="ph-bold ph-user text-[9px]"></i>{task.leadName}</span>}
-                      {task.assignedName && <span className="flex items-center gap-1"><i className="ph-bold ph-handshake text-[9px]"></i>{task.assignedName}</span>}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-[var(--nc-text-dim)]">
+                      {task.leadName && <span className="flex items-center gap-1"><i className="ph-bold ph-user text-[10px]"></i>{task.leadName}</span>}
+                      {task.assignedName && <span className="flex items-center gap-1"><i className="ph-bold ph-handshake text-[10px]"></i>{task.assignedName}</span>}
                     </div>
-                    <p className="text-[9px] text-[var(--nc-text-dim)] mt-1">
+                    <p className="text-[11px] text-[var(--nc-text-dim)] mt-1">
                       {new Date(task.dueDate).toLocaleTimeString(lang === "AR" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </FlatRowBlock>
@@ -302,24 +339,24 @@ export default function DashboardView({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="nc-heading-3">{t("requests.title")}</h4>
-              <p className="text-[var(--nc-text-dim)] text-[11px] mt-0.5">{t("requests.desc")}</p>
+              <p className="text-[var(--nc-text-dim)] text-xs mt-0.5">{t("requests.desc")}</p>
             </div>
           </div>
           <div className="space-y-2">
             {recentLeads.slice(0, 5).map((lead) => {
               if (searchActive && !matchesSearch(`${lead.firstName} ${lead.lastName || ''}`, lead.phone, lead.city, lead.status, lead.project?.name)) return null;
               return (
-                <FlatRowBlock key={lead.id} className="p-3 flex items-center justify-between">
+                <FlatRowBlock key={lead.id} className="p-3 flex items-center justify-between" onClick={() => navTo('/operations/leads')}>
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
                     <div>
-                      <h5 className="text-xs font-bold text-[var(--nc-text-primary)]">{lead.firstName} {lead.lastName}</h5>
-                      <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {lead.city}</p>
+                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{lead.firstName} {lead.lastName}</h5>
+                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {lead.city}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{((): string => { const m: Record<string, string> = { NEW: t('status.new'), CONTACTED: 'تم التواصل', VISIT_SCHEDULED: 'مجدول', VISITED: 'تمت الزيارة', OFFER_MADE: 'عرض', RESERVED: 'محجوز', CONTRACT_SIGNED: 'موقّع', WON: 'مكتمل', LOST: 'ملغي' }; return m[lead.status] || lead.status; })()}</span>
-                    {lead.project && <p className="text-[9px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{lead.project.name}</p>}
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{leadStatusLabel(lead.status, t)}</span>
+                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{lead.project.name}</p>}
                   </div>
                 </FlatRowBlock>
               );

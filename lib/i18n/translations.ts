@@ -125,6 +125,14 @@ export const dict: TranslationDict = {
   'status.sent':                { ar: 'مرسل',     en: 'Sent' },
   'status.failed':              { ar: 'فشل',      en: 'Failed' },
   'status.draft':               { ar: 'مسودة',    en: 'Draft' },
+  'status.contacted':           { ar: 'تم التواصل',   en: 'Contacted' },
+  'status.visited':             { ar: 'تمت الزيارة',  en: 'Visited' },
+  'status.scheduled':           { ar: 'مجدول',        en: 'Scheduled' },
+  'status.offered':             { ar: 'أرسل العرض',   en: 'Offered' },
+  'status.reserved':            { ar: 'محجوز',        en: 'Reserved' },
+  'status.signed':              { ar: 'موقّع',        en: 'Signed' },
+  'status.won':                 { ar: 'مكتمل',        en: 'Won' },
+  'status.lost':                { ar: 'ملغي',         en: 'Lost' },
 
   // ── Tab Names (Header breadcrumbs) ──────────────
   'tab.analytics':              { ar: 'لوحة التحكم',           en: 'Dashboard' },

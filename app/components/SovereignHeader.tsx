@@ -74,7 +74,10 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
-  const displayCompany = companyName || 'ORCA';
+  const displayCompany = (() => {
+    const raw = companyName || 'ORCA';
+    return raw.replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '').replace(/\s{2,}/g, ' ').trim() || 'ORCA';
+  })();
   const initials = getInitials(displayName);
 
   // ── Dispatch search to custom event for Dashboard to listen ──
@@ -186,7 +189,7 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
         <div className={`flex items-center gap-3 ${isRTL ? 'border-r pl-2 ml-1 pr-1' : 'border-l pr-2 mr-1 pl-1'} border-[var(--nc-border)]`}>
           <div className="hidden md:block">
             <p className="text-sm font-semibold text-[var(--nc-foreground)] leading-tight" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayName}</p>
-            <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayCompany}</p>
+            <p className="text-xs text-[var(--nc-foreground-muted)] mt-0.5" style={{ textAlign: isRTL ? 'right' : 'left' }}>{displayCompany}</p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] flex items-center justify-center text-sm font-bold text-[var(--nc-accent-text)] shadow-sm transition-colors cursor-pointer">
             {initials}
