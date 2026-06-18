@@ -335,7 +335,7 @@ export default function OffersView() {
   };
 
   return (
-    <section dir="rtl" className="space-y-5 px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6">
+    <section dir="rtl" className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">العروض العقارية</h1>
@@ -416,8 +416,8 @@ export default function OffersView() {
         </div>
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="h-fit min-w-0 rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+      <div className="grid min-w-0 items-start gap-5 overflow-hidden xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
           <div className="mb-4 flex min-h-[48px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-bold text-[var(--nc-text-primary)]">قائمة العروض</h2>
@@ -429,7 +429,7 @@ export default function OffersView() {
           </div>
 
           <div>
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-x-auto">
               <table className="w-full min-w-0 table-fixed text-sm">
                 <colgroup>
                   <col className="w-[23%]" />
@@ -546,10 +546,10 @@ export default function OffersView() {
           </div>
         </div>
 
-        <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
+        <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] shadow-sm">
           {selectedOffer ? (
-            <div className="space-y-4">
-              <div className="border-b border-[var(--nc-border)] pb-4">
+            <div className="flex max-h-[520px] flex-col">
+              <div className="shrink-0 border-b border-[var(--nc-border)] p-5 pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-bold text-[var(--nc-text-primary)]">{selectedOffer.title}</h2>
@@ -559,34 +559,38 @@ export default function OffersView() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
-                <DetailRow label="السعر" value={formatCurrency(selectedOffer.price)} />
-                <DetailRow label="النوع" value={typeLabel(selectedOffer.type)} />
-                <DetailRow label="المساحة" value={selectedOffer.area ? `${formatNumber(selectedOffer.area)} م²` : 'غير محدد'} />
-                <DetailRow label="غرف النوم" value={selectedOffer.beds ? formatNumber(selectedOffer.beds) : 'غير محدد'} />
-                <DetailRow label="الوكيل" value={selectedOffer.agent} />
-                <DetailRow label="تاريخ الإدراج" value={formatDate(selectedOffer.posted)} last />
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 pt-4">
+                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
+                  <DetailRow label="السعر" value={formatCurrency(selectedOffer.price)} />
+                  <DetailRow label="النوع" value={typeLabel(selectedOffer.type)} />
+                  <DetailRow label="المساحة" value={selectedOffer.area ? `${formatNumber(selectedOffer.area)} م²` : 'غير محدد'} />
+                  <DetailRow label="غرف النوم" value={selectedOffer.beds ? formatNumber(selectedOffer.beds) : 'غير محدد'} />
+                  <DetailRow label="الوكيل" value={selectedOffer.agent} />
+                  <DetailRow label="تاريخ الإدراج" value={formatDate(selectedOffer.posted)} last />
+                </div>
+
+                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
+                  <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">الوصف</span>
+                  <p className="text-sm leading-7 text-[var(--nc-text-secondary)]">{selectedOffer.description}</p>
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
-                <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">الوصف</span>
-                <p className="text-sm leading-7 text-[var(--nc-text-secondary)]">{selectedOffer.description}</p>
+              <div className="shrink-0 border-t border-[var(--nc-border)] p-5 pt-4">
+                <button
+                  type="button"
+                  onClick={() => openVisitModal(selectedOffer.id)}
+                  className="nc-btn-primary inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
+                >
+                  <Calendar size={15} />
+                  حجز زيارة
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => openVisitModal(selectedOffer.id)}
-                className="nc-btn-primary inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
-              >
-                <Calendar size={15} />
-                حجز زيارة
-              </button>
             </div>
           ) : (
-            <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 text-center">
-              <div>
-                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">تفاصيل العرض</h2>
-                <p className="mt-2 text-sm text-[var(--nc-text-secondary)]">اختر عرضًا من القائمة لعرض التفاصيل هنا.</p>
+            <div className="flex min-h-[180px] items-center justify-center p-5">
+              <div className="rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-6 text-center">
+                <h2 className="text-sm font-bold text-[var(--nc-text-primary)]">تفاصيل العرض</h2>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">اختر عرضًا من القائمة لعرض التفاصيل هنا.</p>
               </div>
             </div>
           )}
