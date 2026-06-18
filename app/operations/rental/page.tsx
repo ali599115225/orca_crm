@@ -1824,7 +1824,7 @@ export default function RentalPage() {
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder="مثال: A-101"
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
@@ -1836,7 +1836,7 @@ export default function RentalPage() {
                 value={newTenant}
                 onChange={(e) => setNewTenant(e.target.value)}
                 placeholder="الاسم الكامل للمستأجر..."
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
@@ -1865,7 +1865,7 @@ export default function RentalPage() {
                   required
                   value={newRent}
                   onChange={(e) => setNewRent(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
                 />
               </div>
               <div className="space-y-1">
@@ -1875,7 +1875,7 @@ export default function RentalPage() {
                   required
                   value={newDeposit}
                   onChange={(e) => setNewDeposit(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
                 />
               </div>
             </div>
@@ -1899,7 +1899,7 @@ export default function RentalPage() {
         </div>
       )}
 
-      {/* ── Modal 2: Create Invoice Form (VAT + QR + PDF) ── */}
+      {/* ── Modal 2: Create Invoice Form ── */}
       {activeModal === 'create_invoice' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
@@ -1913,16 +1913,21 @@ export default function RentalPage() {
             </h3>
             
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">رقم العقد (Lease ID):</label>
-              <input 
-                type="text"
-                required
-                disabled={!!prefilledContractId}
-                value={prefilledContractId || invLeaseId}
-                onChange={(e) => setInvLeaseId(e.target.value)}
-                placeholder="مثال: L-1001"
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1] disabled:opacity-50 font-mono"
-              />
+              <label className="text-[var(--nc-text-dim)] block">رقم العقد:</label>
+              {prefilledContractId ? (
+                <div className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] font-bold text-xs disabled:opacity-50">
+                  {getLeaseDisplayNumber(selectedLease || undefined)}
+                </div>
+              ) : (
+                <input 
+                  type="text"
+                  required
+                  value={invLeaseId}
+                  onChange={(e) => setInvLeaseId(e.target.value)}
+                  placeholder="مثال: L-1001"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1] font-mono"
+                />
+              )}
             </div>
 
             <div className="space-y-1">
@@ -1933,16 +1938,16 @@ export default function RentalPage() {
                 required
                 value={invSubtotal || ''}
                 onChange={(e) => setInvSubtotal(Number(e.target.value))}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">نوع الضريبة (VAT Type):</label>
+               <label className="text-[var(--nc-text-dim)] block">نوع الضريبة:</label>
               <select
                 value={invVatType}
                 onChange={(e) => setInvVatType(e.target.value)}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
               >
                 <option value="STANDARD">ضريبة 15%</option>
                 <option value="ZERO_RATED">صفرية</option>
@@ -1954,7 +1959,7 @@ export default function RentalPage() {
               <div className="bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-[var(--nc-text-dim)]">قبل الضريبة:</span>
-                  <span className="text-white">{invSubtotal.toLocaleString()} ر.س</span>
+                  <span className="text-[var(--nc-text-primary)]">{invSubtotal.toLocaleString()} ر.س</span>
                 </div>
                 <div className="flex justify-between text-[11px]">
                   <span className="text-[var(--nc-text-dim)]">
@@ -1992,7 +1997,7 @@ export default function RentalPage() {
                 type="submit"
                 className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all"
               >
-                إصدار الفاتورة (مع QR + PDF)
+                 إصدار الفاتورة الضريبية
               </button>
               <button 
                 type="button"
@@ -2044,7 +2049,7 @@ export default function RentalPage() {
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
                 >
                   <option value="bank">تحويل بنكي مباشر</option>
                   <option value="card">بطاقة مدى / ائتمانية</option>
@@ -2052,13 +2057,13 @@ export default function RentalPage() {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">رقم المرجع (Transaction Ref):</label>
+                <label className="text-[var(--nc-text-dim)] block">رقم المرجع:</label>
                 <input 
                   type="text"
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   placeholder="رقم الحوالة البنكية..."
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
                 />
               </div>
             </div>
@@ -2067,12 +2072,12 @@ export default function RentalPage() {
               <DateField 
                 value={payDate}
                 onChange={(val) => setPayDate(val)}
-                label="تاريخ الاستلام والتحصيل (DateField)"
+                label="تاريخ الاستلام والتحصيل"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">مفتاح تفادي التكرار (Idempotency Key):</label>
+              <label className="text-[var(--nc-text-dim)] block">مفتاح تفادي التكرار:</label>
               <input 
                 type="text"
                 disabled
