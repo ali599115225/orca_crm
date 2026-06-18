@@ -20,6 +20,21 @@ function getInitials(name: string): string {
   return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
 }
 
+const NAME_ALIASES: Record<string, string> = {
+  'سلطان الزهراني': 'Sultan Al-Zahrani',
+  'راشد الزهراني': 'Rashed Al-Zahrani',
+  'تركي المطيري': 'Turki Al-Mutairi',
+  'فيصل العتيبي': 'Faisal Al-Otaibi',
+  'فيصل الغامدي': 'Faisal Al-Ghamdi',
+  'بدر الغامدي': 'Badr Al-Ghamdi',
+};
+
+function displayAlias(text: string, lang: string): string {
+  if (lang === 'EN') return NAME_ALIASES[text] || text;
+  const enToAr = Object.entries(NAME_ALIASES).find(([, en]) => en === text);
+  return enToAr ? enToAr[0] : text;
+}
+
 function HeaderBreadcrumbs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,10 +88,14 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
+  const displayName = (() => {
+    const raw = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
+    return displayAlias(raw, lang);
+  })();
   const displayCompany = (() => {
+    if (lang === 'AR') return 'أوركا العقارية';
     const raw = companyName || 'ORCA';
-    return raw.replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '').replace(/\s{2,}/g, ' ').trim() || 'ORCA';
+    return raw.replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '').replace(/\s{2,}/g, ' ').trim() || 'ORCA Real Estate';
   })();
   const initials = getInitials(displayName);
 

@@ -55,6 +55,27 @@ function cleanTenantName(raw?: string): string {
     .trim() || 'ORCA';
 }
 
+const NAME_ALIASES: Record<string, string> = {
+  'سلطان الزهراني': 'Sultan Al-Zahrani',
+  'راشد الزهراني': 'Rashed Al-Zahrani',
+  'تركي المطيري': 'Turki Al-Mutairi',
+  'فيصل العتيبي': 'Faisal Al-Otaibi',
+  'فيصل الغامدي': 'Faisal Al-Ghamdi',
+  'بدر الغامدي': 'Badr Al-Ghamdi',
+  'مكة': 'Makkah',
+  'الخبر': 'Al Khobar',
+  'تبوك': 'Tabuk',
+  'الخرج': 'Al Kharj',
+};
+
+function displayAlias(text: string, lang: string): string {
+  if (lang === 'EN') {
+    return NAME_ALIASES[text] || text;
+  }
+  const enToAr = Object.entries(NAME_ALIASES).find(([, en]) => en === text);
+  return enToAr ? enToAr[0] : text;
+}
+
 function leadStatusLabel(status: string, t: (key: string) => string): string {
   const m: Record<string, string> = {
     NEW: 'status.new',
@@ -82,7 +103,8 @@ export default function DashboardView({
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const displayTenant = cleanTenantName(tenant?.companyName);
+  const rawTenant = cleanTenantName(tenant?.companyName);
+  const displayTenant = lang === 'AR' ? 'أوركا العقارية' : (rawTenant || 'ORCA Real Estate');
 
   const navTo = (path: string) => router.push(path);
 
@@ -350,8 +372,8 @@ export default function DashboardView({
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
                     <div>
-                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{lead.firstName} {lead.lastName}</h5>
-                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {lead.city}</p>
+                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{displayAlias(`${lead.firstName} ${lead.lastName || ''}`, lang)}</h5>
+                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {displayAlias(lead.city, lang)}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
