@@ -506,23 +506,23 @@ export default function ProjectsView() {
 
   if (selectedProject) {
     return (
-      <section dir={direction} className="space-y-5 px-4 pb-8 pt-4 lg:px-6">
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
+      <section dir={direction} className="space-y-4 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6">
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
               <button
                 type="button"
                 onClick={handleBackToList}
-                className="nc-btn-ghost inline-flex min-h-[40px] items-center rounded-xl px-3 py-2 text-sm font-semibold"
+                className="nc-btn-ghost inline-flex min-h-[36px] items-center rounded-xl px-3 py-1.5 text-xs font-semibold"
               >
                 {labels.backToProjects}
               </button>
 
               <div>
-                <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">
+                <h1 className="text-xl font-bold text-[var(--nc-text-primary)]">
                   {selectedProject.name}
                 </h1>
-                <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+                <p className="mt-0.5 text-xs text-[var(--nc-text-secondary)]">
                   {selectedProject.location || labels.locationNotSet}
                 </p>
               </div>
@@ -535,17 +535,17 @@ export default function ProjectsView() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 lg:min-w-[360px]">
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
+            <div className="grid min-w-0 grid-cols-2 gap-2 lg:min-w-[300px]">
+              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5">
                 <p className="text-xs text-[var(--nc-text-secondary)]">{labels.totalUnits}</p>
-                <p className="mt-2 text-xl font-bold text-[var(--nc-text-primary)]">
+                <p className="mt-1 text-lg font-bold text-[var(--nc-text-primary)]">
                   {formatNumber(selectedProject.unitsTotal, isArabic)}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
+              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5">
                 <p className="text-xs text-[var(--nc-text-secondary)]">{labels.soldUnits}</p>
-                <p className="mt-2 text-xl font-bold text-[var(--nc-text-primary)]">
+                <p className="mt-1 text-lg font-bold text-[var(--nc-text-primary)]">
                   {formatNumber(selectedProject.unitsSold, isArabic)}
                 </p>
               </div>
@@ -577,26 +577,26 @@ export default function ProjectsView() {
         </div>
 
         {activeTab === 'overview' && (
-          <div className="grid gap-4 lg:grid-cols-4">
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 lg:col-span-2">
-              <p className="text-sm font-semibold text-[var(--nc-text-secondary)]">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-4">
+            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 lg:col-span-2">
+              <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">
                 {labels.projectSummary}
               </p>
-              <p className="mt-3 min-h-[80px] text-sm leading-7 text-[var(--nc-text-primary)]">
+              <p className="mt-2 min-h-[48px] text-sm leading-7 text-[var(--nc-text-primary)]">
                 {selectedProject.description || labels.noProjectDescription}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
-              <p className="text-sm text-[var(--nc-text-secondary)]">{labels.expectedUnits}</p>
-              <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
+              <p className="text-xs text-[var(--nc-text-secondary)]">{labels.expectedUnits}</p>
+              <p className="mt-1.5 text-xl font-bold text-[var(--nc-text-primary)]">
                 {formatNumber(selectedProject.unitsTotal, isArabic)}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
-              <p className="text-sm text-[var(--nc-text-secondary)]">{labels.progress}</p>
-              <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
+            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
+              <p className="text-xs text-[var(--nc-text-secondary)]">{labels.progress}</p>
+              <p className="mt-1.5 text-xl font-bold text-[var(--nc-text-primary)]">
                 {formatNumber(selectedProject.progressPercent, isArabic)}%
               </p>
             </div>
@@ -606,7 +606,7 @@ export default function ProjectsView() {
         {activeTab === 'phases' && <EmptyState message={labels.noPhases} />}
 
         {activeTab === 'units' && (
-          <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
+          <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
             {isLoadingUnits ? (
               <EmptyState message={labels.loadingUnits} />
             ) : units.length > 0 ? (
@@ -799,7 +799,7 @@ export default function ProjectsView() {
   }
 
   return (
-    <section dir={direction} className="space-y-5 px-4 pb-8 pt-4 lg:px-6">
+    <section dir={direction} className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">{labels.pageTitle}</h1>
@@ -816,7 +816,7 @@ export default function ProjectsView() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
           <p className="text-sm text-[var(--nc-text-secondary)]">{labels.totalProjects}</p>
           <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
@@ -842,7 +842,7 @@ export default function ProjectsView() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <input
             value={searchTerm}
