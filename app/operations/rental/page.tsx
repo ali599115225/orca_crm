@@ -1056,35 +1056,6 @@ export default function RentalPage() {
                       عقد جديد
                     </button>
               </div>
-
-              {filteredInvoices.length > INVOICES_PAGE_SIZE && (
-                <div className="flex flex-col gap-2 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-dim)] sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-bold">
-                    {invoiceRangeStart}-{invoiceRangeEnd} من {filteredInvoices.length}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setInvoicePage((current) => Math.max(0, current - 1))}
-                      disabled={normalizedInvoicePage === 0}
-                      className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
-                    >
-                      السابق
-                    </button>
-                    <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[var(--nc-foreground)]">
-                      صفحة {normalizedInvoicePage + 1} من {invoiceTotalPages}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setInvoicePage((current) => Math.min(invoiceTotalPages - 1, current + 1))}
-                      disabled={normalizedInvoicePage >= invoiceTotalPages - 1}
-                      className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
-                    >
-                      التالي
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
                 <div className="px-4 pb-3 pt-3 border-b border-white/5 flex gap-2">
@@ -1140,13 +1111,17 @@ export default function RentalPage() {
                                 setDetailActiveTab('summary');
                                 addTelemetryEvent('lease.opened', { contractId: lease.id, status: lease.status });
                               }}
-                              className={`${isSelected ? 'nc-row-selected' : ''} cursor-pointer`}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected
+                                  ? '!bg-[var(--nc-accent-soft)] border-r-[3px] border-r-[var(--nc-accent)]'
+                                  : 'hover:bg-[var(--nc-surface-soft)]'
+                              }`}
                             >
                               <td>
-                                <span className="font-bold text-white">{getLeaseDisplayNumber(lease)}</span>
+                                <span className={`font-bold ${isSelected ? 'text-[var(--nc-accent)]' : 'text-[var(--nc-text-primary)]'}`}>{getLeaseDisplayNumber(lease)}</span>
                               </td>
-                              <td className="font-mono text-[var(--nc-text-dim)]">{lease.unit}</td>
-                              <td className="text-[var(--nc-text-dim)]">{lease.tenant}</td>
+                              <td className={`font-mono ${isSelected ? 'text-[var(--nc-text-primary)]' : 'text-[var(--nc-text-dim)]'}`}>{lease.unit}</td>
+                              <td className={isSelected ? 'text-[var(--nc-text-primary)]' : 'text-[var(--nc-text-dim)]'}>{lease.tenant}</td>
                               <td>
                                 <StatusCell
                                   status={lease.status}
@@ -1198,7 +1173,7 @@ export default function RentalPage() {
 
               {/* Lease Detail Panel (Detail) */}
               <div className="h-fit flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="p-6">
+              <div className="p-5 max-h-[560px] overflow-y-auto">
                 {!selectedLease ? (
                   <div className="flex items-start gap-3 rounded-xl border border-dashed border-white/10 bg-[var(--nc-surface)]/50 px-4 py-5 text-right text-[var(--nc-text-dim)] text-xs">
                     <Landmark size={20} className="mt-0.5 shrink-0 text-slate-600" />
@@ -1303,17 +1278,17 @@ export default function RentalPage() {
                             </div>
                             <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">القيمة الإيجارية الدورية</span>
-                              <span className="font-bold text-white mt-1.5 block">{selectedLease.rent.toLocaleString()} {selectedLease.currency}</span>
+                              <span className="font-bold text-white mt-1.5 block">{selectedLease.rent.toLocaleString()} ر.س</span>
                             </div>
                             <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">تأمين محتجز</span>
-                              <span className="font-bold text-white mt-1.5 block">{selectedLease.deposit.toLocaleString()} {selectedLease.currency}</span>
+                              <span className="font-bold text-white mt-1.5 block">{selectedLease.deposit.toLocaleString()} ر.س</span>
                             </div>
                           </div>
 
                           <div className="text-[11px] text-[var(--nc-text-dim)] flex items-center gap-1 pt-2 font-mono">
                             <span>المرجع المالي للتسوية:</span>
-                            <span className="text-cyan-400 font-bold">{selectedLease.financialRef || 'N/A — لا توجد تسويات جارية للعقود النشطة'}</span>
+                            <span className="text-cyan-400 font-bold">{selectedLease.financialRef || 'لا توجد تسويات جارية لهذا العقد حالياً'}</span>
                           </div>
                         </div>
                       )}
@@ -1613,7 +1588,7 @@ export default function RentalPage() {
                                 className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--nc-surface)] border border-white/5 border border-[var(--nc-glass-border)] hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-[var(--nc-text-primary)] rounded text-[10px] font-bold transition-all"
                                 title="تحميل PDF"
                               >
-                                <Download size={11} /> PDF
+                                <Download size={11} /> تحميل
                               </button>
                             </div>
                           </td>
@@ -1693,7 +1668,7 @@ export default function RentalPage() {
                       <div key={idx} className="bg-[var(--nc-surface)] dark:bg-white/5 border border-white/5 p-4 rounded-xl border border-emerald-500/20 space-y-2 text-xs">
                         <div className="flex justify-between font-bold text-white">
                           <span>رقم المعاملة: {match.transactionId}</span>
-                          <span className="text-emerald-400">{match.amount.toLocaleString()} SAR</span>
+                          <span className="text-emerald-400">{match.amount.toLocaleString()} ر.س</span>
                         </div>
                         <p className="text-[var(--nc-text-dim)] text-[11px]">{match.note}</p>
                         <div className="flex items-center justify-between pt-2 border-t border-slate-900">
@@ -1721,7 +1696,7 @@ export default function RentalPage() {
                       <div key={idx} className="bg-[var(--nc-surface)] dark:bg-white/5 border border-white/5 p-4 rounded-xl border border-rose-500/20 space-y-2 text-xs">
                         <div className="flex justify-between font-bold text-white">
                           <span>رقم المعاملة: {ex.transactionId}</span>
-                          <span className="text-rose-400">{ex.amount.toLocaleString()} SAR</span>
+                          <span className="text-rose-400">{ex.amount.toLocaleString()} ر.س</span>
                         </div>
                         <p className="text-[var(--nc-text-dim)] text-[11px]">{ex.note}</p>
                         <div className="flex justify-end pt-2 border-t border-slate-900">
@@ -1776,9 +1751,9 @@ export default function RentalPage() {
                       <tr key={s.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="py-3.5 px-4 font-bold text-white font-mono text-xs">تسو-{s.id.slice(-6).toUpperCase()}</td>
                         <td className="py-3.5 px-4 font-mono text-cyan-400 text-xs">{s.contractId.slice(-8).toUpperCase()}</td>
-                        <td className="py-3.5 px-4 text-[var(--nc-text-dim)]">{s.gross.toLocaleString()} SAR</td>
-                        <td className="py-3.5 px-4 text-rose-400 font-mono">-{s.deductions.toLocaleString()} SAR</td>
-                        <td className="py-3.5 px-4 text-emerald-400 font-bold">{s.net.toLocaleString()} SAR</td>
+                        <td className="py-3.5 px-4 text-[var(--nc-text-dim)]">{s.gross.toLocaleString()} ر.س</td>
+                        <td className="py-3.5 px-4 text-rose-400 font-mono">-{s.deductions.toLocaleString()} ر.س</td>
+                        <td className="py-3.5 px-4 text-emerald-400 font-bold">{s.net.toLocaleString()} ر.س</td>
                         <td className="py-3.5 px-4 text-center">
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                             s.status === 'completed' 
@@ -1805,7 +1780,7 @@ export default function RentalPage() {
   if (!mounted) return <div className="p-10 text-[var(--nc-foreground)]">جاري التهيئة...</div>;
 
   return (
-    <div className="nc-page nc-stack" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="nc-page nc-stack overflow-x-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Header */}
       <PageHeader
@@ -1884,7 +1859,7 @@ export default function RentalPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">قيمة الإيجار الدوري (SAR):</label>
+                <label className="text-[var(--nc-text-dim)] block">قيمة الإيجار الدوري (ر.س):</label>
                 <input 
                   type="number"
                   required
@@ -1951,7 +1926,7 @@ export default function RentalPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">المبلغ قبل الضريبة (Subtotal SAR):</label>
+              <label className="text-[var(--nc-text-dim)] block">المبلغ قبل الضريبة (ر.س):</label>
               <input 
                 type="number"
                 name="inv-subtotal"
@@ -1969,9 +1944,9 @@ export default function RentalPage() {
                 onChange={(e) => setInvVatType(e.target.value)}
                 className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-[#8EB1D1]"
               >
-                <option value="STANDARD">ضريبة 15% (STANDARD)</option>
-                <option value="ZERO_RATED">صفرية (ZERO RATED)</option>
-                <option value="EXEMPT">معفاة (EXEMPT)</option>
+                <option value="STANDARD">ضريبة 15%</option>
+                <option value="ZERO_RATED">صفرية</option>
+                <option value="EXEMPT">معفاة</option>
               </select>
             </div>
 
