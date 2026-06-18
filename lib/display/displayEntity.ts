@@ -1,6 +1,6 @@
 import type { DisplayLocale, DisplayOptions, EntityType } from './types';
 import { PROJECT_ALIASES } from './dictionaries/projects';
-import { COMPANY_ALIASES } from './dictionaries/entities';
+import { COMPANY_ALIASES, COMPANY_AR_DISPLAY } from './dictionaries/entities';
 import { reportMissingAlias } from './missingAliasReporter';
 
 const STRESS_DEMO_RE = /\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi;
@@ -32,14 +32,8 @@ const FALLBACKS: Record<DisplayLocale, Record<string, string>> = {
   },
 };
 
-function getDict(entityType: EntityType): Record<string, string> | null {
-  if (entityType === 'project' || entityType === 'property' || entityType === 'community' || entityType === 'unit') {
-    return PROJECT_ALIASES;
-  }
-  if (entityType === 'company') {
-    return COMPANY_ALIASES;
-  }
-  return null;
+function isProjectLike(et: EntityType): boolean {
+  return et === 'project' || et === 'property' || et === 'community' || et === 'unit';
 }
 
 export function displayEntity(
@@ -48,14 +42,19 @@ export function displayEntity(
   locale: DisplayLocale,
   options?: DisplayOptions
 ): string {
-  const raw = (value || '').trim().replace(/\s+/g, ' ').replace(STRESS_DEMO_RE, '').replace(/\s{2,}/g, ' ').trim();
-  if (!raw) return FALLBACKS[locale][entityType] || FALLBACKS[locale].unknown;
+  const original = (value || '').trim().replace(/\s+/g, ' ');
+  const cleaned = original.replace(STRESS_DEMO_RE, '').replace(/\s{2,}/g, ' ').trim();
+  const displayValue = cleaned || original;
+  if (!displayValue) return FALLBACKS[locale][entityType] || FALLBACKS[locale].unknown;
 
   if (locale === 'en') {
-    const dict = getDict(entityType);
-    if (dict) {
-      const alias = dict[raw];
-      if (alias) return alias;
+    if (isProjectLike(entityType)) {
+      const enAlias = PROJECT_ALIASES[original] || PROJECT_ALIASES[cleaned];
+      if (enAlias) return enAlias;
+    }
+    if (entityType === 'company') {
+      const enAlias = COMPANY_ALIASES[original] || COMPANY_ALIASES[cleaned];
+      if (enAlias) return enAlias;
     }
     reportMissingAlias({
       route: options?.route || '',
@@ -70,10 +69,18 @@ export function displayEntity(
     return FALLBACKS.en[entityType] || FALLBACKS.en.unknown;
   }
 
-  const dict = getDict(entityType);
-  if (dict) {
-    const enToAr = Object.entries(dict).find(([, en]) => en === raw);
+  if (entityType === 'company') {
+    const enAlias = COMPANY_ALIASES[original] || COMPANY_ALIASES[cleaned];
+    if (enAlias && COMPANY_AR_DISPLAY[enAlias]) return COMPANY_AR_DISPLAY[enAlias];
+    const directAr = Object.entries(COMPANY_AR_DISPLAY).find(([, ar]) => ar === original || ar === cleaned);
+    if (directAr) return directAr[1];
+    return displayValue;
+  }
+
+  if (isProjectLike(entityType)) {
+    const enToAr = Object.entries(PROJECT_ALIASES).find(([, en]) => en === cleaned || en === original);
     if (enToAr) return enToAr[0];
   }
-  return raw;
+
+  return displayValue;
 }

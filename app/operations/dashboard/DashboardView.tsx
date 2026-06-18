@@ -62,6 +62,14 @@ export default function DashboardView({
   const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
   const displayTenant = displayEntity(tenant?.companyName, 'company', displayLocale, { route: '/operations/dashboard' });
 
+  const getInitials = (firstName: string, lastName: string | null): string => {
+    const fullName = `${firstName} ${lastName || ''}`.trim();
+    const displayName = displayPerson(fullName, displayLocale, { route: '/operations/dashboard' });
+    const parts = displayName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0);
+    return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
+  };
+
   const navTo = (path: string) => router.push(path);
 
   // ── Listen for search from Header ──
@@ -326,7 +334,7 @@ export default function DashboardView({
               return (
                 <FlatRowBlock key={lead.id} className="p-3 flex items-center justify-between" onClick={() => navTo('/operations/leads')}>
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
+                    <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{getInitials(lead.firstName, lead.lastName)}</div>
                     <div>
                       <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{displayPerson(`${lead.firstName} ${lead.lastName || ''}`, displayLocale, { route: '/operations/dashboard', entityId: lead.id })}</h5>
                       <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {displayGeo(lead.city, 'city', displayLocale, { route: '/operations/dashboard' })}</p>

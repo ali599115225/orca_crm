@@ -5,6 +5,12 @@ export const COMPANY_ALIASES: Record<string, string> = {
   'شركة دار الأعمار العقارية': 'Dar Al-Amar Real Estate',
   'ORCA Stress Demo Real Estate': 'ORCA Real Estate',
   'ORCA Demo Real Estate': 'ORCA Real Estate',
+  'ORCA Real Estate': 'ORCA Real Estate',
+};
+
+export const COMPANY_AR_DISPLAY: Record<string, string> = {
+  'ORCA Real Estate': 'أوركا العقارية',
+  'Dar Al-Amar Real Estate': 'شركة دار الأعمار العقارية',
 };
 
 export function getEntityDictionary(entityType: EntityType): Record<string, string> | null {
