@@ -66,6 +66,11 @@ const NAME_ALIASES: Record<string, string> = {
   'الخبر': 'Al Khobar',
   'تبوك': 'Tabuk',
   'الخرج': 'Al Kharj',
+  'مجمع التعاون': 'Al-Taawun Complex',
+  'شقق الصحافة': 'Al-Sahafa Apartments',
+  'مجمع المرجان': 'Al-Marjan Complex',
+  'واحة الياسمين': 'Al-Yasmin Oasis',
+  'برج حطين': 'Hittin Tower',
 };
 
 function displayAlias(text: string, lang: string): string {
@@ -378,7 +383,7 @@ export default function DashboardView({
                   </div>
                   <div className="text-right flex-shrink-0">
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{leadStatusLabel(lead.status, t)}</span>
-                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{lead.project.name}</p>}
+                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{displayAlias(lead.project.name, lang)}</p>}
                   </div>
                 </FlatRowBlock>
               );
