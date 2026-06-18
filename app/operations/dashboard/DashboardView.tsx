@@ -10,6 +10,8 @@ import ContractWizard from '@/components/features/ContractWizard';
 import { SmartCard } from '@/components/ui/SmartCard';
 import PageHeader from '@/components/ui/PageHeader';
 import type { PipelineStage, TodayTask } from '@/app/actions/dashboard';
+import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 interface DashboardViewProps {
   tenant?: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number; };
@@ -40,61 +42,10 @@ function FlatRowBlock({ children, className = '', onClick }: { children: React.R
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      aria-label={onClick ? undefined : undefined}
     >
       {children}
     </div>
   );
-}
-
-function cleanTenantName(raw?: string): string {
-  if (!raw) return 'ORCA';
-  return raw
-    .replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim() || 'ORCA';
-}
-
-const NAME_ALIASES: Record<string, string> = {
-  'سلطان الزهراني': 'Sultan Al-Zahrani',
-  'راشد الزهراني': 'Rashed Al-Zahrani',
-  'تركي المطيري': 'Turki Al-Mutairi',
-  'فيصل العتيبي': 'Faisal Al-Otaibi',
-  'فيصل الغامدي': 'Faisal Al-Ghamdi',
-  'بدر الغامدي': 'Badr Al-Ghamdi',
-  'مكة': 'Makkah',
-  'الخبر': 'Al Khobar',
-  'تبوك': 'Tabuk',
-  'الخرج': 'Al Kharj',
-  'مجمع التعاون': 'Al-Taawun Complex',
-  'شقق الصحافة': 'Al-Sahafa Apartments',
-  'مجمع المرجان': 'Al-Marjan Complex',
-  'واحة الياسمين': 'Al-Yasmin Oasis',
-  'برج حطين': 'Hittin Tower',
-};
-
-function displayAlias(text: string, lang: string): string {
-  if (lang === 'EN') {
-    return NAME_ALIASES[text] || text;
-  }
-  const enToAr = Object.entries(NAME_ALIASES).find(([, en]) => en === text);
-  return enToAr ? enToAr[0] : text;
-}
-
-function leadStatusLabel(status: string, t: (key: string) => string): string {
-  const m: Record<string, string> = {
-    NEW: 'status.new',
-    CONTACTED: 'status.contacted',
-    VISIT_SCHEDULED: 'status.scheduled',
-    VISITED: 'status.visited',
-    OFFER_MADE: 'status.offered',
-    RESERVED: 'status.reserved',
-    CONTRACT_SIGNED: 'status.signed',
-    WON: 'status.won',
-    LOST: 'status.lost',
-  };
-  const key = m[status];
-  return key ? t(key) : status;
 }
 
 export default function DashboardView({
@@ -108,8 +59,8 @@ export default function DashboardView({
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const rawTenant = cleanTenantName(tenant?.companyName);
-  const displayTenant = lang === 'AR' ? 'أوركا العقارية' : (rawTenant || 'ORCA Real Estate');
+  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
+  const displayTenant = displayEntity(tenant?.companyName, 'company', displayLocale, { route: '/operations/dashboard' });
 
   const navTo = (path: string) => router.push(path);
 
@@ -377,13 +328,13 @@ export default function DashboardView({
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{lead.firstName.charAt(0)}{lead.lastName?.charAt(0) || ''}</div>
                     <div>
-                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{displayAlias(`${lead.firstName} ${lead.lastName || ''}`, lang)}</h5>
-                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {displayAlias(lead.city, lang)}</p>
+                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{displayPerson(`${lead.firstName} ${lead.lastName || ''}`, displayLocale, { route: '/operations/dashboard', entityId: lead.id })}</h5>
+                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {displayGeo(lead.city, 'city', displayLocale, { route: '/operations/dashboard' })}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{leadStatusLabel(lead.status, t)}</span>
-                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{displayAlias(lead.project.name, lang)}</p>}
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{displayEnum(lead.status, 'leadStatus', displayLocale)}</span>
+                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{displayEntity(lead.project.name, 'project', displayLocale, { route: '/operations/dashboard' })}</p>}
                   </div>
                 </FlatRowBlock>
               );

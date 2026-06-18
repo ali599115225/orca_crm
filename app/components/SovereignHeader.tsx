@@ -5,6 +5,8 @@ import { Menu, Search, ChevronLeft, ChevronRight, Globe, Moon, Sun, LogOut, X } 
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
+import { displayPerson, displayEntity } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 interface SovereignHeaderProps {
   onMenuClick?: () => void;
@@ -18,21 +20,6 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].charAt(0);
   return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
-}
-
-const NAME_ALIASES: Record<string, string> = {
-  'سلطان الزهراني': 'Sultan Al-Zahrani',
-  'راشد الزهراني': 'Rashed Al-Zahrani',
-  'تركي المطيري': 'Turki Al-Mutairi',
-  'فيصل العتيبي': 'Faisal Al-Otaibi',
-  'فيصل الغامدي': 'Faisal Al-Ghamdi',
-  'بدر الغامدي': 'Badr Al-Ghamdi',
-};
-
-function displayAlias(text: string, lang: string): string {
-  if (lang === 'EN') return NAME_ALIASES[text] || text;
-  const enToAr = Object.entries(NAME_ALIASES).find(([, en]) => en === text);
-  return enToAr ? enToAr[0] : text;
 }
 
 function HeaderBreadcrumbs() {
@@ -88,15 +75,10 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = (() => {
-    const raw = user?.name || (lang === 'AR' ? 'المستخدم' : 'User');
-    return displayAlias(raw, lang);
-  })();
-  const displayCompany = (() => {
-    if (lang === 'AR') return 'أوركا العقارية';
-    const raw = companyName || 'ORCA';
-    return raw.replace(/\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi, '').replace(/\s{2,}/g, ' ').trim() || 'ORCA Real Estate';
-  })();
+  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
+
+  const displayName = displayPerson(user?.name || (lang === 'AR' ? 'المستخدم' : 'User'), displayLocale, { route: '/operations/dashboard' });
+  const displayCompany = displayEntity(companyName || 'ORCA', 'company', displayLocale, { route: '/operations/dashboard' });
   const initials = getInitials(displayName);
 
   // ── Dispatch search to custom event for Dashboard to listen ──

@@ -1,0 +1,15 @@
+export const PERSON_ALIASES: Record<string, string> = {
+  'سلطان الزهراني': 'Sultan Al-Zahrani',
+  'راشد الزهراني': 'Rashed Al-Zahrani',
+  'تركي المطيري': 'Turki Al-Mutairi',
+  'فيصل العتيبي': 'Faisal Al-Otaibi',
+  'فيصل الغامدي': 'Faisal Al-Ghamdi',
+  'بدر الغامدي': 'Badr Al-Ghamdi',
+  'محمد السالم': 'Mohammed Al-Salem',
+  'عبدالله القحطاني': 'Abdullah Al-Qahtani',
+  'علي المدير': 'Ali Al-Mudir',
+  'محمد الغامدي': 'Mohammed Al-Ghamdi',
+  'فهد الشهري': 'Fahad Al-Shehri',
+  'سارة المبيعات': 'Sarah Al-Mabi\'at',
+  'خالد مندوب': 'Khalid Mandoub',
+};
