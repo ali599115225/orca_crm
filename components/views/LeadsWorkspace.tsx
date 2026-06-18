@@ -3,8 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
-import { formatLeadStatus } from "@/lib/ui-status";
 import type { LeadItem } from "./pipeline/KanbanCard";
+import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
+import type { DisplayLocale } from "@/lib/display";
 
 const PAGE_SIZE = 5;
 
@@ -185,129 +186,6 @@ const detailTabs: Array<{ id: DetailTab; labelKey: keyof Copy }> = [
   { id: "pipeline", labelKey: "pipeline" },
 ];
 
-function formatSource(source?: string | null, isArabic = true): string {
-  const arMap: Record<string, string> = {
-    WHATSAPP: "واتساب",
-    WEBSITE: "موقع إلكتروني",
-    REFERRAL: "إحالة",
-    WhatsApp: "واتساب",
-    "Google Ads": "إعلانات Google",
-    "Meta Ads": "إعلانات Meta",
-    "Snapchat Ads": "إعلانات سناب",
-    "TikTok Ads": "إعلانات TikTok",
-    "إعلانات TikTok": "إعلانات TikTok",
-    "TikTok إعلانات": "إعلانات TikTok",
-    "إعلانات تيك توك": "إعلانات TikTok",
-    "إعلانات Meta": "إعلانات Meta",
-    "Meta إعلانات": "إعلانات Meta",
-    "إعلانات Google": "إعلانات Google",
-    "Google إعلانات": "إعلانات Google",
-    "إعلانات سناب": "إعلانات سناب",
-    "إعلانات Snapchat": "إعلانات سناب",
-    "Snapchat إعلانات": "إعلانات سناب",
-    "إحالة": "إحالة",
-    "واتساب": "واتساب",
-  };
-
-  const enMap: Record<string, string> = {
-    WHATSAPP: "WhatsApp",
-    WEBSITE: "Website",
-    REFERRAL: "Referral",
-    WhatsApp: "WhatsApp",
-    "Google Ads": "Google Ads",
-    "Meta Ads": "Meta Ads",
-    "Snapchat Ads": "Snapchat Ads",
-    "TikTok Ads": "TikTok Ads",
-    "إعلانات TikTok": "TikTok Ads",
-    "TikTok إعلانات": "TikTok Ads",
-    "إعلانات تيك توك": "TikTok Ads",
-    "إعلانات Meta": "Meta Ads",
-    "Meta إعلانات": "Meta Ads",
-    "إعلانات Google": "Google Ads",
-    "Google إعلانات": "Google Ads",
-    "إعلانات سناب": "Snapchat Ads",
-    "إعلانات Snapchat": "Snapchat Ads",
-    "Snapchat إعلانات": "Snapchat Ads",
-    "إحالة": "Referral",
-    "واتساب": "WhatsApp",
-  };
-
-  const normalized = String(source || "").trim();
-  const map = isArabic ? arMap : enMap;
-
-  return map[normalized] || normalized || (isArabic ? "غير محدد" : "Not specified");
-}
-
-function formatCity(city: unknown, isArabic: boolean, notSpecified: string): string {
-  const normalized = String(city || "").trim();
-
-  if (!normalized || normalized === "—" || normalized === "-") return notSpecified;
-
-  const arMap: Record<string, string> = {
-    Jeddah: "جدة",
-    Riyadh: "الرياض",
-    Dammam: "الدمام",
-    Makkah: "مكة",
-    Madinah: "المدينة",
-    Khobar: "الخبر",
-    Tabuk: "تبوك",
-    Taif: "الطائف",
-  };
-
-  const enMap: Record<string, string> = {
-    "جدة": "Jeddah",
-    "الرياض": "Riyadh",
-    "الدمام": "Dammam",
-    "مكة": "Makkah",
-    "المدينة": "Madinah",
-    "الخبر": "Khobar",
-    "تبوك": "Tabuk",
-    "الطائف": "Taif",
-  };
-
-  return (isArabic ? arMap[normalized] : enMap[normalized]) || normalized;
-}
-
-function formatStatus(status: unknown, isArabic: boolean, fallback: string): string {
-  const normalized = String(status || "").trim();
-
-  if (
-    !normalized ||
-    normalized === "—" ||
-    normalized === "-" ||
-    normalized.toLowerCase() === "undefined" ||
-    normalized.toLowerCase() === "null" ||
-    normalized === "غير محدد" ||
-    normalized === "غير معروف" ||
-    normalized.toLowerCase() === "not specified" ||
-    normalized.toLowerCase() === "unspecified"
-  ) {
-    return fallback;
-  }
-
-  const map: Record<string, { ar: string; en: string }> = {
-    New: { ar: "جديد", en: "New" },
-    Contacted: { ar: "تم التواصل", en: "Contacted" },
-    Qualified: { ar: "مؤهل", en: "Qualified" },
-    "Tour Scheduled": { ar: "مجدول للزيارة", en: "Tour Scheduled" },
-    "Offer Sent": { ar: "أرسل العرض", en: "Offer Sent" },
-    Negotiation: { ar: "تفاوض", en: "Negotiation" },
-    Closed: { ar: "مغلق", en: "Closed" },
-    "جديد": { ar: "جديد", en: "New" },
-    "تم التواصل": { ar: "تم التواصل", en: "Contacted" },
-    "مؤهل": { ar: "مؤهل", en: "Qualified" },
-    "مجدول للزيارة": { ar: "مجدول للزيارة", en: "Tour Scheduled" },
-    "أرسل العرض": { ar: "أرسل العرض", en: "Offer Sent" },
-    "تفاوض": { ar: "تفاوض", en: "Negotiation" },
-    "مغلق": { ar: "مغلق", en: "Closed" },
-  };
-
-  const mapped = map[normalized];
-  if (mapped) return isArabic ? mapped.ar : mapped.en;
-
-  return isArabic ? formatLeadStatus(normalized) : normalized;
-}
-
 function isTechnicalId(value?: string | null): boolean {
   if (!value) return false;
 
@@ -316,17 +194,6 @@ function isTechnicalId(value?: string | null): boolean {
   return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
     normalized,
   );
-}
-
-function formatOwner(value: unknown, notSpecified: string): string {
-  if (!value) return notSpecified;
-
-  const normalized = String(value).trim();
-
-  if (!normalized || normalized === "—" || normalized === "-") return notSpecified;
-  if (isTechnicalId(normalized)) return notSpecified;
-
-  return normalized;
 }
 
 function formatNumber(value: unknown, isArabic: boolean): string {
@@ -341,29 +208,6 @@ function formatPipelineCount(value: unknown): string {
   const numberValue = Number(value || 0);
 
   return Number.isFinite(numberValue) ? numberValue.toLocaleString("en-US") : "0";
-}
-
-function getLeadName(lead: LeadItem, isArabic = true): string {
-  const original = `${lead.firstName || ""} ${lead.lastName || ""}`.trim();
-
-  if (!original) return "—";
-  if (isArabic) return original;
-
-  const demoNameMap: Record<string, string> = {
-    "بدر الغامدي": "Badr Al-Ghamdi",
-    "عبدالله العتيبي": "Abdullah Al-Otaibi",
-    "تركي الغامدي": "Turki Al-Ghamdi",
-    "سارة الشمري": "Sarah Al-Shammari",
-    "خالد السلمي": "Khalid Al-Sulami",
-    "راشد الزهراني": "Rashed Al-Zahrani",
-    "تركي المطيري": "Turki Al-Mutairi",
-    "فيصل العتيبي": "Faisal Al-Otaibi",
-    "فيصل الغامدي": "Faisal Al-Ghamdi",
-    "عبدالله الحربي": "Abdullah Al-Harbi",
-    "هند السلمي": "Hind Al-Sulami",
-  };
-
-  return demoNameMap[original] || original;
 }
 
 function getStageLabel(stageId: string, isArabic: boolean): string {
@@ -394,12 +238,14 @@ function LeadStatusBadge({
   status,
   isArabic,
   fallback,
+  displayLocale,
 }: {
   status?: string | null;
   isArabic: boolean;
   fallback: string;
+  displayLocale: DisplayLocale;
 }) {
-  const label = formatStatus(status, isArabic, fallback);
+  const label = displayEnum(status, 'leadStatus', displayLocale) || (isArabic ? fallback : 'Unspecified');
 
   return (
     <span className="inline-flex min-h-[28px] min-w-[96px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
@@ -458,6 +304,7 @@ function PaginationBar({
 export default function LeadsWorkspace() {
   const { lang } = useApp();
   const isArabic = lang === "AR";
+  const displayLocale: DisplayLocale = isArabic ? 'ar' : 'en';
   const labels = isArabic ? copy.ar : copy.en;
   const direction = isArabic ? "rtl" : "ltr";
   const textAlign = isArabic ? "text-right" : "text-left";
@@ -469,6 +316,28 @@ export default function LeadsWorkspace() {
   const [detailData, setDetailData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [leadPage, setLeadPage] = useState(1);
+
+  const leadDisplayName = (lead: LeadItem): string =>
+    displayPerson(`${lead.firstName || ''} ${lead.lastName || ''}`, displayLocale, { route: '/operations/leads', entityId: lead.id });
+
+  const leadDisplayCity = (lead: LeadItem): string =>
+    displayGeo(lead.city, 'city', displayLocale, { route: '/operations/leads' });
+
+  const leadDisplaySource = (lead: LeadItem): string =>
+    displayEnum(lead.source, 'leadSource', displayLocale);
+
+  const leadDisplayStatus = (status?: string | null): string =>
+    displayEnum(status, 'leadStatus', displayLocale) || labels.statusFallback;
+
+  const leadDisplayOwner = (value?: string | null): string =>
+    displayPerson(value, displayLocale, { route: '/operations/leads' });
+
+  const leadInitials = (lead: LeadItem): string => {
+    const dn = leadDisplayName(lead);
+    const parts = dn.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0);
+    return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
+  };
 
   const loadLeads = async () => {
     try {
@@ -519,11 +388,11 @@ export default function LeadsWorkspace() {
 
     return leads.filter((lead) => {
       return (
-        getLeadName(lead, isArabic).toLowerCase().includes(term) ||
-        formatCity(lead.city, isArabic, labels.notSpecified).toLowerCase().includes(term) ||
-        formatSource(lead.source, isArabic).toLowerCase().includes(term) ||
-        formatOwner(lead.assignedTo, labels.notSpecified).toLowerCase().includes(term) ||
-        formatStatus(lead.stage, isArabic, labels.statusFallback).toLowerCase().includes(term)
+        leadDisplayName(lead).toLowerCase().includes(term) ||
+        leadDisplayCity(lead).toLowerCase().includes(term) ||
+        leadDisplaySource(lead).toLowerCase().includes(term) ||
+        leadDisplayOwner(lead.assignedTo).toLowerCase().includes(term) ||
+        leadDisplayStatus(lead.stage).toLowerCase().includes(term)
       );
     });
   }, [leads, searchTerm, isArabic, labels.notSpecified, labels.statusFallback]);
@@ -582,19 +451,19 @@ export default function LeadsWorkspace() {
                 <div className="border-b border-[var(--nc-border)] pb-3">
                   <div className="flex items-start gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-xl font-bold text-[var(--nc-text-primary)]">
-                      {selectedLead.firstName?.[0] || "؟"}
+                      {leadInitials(selectedLead)}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate text-lg font-bold text-[var(--nc-text-primary)]">
-                        {getLeadName(selectedLead, isArabic)}
+                        {leadDisplayName(selectedLead)}
                       </h2>
                       <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                        {formatCity(selectedLead.city, isArabic, labels.notSpecified)} · {formatSource(selectedLead.source, isArabic)}
+                        {leadDisplayCity(selectedLead)} · {leadDisplaySource(selectedLead)}
                       </p>
                     </div>
 
-                    <LeadStatusBadge status={selectedLead.stage} isArabic={isArabic} fallback={labels.statusFallback} />
+                    <LeadStatusBadge status={selectedLead.stage} isArabic={isArabic} fallback={labels.statusFallback} displayLocale={displayLocale} />
                   </div>
 
                   <div className="mt-3 grid grid-cols-3 gap-2">
@@ -603,8 +472,8 @@ export default function LeadsWorkspace() {
                         label: labels.score,
                         value: selectedLead.leadScore ? `${selectedLead.leadScore}/100` : labels.notSpecified,
                       },
-                      { label: labels.city, value: formatCity(selectedLead.city, isArabic, labels.notSpecified) },
-                      { label: labels.source, value: formatSource(selectedLead.source, isArabic) },
+                      { label: labels.city, value: leadDisplayCity(selectedLead) },
+                      { label: labels.source, value: leadDisplaySource(selectedLead) },
                     ].map((stat) => (
                       <div
                         key={stat.label}
@@ -645,14 +514,11 @@ export default function LeadsWorkspace() {
                     {[
                       {
                         title: labels.leadInfo,
-                        body: `${getLeadName(selectedLead, isArabic)} · ${formatCity(selectedLead.city, isArabic, labels.notSpecified)} · ${formatSource(
-                          selectedLead.source,
-                          isArabic,
-                        )}`,
+                        body: `${leadDisplayName(selectedLead)} · ${leadDisplayCity(selectedLead)} · ${leadDisplaySource(selectedLead)}`,
                       },
                       {
                         title: labels.currentStatus,
-                        body: `${labels.stage}: ${formatStatus(selectedLead.stage, isArabic, labels.statusFallback)} · ${labels.score}: ${
+                        body: `${labels.stage}: ${leadDisplayStatus(selectedLead.stage)} · ${labels.score}: ${
                           selectedLead.leadScore || 0
                         }/100`,
                       },
@@ -667,7 +533,7 @@ export default function LeadsWorkspace() {
                       },
                       {
                         title: labels.assignedTo,
-                        body: formatOwner(selectedLead.assignedTo, labels.notSpecified),
+                        body: leadDisplayOwner(selectedLead.assignedTo),
                       },
                     ].map((row, index, rows) => (
                       <div
@@ -781,21 +647,21 @@ export default function LeadsWorkspace() {
                           }
                         >
                           <td className="truncate px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                            {getLeadName(lead, isArabic)}
+                            {leadDisplayName(lead)}
                           </td>
 
                           <td className="px-3 py-3 text-center">
                             <span className="inline-flex justify-center">
-                              <LeadStatusBadge status={lead.stage} isArabic={isArabic} fallback={labels.statusFallback} />
+                              <LeadStatusBadge status={lead.stage} isArabic={isArabic} fallback={labels.statusFallback} displayLocale={displayLocale} />
                             </span>
                           </td>
 
                           <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
-                            {formatSource(lead.source, isArabic)}
+                            {leadDisplaySource(lead)}
                           </td>
 
                           <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
-                            {formatOwner(lead.assignedTo, labels.notSpecified)}
+                            {leadDisplayOwner(lead.assignedTo)}
                           </td>
 
                           <td className="whitespace-nowrap px-3 py-3 text-center font-mono text-xs text-[var(--nc-text-secondary)]">
