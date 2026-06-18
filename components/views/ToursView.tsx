@@ -7,8 +7,6 @@ import { Calendar, Eye, Loader2, Search, X } from 'lucide-react';
 import { toast } from '@/app/context/ToastContext';
 import { getToursAction, scheduleTourActionDirect } from '@/app/actions/tours';
 import { DateField } from '@/components/ui/DateField';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SmartCard } from '@/components/ui/SmartCard';
 import StatusBadge, { type BadgeVariant } from '@/components/ui/StatusBadge';
 
 type TourListItem = {
@@ -46,7 +44,8 @@ type ScheduleForm = {
   time: string;
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
+const TABLE_HEADERS = ['الموعد', 'العميل', 'الموقع', 'الحالة', 'المسؤول', 'الإجراء'];
 
 const INITIAL_FILTERS: Filters = {
   search: '',
@@ -260,61 +259,56 @@ export default function ToursView() {
   ];
 
   return (
-    <div className="space-y-4 px-3 pb-6 text-[var(--nc-text-primary)] sm:px-4 lg:px-5" dir="rtl">
-      <section className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 text-right">
-            <p className="mb-1 text-[11px] font-black uppercase tracking-wide text-[var(--nc-accent)]">العمليات / الجولات العقارية</p>
-            <h1 className="text-2xl font-black leading-tight text-[var(--nc-text-primary)]">الجولات العقارية</h1>
-            <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[var(--nc-text-secondary)]">
-              متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsScheduleOpen(true)}
-            className="nc-btn nc-btn-primary nc-btn-sm w-full justify-center whitespace-nowrap shadow-sm lg:w-auto"
-          >
-            <Calendar size={14} />
-            جدولة جولة
-          </button>
+    <section dir="rtl" className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">الجولات العقارية</h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+            متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة.
+          </p>
         </div>
-      </section>
+        <button
+          type="button"
+          onClick={() => setIsScheduleOpen(true)}
+          className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
+        >
+          <Calendar size={16} />
+          جدولة جولة
+        </button>
+      </div>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((item) => (
-          <SmartCard key={item.label} className="min-h-[90px] px-4 py-4 flex flex-col justify-between">
-            <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">{item.label}</span>
-            <strong className={`text-2xl font-black leading-none ${item.tone}`}>{item.value}</strong>
-          </SmartCard>
+          <div
+            key={item.label}
+            className="flex min-h-[96px] flex-col justify-between rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm"
+          >
+            <span className="text-sm text-[var(--nc-text-secondary)]">{item.label}</span>
+            <strong className={`text-2xl font-bold ${item.tone}`}>{item.value}</strong>
+            <span className="text-xs text-[var(--nc-text-secondary)]">ضمن نطاق الجولات الحالي</span>
+          </div>
         ))}
       </section>
 
-      <SmartCard className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] pb-3">
-          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">فلاتر الجولات</h2>
-          <span className="text-[11px] font-bold text-[var(--nc-text-secondary)]">{tours.length} جولة</span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6 items-end">
-          <div className="xl:col-span-2">
-            <label className="block mb-1.5 text-[11px] font-black text-[var(--nc-text-secondary)]">بحث</label>
-            <div className="relative">
+      <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-3 shadow-sm">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+            <div className="relative min-w-0 md:w-[280px]">
+              <label className="sr-only">بحث</label>
               <input
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
                 placeholder="بحث بالموقع أو العميل..."
-                className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 pr-9 text-xs font-medium text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+                className="min-h-[40px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 pr-9 text-sm text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)] focus:border-[var(--nc-accent-border)]"
               />
               <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nc-text-secondary)]" />
             </div>
-          </div>
 
-          <div>
-            <label className="block mb-1.5 text-[11px] font-black text-[var(--nc-text-secondary)]">الحالة</label>
             <select
               value={filters.status}
               onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
-              className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 text-xs font-bold text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+              className="min-h-[40px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)] md:w-[160px]"
+              aria-label="الحالة"
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value || 'all'} value={option.value}>
@@ -322,119 +316,128 @@ export default function ToursView() {
                 </option>
               ))}
             </select>
+
+            <DateField
+              value={filters.fromDate}
+              onChange={(value) => setFilters((current) => ({ ...current, fromDate: value }))}
+              placeholder="من تاريخ"
+              className="md:w-[150px] [&_input]:min-h-[40px] [&_input]:bg-[var(--nc-surface-solid)]"
+            />
+
+            <DateField
+              value={filters.toDate}
+              onChange={(value) => setFilters((current) => ({ ...current, toDate: value }))}
+              placeholder="إلى تاريخ"
+              className="md:w-[150px] [&_input]:min-h-[40px] [&_input]:bg-[var(--nc-surface-solid)]"
+            />
           </div>
 
-          <DateField
-            label="من تاريخ"
-            value={filters.fromDate}
-            onChange={(value) => setFilters((current) => ({ ...current, fromDate: value }))}
-            placeholder="يوم/شهر/سنة"
-          />
-
-          <DateField
-            label="إلى تاريخ"
-            value={filters.toDate}
-            onChange={(value) => setFilters((current) => ({ ...current, toDate: value }))}
-            placeholder="يوم/شهر/سنة"
-          />
-
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={applyFilters} className="nc-btn nc-btn-primary nc-btn-sm justify-center">
+          <div className="flex items-center gap-2">
+            <span className="hidden min-w-[56px] text-xs text-[var(--nc-text-secondary)] sm:inline">
+              {tours.length} جولة
+            </span>
+            <button type="button" onClick={applyFilters} className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-semibold">
               تطبيق
             </button>
-            <button type="button" onClick={clearFilters} className="nc-btn nc-btn-ghost nc-btn-sm justify-center">
+            <button type="button" onClick={clearFilters} className="nc-btn-ghost min-h-[40px] rounded-xl px-3 py-2 text-xs font-semibold">
               مسح
             </button>
           </div>
         </div>
-      </SmartCard>
+      </div>
 
-      <SmartCard className="overflow-hidden p-0 border-[var(--nc-border)]">
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+        <div className="mb-4 flex min-h-[48px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-black text-[var(--nc-text-primary)]">قائمة الجولات</h2>
-            <p className="mt-0.5 text-[11px] font-bold text-[var(--nc-text-secondary)]">{tours.length} جولة</p>
+            <h2 className="text-base font-bold text-[var(--nc-text-primary)]">قائمة الجولات</h2>
+            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{tours.length} جولة</p>
           </div>
-          <span className="rounded-full border border-[var(--nc-border)] px-2.5 py-1 text-[11px] font-black text-[var(--nc-text-secondary)]">
-            صفحة {Math.min(page, totalPages)} من {totalPages}
+          <span className="text-xs font-semibold text-[var(--nc-text-secondary)]">
+            صفحة {page.toLocaleString('ar-SA')} من {totalPages.toLocaleString('ar-SA')}
           </span>
         </div>
 
-        {loading ? (
-          <div className="flex min-h-[280px] items-center justify-center gap-2 text-sm font-bold text-[var(--nc-text-secondary)]">
-            <Loader2 size={18} className="animate-spin" />
-            جاري تحميل الجولات...
-          </div>
-        ) : error ? (
-          <div className="m-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 p-4 text-center">
-            <p className="text-sm font-bold text-rose-300">{error}</p>
-            <button type="button" onClick={loadTours} className="nc-btn nc-btn-ghost nc-btn-sm mt-3">
-              إعادة المحاولة
-            </button>
-          </div>
-        ) : tours.length === 0 ? (
-          <EmptyState
-            icon="ph ph-calendar"
-            title="لا توجد جولات عقارية حتى الآن"
-            description="ستظهر هنا الجولات المجدولة والمتابعة عند توفرها."
-          />
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] table-fixed border-collapse">
-                <colgroup>
-                  <col className="w-[190px]" />
-                  <col className="w-[180px]" />
-                  <col className="w-[190px]" />
-                  <col className="w-[125px]" />
-                  <col className="w-[170px]" />
-                  <col className="w-[125px]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)]">
-                    {['الموعد', 'العميل', 'الموقع', 'الحالة', 'المسؤول', 'الإجراء'].map((header) => (
-                      <th key={header} className="px-4 py-3 text-right text-[11px] font-black text-[var(--nc-text-primary)]">
-                        {header}
-                      </th>
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full min-w-[920px] table-fixed text-sm">
+            <colgroup>
+              <col className="w-[195px]" />
+              <col className="w-[180px]" />
+              <col className="w-[210px]" />
+              <col className="w-[130px]" />
+              <col className="w-[170px]" />
+              <col className="w-[120px]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
+                {TABLE_HEADERS.map((header) => (
+                  <th key={header} className="truncate px-3 py-3 text-right font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: PAGE_SIZE }, (_, index) => (
+                  <tr key={`skel-${index}`} className="h-[47px] border-b border-[var(--nc-border)]">
+                    {TABLE_HEADERS.map((header, ci) => (
+                      <td key={header} className="px-3 py-3">
+                        <div className={`h-3 animate-pulse rounded-full bg-[var(--nc-surface-soft)] ${ci === 0 ? 'w-32' : ci === TABLE_HEADERS.length - 1 ? 'w-16' : 'w-24'}`} />
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
+                ))
+              ) : error ? (
+                <tr className="h-[235px] border-b border-[var(--nc-border)]">
+                  <td colSpan={TABLE_HEADERS.length} className="px-3 py-4">
+                    <div className="mx-auto max-w-md rounded-2xl border border-rose-500/25 bg-rose-500/10 p-4 text-center">
+                      <p className="text-sm font-bold text-rose-300">{error}</p>
+                      <button type="button" onClick={loadTours} className="nc-btn nc-btn-ghost nc-btn-sm mt-3">
+                        إعادة المحاولة
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : tours.length === 0 ? (
+                <tr className="h-[235px] border-b border-[var(--nc-border)]">
+                  <td colSpan={TABLE_HEADERS.length} className="px-3 py-4 text-center">
+                    <p className="text-sm font-bold text-[var(--nc-text-primary)]">لا توجد جولات عقارية حتى الآن</p>
+                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">ستظهر هنا الجولات المجدولة والمتابعة عند توفرها.</p>
+                  </td>
+                </tr>
+              ) : (
+                <>
                   {pagedTours.map((tour) => {
                     const selected = tour.id === selectedTourId;
                     return (
                       <tr
                         key={tour.id}
                         onClick={() => setSelectedTourId(tour.id)}
-                        className={`cursor-pointer border-b border-[var(--nc-glass-border)] transition-colors ${
-                          selected
-                            ? 'border-r-[3px] border-r-[var(--nc-accent)] bg-[var(--nc-accent-soft)]/40'
-                            : 'border-r-[3px] border-r-transparent hover:bg-[var(--nc-surface-soft)]'
+                        className={`h-[47px] cursor-pointer border-b border-[var(--nc-border)] transition-colors ${
+                          selected ? 'bg-[var(--nc-surface-soft)]' : 'hover:bg-[var(--nc-surface-soft)]'
                         }`}
                       >
-                        <td className="px-4 py-3 text-right text-xs font-black text-[var(--nc-text-primary)] whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
                           {formatDateTime(tour.startAt)}
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
-                          {safeText(tour.leadName)}
+                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                          <span className="block min-w-0 truncate">{safeText(tour.leadName)}</span>
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
-                          {safeText(tour.location)}
+                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                          <span className="block min-w-0 truncate">{safeText(tour.location)}</span>
                         </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-3">
                           <StatusBadge variant={statusToBadge(tour.status)} />
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-bold text-[var(--nc-text-primary)] truncate">
-                          {safeText(tour.assignedToName, 'غير معين')}
+                        <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                          <span className="block min-w-0 truncate">{safeText(tour.assignedToName, 'غير معين')}</span>
                         </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-3">
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
                               setSelectedTourId(tour.id);
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-1.5 text-[12px] font-black text-[var(--nc-text-primary)] transition-colors hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-surface-strong)]"
+                            className="nc-btn-primary inline-flex min-h-[34px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
                           >
                             <Eye size={13} />
                             تفاصيل
@@ -443,82 +446,99 @@ export default function ToursView() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                  {Array.from({ length: Math.max(0, PAGE_SIZE - pagedTours.length) }, (_, index) => (
+                    <tr key={`reserved-${index}`} className="h-[47px] border-b border-transparent">
+                      <td colSpan={TABLE_HEADERS.length} />
+                    </tr>
+                  ))}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-            {totalPages > 1 && (
-              <div className="flex flex-col gap-3 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-                <span className="font-bold">
-                  عرض {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, tours.length)} من {tours.length}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    className="nc-btn nc-btn-ghost nc-btn-sm disabled:opacity-40"
-                  >
-                    السابق
-                  </button>
-                  <span className="rounded-lg border border-[var(--nc-border)] px-3 py-1.5 font-black text-[var(--nc-text-primary)]">
-                    {page} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                    className="nc-btn nc-btn-ghost nc-btn-sm disabled:opacity-40"
-                  >
-                    التالي
-                  </button>
-                </div>
+        <div className="mt-4">
+          <div className="flex min-h-[52px] flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+            <span className="font-bold">
+              {tours.length > 0
+                ? `عرض ${((page - 1) * PAGE_SIZE + 1).toLocaleString('ar-SA')}-${Math.min(page * PAGE_SIZE, tours.length).toLocaleString('ar-SA')} من ${tours.length.toLocaleString('ar-SA')}`
+                : 'عرض 0 من 0'}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="nc-btn nc-btn-ghost nc-btn-sm disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                السابق
+              </button>
+              <span className="rounded-lg border border-[var(--nc-border)] px-3 py-1.5 font-black text-[var(--nc-text-primary)]">
+                صفحة {page.toLocaleString('ar-SA')} من {totalPages.toLocaleString('ar-SA')}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                className="nc-btn nc-btn-ghost nc-btn-sm disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                التالي
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
+        {selectedTour ? (
+          <div className="space-y-0">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--nc-border)] pb-4">
+              <div>
+                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                  {safeText(selectedTour.leadName)} · {safeText(selectedTour.location)}
+                </p>
               </div>
-            )}
-          </>
-        )}
-      </SmartCard>
+              <button
+                type="button"
+                onClick={() => setSelectedTourId(null)}
+                className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                aria-label="إغلاق التفاصيل"
+              >
+                <X size={15} />
+              </button>
+            </div>
 
-      {selectedTour && (
-        <SmartCard className="p-4">
-          <div className="mb-4 flex items-center justify-between gap-3 border-b border-[var(--nc-glass-border)] pb-3">
+            <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
+              <DetailRow label="الموعد" value={formatDateTime(selectedTour.startAt)} />
+              <DetailRow label="الانتهاء المتوقع" value={formatDateTime(selectedTour.endAt)} />
+              <DetailRow label="عدد الحضور" value={String(selectedTour.attendees ?? 1)} />
+              <DetailRow label="العميل" value={safeText(selectedTour.leadName)} />
+              <DetailRow label="المسؤول" value={safeText(selectedTour.assignedToName, 'غير معين')} />
+              <DetailRow label="تاريخ الإنشاء" value={formatDateOnly(selectedTour.createdAt)} />
+              <div className="grid min-h-[48px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-b border-[var(--nc-border)] py-2">
+                <span className="text-xs font-bold text-[var(--nc-text-primary)]">الحالة</span>
+                <span><StatusBadge variant={statusToBadge(selectedTour.status)} /></span>
+              </div>
+              <DetailRow label="الإجراء التالي" value={nextActionForStatus(selectedTour.status)} last />
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
+              <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">الملاحظات</span>
+              <p className="text-sm leading-7 text-[var(--nc-text-secondary)]">
+                {safeText(selectedTour.notes, 'لا توجد ملاحظات مسجلة لهذه الجولة.')}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 text-center">
             <div>
-              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
-              <p className="mt-0.5 text-[11px] font-medium text-[var(--nc-text-secondary)]">مراجعة بيانات الجولة والإجراء التالي.</p>
+              <h2 className="text-sm font-bold text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
+              <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">اختر جولة من الجدول لعرض التفاصيل هنا.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectedTourId(null)}
-              className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
-              aria-label="إغلاق التفاصيل"
-            >
-              <X size={15} />
-            </button>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <DetailItem label="الموعد" value={formatDateTime(selectedTour.startAt)} strong />
-            <DetailItem label="الانتهاء المتوقع" value={formatDateTime(selectedTour.endAt)} />
-            <DetailItem label="عدد الحضور" value={String(selectedTour.attendees ?? 1)} />
-            <DetailItem label="العميل" value={safeText(selectedTour.leadName)} strong />
-            <DetailItem label="الموقع" value={safeText(selectedTour.location)} strong />
-            <DetailItem label="المسؤول" value={safeText(selectedTour.assignedToName, 'غير معين')} />
-            <div className="space-y-1">
-              <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">الحالة</span>
-              <div><StatusBadge variant={statusToBadge(selectedTour.status)} /></div>
-            </div>
-            <DetailItem label="تاريخ الإنشاء" value={formatDateOnly(selectedTour.createdAt)} />
-            <DetailItem label="الإجراء التالي" value={nextActionForStatus(selectedTour.status)} strong />
-          </div>
-
-          <div className="mt-4 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-3">
-            <span className="mb-2 block text-[11px] font-black text-[var(--nc-text-secondary)]">الملاحظات</span>
-            <p className="text-xs font-semibold leading-relaxed text-[var(--nc-text-secondary)]">
-              {safeText(selectedTour.notes, 'لا توجد ملاحظات مسجلة لهذه الجولة.')}
-            </p>
-          </div>
-        </SmartCard>
-      )}
+        )}
+      </div>
 
       {isScheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
@@ -594,17 +614,15 @@ export default function ToursView() {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
-function DetailItem({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+function DetailRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
   return (
-    <div className="space-y-1">
-      <span className="text-[11px] font-black text-[var(--nc-text-secondary)]">{label}</span>
-      <p className={`text-xs leading-relaxed ${strong ? 'font-black text-[var(--nc-text-primary)]' : 'font-bold text-[var(--nc-text-primary)]'}`}>
-        {value}
-      </p>
+    <div className={`grid min-h-[48px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 py-2 ${last ? '' : 'border-b border-[var(--nc-border)]'}`}>
+      <span className="text-xs font-bold text-[var(--nc-text-primary)]">{label}</span>
+      <span className="truncate text-xs leading-6 text-[var(--nc-text-secondary)]">{value}</span>
     </div>
   );
 }
