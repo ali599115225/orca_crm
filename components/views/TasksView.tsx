@@ -7,6 +7,7 @@ import { getTasksAction, getLeadsListAction, toggleTaskStatusAction, createTaskA
 import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals } from '@/lib/formatters';
 import { SmartCard } from '@/components/ui/SmartCard';
+import { displayPerson } from '@/lib/display';
 
 const TRANSLATIONS = {
   AR: {
@@ -82,6 +83,32 @@ export default function TasksView() {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === 'AR';
   const dir = isArabic ? 'rtl' : 'ltr';
+  const displayLocale = isArabic ? 'ar' : 'en';
+
+  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
+  const looksTechnical = (value: string) => {
+    const v = value.trim();
+    return (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+      /^[0-9a-f]{8,24}$/i.test(v) ||
+      /(?:^|\b)(?:task|lead|user|owner|id)_[a-z0-9_-]+(?:\b|$)/i.test(v) ||
+      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
+    );
+  };
+  const safeDisplayText = (value: unknown, fallback = isArabic ? 'غير محدد' : 'Not specified') => {
+    const text = String(value ?? '').trim();
+    if (!text || looksTechnical(text)) return fallback;
+    if (!isArabic && containsArabic(text)) return fallback;
+    if (isArabic && /^[A-Z0-9_ -]{2,}$/.test(text) && !/[a-z]/.test(text)) return fallback;
+    return text;
+  };
+  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
+  const formatPercent = (value: string | number) => `${formatNumber(value)}${isArabic ? '٪' : '%'}`;
+  const displayLeadName = (lead: any) => {
+    const rawName = `${lead?.firstName || ''} ${lead?.lastName || ''}`.trim();
+    const displayed = displayPerson(rawName, displayLocale, { route: '/operations/tasks' });
+    return safeDisplayText(displayed, isArabic ? 'عميل غير محدد' : 'Not specified');
+  };
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
@@ -131,7 +158,7 @@ export default function TasksView() {
       setTasks(updatedTasks);
       setTimeout(() => setSuccessMessage(null), 3000);
     } else {
-      setErrorMessage(result.error || 'حدث خطأ غير متوقع.');
+      setErrorMessage(safeDisplayText(result.error, isArabic ? 'حدث خطأ غير متوقع.' : 'An unexpected error occurred.'));
     }
   };
 
@@ -141,7 +168,7 @@ export default function TasksView() {
       return new Date(dateStr).toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', {
         day: '2-digit', month: 'short', year: 'numeric'
       });
-    } catch { return dateStr || ''; }
+    } catch { return safeDisplayText(dateStr, ''); }
   };
 
   const pendingTasks = tasks.filter(t => t.status === 'PENDING').length;
@@ -151,7 +178,7 @@ export default function TasksView() {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch =
       (task.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.lead?.firstName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (`${task.lead?.firstName || ''} ${task.lead?.lastName || ''}`.trim()).toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
       activeFilter === 'ALL' ||
       (activeFilter === 'PENDING' && task.status === 'PENDING') ||
@@ -183,7 +210,7 @@ export default function TasksView() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-[var(--nc-foreground-muted)] uppercase tracking-wider">{t.kpiTotal}</p>
-            <p className="text-2xl font-black text-[var(--nc-foreground)] leading-tight">{toArabicNumerals(tasks.length)}</p>
+            <p className="text-2xl font-black text-[var(--nc-foreground)] leading-tight">{formatNumber(tasks.length)}</p>
           </div>
         </div>
 
@@ -194,7 +221,7 @@ export default function TasksView() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-[var(--nc-foreground-muted)] uppercase tracking-wider">{t.kpiPending}</p>
-            <p className="text-2xl font-black text-amber-500 leading-tight">{toArabicNumerals(pendingTasks)}</p>
+            <p className="text-2xl font-black text-amber-500 leading-tight">{formatNumber(pendingTasks)}</p>
           </div>
         </div>
 
@@ -205,7 +232,7 @@ export default function TasksView() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-[var(--nc-foreground-muted)] uppercase tracking-wider">{t.kpiCompleted}</p>
-            <p className="text-2xl font-black text-emerald-500 leading-tight">{toArabicNumerals(completedTasks)}</p>
+            <p className="text-2xl font-black text-emerald-500 leading-tight">{formatNumber(completedTasks)}</p>
           </div>
         </div>
 
@@ -216,7 +243,7 @@ export default function TasksView() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold text-[var(--nc-foreground-muted)] uppercase tracking-wider">{t.kpiRate}</p>
-            <p className="text-2xl font-black text-indigo-500 leading-tight">{toArabicNumerals(completionRate)}%</p>
+            <p className="text-2xl font-black text-indigo-500 leading-tight">{formatPercent(completionRate)}</p>
             <div className="mt-1.5 h-1 bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
               <div
                 className="h-full bg-indigo-500 rounded-full transition-all duration-700"
@@ -286,7 +313,7 @@ export default function TasksView() {
               >
                 <option value="">{t.leadPlaceholder}</option>
                 {leads.map(l => (
-                  <option key={l.id} value={l.id}>{l.firstName} {l.lastName || ''}</option>
+                  <option key={l.id} value={l.id}>{displayLeadName(l)}</option>
                 ))}
               </select>
             </div>
@@ -363,7 +390,7 @@ export default function TasksView() {
             <div>
               <h3 className="text-sm font-extrabold text-[var(--nc-foreground)]">{t.listTitle}</h3>
               <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">
-                {toArabicNumerals(filteredTasks.length)} {isArabic ? 'مهمة' : 'tasks'}
+                {formatNumber(filteredTasks.length)} {isArabic ? 'مهمة' : 'tasks'}
               </p>
             </div>
 
@@ -397,7 +424,7 @@ export default function TasksView() {
                   <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
                     f === 'PENDING' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500'
                   }`}>
-                    {toArabicNumerals(f === 'PENDING' ? pendingTasks : completedTasks)}
+                    {formatNumber(f === 'PENDING' ? pendingTasks : completedTasks)}
                   </span>
                 )}
               </button>
@@ -462,14 +489,14 @@ export default function TasksView() {
                             ? 'line-through text-[var(--nc-foreground-muted)]'
                             : 'text-[var(--nc-foreground)]'
                         }`}>
-                          {task.title}
+                          {safeDisplayText(task.title, isArabic ? 'مهمة متابعة' : 'Follow-up task')}
                         </h4>
 
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           {task.lead && (
                             <span className="text-[10px] text-[var(--nc-foreground-muted)] flex items-center gap-1">
                               <i className="ph ph-user text-[9px]"></i>
-                              {task.lead.firstName} {task.lead.lastName || ''}
+                              {displayLeadName(task.lead)}
                             </span>
                           )}
                           {task.dueDate && (
@@ -482,7 +509,7 @@ export default function TasksView() {
 
                         {task.notes && (
                           <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-1 leading-relaxed italic line-clamp-1">
-                            {task.notes}
+                            {safeDisplayText(task.notes, isArabic ? 'لا توجد ملاحظات' : 'No notes available')}
                           </p>
                         )}
                       </div>

@@ -9,6 +9,8 @@ import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction, deleteWhatsA
 import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
 import { useApp } from "@/app/context/AppContext";
 import toast from 'react-hot-toast';
+import { displayPerson } from '@/lib/display';
+import { toArabicNumerals } from '@/lib/formatters';
 
 interface Message {
   sender: string;
@@ -68,6 +70,15 @@ const TRANSLATIONS = {
     cancelBtn: "إلغاء",
     taskCreated: "تم إنشاء المهمة بنجاح",
     taskError: "تعذر إنشاء المهمة",
+    titleRequired: "عنوان المهمة مطلوب",
+    phoneUnavailable: "رقم الهاتف غير متوفر",
+    unexpectedError: "حدث خطأ غير متوقع",
+    deleteConfirm: "هل تريد حذف هذه المحادثة؟ سيتم حذف الرسائل من ORCA فقط، ولن تُحذف من واتساب.",
+    deleteBtn: "حذف",
+    deleting: "جاري الحذف...",
+    deleteSuccess: "تم حذف المحادثة من ORCA",
+    deleteError: "تعذر حذف المحادثة",
+    notSpecified: "غير محدد",
   },
   EN: {
     title: "Chat Management",
@@ -96,6 +107,15 @@ const TRANSLATIONS = {
     cancelBtn: "Cancel",
     taskCreated: "Task created successfully",
     taskError: "Failed to create task",
+    titleRequired: "Task title is required",
+    phoneUnavailable: "Phone number is unavailable",
+    unexpectedError: "An unexpected error occurred",
+    deleteConfirm: "Delete this conversation? Messages will be removed from ORCA only and will not be deleted from WhatsApp.",
+    deleteBtn: "Delete",
+    deleting: "Deleting...",
+    deleteSuccess: "Conversation deleted from ORCA",
+    deleteError: "Failed to delete conversation",
+    notSpecified: "Not specified",
   }
 };
 
@@ -105,6 +125,32 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === "AR";
   const dir = isArabic ? "rtl" : "ltr";
+  const displayLocale = isArabic ? 'ar' : 'en';
+
+  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
+  const looksTechnical = (value: string) => {
+    const v = value.trim();
+    return (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+      /^[0-9a-f]{8,24}$/i.test(v) ||
+      /(?:^|\b)(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+(?:\b|$)/i.test(v) ||
+      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
+    );
+  };
+  const safeDisplayText = (value: unknown, fallback = t.notSpecified) => {
+    const text = String(value ?? '').trim();
+    if (!text || looksTechnical(text)) return fallback;
+    if (!isArabic && containsArabic(text)) return fallback;
+    return text;
+  };
+  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
+  const displayContactName = (chat: Pick<Chat, 'contactName' | 'contactPhone'>) => {
+    const rawName = String(chat.contactName || '').trim();
+    const phone = String(chat.contactPhone || '').trim();
+    if (!rawName || rawName === phone || /^[+\d\s-]{6,}$/.test(rawName)) return phone || t.notSpecified;
+    const displayed = displayPerson(rawName, displayLocale, { route: '/operations/whatsapp' });
+    return safeDisplayText(displayed, phone || t.notSpecified);
+  };
 
   const connected = cloudStatus?.configured && cloudStatus?.status === "connected";
   const [chats, setChats] = useState<Chat[]>(initialChats);
@@ -151,12 +197,12 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   async function handleCreateTask() {
     if (!taskTitle.trim() || !taskChatId) {
-      toast.error("العنوان مطلوب");
+      toast.error(t.titleRequired);
       return;
     }
     const chat = chats.find(c => c.id === taskChatId);
     if (!chat?.contactPhone) {
-      toast.error("رقم الهاتف غير متوفر");
+      toast.error(t.phoneUnavailable);
       return;
     }
 
@@ -173,14 +219,14 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
         setTaskChatId(null);
         setTaskTitle("");
         setTaskType("Call");
-        toast.success(`${t.taskCreated} — ${result.taskId?.slice(0, 8) || ""}`);
+        toast.success(t.taskCreated);
         router.refresh();
       } else {
         toast.error(result.error || t.taskError);
       }
     } catch (err) {
       console.error("[WA_TASK] Client error:", err);
-      toast.error("حدث خطأ غير متوقع");
+      toast.error(t.unexpectedError);
     } finally {
       setIsCreatingTask(false);
     }
@@ -205,9 +251,9 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
         }
         return updated;
       });
-      toast.success("تم حذف المحادثة من ORCA");
+      toast.success(t.deleteSuccess);
     } else {
-      toast.error(result.error || "تعذر حذف المحادثة");
+      toast.error(safeDisplayText(result.error, t.deleteError));
     }
   }
 
@@ -219,9 +265,9 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       COLD: "bg-blue-500/20 text-blue-400 border-blue-500/30",
     };
     const labels: Record<string, string> = {
-      HOT: isArabic ? "ساخن" : "HOT",
-      WARM: isArabic ? "دافئ" : "WARM",
-      COLD: isArabic ? "بارد" : "COLD",
+      HOT: isArabic ? "ساخن" : "Hot",
+      WARM: isArabic ? "دافئ" : "Warm",
+      COLD: isArabic ? "بارد" : "Cold",
     };
     const colorClass = colors[priority] || colors.COLD;
     return (
@@ -256,7 +302,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   return (
     <div className="space-y-4 p-6" dir={dir}>
-      <PageHeader title={t.title} description={t.subtitle.replace("{companyName}", tenant.companyName)} />
+      <PageHeader title={t.title} description={t.subtitle.replace("{companyName}", safeDisplayText(tenant.companyName, t.notSpecified))} />
 
       {/* Cloud API Status */}
       <SmartCard className="p-4">
@@ -284,7 +330,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1 space-y-2">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{t.conversationsTitle} ({chats.length})</h3>
+            <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{t.conversationsTitle} ({formatNumber(chats.length)})</h3>
             <button onClick={() => setShowNewChat(!showNewChat)} className="text-xs font-bold text-[var(--nc-accent)] hover:underline">
               + {t.newChatTitle}
             </button>
@@ -306,7 +352,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
                 className={`p-3 rounded-xl cursor-pointer transition-colors ${chat.id === activeChatId ? 'bg-[var(--nc-accent-soft)]' : 'bg-[var(--nc-surface)] hover:bg-white/5'}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-[var(--nc-text-primary)] flex items-center gap-2">
-                    {chat.contactName}
+                    {displayContactName(chat)}
                     {getClassificationBadge(chat.leadPriority)}
                   </span>
                   <span className="text-[10px] text-[var(--nc-text-dim)]">{chat.time}</span>
@@ -329,16 +375,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
             <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteConfirm(null)} />
             <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm mx-4 space-y-4 shadow-2xl">
               <p className="text-sm text-[var(--nc-text-primary)] text-center">
-                هل تريد حذف هذه المحادثة؟ سيتم حذف الرسائل من ORCA فقط، ولن تُحذف من واتساب.
+                {t.deleteConfirm}
               </p>
               <div className="flex gap-3">
                 <button type="button" onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting}
                   className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl disabled:opacity-50">
-                  {isDeleting ? "جاري الحذف..." : "حذف"}
+                  {isDeleting ? t.deleting : t.deleteBtn}
                 </button>
                 <button type="button" onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
                   className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
-                  إلغاء
+                  {t.cancelBtn}
                 </button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { SmartCard } from '@/components/ui/SmartCard';
 import { getSalesPerformanceAction, SalesRepKPI } from '@/app/actions/sales';
 import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals } from '@/lib/formatters';
+import { displayPerson } from '@/lib/display';
 
 const TRANSLATIONS = {
   AR: {
@@ -66,10 +67,34 @@ const TRANSLATIONS = {
 };
 
 export default function SalesView() {
-  const { theme, lang } = useApp();
+  const { lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === 'AR';
   const dir = isArabic ? 'rtl' : 'ltr';
+  const displayLocale = isArabic ? 'ar' : 'en';
+
+  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
+  const looksTechnical = (value: string) => {
+    const v = value.trim();
+    return (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+      /^[0-9a-f]{8,24}$/i.test(v) ||
+      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
+    );
+  };
+  const safeDisplayText = (value: unknown, fallback = isArabic ? 'غير محدد' : 'Not specified') => {
+    const text = String(value ?? '').trim();
+    if (!text || looksTechnical(text)) return fallback;
+    if (!isArabic && containsArabic(text)) return fallback;
+    return text;
+  };
+  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
+  const displayRepName = (name: unknown) => {
+    const raw = String(name ?? '').trim();
+    const displayed = displayPerson(raw, displayLocale, { route: '/operations/sales' });
+    return safeDisplayText(displayed, isArabic ? 'مستشار غير محدد' : 'Not specified');
+  };
+  const formatMetric = (value: unknown) => safeDisplayText(isArabic ? toArabicNumerals(String(value ?? '')) : String(value ?? ''), isArabic ? 'غير محدد' : 'Not specified');
 
   const [salesReps, setSalesReps] = useState<SalesRepKPI[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +115,7 @@ export default function SalesView() {
 
   const formatPercentage = (val: string | number): string => {
     let raw = val.toString().replace(/%/g, '');
-    return (isArabic ? toArabicNumerals(raw) : raw) + "٪";
+    return `${isArabic ? toArabicNumerals(raw) : raw}${isArabic ? "٪" : "%"}`;
   };
 
   const totalLeads = salesReps.reduce((sum, r) => sum + r.leadsCount, 0);
@@ -125,7 +150,7 @@ export default function SalesView() {
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card1_title}</p>
-                  <h3 className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(totalLeads)}</h3>
+                  <h3 className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(totalLeads)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
                   <i className="ph-bold ph-users text-base"></i>
@@ -137,7 +162,7 @@ export default function SalesView() {
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card2_title}</p>
-                  <h3 className="text-xl font-black text-amber-500">{toArabicNumerals(totalBookings)}</h3>
+                  <h3 className="text-xl font-black text-amber-500">{formatNumber(totalBookings)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
                   <i className="ph-bold ph-clock text-base"></i>
@@ -149,7 +174,7 @@ export default function SalesView() {
               <div className="flex items-start mb-3">
                 <div className="flex-1">
                   <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card3_title}</p>
-                  <h3 className="text-xl font-black text-emerald-500">{toArabicNumerals(totalContracts)}</h3>
+                  <h3 className="text-xl font-black text-emerald-500">{formatNumber(totalContracts)}</h3>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <i className="ph-bold ph-check-circle text-base"></i>
@@ -186,7 +211,7 @@ export default function SalesView() {
                   <p className="text-[9px] text-[var(--nc-accent)] font-bold uppercase tracking-wide">
                     {isArabic ? 'المركز الأول' : 'Top Performer'}
                   </p>
-                  <p className="text-sm font-bold text-[var(--nc-text-primary)]">{salesReps[0].name}</p>
+                  <p className="text-sm font-bold text-[var(--nc-text-primary)]">{displayRepName(salesReps[0].name)}</p>
                   <p className="text-[10px] text-[var(--nc-text-dim)]">
                     CR: <span className="font-bold text-[var(--nc-accent)] font-en">{formatPercentage(salesReps[0].conversionRate)}</span>
                   </p>
@@ -195,11 +220,11 @@ export default function SalesView() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 text-center">
                   <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'فريق المبيعات' : 'Sales Team'}</p>
-                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(salesReps.length)}</p>
+                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(salesReps.length)}</p>
                 </div>
                 <div className="p-3 text-center">
                   <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'إجمالي الصفقات' : 'Total Deals'}</p>
-                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{toArabicNumerals(totalDeals)}</p>
+                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(totalDeals)}</p>
                 </div>
               </div>
             </div>
@@ -217,7 +242,7 @@ export default function SalesView() {
               {salesReps.slice(0, 5).map((rep, idx) => (
                 <div key={rep.id} className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-[var(--nc-text-primary)] truncate max-w-[60%]">{rep.name}</span>
+                    <span className="text-xs font-bold text-[var(--nc-text-primary)] truncate max-w-[60%]">{displayRepName(rep.name)}</span>
                     <span className="text-[9px] font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.targetAchieved)}</span>
                   </div>
                   <div className="h-1.5 w-full bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
@@ -241,7 +266,7 @@ export default function SalesView() {
                 <i className="ph-bold ph-medal text-amber-500"></i>
                 {t.tableTitle}
               </h4>
-              <span className="text-[10px] text-[var(--nc-text-dim)]">{toArabicNumerals(salesReps.length)} {isArabic ? 'مستشار' : 'consultants'}</span>
+              <span className="text-[10px] text-[var(--nc-text-dim)]">{formatNumber(salesReps.length)} {isArabic ? 'مستشار' : 'consultants'}</span>
             </div>
 
             {salesReps.length === 0 ? (
@@ -274,20 +299,20 @@ export default function SalesView() {
                               rank === 3 ? 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)]' :
                               'bg-[var(--nc-surface-strong)] text-[var(--nc-text-dim)]'
                             }`}>
-                              {toArabicNumerals(rank)}
+                              {formatNumber(rank)}
                             </span>
                           </td>
                           <td>
-                            <p className="font-bold text-[var(--nc-text-primary)] text-xs">{rep.name}</p>
-                            <span className="text-[9px] text-[var(--nc-text-dim)] block">{rep.email}</span>
+                            <p className="font-bold text-[var(--nc-text-primary)] text-xs">{displayRepName(rep.name)}</p>
+                            <span className="text-[9px] text-[var(--nc-text-dim)] block">{safeDisplayText(rep.email, isArabic ? 'غير محدد' : 'Not specified')}</span>
                           </td>
-                          <td className="text-center text-xs font-en">{toArabicNumerals(rep.leadsCount)}{t.leadSuffix}</td>
-                          <td className="text-center text-xs">{toArabicNumerals(rep.responseTime)}</td>
+                          <td className="text-center text-xs font-en">{formatNumber(rep.leadsCount)}{t.leadSuffix}</td>
+                          <td className="text-center text-xs">{formatMetric(rep.responseTime)}</td>
                           <td className="text-center font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.conversionRate)}</td>
                           <td className="text-center text-xs font-en">
-                            <span className="text-amber-500 font-semibold">{toArabicNumerals(rep.bookings)}{t.bookingSuffix}</span>
+                            <span className="text-amber-500 font-semibold">{formatNumber(rep.bookings)}{t.bookingSuffix}</span>
                             <span className="text-[var(--nc-text-dim)] mx-1">/</span>
-                            <span className="text-emerald-500 font-semibold">{toArabicNumerals(rep.contracts)}{t.contractSuffix}</span>
+                            <span className="text-emerald-500 font-semibold">{formatNumber(rep.contracts)}{t.contractSuffix}</span>
                           </td>
                           <td>
                             <div className="space-y-1.5">
@@ -301,7 +326,7 @@ export default function SalesView() {
                                     rep.targetAchieved >= 90 ? 'bg-emerald-500' :
                                     rep.targetAchieved >= 50 ? 'bg-amber-500' : 'bg-[var(--nc-accent)]'
                                   }`}
-                                  style={{ width: `${rep.targetAchieved}%` }}
+                                  style={{ width: `${Math.min(Number(rep.targetAchieved) || 0, 100)}%` }}
                                 ></div>
                               </div>
                             </div>

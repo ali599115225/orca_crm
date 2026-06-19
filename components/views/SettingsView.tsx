@@ -103,13 +103,46 @@ export default function SettingsView({ tenant, users = [] }: SettingsViewProps) 
 
       {/* Tab 2: Staff Management */}
       {activeTab === 'staff' && (
-        <SettingsStaff tenant={tenant} users={users} lang={lang} isArabic={isArabic} />
+        <section className="settings-staff-stretch min-h-[620px]">
+          <SettingsStaff tenant={tenant} users={users} lang={lang} isArabic={isArabic} />
+        </section>
       )}
 
       {/* Tab 3: Compliance & Connection */}
       {activeTab === 'compliance' && (
         <SettingsCompliance lang={lang} isArabic={isArabic} />
       )}
+
+      <style>{`
+        .settings-staff-stretch {
+          display: block;
+          min-height: 620px;
+        }
+
+        .settings-staff-stretch > * {
+          min-height: inherit;
+        }
+
+        .settings-staff-stretch :is(.grid) {
+          align-items: stretch;
+        }
+
+        .settings-staff-stretch :is(.grid) > * {
+          height: 100%;
+          min-height: 220px;
+        }
+
+        .settings-staff-stretch :is(.nc-card, .smart-card, [data-card], article) {
+          height: 100%;
+          min-height: 220px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .settings-staff-stretch :is(.nc-card, .smart-card, [data-card], article) > * {
+          min-width: 0;
+        }
+      `}</style>
 
     </div>
   );

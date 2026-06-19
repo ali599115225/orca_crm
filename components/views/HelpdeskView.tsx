@@ -53,7 +53,7 @@ const TRANSLATIONS = {
     closeTicketBtn: "إغلاق التذكرة ✕",
     authorLabel: "شرح المطور:",
     aiAgentLabel: "رد الوكيل الفني الذكي (مساعد):",
-    tenantLabel: "مستأجر المنصة: {tenantName} | ID: #{id}",
+    tenantLabel: "مستأجر المنصة: {tenantName}",
     emptyStateRightTitle: "اختر تذكرة لمشاهدة التفاصيل",
     emptyStateRightDesc: "ستظهر تذاكر الدعم والرد الفوري للوكيل مساعد هنا",
     successMsg: "تم إرسال تذكرتك بنجاح وتلقي رد فوري من الوكيل مساعد!",
@@ -86,7 +86,7 @@ const TRANSLATIONS = {
     closeTicketBtn: "Close Ticket ✕",
     authorLabel: "Author Details:",
     aiAgentLabel: "Smart Technical Agent Response (Assistant):",
-    tenantLabel: "Platform Tenant: {tenantName} | ID: #{id}",
+    tenantLabel: "Platform Tenant: {tenantName}",
     emptyStateRightTitle: "Select a ticket to view details",
     emptyStateRightDesc: "Support tickets and immediate agent responses will appear here",
     successMsg: "Your ticket was sent successfully!",
@@ -101,10 +101,30 @@ const TRANSLATIONS = {
 };
 
 export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskViewProps) {
-  const { theme, lang } = useApp();
+  const { lang } = useApp();
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
   const isArabic = lang === 'AR';
   const dir = isArabic ? 'rtl' : 'ltr';
+
+  const fallbackText = isArabic ? 'غير محدد' : 'Not specified';
+  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
+  const looksTechnical = (value: string) => {
+    const v = value.trim();
+    return (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+      /^[0-9a-f]{8,24}$/i.test(v) ||
+      /(?:^|\b)(?:ticket|tenant|user|owner|lead|task|id)_[a-z0-9_-]+(?:\b|$)/i.test(v) ||
+      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
+    );
+  };
+  const safeDisplayText = (value: unknown, fallback = fallbackText) => {
+    const text = String(value ?? '').trim();
+    if (!text || looksTechnical(text)) return fallback;
+    if (!isArabic && containsArabic(text)) return fallback;
+    if (isArabic && /^[A-Z0-9_ -]{2,}$/.test(text) && !/[a-z]/.test(text)) return fallback;
+    return text;
+  };
+  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
 
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [loading, setLoading] = useState(false);
@@ -173,7 +193,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       hour: '2-digit',
       minute: '2-digit'
     });
-    return toArabicNumerals(formatted);
+    return isArabic ? toArabicNumerals(formatted) : formatted;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -204,7 +224,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
         setTimeout(() => setSuccess(null), 3000);
       }
     } else {
-      setError(result.error || t.errorMsg);
+      setError(safeDisplayText(result.error || t.errorMsg, t.errorMsg));
     }
   };
 
@@ -256,21 +276,21 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               <i className="ph-bold ph-ticket text-[var(--nc-accent)] text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{isArabic ? 'إجمالي' : 'Total'}</p>
-                <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{toArabicNumerals(tickets.length)}</p>
+                <p className="text-lg font-bold text-[var(--nc-foreground)] font-en">{formatNumber(tickets.length)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <i className="ph-bold ph-activity text-emerald-500 text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusActive}</p>
-                <p className="text-lg font-bold text-emerald-500 font-en">{toArabicNumerals(openTickets)}</p>
+                <p className="text-lg font-bold text-emerald-500 font-en">{formatNumber(openTickets)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <i className="ph-bold ph-check-circle text-[var(--nc-foreground-muted)] text-lg"></i>
               <div>
                 <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.statusClosed}</p>
-                <p className="text-lg font-bold text-[var(--nc-foreground-muted)] font-en">{toArabicNumerals(closedTickets)}</p>
+                <p className="text-lg font-bold text-[var(--nc-foreground-muted)] font-en">{formatNumber(closedTickets)}</p>
               </div>
             </div>
           </div>
@@ -331,7 +351,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
           <div className="bg-transparent border-none p-0 flex flex-col gap-4 w-full">
             <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
               <span>{t.ledgerTitle}</span>
-              <span className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.totalTickets.replace('{count}', toArabicNumerals(tickets.length))}</span>
+              <span className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.totalTickets.replace('{count}', formatNumber(tickets.length))}</span>
             </h4>
 
             <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -354,7 +374,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                       }`}
                     >
                       <div className="space-y-1">
-                        <h5 className="font-bold text-xs text-[var(--nc-foreground)] line-clamp-1">{ticket.title}</h5>
+                        <h5 className="font-bold text-xs text-[var(--nc-foreground)] line-clamp-1">{safeDisplayText(ticket.title, isArabic ? 'تذكرة دعم' : 'Support ticket')}</h5>
                         <p className="text-xs text-[var(--nc-foreground-muted)] font-medium">{t.ticketDate.replace('{date}', formatTicketDate(ticket.createdAt))}</p>
                       </div>
                       
@@ -386,9 +406,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               {/* Detail header */}
               <div className="border-b border-[var(--nc-border)] pb-4 flex justify-between items-center gap-4">
                 <div>
-                  <h3 className="text-[var(--nc-foreground)] font-bold text-lg">{selectedTicket.title}</h3>
+                  <h3 className="text-[var(--nc-foreground)] font-bold text-lg">{safeDisplayText(selectedTicket.title, isArabic ? 'تذكرة دعم' : 'Support ticket')}</h3>
                   <p className="text-xs text-[var(--nc-foreground-muted)] font-medium mt-1 font-en">
-                    {t.tenantLabel.replace('{tenantName}', tenantName).replace('{id}', selectedTicket.id)}
+                    {t.tenantLabel.replace('{tenantName}', safeDisplayText(tenantName, fallbackText))}
                   </p>
                 </div>
                 {selectedTicket.status === 'OPEN' && (
@@ -414,7 +434,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               {/* Inquiry description */}
               <div className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl">
                 <p className="text-[var(--nc-accent)] text-xs font-bold mb-1.5">{t.authorLabel}</p>
-                <p className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
+                <p className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap">{safeDisplayText(selectedTicket.description, isArabic ? 'لا توجد تفاصيل' : 'No details available')}</p>
               </div>
 
               {/* AI response box */}
@@ -428,7 +448,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                   </div>
                   
                   <div className="text-[var(--nc-foreground-muted)] font-medium text-xs leading-relaxed whitespace-pre-wrap relative z-10">
-                    {selectedTicket.aiResponse}
+                    {safeDisplayText(selectedTicket.aiResponse, isArabic ? 'لا يوجد رد متاح' : 'No response available')}
                   </div>
                 </div>
               ) : null}
@@ -445,9 +465,9 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
                     return (
                       <div key={rep.id} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'} space-y-1`}>
                         <div className={`p-3 rounded-xl text-xs leading-normal max-w-[85%] ${isClient ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)] rounded-br-none' : 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border border-[var(--nc-border)] rounded-bl-none'}`}>
-                          {rep.message}
+                          {safeDisplayText(rep.message, isArabic ? 'لا توجد رسالة' : 'No message available')}
                         </div>
-                        <span className="text-[9px] text-[var(--nc-foreground-muted)] font-medium font-en px-1">{new Date(rep.createdAt).toLocaleTimeString()}</span>
+                        <span className="text-[9px] text-[var(--nc-foreground-muted)] font-medium font-en px-1">{new Date(rep.createdAt).toLocaleTimeString(isArabic ? 'ar-EG' : 'en-US')}</span>
                       </div>
                     );
                   })}
