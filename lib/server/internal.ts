@@ -181,7 +181,7 @@ export async function classifyWhatsAppLeadInternal(leadId: string, messageText: 
 
     return { success: true, priority };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: "classification_failed" };
   }
 }
 
