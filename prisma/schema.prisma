@@ -244,6 +244,7 @@ model Tenant {
   commissionPayments   CommissionPayment[]
   maintenanceTickets   MaintenanceTicket[]
   whatsappContacts     WhatsAppContact[]
+  whatsappPhoneNumbers WhatsAppPhoneNumber[]
   whatsappMessages     WhatsAppMessage[]
   emailMessages        EmailMessage[]
 
@@ -979,6 +980,21 @@ model WhatsAppContact {
   @@map("whatsapp_contacts")
 }
 
+model WhatsAppPhoneNumber {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  phoneNumberId     String   @unique(map: "uq_whatsapp_phone_numbers_phone_number_id") @map("phone_number_id")
+  businessAccountId String?  @map("business_account_id")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive], map: "idx_whatsapp_phone_numbers_tenant_active")
+  @@map("whatsapp_phone_numbers")
+}
+
 model WhatsAppMessage {
   id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId      String               @map("tenant_id") @db.Uuid
@@ -989,7 +1005,7 @@ model WhatsAppMessage {
   provider      String               @default("meta")
   messageText   String?              @map("message_text") @db.Text
   messageType   String?              @default("text") @map("message_type")
-  metaMessageId String?              @map("meta_message_id")
+  metaMessageId String?              @unique(map: "uq_whatsapp_messages_meta_message_id") @map("meta_message_id")
   rawPayload    Json?                @map("raw_payload")
   status        String?              @default("received")
   aiSummary     String?              @map("ai_summary") @db.Text
@@ -1001,7 +1017,6 @@ model WhatsAppMessage {
 
   @@index([tenantId, phone, createdAt])
   @@index([tenantId, phoneHash])
-  @@index([metaMessageId])
   @@map("whatsapp_messages")
 }
 
