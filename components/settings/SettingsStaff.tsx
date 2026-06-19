@@ -8,8 +8,6 @@ import { useApp } from '@/app/context/AppContext';
 import { useAuth } from '@/app/context/AuthContext';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toast } from '@/app/context/ToastContext';
-import { displayPerson } from '@/lib/display';
-import type { DisplayLocale } from '@/lib/display';
 
 interface User {
   id: string;
@@ -36,19 +34,7 @@ const PLAN_LIMITS: Record<string, number> = {
   gold: 99999,
 };
 
-function hasArabicScript(value: unknown): boolean {
-  return /[\u0600-\u06FF]/.test(String(value || ''));
-}
-
-function isTechnicalId(value: unknown): boolean {
-  const text = String(value || '').trim();
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text) || /^[0-9a-f]{8,24}$/i.test(text);
-}
-
-function isUnsafeDisplayValue(value: unknown): boolean {
-  const text = String(value || '').trim();
-  return !text || isTechnicalId(text) || /\b(demo|stress|mock|trial)\b/i.test(text) || /تجريبي|تجريبية/.test(text);
-}
+const STAFF_PAGE_SIZE = 5;
 
 const ROLE_TRANSLATIONS = {
   AR: {
@@ -103,6 +89,11 @@ const TRANSLATIONS = {
     staffCapacityTitle: "حالة مقاعد الموظفين بالباقة",
     staffActiveSeats: "المقاعد النشطة:",
     unlimited: "لا محدود",
+    paginationPrevious: "السابق",
+    paginationNext: "التالي",
+    paginationPage: "صفحة",
+    paginationOf: "من",
+    paginationShowing: "عرض",
   },
   EN: {
     successMsg: "New employee added successfully and account activated.",
@@ -139,28 +130,24 @@ const TRANSLATIONS = {
     staffCapacityTitle: "Staff Seat Allocation",
     staffActiveSeats: "Active seats:",
     unlimited: "Unlimited",
+    paginationPrevious: "Previous",
+    paginationNext: "Next",
+    paginationPage: "Page",
+    paginationOf: "of",
+    paginationShowing: "Showing",
   }
 };
 
 export default function SettingsStaff({ tenant, users, lang, isArabic }: SettingsStaffProps) {
   const router = useRouter();
   const { role: currentUserRole } = useAuth();
-  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
-
-  const displayStaffName = (name: unknown): string => {
-    const fallback = isArabic ? 'غير محدد' : 'Not specified';
-    const displayed = displayPerson(String(name || ''), displayLocale, { route: '/operations/settings' });
-    const text = String(displayed || '').trim();
-    if (isUnsafeDisplayValue(text)) return fallback;
-    if (!isArabic && hasArabicScript(text)) return fallback;
-    return text;
-  };
 
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [staffPage, setStaffPage] = useState(1);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,7 +165,11 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
   const limit = PLAN_LIMITS[plan] || 2;
   const currentUsersCount = users.length;
   const isLimitReached = currentUsersCount >= limit;
-  const visibleUsers = users.slice(0, 5);
+  const staffPageCount = Math.max(1, Math.ceil(users.length / STAFF_PAGE_SIZE));
+  const currentStaffPage = Math.min(staffPage, staffPageCount);
+  const staffStartIndex = (currentStaffPage - 1) * STAFF_PAGE_SIZE;
+  const staffEndIndex = Math.min(staffStartIndex + STAFF_PAGE_SIZE, users.length);
+  const visibleUsers = users.slice(staffStartIndex, staffEndIndex);
 
   const handleAddEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -288,7 +279,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
         {/* Create new employee form (5 cols) */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-5 space-y-6">
 
           <SmartCard className="p-6 shadow-sm space-y-4">
             <div className="border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
@@ -412,13 +403,13 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
         </div>
 
         {/* Active staff ledger table (7 cols) */}
-        <SmartCard className="lg:col-span-8 shadow-sm overflow-hidden">
+        <SmartCard className="lg:col-span-7 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
             <h2 className="text-[var(--nc-foreground)] font-bold text-base">{t.staffTableTitle}</h2>
           </div>
 
-          <div className="max-h-[485px] overflow-auto">
-            <table className={`w-full min-w-[760px] border-collapse text-xs ${isArabic ? "text-right" : "text-left"}`}>
+          <div className="overflow-x-auto">
+            <table className={`w-full border-collapse text-xs ${isArabic ? "text-right" : "text-left"}`}>
               <thead>
                 <tr className="border-b border-[var(--nc-border)] text-[var(--nc-foreground-muted)] bg-[var(--nc-surface)]">
                   <th className="p-3 font-semibold text-center w-14">{t.staffTableId}</th>
@@ -430,13 +421,13 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
               </thead>
               <tbody className="divide-y divide-[var(--nc-border)] text-[var(--nc-foreground-muted)]">
                 {visibleUsers.map((u, idx) => {
-                  const number = idx + 1;
+                  const number = staffStartIndex + idx + 1;
                   const isProcessing = loadingActionId === u.id;
                   return (
                     <tr key={u.id} className="hover:bg-[var(--nc-surface)] transition-colors">
                       <td className="p-3 text-center font-en">{toArabicNumerals(number)}</td>
                       <td className="p-3 font-bold text-[var(--nc-foreground)]">
-                        {displayStaffName(u.name)}
+                        {u.name}
                         <span className="text-[10px] text-[var(--nc-foreground-muted)] block font-bold font-sans mt-0.5">
                           {ROLE_TRANSLATIONS[lang]?.[u.role as keyof typeof ROLE_TRANSLATIONS.EN] || u.role}
                         </span>
@@ -489,6 +480,35 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
               </tbody>
             </table>
           </div>
+
+          {users.length > STAFF_PAGE_SIZE && (
+            <div className="flex flex-col gap-3 border-t border-[var(--nc-border)] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] font-semibold text-[var(--nc-foreground-muted)]">
+                {t.paginationShowing} {toArabicNumerals(staffStartIndex + 1)}-{toArabicNumerals(staffEndIndex)} {t.paginationOf} {toArabicNumerals(users.length)}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStaffPage((page) => Math.max(1, page - 1))}
+                  disabled={currentStaffPage <= 1}
+                  className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-[11px] font-bold text-[var(--nc-foreground)] transition disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {t.paginationPrevious}
+                </button>
+                <span className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2 text-[11px] font-bold text-[var(--nc-foreground)]">
+                  {t.paginationPage} {toArabicNumerals(currentStaffPage)} {t.paginationOf} {toArabicNumerals(staffPageCount)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStaffPage((page) => Math.min(staffPageCount, page + 1))}
+                  disabled={currentStaffPage >= staffPageCount}
+                  className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-[11px] font-bold text-[var(--nc-foreground)] transition disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {t.paginationNext}
+                </button>
+              </div>
+            </div>
+          )}
         </SmartCard>
 
       </div>
