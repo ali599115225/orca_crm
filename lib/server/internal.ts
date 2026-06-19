@@ -3,6 +3,7 @@
 // These functions use Prisma, send SMS/email, and perform trusted operations.
 // They are called from API routes, cron jobs, and webhooks — NOT from the client.
 
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
@@ -137,7 +138,7 @@ export async function runInstallmentAgentInternal() {
       const paymentUrl = `https://orca.az-ez.pro/contract/${inst.contractId}?payment=installment`;
 
       const message = `🔔 تنبيه أوركا: مرحباً بك في ${companyName}\nنود تذكيرك بأن هناك قسطاً يستحق بتاريخ ${inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('ar-SA') : "قريباً"}.\nللسداد: ${paymentUrl}`;
-      console.log(`[SANAD] Installment reminder queued:`, { tenantId, dueDate: inst.dueDate });
+      console.log("[SANAD] Installment reminder checked");
     }
 
     return { success: true, processedCount: upcomingInstallments.length };
