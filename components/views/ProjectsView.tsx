@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
 import { getDetailedProjectsAction, getProjectUnitsAction } from '@/app/actions/projects';
-import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
+import { displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 
 type ProjectItem = {
@@ -238,8 +238,59 @@ function isTechnicalId(value: unknown): boolean {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   if (uuidPattern.test(text)) return true;
+  if (/^[0-9a-f]{8,24}$/i.test(text)) return true;
 
   return text.length > 22 && /[0-9a-f]/i.test(text) && /[-_]/.test(text);
+}
+
+type CopyLabels = typeof copy.ar;
+
+function isDemoLeak(value: unknown): boolean {
+  const text = String(value || '').trim();
+  return /\b(demo|stress|mock|trial)\b/i.test(text) || /تجريبي|تجريبية/.test(text);
+}
+
+function safeDisplay(value: unknown, fallback: string): string {
+  const text = String(value || '').trim();
+  if (!text || isTechnicalId(text) || isDemoLeak(text)) return fallback;
+  return text;
+}
+
+function displayProjectName(project: ProjectItem, locale: DisplayLocale, labels: CopyLabels): string {
+  return safeDisplay(
+    displayEntity(project.name, 'project' as any, locale, { route: '/operations/projects' }),
+    labels.notSpecified,
+  );
+}
+
+function displayProjectLocation(project: ProjectItem, locale: DisplayLocale, labels: CopyLabels): string {
+  const location = project.location || project.city;
+  return safeDisplay(
+    displayGeo(location, 'city' as any, locale, { route: '/operations/projects' }),
+    labels.locationNotSet,
+  );
+}
+
+function displayProjectStatus(status: string | undefined, locale: DisplayLocale, labels: CopyLabels): string {
+  return safeDisplay(
+    displayEnum(status || 'UNSPECIFIED', 'projectStatus' as any, locale),
+    labels.notSpecified,
+  );
+}
+
+function displayUnitStatus(status: string | undefined, locale: DisplayLocale, labels: CopyLabels): string {
+  return safeDisplay(
+    displayEnum(status || 'UNSPECIFIED', 'unitStatus' as any, locale),
+    labels.notSpecified,
+  );
+}
+
+function displayUnitType(unit: UnitItem, locale: DisplayLocale, labels: CopyLabels): string {
+  const value = unit.type || unit.propertyType;
+  return safeDisplay(
+    displayEnum(value || 'UNSPECIFIED', 'unitType' as any, locale),
+    labels.notSpecified,
+  );
 }
 
 function projectStatusKey(status?: string): 'completed' | 'planned' | 'active' | 'underConstruction' {
@@ -252,8 +303,8 @@ function projectStatusKey(status?: string): 'completed' | 'planned' | 'active' |
   return 'underConstruction';
 }
 
-function normalizeProjectStatus(status: string | undefined, labels: typeof copy.ar): string {
-  return labels[projectStatusKey(status)];
+function normalizeProjectStatus(status: string | undefined, labels: typeof copy.ar, locale: DisplayLocale): string {
+  return displayProjectStatus(status, locale, labels);
 }
 
 function isCompletedProject(status?: string): boolean {
@@ -274,8 +325,8 @@ function unitStatusKey(
   return 'available';
 }
 
-function normalizeUnitStatus(status: string | undefined, labels: typeof copy.ar): string {
-  return labels[unitStatusKey(status)];
+function normalizeUnitStatus(status: string | undefined, labels: typeof copy.ar, locale: DisplayLocale): string {
+  return displayUnitStatus(status, locale, labels);
 }
 
 function isUnitBookable(status?: string): boolean {
@@ -285,7 +336,7 @@ function isUnitBookable(status?: string): boolean {
 function normalizeProject(project: any): ProjectItem {
   return {
     id: project.id,
-    name: project.name || 'Project',
+    name: project.name || '',
     city: project.city,
     location: project.location || project.city,
     status: project.status,
@@ -306,7 +357,7 @@ function getUnitDisplayNumber(
   const candidates = [unit.displayNumber, unit.unitNumber, unit.number, unit.code, unit.name];
 
   for (const candidate of candidates) {
-    if (candidate && !isTechnicalId(candidate)) {
+    if (candidate && !isTechnicalId(candidate) && !isDemoLeak(candidate)) {
       return String(candidate);
     }
   }
@@ -314,8 +365,8 @@ function getUnitDisplayNumber(
   return `${unitFallback} ${fallbackIndex}`;
 }
 
-function getUnitType(unit: UnitItem, notSpecified: string): string {
-  return String(unit.type || unit.propertyType || notSpecified);
+function getUnitType(unit: UnitItem, labels: CopyLabels, locale: DisplayLocale): string {
+  return displayUnitType(unit, locale, labels);
 }
 
 function getUnitArea(unit: UnitItem, labels: typeof copy.ar): string {
@@ -448,12 +499,12 @@ export default function ProjectsView() {
 
     return projects.filter((project) => {
       return (
-        project.name.toLowerCase().includes(term) ||
-        String(project.location || '').toLowerCase().includes(term) ||
-        normalizeProjectStatus(project.status, labels).toLowerCase().includes(term)
+        displayProjectName(project, displayLocale, labels).toLowerCase().includes(term) ||
+        displayProjectLocation(project, displayLocale, labels).toLowerCase().includes(term) ||
+        normalizeProjectStatus(project.status, labels, displayLocale).toLowerCase().includes(term)
       );
     });
-  }, [projects, searchTerm, labels]);
+  }, [projects, searchTerm, labels, displayLocale]);
 
   const projectTotalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
   const pagedProjects = filteredProjects.slice(
@@ -523,15 +574,15 @@ export default function ProjectsView() {
 
               <div>
                 <h1 className="text-xl font-bold text-[var(--nc-text-primary)]">
-                  {selectedProject.name}
+                  {displayProjectName(selectedProject, displayLocale, labels)}
                 </h1>
                 <p className="mt-0.5 text-xs text-[var(--nc-text-secondary)]">
-                  {selectedProject.location || labels.locationNotSet}
+                  {displayProjectLocation(selectedProject, displayLocale, labels)}
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <StatusBadge>{normalizeProjectStatus(selectedProject.status, labels)}</StatusBadge>
+                <StatusBadge>{normalizeProjectStatus(selectedProject.status, labels, displayLocale)}</StatusBadge>
                 <StatusBadge>
                   {labels.progress} {formatNumber(selectedProject.progressPercent, isArabic)}%
                 </StatusBadge>
@@ -586,7 +637,7 @@ export default function ProjectsView() {
                 {labels.projectSummary}
               </p>
               <p className="mt-2 min-h-[48px] text-sm leading-7 text-[var(--nc-text-primary)]">
-                {selectedProject.description || labels.noProjectDescription}
+                {safeDisplay(selectedProject.description, labels.noProjectDescription)}
               </p>
             </div>
 
@@ -651,7 +702,7 @@ export default function ProjectsView() {
                             </td>
 
                             <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                              {getUnitType(unit, labels.notSpecified)}
+                              {getUnitType(unit, labels, displayLocale)}
                             </td>
 
                             <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
@@ -668,7 +719,7 @@ export default function ProjectsView() {
                             </td>
 
                             <td className="px-3 py-3">
-                              <StatusBadge>{normalizeUnitStatus(unit.status, labels)}</StatusBadge>
+                              <StatusBadge>{normalizeUnitStatus(unit.status, labels, displayLocale)}</StatusBadge>
                             </td>
 
                             <td className="px-3 py-3">
@@ -735,7 +786,7 @@ export default function ProjectsView() {
                     {labels.bookingTitle}
                   </h2>
                   <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-                    {selectedProject.name} —{' '}
+                    {displayProjectName(selectedProject, displayLocale, labels)} —{' '}
                     {getUnitDisplayNumber(bookingUnit, 1, labels.unitFallback)}
                   </p>
                 </div>
@@ -760,7 +811,7 @@ export default function ProjectsView() {
                 <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
                   <p className="text-xs text-[var(--nc-text-secondary)]">{labels.unitStatus}</p>
                   <p className="mt-1 font-semibold text-[var(--nc-text-primary)]">
-                    {normalizeUnitStatus(bookingUnit.status, labels)}
+                    {normalizeUnitStatus(bookingUnit.status, labels, displayLocale)}
                   </p>
                 </div>
 
@@ -878,15 +929,15 @@ export default function ProjectsView() {
                 {pagedProjects.map((project) => (
                   <tr key={project.id} className="border-b border-[var(--nc-border)]">
                     <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                      {project.name}
+                      {displayProjectName(project, displayLocale, labels)}
                     </td>
 
                     <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                      {project.location || labels.locationNotSet}
+                      {displayProjectLocation(project, displayLocale, labels)}
                     </td>
 
                     <td className="px-3 py-3">
-                      <StatusBadge>{normalizeProjectStatus(project.status, labels)}</StatusBadge>
+                      <StatusBadge>{normalizeProjectStatus(project.status, labels, displayLocale)}</StatusBadge>
                     </td>
 
                     <td className="px-3 py-3 text-[var(--nc-text-secondary)]">

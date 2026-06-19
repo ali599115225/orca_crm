@@ -7,7 +7,6 @@ import { Calendar, Eye, Loader2, Search, X } from 'lucide-react';
 import { toast } from '@/app/context/ToastContext';
 import { getToursAction, scheduleTourActionDirect } from '@/app/actions/tours';
 import { DateField } from '@/components/ui/DateField';
-import StatusBadge, { type BadgeVariant } from '@/components/ui/StatusBadge';
 import { useApp } from '@/app/context/AppContext';
 import { displayPerson, displayGeo, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
@@ -47,8 +46,9 @@ type ScheduleForm = {
   time: string;
 };
 
+type TourBadgeVariant = 'scheduled' | 'completed' | 'cancelled' | 'noShow' | 'followUp' | 'default';
+
 const PAGE_SIZE = 5;
-const TABLE_HEADERS = ['الموعد', 'العميل', 'الموقع', 'الحالة', 'المسؤول', 'الإجراء'];
 
 const INITIAL_FILTERS: Filters = {
   search: '',
@@ -65,16 +65,156 @@ const INITIAL_SCHEDULE_FORM: ScheduleForm = {
   time: '',
 };
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'كل الحالات' },
-  { value: 'SCHEDULED', label: 'مجدولة' },
-  { value: 'COMPLETED', label: 'مكتملة' },
-  { value: 'CANCELLED', label: 'ملغاة' },
-  { value: 'NO_SHOW', label: 'لم يحضر' },
-  { value: 'FOLLOW_UP', label: 'تحتاج متابعة' },
-];
+const copy = {
+  ar: {
+    pageTitle: 'الجولات العقارية',
+    pageSubtitle: 'متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة.',
+    scheduleTour: 'جدولة جولة',
+    todayTours: 'جولات اليوم',
+    upcoming: 'القادمة',
+    completed: 'المكتملة',
+    needsFollowUp: 'تحتاج متابعة',
+    currentScope: 'ضمن نطاق الجولات الحالي',
+    search: 'بحث',
+    searchPlaceholder: 'بحث بالموقع أو العميل...',
+    allStatuses: 'كل الحالات',
+    statusAria: 'الحالة',
+    fromDate: 'من تاريخ',
+    toDate: 'إلى تاريخ',
+    tourCount: 'جولة',
+    apply: 'تطبيق',
+    clear: 'مسح',
+    toursList: 'قائمة الجولات',
+    page: 'صفحة',
+    of: 'من',
+    showing: 'عرض',
+    previous: 'السابق',
+    next: 'التالي',
+    retry: 'إعادة المحاولة',
+    noToursTitle: 'لا توجد جولات عقارية حتى الآن',
+    noToursDescription: 'ستظهر هنا الجولات المجدولة والمتابعة عند توفرها.',
+    details: 'تفاصيل',
+    tourDetails: 'تفاصيل الجولة',
+    closeDetails: 'إغلاق التفاصيل',
+    appointment: 'الموعد',
+    expectedEnd: 'الانتهاء المتوقع',
+    attendees: 'عدد الحضور',
+    customer: 'العميل',
+    agent: 'المسؤول',
+    createdAt: 'تاريخ الإنشاء',
+    status: 'الحالة',
+    nextAction: 'الإجراء التالي',
+    notes: 'الملاحظات',
+    noNotes: 'لا توجد ملاحظات مسجلة لهذه الجولة.',
+    selectTour: 'اختر جولة من الجدول لعرض التفاصيل هنا.',
+    scheduleTitle: 'جدولة جولة عقارية',
+    scheduleSubtitle: 'أدخل بيانات العميل والموقع والموعد.',
+    customerName: 'اسم العميل',
+    customerNamePlaceholder: 'مثال: راشد الحربي',
+    phone: 'رقم الهاتف',
+    phonePlaceholder: '05xxxxxxxx',
+    locationUnit: 'الموقع / الوحدة',
+    locationPlaceholder: 'مثال: مكتب المبيعات أو معرض العقار',
+    tourDate: 'تاريخ الجولة',
+    datePlaceholder: 'يوم/شهر/سنة',
+    tourTime: 'وقت الجولة',
+    cancel: 'إلغاء',
+    saveTour: 'حفظ الجولة',
+    validationError: 'يرجى تعبئة اسم العميل، الهاتف، الموقع، التاريخ والوقت.',
+    invalidDate: 'التاريخ أو الوقت غير صحيح.',
+    scheduleFailed: 'تعذر جدولة الجولة.',
+    scheduleSuccess: 'تمت جدولة الجولة بنجاح.',
+    scheduleError: 'حدث خطأ أثناء جدولة الجولة.',
+    loadingFailed: 'تعذر تحميل الجولات',
+    notSpecified: 'غير محدد',
+    notAssigned: 'غير محدد',
+    noData: 'لا توجد بيانات',
+    tableHeaders: ['الموعد', 'العميل', 'الموقع', 'الحالة', 'المسؤول', 'الإجراء'],
+    actions: {
+      scheduled: 'تأكيد الحضور قبل الموعد',
+      completed: 'تسجيل نتيجة الجولة والمتابعة',
+      cancelled: 'إعادة الجدولة أو إغلاق الطلب',
+      noShow: 'التواصل مع العميل لمعرفة السبب',
+      followUp: 'متابعة العميل خلال 24 ساعة',
+      default: 'مراجعة حالة الجولة',
+    },
+  },
+  en: {
+    pageTitle: 'Property Tours',
+    pageSubtitle: 'Track scheduled, completed, cancelled, and follow-up tours.',
+    scheduleTour: 'Schedule tour',
+    todayTours: 'Today tours',
+    upcoming: 'Upcoming',
+    completed: 'Completed',
+    needsFollowUp: 'Needs follow-up',
+    currentScope: 'Within current tour scope',
+    search: 'Search',
+    searchPlaceholder: 'Search by location or customer...',
+    allStatuses: 'All statuses',
+    statusAria: 'Status',
+    fromDate: 'From date',
+    toDate: 'To date',
+    tourCount: 'tours',
+    apply: 'Apply',
+    clear: 'Clear',
+    toursList: 'Tours List',
+    page: 'Page',
+    of: 'of',
+    showing: 'Showing',
+    previous: 'Previous',
+    next: 'Next',
+    retry: 'Retry',
+    noToursTitle: 'No property tours yet',
+    noToursDescription: 'Scheduled and follow-up tours will appear here once available.',
+    details: 'Details',
+    tourDetails: 'Tour details',
+    closeDetails: 'Close details',
+    appointment: 'Appointment',
+    expectedEnd: 'Expected end',
+    attendees: 'Attendees',
+    customer: 'Customer',
+    agent: 'Owner',
+    createdAt: 'Created date',
+    status: 'Status',
+    nextAction: 'Next action',
+    notes: 'Notes',
+    noNotes: 'No notes have been recorded for this tour.',
+    selectTour: 'Select a tour from the table to view details here.',
+    scheduleTitle: 'Schedule property tour',
+    scheduleSubtitle: 'Enter the customer, location, date, and time.',
+    customerName: 'Customer name',
+    customerNamePlaceholder: 'Example: Rashed Al-Harbi',
+    phone: 'Mobile number',
+    phonePlaceholder: '05xxxxxxxx',
+    locationUnit: 'Location / unit',
+    locationPlaceholder: 'Example: sales office or property showroom',
+    tourDate: 'Tour date',
+    datePlaceholder: 'day/month/year',
+    tourTime: 'Tour time',
+    cancel: 'Cancel',
+    saveTour: 'Save tour',
+    validationError: 'Please enter the customer name, phone, location, date, and time.',
+    invalidDate: 'The date or time is invalid.',
+    scheduleFailed: 'Unable to schedule the tour.',
+    scheduleSuccess: 'Tour scheduled successfully.',
+    scheduleError: 'An error occurred while scheduling the tour.',
+    loadingFailed: 'Unable to load tours',
+    notSpecified: 'Not specified',
+    notAssigned: 'Not specified',
+    noData: 'No data available',
+    tableHeaders: ['Appointment', 'Customer', 'Location', 'Status', 'Owner', 'Action'],
+    actions: {
+      scheduled: 'Confirm attendance before the appointment',
+      completed: 'Record the tour outcome and follow up',
+      cancelled: 'Reschedule or close the request',
+      noShow: 'Contact the customer to understand the reason',
+      followUp: 'Follow up with the customer within 24 hours',
+      default: 'Review the tour status',
+    },
+  },
+};
 
-function statusToBadge(status: string): BadgeVariant {
+function statusToBadge(status: string): TourBadgeVariant {
   const normalized = String(status || '').toUpperCase();
   if (normalized === 'SCHEDULED') return 'scheduled';
   if (normalized === 'COMPLETED') return 'completed';
@@ -84,64 +224,119 @@ function statusToBadge(status: string): BadgeVariant {
   return 'default';
 }
 
-function nextActionForStatus(status: string): string {
-  const normalized = String(status || '').toUpperCase();
-  if (normalized === 'SCHEDULED') return 'تأكيد الحضور قبل الموعد';
-  if (normalized === 'COMPLETED') return 'تسجيل نتيجة الجولة والمتابعة';
-  if (normalized === 'CANCELLED') return 'إعادة الجدولة أو إغلاق الطلب';
-  if (normalized === 'NO_SHOW') return 'التواصل مع العميل لمعرفة السبب';
-  if (normalized === 'FOLLOW_UP') return 'متابعة العميل خلال 24 ساعة';
-  return 'مراجعة حالة الجولة';
+function nextActionForStatus(status: string, labels: typeof copy.ar): string {
+  return labels.actions[statusToBadge(status)] || labels.actions.default;
 }
 
-function formatDateTime(value?: string | null): string {
-  if (!value) return 'غير محدد';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير محدد';
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const rawHours = date.getHours();
-  const suffix = rawHours >= 12 ? 'م' : 'ص';
-  const hours = String(rawHours % 12 || 12).padStart(2, '0');
-
-  return `${day}/${month}/${year} — ${hours}:${minutes} ${suffix}`;
-}
-
-function formatDateOnly(value?: string | null): string {
-  if (!value) return 'غير محدد';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير محدد';
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-function safeText(value?: string | null, fallback = 'غير محدد'): string {
+function isTechnicalId(value?: string | null): boolean {
   const text = String(value || '').trim();
-  return text.length > 0 ? text : fallback;
+  if (!text) return false;
+
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) {
+    return true;
+  }
+
+  if (/^[0-9a-f]{8,24}$/i.test(text)) {
+    return true;
+  }
+
+  return /^(owner|user|lead|tour|property|project|unit|createdBy|updatedBy)[_-]?[a-z0-9-]+$/i.test(text);
+}
+
+function isDemoLeak(value?: string | null): boolean {
+  const text = String(value || '').trim();
+  return /\b(demo|stress|mock|trial)\b/i.test(text) || /تجريبي|تجريبية/.test(text);
+}
+
+function safeText(value: unknown, fallback: string): string {
+  const text = String(value || '').trim();
+  if (!text || isTechnicalId(text) || isDemoLeak(text)) return fallback;
+  return text;
+}
+
+function formatDateTime(value: string | null | undefined, locale: DisplayLocale, fallback: string): string {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatDateOnly(value: string | null | undefined, locale: DisplayLocale, fallback: string): string {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+function formatNumber(value: number, locale: DisplayLocale): string {
+  return Number(value || 0).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US');
+}
+
+function TourStatusBadge({ status, locale }: { status: string; locale: DisplayLocale }) {
+  const variant = statusToBadge(status);
+  const label = displayEnum(status || 'UNSPECIFIED', 'tourStatus' as any, locale);
+
+  const toneClass =
+    variant === 'scheduled'
+      ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-200'
+      : variant === 'completed'
+        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'
+        : variant === 'cancelled'
+          ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-200'
+          : variant === 'noShow'
+            ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200'
+            : variant === 'followUp'
+              ? 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-200'
+              : 'border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-primary)]';
+
+  return (
+    <span className={`inline-flex min-w-[92px] items-center justify-center rounded-full border px-3 py-1 text-xs font-bold ${toneClass}`}>
+      {safeText(label, locale === 'ar' ? copy.ar.notSpecified : copy.en.notSpecified)}
+    </span>
+  );
 }
 
 export default function ToursView() {
   const { lang } = useApp();
   const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
   const isArabic = displayLocale === 'ar';
+  const labels = isArabic ? copy.ar : copy.en;
+  const direction = isArabic ? 'rtl' : 'ltr';
+  const textAlign = isArabic ? 'text-right' : 'text-left';
+  const iconSideClass = isArabic ? 'right-3' : 'left-3';
+  const inputIconPadding = isArabic ? 'pr-9' : 'pl-9';
 
-  const STATUS_OPTIONS = [
-    { value: '', label: isArabic ? 'كل الحالات' : 'All statuses' },
-    { value: 'SCHEDULED', label: displayEnum('SCHEDULED', 'tourStatus', displayLocale) },
-    { value: 'COMPLETED', label: displayEnum('COMPLETED', 'tourStatus', displayLocale) },
-    { value: 'CANCELLED', label: displayEnum('CANCELLED', 'tourStatus', displayLocale) },
-    { value: 'NO_SHOW', label: displayEnum('NO_SHOW', 'tourStatus', displayLocale) },
-    { value: 'FOLLOW_UP', label: displayEnum('FOLLOW_UP', 'tourStatus', displayLocale) },
-  ];
+  const statusOptions = useMemo(
+    () => [
+      { value: '', label: labels.allStatuses },
+      { value: 'SCHEDULED', label: displayEnum('SCHEDULED', 'tourStatus' as any, displayLocale) },
+      { value: 'COMPLETED', label: displayEnum('COMPLETED', 'tourStatus' as any, displayLocale) },
+      { value: 'CANCELLED', label: displayEnum('CANCELLED', 'tourStatus' as any, displayLocale) },
+      { value: 'NO_SHOW', label: displayEnum('NO_SHOW', 'tourStatus' as any, displayLocale) },
+      { value: 'FOLLOW_UP', label: displayEnum('FOLLOW_UP', 'tourStatus' as any, displayLocale) },
+    ],
+    [displayLocale, labels.allStatuses],
+  );
 
-  const displayTourLead = (name: string | null | undefined) => displayPerson(name, displayLocale, { route: '/operations/tours' });
-  const displayTourLocation = (loc: string | null | undefined) => displayGeo(loc, 'city', displayLocale, { route: '/operations/tours' });
-  const displayTourAgent = (name: string | null | undefined) => displayPerson(name, displayLocale, { route: '/operations/tours' });
+  const displayTourLead = (name: string | null | undefined) =>
+    safeText(displayPerson(name, displayLocale, { route: '/operations/tours' }), labels.notSpecified);
+  const displayTourLocation = (loc: string | null | undefined) =>
+    safeText(displayGeo(loc, 'city' as any, displayLocale, { route: '/operations/tours' }), labels.notSpecified);
+  const displayTourAgent = (name: string | null | undefined) =>
+    safeText(displayPerson(name, displayLocale, { route: '/operations/tours' }), labels.notAssigned);
+
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(INITIAL_FILTERS);
   const [tours, setTours] = useState<TourListItem[]>([]);
@@ -156,7 +351,7 @@ export default function ToursView() {
 
   const selectedTour = useMemo(
     () => tours.find((tour) => tour.id === selectedTourId) || null,
-    [selectedTourId, tours]
+    [selectedTourId, tours],
   );
 
   const totalPages = Math.max(1, Math.ceil(tours.length / PAGE_SIZE));
@@ -182,11 +377,11 @@ export default function ToursView() {
           toDate: appliedFilters.toDate || undefined,
         },
         1,
-        200
+        200,
       );
 
       if (!result?.success) {
-        throw new Error(result?.error || 'تعذر تحميل الجولات');
+        throw new Error(result?.error || labels.loadingFailed);
       }
 
       const data = result.data;
@@ -198,19 +393,17 @@ export default function ToursView() {
       setTours([]);
       setStats({ today: 0, upcoming: 0, completed: 0, needsFollowUp: 0 });
       setSelectedTourId(null);
-      setError(err?.message || 'تعذر تحميل الجولات');
+      setError(err?.message || labels.loadingFailed);
     } finally {
       setLoading(false);
     }
-  }, [appliedFilters]);
+  }, [appliedFilters, labels.loadingFailed]);
 
   useEffect(() => {
     loadTours();
   }, [loadTours]);
 
-  const applyFilters = () => {
-    setAppliedFilters(filters);
-  };
+  const applyFilters = () => setAppliedFilters(filters);
 
   const clearFilters = () => {
     setFilters(INITIAL_FILTERS);
@@ -235,56 +428,49 @@ export default function ToursView() {
     const location = scheduleForm.location.trim();
 
     if (!userName || !phone || !location || !scheduleForm.date || !scheduleForm.time) {
-      toast.error('يرجى تعبئة اسم العميل، الهاتف، الموقع، التاريخ والوقت.');
+      toast.error(labels.validationError);
       return;
     }
 
     const datetime = `${scheduleForm.date}T${scheduleForm.time}:00`;
     if (Number.isNaN(Date.parse(datetime))) {
-      toast.error('التاريخ أو الوقت غير صحيح.');
+      toast.error(labels.invalidDate);
       return;
     }
 
     setScheduleSaving(true);
     try {
-      const result = await scheduleTourActionDirect({
-        userName,
-        phone,
-        datetime,
-        location,
-      });
+      const result = await scheduleTourActionDirect({ userName, phone, datetime, location });
 
       if (!result?.success) {
-        toast.error(result?.error || 'تعذر جدولة الجولة.');
+        toast.error(result?.error || labels.scheduleFailed);
         return;
       }
 
-      toast.success('تمت جدولة الجولة بنجاح.');
+      toast.success(labels.scheduleSuccess);
       setIsScheduleOpen(false);
       setScheduleForm(INITIAL_SCHEDULE_FORM);
       await loadTours();
     } catch (err: any) {
-      toast.error(err?.message || 'حدث خطأ أثناء جدولة الجولة.');
+      toast.error(err?.message || labels.scheduleError);
     } finally {
       setScheduleSaving(false);
     }
   };
 
   const kpis = [
-    { label: 'جولات اليوم', value: stats.today, tone: 'text-[var(--nc-text-primary)]' },
-    { label: 'القادمة', value: stats.upcoming, tone: 'text-sky-400 dark:text-sky-300' },
-    { label: 'المكتملة', value: stats.completed, tone: 'text-emerald-500 dark:text-emerald-300' },
-    { label: 'تحتاج متابعة', value: stats.needsFollowUp, tone: 'text-rose-500 dark:text-rose-300' },
+    { label: labels.todayTours, value: stats.today, tone: 'text-[var(--nc-text-primary)]' },
+    { label: labels.upcoming, value: stats.upcoming, tone: 'text-sky-600 dark:text-sky-300' },
+    { label: labels.completed, value: stats.completed, tone: 'text-emerald-600 dark:text-emerald-300' },
+    { label: labels.needsFollowUp, value: stats.needsFollowUp, tone: 'text-rose-600 dark:text-rose-300' },
   ];
 
   return (
-    <section dir="rtl" className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6">
+    <section dir={direction} className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">الجولات العقارية</h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-            متابعة الجولات المجدولة، المكتملة، الملغاة، والجولات التي تحتاج متابعة.
-          </p>
+          <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">{labels.pageTitle}</h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.pageSubtitle}</p>
         </div>
         <button
           type="button"
@@ -292,7 +478,7 @@ export default function ToursView() {
           className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
         >
           <Calendar size={16} />
-          جدولة جولة
+          {labels.scheduleTour}
         </button>
       </div>
 
@@ -303,8 +489,8 @@ export default function ToursView() {
             className="flex min-h-[96px] flex-col justify-between rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm"
           >
             <span className="text-sm text-[var(--nc-text-secondary)]">{item.label}</span>
-            <strong className={`text-2xl font-bold ${item.tone}`}>{item.value}</strong>
-            <span className="text-xs text-[var(--nc-text-secondary)]">ضمن نطاق الجولات الحالي</span>
+            <strong className={`text-2xl font-bold ${item.tone}`}>{formatNumber(item.value, displayLocale)}</strong>
+            <span className="text-xs text-[var(--nc-text-secondary)]">{labels.currentScope}</span>
           </div>
         ))}
       </section>
@@ -313,23 +499,23 @@ export default function ToursView() {
         <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
             <div className="relative min-w-0 md:w-[280px]">
-              <label className="sr-only">بحث</label>
+              <label className="sr-only">{labels.search}</label>
               <input
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-                placeholder="بحث بالموقع أو العميل..."
-                className="min-h-[40px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 pr-9 text-sm text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)] focus:border-[var(--nc-accent-border)]"
+                placeholder={labels.searchPlaceholder}
+                className={`min-h-[40px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 ${inputIconPadding} text-sm text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)] focus:border-[var(--nc-accent-border)]`}
               />
-              <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nc-text-secondary)]" />
+              <Search size={15} className={`absolute ${iconSideClass} top-1/2 -translate-y-1/2 text-[var(--nc-text-secondary)]`} />
             </div>
 
             <select
               value={filters.status}
               onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
               className="min-h-[40px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)] md:w-[160px]"
-              aria-label="الحالة"
+              aria-label={labels.statusAria}
             >
-              {STATUS_OPTIONS.map((option) => (
+              {statusOptions.map((option) => (
                 <option key={option.value || 'all'} value={option.value}>
                   {option.label}
                 </option>
@@ -339,27 +525,27 @@ export default function ToursView() {
             <DateField
               value={filters.fromDate}
               onChange={(value) => setFilters((current) => ({ ...current, fromDate: value }))}
-              placeholder="من تاريخ"
+              placeholder={labels.fromDate}
               className="md:w-[150px] [&_input]:min-h-[40px] [&_input]:bg-[var(--nc-surface-solid)]"
             />
 
             <DateField
               value={filters.toDate}
               onChange={(value) => setFilters((current) => ({ ...current, toDate: value }))}
-              placeholder="إلى تاريخ"
+              placeholder={labels.toDate}
               className="md:w-[150px] [&_input]:min-h-[40px] [&_input]:bg-[var(--nc-surface-solid)]"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <span className="hidden min-w-[56px] text-xs text-[var(--nc-text-secondary)] sm:inline">
-              {tours.length} جولة
+              {formatNumber(tours.length, displayLocale)} {labels.tourCount}
             </span>
             <button type="button" onClick={applyFilters} className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-semibold">
-              تطبيق
+              {labels.apply}
             </button>
             <button type="button" onClick={clearFilters} className="nc-btn-ghost min-h-[40px] rounded-xl px-3 py-2 text-xs font-semibold">
-              مسح
+              {labels.clear}
             </button>
           </div>
         </div>
@@ -368,11 +554,13 @@ export default function ToursView() {
       <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
         <div className="mb-4 flex min-h-[48px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-bold text-[var(--nc-text-primary)]">قائمة الجولات</h2>
-            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{tours.length} جولة</p>
+            <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.toursList}</h2>
+            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+              {formatNumber(tours.length, displayLocale)} {labels.tourCount}
+            </p>
           </div>
           <span className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-            صفحة {page.toLocaleString('ar-SA')} من {totalPages.toLocaleString('ar-SA')}
+            {labels.page} {formatNumber(page, displayLocale)} {labels.of} {formatNumber(totalPages, displayLocale)}
           </span>
         </div>
 
@@ -388,8 +576,8 @@ export default function ToursView() {
             </colgroup>
             <thead>
               <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                {TABLE_HEADERS.map((header) => (
-                  <th key={header} className="truncate px-3 py-3 text-right font-semibold">{header}</th>
+                {labels.tableHeaders.map((header) => (
+                  <th key={header} className={`truncate px-3 py-3 ${textAlign} font-semibold`}>{header}</th>
                 ))}
               </tr>
             </thead>
@@ -397,29 +585,29 @@ export default function ToursView() {
               {loading ? (
                 Array.from({ length: PAGE_SIZE }, (_, index) => (
                   <tr key={`skel-${index}`} className="h-[47px] border-b border-[var(--nc-border)]">
-                    {TABLE_HEADERS.map((header, ci) => (
+                    {labels.tableHeaders.map((header, ci) => (
                       <td key={header} className="px-3 py-3">
-                        <div className={`h-3 animate-pulse rounded-full bg-[var(--nc-surface-soft)] ${ci === 0 ? 'w-32' : ci === TABLE_HEADERS.length - 1 ? 'w-16' : 'w-24'}`} />
+                        <div className={`h-3 animate-pulse rounded-full bg-[var(--nc-surface-soft)] ${ci === 0 ? 'w-32' : ci === labels.tableHeaders.length - 1 ? 'w-16' : 'w-24'}`} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : error ? (
                 <tr className="h-[235px] border-b border-[var(--nc-border)]">
-                  <td colSpan={TABLE_HEADERS.length} className="px-3 py-4">
+                  <td colSpan={labels.tableHeaders.length} className="px-3 py-4">
                     <div className="mx-auto max-w-md rounded-2xl border border-rose-500/25 bg-rose-500/10 p-4 text-center">
-                      <p className="text-sm font-bold text-rose-300">{error}</p>
+                      <p className="text-sm font-bold text-rose-700 dark:text-rose-200">{error}</p>
                       <button type="button" onClick={loadTours} className="nc-btn nc-btn-ghost nc-btn-sm mt-3">
-                        إعادة المحاولة
+                        {labels.retry}
                       </button>
                     </div>
                   </td>
                 </tr>
               ) : tours.length === 0 ? (
                 <tr className="h-[235px] border-b border-[var(--nc-border)]">
-                  <td colSpan={TABLE_HEADERS.length} className="px-3 py-4 text-center">
-                    <p className="text-sm font-bold text-[var(--nc-text-primary)]">لا توجد جولات عقارية حتى الآن</p>
-                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">ستظهر هنا الجولات المجدولة والمتابعة عند توفرها.</p>
+                  <td colSpan={labels.tableHeaders.length} className="px-3 py-4 text-center">
+                    <p className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.noToursTitle}</p>
+                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{labels.noToursDescription}</p>
                   </td>
                 </tr>
               ) : (
@@ -430,24 +618,32 @@ export default function ToursView() {
                       <tr
                         key={tour.id}
                         onClick={() => setSelectedTourId(tour.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedTourId(tour.id);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
                         className={`h-[47px] cursor-pointer border-b border-[var(--nc-border)] transition-colors ${
                           selected ? 'bg-[var(--nc-surface-soft)]' : 'hover:bg-[var(--nc-surface-soft)]'
                         }`}
                       >
                         <td className="whitespace-nowrap px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                          {formatDateTime(tour.startAt)}
+                          {formatDateTime(tour.startAt, displayLocale, labels.notSpecified)}
                         </td>
                         <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          <span className="block min-w-0 truncate">{safeText(tour.leadName)}</span>
+                          <span className="block min-w-0 truncate">{displayTourLead(tour.leadName)}</span>
                         </td>
                         <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          <span className="block min-w-0 truncate">{safeText(tour.location)}</span>
+                          <span className="block min-w-0 truncate">{displayTourLocation(tour.location)}</span>
                         </td>
                         <td className="whitespace-nowrap px-3 py-3">
-                          <StatusBadge variant={statusToBadge(tour.status)} />
+                          <TourStatusBadge status={tour.status} locale={displayLocale} />
                         </td>
                         <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                          <span className="block min-w-0 truncate">{safeText(tour.assignedToName, 'غير معين')}</span>
+                          <span className="block min-w-0 truncate">{displayTourAgent(tour.assignedToName)}</span>
                         </td>
                         <td className="whitespace-nowrap px-3 py-3">
                           <button
@@ -459,7 +655,7 @@ export default function ToursView() {
                             className="nc-btn-primary inline-flex min-h-[34px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
                           >
                             <Eye size={13} />
-                            تفاصيل
+                            {labels.details}
                           </button>
                         </td>
                       </tr>
@@ -467,7 +663,7 @@ export default function ToursView() {
                   })}
                   {Array.from({ length: Math.max(0, PAGE_SIZE - pagedTours.length) }, (_, index) => (
                     <tr key={`reserved-${index}`} className="h-[47px] border-b border-transparent">
-                      <td colSpan={TABLE_HEADERS.length} />
+                      <td colSpan={labels.tableHeaders.length} />
                     </tr>
                   ))}
                 </>
@@ -480,8 +676,8 @@ export default function ToursView() {
           <div className="flex min-h-[52px] flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
             <span className="font-bold">
               {tours.length > 0
-                ? `عرض ${((page - 1) * PAGE_SIZE + 1).toLocaleString('ar-SA')}-${Math.min(page * PAGE_SIZE, tours.length).toLocaleString('ar-SA')} من ${tours.length.toLocaleString('ar-SA')}`
-                : 'عرض 0 من 0'}
+                ? `${labels.showing} ${formatNumber((page - 1) * PAGE_SIZE + 1, displayLocale)}-${formatNumber(Math.min(page * PAGE_SIZE, tours.length), displayLocale)} ${labels.of} ${formatNumber(tours.length, displayLocale)}`
+                : `${labels.showing} 0 ${labels.of} 0`}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -490,10 +686,10 @@ export default function ToursView() {
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 className="nc-btn nc-btn-ghost nc-btn-sm disabled:cursor-not-allowed disabled:opacity-40"
               >
-                السابق
+                {labels.previous}
               </button>
               <span className="rounded-lg border border-[var(--nc-border)] px-3 py-1.5 font-black text-[var(--nc-text-primary)]">
-                صفحة {page.toLocaleString('ar-SA')} من {totalPages.toLocaleString('ar-SA')}
+                {labels.page} {formatNumber(page, displayLocale)} {labels.of} {formatNumber(totalPages, displayLocale)}
               </span>
               <button
                 type="button"
@@ -501,7 +697,7 @@ export default function ToursView() {
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 className="nc-btn nc-btn-ghost nc-btn-sm disabled:cursor-not-allowed disabled:opacity-40"
               >
-                التالي
+                {labels.next}
               </button>
             </div>
           </div>
@@ -513,65 +709,65 @@ export default function ToursView() {
           <div className="space-y-0">
             <div className="flex items-start justify-between gap-3 border-b border-[var(--nc-border)] pb-4">
               <div>
-                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
+                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.tourDetails}</h2>
                 <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                  {safeText(selectedTour.leadName)} · {safeText(selectedTour.location)}
+                  {displayTourLead(selectedTour.leadName)} · {displayTourLocation(selectedTour.location)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedTourId(null)}
                 className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                aria-label="إغلاق التفاصيل"
+                aria-label={labels.closeDetails}
               >
                 <X size={15} />
               </button>
             </div>
 
             <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
-              <DetailRow label="الموعد" value={formatDateTime(selectedTour.startAt)} />
-              <DetailRow label="الانتهاء المتوقع" value={formatDateTime(selectedTour.endAt)} />
-              <DetailRow label="عدد الحضور" value={String(selectedTour.attendees ?? 1)} />
-              <DetailRow label="العميل" value={safeText(selectedTour.leadName)} />
-              <DetailRow label="المسؤول" value={safeText(selectedTour.assignedToName, 'غير معين')} />
-              <DetailRow label="تاريخ الإنشاء" value={formatDateOnly(selectedTour.createdAt)} />
+              <DetailRow label={labels.appointment} value={formatDateTime(selectedTour.startAt, displayLocale, labels.notSpecified)} />
+              <DetailRow label={labels.expectedEnd} value={formatDateTime(selectedTour.endAt, displayLocale, labels.notSpecified)} />
+              <DetailRow label={labels.attendees} value={formatNumber(selectedTour.attendees ?? 1, displayLocale)} />
+              <DetailRow label={labels.customer} value={displayTourLead(selectedTour.leadName)} />
+              <DetailRow label={labels.agent} value={displayTourAgent(selectedTour.assignedToName)} />
+              <DetailRow label={labels.createdAt} value={formatDateOnly(selectedTour.createdAt, displayLocale, labels.notSpecified)} />
               <div className="grid min-h-[48px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 border-b border-[var(--nc-border)] py-2">
-                <span className="text-xs font-bold text-[var(--nc-text-primary)]">الحالة</span>
-                <span><StatusBadge variant={statusToBadge(selectedTour.status)} /></span>
+                <span className="text-xs font-bold text-[var(--nc-text-primary)]">{labels.status}</span>
+                <span><TourStatusBadge status={selectedTour.status} locale={displayLocale} /></span>
               </div>
-              <DetailRow label="الإجراء التالي" value={nextActionForStatus(selectedTour.status)} last />
+              <DetailRow label={labels.nextAction} value={nextActionForStatus(selectedTour.status, labels)} last />
             </div>
 
             <div className="mt-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
-              <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">الملاحظات</span>
+              <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">{labels.notes}</span>
               <p className="text-sm leading-7 text-[var(--nc-text-secondary)]">
-                {safeText(selectedTour.notes, 'لا توجد ملاحظات مسجلة لهذه الجولة.')}
+                {safeText(selectedTour.notes, labels.noNotes)}
               </p>
             </div>
           </div>
         ) : (
           <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 text-center">
             <div>
-              <h2 className="text-sm font-bold text-[var(--nc-text-primary)]">تفاصيل الجولة</h2>
-              <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">اختر جولة من الجدول لعرض التفاصيل هنا.</p>
+              <h2 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.tourDetails}</h2>
+              <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{labels.selectTour}</p>
             </div>
           </div>
         )}
       </div>
 
       {isScheduleOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true" dir={direction}>
           <div className="w-full max-w-xl rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--nc-glass-border)] px-5 py-4">
               <div>
-                <h2 className="text-base font-black text-[var(--nc-text-primary)]">جدولة جولة عقارية</h2>
-                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">أدخل بيانات العميل والموقع والموعد.</p>
+                <h2 className="text-base font-black text-[var(--nc-text-primary)]">{labels.scheduleTitle}</h2>
+                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{labels.scheduleSubtitle}</p>
               </div>
               <button
                 type="button"
                 onClick={closeScheduleModal}
                 className="rounded-lg border border-[var(--nc-border)] p-2 text-[var(--nc-text-secondary)] hover:text-[var(--nc-text-primary)]"
-                aria-label="إغلاق"
+                aria-label={labels.closeDetails}
               >
                 <X size={15} />
               </button>
@@ -580,53 +776,57 @@ export default function ToursView() {
             <form onSubmit={submitSchedule} className="space-y-4 px-5 py-5">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <TextInput
-                  label="اسم العميل"
+                  label={labels.customerName}
                   value={scheduleForm.userName}
                   onChange={(value) => updateScheduleField('userName', value)}
-                  placeholder="مثال: راشد الحربي"
+                  placeholder={labels.customerNamePlaceholder}
+                  dir={direction}
                 />
                 <TextInput
-                  label="رقم الهاتف"
+                  label={labels.phone}
                   value={scheduleForm.phone}
                   onChange={(value) => updateScheduleField('phone', value)}
-                  placeholder="05xxxxxxxx"
+                  placeholder={labels.phonePlaceholder}
                   dir="ltr"
                 />
               </div>
 
               <TextInput
-                label="الموقع / الوحدة"
+                label={labels.locationUnit}
                 value={scheduleForm.location}
                 onChange={(value) => updateScheduleField('location', value)}
-                placeholder="مثال: مكتب المبيعات أو معرض العقار"
+                placeholder={labels.locationPlaceholder}
+                dir={direction}
               />
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <DateField
-                  label="تاريخ الجولة"
+                  label={labels.tourDate}
                   value={scheduleForm.date}
                   onChange={(value) => updateScheduleField('date', value)}
-                  placeholder="يوم/شهر/سنة"
+                  placeholder={labels.datePlaceholder}
                 />
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">وقت الجولة</label>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourTime}</label>
                   <input
                     type="time"
                     value={scheduleForm.time}
                     onChange={(event) => updateScheduleField('time', event.target.value)}
                     className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2 text-center text-xs font-bold text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
                     dir="ltr"
+                    lang={isArabic ? 'ar-SA' : 'en-US'}
+                    aria-label={labels.tourTime}
                   />
                 </div>
               </div>
 
               <div className="flex flex-col-reverse gap-2 border-t border-[var(--nc-glass-border)] pt-4 sm:flex-row sm:justify-end">
                 <button type="button" onClick={closeScheduleModal} disabled={scheduleSaving} className="nc-btn nc-btn-ghost nc-btn-sm justify-center">
-                  إلغاء
+                  {labels.cancel}
                 </button>
                 <button type="submit" disabled={scheduleSaving} className="nc-btn nc-btn-primary nc-btn-sm justify-center disabled:opacity-60">
                   {scheduleSaving ? <Loader2 size={14} className="animate-spin" /> : <Calendar size={14} />}
-                  حفظ الجولة
+                  {labels.saveTour}
                 </button>
               </div>
             </form>
