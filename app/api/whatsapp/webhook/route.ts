@@ -6,7 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processSaherWhatsAppLeadAction } from "@/app/actions/saherAgent";
-import { logWhatsAppActivity, classifyWhatsAppLead } from "@/app/actions/whatsapp-crm";
+import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
+import { classifyWhatsAppLeadInternal } from "@/lib/server/internal";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { rateLimit } from "@/lib/rate-limit";
 import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
@@ -265,7 +266,7 @@ async function handleMetaInbound(body: any) {
             });
           }
 
-          await classifyWhatsAppLead(saherResult.leadId, messageText);
+          await classifyWhatsAppLeadInternal(saherResult.leadId, messageText);
         } else if (saherResult.approvalRequired) {
           // Lead creation pending approval — no auto-reply, no lead updates
           if (saherResult.saherOutput) {
@@ -464,7 +465,7 @@ async function handleGreenAPIInbound(body: GreenAPIWebhookBody) {
       });
     }
 
-    await classifyWhatsAppLead(finalLeadId, textMessage);
+    await classifyWhatsAppLeadInternal(finalLeadId, textMessage);
   }
 
   if (saherResult.responseToClient && !saherResult.approvalRequired) {

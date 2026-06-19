@@ -1,6 +1,6 @@
 // R2 FIXED: Session auth + replay protection + verified invoice metadata
 import { NextRequest, NextResponse } from "next/server";
-import { handleSuccessfulPaymentAction } from "@/app/actions/billingAgent";
+import { handleSuccessfulPaymentInternal } from "@/lib/server/internal";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { writeAuditLog } from "@/lib/audit";
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       } else {
         const plan = invoice.metadata.plan;
         if (!plan) throw new Error("خطة الاشتراك غير موجودة.");
-        await handleSuccessfulPaymentAction(tenantId, plan, "MONTHLY");
+        await handleSuccessfulPaymentInternal(tenantId, plan, "MONTHLY");
 
         await writeAuditLog({
           tenantId,

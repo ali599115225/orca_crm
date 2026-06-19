@@ -3,7 +3,7 @@
 // يُشغَّل تلقائياً عبر Vercel Cron أو Upstash QStash كل يوم في الفجر
 
 import { NextRequest, NextResponse } from "next/server";
-import { runInstallmentAgentAction } from "@/app/actions/sanadAgent";
+import { runInstallmentAgentInternal } from "@/lib/server/internal";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runInstallmentAgentAction();
+    const result = await runInstallmentAgentInternal();
     if (result.success) {
       return NextResponse.json({
         success: true,

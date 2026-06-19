@@ -9,7 +9,7 @@ import {
   deactivateAgentSlotAction,
 } from "@/app/actions/agentSlots";
 import { runSystemDiagnosticsAction } from "@/app/actions/sentinel";
-import { checkAndSuspendExpiredTenantsAction } from "@/app/actions/billingAgent";
+// checkAndSuspendExpiredTenantsAction moved to lib/server/internal.ts — requires server-side auth
 import SmartCard from "@/components/ui/SmartCard";
 
 interface AgentSlot {
@@ -201,16 +201,9 @@ export default function AgentsHudView({
     }
 
     try {
-      const result = await checkAndSuspendExpiredTenantsAction();
-      if (result.success) {
-        setSanadLogs((prev) => [
-          ...prev,
-          `[SANAD] ✅ اكتمل الفحص!`,
-          `[SANAD] ${result.message || `تم معالجة ${result.updatedCount ?? 0} اشتراكات منتهية`}`,
-        ]);
-      } else {
-        setSanadLogs((prev) => [...prev, `[SANAD] ❌ خطأ: ${result.error}`]);
-      }
+      // Deferred: checkAndSuspendExpiredTenantsInternal requires server-side auth (CRON_SECRET or admin)
+      // Will be re-enabled once authorization layer is in place
+      setSanadLogs((prev) => [...prev, `[SANAD] ⚠️ فحص الاشتراكات المنتهية مؤجل — يتطلب صلاحية خادمية`]);
     } catch (err: any) {
       setSanadLogs((prev) => [...prev, `[SANAD] ❌ استثناء: ${err.message}`]);
     }

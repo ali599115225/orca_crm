@@ -173,7 +173,7 @@ export async function logWhatsAppActivity(
 }
 
 // Phase E: AI Classification
-export async function classifyWhatsAppLead(leadId: string, messageText: string) {
+async function classifyWhatsAppLead(leadId: string, messageText: string) {
   try {
     const text = messageText || "";
     let classification = "LOW";

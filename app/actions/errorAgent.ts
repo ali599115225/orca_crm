@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { sendAdminEmailAlert } from "@/lib/email";
-import { checkAndSuspendExpiredTenantsAction } from "./billingAgent";
+import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -81,7 +81,7 @@ export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport>
 
   // 4. تشغيل الوكيل "سند" لفحص وتعليق الاشتراكات المنتهية آلياً
   try {
-    const suspendResult = await checkAndSuspendExpiredTenantsAction();
+    const suspendResult = await checkAndSuspendExpiredTenantsInternal();
     if (suspendResult.success && suspendResult.updatedCount) {
       expiredTenantsSuspended = suspendResult.updatedCount;
       anomalies.push(`⚡ الوكيل سند: تم رصد وإيقاف عدد ${expiredTenantsSuspended} شركات عقارية منتهية الاشتراك اليوم.`);
