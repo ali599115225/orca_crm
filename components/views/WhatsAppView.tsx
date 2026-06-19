@@ -1,16 +1,16 @@
-// components/views/WhatsAppView.tsx
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
-import PageHeader from '@/components/ui/PageHeader';
-import { SmartCard } from '@/components/ui/SmartCard';
-import { toggleWhatsAppConnectionAction, sendWhatsAppMessageAction, deleteWhatsAppConversationAction } from "@/app/actions/whatsapp";
+import React, { useEffect, useMemo, useState } from "react";
+import { Archive, Check, Clock, Eye, MessageSquare, PlusCircle, UserPlus } from "lucide-react";
+import toast from "react-hot-toast";
+
 import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
+import { sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
-import toast from 'react-hot-toast';
-import { displayPerson } from '@/lib/display';
-import { toArabicNumerals } from '@/lib/formatters';
+import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
+import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
+import { displayPerson } from "@/lib/display";
+import { toArabicNumerals } from "@/lib/formatters";
 
 interface Message {
   sender: string;
@@ -42,431 +42,357 @@ interface WhatsAppViewProps {
   warning: string | null;
 }
 
-const TRANSLATIONS = {
+const PAGE_SIZE = 5;
+
+const TEXT = {
   AR: {
-    title: "إدارة المحادثات",
-    subtitle: "واتساب للأعمال — {companyName}",
-    connected: "متصل",
-    disconnected: "غير متصل",
-    cloudApiLabel: "الربط",
-    phoneNumberLabel: "رقم الهاتف",
-    wabaLabel: "الحساب",
-    provider: "واتساب",
-    conversationsTitle: "المحادثات",
-    emptyState: "لا توجد محادثات بعد.",
-    newChatTitle: "محادثة جديدة",
-    phonePlaceholder: "أدخل رقم الهاتف (مثال: 966501234567)",
-    startChatBtn: "بدء المحادثة",
-    now: "الآن",
-    inputPlaceholder: "اكتب رسالة...",
-    sendBtn: "إرسال",
-    selectConversation: "اختر محادثة من القائمة",
-    configureWarning: "يلزم إكمال إعدادات الربط من لوحة الإعدادات قبل استخدام المحادثات.",
+    title: "مركز الاتصالات",
+    description: "إدارة واتساب باحتراف، مع ترتيب الأحدث أولًا وثبات المحادثة المختارة.",
+    active: "المحادثات النشطة",
+    unread: "غير المقروءة",
+    waiting: "بانتظار الرد",
+    responseRate: "معدل الاستجابة",
+    listTitle: "المحادثات",
+    latestFirst: "الأحدث أولًا",
+    newLabel: "محادثة جديدة",
+    search: "ابحث...",
+    filter: "تصفية المحادثات",
+    all: "الكل",
+    open: "مفتوحة",
+    unreadFilter: "غير مقروءة",
+    waitingFilter: "بانتظار الرد",
+    connected: "واتساب — متصل",
+    disconnected: "واتساب — غير متصل",
+    notConfigured: "يلزم إكمال إعدادات الربط قبل استخدام المحادثات.",
+    customer: "العميل",
+    owner: "المسؤول",
+    priority: "الأولوية",
+    assignee: "إسناد",
     createTask: "إنشاء مهمة",
-    taskTitleLabel: "عنوان المهمة",
-    taskTypeLabel: "نوع المهمة",
-    taskTypes: { Call: "اتصال", Visit: "زيارة", "Follow-up": "متابعة", "Send Offer": "إرسال عرض" },
-    createTaskBtn: "إنشاء",
-    cancelBtn: "إلغاء",
-    taskCreated: "تم إنشاء المهمة بنجاح",
+    archive: "أرشفة",
+    openDetails: "فتح التفاصيل",
+    archiveConfirm: "هل تريد أرشفة هذه المحادثة؟",
+    archiveUnavailable: "الأرشفة غير مفعلة بدون تغيير API.",
+    messagePlaceholder: "اكتب رسالة واتساب...",
+    send: "إرسال",
+    attach: "إرفاق ملف",
+    noData: "لا توجد بيانات",
+    noMessages: "لا توجد رسائل محفوظة لهذه المحادثة.",
+    select: "اختر محادثة لمشاهدة التفاصيل",
+    unknownAgent: "فريق العمليات",
+    fallbackCustomer: "عميل واتساب",
+    taskCreated: "تم إنشاء مهمة متابعة",
     taskError: "تعذر إنشاء المهمة",
-    titleRequired: "عنوان المهمة مطلوب",
-    phoneUnavailable: "رقم الهاتف غير متوفر",
-    unexpectedError: "حدث خطأ غير متوقع",
-    deleteConfirm: "هل تريد حذف هذه المحادثة؟ سيتم حذف الرسائل من ORCA فقط، ولن تُحذف من واتساب.",
-    deleteBtn: "حذف",
-    deleting: "جاري الحذف...",
-    deleteSuccess: "تم حذف المحادثة من ORCA",
-    deleteError: "تعذر حذف المحادثة",
-    notSpecified: "غير محدد",
+    sentError: "تعذر إرسال الرسالة",
+    now: "الآن",
+    low: "منخفضة",
+    medium: "متوسطة",
+    high: "مرتفعة",
+    urgent: "عاجلة",
+    read: "مقروءة",
+    unreadBadge: "غير مقروءة",
+    pending: "قيد الانتظار",
   },
   EN: {
-    title: "Chat Management",
-    subtitle: "WhatsApp Business — {companyName}",
-    connected: "Connected",
-    disconnected: "Disconnected",
-    cloudApiLabel: "Connection",
-    phoneNumberLabel: "Phone",
-    wabaLabel: "Account",
-    provider: "WhatsApp",
-    conversationsTitle: "Conversations",
-    emptyState: "No conversations yet.",
-    newChatTitle: "New Chat",
-    phonePlaceholder: "Enter phone number (e.g. 966501234567)",
-    startChatBtn: "Start Chat",
-    now: "Now",
-    inputPlaceholder: "Type a message...",
-    sendBtn: "Send",
-    selectConversation: "Select a conversation",
-    configureWarning: "Connection settings are incomplete. Please review settings.",
-    createTask: "Create Task",
-    taskTitleLabel: "Task Title",
-    taskTypeLabel: "Task Type",
-    taskTypes: { Call: "Call", Visit: "Visit", "Follow-up": "Follow-up", "Send Offer": "Send Offer" },
-    createTaskBtn: "Create",
-    cancelBtn: "Cancel",
-    taskCreated: "Task created successfully",
+    title: "Communications Center",
+    description: "Manage WhatsApp with latest-first sorting and stable conversation selection.",
+    active: "Active conversations",
+    unread: "Unread",
+    waiting: "Awaiting reply",
+    responseRate: "Response rate",
+    listTitle: "Conversations",
+    latestFirst: "Latest first",
+    newLabel: "New conversation",
+    search: "Search...",
+    filter: "Filter conversations",
+    all: "All",
+    open: "Open",
+    unreadFilter: "Unread",
+    waitingFilter: "Awaiting reply",
+    connected: "WhatsApp — Connected",
+    disconnected: "WhatsApp — Disconnected",
+    notConfigured: "Connection settings must be completed before using conversations.",
+    customer: "Customer",
+    owner: "Owner",
+    priority: "Priority",
+    assignee: "Assign",
+    createTask: "Create task",
+    archive: "Archive",
+    openDetails: "Open details",
+    archiveConfirm: "Archive this conversation?",
+    archiveUnavailable: "Archiving is unavailable without changing the API.",
+    messagePlaceholder: "Type a WhatsApp message...",
+    send: "Send",
+    attach: "Attach file",
+    noData: "No data",
+    noMessages: "No saved messages for this conversation.",
+    select: "Select a conversation to view details",
+    unknownAgent: "Operations team",
+    fallbackCustomer: "WhatsApp customer",
+    taskCreated: "Follow-up task created",
     taskError: "Failed to create task",
-    titleRequired: "Task title is required",
-    phoneUnavailable: "Phone number is unavailable",
-    unexpectedError: "An unexpected error occurred",
-    deleteConfirm: "Delete this conversation? Messages will be removed from ORCA only and will not be deleted from WhatsApp.",
-    deleteBtn: "Delete",
-    deleting: "Deleting...",
-    deleteSuccess: "Conversation deleted from ORCA",
-    deleteError: "Failed to delete conversation",
-    notSpecified: "Not specified",
-  }
+    sentError: "Failed to send message",
+    now: "Now",
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+    urgent: "Urgent",
+    read: "Read",
+    unreadBadge: "Unread",
+    pending: "Pending",
+  },
 };
+
+function isTechnical(value: string) {
+  return (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
+    /(?:^|\b)(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
+  );
+}
+
+function lastFour(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.slice(-4);
+}
 
 export default function WhatsAppView({ initialChats, tenant, cloudStatus, warning }: WhatsAppViewProps) {
   const { lang } = useApp();
-  const router = useRouter();
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
-  const isArabic = lang === "AR";
-  const dir = isArabic ? "rtl" : "ltr";
-  const displayLocale = isArabic ? 'ar' : 'en';
-
-  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
-  const looksTechnical = (value: string) => {
-    const v = value.trim();
-    return (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
-      /^[0-9a-f]{8,24}$/i.test(v) ||
-      /(?:^|\b)(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+(?:\b|$)/i.test(v) ||
-      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
-    );
-  };
-  const safeDisplayText = (value: unknown, fallback = t.notSpecified) => {
-    const text = String(value ?? '').trim();
-    if (!text || looksTechnical(text)) return fallback;
-    if (!isArabic && containsArabic(text)) return fallback;
-    return text;
-  };
-  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
-  const displayContactName = (chat: Pick<Chat, 'contactName' | 'contactPhone'>) => {
-    const rawName = String(chat.contactName || '').trim();
-    const phone = String(chat.contactPhone || '').trim();
-    if (!rawName || rawName === phone || /^[+\d\s-]{6,}$/.test(rawName)) return phone || t.notSpecified;
-    const displayed = displayPerson(rawName, displayLocale, { route: '/operations/whatsapp' });
-    return safeDisplayText(displayed, phone || t.notSpecified);
-  };
-
-  const connected = cloudStatus?.configured && cloudStatus?.status === "connected";
+  const language = lang === "EN" ? "EN" : "AR";
+  const t = TEXT[language];
+  const isArabic = language === "AR";
+  const locale = isArabic ? "ar-SA" : "en-US";
+  const displayLocale = isArabic ? "ar" : "en";
   const [chats, setChats] = useState<Chat[]>(initialChats);
-  const [activeChatId, setActiveChatId] = useState<string | null>(initialChats[0]?.id || null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [newPhone, setNewPhone] = useState("");
-  const [taskChatId, setTaskChatId] = useState<string | null>(null);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskType, setTaskType] = useState("Call");
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // مزامنة chats عند تغير initialChats (بعد Refresh/navigation)
+  const formatNumber = (value: number | string) => (isArabic ? toArabicNumerals(value) : String(value));
+  const formatPercent = (value: number) => `${formatNumber(value)}${isArabic ? "٪" : "%"}`;
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return t.now;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return t.now;
+    return date.toLocaleString(locale, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const sortedChats = useMemo(() => {
+    return [...chats].sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime());
+  }, [chats]);
+
   useEffect(() => {
     setChats(initialChats);
-    setActiveChatId(prev => {
-      // إذا كان activeChatId الحالي غير موجود في initialChats، اختر الأول
-      const exists = initialChats.find(c => c.id === prev);
-      if (!exists && initialChats.length > 0) return initialChats[0].id;
-      if (initialChats.length === 0) return null;
-      return prev;
+    setSelectedId((previous) => {
+      const incoming = [...initialChats].sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime());
+      if (incoming.length === 0) return null;
+      if (previous && incoming.some((chat) => chat.id === previous)) return previous;
+      return incoming[0].id;
     });
   }, [initialChats]);
 
-  const activeChat = chats.find(c => c.id === activeChatId) || null;
+  const selectedChat = sortedChats.find((chat) => chat.id === selectedId) || null;
+
+  const safeName = (chat: Chat) => {
+    const raw = String(chat.contactName || "").trim();
+    const phone = String(chat.contactPhone || "").trim();
+    if (!raw || raw === phone || /^[+\d\s-]{6,}$/.test(raw) || isTechnical(raw)) {
+      const suffix = lastFour(phone);
+      return suffix ? `${t.fallbackCustomer} • ${suffix}` : t.fallbackCustomer;
+    }
+    return displayPerson(raw, displayLocale, { route: "/operations/whatsapp" });
+  };
+
+  const priorityLabel = (priority?: string | null) => {
+    if (priority === "HIGH" || priority === "HOT") return t.high;
+    if (priority === "URGENT") return t.urgent;
+    if (priority === "LOW" || priority === "COLD") return t.low;
+    return t.medium;
+  };
+
+  const isWaitingReply = (chat: Chat) => chat.messages[chat.messages.length - 1]?.sender === "client";
+  const connected = cloudStatus?.configured && cloudStatus?.status === "connected";
+
+  const visibleSource = sortedChats.filter((chat) => {
+    const haystack = `${safeName(chat)} ${chat.lastMessage}`.toLowerCase();
+    const matchesSearch = haystack.includes(query.toLowerCase());
+    const matchesFilter =
+      filter === "ALL" ||
+      (filter === "UNREAD" && chat.unread) ||
+      (filter === "WAITING" && isWaitingReply(chat)) ||
+      filter === "OPEN";
+    return matchesSearch && matchesFilter;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(visibleSource.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = visibleSource.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const unreadCount = sortedChats.filter((chat) => chat.unread).length;
+  const waitingCount = sortedChats.filter(isWaitingReply).length;
+  const responseRate = sortedChats.length ? Math.round(((sortedChats.length - waitingCount) / sortedChats.length) * 100) : 0;
+
+  const selectChat = (id: string) => {
+    setSelectedId(id);
+  };
 
   async function handleSend() {
-    if (!messageInput.trim() || !activeChat) return;
+    if (!selectedChat || !messageInput.trim() || isSending) return;
     const text = messageInput.trim();
     setMessageInput("");
     setIsSending(true);
-
-    const newMsg: Message = { sender: "agent", text, time: t.now };
-    setChats(prev => prev.map(c =>
-      c.id === activeChat.id ? { ...c, messages: [...c.messages, newMsg], lastMessage: text, time: t.now } : c
-    ));
-    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-
-    await sendWhatsAppMessageAction(activeChat.contactPhone, text);
-    setIsSending(false);
-  }
-
-  async function handleCreateTask() {
-    if (!taskTitle.trim() || !taskChatId) {
-      toast.error(t.titleRequired);
-      return;
-    }
-    const chat = chats.find(c => c.id === taskChatId);
-    if (!chat?.contactPhone) {
-      toast.error(t.phoneUnavailable);
-      return;
-    }
-
-    setIsCreatingTask(true);
-    try {
-      const formData = new FormData();
-      formData.append("title", taskTitle.trim());
-      formData.append("taskType", taskType);
-      formData.append("contactPhone", chat.contactPhone);
-
-      const result = await createWhatsAppTaskAction(formData);
-
-      if (result.success) {
-        setTaskChatId(null);
-        setTaskTitle("");
-        setTaskType("Call");
-        toast.success(t.taskCreated);
-        router.refresh();
-      } else {
-        toast.error(result.error || t.taskError);
-      }
-    } catch (err) {
-      console.error("[WA_TASK] Client error:", err);
-      toast.error(t.unexpectedError);
-    } finally {
-      setIsCreatingTask(false);
-    }
-  }
-
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  async function handleDelete(contactId: string) {
-    setIsDeleting(true);
-    const result = await deleteWhatsAppConversationAction(contactId);
-    setIsDeleting(false);
-    setDeleteConfirm(null);
-    if (result.success) {
-      setChats(prev => {
-        const updated = prev.filter(c => c.id !== contactId);
-        // إذا كانت المحادثة المحذوفة هي النشطة، اختر أول محادثة متبقية
-        if (activeChatId === contactId && updated.length > 0) {
-          setActiveChatId(updated[0].id);
-        } else if (activeChatId === contactId) {
-          setActiveChatId(null);
-        }
-        return updated;
-      });
-      toast.success(t.deleteSuccess);
-    } else {
-      toast.error(safeDisplayText(result.error, t.deleteError));
-    }
-  }
-
-  function getClassificationBadge(priority: string | null | undefined) {
-    if (!priority) return null;
-    const colors: Record<string, string> = {
-      HOT: "bg-red-500/20 text-red-400 border-red-500/30",
-      WARM: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-      COLD: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    };
-    const labels: Record<string, string> = {
-      HOT: isArabic ? "ساخن" : "Hot",
-      WARM: isArabic ? "دافئ" : "Warm",
-      COLD: isArabic ? "بارد" : "Cold",
-    };
-    const colorClass = colors[priority] || colors.COLD;
-    return (
-      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${colorClass} font-bold`}>
-        {labels[priority] || priority}
-      </span>
+    setChats((current) =>
+      current.map((chat) =>
+        chat.id === selectedChat.id
+          ? {
+              ...chat,
+              lastMessage: text,
+              time: new Date().toISOString(),
+              messages: [...chat.messages, { sender: "agent", text, time: new Date().toISOString() }],
+            }
+          : chat
+      )
     );
+    const result = await sendWhatsAppMessageAction(selectedChat.contactPhone, text);
+    setIsSending(false);
+    if (!result.success) toast.error(t.sentError);
   }
 
-  function startNewChat() {
-    const phone = newPhone.trim();
-    if (!phone) return;
-    const existing = chats.find(c => c.contactPhone === phone);
-    if (existing) {
-      setActiveChatId(existing.id);
-    } else {
-      const newChat: Chat = {
-        id: `new-${Date.now()}`,
-        contactName: phone,
-        contactPhone: phone,
-        lastMessage: "",
-        time: t.now,
-        unread: false,
-        messages: [],
-      };
-      setChats(prev => [newChat, ...prev]);
-      setActiveChatId(newChat.id);
-    }
-    setNewPhone("");
-    setShowNewChat(false);
+  async function createTaskForSelected() {
+    if (!selectedChat) return;
+    const formData = new FormData();
+    formData.append("title", `${t.createTask} — ${safeName(selectedChat)}`);
+    formData.append("taskType", "Follow-up");
+    formData.append("contactPhone", selectedChat.contactPhone);
+    const result = await createWhatsAppTaskAction(formData);
+    if (result.success) toast.success(t.taskCreated);
+    else toast.error(t.taskError);
   }
+
+  function archiveConversation() {
+    if (!selectedChat) return;
+    if (window.confirm(t.archiveConfirm)) {
+      toast(t.archiveUnavailable);
+    }
+  }
+
+  function archiveChat(chat: Chat) {
+    setSelectedId(chat.id);
+    if (window.confirm(t.archiveConfirm)) {
+      toast(t.archiveUnavailable);
+    }
+  }
+
+  const listItems: WorkspaceListItem[] = pageItems.map((chat) => ({
+    id: chat.id,
+    title: safeName(chat),
+    snippet: chat.lastMessage || t.noMessages,
+    timestamp: formatDateTime(chat.time),
+    avatar: safeName(chat).charAt(0),
+    selected: chat.id === selectedId,
+    badge: chat.unread
+      ? { label: t.unreadBadge, tone: "warning" }
+      : isWaitingReply(chat)
+        ? { label: t.pending, tone: "warning" }
+        : { label: t.read, tone: "success" },
+    onSelect: () => selectChat(chat.id),
+    actions: [
+      { label: t.openDetails, icon: Eye, onClick: () => selectChat(chat.id) },
+      { label: t.archive, icon: Archive, onClick: () => archiveChat(chat) },
+    ],
+  }));
+
+  const timeline: WorkspaceTimelineItem[] =
+    selectedChat?.messages.map((message, index) => ({
+      id: `${selectedChat.id}-${index}`,
+      body: message.text || t.noData,
+      time: formatDateTime(message.time),
+      side: message.sender === "agent" ? "in" : "out",
+    })) || [];
 
   return (
-    <div className="space-y-4 p-6" dir={dir}>
-      <PageHeader title={t.title} description={t.subtitle.replace("{companyName}", safeDisplayText(tenant.companyName, t.notSpecified))} />
-
-      {/* Cloud API Status */}
-      <SmartCard className="p-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            <span className="text-sm font-bold text-[var(--nc-text-primary)]">
-              {t.provider} — {connected ? t.connected : t.disconnected}
-            </span>
-          </div>
-          {!connected && (
-            <div className="text-xs text-[var(--nc-text-dim)]">{t.configureWarning}</div>
-          )}
-        </div>
-      </SmartCard>
-
-      {/* Conversations or Disconnected State */}
-      {!connected ? (
-        <SmartCard className="p-4 flex flex-col items-center justify-center text-center h-fit py-12 border-dashed border border-[var(--nc-border)]">
-           <i className="ph-bold ph-whatsapp-logo text-4xl text-[var(--nc-text-dim)] mb-3 opacity-50"></i>
-           <p className="text-sm text-[var(--nc-text-primary)] font-bold mb-1">{t.disconnected}</p>
-           <p className="text-xs text-[var(--nc-text-dim)]">{t.configureWarning}</p>
-        </SmartCard>
-      ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-1 space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{t.conversationsTitle} ({formatNumber(chats.length)})</h3>
-            <button onClick={() => setShowNewChat(!showNewChat)} className="text-xs font-bold text-[var(--nc-accent)] hover:underline">
-              + {t.newChatTitle}
-            </button>
-          </div>
-
-          {showNewChat && (
-            <div className="flex gap-2 mb-2">
-              <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder={t.phonePlaceholder}
-                className="flex-1 bg-[var(--nc-surface)] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-[var(--nc-text-primary)] outline-none" />
-              <button onClick={startNewChat} className="px-3 py-1.5 bg-[var(--nc-accent)] text-white text-xs font-bold rounded-lg">{t.startChatBtn}</button>
-            </div>
-          )}
-
-          {chats.length === 0 && <p className="text-xs text-[var(--nc-text-dim)]">{t.emptyState}</p>}
-
-          {chats.map(chat => (
-            <div key={chat.id} className="relative">
-              <div onClick={() => setActiveChatId(chat.id)}
-                className={`p-3 rounded-xl cursor-pointer transition-colors ${chat.id === activeChatId ? 'bg-[var(--nc-accent-soft)]' : 'bg-[var(--nc-surface)] hover:bg-white/5'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-[var(--nc-text-primary)] flex items-center gap-2">
-                    {displayContactName(chat)}
-                    {getClassificationBadge(chat.leadPriority)}
-                  </span>
-                  <span className="text-[10px] text-[var(--nc-text-dim)]">{chat.time}</span>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-[var(--nc-text-dim)] truncate flex-1">{chat.lastMessage || chat.contactPhone}</p>
-                  <button onClick={(e) => { e.stopPropagation(); setTaskChatId(chat.id); setTaskTitle(""); setTaskType("Call"); }}
-                    className="text-[var(--nc-accent)] hover:text-[var(--nc-accent-hover)] text-xs ml-1 shrink-0" title={t.createTask}>+</button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(chat.id); }}
-                    disabled={isDeleting}
-                    className="text-rose-400 hover:text-rose-300 text-xs ml-2 shrink-0">✕</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {deleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteConfirm(null)} />
-            <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm mx-4 space-y-4 shadow-2xl">
-              <p className="text-sm text-[var(--nc-text-primary)] text-center">
-                {t.deleteConfirm}
-              </p>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting}
-                  className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl disabled:opacity-50">
-                  {isDeleting ? t.deleting : t.deleteBtn}
-                </button>
-                <button type="button" onClick={() => setDeleteConfirm(null)} disabled={isDeleting}
-                  className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
-                  {t.cancelBtn}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {taskChatId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setTaskChatId(null)} />
-            <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-sm mx-4 space-y-4 shadow-2xl">
-              <h3 className="text-sm font-bold text-[var(--nc-text-primary)] text-center">{t.createTask}</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-[var(--nc-text-dim)] mb-1">{t.taskTitleLabel}</label>
-                  <input value={taskTitle} onChange={e => setTaskTitle(e.target.value)}
-                    placeholder={t.taskTitleLabel}
-                    className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-[var(--nc-text-primary)] outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--nc-text-dim)] mb-1">{t.taskTypeLabel}</label>
-                  <select value={taskType} onChange={e => setTaskType(e.target.value)}
-                    className="w-full bg-[var(--nc-surface)] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-[var(--nc-text-primary)] outline-none">
-                    {Object.entries(t.taskTypes).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={handleCreateTask} disabled={isCreatingTask || !taskTitle.trim()}
-                  className="flex-1 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-sm font-bold rounded-xl disabled:opacity-50">
-                  {isCreatingTask ? "..." : t.createTaskBtn}
-                </button>
-                <button type="button" onClick={() => setTaskChatId(null)} disabled={isCreatingTask}
-                  className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/10 text-[var(--nc-text-dim)] text-sm rounded-xl">
-                  {t.cancelBtn}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="lg:col-span-2">
-          <SmartCard className={`p-4 flex flex-col ${activeChat ? '' : 'h-fit'}`} style={activeChat ? { minHeight: "400px", maxHeight: "500px" } : {}}>
-            {!activeChat ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center text-[var(--nc-text-dim)]">
-                  <i className="ph-bold ph-chat-circle-dots text-3xl mb-2 opacity-50"></i>
-                  <p className="text-sm">{t.emptyState}</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex-1 overflow-y-auto space-y-3 mb-3">
-                  {activeChat.messages.length === 0 && (
-                    <p className="text-xs text-[var(--nc-text-dim)] text-center">{t.emptyState}</p>
-                  )}
-                  {activeChat.messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.sender === "agent" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${msg.sender === "agent" ? 'bg-[var(--nc-accent)] text-white rounded-br-md' : 'bg-[var(--nc-surface-strong)] text-[var(--nc-text-primary)] rounded-bl-md'}`}>
-                        {msg.text}
-                        <div className={`text-[9px] mt-0.5 ${msg.sender === "agent" ? 'text-white/60' : 'text-[var(--nc-text-dim)]'}`}>{msg.time}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-                <div className="flex gap-2">
-                  <input value={messageInput} onChange={e => setMessageInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    placeholder={t.inputPlaceholder}
-                    disabled={isSending}
-                    className="flex-1 bg-[var(--nc-surface)] border border-white/10 rounded-xl px-3 py-2 text-sm text-[var(--nc-text-primary)] outline-none disabled:opacity-50" />
-                  <button onClick={handleSend} disabled={isSending || !messageInput.trim()}
-                    className="px-4 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors">
-                    {isSending ? "..." : t.sendBtn}
-                  </button>
-                </div>
-              </>
-            )}
-          </SmartCard>
-        </div>
-      </div>
-      )}
-    </div>
+    <UnifiedOperationsWorkspace
+      module="whatsapp"
+      language={language}
+      title={t.title}
+      description={`${connected ? t.connected : t.disconnected}${warning ? ` · ${warning}` : ""}${!connected ? ` · ${t.notConfigured}` : ""}`}
+      kpis={[
+        { label: t.active, value: formatNumber(sortedChats.length), icon: MessageSquare },
+        { label: t.unread, value: formatNumber(unreadCount), icon: MessageSquare },
+        { label: t.waiting, value: formatNumber(waitingCount), icon: Clock },
+        { label: t.responseRate, value: formatPercent(responseRate), icon: Check },
+      ]}
+      listTitle={t.listTitle}
+      listSubtitle={`${t.latestFirst} · ${formatNumber(visibleSource.length)} ${t.listTitle}`}
+      newLabel={t.newLabel}
+      onNew={() => toast(t.newLabel)}
+      searchValue={query}
+      searchPlaceholder={t.search}
+      onSearchChange={(value) => {
+        setQuery(value);
+        setPage(1);
+      }}
+      filterValue={filter}
+      filterLabel={t.filter}
+      filterOptions={[
+        { value: "ALL", label: t.all },
+        { value: "OPEN", label: t.open },
+        { value: "UNREAD", label: t.unreadFilter },
+        { value: "WAITING", label: t.waitingFilter },
+      ]}
+      onFilterChange={(value) => {
+        setFilter(value);
+        setPage(1);
+      }}
+      items={listItems}
+      pagination={{
+        page: safePage,
+        totalPages,
+        onPrevious: () => setPage((current) => Math.max(1, current - 1)),
+        onNext: () => setPage((current) => Math.min(totalPages, current + 1)),
+      }}
+      detail={
+        selectedChat
+          ? {
+              avatar: safeName(selectedChat).charAt(0),
+              title: safeName(selectedChat),
+              meta: `${formatDateTime(selectedChat.time)} · ${connected ? t.connected : t.disconnected}`,
+              actions: [
+                { label: t.assignee, icon: UserPlus, onClick: () => toast(t.assignee) },
+                { label: t.createTask, icon: PlusCircle, onClick: createTaskForSelected },
+                { label: t.archive, icon: Archive, tone: "danger", onClick: archiveConversation },
+              ],
+              context: [
+                { label: t.customer, value: safeName(selectedChat) },
+                { label: t.owner, value: t.unknownAgent },
+                { label: t.priority, value: priorityLabel(selectedChat.leadPriority) },
+              ],
+              timeline,
+              emptyTitle: t.noData,
+              emptyDescription: t.noMessages,
+              composer: {
+                mode: "message",
+                value: messageInput,
+                placeholder: t.messagePlaceholder,
+                sendLabel: t.send,
+                onChange: setMessageInput,
+                onSend: handleSend,
+                disabled: isSending || !messageInput.trim() || !connected,
+                attachLabel: t.attach,
+                onAttach: () => toast(t.attach),
+              },
+            }
+          : null
+      }
+      emptyDetailTitle={t.noData}
+      emptyDetailDescription={t.select}
+    />
   );
 }

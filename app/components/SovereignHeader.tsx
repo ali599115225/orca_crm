@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useState, useRef, useEffect } from 'react';
-import { Menu, Search, ChevronLeft, ChevronRight, Globe, Moon, Sun, LogOut, X } from 'lucide-react';
+import { Bell, Menu, Search, ChevronLeft, ChevronRight, Globe, Moon, Sun, LogOut, X } from 'lucide-react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
@@ -163,6 +163,17 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
 
       {/* Left: Quick actions, profile (in LTR this becomes right side) */}
       <div className="flex items-center gap-2 lg:gap-3 lg:w-1/3" style={{ justifyContent: 'flex-end' }}>
+
+        {/* Notifications */}
+        <button
+          type="button"
+          className="relative flex items-center justify-center w-10 h-10 sm:w-[42px] sm:h-[42px] bg-[var(--nc-surface)] text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent-border)]"
+          title={lang === 'AR' ? 'الإشعارات' : 'Notifications'}
+          aria-label={lang === 'AR' ? 'الإشعارات' : 'Notifications'}
+        >
+          <Bell size={19} />
+          <span className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} w-1.5 h-1.5 rounded-full bg-red-500`} aria-hidden="true" />
+        </button>
 
         {/* Language toggle */}
         <button

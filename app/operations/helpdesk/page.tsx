@@ -12,9 +12,8 @@ export default async function HelpdeskPage() {
     });
     if (tenant) tenantName = tenant.companyName;
 
-    // جلب آخر 50 تذكرة مرتبة بالأحدث أولاً
     const tickets = await prisma.ticket.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       take: 50,
     });
 
@@ -25,6 +24,7 @@ export default async function HelpdeskPage() {
       status: t.status,
       aiResponse: t.aiResponse ?? null,
       createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
     }));
   } catch (err) {
     console.error('[HelpdeskPage] DB fetch error:', err);
