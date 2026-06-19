@@ -2,12 +2,15 @@
 import "server-only";
 import type { PaymentCreateInput, PaymentProviderAdapter, PaymentProviderResult, PaymentVerificationResult } from '../types';
 
-const MOYASAR_SECRET = process.env.MOYASAR_SECRET_KEY || '';
 const MOYASAR_API = 'https://api.moyasar.com/v1';
 
-function authHeader(): Record<string, string> {
+function getMoyasarSecret(): string {
+  return process.env.MOYASAR_SECRET_KEY || '';
+}
+
+function authHeader(secret: string): Record<string, string> {
   return {
-    Authorization: `Basic ${Buffer.from(MOYASAR_SECRET + ':').toString('base64')}`,
+    Authorization: `Basic ${Buffer.from(secret + ':').toString('base64')}`,
     'Content-Type': 'application/json',
   };
 }
@@ -16,7 +19,8 @@ export const moyasarProvider: PaymentProviderAdapter = {
   code: 'MOYASAR',
 
   async createPayment(input: PaymentCreateInput): Promise<PaymentProviderResult> {
-    if (!MOYASAR_SECRET) throw new Error('MOYASAR_SECRET_KEY not configured');
+    const secret = getMoyasarSecret();
+    if (!secret) throw new Error('MOYASAR_SECRET_KEY not configured');
 
     const body = {
       amount: Math.round(input.amountMinorUnits / 100), // Moyasar uses SAR (not halalas)
@@ -32,7 +36,7 @@ export const moyasarProvider: PaymentProviderAdapter = {
 
     const res = await fetch(`${MOYASAR_API}/invoices`, {
       method: 'POST',
-      headers: authHeader(),
+      headers: authHeader(secret),
       body: JSON.stringify(body),
     });
 
@@ -51,10 +55,11 @@ export const moyasarProvider: PaymentProviderAdapter = {
   },
 
   async verifyPayment(providerReference: string): Promise<PaymentVerificationResult> {
-    if (!MOYASAR_SECRET) throw new Error('MOYASAR_SECRET_KEY not configured');
+    const secret = getMoyasarSecret();
+    if (!secret) throw new Error('MOYASAR_SECRET_KEY not configured');
 
     const res = await fetch(`${MOYASAR_API}/invoices/${providerReference}`, {
-      headers: authHeader(),
+      headers: authHeader(secret),
     });
 
     if (!res.ok) {

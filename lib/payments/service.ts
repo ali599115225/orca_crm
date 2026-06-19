@@ -1,8 +1,9 @@
 // lib/payments/service.ts — SERVER-ONLY
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { PaymentStatus } from './types';
+import type { PaymentProviderAdapter, PaymentVerificationResult } from './types';
 import { getPaymentProvider, isProviderEnabled } from './registry';
+import { handleSuccessfulPaymentInternal } from "@/lib/server/internal";
 
 const PLAN_PRICE_MINOR: Record<string, number> = {
   basic: 99_00,
@@ -42,6 +43,8 @@ export async function createPaymentTransaction(input: {
       provider: input.provider.toUpperCase(),
       providerReference: input.providerReference || null,
       planCode: input.planCode,
+      expectedAmountMinor: input.amountMinor,
+      expectedCurrency: (input.currency || 'SAR').toUpperCase(),
       status: 'PENDING',
       paymentUrl: input.paymentUrl || null,
       rawPayload: input.metadata ? input.metadata as any : null,
@@ -53,13 +56,15 @@ export async function createPaymentTransaction(input: {
 export async function claimPaymentTransaction(
   provider: string,
   providerReference: string,
-): Promise<any | null> {
+): Promise<{ transaction: any; claimed: boolean; alreadyCompleted: boolean } | null> {
   const tx = await prisma.paymentTransaction.findFirst({
     where: { provider: provider.toUpperCase(), providerReference },
   });
   if (!tx) return null;
 
-  if (tx.status === 'COMPLETED' || tx.status === 'PROCESSING') return tx;
+  if (tx.status === 'COMPLETED') {
+    return { transaction: tx, claimed: false, alreadyCompleted: true };
+  }
 
   // Atomic claim — only update if still PENDING or FAILED
   const updated = await prisma.paymentTransaction.updateMany({
@@ -71,45 +76,56 @@ export async function claimPaymentTransaction(
   });
 
   if (updated.count === 0) {
-    // Someone else claimed it — return the current state
-    return prisma.paymentTransaction.findUnique({ where: { id: tx.id } });
+    const current = await prisma.paymentTransaction.findUnique({ where: { id: tx.id } });
+    return current ? { transaction: current, claimed: false, alreadyCompleted: current.status === 'COMPLETED' } : null;
   }
 
-  return prisma.paymentTransaction.findUnique({ where: { id: tx.id } });
+  const claimed = await prisma.paymentTransaction.findUnique({ where: { id: tx.id } });
+  return claimed ? { transaction: claimed, claimed: true, alreadyCompleted: false } : null;
 }
 
 export async function markPaymentCompleted(txId: string): Promise<void> {
   await prisma.paymentTransaction.update({
     where: { id: txId },
-    data: { status: 'COMPLETED', processedAt: new Date() },
+    data: { status: 'COMPLETED', processedAt: new Date(), lastError: null, failureReason: null },
   });
 }
 
 export async function markPaymentFailed(txId: string, reason: string): Promise<void> {
   await prisma.paymentTransaction.update({
     where: { id: txId },
-    data: { status: 'FAILED', failureReason: reason.slice(0, 2000) },
+    data: { status: 'FAILED', lastError: reason.slice(0, 2000), failureReason: reason.slice(0, 2000) },
   });
+}
+
+function callbackUrlWithProvider(callbackUrl: string, providerCode: string): string {
+  const url = new URL(callbackUrl);
+  url.searchParams.set('provider', providerCode.toUpperCase());
+  return url.toString();
 }
 
 export async function initiatePayment(input: {
   tenantId: string;
   planCode: string;
   providerCode?: string;
+  adapter?: PaymentProviderAdapter;
   metadata?: Record<string, string>;
   description?: string;
   callbackUrl?: string;
 }): Promise<{ success: boolean; paymentUrl?: string; internalTxId?: string; error?: string }> {
   try {
-    const providerCode = input.providerCode || 'MOYASAR';
+    const providerCode = (input.providerCode || 'MOYASAR').toUpperCase();
 
     if (!isProviderEnabled(providerCode)) {
       return { success: false, error: `Payment provider ${providerCode} is not enabled` };
     }
 
-    const provider = getPaymentProvider(providerCode);
+    const provider = input.adapter || getPaymentProvider(providerCode);
     if (!provider) {
       return { success: false, error: `Payment provider ${providerCode} not found` };
+    }
+    if (provider.code !== providerCode) {
+      return { success: false, error: `Payment provider ${providerCode} adapter mismatch` };
     }
 
     const amountMinor = getPlanPriceMinor(input.planCode);
@@ -134,7 +150,7 @@ export async function initiatePayment(input: {
       amountMinorUnits: amountMinor,
       currency,
       description,
-      callbackUrl: input.callbackUrl || `${appUrl}/api/payment/callback`,
+      callbackUrl: callbackUrlWithProvider(input.callbackUrl || `${appUrl}/api/payment/callback`, providerCode),
       metadata: input.metadata,
     });
 
@@ -154,5 +170,108 @@ export async function initiatePayment(input: {
   } catch (error: any) {
     console.error('[PaymentService] initiatePayment error:', error.message);
     return { success: false, error: error.message };
+  }
+}
+
+export type PaymentCallbackResult =
+  | { ok: true; status: 'COMPLETED' | 'ALREADY_COMPLETED' }
+  | { ok: false; status: 'REJECTED' | 'PROCESSING' | 'FAILED'; error: string };
+
+export async function processPaymentCallback(input: {
+  provider: string;
+  providerReference: string;
+  adapter?: PaymentProviderAdapter;
+  handleSuccessfulPayment?: typeof handleSuccessfulPaymentInternal;
+}): Promise<PaymentCallbackResult> {
+  const providerCode = input.provider.toUpperCase();
+  const providerReference = input.providerReference;
+
+  if (!providerReference) {
+    return { ok: false, status: 'REJECTED', error: 'Missing provider reference' };
+  }
+
+  if (!isProviderEnabled(providerCode)) {
+    return { ok: false, status: 'REJECTED', error: 'Payment provider is disabled' };
+  }
+
+  const adapter = input.adapter || getPaymentProvider(providerCode);
+  if (!adapter || adapter.code !== providerCode) {
+    return { ok: false, status: 'REJECTED', error: 'Payment provider is unsupported' };
+  }
+
+  const tx = await prisma.paymentTransaction.findFirst({
+    where: { provider: providerCode, providerReference },
+  });
+
+  if (!tx) {
+    return { ok: false, status: 'REJECTED', error: 'Payment transaction not found' };
+  }
+
+  let verification: PaymentVerificationResult;
+  try {
+    verification = await adapter.verifyPayment(providerReference);
+  } catch (error: any) {
+    return { ok: false, status: 'REJECTED', error: error.message || 'Payment verification failed' };
+  }
+
+  if (verification.providerReference && verification.providerReference !== providerReference) {
+    return { ok: false, status: 'REJECTED', error: 'Provider reference mismatch' };
+  }
+
+  if (!verification.paid) {
+    return { ok: false, status: 'REJECTED', error: 'Payment is not paid' };
+  }
+
+  if (verification.amountMinorUnits !== tx.expectedAmountMinor) {
+    return { ok: false, status: 'REJECTED', error: 'Payment amount mismatch' };
+  }
+
+  if (verification.currency.toUpperCase() !== tx.expectedCurrency.toUpperCase()) {
+    return { ok: false, status: 'REJECTED', error: 'Payment currency mismatch' };
+  }
+
+  const claim = await claimPaymentTransaction(providerCode, providerReference);
+  if (!claim) {
+    return { ok: false, status: 'REJECTED', error: 'Payment transaction not found' };
+  }
+
+  if (claim.alreadyCompleted) {
+    return { ok: true, status: 'ALREADY_COMPLETED' };
+  }
+
+  if (!claim.claimed) {
+    return { ok: false, status: 'PROCESSING', error: 'Payment is already being processed' };
+  }
+
+  const claimedTx = claim.transaction;
+  const planCode = claimedTx.planCode;
+  if (!planCode) {
+    await markPaymentFailed(claimedTx.id, 'Payment transaction is missing plan code');
+    return { ok: false, status: 'FAILED', error: 'Payment transaction is missing plan code' };
+  }
+
+  try {
+    if (planCode === 'addon') {
+      const metadata = (claimedTx.rawPayload as any) || {};
+      const agentCount = parseInt(metadata?.agentCount || '0', 10);
+      if (agentCount > 0 && agentCount <= 100) {
+        await prisma.tenant.update({
+          where: { id: claimedTx.tenantId },
+          data: { extraAgents: { increment: agentCount } },
+        });
+      }
+    } else {
+      const handler = input.handleSuccessfulPayment || handleSuccessfulPaymentInternal;
+      const result = await handler(claimedTx.tenantId, planCode, 'MONTHLY');
+      if (!result?.success) {
+        throw new Error(result?.error || 'Internal payment processing failed');
+      }
+    }
+
+    await markPaymentCompleted(claimedTx.id);
+    return { ok: true, status: 'COMPLETED' };
+  } catch (error: any) {
+    await markPaymentFailed(claimedTx.id, error.message || 'Internal payment processing failed');
+    return { ok: false, status: 'FAILED', error: error.message || 'Internal payment processing failed' };
   }
 }

@@ -742,12 +742,12 @@ model PaymentTransaction {
   netAmount       Decimal  @db.Decimal(12, 2)
   currency        String   @default("SAR")
   method          String
-  status          String   @default("COMPLETED")
+  status          String   @default("PENDING")
   gatewayRef      String?  @map("gateway_ref")
   gatewayResponse String?  @map("gateway_response") @db.Text
   paidAt          DateTime @default(now()) @map("paid_at") @db.Timestamptz
   // ── Paylink sandbox gateway fields ──
-  provider              String?   @default("manual")  @map("provider")
+  provider              String    @default("MANUAL")  @map("provider")
   providerTransactionId String?                        @map("provider_transaction_id")
   providerInvoiceId     String?                        @map("provider_invoice_id")
   providerReference     String?                        @map("provider_reference")
@@ -758,7 +758,10 @@ model PaymentTransaction {
   failureReason         String?                        @map("failure_reason")       @db.Text
   idempotencyKey        String?                        @map("idempotency_key")
   planCode              String?                        @map("plan_code")
+  expectedAmountMinor   Int       @default(0)          @map("expected_amount_minor")
+  expectedCurrency      String    @default("SAR")      @map("expected_currency")
   processedAt           DateTime?                      @map("processed_at") @db.Timestamptz
+  lastError             String?                        @map("last_error") @db.Text
 
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
@@ -770,6 +773,7 @@ model PaymentTransaction {
   @@index([providerTransactionId])
   @@index([providerInvoiceId])
   @@index([idempotencyKey])
+  @@unique([provider, providerReference], map: "payment_transaction_provider_reference_uq")
   @@map("payment_transactions")
 }
 

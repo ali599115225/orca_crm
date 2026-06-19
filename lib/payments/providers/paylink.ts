@@ -2,8 +2,13 @@
 import "server-only";
 import type { PaymentCreateInput, PaymentProviderAdapter, PaymentProviderResult, PaymentVerificationResult } from '../types';
 
-const PAYLINK_SECRET = process.env.PAYLINK_SECRET_KEY || '';
-const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
+function getPaylinkSecret(): string {
+  return process.env.PAYLINK_SECRET_KEY || '';
+}
+
+function getPaylinkBaseUrl(): string {
+  return process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
+}
 
 function generateIdempotencyKey(): string {
   return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -13,7 +18,8 @@ export const paylinkProvider: PaymentProviderAdapter = {
   code: 'PAYLINK',
 
   async createPayment(input: PaymentCreateInput): Promise<PaymentProviderResult> {
-    if (!PAYLINK_SECRET) throw new Error('PAYLINK_SECRET_KEY not configured');
+    const secret = getPaylinkSecret();
+    if (!secret) throw new Error('PAYLINK_SECRET_KEY not configured');
 
     const body = {
       amount: input.amountMinorUnits, // Paylink uses halalas
@@ -27,10 +33,10 @@ export const paylinkProvider: PaymentProviderAdapter = {
       },
     };
 
-    const res = await fetch(`${PAYLINK_BASE}/api/v1/invoice`, {
+    const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${PAYLINK_SECRET}`,
+        Authorization: `Bearer ${secret}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': generateIdempotencyKey(),
       },
@@ -52,10 +58,11 @@ export const paylinkProvider: PaymentProviderAdapter = {
   },
 
   async verifyPayment(providerReference: string): Promise<PaymentVerificationResult> {
-    if (!PAYLINK_SECRET) throw new Error('PAYLINK_SECRET_KEY not configured');
+    const secret = getPaylinkSecret();
+    if (!secret) throw new Error('PAYLINK_SECRET_KEY not configured');
 
-    const res = await fetch(`${PAYLINK_BASE}/api/v1/invoice/${providerReference}`, {
-      headers: { Authorization: `Bearer ${PAYLINK_SECRET}` },
+    const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice/${providerReference}`, {
+      headers: { Authorization: `Bearer ${secret}` },
     });
 
     if (!res.ok) {

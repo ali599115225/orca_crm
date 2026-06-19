@@ -64,7 +64,11 @@ export async function initiateAddonPaymentAction(agentCount: number, providerCod
       const { prisma } = await import('@/lib/prisma');
       await prisma.paymentTransaction.update({
         where: { id: result.internalTxId },
-        data: { amount: totalMinor / 100, netAmount: totalMinor / 100 },
+        data: {
+          amount: totalMinor / 100,
+          netAmount: totalMinor / 100,
+          expectedAmountMinor: totalMinor,
+        },
       });
     }
 
