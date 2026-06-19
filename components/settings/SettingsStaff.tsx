@@ -8,6 +8,8 @@ import { useApp } from '@/app/context/AppContext';
 import { useAuth } from '@/app/context/AuthContext';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toast } from '@/app/context/ToastContext';
+import { displayPerson } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 interface User {
   id: string;
@@ -33,6 +35,20 @@ const PLAN_LIMITS: Record<string, number> = {
   silver: 10,
   gold: 99999,
 };
+
+function hasArabicScript(value: unknown): boolean {
+  return /[\u0600-\u06FF]/.test(String(value || ''));
+}
+
+function isTechnicalId(value: unknown): boolean {
+  const text = String(value || '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text) || /^[0-9a-f]{8,24}$/i.test(text);
+}
+
+function isUnsafeDisplayValue(value: unknown): boolean {
+  const text = String(value || '').trim();
+  return !text || isTechnicalId(text) || /\b(demo|stress|mock|trial)\b/i.test(text) || /تجريبي|تجريبية/.test(text);
+}
 
 const ROLE_TRANSLATIONS = {
   AR: {
@@ -129,7 +145,17 @@ const TRANSLATIONS = {
 export default function SettingsStaff({ tenant, users, lang, isArabic }: SettingsStaffProps) {
   const router = useRouter();
   const { role: currentUserRole } = useAuth();
+  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
   const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
+
+  const displayStaffName = (name: unknown): string => {
+    const fallback = isArabic ? 'غير محدد' : 'Not specified';
+    const displayed = displayPerson(String(name || ''), displayLocale, { route: '/operations/settings' });
+    const text = String(displayed || '').trim();
+    if (isUnsafeDisplayValue(text)) return fallback;
+    if (!isArabic && hasArabicScript(text)) return fallback;
+    return text;
+  };
 
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
@@ -152,6 +178,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
   const limit = PLAN_LIMITS[plan] || 2;
   const currentUsersCount = users.length;
   const isLimitReached = currentUsersCount >= limit;
+  const visibleUsers = users.slice(0, 5);
 
   const handleAddEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -261,7 +288,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
         {/* Create new employee form (5 cols) */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-4 space-y-6">
 
           <SmartCard className="p-6 shadow-sm space-y-4">
             <div className="border-b border-[var(--nc-border)] pb-3 flex justify-between items-center">
@@ -385,13 +412,13 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
         </div>
 
         {/* Active staff ledger table (7 cols) */}
-        <SmartCard className="lg:col-span-7 shadow-sm overflow-hidden">
+        <SmartCard className="lg:col-span-8 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
             <h2 className="text-[var(--nc-foreground)] font-bold text-base">{t.staffTableTitle}</h2>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+          <div className="max-h-[485px] overflow-auto">
+            <table className={`w-full min-w-[760px] border-collapse text-xs ${isArabic ? "text-right" : "text-left"}`}>
               <thead>
                 <tr className="border-b border-[var(--nc-border)] text-[var(--nc-foreground-muted)] bg-[var(--nc-surface)]">
                   <th className="p-3 font-semibold text-center w-14">{t.staffTableId}</th>
@@ -402,14 +429,14 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--nc-border)] text-[var(--nc-foreground-muted)]">
-                {users.map((u, idx) => {
+                {visibleUsers.map((u, idx) => {
                   const number = idx + 1;
                   const isProcessing = loadingActionId === u.id;
                   return (
                     <tr key={u.id} className="hover:bg-[var(--nc-surface)] transition-colors">
                       <td className="p-3 text-center font-en">{toArabicNumerals(number)}</td>
                       <td className="p-3 font-bold text-[var(--nc-foreground)]">
-                        {u.name}
+                        {displayStaffName(u.name)}
                         <span className="text-[10px] text-[var(--nc-foreground-muted)] block font-bold font-sans mt-0.5">
                           {ROLE_TRANSLATIONS[lang]?.[u.role as keyof typeof ROLE_TRANSLATIONS.EN] || u.role}
                         </span>

@@ -119,7 +119,18 @@ function isArabicText(value: string): boolean {
 function isDemoOrMockValue(value: unknown): boolean {
   const text = String(value || '').trim().toLowerCase();
   if (!text) return false;
-  return text.includes('demo') || text.includes('stress') || text.includes('mock') || text.includes('test data') || text.includes('تجريبي') || text.includes('محاكاة') || text.includes('اختباري');
+  return text.includes('demo') ||
+    text.includes('stress') ||
+    text.includes('mock') ||
+    text.includes('test data') ||
+    text.includes('unnamed') ||
+    text.includes('unknown') ||
+    text.includes('no data available') ||
+    text.includes('تجريبي') ||
+    text.includes('محاكاة') ||
+    text.includes('اختباري') ||
+    text.includes('غير معروف') ||
+    text.includes('لا توجد بيانات');
 }
 
 function isUnsafeDisplayValue(value: unknown, locale: RentalLocale): boolean {
@@ -832,7 +843,7 @@ export default function RentalPage() {
 
     return (
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3 text-[11px] text-[var(--nc-text-dim)]">
-        <span className="font-bold">صفحة {page + 1} من {totalPages}</span>
+        <span className="font-bold">{L(`صفحة ${formatNumberValue(page + 1, displayLocale)} من ${formatNumberValue(totalPages, displayLocale)}`, `Page ${formatNumberValue(page + 1, displayLocale)} of ${formatNumberValue(totalPages, displayLocale)}`)}</span>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -840,7 +851,7 @@ export default function RentalPage() {
             disabled={page === 0}
             className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
           >
-            السابق
+            {L('السابق', 'Previous')}
           </button>
           <button
             type="button"
@@ -848,7 +859,7 @@ export default function RentalPage() {
             disabled={page >= totalPages - 1}
             className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
           >
-            التالي
+            {L('التالي', 'Next')}
           </button>
         </div>
       </div>
@@ -1689,8 +1700,8 @@ export default function RentalPage() {
                             {safeDisplayValue(inv.invoiceLabel, displayLocale)}
                           </td>
                           <td className="!py-2 text-xs min-w-[140px]">
-                            <div className="text-white truncate max-w-[140px]">{inv.customerName || '-'}</div>
-                            <div className="text-[var(--nc-text-dim)] text-[10px] truncate max-w-[140px]">{inv.unitName || ''}</div>
+                            <div className="text-white truncate max-w-[140px]">{displayPersonSafe(inv.customerName, displayLocale)}</div>
+                            <div className="text-[var(--nc-text-dim)] text-[10px] truncate max-w-[140px]">{displayEntitySafe(inv.unitName, 'unit', displayLocale)}</div>
                           </td>
                           <td className="!py-2 font-mono text-[var(--nc-text-dim)] text-xs whitespace-nowrap">
                             <DateCell value={inv.due} />

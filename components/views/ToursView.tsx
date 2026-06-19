@@ -254,6 +254,17 @@ function safeText(value: unknown, fallback: string): string {
   return text;
 }
 
+function hasArabicScript(value: unknown): boolean {
+  return /[\u0600-\u06FF]/.test(String(value || ''));
+}
+
+function safeLocalizedNote(value: unknown, locale: DisplayLocale, fallback: string): string {
+  const text = safeText(value, fallback);
+  if (text === fallback) return fallback;
+  if (locale === 'en' && hasArabicScript(text)) return fallback;
+  return text;
+}
+
 function formatDateTime(value: string | null | undefined, locale: DisplayLocale, fallback: string): string {
   if (!value) return fallback;
   const date = new Date(value);
@@ -741,7 +752,7 @@ export default function ToursView() {
             <div className="mt-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
               <span className="mb-2 block text-xs font-bold text-[var(--nc-text-primary)]">{labels.notes}</span>
               <p className="text-sm leading-7 text-[var(--nc-text-secondary)]">
-                {safeText(selectedTour.notes, labels.noNotes)}
+                {safeLocalizedNote(selectedTour.notes, displayLocale, labels.noNotes)}
               </p>
             </div>
           </div>

@@ -329,7 +329,24 @@ export default function PropertyList({
     // Telemetry removed — production cleanup
   };
 
-  const projectOptions = useMemo(() => Array.from(new Set(properties.map((u) => u.project).filter(Boolean))), [properties]);
+  const projectOptions = useMemo(() => {
+    const seenLabels = new Set<string>();
+
+    return properties
+      .map((u) => String(u.project || '').trim())
+      .filter(Boolean)
+      .map((project) => ({
+        value: project,
+        label: displayProjectName(project, locale),
+      }))
+      .filter((project) => {
+        if (!project.label || project.label === emptyValue(locale)) return false;
+        const key = project.label.toLowerCase();
+        if (seenLabels.has(key)) return false;
+        seenLabels.add(key);
+        return true;
+      });
+  }, [properties, locale]);
 
   const filteredProperties = properties.filter((u) => {
     const searchable = `${u.sku || ''} ${u.type || ''} ${displayTypeLabel(u.type, locale)} ${u.project || ''} ${displayProjectName(u.project, locale)}`.toLowerCase();
@@ -455,8 +472,8 @@ export default function PropertyList({
           <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm outline-none w-full lg:w-48">
             <option value="">{labels.allProjects}</option>
             {projectOptions.map((project) => (
-              <option key={project} value={project}>
-                {displayProjectName(project, locale)}
+              <option key={project.value} value={project.value}>
+                {project.label}
               </option>
             ))}
           </select>
@@ -569,8 +586,8 @@ export default function PropertyList({
               <select value={newProject} onChange={(e) => setNewProject(e.target.value)} className={inputClass}>
                 {projectOptions.length > 0 ? (
                   projectOptions.map((project) => (
-                    <option key={project} value={project}>
-                      {displayProjectName(project, locale)}
+                    <option key={project.value} value={project.value}>
+                      {project.label}
                     </option>
                   ))
                 ) : (
