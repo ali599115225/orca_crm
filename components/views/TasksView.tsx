@@ -15,7 +15,7 @@ const PAGE_SIZE = 5;
 
 const TEXT = {
   AR: {
-    title: "مركز الاتصالات",
+    title: "المهام والتذكيرات",
     description: "إدارة المهام والتذكيرات ضمن نموذج العمليات الموحد.",
     total: "إجمالي المهام",
     overdue: "المتأخرة",
@@ -56,7 +56,7 @@ const TEXT = {
     unknown: "غير محدد",
   },
   EN: {
-    title: "Communications Center",
+    title: "Tasks & reminders",
     description: "Manage tasks and reminders through the unified operations workspace.",
     total: "Total tasks",
     overdue: "Overdue",

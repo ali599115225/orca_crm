@@ -40,7 +40,7 @@ const PAGE_SIZE = 5;
 
 const TEXT = {
   AR: {
-    title: "مركز الاتصالات",
+    title: "البريد الإلكتروني",
     description: "إدارة البريد الإلكتروني بنفس نموذج العمل الموحد داخل مركز العمليات.",
     newMessages: "الرسائل الجديدة",
     unread: "غير المقروءة",
@@ -80,7 +80,7 @@ const TEXT = {
     none: "لا يوجد",
   },
   EN: {
-    title: "Communications Center",
+    title: "Email",
     description: "Manage email with the same unified operations workspace model.",
     newMessages: "New messages",
     unread: "Unread",

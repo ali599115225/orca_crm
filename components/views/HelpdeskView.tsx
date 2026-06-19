@@ -36,7 +36,7 @@ const PAGE_SIZE = 5;
 
 const TEXT = {
   AR: {
-    title: "مركز الاتصالات",
+    title: "مركز الدعم",
     description: "مركز الدعم لإدارة التذاكر والردود ضمن نموذج العمليات الموحد.",
     openTickets: "التذاكر المفتوحة",
     highPriority: "عالية الأولوية",
@@ -77,7 +77,7 @@ const TEXT = {
     ticket: "تذكرة",
   },
   EN: {
-    title: "Communications Center",
+    title: "Support Center",
     description: "Support Center for tickets and replies within the unified operations workspace.",
     openTickets: "Open tickets",
     highPriority: "High priority",

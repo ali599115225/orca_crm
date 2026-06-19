@@ -46,7 +46,7 @@ const PAGE_SIZE = 5;
 
 const TEXT = {
   AR: {
-    title: "مركز الاتصالات",
+    title: "واتساب",
     description: "إدارة واتساب باحتراف، مع ترتيب الأحدث أولًا وثبات المحادثة المختارة.",
     active: "المحادثات النشطة",
     unread: "غير المقروءة",
@@ -94,7 +94,7 @@ const TEXT = {
     pending: "قيد الانتظار",
   },
   EN: {
-    title: "Communications Center",
+    title: "WhatsApp",
     description: "Manage WhatsApp with latest-first sorting and stable conversation selection.",
     active: "Active conversations",
     unread: "Unread",
