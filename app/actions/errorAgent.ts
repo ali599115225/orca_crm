@@ -4,7 +4,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { sendAdminEmailAlert } from "@/lib/email";
-import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -79,17 +78,7 @@ export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport>
     anomalies.push("❌ تعذر الاستعلام عن تذاكر الدعم الفني.");
   }
 
-  // 4. تشغيل الوكيل "سند" لفحص وتعليق الاشتراكات المنتهية آلياً
-  try {
-    const suspendResult = await checkAndSuspendExpiredTenantsInternal();
-    if (suspendResult.success && suspendResult.updatedCount) {
-      expiredTenantsSuspended = suspendResult.updatedCount;
-      anomalies.push(`⚡ الوكيل سند: تم رصد وإيقاف عدد ${expiredTenantsSuspended} شركات عقارية منتهية الاشتراك اليوم.`);
-      recommendations.push("إشعار هذه الشركات بالدفع لتنشيط سحابتهم مرة أخرى.");
-    }
-  } catch (e) {
-    anomalies.push("❌ تعذر تشغيل فحص الاشتراكات التابع للوكيل سند.");
-  }
+  // Tenant suspension moved to cron/billing route — secured with CRON_SECRET
 
   // 5. فحص شذوذ البيانات (Anomalies Check)
   try {

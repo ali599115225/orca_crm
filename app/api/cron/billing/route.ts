@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { sendSMSNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
+import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -36,25 +37,15 @@ export async function GET(request: NextRequest) {
     };
 
     // ===================================================
-    // 1. تعليق الشركات المنتهية الاشتراك
+    // 1. تعليق الشركات المنتهية الاشتراك (via internal agent)
     // ===================================================
-    const expiredTenants = await prisma.tenant.findMany({
-      where: {
-        isActive: true,
-        subscriptionExpiresAt: { lt: now },
-      },
-      include: {
-        users: { where: { role: "ADMIN" }, take: 1 },
-      },
-    });
-
-    if (expiredTenants.length > 0) {
-      const expiredIds = expiredTenants.map(t => t.id);
-      const updateResult = await prisma.tenant.updateMany({
-        where: { id: { in: expiredIds } },
-        data: { isActive: false, paymentStatus: "UNPAID" },
-      });
-      results.suspended = updateResult.count;
+    const suspendResult = await checkAndSuspendExpiredTenantsInternal();
+    if (suspendResult.success && suspendResult.updatedCount) {
+      results.suspended = suspendResult.updatedCount;
+    } else if (!suspendResult.success) {
+      results.errors.push(`فشل تعليق الاشتراكات: ${suspendResult.error}`);
+    } else {
+      results.suspended = 0;
     }
 
     // ===================================================
