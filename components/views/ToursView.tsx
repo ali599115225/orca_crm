@@ -8,6 +8,9 @@ import { toast } from '@/app/context/ToastContext';
 import { getToursAction, scheduleTourActionDirect } from '@/app/actions/tours';
 import { DateField } from '@/components/ui/DateField';
 import StatusBadge, { type BadgeVariant } from '@/components/ui/StatusBadge';
+import { useApp } from '@/app/context/AppContext';
+import { displayPerson, displayGeo, displayEnum } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 type TourListItem = {
   id: string;
@@ -123,6 +126,22 @@ function safeText(value?: string | null, fallback = 'غير محدد'): string {
 }
 
 export default function ToursView() {
+  const { lang } = useApp();
+  const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
+  const isArabic = displayLocale === 'ar';
+
+  const STATUS_OPTIONS = [
+    { value: '', label: isArabic ? 'كل الحالات' : 'All statuses' },
+    { value: 'SCHEDULED', label: displayEnum('SCHEDULED', 'tourStatus', displayLocale) },
+    { value: 'COMPLETED', label: displayEnum('COMPLETED', 'tourStatus', displayLocale) },
+    { value: 'CANCELLED', label: displayEnum('CANCELLED', 'tourStatus', displayLocale) },
+    { value: 'NO_SHOW', label: displayEnum('NO_SHOW', 'tourStatus', displayLocale) },
+    { value: 'FOLLOW_UP', label: displayEnum('FOLLOW_UP', 'tourStatus', displayLocale) },
+  ];
+
+  const displayTourLead = (name: string | null | undefined) => displayPerson(name, displayLocale, { route: '/operations/tours' });
+  const displayTourLocation = (loc: string | null | undefined) => displayGeo(loc, 'city', displayLocale, { route: '/operations/tours' });
+  const displayTourAgent = (name: string | null | undefined) => displayPerson(name, displayLocale, { route: '/operations/tours' });
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(INITIAL_FILTERS);
   const [tours, setTours] = useState<TourListItem[]>([]);

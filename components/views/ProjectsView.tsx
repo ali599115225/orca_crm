@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
 import { getDetailedProjectsAction, getProjectUnitsAction } from '@/app/actions/projects';
+import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
+import type { DisplayLocale } from '@/lib/display';
 
 type ProjectItem = {
   id: string | number;
@@ -392,6 +394,7 @@ export default function ProjectsView() {
   const { hasPermission } = useAuth();
   const { lang } = useApp();
   const isArabic = lang === 'AR';
+  const displayLocale: DisplayLocale = isArabic ? 'ar' : 'en';
   const labels = isArabic ? copy.ar : copy.en;
   const direction = isArabic ? 'rtl' : 'ltr';
   const textAlign = isArabic ? 'text-right' : 'text-left';
