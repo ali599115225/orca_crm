@@ -757,6 +757,8 @@ model PaymentTransaction {
   webhookReceivedAt     DateTime?                      @map("webhook_received_at")  @db.Timestamptz
   failureReason         String?                        @map("failure_reason")       @db.Text
   idempotencyKey        String?                        @map("idempotency_key")
+  planCode              String?                        @map("plan_code")
+  processedAt           DateTime?                      @map("processed_at") @db.Timestamptz
 
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
