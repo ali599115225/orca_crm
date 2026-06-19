@@ -9,63 +9,73 @@ import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
 
 // البنوك السعودية ونسب الأرباح الرسمية وعروضها الحصرية لعام 2026
-const BANK_DATA: Record<string, { name: string; apr: number; promo: string; promoEn: string }> = {
+const BANK_DATA: Record<string, { name: string; nameEn: string; apr: number; promo: string; promoEn: string }> = {
   alrajhi: { 
     name: 'مصرف الراجحي', 
+    nameEn: 'Al Rajhi Bank',
     apr: 3.90, 
     promo: 'عرض التمويل المرن بهامش ربح تنافسي مع دعم الإسكان',
     promoEn: 'Flexible financing program with competitive profit rates and housing support.'
   },
   snb: { 
     name: 'البنك الأهلي السعودي (SNB)', 
+    nameEn: 'Saudi National Bank (SNB)',
     apr: 4.10, 
     promo: 'خصم خاص 0.25% لموظفي القطاع الحكومي المعتمد',
     promoEn: 'Special 0.25% discount for approved government sector employees.'
   },
   riyad: { 
     name: 'بنك الرياض', 
+    nameEn: 'Riyad Bank',
     apr: 4.20, 
     promo: 'برنامج الإعفاء المبتدئ وإمكانية دمج الدعم السكني بالكامل',
     promoEn: 'Exemption program with options to fully integrate Sakani support.'
   },
   alinma: { 
     name: 'مصرف الإنماء', 
+    nameEn: 'Alinma Bank',
     apr: 3.85, 
     promo: 'منتج الإجارة المرنة والاعتماد الفوري لفلل الخارطة',
     promoEn: 'Flexible Ijarah product with immediate approvals for off-plan villas.'
   },
   sab: { 
     name: 'البنك السعودي الأول (SAB)', 
+    nameEn: 'Saudi Awwal Bank (SAB)',
     apr: 4.30, 
     promo: 'بدون رسوم إدارية وعروض حصرية على الفلل الصديقة للبيئة',
     promoEn: 'Zero admin fees and exclusive rates on eco-friendly green villas.'
   },
   albilad: { 
     name: 'بنك البلاد', 
+    nameEn: 'Bank Albilad',
     apr: 4.05, 
     promo: 'التمويل العقاري بدون دفعة أولى للمستفيدين المؤهلين لسكني',
     promoEn: 'Zero down payment mortgage options for qualified Sakani beneficiaries.'
   },
   bsf: { 
     name: 'البنك السعودي الفرنسي (BSF)', 
+    nameEn: 'Banque Saudi Fransi (BSF)',
     apr: 4.45, 
     promo: 'الحصول على تمويل إضافي شخصي وعقاري بالتزامن',
     promoEn: 'Combined personal and home finance offerings with quick processing.'
   },
   anb: { 
     name: 'البنك العربي الوطني (ANB)', 
+    nameEn: 'Arab National Bank (ANB)',
     apr: 4.50, 
     promo: 'تأمين تعاوني كامل ضد العجز أو الأضرار الهيكلية مجاناً',
     promoEn: 'Comprehensive cooperative insurance against structural damages free of charge.'
   },
   aljazira: { 
     name: 'بنك الجزيرة', 
+    nameEn: 'Bank AlJazira',
     apr: 4.15, 
     promo: 'تمويل ملاك الصف الثاني لشراء الوحدات السكنية الجاهزة',
     promoEn: 'Second-tier home financing for ready-to-move-in residential units.'
   },
   saib: { 
     name: 'البنك السعودي للاستثمار (SAIB)', 
+    nameEn: 'Saudi Investment Bank (SAIB)',
     apr: 4.35, 
     promo: 'عروض حصرية للعملاء المحولين مع إسقاط الدفعة الأولى',
     promoEn: 'Exclusive salary transfer options with zero downpayment waivers.'
@@ -460,7 +470,7 @@ export default function CalculatorView() {
                 </span>
               </div>
               <div className="flex justify-between items-center text-[var(--nc-foreground-muted)] font-medium">
-                <span>{isArabic ? "الدعم السكني المقدر:" : "Est. Sakani Support:"}:</span>
+                <span>{isArabic ? "الدعم السكني المقدر:" : "Est. Sakani Support:"}</span>
                 <span className={`font-bold font-en ${hasSakani ? 'text-[var(--nc-text-secondary)]' : 'text-[var(--nc-foreground-muted)] font-medium'}`}>
                   {hasSakani ? `${t.sakaniSupportActive} ${formatCurrency(monthlySakaniSupport)}` : t.sakaniSupportInactive}
                 </span>
@@ -576,7 +586,7 @@ export default function CalculatorView() {
                     <td className="py-3 px-4 font-bold text-[var(--nc-text-primary)]">
                       <div className="flex items-center gap-2">
                         <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-transparent'}`}></div>
-                        {data.name}
+                        {isArabic ? data.name : data.nameEn}
                       </div>
                     </td>
                     <td className="py-3 px-4 font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>

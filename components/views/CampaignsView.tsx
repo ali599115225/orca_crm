@@ -8,6 +8,8 @@ import { KpiCard } from '@/components/ui/KpiCard';
 import { useApp } from '@/app/context/AppContext';
 
 /* ─── Types ─────────────────────────────────────────────────── */
+type CampaignStatusKey = 'active' | 'paused' | 'draft';
+
 export interface Campaign {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface Campaign {
   clicks: number;
   leads: number;
   revenue: number;
+  statusKey?: CampaignStatusKey;
   status: 'نشطة' | 'متوقفة' | 'مسودة';
   statusEn: 'Active' | 'Paused' | 'Draft';
 }
@@ -35,7 +38,7 @@ export const RAW_CAMPAIGNS: Campaign[] = [
     platformColor: 'text-blue-500', platformBg: 'bg-blue-500/10 border-blue-500/20',
     platformEmoji: '📘',
     budget: 25000, spend: 22400, impressions: 520000, clicks: 15600, leads: 142, revenue: 890000,
-    status: 'نشطة', statusEn: 'Active',
+    statusKey: 'active', status: 'نشطة', statusEn: 'Active',
   },
   {
     id: 'C-002', name: 'فلل الدرعية — قوقل دسبلاي', nameEn: 'Ad-Diriyah Villas — Google Display',
@@ -43,7 +46,7 @@ export const RAW_CAMPAIGNS: Campaign[] = [
     platformColor: 'text-rose-500', platformBg: 'bg-rose-500/10 border-rose-500/20',
     platformEmoji: '🔴',
     budget: 18000, spend: 17200, impressions: 380000, clicks: 9500, leads: 89, revenue: 630000,
-    status: 'نشطة', statusEn: 'Active',
+    statusKey: 'active', status: 'نشطة', statusEn: 'Active',
   },
   {
     id: 'C-003', name: 'إعلان سناب — مشروع الواجهة', nameEn: 'Snapchat — Waterfront Project',
@@ -51,7 +54,7 @@ export const RAW_CAMPAIGNS: Campaign[] = [
     platformColor: 'text-yellow-500', platformBg: 'bg-yellow-500/10 border-yellow-500/20',
     platformEmoji: '👻',
     budget: 12000, spend: 11800, impressions: 210000, clicks: 4200, leads: 61, revenue: 310000,
-    status: 'متوقفة', statusEn: 'Paused',
+    statusKey: 'paused', status: 'متوقفة', statusEn: 'Paused',
   },
   {
     id: 'C-004', name: 'تيك توك — شقق مفروشة الخبر', nameEn: 'TikTok — Furnished Apartments',
@@ -59,7 +62,7 @@ export const RAW_CAMPAIGNS: Campaign[] = [
     platformColor: 'text-pink-500', platformBg: 'bg-pink-500/10 border-pink-500/20',
     platformEmoji: '🎵',
     budget: 8500, spend: 7600, impressions: 175000, clicks: 5250, leads: 44, revenue: 180000,
-    status: 'مسودة', statusEn: 'Draft',
+    statusKey: 'draft', status: 'مسودة', statusEn: 'Draft',
   },
 ];
 
@@ -171,13 +174,19 @@ export default function CampaignsView({
 
   /* ── Computed Metrics per Campaign ──────────────────────── */
   const activeCampaignsList = campaignsState || RAW_CAMPAIGNS;
-  const campaigns = useMemo(() => activeCampaignsList.map(c => ({
-    ...c,
-    ctr:  pct(c.clicks, c.impressions),
+  const campaigns = useMemo(() => activeCampaignsList.map(c => {
+    const statusKey: CampaignStatusKey =
+      c.statusKey ?? (c.status === 'نشطة' ? 'active' : c.status === 'متوقفة' ? 'paused' : 'draft');
+
+    return {
+      ...c,
+      statusKey,
+      ctr:  pct(c.clicks, c.impressions),
     cvr:  pct(c.leads, c.clicks),
     roas: c.spend > 0 ? c.revenue / c.spend : 0,
-    cpl:  c.leads > 0 ? c.spend / c.leads   : 0,
-  })), [activeCampaignsList]);
+      cpl:  c.leads > 0 ? c.spend / c.leads   : 0,
+    };
+  }), [activeCampaignsList]);
 
   /* ── Aggregate KPIs ─────────────────────────────────────── */
   const totalBudget   = campaigns.reduce((s, c) => s + c.budget, 0);
@@ -191,7 +200,7 @@ export default function CampaignsView({
   const avgROAS       = totalSpend > 0 ? totalRevenue / totalSpend : 0;
   const avgCPL        = totalLeads > 0 ? totalSpend / totalLeads : 0;
   const avgCAC        = avgCPL;
-  const activeCampaigns = campaigns.filter(c => c.status === 'نشطة').length;
+  const activeCampaigns = campaigns.filter(c => c.statusKey === 'active').length;
 
   /* ── AI Recommendations ─────────────────────────────────── */
   const recommendations: Recommendation[] = useMemo(() => {
@@ -199,25 +208,25 @@ export default function CampaignsView({
     campaigns.forEach(c => {
       if (c.cpl > avgCAC * 1.2) {
         recs.push({
-          campaignId: c.id, campaignName: c.name,
+          campaignId: c.id, campaignName: isArabic ? c.name : c.nameEn,
           type: 'reduce',
           reason: t.highCAC,
           action: t.reduceBudget,
-          metric: `CPL: ${fmt(c.cpl)} ${t.currency} (avg: ${fmt(avgCAC)} ${t.currency})`,
+          metric: `CPL: ${fmt(c.cpl)} ${t.currency} ${isArabic ? `(المتوسط: ${fmt(avgCAC)} ${t.currency})` : `(avg: ${fmt(avgCAC)} ${t.currency})`}`,
         });
       }
-      if (c.cvr < 1.5 && c.status === 'نشطة') {
+      if (c.cvr < 1.5 && c.statusKey === 'active') {
         recs.push({
-          campaignId: c.id + '_cvr', campaignName: c.name,
+          campaignId: c.id + '_cvr', campaignName: isArabic ? c.name : c.nameEn,
           type: 'improve',
           reason: t.lowCVR,
           action: t.improveContent,
-          metric: `CVR: ${fmt(c.cvr)}% (target: >1.5%)`,
+          metric: isArabic ? `CVR: ${fmt(c.cvr)}% (الهدف: >1.5%)` : `CVR: ${fmt(c.cvr)}% (target: >1.5%)`,
         });
       }
       if (c.roas > 30) {
         recs.push({
-          campaignId: c.id + '_roas', campaignName: c.name,
+          campaignId: c.id + '_roas', campaignName: isArabic ? c.name : c.nameEn,
           type: 'scale',
           reason: t.highROAS,
           action: t.increaseBudget,
@@ -226,7 +235,7 @@ export default function CampaignsView({
       }
     });
     return recs;
-  }, [campaigns, avgCAC, t]);
+  }, [campaigns, avgCAC, t, isArabic]);
 
   /* ── Platform Insights ──────────────────────────────────── */
   const platformInsights = useMemo(() => {
@@ -248,27 +257,26 @@ export default function CampaignsView({
         (p.spend > 0 ? Math.min(60, ((p.revenue / p.spend) / avgROAS) * 60) : 0)
       )),
     })).sort((a, b) => b.score - a.score);
-  }, [campaigns, avgCAC, avgROAS]);
+  }, [campaigns, avgCPL, avgROAS]);
 
   /* ── Filtered Campaigns ─────────────────────────────────── */
   const filtered = useMemo(() => {
     let list = campaigns;
     if (platformFilter) list = list.filter(c => c.platform === platformFilter);
     if (activeTab === 'all') return list;
-    const map = { active: 'نشطة', paused: 'متوقفة', draft: 'مسودة' };
-    return list.filter(c => c.status === map[activeTab]);
+    return list.filter(c => c.statusKey === activeTab);
   }, [campaigns, activeTab, platformFilter]);
 
   /* ── Status Badge ───────────────────────────────────────── */
-  const statusBadge = (status: string) => {
-    if (status === 'نشطة') return 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border-[var(--nc-accent-border)]';
-    if (status === 'متوقفة') return 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]';
+  const statusBadge = (statusKey: CampaignStatusKey) => {
+    if (statusKey === 'active') return 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border-[var(--nc-accent-border)]';
+    if (statusKey === 'paused') return 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]';
     return 'bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] border-[var(--nc-border)]';
   };
 
-  const statusLabel = (status: string) => {
-    if (status === 'نشطة') return isArabic ? t.active : 'Active';
-    if (status === 'متوقفة') return isArabic ? t.paused : 'Paused';
+  const statusLabel = (statusKey: CampaignStatusKey) => {
+    if (statusKey === 'active') return isArabic ? t.active : 'Active';
+    if (statusKey === 'paused') return isArabic ? t.paused : 'Paused';
     return isArabic ? t.draft : 'Draft';
   };
 
@@ -341,9 +349,9 @@ export default function CampaignsView({
             <div className="flex gap-1">
               {[
                 { key: 'all',    label: isArabic ? 'الكل' : 'All',    count: campaigns.length },
-                { key: 'active', label: isArabic ? 'نشطة' : 'Active', count: campaigns.filter(c=>c.status==='نشطة').length },
-                { key: 'paused', label: isArabic ? 'متوقفة' : 'Paused',count: campaigns.filter(c=>c.status==='متوقفة').length },
-                { key: 'draft',  label: isArabic ? 'مسودة' : 'Draft', count: campaigns.filter(c=>c.status==='مسودة').length },
+                { key: 'active', label: isArabic ? 'نشطة' : 'Active', count: campaigns.filter(c=>c.statusKey==='active').length },
+                { key: 'paused', label: isArabic ? 'متوقفة' : 'Paused',count: campaigns.filter(c=>c.statusKey==='paused').length },
+                { key: 'draft',  label: isArabic ? 'مسودة' : 'Draft', count: campaigns.filter(c=>c.statusKey==='draft').length },
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -418,8 +426,8 @@ export default function CampaignsView({
                     </td>
                     {/* Status */}
                     <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge(c.status)}`}>
-                        {statusLabel(c.status)}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge(c.statusKey)}`}>
+                        {statusLabel(c.statusKey)}
                       </span>
                     </td>
                     {/* Platform Link */}
@@ -521,7 +529,7 @@ export default function CampaignsView({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-extrabold text-[var(--nc-foreground)] leading-tight truncate">
-                      {isArabic ? rec.campaignName.split(' — ')[0] : rec.campaignName.split(' — ')[0]}
+                      {rec.campaignName.split(' — ')[0]}
                     </p>
                     <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5 leading-snug">{rec.reason}</p>
                   </div>
