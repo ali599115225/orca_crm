@@ -100,32 +100,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(fallbackUrl);
     }
 
-    // ── 7. Atomic idempotency check ───────────────────────────
+    // ── 7. Atomic idempotency with receipt binding ──────────
+    // Receipt.id = `moyasar-{invoiceId}` has UNIQUE constraint on the `id` field.
+    // Only the first callback for a given Moyasar invoice can create this receipt.
+    // Concurrent callbacks: one succeeds on create, the other hits unique constraint.
     const receiptKey = `moyasar-${invoiceId}`;
-    const existingReceipt = await prisma.receipt.findUnique({ where: { id: receiptKey } });
-    if (existingReceipt) {
+    let alreadyProcessed = false;
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.receipt.create({
+          data: {
+            id: receiptKey,
+            tenantId,
+            invoiceId,
+            amount: invoice.amount || invoice.total || 0,
+            paymentMethod: "moyasar",
+            status: "COMPLETED",
+          },
+        });
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002" || err?.message?.includes("Unique")) {
+        alreadyProcessed = true;
+      } else {
+        throw err;
+      }
+    }
+
+    if (alreadyProcessed) {
       const successUrl = new URL("/operations", request.url);
       successUrl.searchParams.set("tab", "settings");
       successUrl.searchParams.set("success", "تم تفعيل الاشتراك مسبقًا.");
       return NextResponse.redirect(successUrl);
     }
-
-    // Create receipt atomically — failure on concurrent insert is caught below
-    await prisma.$transaction(async (tx) => {
-      const alreadyExists = await tx.receipt.findUnique({ where: { id: receiptKey } });
-      if (alreadyExists) return;
-
-      await tx.receipt.create({
-        data: {
-          id: receiptKey,
-          tenantId,
-          invoiceId,
-          amount: invoice.amount || invoice.total || 0,
-          paymentMethod: "moyasar",
-          status: "COMPLETED",
-        },
-      });
-    });
 
     // ── 8. Process payment ────────────────────────────────────
     if (type === "addon") {
