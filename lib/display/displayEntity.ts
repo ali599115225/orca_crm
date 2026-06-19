@@ -1,6 +1,6 @@
 import type { DisplayLocale, DisplayOptions, EntityType } from './types';
 import { PROJECT_ALIASES } from './dictionaries/projects';
-import { COMPANY_ALIASES, COMPANY_AR_DISPLAY } from './dictionaries/entities';
+import { COMPANY_ALIASES, COMPANY_AR_DISPLAY, UNIT_TYPE_ALIASES } from './dictionaries/entities';
 import { reportMissingAlias } from './missingAliasReporter';
 
 const STRESS_DEMO_RE = /\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi;
@@ -51,6 +51,10 @@ export function displayEntity(
     if (isProjectLike(entityType)) {
       const enAlias = PROJECT_ALIASES[original] || PROJECT_ALIASES[cleaned];
       if (enAlias) return enAlias;
+    }
+    if (entityType === 'unit') {
+      const unitAlias = UNIT_TYPE_ALIASES[original] || UNIT_TYPE_ALIASES[cleaned];
+      if (unitAlias) return unitAlias;
     }
     if (entityType === 'company') {
       const enAlias = COMPANY_ALIASES[original] || COMPANY_ALIASES[cleaned];

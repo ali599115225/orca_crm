@@ -123,9 +123,19 @@ function isUnsafeFallbackValue(value: unknown): boolean {
     'unassigned agent',
     'unknown status',
     'unknown',
+    'unnamed property',
+    'unnamed project',
+    'unknown city',
+    'unknown company',
+    'no data available',
     'شخص غير محدد',
     'مسؤول غير محدد',
     'حالة غير معروفة',
+    'غير محدد',
+    'مشروع غير محدد',
+    'عقار غير محدد',
+    'شركة غير محددة',
+    'لا توجد بيانات',
   ].includes(text);
 }
 

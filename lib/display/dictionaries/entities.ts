@@ -13,6 +13,19 @@ export const COMPANY_AR_DISPLAY: Record<string, string> = {
   'Dar Al-Amar Real Estate': 'شركة دار الأعمار العقارية',
 };
 
+export const UNIT_TYPE_ALIASES: Record<string, string> = {
+  'دوبلكس': 'Duplex',
+  'فيلا مستقلة': 'Standalone villa',
+  'فيلا': 'Villa',
+  'شقة سكنية': 'Residential apartment',
+  'شقة': 'Apartment',
+  'مكتب تجاري': 'Commercial office',
+  'تاون هاوس': 'Townhouse',
+  'بنتهاوس': 'Penthouse',
+  'فيلا علوية': 'Upper villa',
+  'أرض': 'Land',
+};
+
 export function getEntityDictionary(entityType: EntityType): Record<string, string> | null {
   if (entityType === 'project' || entityType === 'property' || entityType === 'community' || entityType === 'unit') {
     return PROJECT_ALIASES;
@@ -21,4 +34,8 @@ export function getEntityDictionary(entityType: EntityType): Record<string, stri
     return COMPANY_ALIASES;
   }
   return null;
+}
+
+export function getUnitTypeAlias(arabicType: string): string | undefined {
+  return UNIT_TYPE_ALIASES[arabicType];
 }
