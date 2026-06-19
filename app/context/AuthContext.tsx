@@ -26,21 +26,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole>('SUPER_ADMIN');
+  const [role, setRole] = useState<UserRole>('READ_ONLY');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedRole = localStorage.getItem('userRole') as UserRole | null;
-    if (savedRole && PERMISSIONS[savedRole]) {
-      setRole(savedRole);
-    }
     setLoading(false);
 
     const handler = (e: CustomEvent) => {
       const newRole = e.detail as UserRole;
       if (PERMISSIONS[newRole]) {
         setRole(newRole);
-        localStorage.setItem('userRole', newRole);
       }
     };
     window.addEventListener('role-change' as any, handler as any);
