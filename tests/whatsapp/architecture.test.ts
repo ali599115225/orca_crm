@@ -44,7 +44,7 @@ function modelBlock(schema: string, model: string) {
 }
 
 describe("WhatsApp P0 architecture", () => {
-  it("keeps direct Meta Graph calls inside send-service only", () => {
+  it("keeps direct Meta Graph calls inside approved server-only services", () => {
     const hits = [...filesUnder("app"), ...filesUnder("lib")]
       .filter((path) =>
         readFileSync(path, "utf8").includes(
@@ -54,6 +54,7 @@ describe("WhatsApp P0 architecture", () => {
       .map((path) => relative(root, path).replaceAll("\\", "/"));
 
     expect(hits).toEqual([
+      "lib/whatsapp/embedded-signup-service.ts",
       "lib/whatsapp/send-service.ts",
     ]);
   });

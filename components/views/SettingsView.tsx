@@ -10,6 +10,7 @@ import { SmartCard } from '@/components/ui/SmartCard';
 import SettingsBilling from '@/components/settings/SettingsBilling';
 import SettingsStaff from '@/components/settings/SettingsStaff';
 import SettingsCompliance from '@/components/settings/SettingsCompliance';
+import WhatsAppIntegrationSettings from '@/components/settings/WhatsAppIntegrationSettings';
 
 interface User {
   id: string;
@@ -42,7 +43,9 @@ export default function SettingsView({ tenant, users = [] }: SettingsViewProps) 
   const isArabic = lang === 'AR';
   const t = TAB_TRANSLATIONS[lang] || TAB_TRANSLATIONS.AR;
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'staff' | 'compliance'>('billing');
+  const [activeTab, setActiveTab] = useState<'billing' | 'staff' | 'compliance'>(
+    searchParams.get('tab') === 'compliance' ? 'compliance' : 'billing',
+  );
 
   return (
     <div className="nc-page nc-stack">
@@ -110,7 +113,10 @@ export default function SettingsView({ tenant, users = [] }: SettingsViewProps) 
 
       {/* Tab 3: Compliance & Connection */}
       {activeTab === 'compliance' && (
-        <SettingsCompliance lang={lang} isArabic={isArabic} />
+        <div className="space-y-4">
+          <SettingsCompliance lang={lang} isArabic={isArabic} />
+          <WhatsAppIntegrationSettings lang={lang} />
+        </div>
       )}
 
       <style>{`
