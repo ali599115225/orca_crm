@@ -175,6 +175,7 @@
 
 .listPanel {
   min-height: 666px;
+  height: 666px;
   display: flex;
   flex-direction: column;
 }
@@ -309,13 +310,14 @@
 }
 
 .list {
-  flex: 1;
+  flex: 0 0 456px;
+  height: 456px;
   padding: 8px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .listItem {
-  min-height: 82px;
+  height: 82px;
   width: 100%;
   border: 1px solid transparent;
   border-radius: 14px;
@@ -328,6 +330,7 @@
   align-items: flex-start;
   text-align: start;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .listItem:hover {
@@ -399,8 +402,9 @@
   margin-top: 8px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .badge {
@@ -439,6 +443,7 @@
 .itemActions {
   display: flex;
   gap: 6px;
+  flex: 0 0 auto;
 }
 
 .miniButton {
@@ -469,11 +474,13 @@
 }
 
 .paginationText {
-  color: var(--uow-muted);
+  min-width: 94px;
+  color: var(--uow-text);
   font-size: 12px;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 800;
   white-space: nowrap;
+  text-align: center;
 }
 
 .detailTop {
@@ -691,6 +698,7 @@
 
   .listPanel {
     order: 1;
+    height: 666px;
   }
 
   .detailPanel {
@@ -715,6 +723,21 @@
   .composer,
   .pagination {
     flex-wrap: wrap;
+  }
+
+  .pagination {
+    height: 96px;
+    flex-basis: 96px;
+    justify-content: center;
+  }
+
+  .listPanel {
+    height: 704px;
+  }
+
+  .paginationText {
+    order: -1;
+    width: 100%;
   }
 
   .contextCard {

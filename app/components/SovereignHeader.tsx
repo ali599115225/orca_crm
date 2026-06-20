@@ -5,6 +5,7 @@ import { Bell, Menu, Search, ChevronLeft, ChevronRight, Globe, Moon, Sun, LogOut
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { logoutAction } from '@/app/actions/auth';
+import { useNotify } from '@/app/context/UIBusContext';
 import { displayPerson, displayEntity } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 
@@ -20,6 +21,17 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].charAt(0);
   return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
+}
+
+function cleanNotificationText(value: string, fallback: string): string {
+  const cleaned = String(value || '')
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '')
+    .replace(/\b(?:WHATSAPP|META|GRAPH|JWT|TOKEN|SECRET)_[A-Z0-9_]+\b/g, '')
+    .replace(/\b(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return cleaned || fallback;
 }
 
 function HeaderBreadcrumbs() {
@@ -69,11 +81,14 @@ function HeaderBreadcrumbs() {
 
 export default function SovereignHeader({ onMenuClick, tenant, user, companyName }: SovereignHeaderProps) {
   const { theme, toggleTheme, t, toggleLang, lang } = useApp();
+  const { notifications, dismissNotification } = useNotify();
   const router = useRouter();
   const isRTL = lang === 'AR';
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
 
@@ -105,6 +120,22 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+
+    const handler = (event: MouseEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [notificationsOpen]);
+
+  const unreadCount = notifications.length;
+  const notificationTitle = notificationsOpen ? t('header.notificationsClose') : t('header.notificationsOpen');
 
   return (
     <header className="h-16 flex items-center justify-between px-4 lg:px-6 bg-[var(--nc-surface-strong)]/95 backdrop-blur-xl border-b border-[var(--nc-glass-border)] z-40 w-full text-[var(--nc-foreground)] transition-all" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -165,15 +196,80 @@ export default function SovereignHeader({ onMenuClick, tenant, user, companyName
       <div className="flex items-center gap-2 lg:gap-3 lg:w-1/3" style={{ justifyContent: 'flex-end' }}>
 
         {/* Notifications */}
-        <button
-          type="button"
-          className="relative flex items-center justify-center w-10 h-10 sm:w-[42px] sm:h-[42px] bg-[var(--nc-surface)] text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent-border)]"
-          title={lang === 'AR' ? 'الإشعارات' : 'Notifications'}
-          aria-label={lang === 'AR' ? 'الإشعارات' : 'Notifications'}
-        >
-          <Bell size={19} />
-          <span className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} w-1.5 h-1.5 rounded-full bg-red-500`} aria-hidden="true" />
-        </button>
+        <div className="relative" ref={notificationsRef}>
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen((open) => !open)}
+            className="relative flex items-center justify-center w-10 h-10 sm:w-[42px] sm:h-[42px] bg-[var(--nc-surface)] text-[var(--nc-foreground)] border border-[var(--nc-border)] hover:border-[var(--nc-accent-border)] rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent-border)]"
+            title={notificationTitle}
+            aria-label={notificationTitle}
+            aria-haspopup="menu"
+            aria-expanded={notificationsOpen}
+          >
+            <Bell size={19} aria-hidden="true" />
+            {unreadCount > 0 && (
+              <span
+                className={`absolute -top-1 ${isRTL ? '-left-1' : '-right-1'} min-w-[18px] h-[18px] rounded-full bg-red-600 px-1 text-[10px] leading-[18px] font-bold text-white text-center shadow-sm`}
+                aria-label={`${unreadCount} ${t('header.notificationsUnread')}`}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <div
+              role="menu"
+              aria-label={t('header.notifications')}
+              className={`absolute top-12 z-50 w-[min(340px,calc(100vw-2rem))] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-[var(--nc-foreground)] shadow-2xl ${isRTL ? 'left-0' : 'right-0'}`}
+            >
+              <div className="mb-2 flex items-center justify-between gap-3 border-b border-[var(--nc-border)] pb-2">
+                <p className="text-sm font-bold text-[var(--nc-foreground)]">{t('header.notifications')}</p>
+                <span className="rounded-full bg-[var(--nc-accent-soft)] px-2 py-1 text-[11px] font-bold text-[var(--nc-accent-text)]">
+                  {unreadCount} {t('header.notificationsUnread')}
+                </span>
+              </div>
+
+              {notifications.length === 0 ? (
+                <p className="py-4 text-center text-xs font-semibold text-[var(--nc-foreground-muted)]">
+                  {t('header.notificationsEmpty')}
+                </p>
+              ) : (
+                <div className="grid max-h-[300px] gap-2 overflow-y-auto pr-1">
+                  {notifications.slice(-5).reverse().map((notification) => (
+                    <div
+                      key={notification.id}
+                      role="menuitem"
+                      className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-bold leading-5 text-[var(--nc-foreground)]">
+                            {cleanNotificationText(notification.title, t('header.notifications'))}
+                          </p>
+                          {notification.message && (
+                            <p className="mt-1 break-words text-xs leading-5 text-[var(--nc-foreground-muted)]">
+                              {cleanNotificationText(notification.message, t('header.notifications'))}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => dismissNotification(notification.id)}
+                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
+                          aria-label={lang === 'AR' ? 'إخفاء الإشعار' : 'Dismiss notification'}
+                          title={lang === 'AR' ? 'إخفاء الإشعار' : 'Dismiss notification'}
+                        >
+                          <X size={14} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Language toggle */}
         <button

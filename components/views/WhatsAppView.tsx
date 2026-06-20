@@ -133,7 +133,6 @@ const TEXT = {
     newChatSend: "بدء المحادثة",
     newChatCancel: "إلغاء",
     sentSuccess: "تم قبول الرسالة",
-    assignmentBlocked: "الإسناد قيد التطوير",
   },
   EN: {
     title: "WhatsApp",
@@ -209,7 +208,6 @@ const TEXT = {
     newChatSend: "Start conversation",
     newChatCancel: "Cancel",
     sentSuccess: "Message accepted",
-    assignmentBlocked: "Assignment is under development",
   },
 };
 
@@ -218,6 +216,20 @@ function isTechnical(value: string) {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
     /(?:^|\b)(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
   );
+}
+
+function cleanDisplayText(value: string, fallback: string) {
+  const raw = String(value || "").trim();
+  if (!raw || isTechnical(raw)) return fallback;
+
+  const cleaned = raw
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
+    .replace(/\b(?:WHATSAPP|META|GRAPH)_[A-Z0-9_]+\b/g, "")
+    .replace(/\b(?:chat|contact|lead|task|user|id)_[a-z0-9_-]+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return cleaned || fallback;
 }
 
 function normalizeWhatsAppPhone(value: string) {
@@ -266,6 +278,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const fetchInFlightRef = useRef<Promise<Chat[]> | null>(null);
   const sendInFlightRef = useRef(false);
   const createSendInFlightRef = useRef(false);
+  const selectedChatRef = useRef<Chat | null>(null);
 
   const fetchFreshChats = useCallback(async (mode: "active" | "archived" = filter === "ARCHIVED" ? "archived" : "active") => {
     if (fetchInFlightRef.current) return fetchInFlightRef.current;
@@ -278,6 +291,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
           setChats(freshChats);
           setSelectedId((current) => {
             if (current && freshChats.some((chat) => chat.id === current)) return current;
+            if (current && selectedChatRef.current?.id === current) return current;
             return freshChats[0]?.id || null;
           });
           return freshChats;
@@ -318,7 +332,11 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     });
   }, [initialChats]);
 
-  const selectedChat = sortedChats.find((chat) => chat.id === selectedId) || null;
+  const selectedChat = sortedChats.find((chat) => chat.id === selectedId) || (selectedChatRef.current?.id === selectedId ? selectedChatRef.current : null);
+
+  useEffect(() => {
+    if (selectedChat) selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
 
   useEffect(() => {
     setSelectedId((current) => {
@@ -346,13 +364,8 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   };
 
   const safeSendError = (result: any) => {
-    const codes = [
-      result?.errorCode,
-      result?.errorSubcode ? `${t.errorSubcode}: ${result.errorSubcode}` : "",
-    ].filter(Boolean).join(" / ");
-    const code = codes ? ` (${codes})` : "";
-    if (result?.errorCode === "WHATSAPP_TEMPLATE_REQUIRED") return `${t.templateRequired}${code}`;
-    return `${result?.errorMessage || t.safeSendError}${code}`;
+    if (result?.errorCode === "WHATSAPP_TEMPLATE_REQUIRED") return t.templateRequired;
+    return cleanDisplayText(result?.errorMessage || "", t.safeSendError);
   };
 
   const priorityLabel = (priority?: string | null) => {
@@ -390,7 +403,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   }, [connected, fetchFreshChats]);
 
   const visibleSource = sortedChats.filter((chat) => {
-    const haystack = `${safeName(chat)} ${chat.lastMessage}`.toLowerCase();
+    const haystack = `${safeName(chat)} ${cleanDisplayText(chat.lastMessage, "")}`.toLowerCase();
     const matchesSearch = haystack.includes(query.toLowerCase());
     const matchesFilter =
       filter === "ALL" ||
@@ -561,7 +574,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const listItems: WorkspaceListItem[] = pageItems.map((chat) => ({
     id: chat.id,
     title: safeName(chat),
-    snippet: chat.lastMessage || t.noMessages,
+    snippet: cleanDisplayText(chat.lastMessage, t.noMessages),
     timestamp: formatDateTime(chat.time),
     avatar: safeName(chat).charAt(0),
     selected: chat.id === selectedId,
@@ -584,7 +597,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       id: message.id || `${selectedChat.id}-${message.time}-${index}`,
       body: (
           <span style={{ display: "grid", gap: 5 }}>
-            <span style={{ fontSize: 14, lineHeight: 1.65 }}>{message.text || t.noData}</span>
+            <span style={{ fontSize: 14, lineHeight: 1.65 }}>{cleanDisplayText(message.text, t.noData)}</span>
           <span style={{ fontSize: 11, lineHeight: 1.2, opacity: 0.72 }}>
             {formatDateTime(message.time)}
             {message.sender === "agent" ? ` · ${statusLabel(message.status)}` : ""}

@@ -5,6 +5,7 @@ import {
   Link2,
   Loader2,
   ShieldCheck,
+  XCircle,
   Unlink,
 } from "lucide-react";
 import {
@@ -70,6 +71,8 @@ const TEXT = {
       "اربط حساب واتساب للأعمال بهذه الشركة عبر التسجيل المضمن من Meta.",
     connected: "متصل",
     disconnected: "غير متصل",
+    pending: "جارٍ الربط",
+    failedStatus: "فشل الربط",
     connect: "ربط حساب واتساب",
     reconnect: "إعادة ربط الحساب",
     disconnect: "فصل الحساب",
@@ -79,12 +82,17 @@ const TEXT = {
     connectedSuccess: "تم ربط واتساب بنجاح",
     disconnectedSuccess: "تم فصل واتساب",
     failed: "تعذر إكمال ربط واتساب",
+    failedDescription:
+      "لم يكتمل الربط. أعد المحاولة من حساب مدير الشركة بعد اعتماد Meta.",
     disconnectFailed: "تعذر فصل واتساب",
+    statusFailed: "تعذر جلب حالة واتساب",
+    retryStatus: "إعادة التحقق",
     confirmDisconnect:
-      "سيتم إيقاف الإرسال وفصل Webhook عن هذا الحساب. هل تريد المتابعة؟",
+      "سيتم إيقاف الإرسال وفصل استقبال الرسائل عن هذا الحساب. هل تريد المتابعة؟",
     verifiedName: "اسم النشاط",
     phone: "رقم واتساب",
     quality: "جودة الرقم",
+    unavailable: "غير متاح",
     security:
       "لا تظهر الرموز السرية في المتصفح، ويُحفظ الاعتماد مشفرًا لكل شركة.",
     adminOnly:
@@ -96,6 +104,8 @@ const TEXT = {
       "Connect this company’s WhatsApp Business account through Meta Embedded Signup.",
     connected: "Connected",
     disconnected: "Disconnected",
+    pending: "Connecting",
+    failedStatus: "Connection failed",
     connect: "Connect WhatsApp",
     reconnect: "Reconnect account",
     disconnect: "Disconnect",
@@ -108,15 +118,20 @@ const TEXT = {
       "WhatsApp disconnected",
     failed:
       "Could not complete WhatsApp connection",
+    failedDescription:
+      "The connection was not completed. Retry from a company administrator account after Meta approval.",
     disconnectFailed:
       "Could not disconnect WhatsApp",
+    statusFailed: "Could not load WhatsApp status",
+    retryStatus: "Check again",
     confirmDisconnect:
-      "This stops sending and unsubscribes the webhook for this account. Continue?",
+      "This stops sending and disconnects message receiving for this account. Continue?",
     verifiedName: "Business name",
     phone: "WhatsApp number",
     quality: "Number quality",
+    unavailable: "Unavailable",
     security:
-      "Secrets never reach the browser. Credentials are encrypted per company.",
+      "Sensitive credentials are never shown in the browser and remain encrypted per company.",
     adminOnly:
       "Connecting or disconnecting requires a company administrator.",
   },
@@ -143,9 +158,13 @@ async function readJson(response: Response) {
   );
 
   if (!response.ok || !payload?.success) {
-    throw new Error(
+    const error = new Error(
       String(payload?.code || "WHATSAPP_REQUEST_FAILED"),
     );
+    (error as Error & { code?: string }).code = String(
+      payload?.code || "WHATSAPP_REQUEST_FAILED",
+    );
+    throw error;
   }
 
   return payload;
@@ -228,6 +247,8 @@ export default function WhatsAppIntegrationSettings({
   const [status, setStatus] =
     useState<ConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [statusError, setStatusError] =
+    useState(false);
   const [busy, setBusy] = useState<
     "connect" | "complete" | "disconnect" | null
   >(null);
@@ -238,6 +259,7 @@ export default function WhatsAppIntegrationSettings({
 
   const refreshStatus = useCallback(async () => {
     setLoading(true);
+    setStatusError(false);
 
     try {
       const response = await fetch(
@@ -264,6 +286,7 @@ export default function WhatsAppIntegrationSettings({
           payload.lastHealthCheck || null,
       });
     } catch {
+      setStatusError(true);
       setStatus({
         connected: false,
         status: "DISCONNECTED",
@@ -319,8 +342,9 @@ export default function WhatsAppIntegrationSettings({
       toast.success(t.connectedSuccess);
       pendingRef.current = null;
       await refreshStatus();
-    } catch {
-      toast.error(t.failed);
+    } catch (error) {
+      setStatusError(true);
+      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.failed);
     } finally {
       completingRef.current = false;
       setBusy(null);
@@ -415,6 +439,7 @@ export default function WhatsAppIntegrationSettings({
         data.event === "ERROR"
       ) {
         pendingRef.current = null;
+        setStatusError(data.event === "ERROR");
         setBusy(null);
       }
     };
@@ -480,10 +505,11 @@ export default function WhatsAppIntegrationSettings({
           },
         },
       );
-    } catch {
+    } catch (error) {
       pendingRef.current = null;
+      setStatusError(true);
       setBusy(null);
-      toast.error(t.failed);
+      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.failed);
     }
   };
 
@@ -504,12 +530,25 @@ export default function WhatsAppIntegrationSettings({
       await readJson(response);
       toast.success(t.disconnectedSuccess);
       await refreshStatus();
-    } catch {
-      toast.error(t.disconnectFailed);
+    } catch (error) {
+      setStatusError(true);
+      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.disconnectFailed);
     } finally {
       setBusy(null);
     }
   };
+
+  const isPending =
+    busy === "connect" || busy === "complete";
+  const hasFailed =
+    statusError || status?.status === "FAILED";
+  const statusText = isPending
+    ? t.pending
+    : hasFailed
+      ? t.failedStatus
+      : status?.connected
+        ? t.connected
+        : t.disconnected;
 
   return (
     <section className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
@@ -529,24 +568,47 @@ export default function WhatsAppIntegrationSettings({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--nc-foreground)]">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>{t.loading}</span>
               </>
+            ) : isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-[var(--nc-accent-text)]" />
+                <span>{statusText}</span>
+              </>
+            ) : hasFailed ? (
+              <>
+                <XCircle className="h-4 w-4 text-red-600 dark:text-red-300" />
+                <span>{statusText}</span>
+                <button
+                  type="button"
+                  onClick={refreshStatus}
+                  className="rounded-lg border border-[var(--nc-border)] px-2 py-1 text-[var(--nc-foreground)] hover:border-[var(--nc-accent-border)]"
+                >
+                  {t.retryStatus}
+                </button>
+              </>
             ) : status?.connected ? (
               <>
-                <CheckCircle2 className="h-4 w-4" />
-                <span>{t.connected}</span>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                <span>{statusText}</span>
               </>
             ) : (
               <>
                 <span className="h-2.5 w-2.5 rounded-full bg-[var(--nc-foreground-muted)]" />
-                <span>{t.disconnected}</span>
+                <span>{statusText}</span>
               </>
             )}
           </div>
+
+          {hasFailed && !loading && (
+            <p className="max-w-2xl text-xs leading-5 text-red-700 dark:text-red-200">
+              {statusError ? t.statusFailed : t.failedDescription}
+            </p>
+          )}
 
           {status?.connected && (
             <dl className="grid gap-3 text-xs sm:grid-cols-3">
@@ -555,7 +617,7 @@ export default function WhatsAppIntegrationSettings({
                   {t.verifiedName}
                 </dt>
                 <dd className="mt-1 font-semibold text-[var(--nc-foreground)]">
-                  {status.verifiedName || "—"}
+                  {status.verifiedName || t.unavailable}
                 </dd>
               </div>
               <div className="rounded-xl border border-[var(--nc-border)] p-3">
@@ -566,7 +628,7 @@ export default function WhatsAppIntegrationSettings({
                   dir="ltr"
                   className="mt-1 font-semibold text-[var(--nc-foreground)]"
                 >
-                  {status.displayPhoneNumber || "—"}
+                  {status.displayPhoneNumber || t.unavailable}
                 </dd>
               </div>
               <div className="rounded-xl border border-[var(--nc-border)] p-3">
@@ -574,7 +636,7 @@ export default function WhatsAppIntegrationSettings({
                   {t.quality}
                 </dt>
                 <dd className="mt-1 font-semibold text-[var(--nc-foreground)]">
-                  {status.qualityRating || "—"}
+                  {status.qualityRating || t.unavailable}
                 </dd>
               </div>
             </dl>
@@ -593,8 +655,7 @@ export default function WhatsAppIntegrationSettings({
             disabled={Boolean(busy)}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--nc-primary)] px-4 py-2 text-xs font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy === "connect" ||
-            busy === "complete" ? (
+            {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Link2 className="h-4 w-4" />

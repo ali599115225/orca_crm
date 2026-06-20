@@ -17,6 +17,11 @@ export const dict: TranslationDict = {
   'header.darkMode':           { ar: 'الوضع الداكن',        en: 'Dark Mode' },
   'header.logout':             { ar: 'تسجيل الخروج',        en: 'Logout' },
   'header.openMenu':           { ar: 'فتح القائمة',         en: 'Open Menu' },
+  'header.notifications':       { ar: 'الإشعارات',           en: 'Notifications' },
+  'header.notificationsOpen':   { ar: 'فتح الإشعارات',       en: 'Open notifications' },
+  'header.notificationsClose':  { ar: 'إغلاق الإشعارات',     en: 'Close notifications' },
+  'header.notificationsEmpty':  { ar: 'لا توجد إشعارات جديدة', en: 'No new notifications' },
+  'header.notificationsUnread': { ar: 'غير مقروءة',          en: 'unread' },
 
   // ── Sidebar Sections ────────────────────────────
   'sidebar.sales':              { ar: 'المبيعات والعملاء',      en: 'Sales & Clients' },
@@ -164,7 +169,7 @@ export const dict: TranslationDict = {
 
   // ── Preview / AI Section Labels ──────────────────
   'dash.previewLabel':          { ar: 'معاينة محدودة',          en: 'Limited Preview' },
-  'dash.previewDesc':           { ar: 'هذه الميزة قيد التطوير وقد لا تعكس الحالة النهائية للمنتج.', en: 'This feature is under development and may not reflect the final product state.' },
+  'dash.previewDesc':           { ar: 'هذه الميزة ضمن تفعيل محدود وقد لا تعكس الحالة النهائية للمنتج.', en: 'This feature is in limited activation and may not reflect the final product state.' },
 
   // ── Leads Page ────────────────────────────────────
   'leads.pageTitle':            { ar: 'مركز العملاء المحتملين',     en: 'Leads Operating Hub' },
