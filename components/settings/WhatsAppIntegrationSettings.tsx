@@ -379,7 +379,15 @@ export default function WhatsAppIntegrationSettings({
         return;
       }
 
-      if (data.event === "FINISH") {
+      const signupEvent = String(
+        data.event || "",
+      );
+
+      if (
+        signupEvent === "FINISH" ||
+        signupEvent ===
+          "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+      ) {
         current.wabaId = String(
           data.data?.waba_id || "",
         );

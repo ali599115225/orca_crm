@@ -36,6 +36,9 @@ describe("WhatsApp Embedded Signup architecture", () => {
       "WHATSAPP_APP_SECRET",
     );
     expect(client).not.toContain("access_token");
+    expect(client).toContain(
+      "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+    );
     expect(service).toContain(
       'requiredEnv("WHATSAPP_APP_SECRET")',
     );
