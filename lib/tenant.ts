@@ -9,7 +9,7 @@ export const getActiveTenant = cache(async function getActiveTenantInternal(host
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
   const isSuperAdmin = session && superAdminEmails.includes(String(session.email).toLowerCase());
 
-  if (session && session.tenantId && !isSuperAdmin) {
+  if (session && session.tenantId) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId as string },
     });
