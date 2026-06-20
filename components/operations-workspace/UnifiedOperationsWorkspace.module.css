@@ -42,6 +42,7 @@
   width: 100%;
   max-width: 1680px;
   margin: 0 auto;
+  min-width: 0;
 }
 
 .pageHeader {
@@ -161,6 +162,7 @@
   gap: 16px;
   align-items: start;
   direction: rtl;
+  min-width: 0;
 }
 
 .listPanel,
@@ -182,12 +184,14 @@
 
 .detailPanel {
   min-height: 666px;
+  height: 666px;
   display: flex;
   flex-direction: column;
 }
 
 .panelHead,
 .detailTop {
+  flex: 0 0 auto;
   padding: 16px;
   border-bottom: 1px solid var(--uow-border);
   display: flex;
@@ -197,11 +201,15 @@
 }
 
 .panelHead h2 {
+  max-width: 220px;
   margin: 0;
   color: var(--uow-text);
   font-size: 16px;
   line-height: 1.25;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .panelHead small {
@@ -210,9 +218,14 @@
   color: var(--uow-muted);
   font-size: 12px;
   line-height: 1.3;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toolbar {
+  flex: 0 0 auto;
   padding: 12px 14px;
   border-bottom: 1px solid var(--uow-border);
   display: flex;
@@ -245,6 +258,16 @@
   min-width: 0;
 }
 
+.filterSelect {
+  max-width: 142px;
+  flex: 0 0 142px;
+}
+
+.filterSelect option {
+  color: var(--uow-text);
+  background: var(--uow-surface);
+}
+
 .searchBox::placeholder,
 .composerTextarea::placeholder,
 .composerInput::placeholder {
@@ -275,6 +298,7 @@
   line-height: 1;
   font-weight: 800;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .button:disabled,
@@ -367,9 +391,12 @@
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .itemTitle {
+  min-width: 0;
+  flex: 1 1 auto;
   color: var(--uow-text);
   font-size: 14px;
   line-height: 1.25;
@@ -380,6 +407,7 @@
 }
 
 .itemTime {
+  flex: 0 0 auto;
   color: var(--uow-muted);
   font-size: 11px;
   line-height: 1.2;
@@ -396,6 +424,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .itemMeta {
@@ -409,6 +438,7 @@
 
 .badge {
   min-width: 66px;
+  max-width: 138px;
   height: 24px;
   padding: 0 8px;
   border-radius: 999px;
@@ -418,6 +448,9 @@
   font-size: 11px;
   line-height: 1;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badgeSuccess {
@@ -489,30 +522,41 @@
 
 .detailContact {
   min-width: 0;
+  flex: 1 1 260px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .detailContact h3 {
+  max-width: min(560px, 52vw);
   margin: 0;
   color: var(--uow-text);
   font-size: 17px;
   line-height: 1.25;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detailContact p {
+  max-width: min(620px, 56vw);
   margin: 4px 0 0;
   color: var(--uow-muted);
   font-size: 12px;
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detailActions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .detailBody {
@@ -523,6 +567,7 @@
 }
 
 .contextCard {
+  flex: 0 0 auto;
   margin: 14px;
   border: 1px solid var(--uow-border);
   background: var(--uow-surface-2);
@@ -559,8 +604,7 @@
 
 .timeline {
   flex: 1;
-  max-height: 470px;
-  min-height: 270px;
+  min-height: 0;
   overflow: auto;
   padding: 18px;
   background: linear-gradient(180deg, var(--uow-surface), var(--uow-surface-2));
@@ -606,7 +650,7 @@
 }
 
 .emptyState {
-  min-height: 420px;
+  min-height: 100%;
   padding: 40px;
   display: grid;
   place-items: center;
@@ -635,6 +679,9 @@
   display: flex;
   gap: 9px;
   align-items: flex-end;
+  min-width: 0;
+  max-height: 238px;
+  overflow: auto;
 }
 
 .composerMain {
@@ -644,14 +691,19 @@
 
 .composerExtra {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.composerExtra label {
+  min-width: 0;
 }
 
 .composerTextarea {
   width: 100%;
   min-height: 44px;
-  max-height: 110px;
+  max-height: 96px;
   resize: vertical;
   border-radius: 12px;
   padding: 11px 13px;
@@ -666,6 +718,7 @@
   border-radius: 10px;
   padding: 0 12px;
   font-size: 13px;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
@@ -703,6 +756,7 @@
 
   .detailPanel {
     order: 2;
+    height: 666px;
   }
 
   .detailPanel {
@@ -725,6 +779,11 @@
     flex-wrap: wrap;
   }
 
+  .filterSelect {
+    max-width: none;
+    flex: 1 1 140px;
+  }
+
   .pagination {
     height: 96px;
     flex-basis: 96px;
@@ -735,6 +794,10 @@
     height: 704px;
   }
 
+  .detailPanel {
+    height: 704px;
+  }
+
   .paginationText {
     order: -1;
     width: 100%;
@@ -742,6 +805,14 @@
 
   .contextCard {
     grid-template-columns: 1fr;
+  }
+
+  .composerExtra {
+    grid-template-columns: 1fr;
+  }
+
+  .composer {
+    max-height: 282px;
   }
 
   .bubble {

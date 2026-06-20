@@ -119,6 +119,25 @@ const TEXT = {
   },
 };
 
+function isTechnicalText(value: string) {
+  return (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
+    /(?:^|\b)(?:ticket|reply|message|lead|user|task|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
+  );
+}
+
+function cleanDisplayText(value: unknown, fallback: string) {
+  const raw = String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!raw || isTechnicalText(raw)) return fallback;
+  const cleaned = raw
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
+    .replace(/\b(?:TICKET|REPLY|MESSAGE|LEAD|USER|TASK)_[A-Z0-9_]+\b/g, "")
+    .replace(/\b(?:ticket|reply|message|lead|user|task|id)_[a-z0-9_-]+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned || fallback;
+}
+
 export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskViewProps) {
   const { lang } = useApp();
   const language = lang === "EN" ? "EN" : "AR";
@@ -180,20 +199,24 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       return;
     }
     const ticketId = selectedTicket.id;
+    let cancelled = false;
     async function loadReplies() {
       try {
         const response = await fetch(`/api/v1/support/tickets/${ticketId}/reply`);
         const json = await response.json();
-        if (json.success) setReplies(json.data);
+        if (!cancelled && json.success) setReplies(json.data);
       } catch {
-        setReplies([]);
+        if (!cancelled) setReplies([]);
       }
     }
     loadReplies();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedTicket?.id]);
 
   const filteredTickets = sortedTickets.filter((ticket) => {
-    const haystack = `${ticket.title} ${ticket.description} ${ticketNumber(ticket)}`.toLowerCase();
+    const haystack = `${cleanDisplayText(ticket.title, "")} ${cleanDisplayText(ticket.description, "")} ${ticketNumber(ticket)}`.toLowerCase();
     const matchesSearch = haystack.includes(query.toLowerCase());
     const matchesFilter = filter === "ALL" || ticket.status === filter;
     return matchesSearch && matchesFilter;
@@ -251,6 +274,11 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     }
   }
 
+  function openTicket(ticketId: string) {
+    setNewMode(false);
+    setSelectedId(ticketId);
+  }
+
   async function sendReply() {
     if (!replyInput.trim() || !selectedTicket) return;
     setSubmittingReply(true);
@@ -273,17 +301,14 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const listItems: WorkspaceListItem[] = pageItems.map((ticket) => ({
     id: ticket.id,
     title: ticketNumber(ticket),
-    snippet: ticket.title || t.noData,
+    snippet: cleanDisplayText(ticket.title, t.noData),
     timestamp: formatDateTime(ticket.updatedAt || ticket.createdAt),
     avatar: "#",
     selected: ticket.id === selectedId && !newMode,
     badge: { label: slaMet(ticket) ? t.sla : t.pending, tone: slaMet(ticket) ? "success" : "warning" },
-    onSelect: () => {
-      setNewMode(false);
-      setSelectedId(ticket.id);
-    },
+    onSelect: () => openTicket(ticket.id),
     actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => setSelectedId(ticket.id) },
+      { label: t.openDetails, icon: Eye, onClick: () => openTicket(ticket.id) },
       { label: t.assign, icon: UserPlus, onClick: () => toast(t.assign) },
       { label: t.close, icon: Archive, onClick: () => closeTicket(ticket), disabled: ticket.status === "CLOSED" },
     ],
@@ -291,13 +316,13 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
 
   const timeline: WorkspaceTimelineItem[] = selectedTicket
     ? [
-        { id: "description", body: selectedTicket.description || t.noData, time: formatDateTime(selectedTicket.createdAt), side: "neutral" },
+        { id: `${selectedTicket.id}-description`, body: cleanDisplayText(selectedTicket.description, t.noData), time: formatDateTime(selectedTicket.createdAt), side: "neutral" },
         ...(selectedTicket.aiResponse
-          ? [{ id: "ai", body: selectedTicket.aiResponse, time: formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt), side: "in" as const }]
+          ? [{ id: `${selectedTicket.id}-ai`, body: cleanDisplayText(selectedTicket.aiResponse, t.noData), time: formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt), side: "in" as const }]
           : []),
         ...replies.map((reply) => ({
           id: reply.id,
-          body: reply.message,
+          body: cleanDisplayText(reply.message, t.noData),
           time: formatDateTime(reply.createdAt),
           side: reply.sender === "CLIENT" ? ("out" as const) : ("in" as const),
         })),
@@ -310,9 +335,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
         title: t.newLabel,
         meta: tenantName,
         actions: [
-          { label: t.openDetails, icon: Eye, onClick: () => setNewMode(false) },
-          { label: t.assign, icon: UserPlus, onClick: () => toast(t.assign) },
-          { label: t.close, icon: Archive, tone: "danger" as const, onClick: createTicket },
+          { label: t.sendTicket, icon: CheckCircle2, onClick: createTicket, disabled: !newTitle.trim() || !newDescription.trim() },
         ],
         context: [
           { label: t.customer, value: tenantName },

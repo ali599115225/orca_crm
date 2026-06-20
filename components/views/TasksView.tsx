@@ -98,6 +98,25 @@ const TEXT = {
   },
 };
 
+function isTechnicalText(value: string) {
+  return (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
+    /(?:^|\b)(?:task|lead|user|ticket|email|message|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
+  );
+}
+
+function cleanDisplayText(value: unknown, fallback: string) {
+  const raw = String(value || "").trim();
+  if (!raw || isTechnicalText(raw)) return fallback;
+  const cleaned = raw
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
+    .replace(/\b(?:TASK|LEAD|USER|TICKET|EMAIL|MESSAGE)_[A-Z0-9_]+\b/g, "")
+    .replace(/\b(?:task|lead|user|ticket|email|message|id)_[a-z0-9_-]+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned || fallback;
+}
+
 export default function TasksView() {
   const { lang } = useApp();
   const language = lang === "EN" ? "EN" : "AR";
@@ -169,7 +188,7 @@ export default function TasksView() {
   }, [tasks]);
 
   const filteredTasks = sortedTasks.filter((task) => {
-    const haystack = `${task.title || ""} ${leadName(task)}`.toLowerCase();
+    const haystack = `${cleanDisplayText(task.title, "")} ${leadName(task)}`.toLowerCase();
     const matchesSearch = haystack.includes(query.toLowerCase());
     const matchesFilter = filter === "ALL" || task.status === filter;
     return matchesSearch && matchesFilter;
@@ -188,7 +207,9 @@ export default function TasksView() {
   const overdueCount = tasks.filter(isOverdue).length;
   const completionRate = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  async function toggleTask(task: any) {
+  async function toggleTaskById(taskId: string) {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
     const current = task.status;
     const next = current === "COMPLETED" ? "PENDING" : "COMPLETED";
     setTasks((currentTasks) => currentTasks.map((item) => (item.id === task.id ? { ...item, status: next } : item)));
@@ -196,6 +217,16 @@ export default function TasksView() {
     if (!result.success) {
       setTasks((currentTasks) => currentTasks.map((item) => (item.id === task.id ? { ...item, status: current } : item)));
     }
+  }
+
+  function openTask(taskId: string) {
+    setNewMode(false);
+    setSelectedId(taskId);
+  }
+
+  function editTask(taskId: string) {
+    openTask(taskId);
+    toast(t.edit);
   }
 
   async function createTask() {
@@ -228,7 +259,7 @@ export default function TasksView() {
 
   const listItems: WorkspaceListItem[] = pageItems.map((task) => ({
     id: task.id,
-    title: task.title || t.noData,
+    title: cleanDisplayText(task.title, t.noData),
     snippet: `${leadName(task)} · ${formatDateTime(task.dueDate)}`,
     timestamp: formatDateTime(task.dueDate),
     avatar: task.status === "COMPLETED" ? "✓" : "!",
@@ -237,21 +268,18 @@ export default function TasksView() {
       label: task.status === "COMPLETED" ? t.done : t.pending,
       tone: task.status === "COMPLETED" ? "success" : isOverdue(task) ? "danger" : "warning",
     },
-    onSelect: () => {
-      setNewMode(false);
-      setSelectedId(task.id);
-    },
+    onSelect: () => openTask(task.id),
     actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => setSelectedId(task.id) },
-      { label: t.complete, icon: CheckCircle2, onClick: () => toggleTask(task) },
-      { label: t.edit, icon: Edit3, onClick: () => toast(t.edit) },
+      { label: t.openDetails, icon: Eye, onClick: () => openTask(task.id) },
+      { label: t.complete, icon: CheckCircle2, onClick: () => toggleTaskById(task.id) },
+      { label: t.edit, icon: Edit3, onClick: () => editTask(task.id) },
     ],
   }));
 
   const timeline: WorkspaceTimelineItem[] = selectedTask
     ? [
-        { id: "title", body: selectedTask.title || t.noData, time: formatDateTime(selectedTask.dueDate), side: "neutral" },
-        { id: "notes", body: selectedTask.description || selectedTask.notes || t.noData, side: "in" },
+        { id: `${selectedTask.id}-title`, body: cleanDisplayText(selectedTask.title, t.noData), time: formatDateTime(selectedTask.dueDate), side: "neutral" },
+        { id: `${selectedTask.id}-notes`, body: cleanDisplayText(selectedTask.description || selectedTask.notes, t.noData), side: "in" },
       ]
     : [];
 
@@ -261,9 +289,7 @@ export default function TasksView() {
         title: t.newLabel,
         meta: t.ordered,
         actions: [
-          { label: t.openDetails, icon: Eye, onClick: () => setNewMode(false) },
-          { label: t.complete, icon: CheckCircle2, onClick: createTask },
-          { label: t.edit, icon: Edit3, onClick: () => toast(t.edit) },
+          { label: t.complete, icon: CheckCircle2, onClick: createTask, disabled: !newTitle || !newLeadId || !newDueDate || !newDueTime },
         ],
         context: [
           { label: t.customer, value: leads.find((lead) => lead.id === newLeadId)?.firstName || t.unknown },
@@ -315,12 +341,11 @@ export default function TasksView() {
     : selectedTask
       ? {
           avatar: selectedTask.status === "COMPLETED" ? "✓" : "!",
-          title: selectedTask.title || t.noData,
+          title: cleanDisplayText(selectedTask.title, t.noData),
           meta: formatDateTime(selectedTask.dueDate),
           actions: [
-            { label: t.openDetails, icon: Eye, onClick: () => undefined },
-            { label: t.complete, icon: CheckCircle2, onClick: () => toggleTask(selectedTask) },
-            { label: t.edit, icon: Edit3, onClick: () => toast(t.edit) },
+            { label: t.complete, icon: CheckCircle2, onClick: () => toggleTaskById(selectedTask.id) },
+            { label: t.edit, icon: Edit3, onClick: () => editTask(selectedTask.id) },
           ],
           context: [
             { label: t.customer, value: leadName(selectedTask) },

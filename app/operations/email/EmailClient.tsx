@@ -125,6 +125,25 @@ function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function isTechnicalText(value: string) {
+  return (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
+    /(?:^|\b)(?:email|message|lead|user|task|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
+  );
+}
+
+function cleanDisplayText(value: unknown, fallback: string) {
+  const raw = stripHtml(String(value || "")).trim();
+  if (!raw || isTechnicalText(raw)) return fallback;
+  const cleaned = raw
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
+    .replace(/\b(?:EMAIL|MESSAGE|LEAD|USER|TASK)_[A-Z0-9_]+\b/g, "")
+    .replace(/\b(?:email|message|lead|user|task|id)_[a-z0-9_-]+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned || fallback;
+}
+
 export default function EmailClient({ initialMessages, leads, emailFrom }: EmailClientProps) {
   const { lang } = useApp();
   const searchParams = useSearchParams();
@@ -171,7 +190,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
 
   const filteredMessages = sortedMessages.filter((message) => {
     const leadName = message.lead ? `${message.lead.firstName} ${message.lead.lastName || ""}` : "";
-    const haystack = `${message.to} ${message.subject} ${leadName}`.toLowerCase();
+    const haystack = `${cleanDisplayText(message.to, "")} ${cleanDisplayText(message.subject, "")} ${leadName}`.toLowerCase();
     const matchesSearch = haystack.includes(query.toLowerCase());
     const matchesFilter = filter === "ALL" || message.status === filter;
     return matchesSearch && matchesFilter;
@@ -237,22 +256,27 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
     }
   }
 
-  function archiveMessage() {
+  function openMessage(messageId: string) {
+    setSelectedId(messageId);
+  }
+
+  function archiveMessage(messageId?: string) {
+    if (messageId) setSelectedId(messageId);
     if (window.confirm(t.archiveConfirm)) toast(t.archiveUnavailable);
   }
 
   const listItems: WorkspaceListItem[] = pageItems.map((message) => ({
     id: message.id,
-    title: message.subject || t.noData,
-    snippet: message.to,
+    title: cleanDisplayText(message.subject, t.noData),
+    snippet: cleanDisplayText(message.to, t.noData),
     timestamp: formatDateTime(message.sentAt || message.createdAt),
     avatar: "@" ,
     selected: message.id === selectedId,
     badge: { label: statusLabel(message.status), tone: statusTone(message.status) },
-    onSelect: () => setSelectedId(message.id),
+    onSelect: () => openMessage(message.id),
     actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => setSelectedId(message.id) },
-      { label: t.archive, icon: Archive, onClick: archiveMessage },
+      { label: t.openDetails, icon: Eye, onClick: () => openMessage(message.id) },
+      { label: t.archive, icon: Archive, onClick: () => archiveMessage(message.id) },
     ],
   }));
 
@@ -260,20 +284,20 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
     ? [
         {
           id: `${selectedMessage.id}-summary`,
-          body: stripHtml(selectedMessage.subject || t.noData),
+          body: cleanDisplayText(selectedMessage.subject, t.noData),
           time: formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt),
           side: "neutral",
         },
         selectedMessage.errorMessage
           ? {
               id: `${selectedMessage.id}-error`,
-              body: selectedMessage.errorMessage,
+              body: cleanDisplayText(selectedMessage.errorMessage, t.sendError),
               time: undefined,
               side: "out" as const,
             }
           : {
               id: `${selectedMessage.id}-body`,
-              body: body ? stripHtml(body) : t.noData,
+              body: t.noMessages,
               time: undefined,
               side: "in" as const,
             },
@@ -330,12 +354,12 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
       }}
       detail={{
         avatar: selectedMessage ? selectedMessage.to.charAt(0).toUpperCase() : "@",
-        title: selectedMessage?.subject || t.newLabel,
-        meta: selectedMessage ? `${t.to}: ${selectedMessage.to}` : emailFrom,
+        title: selectedMessage ? cleanDisplayText(selectedMessage.subject, t.noData) : t.newLabel,
+        meta: selectedMessage ? `${t.to}: ${cleanDisplayText(selectedMessage.to, t.noData)}` : emailFrom,
         actions: [
           { label: t.assignee, icon: UserPlus, onClick: () => toast(t.assignee) },
           { label: t.createTask, icon: PlusCircle, onClick: () => toast(t.createTask) },
-          { label: t.archive, icon: Archive, tone: "danger", onClick: archiveMessage },
+          { label: t.archive, icon: Archive, tone: "danger", onClick: () => archiveMessage(selectedMessage?.id) },
         ],
         context: [
           { label: t.customer, value: leadName(selectedMessage) },
