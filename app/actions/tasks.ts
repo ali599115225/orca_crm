@@ -122,7 +122,7 @@ export async function createTaskAction(formData: FormData) {
     const templateName = "new_task_assignment";
     const formattedDate = combinedDueDate.toLocaleString('ar-SA');
     const variables = [title, lead.firstName, formattedDate];
-    await sendWhatsAppNotification(salesPhone, templateName, variables);
+    await sendWhatsAppNotification(tenant.id, salesPhone, templateName, variables);
 
     revalidatePath("/operations/tasks");
     return { success: true };

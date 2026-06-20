@@ -6,7 +6,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
+import { sendSMSNotification } from "@/lib/notifications";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 

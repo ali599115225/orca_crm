@@ -1,12 +1,18 @@
-// lib/whatsapp/connection-resolver.ts — SERVER-ONLY
 import "server-only";
+
 import { prisma } from "@/lib/prisma";
-import type { WhatsAppConnection, WhatsAppCredential, WhatsAppPhoneNumber } from "@prisma/client";
+import { decryptToken } from "./credential-service";
+
+export type WhatsAppConnectionSource =
+  | "tenant-connection"
+  | "orca-test-bridge";
 
 export interface ResolvedConnection {
-  connection: WhatsAppConnection;
-  credential: WhatsAppCredential;
-  phone: WhatsAppPhoneNumber;
+  source: WhatsAppConnectionSource;
+  tenantId: string;
+  connectionId: string | null;
+  phoneNumberId: string;
+  wabaId: string | null;
   accessToken: string;
 }
 
@@ -17,90 +23,191 @@ export type ResolveErrorCode =
   | "WHATSAPP_NO_PHONE";
 
 export class WhatsAppResolveError extends Error {
-  constructor(public code: ResolveErrorCode) {
+  constructor(public readonly code: ResolveErrorCode) {
     super(code);
+    this.name = "WhatsAppResolveError";
   }
 }
 
-function getDecryptedToken(credential: WhatsAppCredential): string {
-  const crypto = require("crypto");
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    Buffer.from(process.env.ENCRYPTION_KEY || "orca-dev-key-32chars!!", "utf8"),
-    Buffer.from(credential.iv, "hex")
-  );
-  decipher.setAuthTag(Buffer.from(credential.authTag, "hex"));
-  let decrypted = decipher.update(credential.encryptedValue, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+export interface WhatsAppControls {
+  tenantExists: boolean;
+  tenantActive: boolean;
+  platformMessagingDisabled: boolean;
+  platformAutomationDisabled: boolean;
+  tenantMessagingDisabled: boolean;
+  tenantAutomationDisabled: boolean;
+  messagingEnabled: boolean;
+  automationEnabled: boolean;
 }
 
-export async function resolveConnection(
-  tenantId: string
-): Promise<ResolvedConnection> {
-  const connection = await prisma.whatsAppConnection.findUnique({
-    where: { tenantId },
-  });
+export async function getWhatsAppControls(
+  tenantId: string,
+): Promise<WhatsAppControls> {
+  const [tenant, platformSettings] = await Promise.all([
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        isActive: true,
+        messagingDisabled: true,
+        automationDisabled: true,
+      },
+    }),
+    prisma.whatsAppPlatformSettings.findUnique({
+      where: { singletonKey: "global" },
+      select: {
+        whatsappMessagingDisabled: true,
+        whatsappAutomationDisabled: true,
+      },
+    }),
+  ]);
 
-  if (!connection || !["ACTIVE", "SUSPENDED"].includes(connection.status)) {
-    // ORCA bridge: only the platform owner tenant can use global env vars
-    const orcaBridgeTenantId = process.env.ORCA_WHATSAPP_TEST_TENANT_ID;
-    const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
-    const globalPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    if (orcaBridgeTenantId && tenantId === orcaBridgeTenantId && globalToken && globalPhoneId) {
-      const phone = await prisma.whatsAppPhoneNumber.findFirst({
-        where: { tenantId, isActive: true },
-      });
-      return {
-        connection: { id: "orca-bridge", tenantId, status: "ACTIVE", wabaId: null, activeSince: null, disconnectedAt: null, lastHealthCheck: null, createdAt: new Date(), updatedAt: new Date() } as any,
-        credential: { id: "orca-bridge", connectionId: "orca-bridge", encryptedValue: globalToken, iv: "00000000000000000000000000000000", authTag: "00000000000000000000000000000000", algorithm: "PLAINTEXT-BRIDGE", keyVersion: 0, tokenFingerprint: "bridge", isActive: true, issuedAt: new Date(), lastValidatedAt: null, revokedAt: null, rotatedFrom: null, createdAt: new Date() } as any,
-        phone: phone || { id: "orca-bridge", tenantId, connectionId: "orca-bridge", phoneNumberId: globalPhoneId, displayPhoneNumber: null, wabaId: null, certificate: null, businessAccountId: null, isActive: true, isPrimary: true, verifiedName: null, qualityRating: null, createdAt: new Date(), updatedAt: new Date() } as any,
-        accessToken: globalToken,
-      };
-    }
+  const tenantExists = Boolean(tenant);
+  const tenantActive = Boolean(tenant?.isActive);
+  const platformMessagingDisabled =
+    platformSettings?.whatsappMessagingDisabled ?? false;
+  const platformAutomationDisabled =
+    platformSettings?.whatsappAutomationDisabled ?? false;
+  const tenantMessagingDisabled = tenant?.messagingDisabled ?? true;
+  const tenantAutomationDisabled = tenant?.automationDisabled ?? true;
+
+  const messagingEnabled =
+    tenantExists &&
+    tenantActive &&
+    !platformMessagingDisabled &&
+    !tenantMessagingDisabled;
+
+  const automationEnabled =
+    messagingEnabled &&
+    !platformAutomationDisabled &&
+    !tenantAutomationDisabled;
+
+  return {
+    tenantExists,
+    tenantActive,
+    platformMessagingDisabled,
+    platformAutomationDisabled,
+    tenantMessagingDisabled,
+    tenantAutomationDisabled,
+    messagingEnabled,
+    automationEnabled,
+  };
+}
+
+export async function assertWhatsAppMessagingEnabled(
+  tenantId: string,
+): Promise<void> {
+  const controls = await getWhatsAppControls(tenantId);
+
+  if (!controls.tenantExists || !controls.tenantActive) {
     throw new WhatsAppResolveError("WHATSAPP_NOT_CONNECTED");
   }
 
-  if (connection.status === "SUSPENDED") {
+  if (!controls.messagingEnabled) {
+    throw new WhatsAppResolveError("WHATSAPP_MESSAGING_DISABLED");
+  }
+}
+
+export async function resolveConnection(
+  tenantId: string,
+): Promise<ResolvedConnection> {
+  await assertWhatsAppMessagingEnabled(tenantId);
+
+  const connection = await prisma.whatsAppConnection.findUnique({
+    where: { tenantId },
+    select: {
+      id: true,
+      tenantId: true,
+      status: true,
+      wabaId: true,
+    },
+  });
+
+  if (connection?.status === "SUSPENDED") {
     throw new WhatsAppResolveError("WHATSAPP_MESSAGING_DISABLED");
   }
 
-  const credential = await prisma.whatsAppCredential.findFirst({
-    where: { connectionId: connection.id, isActive: true },
-    orderBy: { issuedAt: "desc" },
-  });
+  if (connection?.status === "ACTIVE") {
+    const [credential, phone] = await Promise.all([
+      prisma.whatsAppCredential.findFirst({
+        where: {
+          connectionId: connection.id,
+          isActive: true,
+          revokedAt: null,
+        },
+        orderBy: { issuedAt: "desc" },
+      }),
+      prisma.whatsAppPhoneNumber.findFirst({
+        where: {
+          tenantId,
+          connectionId: connection.id,
+          isActive: true,
+          isPrimary: true,
+        },
+        orderBy: { createdAt: "asc" },
+        select: {
+          phoneNumberId: true,
+          wabaId: true,
+        },
+      }),
+    ]);
 
-  if (!credential) {
-    throw new WhatsAppResolveError("WHATSAPP_NO_CREDENTIAL");
+    if (!credential) {
+      throw new WhatsAppResolveError("WHATSAPP_NO_CREDENTIAL");
+    }
+
+    if (!phone) {
+      throw new WhatsAppResolveError("WHATSAPP_NO_PHONE");
+    }
+
+    return {
+      source: "tenant-connection",
+      tenantId,
+      connectionId: connection.id,
+      phoneNumberId: phone.phoneNumberId,
+      wabaId: phone.wabaId ?? connection.wabaId,
+      accessToken: decryptToken(credential),
+    };
   }
 
-  const phone = await prisma.whatsAppPhoneNumber.findFirst({
-    where: { connectionId: connection.id, isPrimary: true, isActive: true },
-  });
+  const bridgeTenantId =
+    process.env.ORCA_WHATSAPP_TEST_TENANT_ID?.trim();
+  const bridgeAccessToken =
+    process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+  const bridgePhoneNumberId =
+    process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+  const bridgeWabaId =
+    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID?.trim() || null;
 
-  if (!phone) {
-    throw new WhatsAppResolveError("WHATSAPP_NO_PHONE");
+  const bridgeAllowed =
+    Boolean(bridgeTenantId) &&
+    tenantId === bridgeTenantId &&
+    Boolean(bridgeAccessToken) &&
+    Boolean(bridgePhoneNumberId);
+
+  if (bridgeAllowed) {
+    return {
+      source: "orca-test-bridge",
+      tenantId,
+      connectionId: null,
+      phoneNumberId: bridgePhoneNumberId as string,
+      wabaId: bridgeWabaId,
+      accessToken: bridgeAccessToken as string,
+    };
   }
 
-  const accessToken = getDecryptedToken(credential);
-
-  return { connection, credential, phone, accessToken };
+  throw new WhatsAppResolveError("WHATSAPP_NOT_CONNECTED");
 }
 
-export async function isMessagingEnabled(tenantId: string): Promise<boolean> {
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) return false;
-  if (tenant.messagingDisabled) return false;
-  const connection = await prisma.whatsAppConnection.findUnique({
-    where: { tenantId },
-  });
-  if (!connection || connection.status !== "ACTIVE") return false;
-  return true;
+export async function isMessagingEnabled(
+  tenantId: string,
+): Promise<boolean> {
+  const controls = await getWhatsAppControls(tenantId);
+  return controls.messagingEnabled;
 }
 
-export async function isAutomationEnabled(tenantId: string): Promise<boolean> {
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) return false;
-  if (tenant.automationDisabled) return false;
-  return true;
+export async function isAutomationEnabled(
+  tenantId: string,
+): Promise<boolean> {
+  const controls = await getWhatsAppControls(tenantId);
+  return controls.automationEnabled;
 }

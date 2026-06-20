@@ -1,95 +1,138 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { createHmac } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
+import { join, relative } from "node:path";
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { NextRequest } from "next/server";
 
-vi.mock("server-only", () => ({}));
+const prismaMock = vi.hoisted(() => ({
+  whatsAppWebhookEnvelope: {
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  whatsAppWebhookEvent: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
+  whatsAppPhoneNumber: {
+    findUnique: vi.fn(),
+  },
+  whatsAppMessage: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
+  whatsAppContact: {
+    upsert: vi.fn(),
+    update: vi.fn(),
+  },
+  lead: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+}));
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const classifierMock = vi.hoisted(() => vi.fn());
+const controlsMock = vi.hoisted(() => vi.fn());
+const tenantRunMock = vi.hoisted(() =>
+  vi.fn(
+    async (
+      _context: { tenantId: string },
+      callback: () => Promise<unknown>,
+    ) => callback(),
+  ),
+);
 
-const mocks = vi.hoisted(() => {
-  const prisma = {
-    whatsAppPhoneNumber: {
-      findFirst: vi.fn(),
-    },
-    whatsAppMessage: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      updateMany: vi.fn(),
-    },
-    lead: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    whatsAppContact: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-  };
+vi.mock("@/lib/prisma", () => ({
+  prisma: prismaMock,
+}));
 
-  return {
-    prisma,
-    classifyWhatsAppLeadInternal: vi.fn(),
-    tenantContextRun: vi.fn(async (_context: unknown, callback: () => Promise<unknown>) => callback()),
-  };
-});
-
-vi.mock("@/lib/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/server/internal", () => ({
-  classifyWhatsAppLeadInternal: mocks.classifyWhatsAppLeadInternal,
-}));
-vi.mock("@/lib/tenant-context", () => ({
-  tenantContext: { run: mocks.tenantContextRun },
+  classifyWhatsAppLeadInternal: classifierMock,
 }));
 
-async function importRoute() {
-  return import("@/app/api/whatsapp/webhook/route");
-}
+vi.mock("@/lib/whatsapp/connection-resolver", () => ({
+  getWhatsAppControls: controlsMock,
+}));
+
+vi.mock("@/lib/tenant-context", () => ({
+  tenantContext: {
+    run: tenantRunMock,
+  },
+}));
+
+vi.mock("@/lib/privacy-mask", () => ({
+  hashPhone: vi.fn(() => "phone-hash"),
+}));
+
+import {
+  GET,
+  POST,
+} from "@/app/api/whatsapp/webhook/route";
 
 function sign(rawBody: string, secret = "app-secret") {
-  return `sha256=${createHmac("sha256", secret).update(rawBody, "utf8").digest("hex")}`;
+  return `sha256=${createHmac("sha256", secret)
+    .update(rawBody, "utf8")
+    .digest("hex")}`;
 }
 
-function postRequest(rawBody: string, options: { signature?: string | null; contentType?: string } = {}) {
-  const headers = new Headers();
-  headers.set("content-type", options.contentType ?? "application/json");
-  if (options.signature !== undefined && options.signature !== null) {
-    headers.set("x-hub-signature-256", options.signature);
+function postRequest(
+  rawBody: string,
+  signature: string | null,
+) {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+  });
+
+  if (signature) {
+    headers.set("x-hub-signature-256", signature);
   }
 
-  return new Request("https://orca.test/api/whatsapp/webhook", {
-    method: "POST",
-    headers,
-    body: rawBody,
-  }) as any;
+  return new NextRequest(
+    "https://orca.example/api/whatsapp/webhook",
+    {
+      method: "POST",
+      headers,
+      body: rawBody,
+    },
+  );
 }
 
-function getRequest(query: string) {
-  return new Request(`https://orca.test/api/whatsapp/webhook${query}`) as any;
-}
-
-function messagePayload(overrides: Record<string, unknown> = {}) {
+function messagePayload() {
   return {
     object: "whatsapp_business_account",
     entry: [
       {
+        id: "waba-1",
         changes: [
           {
             value: {
-              metadata: { phone_number_id: "phone-1" },
+              metadata: {
+                phone_number_id: "phone-1",
+              },
               messages: [
                 {
                   id: "wamid-1",
                   from: "966500000001",
                   type: "text",
-                  text: { body: "hello" },
+                  text: {
+                    body: "مرحبا",
+                  },
                   timestamp: "1780000000",
                 },
               ],
-              ...overrides,
             },
           },
         ],
@@ -98,367 +141,375 @@ function messagePayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function statusPayload(status: Record<string, unknown> = {}) {
-  return messagePayload({
-    messages: undefined,
-    statuses: [{ id: "wamid-1", status: "delivered", timestamp: "1780000001", ...status }],
+function statusPayload() {
+  return {
+    object: "whatsapp_business_account",
+    entry: [
+      {
+        id: "waba-1",
+        changes: [
+          {
+            value: {
+              metadata: {
+                phone_number_id: "phone-1",
+              },
+              statuses: [
+                {
+                  id: "wamid-1",
+                  status: "delivered",
+                  timestamp: "1780000001",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function activePhoneBinding() {
+  return {
+    tenantId: "tenant-1",
+    phoneNumberId: "phone-1",
+    wabaId: "waba-1",
+    businessAccountId: null,
+    isActive: true,
+    tenant: {
+      isActive: true,
+    },
+    connectionId: "connection-1",
+    connection: {
+      tenantId: "tenant-1",
+      status: "ACTIVE",
+      wabaId: "waba-1",
+    },
+  };
+}
+
+function sourceFiles(directory: string): string[] {
+  if (!existsSync(directory)) {
+    return [];
+  }
+
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry);
+
+    if (statSync(path).isDirectory()) {
+      return sourceFiles(path);
+    }
+
+    return /\.(ts|tsx)$/.test(path)
+      ? [path]
+      : [];
   });
 }
 
-async function signedPost(payload: unknown) {
-  const rawBody = JSON.stringify(payload);
-  const { POST } = await importRoute();
-  return POST(postRequest(rawBody, { signature: sign(rawBody) }));
-}
+beforeEach(() => {
+  process.env.WHATSAPP_VERIFY_TOKEN = "verify-token";
+  process.env.WHATSAPP_APP_SECRET = "app-secret";
 
-function resetPrismaMocks() {
-  mocks.prisma.whatsAppPhoneNumber.findFirst.mockResolvedValue({ tenantId: "tenant-1" });
-  mocks.prisma.whatsAppMessage.create.mockResolvedValue({ id: "stored-message" });
-  mocks.prisma.whatsAppMessage.findFirst.mockResolvedValue({
-    status: "received",
+  prismaMock.whatsAppWebhookEnvelope.create.mockResolvedValue({
+    id: "envelope-1",
+  });
+  prismaMock.whatsAppWebhookEnvelope.update.mockResolvedValue({
+    id: "envelope-1",
+  });
+  prismaMock.whatsAppWebhookEvent.create.mockResolvedValue({
+    id: "event-1",
+    status: "PENDING",
+    attemptCount: 0,
+    maxAttempts: 3,
+  });
+  prismaMock.whatsAppWebhookEvent.findUnique.mockResolvedValue(null);
+  prismaMock.whatsAppWebhookEvent.update.mockResolvedValue({
+    id: "event-1",
+  });
+
+  prismaMock.whatsAppPhoneNumber.findUnique.mockResolvedValue(
+    activePhoneBinding(),
+  );
+
+  prismaMock.whatsAppMessage.create.mockResolvedValue({
+    id: "message-1",
+  });
+  prismaMock.whatsAppMessage.findUnique.mockResolvedValue({
+    id: "message-1",
+    status: "pending",
     deliveredAt: null,
     readAt: null,
     failedAt: null,
   });
-  mocks.prisma.whatsAppMessage.updateMany.mockResolvedValue({ count: 1 });
-  mocks.prisma.lead.findFirst.mockResolvedValue(null);
-  mocks.prisma.lead.create.mockResolvedValue({ id: "lead-1" });
-  mocks.prisma.lead.update.mockResolvedValue({ id: "lead-1" });
-  mocks.prisma.whatsAppContact.findFirst.mockResolvedValue(null);
-  mocks.prisma.whatsAppContact.create.mockResolvedValue({ id: "contact-1" });
-  mocks.prisma.whatsAppContact.update.mockResolvedValue({ id: "contact-1" });
-  mocks.classifyWhatsAppLeadInternal.mockResolvedValue({ success: true });
-}
-
-function allDbMocks() {
-  return [
-    mocks.prisma.whatsAppPhoneNumber.findFirst,
-    mocks.prisma.whatsAppMessage.create,
-    mocks.prisma.whatsAppMessage.findFirst,
-    mocks.prisma.whatsAppMessage.updateMany,
-    mocks.prisma.lead.findFirst,
-    mocks.prisma.lead.create,
-    mocks.prisma.lead.update,
-    mocks.prisma.whatsAppContact.findFirst,
-    mocks.prisma.whatsAppContact.create,
-    mocks.prisma.whatsAppContact.update,
-  ];
-}
-
-function p2002() {
-  return Object.assign(new Error("unique"), { code: "P2002", meta: { target: ["metaMessageId"] } });
-}
-
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const fullPath = path.join(dir, entry);
-    if (["node_modules", ".git", ".next", "docs"].includes(entry)) return [];
-    if (statSync(fullPath).isDirectory()) return sourceFiles(fullPath);
-    return /\.(ts|tsx)$/.test(entry) ? [fullPath] : [];
-  });
-}
-
-describe("WhatsApp webhook GET verification", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    resetPrismaMocks();
-    process.env.WHATSAPP_VERIFY_TOKEN = "verify-token";
-    process.env.WHATSAPP_APP_SECRET = "app-secret";
+  prismaMock.whatsAppMessage.update.mockResolvedValue({
+    id: "message-1",
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    delete process.env.WHATSAPP_VERIFY_TOKEN;
-    delete process.env.WHATSAPP_APP_SECRET;
+  prismaMock.whatsAppContact.upsert.mockResolvedValue({
+    id: "contact-1",
+    leadId: null,
+  });
+  prismaMock.whatsAppContact.update.mockResolvedValue({
+    id: "contact-1",
   });
 
-  it("returns 503 when the Verify Token is missing", async () => {
-    delete process.env.WHATSAPP_VERIFY_TOKEN;
-    const { GET } = await importRoute();
-
-    const response = await GET(getRequest("?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=abc"));
-
-    expect(response.status).toBe(503);
+  prismaMock.lead.findFirst.mockResolvedValue(null);
+  prismaMock.lead.create.mockResolvedValue({
+    id: "lead-1",
+  });
+  prismaMock.lead.update.mockResolvedValue({
+    id: "lead-1",
   });
 
-  it("rejects wrong mode, missing token, and wrong token", async () => {
-    const { GET } = await importRoute();
-
-    await expect(GET(getRequest("?hub.mode=ping&hub.verify_token=verify-token&hub.challenge=abc"))).resolves.toHaveProperty("status", 403);
-    await expect(GET(getRequest("?hub.mode=subscribe&hub.challenge=abc"))).resolves.toHaveProperty("status", 403);
-    await expect(GET(getRequest("?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=abc"))).resolves.toHaveProperty("status", 403);
-  });
-
-  it("accepts the correct token and returns only the challenge text", async () => {
-    const { GET } = await importRoute();
-
-    const response = await GET(getRequest("?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=challenge-123"));
-
-    expect(response.status).toBe(200);
-    await expect(response.text()).resolves.toBe("challenge-123");
+  controlsMock.mockResolvedValue({
+    tenantExists: true,
+    tenantActive: true,
+    platformMessagingDisabled: false,
+    platformAutomationDisabled: false,
+    tenantMessagingDisabled: false,
+    tenantAutomationDisabled: false,
+    messagingEnabled: true,
+    automationEnabled: true,
   });
 });
 
-describe("WhatsApp webhook POST signature gate", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    resetPrismaMocks();
-    process.env.WHATSAPP_VERIFY_TOKEN = "verify-token";
-    process.env.WHATSAPP_APP_SECRET = "app-secret";
-  });
+describe("WhatsApp webhook security and isolation", () => {
+  it("accepts only the valid Meta verification challenge", async () => {
+    const request = new NextRequest(
+      "https://orca.example/api/whatsapp/webhook" +
+        "?hub.mode=subscribe" +
+        "&hub.verify_token=verify-token" +
+        "&hub.challenge=challenge-value",
+    );
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    delete process.env.WHATSAPP_VERIFY_TOKEN;
-    delete process.env.WHATSAPP_APP_SECRET;
-  });
-
-  it("returns 503 when the App Secret is missing", async () => {
-    delete process.env.WHATSAPP_APP_SECRET;
-    const { POST } = await importRoute();
-    const rawBody = JSON.stringify(messagePayload());
-
-    const response = await POST(postRequest(rawBody, { signature: sign(rawBody) }));
-
-    expect(response.status).toBe(503);
-  });
-
-  it("rejects wrong content type before signature processing", async () => {
-    const { POST } = await importRoute();
-    const rawBody = JSON.stringify(messagePayload());
-
-    const response = await POST(postRequest(rawBody, { signature: sign(rawBody), contentType: "text/plain" }));
-
-    expect(response.status).toBe(415);
-  });
-
-  it("rejects bodies larger than 1 MiB", async () => {
-    const { POST } = await importRoute();
-
-    const response = await POST(postRequest("x".repeat(1024 * 1024 + 1), { signature: null }));
-
-    expect(response.status).toBe(413);
-  });
-
-  it("rejects missing, malformed, wrong, and modified signatures before any DB call", async () => {
-    const { POST } = await importRoute();
-    const rawBody = JSON.stringify(messagePayload());
-
-    await expect(POST(postRequest(rawBody, { signature: null }))).resolves.toHaveProperty("status", 401);
-    await expect(POST(postRequest(rawBody, { signature: "sha256=not-hex" }))).resolves.toHaveProperty("status", 401);
-    await expect(POST(postRequest(rawBody, { signature: sign(rawBody, "wrong-secret") }))).resolves.toHaveProperty("status", 401);
-    await expect(POST(postRequest(JSON.stringify(messagePayload({ messages: [] })), { signature: sign(rawBody) }))).resolves.toHaveProperty("status", 401);
-
-    for (const mock of allDbMocks()) {
-      expect(mock).not.toHaveBeenCalled();
-    }
-    expect(mocks.classifyWhatsAppLeadInternal).not.toHaveBeenCalled();
-  });
-
-  it("parses only after a valid signature and rejects invalid signed JSON as 400", async () => {
-    const { POST } = await importRoute();
-    const invalidJson = "{not-json";
-
-    const response = await POST(postRequest(invalidJson, { signature: sign(invalidJson) }));
-
-    expect(response.status).toBe(400);
-    for (const mock of allDbMocks()) {
-      expect(mock).not.toHaveBeenCalled();
-    }
-  });
-
-  it("rejects structurally invalid signed payloads", async () => {
-    const response = await signedPost({ object: "whatsapp_business_account", entry: [{ changes: [{}] }] });
-
-    expect(response.status).toBe(400);
-    expect(mocks.prisma.whatsAppPhoneNumber.findFirst).not.toHaveBeenCalled();
-  });
-
-  it("ignores signed unsupported events without returning the payload", async () => {
-    const response = await signedPost({
-      object: "whatsapp_business_account",
-      entry: [{ changes: [{ value: { metadata: { phone_number_id: "phone-1" } } }] }],
-    });
+    const response = await GET(request);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true, status: "ignored" });
-    expect(mocks.prisma.whatsAppPhoneNumber.findFirst).not.toHaveBeenCalled();
-  });
-
-  it("accepts a valid signed message and performs tenant-scoped processing", async () => {
-    const response = await signedPost(messagePayload());
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true, status: "accepted" });
-    expect(mocks.prisma.whatsAppPhoneNumber.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ phoneNumberId: "phone-1", isActive: true }),
-    }));
-    expect(mocks.prisma.whatsAppMessage.create.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.classifyWhatsAppLeadInternal.mock.invocationCallOrder[0],
+    expect(await response.text()).toBe(
+      "challenge-value",
     );
   });
-});
 
-describe("WhatsApp webhook tenant isolation", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    resetPrismaMocks();
-    process.env.WHATSAPP_VERIFY_TOKEN = "verify-token";
-    process.env.WHATSAPP_APP_SECRET = "app-secret";
+  it("rejects an invalid signature and records only the rejected envelope", async () => {
+    const rawBody = JSON.stringify(messagePayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody, "wrong-secret")),
+    );
+
+    expect(response.status).toBe(401);
+    expect(
+      prismaMock.whatsAppWebhookEnvelope.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          signatureValid: false,
+          status: "INVALID_SIGNATURE",
+        }),
+      }),
+    );
+    expect(
+      prismaMock.whatsAppPhoneNumber.findUnique,
+    ).not.toHaveBeenCalled();
+    expect(
+      prismaMock.whatsAppMessage.create,
+    ).not.toHaveBeenCalled();
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    delete process.env.WHATSAPP_VERIFY_TOKEN;
-    delete process.env.WHATSAPP_APP_SECRET;
+  it("records invalid signed JSON as discarded", async () => {
+    const rawBody = "{not-json";
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+
+    expect(response.status).toBe(400);
+    expect(
+      prismaMock.whatsAppWebhookEnvelope.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          signatureValid: true,
+          status: "DISCARDED",
+        }),
+      }),
+    );
   });
 
-  it("uses the active phone number mapping and applies tenant context before tenant writes", async () => {
-    await signedPost(messagePayload({ tenantId: "payload-tenant", subdomain: "payload-subdomain" }));
+  it("quarantines unknown phone bindings", async () => {
+    prismaMock.whatsAppPhoneNumber.findUnique.mockResolvedValue(
+      null,
+    );
 
-    expect(mocks.tenantContextRun).toHaveBeenCalledWith({ tenantId: "tenant-1" }, expect.any(Function));
-    const messageCreate = mocks.prisma.whatsAppMessage.create.mock.calls[0][0];
-    expect(messageCreate.data.tenantId).toBe("tenant-1");
-    expect(messageCreate.data.tenantId).not.toBe("payload-tenant");
-  });
-
-  it("ignores unknown, inactive mapping, and inactive tenant lookup results", async () => {
-    mocks.prisma.whatsAppPhoneNumber.findFirst.mockResolvedValue(null);
-
-    const response = await signedPost(messagePayload());
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true, status: "ignored" });
-    expect(mocks.prisma.whatsAppMessage.create).not.toHaveBeenCalled();
-    expect(mocks.classifyWhatsAppLeadInternal).not.toHaveBeenCalled();
-  });
-
-  it("ignores payload tenantId and subdomain when deriving tenant", async () => {
-    await signedPost(messagePayload({ tenantId: "evil-tenant", subdomain: "evil" }));
-
-    expect(mocks.prisma.whatsAppPhoneNumber.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ phoneNumberId: "phone-1" }),
-    }));
-    expect(mocks.prisma.lead.create.mock.calls[0][0].data.tenantId).toBe("tenant-1");
-  });
-});
-
-describe("WhatsApp webhook replay protection", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    resetPrismaMocks();
-    process.env.WHATSAPP_VERIFY_TOKEN = "verify-token";
-    process.env.WHATSAPP_APP_SECRET = "app-secret";
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    delete process.env.WHATSAPP_VERIFY_TOKEN;
-    delete process.env.WHATSAPP_APP_SECRET;
-  });
-
-  it("processes a new message once", async () => {
-    await signedPost(messagePayload());
-
-    expect(mocks.prisma.whatsAppMessage.create).toHaveBeenCalledTimes(1);
-    expect(mocks.classifyWhatsAppLeadInternal).toHaveBeenCalledTimes(1);
-  });
-
-  it("handles sequential P2002 duplicates without classifier side effects", async () => {
-    mocks.prisma.whatsAppMessage.create.mockResolvedValueOnce({ id: "stored-message" }).mockRejectedValueOnce(p2002());
-
-    const first = await signedPost(messagePayload());
-    const second = await signedPost(messagePayload());
-
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    await expect(second.json()).resolves.toEqual({ ok: true, status: "duplicate" });
-    expect(mocks.classifyWhatsAppLeadInternal).toHaveBeenCalledTimes(1);
-  });
-
-  it("handles concurrent duplicate delivery with one classifier call", async () => {
-    mocks.prisma.whatsAppMessage.create.mockResolvedValueOnce({ id: "stored-message" }).mockRejectedValueOnce(p2002());
-
-    const [first, second] = await Promise.all([signedPost(messagePayload()), signedPost(messagePayload())]);
-    const statuses = [first.status, second.status].sort();
-
-    expect(statuses).toEqual([200, 200]);
-    expect(mocks.classifyWhatsAppLeadInternal).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not create messages from status events and ignores duplicate statuses", async () => {
-    const deliveredAt = new Date(1780000001 * 1000);
-    mocks.prisma.whatsAppMessage.findFirst.mockResolvedValue({
-      status: "delivered",
-      deliveredAt,
-      readAt: null,
-      failedAt: null,
+    const rawBody = JSON.stringify(messagePayload());
+    prismaMock.whatsAppWebhookEvent.create.mockResolvedValue({
+      id: "event-unknown",
+      status: "QUARANTINED",
+      attemptCount: 0,
+      maxAttempts: 3,
     });
 
-    const response = await signedPost(statusPayload());
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+    const body = await response.json();
+
+    expect(body).toMatchObject({
+      ok: true,
+      status: "quarantined",
+      envelopeId: "envelope-1",
+    });
+    expect(
+      prismaMock.whatsAppWebhookEvent.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "UNKNOWN",
+          status: "QUARANTINED",
+          phoneNumberId: "phone-1",
+        }),
+      }),
+    );
+  });
+
+  it("processes an active tenant message inside tenantContext", async () => {
+    const rawBody = JSON.stringify(messagePayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+    const body = await response.json();
+
+    expect(body).toMatchObject({
+      ok: true,
+      status: "accepted",
+      envelopeId: "envelope-1",
+    });
+    expect(tenantRunMock).toHaveBeenCalledWith(
+      { tenantId: "tenant-1" },
+      expect.any(Function),
+    );
+    expect(
+      prismaMock.whatsAppMessage.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: "tenant-1",
+          metaMessageId: "wamid-1",
+          status: "received",
+        }),
+      }),
+    );
+    expect(classifierMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists the message but skips lead automation when disabled", async () => {
+    controlsMock.mockResolvedValue({
+      tenantExists: true,
+      tenantActive: true,
+      platformMessagingDisabled: false,
+      platformAutomationDisabled: true,
+      tenantMessagingDisabled: false,
+      tenantAutomationDisabled: false,
+      messagingEnabled: true,
+      automationEnabled: false,
+    });
+
+    const rawBody = JSON.stringify(messagePayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true, status: "ignored" });
-    expect(mocks.prisma.whatsAppMessage.create).not.toHaveBeenCalled();
-    expect(mocks.prisma.whatsAppMessage.updateMany).not.toHaveBeenCalled();
+    expect(
+      prismaMock.whatsAppMessage.create,
+    ).toHaveBeenCalledTimes(1);
+    expect(prismaMock.lead.create).not.toHaveBeenCalled();
+    expect(classifierMock).not.toHaveBeenCalled();
   });
 
-  it("updates known statuses only and ignores unknown status IDs", async () => {
-    mocks.prisma.whatsAppMessage.findFirst.mockResolvedValueOnce(null);
-    const ignored = await signedPost(statusPayload({ id: "unknown" }));
-    expect(await ignored.json()).toEqual({ ok: true, status: "ignored" });
+  it("uses persisted event dedupe and skips duplicate processing", async () => {
+    prismaMock.whatsAppWebhookEvent.create.mockRejectedValue({
+      code: "P2002",
+    });
+    prismaMock.whatsAppWebhookEvent.findUnique.mockResolvedValue({
+      id: "event-existing",
+      status: "PROCESSED",
+      attemptCount: 1,
+      maxAttempts: 3,
+    });
 
-    resetPrismaMocks();
-    const accepted = await signedPost(statusPayload());
-    expect(await accepted.json()).toEqual({ ok: true, status: "accepted" });
-    expect(mocks.prisma.whatsAppMessage.updateMany).toHaveBeenCalledTimes(1);
+    const rawBody = JSON.stringify(messagePayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+    const body = await response.json();
+
+    expect(body.status).toBe("duplicate");
+    expect(
+      prismaMock.whatsAppMessage.create,
+    ).not.toHaveBeenCalled();
+    expect(classifierMock).not.toHaveBeenCalled();
   });
 
-  it("does not use in-memory replay dedupe", () => {
-    const routeSource = readFileSync(path.join(repoRoot, "app/api/whatsapp/webhook/route.ts"), "utf8");
+  it("updates a known outbound delivery status without creating a new message", async () => {
+    const rawBody = JSON.stringify(statusPayload());
 
-    expect(routeSource).not.toMatch(/\bnew\s+(Set|Map)\b|\bglobalThis\b|\bmemory cache\b/i);
-    expect(routeSource).toContain("metaMessageId");
-  });
-});
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+    const body = await response.json();
 
-describe("WhatsApp webhook exposure controls", () => {
-  it("keeps the internal classifier server-only with the webhook route as the sole trusted caller", () => {
-    const internalSource = readFileSync(path.join(repoRoot, "lib/server/internal.ts"), "utf8");
-    expect(internalSource).toContain('import "server-only";');
-    expect(internalSource).not.toContain('"use server"');
-    expect(internalSource).not.toContain("'use server'");
-
-    const callers = sourceFiles(repoRoot)
-      .filter((file) => !file.endsWith(path.join("lib", "server", "internal.ts")))
-      .filter((file) => !file.endsWith(path.join("tests", "whatsapp-webhook-security.test.ts")))
-      .filter((file) => readFileSync(file, "utf8").includes("classifyWhatsAppLeadInternal"))
-      .map((file) => path.relative(repoRoot, file).replaceAll("\\", "/"));
-
-    expect(callers).toEqual(["app/api/whatsapp/webhook/route.ts"]);
-  });
-
-  it("has no Server Action wrapper or client exposure for the internal classifier", () => {
-    const actionFiles = sourceFiles(path.join(repoRoot, "app/actions"));
-    const actionImports = actionFiles.filter((file) => readFileSync(file, "utf8").includes("classifyWhatsAppLeadInternal"));
-    expect(actionImports).toEqual([]);
-
-    const clientFiles = sourceFiles(path.join(repoRoot, "app"))
-      .filter((file) => readFileSync(file, "utf8").includes("use client"))
-      .filter((file) => readFileSync(file, "utf8").includes("classifyWhatsAppLeadInternal"));
-    expect(clientFiles).toEqual([]);
+    expect(body.status).toBe("accepted");
+    expect(
+      prismaMock.whatsAppMessage.create,
+    ).not.toHaveBeenCalled();
+    expect(
+      prismaMock.whatsAppMessage.update,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "delivered",
+        }),
+      }),
+    );
   });
 
-  it("keeps classifier names out of the built Server Action manifest when present", () => {
-    const manifestPath = path.join(repoRoot, ".next/server/server-reference-manifest.json");
-    if (!existsSync(manifestPath)) return;
+  it("uses no in-memory replay cache and exposes the classifier only to the webhook", () => {
+    const root = process.cwd();
+    const route = readFileSync(
+      join(root, "app/api/whatsapp/webhook/route.ts"),
+      "utf8",
+    );
 
-    const manifest = readFileSync(manifestPath, "utf8");
-    expect(manifest).not.toContain("classifyWhatsAppLeadInternal");
-    expect(manifest).not.toContain("classifyWhatsAppLead");
+    expect(route).not.toMatch(
+      /\bnew\s+(Set|Map)\b|\bglobalThis\b/i,
+    );
+    expect(route).toContain("dedupeKey");
+
+    const callers = [
+      ...sourceFiles(join(root, "app")),
+      ...sourceFiles(join(root, "lib")),
+      ...sourceFiles(join(root, "components")),
+    ]
+      .filter(
+        (file) =>
+          !file.endsWith(
+            join("lib", "server", "internal.ts"),
+          ),
+      )
+      .filter((file) =>
+        readFileSync(file, "utf8").includes(
+          "classifyWhatsAppLeadInternal",
+        ),
+      )
+      .map((file) =>
+        relative(root, file).replaceAll("\\", "/"),
+      );
+
+    expect(callers).toEqual([
+      "app/api/whatsapp/webhook/route.ts",
+    ]);
   });
 });

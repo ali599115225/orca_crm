@@ -1,17 +1,20 @@
-import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    setupFiles: [],
-    testTimeout: 30000,
-  },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
-      '@prisma/client': path.resolve(__dirname, 'node_modules/@prisma/client'),
+      "@": fileURLToPath(new URL("./", import.meta.url)),
+      "server-only": fileURLToPath(
+        new URL("./tests/server-only.ts", import.meta.url),
+      ),
     },
+  },
+  test: {
+    environment: "node",
+    include: ["tests/**/*.test.ts"],
+    clearMocks: true,
+    restoreMocks: true,
+    unstubEnvs: true,
   },
 });

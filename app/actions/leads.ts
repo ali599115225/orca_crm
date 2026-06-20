@@ -185,7 +185,7 @@ export async function createLeadAction(formData: FormData) {
       const salesPhone = "+966505123456";
       const templateName = "new_lead_assignment";
       const variables = [randomSalesUser.name, firstName, source];
-      await sendWhatsAppNotification(salesPhone, templateName, variables);
+      await sendWhatsAppNotification(tenant.id, salesPhone, templateName, variables);
     }
 
     revalidatePath("/operations/leads");
