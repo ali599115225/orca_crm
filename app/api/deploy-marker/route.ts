@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    commit: "772b4e3",
+    commit: "00c4ca7",
     marker: `deploy-marker-${Date.now()}`,
     routes: {
       deploy_marker: "/api/deploy-marker",
