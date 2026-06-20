@@ -1,4 +1,4 @@
-// app/actions/whatsapp.ts
+﻿// app/actions/whatsapp.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -123,7 +123,6 @@ function safeSendResult<T extends {
       errorCode: result.errorCode,
       errorSubcode: result.errorSubcode,
       errorMessage: result.errorMessage,
-      contactId: result.contactId,
       messageId: result.messageId,
     });
   }
@@ -233,195 +232,28 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
   try {
     const tenant = await getActiveTenant();
     await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-
-    // Step 1: Save message to DB first with status "pending"
-    let savedMessageId: string | null = null;
-    let savedContactId: string | null = null;
-    try {
-      const phoneHash = hashPhone(tenant.id, normalizedPhone);
-      const savedContact = await prisma.whatsAppContact.upsert({
-        where: { tenantId_phoneHash: { tenantId: tenant.id, phoneHash } },
-        create: { tenantId: tenant.id, phone: normalizedPhone, phoneHash, provider: "meta", lastMessageAt: new Date() },
-        update: { lastMessageAt: new Date() },
-      });
-      savedContactId = savedContact.id;
-      const savedMessage = await prisma.whatsAppMessage.create({
-        data: {
-          tenantId: tenant.id,
-          phone: normalizedPhone,
-          phoneHash,
-          direction: "outbound",
-          provider: "meta",
-          messageText,
-          messageType: "text",
-          metaMessageId: null,
-          status: "pending",
-        },
-      });
-      savedMessageId = savedMessage.id;
-
-      const lead = await prisma.lead.findFirst({
-        where: { tenantId: tenant.id, phone: normalizedPhone },
-      });
-      if (lead) {
-        await logWhatsAppActivity(tenant.id, lead.id, normalizedPhone, "outbound", messageText);
-      }
-    } catch (dbErr) {
-      console.error("[WhatsApp] Failed to save message to DB:", dbErr);
-      return safeSendResult({
-        success: false,
-        messageId: null,
-        contactId: savedContactId,
-        phone: normalizedPhone,
-        status: "failed",
-        errorCode: "WHATSAPP_DB_SAVE_FAILED",
-        errorSubcode: undefined,
-        errorMessage: "فشل حفظ الرسالة في قاعدة البيانات",
-      });
-    }
-
-    if (!accessToken || !phoneNumberId) {
-      const errorCode = "WHATSAPP_NOT_CONFIGURED";
-      const errorSubcode = undefined;
-      const errorMessage = "WhatsApp Cloud API غير مفعل";
-      if (savedMessageId) {
-        await prisma.whatsAppMessage.update({
-          where: { id: savedMessageId },
-          data: {
-            status: "failed",
-            failedAt: new Date(),
-            rawPayload: { provider: "meta", errorCode, errorSubcode, errorMessage } as any,
-          },
-        }).catch((updateErr) => {
-          console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
-        });
-      }
-      return safeSendResult({
-        success: false,
-        messageId: savedMessageId,
-        contactId: savedContactId,
-        phone: normalizedPhone,
-        status: "failed",
-        errorCode,
-        errorSubcode,
-        errorMessage,
-      });
-    }
-
-    // Step 2: Call Meta API
-    const response = await fetch(
-      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: normalizedPhone,
-          type: "text",
-          text: { preview_url: false, body: messageText },
-        }),
-      }
-    );
-
-    const result = await response.json();
-    const metaMessageId = result.messages?.[0]?.id || null;
-    const acceptedByMeta = response.ok && Boolean(metaMessageId);
-    const errorCode = acceptedByMeta
-      ? undefined
-      : isTemplateRequiredError(result)
-        ? "WHATSAPP_TEMPLATE_REQUIRED"
-        : metaErrorCode(response.status, result);
-    const errorSubcode = acceptedByMeta ? undefined : metaErrorSubcode(result);
-    const errorMessage = acceptedByMeta ? undefined : metaErrorMessage(result);
-
-    // Step 3: Update message status based on Meta API result
-    if (acceptedByMeta && metaMessageId && savedMessageId) {
-      try {
-        await prisma.whatsAppMessage.update({
-          where: { id: savedMessageId },
-          data: {
-            metaMessageId,
-            rawPayload: redactPiiFromPayload(result) as any,
-          },
-        });
-        await prisma.auditLog.create({
-          data: {
-            tenantId: tenant.id,
-            action: "WHATSAPP_MESSAGE_ACCEPTED",
-            tableName: "WhatsAppMessage",
-            recordId: savedMessageId,
-            details: JSON.stringify({ to: normalizedPhone, length: messageText.length, provider: "meta" }),
-          },
-        });
-      } catch (updateErr) {
-        console.error("[WhatsApp] Failed to update message status:", updateErr);
-      }
-    } else if (savedMessageId) {
-      // Meta API failed - update status to "failed"
-      try {
-        await prisma.whatsAppMessage.update({
-          where: { id: savedMessageId },
-          data: {
-            status: "failed",
-            failedAt: new Date(),
-            rawPayload: {
-              provider: "meta",
-              httpStatus: response.status,
-              errorCode,
-              errorSubcode,
-              errorMessage,
-              payload: redactPiiFromPayload(result),
-            } as any,
-          },
-        });
-      } catch (updateErr) {
-        console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
-      }
-    }
+    const result = await sendWhatsAppMessage(tenant.id, normalizedPhone, messageText);
 
     return safeSendResult({
-      success: acceptedByMeta,
-      messageId: savedMessageId,
-      contactId: savedContactId,
+      success: result.success,
+      messageId: result.messageId || null,
       phone: normalizedPhone,
-      status: acceptedByMeta ? "pending" : "failed",
-      errorCode,
-      errorSubcode,
-      errorMessage,
+      status: result.success ? "pending" : "failed",
+      errorCode: result.errorCode as any,
+      errorMessage: result.error,
     });
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
-      return safeSendResult({
-        success: false,
-        messageId: null,
-        contactId: null,
-        phone: normalizedPhone,
-        status: "failed",
-        errorCode: error.code,
-        errorSubcode: undefined,
-        errorMessage: error.message,
-      });
+      return safeSendResult({ success: false, errorCode: error.code as any, errorMessage: error.message, phone: normalizedPhone, status: "failed" });
     }
     return safeSendResult({
-      success: false,
-      messageId: null,
-      contactId: null,
-      phone: normalizedPhone,
-      status: "failed",
-      errorCode: "WHATSAPP_SEND_EXCEPTION",
-      errorSubcode: undefined,
-      errorMessage: "تعذر إرسال رسالة واتساب",
+      success: false, messageId: null, phone: normalizedPhone,
+      status: "failed", errorCode: "WHATSAPP_SEND_FAILED",
+      errorMessage: error.message?.substring(0, 500) || "تعذر إرسال رسالة واتساب",
     });
   }
 }
-
 export async function archiveChatAction(contactId: string) {
   try {
     const tenant = await getActiveTenant();

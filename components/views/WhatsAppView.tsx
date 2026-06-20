@@ -545,7 +545,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
         toast.success(t.sentSuccess);
         void fetchFreshChats("active").then((freshChats) => {
           const newChat = freshChats.find(
-            (chat) => chat.id === result.contactId || normalizeWhatsAppPhone(chat.contactPhone) === (result.phone || normalizedPhone)
+            (chat) => normalizeWhatsAppPhone(chat.contactPhone) === (result.phone || normalizedPhone)
           );
           if (newChat) setSelectedId(newChat.id);
         });

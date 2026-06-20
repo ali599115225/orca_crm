@@ -43,6 +43,21 @@ export async function resolveConnection(
   });
 
   if (!connection || !["ACTIVE", "SUSPENDED"].includes(connection.status)) {
+    // ORCA bridge: only the platform owner tenant can use global env vars
+    const orcaBridgeTenantId = process.env.ORCA_WHATSAPP_TEST_TENANT_ID;
+    const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const globalPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    if (orcaBridgeTenantId && tenantId === orcaBridgeTenantId && globalToken && globalPhoneId) {
+      const phone = await prisma.whatsAppPhoneNumber.findFirst({
+        where: { tenantId, isActive: true },
+      });
+      return {
+        connection: { id: "orca-bridge", tenantId, status: "ACTIVE", wabaId: null, activeSince: null, disconnectedAt: null, lastHealthCheck: null, createdAt: new Date(), updatedAt: new Date() } as any,
+        credential: { id: "orca-bridge", connectionId: "orca-bridge", encryptedValue: globalToken, iv: "00000000000000000000000000000000", authTag: "00000000000000000000000000000000", algorithm: "PLAINTEXT-BRIDGE", keyVersion: 0, tokenFingerprint: "bridge", isActive: true, issuedAt: new Date(), lastValidatedAt: null, revokedAt: null, rotatedFrom: null, createdAt: new Date() } as any,
+        phone: phone || { id: "orca-bridge", tenantId, connectionId: "orca-bridge", phoneNumberId: globalPhoneId, displayPhoneNumber: null, wabaId: null, certificate: null, businessAccountId: null, isActive: true, isPrimary: true, verifiedName: null, qualityRating: null, createdAt: new Date(), updatedAt: new Date() } as any,
+        accessToken: globalToken,
+      };
+    }
     throw new WhatsAppResolveError("WHATSAPP_NOT_CONNECTED");
   }
 
