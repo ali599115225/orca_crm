@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
 import { assertFeatureAccess, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
+import { sendWhatsAppMessage, WhatsAppSendError } from "@/lib/whatsapp/send-service";
+import { resolveConnection, isMessagingEnabled } from "@/lib/whatsapp/connection-resolver";
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
@@ -32,38 +34,22 @@ export async function toggleWhatsAppConnectionAction(connected: boolean) {
 
 export async function getCloudAPIStatusAction() {
   try {
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-    const businessAccountId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "";
-
-    if (!accessToken || !phoneNumberId) {
-      return { configured: false, provider: "none", reason: "Cloud API credentials not set" };
+    const tenant = await getActiveTenant();
+    const connection = await prisma.whatsAppConnection.findUnique({
+      where: { tenantId: tenant.id },
+    });
+    if (!connection || connection.status !== "ACTIVE") {
+      return { configured: false, provider: "none", status: "disconnected" };
     }
-
-    try {
-      const res = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}?fields=id,display_phone_number,quality_rating,verified_name,code_verification_status`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          configured: true,
-          provider: "meta",
-          phoneNumberId,
-          businessAccountId,
-          phoneNumber: data.display_phone_number,
-          verifiedName: data.verified_name,
-          qualityRating: data.quality_rating,
-          status: "connected",
-        };
-      }
-      const errText = await res.text();
-      return { configured: true, provider: "meta", phoneNumberId, businessAccountId, status: "disconnected", error: `HTTP ${res.status}: ${errText.substring(0, 200)}` };
-    } catch (err: any) {
-      return { configured: true, provider: "meta", phoneNumberId, businessAccountId, status: "disconnected", error: err.message || "Network error" };
-    }
+    return {
+      configured: true,
+      provider: "meta",
+      status: "connected",
+      wabaId: connection.wabaId,
+      activeSince: connection.activeSince,
+    };
   } catch {
-    return { configured: false, provider: "none", reason: "Status check failed" };
+    return { configured: false, provider: "none", status: "disconnected" };
   }
 }
 
@@ -147,12 +133,13 @@ function safeSendResult<T extends {
 export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListMode } = {}) {
   try {
     const tenant = await getActiveTenant();
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-    const isCloudAPI = !!(accessToken && phoneNumberId);
     const archived = options.mode === "archived";
 
-    if (!isCloudAPI) {
+    const connection = await prisma.whatsAppConnection.findUnique({
+      where: { tenantId: tenant.id },
+    });
+
+    if (!connection || !["ACTIVE", "SUSPENDED"].includes(connection.status)) {
       return {
         success: true,
         chats: [],
@@ -221,7 +208,6 @@ export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListM
       chats,
       tenant,
       provider: "meta",
-      phoneNumberId,
       contactsCount: contacts.length,
     };
   } catch (error: any) {

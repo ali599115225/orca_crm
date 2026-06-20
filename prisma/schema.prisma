@@ -1376,3 +1376,16 @@ model WhatsAppOptOut {
 // Composite key correction on WhatsAppMessage
 // REPLACES global @unique on metaMessageId with tenantId + metaMessageId composite
 // Note: Must drop old unique index + create composite via migration SQL
+
+// ═══════════════════════════════════════════════════════════
+// WHATSAPP PLATFORM SETTINGS — global kill switches
+// ═══════════════════════════════════════════════════════════
+model WhatsAppPlatformSettings {
+  id                        String   @id @default(uuid()) @db.Uuid
+  whatsappMessagingDisabled Boolean  @default(false) @map("whatsapp_messaging_disabled")
+  whatsappAutomationDisabled Boolean  @default(false) @map("whatsapp_automation_disabled")
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("whatsapp_platform_settings")
+}
