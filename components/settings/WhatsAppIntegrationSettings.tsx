@@ -364,12 +364,22 @@ export default function WhatsAppIntegrationSettings({
         return;
       }
 
-      if (
-        event.origin !==
-          "https://www.facebook.com" &&
-        event.origin !==
-          "https://web.facebook.com"
-      ) {
+      let isMetaOrigin = false;
+
+      try {
+        const origin = new URL(event.origin);
+
+        isMetaOrigin =
+          origin.protocol === "https:" &&
+          (origin.hostname === "facebook.com" ||
+            origin.hostname.endsWith(
+              ".facebook.com",
+            ));
+      } catch {
+        isMetaOrigin = false;
+      }
+
+      if (!isMetaOrigin) {
         return;
       }
 
@@ -466,6 +476,7 @@ export default function WhatsAppIntegrationSettings({
           state: runtime.state,
           extras: {
             setup: {},
+            sessionInfoVersion: "3",
           },
         },
       );

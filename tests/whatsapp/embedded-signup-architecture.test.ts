@@ -37,6 +37,12 @@ describe("WhatsApp Embedded Signup architecture", () => {
     );
     expect(client).not.toContain("access_token");
     expect(client).toContain(
+      'sessionInfoVersion: "3"',
+    );
+    expect(client).toContain(
+      'hostname.endsWith(',
+    );
+    expect(client).toContain(
       "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
     );
     expect(service).toContain(
