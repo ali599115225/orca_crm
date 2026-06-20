@@ -103,7 +103,7 @@ export default function UnifiedOperationsWorkspace({
         </div>
 
         <div className={styles.workspace}>
-          <section className={styles.listPanel} aria-label={listTitle}>
+          <section className={styles.listPanel} aria-label={listTitle} dir={dir}>
             <div className={styles.panelHead}>
               <div>
                 <h2>{listTitle}</h2>
@@ -142,7 +142,14 @@ export default function UnifiedOperationsWorkspace({
             </div>
 
             <div className={styles.list} role="listbox" tabIndex={0} aria-label={listTitle}>
-              {items.map((item) => (
+              {items.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <div>
+                    <h3>{text(language, "لا توجد نتائج", "No results")}</h3>
+                    <p>{text(language, "غيّر البحث أو عامل التصفية.", "Change the search or filter.")}</p>
+                  </div>
+                </div>
+              ) : items.map((item) => (
                 <div
                   key={item.id}
                   role="option"
@@ -163,12 +170,12 @@ export default function UnifiedOperationsWorkspace({
                   <span className={styles.itemBody}>
                     <span className={styles.itemRow}>
                       <span className={styles.itemTitle}>{item.title}</span>
-                      <span className={styles.itemTime}>{item.timestamp}</span>
+                      <time className={styles.itemTime} dir="ltr">{item.timestamp}</time>
                     </span>
                     <span className={styles.itemSnippet}>{item.snippet}</span>
                     <span className={styles.itemMeta}>
                       <span className={badgeClass(item.badge)}>{item.badge.label}</span>
-                      <span className={styles.itemActions}>
+                      {item.actions.length > 0 ? <span className={styles.itemActions}>
                         {item.actions.map((action) => {
                           const Icon = action.icon;
                           return (
@@ -188,7 +195,7 @@ export default function UnifiedOperationsWorkspace({
                             </button>
                           );
                         })}
-                      </span>
+                      </span> : null}
                     </span>
                   </span>
                 </div>
@@ -218,7 +225,7 @@ export default function UnifiedOperationsWorkspace({
             </footer>
           </section>
 
-          <section className={styles.detailPanel} aria-label={text(language, "تفاصيل العنصر", "Item details")}>
+          <section className={styles.detailPanel} aria-label={text(language, "تفاصيل العنصر", "Item details")} dir={dir}>
             {detail ? (
               <>
                 <div className={styles.detailTop}>
@@ -228,10 +235,10 @@ export default function UnifiedOperationsWorkspace({
                     </div>
                     <div>
                       <h3>{detail.title}</h3>
-                      <p>{detail.meta}</p>
+                      <p className={styles.detailMeta}>{detail.meta}</p>
                     </div>
                   </div>
-                  <div className={styles.detailActions}>
+                  {detail.actions.length > 0 ? <div className={styles.detailActions}>
                     {detail.actions.map((action) => {
                       const Icon = action.icon;
                       return (
@@ -248,7 +255,7 @@ export default function UnifiedOperationsWorkspace({
                         </button>
                       );
                     })}
-                  </div>
+                  </div> : null}
                 </div>
 
                 <div className={styles.detailBody}>
@@ -282,7 +289,7 @@ export default function UnifiedOperationsWorkspace({
                           }`}
                         >
                           {entry.body}
-                          {entry.time ? <time>{entry.time}</time> : null}
+                          {entry.time ? <time dir="ltr">{entry.time}</time> : null}
                         </div>
                       ))
                     )}
@@ -290,7 +297,7 @@ export default function UnifiedOperationsWorkspace({
 
                   {detail.composer ? (
                     <div className={styles.composer}>
-                      {detail.composer.mode === "message" ? (
+                      {detail.composer.mode === "message" && detail.composer.onAttach ? (
                         <button
                           type="button"
                           className={styles.miniButton}
@@ -308,7 +315,7 @@ export default function UnifiedOperationsWorkspace({
                           <div className={styles.composerExtra}>
                             {detail.composer.fields.map((field) => (
                               <label key={field.id}>
-                                <span className="sr-only">{field.label}</span>
+                                <span className={styles.composerFieldLabel}>{field.label}</span>
                                 {field.type === "select" ? (
                                   <select
                                     className={styles.composerInput}
@@ -340,12 +347,15 @@ export default function UnifiedOperationsWorkspace({
                             ))}
                           </div>
                         ) : null}
+                        {detail.composer.bodyLabel ? (
+                          <span className={styles.composerFieldLabel}>{detail.composer.bodyLabel}</span>
+                        ) : null}
                         <textarea
                           className={styles.composerTextarea}
                           value={detail.composer.value}
                           onChange={(event) => detail.composer?.onChange(event.target.value)}
                           placeholder={detail.composer.placeholder}
-                          aria-label={detail.composer.placeholder}
+                          aria-label={detail.composer.bodyLabel || detail.composer.placeholder}
                           rows={1}
                         />
                       </div>

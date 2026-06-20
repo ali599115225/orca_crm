@@ -118,7 +118,7 @@
 }
 
 .kpiCard {
-  min-height: 94px;
+  min-height: 96px;
   padding: 16px;
   border: 1px solid var(--uow-border);
   border-radius: 16px;
@@ -161,7 +161,7 @@
   grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
-  direction: rtl;
+  direction: ltr;
   min-width: 0;
 }
 
@@ -304,7 +304,7 @@
 .button:disabled,
 .miniButton:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.62;
 }
 
 .primaryButton {
@@ -334,19 +334,19 @@
 }
 
 .list {
-  flex: 0 0 456px;
-  height: 456px;
-  padding: 8px;
+  flex: 0 0 466px;
+  height: 466px;
+  padding: 6px 8px;
   overflow: hidden;
 }
 
 .listItem {
-  height: 82px;
+  height: 88px;
   width: 100%;
   border: 1px solid transparent;
   border-radius: 14px;
-  padding: 13px;
-  margin-bottom: 6px;
+  padding: 10px 12px;
+  margin-bottom: 5px;
   background: transparent;
   color: var(--uow-text);
   display: flex;
@@ -411,12 +411,15 @@
   color: var(--uow-muted);
   font-size: 11px;
   line-height: 1.2;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
 }
 
 .itemSnippet {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--uow-muted);
   font-size: 12px;
   line-height: 1.35;
@@ -428,7 +431,9 @@
 }
 
 .itemMeta {
-  margin-top: 8px;
+  margin-top: 6px;
+  min-height: 22px;
+  padding-inline: 1px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -439,8 +444,8 @@
 .badge {
   min-width: 66px;
   max-width: 138px;
-  height: 24px;
-  padding: 0 8px;
+  height: 22px;
+  padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -551,6 +556,20 @@
   text-overflow: ellipsis;
 }
 
+.detailMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  unicode-bidi: plaintext;
+}
+
+.detailMeta [dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
 .detailActions {
   display: flex;
   gap: 8px;
@@ -564,6 +583,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .contextCard {
@@ -647,6 +667,9 @@
   font-size: 10px;
   line-height: 1.2;
   opacity: 0.72;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
 }
 
 .emptyState {
@@ -674,21 +697,28 @@
 
 .composer {
   flex: 0 0 auto;
+  min-height: 76px;
   border-top: 1px solid var(--uow-border);
+  background: var(--uow-surface);
   padding: 12px;
   display: flex;
   gap: 9px;
-  align-items: flex-end;
+  align-items: flex-start;
   min-width: 0;
-  max-height: 238px;
+  max-height: 320px;
   overflow: auto;
 }
 
 .composerMain {
   flex: 1;
   min-width: 0;
+  align-self: stretch;
 }
 
+.composer > .button {
+  align-self: flex-end;
+  flex: 0 0 auto;
+}
 .composerExtra {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -698,6 +728,16 @@
 
 .composerExtra label {
   min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.composerFieldLabel {
+  display: block;
+  color: var(--uow-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 800;
 }
 
 .composerTextarea {
@@ -791,11 +831,11 @@
   }
 
   .listPanel {
-    height: 704px;
+    height: 724px;
   }
 
   .detailPanel {
-    height: 704px;
+    height: 724px;
   }
 
   .paginationText {
@@ -807,12 +847,16 @@
     grid-template-columns: 1fr;
   }
 
-  .composerExtra {
+  .composer > .button {
+  align-self: flex-end;
+  flex: 0 0 auto;
+}
+.composerExtra {
     grid-template-columns: 1fr;
   }
 
   .composer {
-    max-height: 282px;
+    max-height: 360px;
   }
 
   .bubble {

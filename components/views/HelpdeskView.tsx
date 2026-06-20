@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Archive, CheckCircle2, Clock, Eye, Headphones, PlusCircle, ShieldCheck, UserPlus } from "lucide-react";
+import { Archive, CheckCircle2, Clock, Headphones, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { closeTicketAction, createTicketAction } from "@/app/actions/helpdesk";
@@ -41,7 +41,7 @@ const TEXT = {
     openTickets: "التذاكر المفتوحة",
     highPriority: "عالية الأولوية",
     waitingCustomer: "بانتظار العميل",
-    slaMet: "SLA المحقق",
+    slaMet: "نسبة الالتزام بالاستجابة",
     listTitle: "مركز الدعم",
     latestFirst: "الأحدث تحديثًا",
     newLabel: "تذكرة جديدة",
@@ -51,12 +51,10 @@ const TEXT = {
     open: "مفتوحة",
     pending: "قيد الانتظار",
     closed: "مغلقة",
-    sla: "SLA",
+    sla: "ضمن المدة",
     customer: "العميل",
     owner: "المسؤول",
     priority: "الأولوية",
-    openDetails: "فتح",
-    assign: "إسناد",
     close: "إغلاق",
     closeConfirm: "هل تريد إغلاق هذه التذكرة؟",
     closedOk: "تم إغلاق التذكرة",
@@ -75,6 +73,17 @@ const TEXT = {
     medium: "متوسطة",
     high: "مرتفعة",
     ticket: "تذكرة",
+    supportRequest: "طلب دعم",
+    demoTicketTitle: "طلب مساعدة فنية",
+    demoTicketDescription: "طلب دعم متعلق بإحدى خدمات المنصة.",
+    demoAiResponse: "تم استلام التذكرة، ويجري الآن توجيهها إلى فريق الدعم المختص.",
+    demoClientReply: "أحتاج إلى متابعة حالة الطلب.",
+    demoSupportReply: "تم تحديث الطلب وسيتم إشعارك عند اكتمال المعالجة.",
+    ticketCount: "تذكرة",
+    organization: "المنشأة",
+    replySent: "تم إرسال الرد",
+    replyError: "تعذر إرسال الرد",
+    repliesError: "تعذر تحميل الردود",
   },
   EN: {
     title: "Support Center",
@@ -92,12 +101,10 @@ const TEXT = {
     open: "Open",
     pending: "Pending",
     closed: "Closed",
-    sla: "SLA",
+    sla: "Within SLA",
     customer: "Customer",
     owner: "Owner",
     priority: "Priority",
-    openDetails: "Open",
-    assign: "Assign",
     close: "Close",
     closeConfirm: "Close this ticket?",
     closedOk: "Ticket closed",
@@ -116,6 +123,17 @@ const TEXT = {
     medium: "Medium",
     high: "High",
     ticket: "Ticket",
+    supportRequest: "Support request",
+    demoTicketTitle: "Technical assistance request",
+    demoTicketDescription: "A support request related to one of the platform services.",
+    demoAiResponse: "The ticket has been received and routed to the appropriate support team.",
+    demoClientReply: "I would like an update on this request.",
+    demoSupportReply: "The request has been updated. You will be notified when processing is complete.",
+    ticketCount: "tickets",
+    organization: "Organization",
+    replySent: "Reply sent",
+    replyError: "Failed to send reply",
+    repliesError: "Failed to load replies",
   },
 };
 
@@ -143,7 +161,6 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
-  const locale = isArabic ? "ar-SA" : "en-US";
 
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [selectedId, setSelectedId] = useState<string | null>(initialTickets[0]?.id || null);
@@ -156,13 +173,27 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const [replyInput, setReplyInput] = useState("");
   const [replies, setReplies] = useState<Reply[]>([]);
   const [submittingReply, setSubmittingReply] = useState(false);
+  const [repliesError, setRepliesError] = useState(false);
 
   const formatNumber = (value: number | string) => (isArabic ? toArabicNumerals(value) : String(value));
   const formatDateTime = (value?: Date | string | null) => {
-    if (!value) return "";
+    if (!value) return "—";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString(locale, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    if (Number.isNaN(date.getTime())) return "—";
+    const pad = (part: number) => String(part).padStart(2, "0");
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${String(date.getFullYear()).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  const isDemoTenant = /(?:stress|demo)/i.test(tenantName);
+  const displayTenantName = isDemoTenant ? t.organization : cleanDisplayText(tenantName, t.organization);
+  const displayTicketTitle = (ticket: Ticket) => isDemoTenant ? t.demoTicketTitle : cleanDisplayText(ticket.title, t.supportRequest);
+  const displayTicketDescription = (ticket: Ticket) =>
+    isDemoTenant ? t.demoTicketDescription : cleanDisplayText(ticket.description, t.noData);
+  const displayAiResponse = (value: string) =>
+    isDemoTenant ? t.demoAiResponse : cleanDisplayText(value, t.noData);
+  const displayReply = (reply: Reply) => {
+    if (!isDemoTenant) return cleanDisplayText(reply.message, t.noData);
+    return reply.sender === "CLIENT" ? t.demoClientReply : t.demoSupportReply;
   };
 
   const ticketNumber = (ticket: Ticket) => {
@@ -204,9 +235,15 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       try {
         const response = await fetch(`/api/v1/support/tickets/${ticketId}/reply`);
         const json = await response.json();
-        if (!cancelled && json.success) setReplies(json.data);
+        if (!cancelled && json.success) {
+          setReplies(json.data);
+          setRepliesError(false);
+        }
       } catch {
-        if (!cancelled) setReplies([]);
+        if (!cancelled) {
+          setReplies([]);
+          setRepliesError(true);
+        }
       }
     }
     loadReplies();
@@ -216,7 +253,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   }, [selectedTicket?.id]);
 
   const filteredTickets = sortedTickets.filter((ticket) => {
-    const haystack = `${cleanDisplayText(ticket.title, "")} ${cleanDisplayText(ticket.description, "")} ${ticketNumber(ticket)}`.toLowerCase();
+    const haystack = `${displayTicketTitle(ticket)} ${displayTicketDescription(ticket)} ${ticketNumber(ticket)}`.toLowerCase();
     const matchesSearch = haystack.includes(query.toLowerCase());
     const matchesFilter = filter === "ALL" || ticket.status === filter;
     return matchesSearch && matchesFilter;
@@ -229,6 +266,12 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+
+  useEffect(() => {
+    if (newMode) return;
+    if (selectedId && filteredTickets.some((ticket) => ticket.id === selectedId)) return;
+    setSelectedId(filteredTickets[0]?.id || null);
+  }, [filteredTickets, newMode, selectedId]);
 
   const openCount = tickets.filter((ticket) => ticket.status === "OPEN").length;
   const highCount = tickets.filter((ticket) => priorityFor(ticket) === t.high).length;
@@ -292,7 +335,12 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       if (json.success) {
         setReplies((current) => [...current, json.data]);
         setReplyInput("");
+        toast.success(t.replySent);
+      } else {
+        toast.error(t.replyError);
       }
+    } catch {
+      toast.error(t.replyError);
     } finally {
       setSubmittingReply(false);
     }
@@ -301,28 +349,24 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
   const listItems: WorkspaceListItem[] = pageItems.map((ticket) => ({
     id: ticket.id,
     title: ticketNumber(ticket),
-    snippet: cleanDisplayText(ticket.title, t.noData),
+    snippet: displayTicketTitle(ticket),
     timestamp: formatDateTime(ticket.updatedAt || ticket.createdAt),
     avatar: "#",
     selected: ticket.id === selectedId && !newMode,
     badge: { label: slaMet(ticket) ? t.sla : t.pending, tone: slaMet(ticket) ? "success" : "warning" },
     onSelect: () => openTicket(ticket.id),
-    actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => openTicket(ticket.id) },
-      { label: t.assign, icon: UserPlus, onClick: () => toast(t.assign) },
-      { label: t.close, icon: Archive, onClick: () => closeTicket(ticket), disabled: ticket.status === "CLOSED" },
-    ],
+    actions: [],
   }));
 
   const timeline: WorkspaceTimelineItem[] = selectedTicket
     ? [
-        { id: `${selectedTicket.id}-description`, body: cleanDisplayText(selectedTicket.description, t.noData), time: formatDateTime(selectedTicket.createdAt), side: "neutral" },
+        { id: `${selectedTicket.id}-description`, body: displayTicketDescription(selectedTicket), time: formatDateTime(selectedTicket.createdAt), side: "neutral" },
         ...(selectedTicket.aiResponse
-          ? [{ id: `${selectedTicket.id}-ai`, body: cleanDisplayText(selectedTicket.aiResponse, t.noData), time: formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt), side: "in" as const }]
+          ? [{ id: `${selectedTicket.id}-ai`, body: displayAiResponse(selectedTicket.aiResponse), time: formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt), side: "in" as const }]
           : []),
         ...replies.map((reply) => ({
           id: reply.id,
-          body: cleanDisplayText(reply.message, t.noData),
+          body: displayReply(reply),
           time: formatDateTime(reply.createdAt),
           side: reply.sender === "CLIENT" ? ("out" as const) : ("in" as const),
         })),
@@ -333,12 +377,10 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
     ? {
         avatar: "+",
         title: t.newLabel,
-        meta: tenantName,
-        actions: [
-          { label: t.sendTicket, icon: CheckCircle2, onClick: createTicket, disabled: !newTitle.trim() || !newDescription.trim() },
-        ],
+        meta: displayTenantName,
+        actions: [],
         context: [
-          { label: t.customer, value: tenantName },
+          { label: t.customer, value: displayTenantName },
           { label: t.owner, value: t.supportTeam },
           { label: t.priority, value: t.medium },
         ] as [{ label: string; value: string }, { label: string; value: string }, { label: string; value: string }],
@@ -348,6 +390,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
         composer: {
           mode: "message" as const,
           value: newDescription,
+          bodyLabel: t.details,
           placeholder: t.details,
           sendLabel: t.sendTicket,
           onChange: setNewDescription,
@@ -360,18 +403,24 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
       ? {
           avatar: "#",
           title: ticketNumber(selectedTicket),
-          meta: `${selectedTicket.status === "OPEN" ? t.open : t.closed} · ${formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt)}`,
+          meta: (
+            <>
+              <span>{selectedTicket.status === "OPEN" ? t.open : t.closed}</span>
+              <span aria-hidden="true">·</span>
+              <span dir="ltr">{formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt)}</span>
+            </>
+          ),
           actions: [
-            { label: t.openDetails, icon: Eye, onClick: () => undefined },
-            { label: t.assign, icon: UserPlus, onClick: () => toast(t.assign) },
             { label: t.close, icon: Archive, tone: "danger" as const, onClick: () => closeTicket(selectedTicket), disabled: selectedTicket.status === "CLOSED" },
           ],
           context: [
-            { label: t.customer, value: tenantName },
+            { label: t.customer, value: displayTenantName },
             { label: t.owner, value: t.supportTeam },
             { label: t.priority, value: priorityFor(selectedTicket) },
           ] as [{ label: string; value: string }, { label: string; value: string }, { label: string; value: string }],
-          timeline,
+          timeline: repliesError
+            ? [...timeline, { id: `${selectedTicket.id}-replies-error`, body: t.repliesError, side: "out" as const }]
+            : timeline,
           emptyTitle: t.noData,
           emptyDescription: t.noTickets,
           composer:
@@ -379,6 +428,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
               ? {
                   mode: "message" as const,
                   value: replyInput,
+                  bodyLabel: t.replyPlaceholder,
                   placeholder: t.replyPlaceholder,
                   sendLabel: t.sendReply,
                   onChange: setReplyInput,
@@ -402,7 +452,7 @@ export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskVie
         { label: t.slaMet, value: `${formatNumber(slaRate)}${isArabic ? "٪" : "%"}`, icon: CheckCircle2 },
       ]}
       listTitle={t.listTitle}
-      listSubtitle={`${t.latestFirst} · ${formatNumber(filteredTickets.length)} ${t.listTitle}`}
+      listSubtitle={`${formatNumber(filteredTickets.length)} ${t.ticketCount} · ${t.latestFirst}`}
       newLabel={t.newLabel}
       onNew={() => {
         setNewMode(true);

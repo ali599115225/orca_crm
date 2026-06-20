@@ -1,39 +1,35 @@
-// app/operations/helpdesk/page.tsx
-import { prisma } from '@/lib/prisma';
-import HelpdeskView from '@/components/views/HelpdeskView';
+import { prisma } from "@/lib/prisma";
+import { getActiveTenant } from "@/lib/tenant";
+import HelpdeskView from "@/components/views/HelpdeskView";
+
+export const dynamic = "force-dynamic";
 
 export default async function HelpdeskPage() {
   let initialTickets: any[] = [];
-  let tenantName = 'ORCA';
+  let tenantName = "ORCA";
 
   try {
-    const tenant = await prisma.tenant.findFirst({
-      select: { companyName: true }
-    });
-    if (tenant) tenantName = tenant.companyName;
+    const tenant = await getActiveTenant();
+    tenantName = tenant.companyName || "ORCA";
 
     const tickets = await prisma.ticket.findMany({
-      orderBy: { updatedAt: 'desc' },
+      where: { tenantId: tenant.id },
+      orderBy: { updatedAt: "desc" },
       take: 50,
     });
 
-    initialTickets = tickets.map((t) => ({
-      id: t.id,
-      title: t.title,
-      description: t.description,
-      status: t.status,
-      aiResponse: t.aiResponse ?? null,
-      createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
+    initialTickets = tickets.map((ticket) => ({
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      aiResponse: ticket.aiResponse ?? null,
+      createdAt: ticket.createdAt.toISOString(),
+      updatedAt: ticket.updatedAt.toISOString(),
     }));
-  } catch (err) {
-    console.error('[HelpdeskPage] DB fetch error:', err);
+  } catch (error) {
+    console.error("[HelpdeskPage] tenant-scoped fetch error:", error);
   }
 
-  return (
-    <HelpdeskView
-      initialTickets={initialTickets}
-      tenantName={tenantName}
-    />
-  );
+  return <HelpdeskView initialTickets={initialTickets} tenantName={tenantName} />;
 }

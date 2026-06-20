@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Archive, CheckCircle2, Clock, Edit3, Eye, ListChecks, PlusCircle, UserPlus } from "lucide-react";
+import { Archive, CheckCircle2, Clock, ListChecks } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { createTaskAction, getLeadsListAction, getTasksAction, toggleTaskStatusAction } from "@/app/actions/tasks";
@@ -31,14 +31,11 @@ const TEXT = {
     done: "مكتملة",
     openDetails: "فتح",
     complete: "إكمال",
-    edit: "تعديل",
+    reopen: "إعادة فتح",
     archive: "أرشفة",
     customer: "العميل",
     owner: "المسؤول",
     priority: "الأولوية",
-    notePlaceholder: "أضف ملاحظة على المهمة...",
-    saveNote: "حفظ الملاحظة",
-    noteSaved: "تم حفظ الملاحظة محليًا",
     noData: "لا توجد بيانات",
     select: "اختر مهمة لمشاهدة التفاصيل",
     low: "منخفضة",
@@ -53,7 +50,17 @@ const TEXT = {
     saveTask: "حفظ المهمة",
     taskCreated: "تم إنشاء المهمة",
     taskError: "تعذر إنشاء المهمة",
+    invalidDate: "أدخل التاريخ بصيغة DD-MM-YY",
+    invalidTime: "أدخل الوقت بصيغة HH:mm",
     unknown: "غير محدد",
+    taskRecord: "متابعة عميل",
+    projectBrochure: "إرسال بروشور المشروع",
+    propertyTour: "تنسيق موعد المعاينة",
+    digitalBrochure: "إرسال كتيب إلكتروني",
+    quotationFollowUp: "متابعة العميل وإرسال عرض السعر",
+    customerDataUpdate: "تحديث بيانات العميل",
+    whatsappFollowUp: "متابعة واتساب",
+    loadError: "تعذر تحميل المهام",
   },
   EN: {
     title: "Tasks & reminders",
@@ -72,14 +79,11 @@ const TEXT = {
     done: "Completed",
     openDetails: "Open",
     complete: "Complete",
-    edit: "Edit",
+    reopen: "Reopen",
     archive: "Archive",
     customer: "Customer",
     owner: "Owner",
     priority: "Priority",
-    notePlaceholder: "Add a task note...",
-    saveNote: "Save note",
-    noteSaved: "Note saved locally",
     noData: "No data",
     select: "Select a task to view details",
     low: "Low",
@@ -94,7 +98,17 @@ const TEXT = {
     saveTask: "Save task",
     taskCreated: "Task created",
     taskError: "Failed to create task",
+    invalidDate: "Enter the date as DD-MM-YY",
+    invalidTime: "Enter the time as HH:mm",
     unknown: "Not specified",
+    taskRecord: "Customer follow-up",
+    projectBrochure: "Send project brochure",
+    propertyTour: "Schedule property tour",
+    digitalBrochure: "Send digital brochure",
+    quotationFollowUp: "Follow up and send quotation",
+    customerDataUpdate: "Update customer details",
+    whatsappFollowUp: "WhatsApp follow-up",
+    loadError: "Failed to load tasks",
   },
 };
 
@@ -117,12 +131,45 @@ function cleanDisplayText(value: unknown, fallback: string) {
   return cleaned || fallback;
 }
 
+function normalizeDateDigits(value: string) {
+  return value
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+}
+
+function parseDisplayDateToIso(value: string) {
+  const normalized = normalizeDateDigits(value.trim());
+  const match = normalized.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = 2000 + Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseDisplayTime(value: string) {
+  const normalized = normalizeDateDigits(value.trim());
+  const match = normalized.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return `${match[1]}:${match[2]}`;
+}
+
 export default function TasksView() {
   const { lang } = useApp();
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
-  const locale = isArabic ? "ar-SA" : "en-US";
   const displayLocale = isArabic ? "ar" : "en";
 
   const [tasks, setTasks] = useState<any[]>([]);
@@ -131,7 +178,6 @@ export default function TasksView() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [page, setPage] = useState(1);
-  const [note, setNote] = useState("");
   const [newMode, setNewMode] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newLeadId, setNewLeadId] = useState("");
@@ -142,15 +188,19 @@ export default function TasksView() {
 
   useEffect(() => {
     async function loadData() {
-      const tasksResult = await getTasksAction();
-      const dbTasks = tasksResult && "data" in tasksResult ? tasksResult.data : Array.isArray(tasksResult) ? tasksResult : [];
-      const dbLeads = await getLeadsListAction();
-      setTasks(dbTasks);
-      setLeads(dbLeads);
-      setSelectedId(dbTasks[0]?.id || null);
+      try {
+        const tasksResult = await getTasksAction();
+        const dbTasks = tasksResult && "data" in tasksResult ? tasksResult.data : Array.isArray(tasksResult) ? tasksResult : [];
+        const dbLeads = await getLeadsListAction();
+        setTasks(dbTasks);
+        setLeads(dbLeads);
+        setSelectedId(dbTasks[0]?.id || null);
+      } catch {
+        toast.error(t.loadError);
+      }
     }
     loadData();
-  }, []);
+  }, [t.loadError]);
 
   const formatNumber = (value: number | string) => (isArabic ? toArabicNumerals(value) : String(value));
   const formatPercent = (value: number) => `${formatNumber(value)}${isArabic ? "٪" : "%"}`;
@@ -158,7 +208,8 @@ export default function TasksView() {
     if (!value) return t.unknown;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t.unknown;
-    return date.toLocaleString(locale, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const pad = (part: number) => String(part).padStart(2, "0");
+    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${String(date.getFullYear()).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
   const leadName = (task: any) => {
@@ -203,6 +254,12 @@ export default function TasksView() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    if (newMode) return;
+    if (selectedId && filteredTasks.some((task) => task.id === selectedId)) return;
+    setSelectedId(filteredTasks[0]?.id || null);
+  }, [filteredTasks, newMode, selectedId]);
+
   const completedCount = tasks.filter((task) => task.status === "COMPLETED").length;
   const overdueCount = tasks.filter(isOverdue).length;
   const completionRate = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
@@ -224,18 +281,25 @@ export default function TasksView() {
     setSelectedId(taskId);
   }
 
-  function editTask(taskId: string) {
-    openTask(taskId);
-    toast(t.edit);
-  }
-
   async function createTask() {
     if (!newTitle || !newLeadId || !newDueDate || !newDueTime || !newPriority) return;
+    const dueDateOnly = parseDisplayDateToIso(newDueDate);
+    if (!dueDateOnly) {
+      toast.error(t.invalidDate);
+      return;
+    }
+
+    const dueTimeOnly = parseDisplayTime(newDueTime);
+    if (!dueTimeOnly) {
+      toast.error(t.invalidTime);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("title", newTitle);
     formData.append("leadId", newLeadId);
-    formData.append("dueDateOnly", newDueDate);
-    formData.append("dueTimeOnly", newDueTime);
+    formData.append("dueDateOnly", dueDateOnly);
+    formData.append("dueTimeOnly", dueTimeOnly);
     formData.append("priority", newPriority);
     formData.append("description", newNotes);
     const result = await createTaskAction(formData);
@@ -257,10 +321,31 @@ export default function TasksView() {
     }
   }
 
+  const displayTaskTitle = (task: any) => {
+    const raw = String(task?.title || "").trim();
+    const normalized = raw.toLowerCase();
+    if (/بروشور|project brochure/.test(normalized)) return t.projectBrochure;
+    if (/معاينة|property tour|viewing/.test(normalized)) return t.propertyTour;
+    if (/كتيب|digital brochure|booklet/.test(normalized)) return t.digitalBrochure;
+    if (/عرض السعر|quotation|price offer/.test(normalized)) return t.quotationFollowUp;
+    if (/تحديث بيانات|update customer/.test(normalized)) return t.customerDataUpdate;
+    if (/whatsapp lead/i.test(String(task?.lead?.firstName || "")) || /واتساب|whatsapp|\d{9,}/.test(normalized)) {
+      const suffix = raw.match(/(\d{4})\d*$/)?.[1];
+      return suffix ? `${t.whatsappFollowUp} ${formatNumber(suffix)}` : t.whatsappFollowUp;
+    }
+    const languageMismatch = language === "EN" ? /[\u0600-\u06FF]/.test(raw) : /^[\x00-\x7F\s]+$/.test(raw);
+    return languageMismatch ? t.taskRecord : cleanDisplayText(raw, t.taskRecord);
+  };
+
+  const ownerName = (task: any) => {
+    const raw = String(task?.assignedUser?.name || "").trim();
+    return raw ? displayPerson(raw, displayLocale, { route: "/operations/tasks" }) : t.unknown;
+  };
+
   const listItems: WorkspaceListItem[] = pageItems.map((task) => ({
     id: task.id,
-    title: cleanDisplayText(task.title, t.noData),
-    snippet: `${leadName(task)} · ${formatDateTime(task.dueDate)}`,
+    title: displayTaskTitle(task),
+    snippet: leadName(task),
     timestamp: formatDateTime(task.dueDate),
     avatar: task.status === "COMPLETED" ? "✓" : "!",
     selected: task.id === selectedId && !newMode,
@@ -269,17 +354,17 @@ export default function TasksView() {
       tone: task.status === "COMPLETED" ? "success" : isOverdue(task) ? "danger" : "warning",
     },
     onSelect: () => openTask(task.id),
-    actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => openTask(task.id) },
-      { label: t.complete, icon: CheckCircle2, onClick: () => toggleTaskById(task.id) },
-      { label: t.edit, icon: Edit3, onClick: () => editTask(task.id) },
-    ],
+    actions: [],
   }));
 
   const timeline: WorkspaceTimelineItem[] = selectedTask
     ? [
-        { id: `${selectedTask.id}-title`, body: cleanDisplayText(selectedTask.title, t.noData), time: formatDateTime(selectedTask.dueDate), side: "neutral" },
-        { id: `${selectedTask.id}-notes`, body: cleanDisplayText(selectedTask.description || selectedTask.notes, t.noData), side: "in" },
+        {
+          id: `${selectedTask.id}-notes`,
+          body: cleanDisplayText(selectedTask.description || selectedTask.notes, t.noData),
+          time: formatDateTime(selectedTask.dueDate),
+          side: "neutral",
+        },
       ]
     : [];
 
@@ -288,9 +373,7 @@ export default function TasksView() {
         avatar: "+",
         title: t.newLabel,
         meta: t.ordered,
-        actions: [
-          { label: t.complete, icon: CheckCircle2, onClick: createTask, disabled: !newTitle || !newLeadId || !newDueDate || !newDueTime },
-        ],
+        actions: [],
         context: [
           { label: t.customer, value: leads.find((lead) => lead.id === newLeadId)?.firstName || t.unknown },
           { label: t.owner, value: t.unknown },
@@ -302,11 +385,12 @@ export default function TasksView() {
         composer: {
           mode: "note" as const,
           value: newNotes,
+          bodyLabel: t.notes,
           placeholder: t.notes,
           sendLabel: t.saveTask,
           onChange: setNewNotes,
           onSend: createTask,
-          disabled: !newTitle || !newLeadId || !newDueDate || !newDueTime,
+          disabled: !newTitle || !newLeadId || !parseDisplayDateToIso(newDueDate) || !parseDisplayTime(newDueTime),
           fields: [
             { id: "title", label: t.taskTitle, value: newTitle, placeholder: t.taskTitle, onChange: setNewTitle, required: true },
             {
@@ -317,10 +401,10 @@ export default function TasksView() {
               onChange: setNewLeadId,
               type: "select" as const,
               required: true,
-              options: leads.map((lead) => ({ value: lead.id, label: `${lead.firstName} ${lead.lastName || ""}`.trim() })),
+              options: leads.map((lead) => ({ value: lead.id, label: displayPerson(`${lead.firstName} ${lead.lastName || ""}`.trim(), displayLocale, { route: "/operations/tasks" }) })),
             },
-            { id: "date", label: t.dueDate, value: newDueDate, placeholder: t.dueDate, onChange: setNewDueDate, type: "date" as const, required: true },
-            { id: "time", label: t.dueTime, value: newDueTime, placeholder: t.dueTime, onChange: setNewDueTime, type: "time" as const, required: true },
+            { id: "date", label: t.dueDate, value: newDueDate, placeholder: "DD-MM-YY", onChange: setNewDueDate, type: "text" as const, dir: "ltr" as const, required: true },
+            { id: "time", label: t.dueTime, value: newDueTime, placeholder: "HH:mm", onChange: setNewDueTime, type: "text" as const, dir: "ltr" as const, required: true },
             {
               id: "priority",
               label: t.priority,
@@ -333,6 +417,7 @@ export default function TasksView() {
                 { value: "LOW", label: t.low },
                 { value: "MEDIUM", label: t.medium },
                 { value: "HIGH", label: t.high },
+                { value: "URGENT", label: t.urgent },
               ],
             },
           ],
@@ -341,32 +426,23 @@ export default function TasksView() {
     : selectedTask
       ? {
           avatar: selectedTask.status === "COMPLETED" ? "✓" : "!",
-          title: cleanDisplayText(selectedTask.title, t.noData),
-          meta: formatDateTime(selectedTask.dueDate),
+          title: displayTaskTitle(selectedTask),
+          meta: <span dir="ltr">{formatDateTime(selectedTask.dueDate)}</span>,
           actions: [
-            { label: t.complete, icon: CheckCircle2, onClick: () => toggleTaskById(selectedTask.id) },
-            { label: t.edit, icon: Edit3, onClick: () => editTask(selectedTask.id) },
+            {
+              label: selectedTask.status === "COMPLETED" ? t.reopen : t.complete,
+              icon: CheckCircle2,
+              onClick: () => toggleTaskById(selectedTask.id),
+            },
           ],
           context: [
             { label: t.customer, value: leadName(selectedTask) },
-            { label: t.owner, value: selectedTask.assignedUser?.name || t.unknown },
+            { label: t.owner, value: ownerName(selectedTask) },
             { label: t.priority, value: priorityLabel(selectedTask.priority) },
           ] as [{ label: string; value: string }, { label: string; value: string }, { label: string; value: string }],
           timeline,
           emptyTitle: t.noData,
           emptyDescription: t.select,
-          composer: {
-            mode: "note" as const,
-            value: note,
-            placeholder: t.notePlaceholder,
-            sendLabel: t.saveNote,
-            onChange: setNote,
-            onSend: () => {
-              setNote("");
-              toast.success(t.noteSaved);
-            },
-            disabled: !note.trim(),
-          },
         }
       : null;
 

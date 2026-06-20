@@ -72,6 +72,7 @@ export interface WorkspaceComposer {
   mode: "message" | "note";
   value: string;
   placeholder: string;
+  bodyLabel?: string;
   sendLabel: string;
   onChange: (value: string) => void;
   onSend: () => void;
@@ -95,7 +96,7 @@ export interface WorkspaceComposer {
 export interface WorkspaceDetail {
   avatar: string;
   title: string;
-  meta: string;
+  meta: ReactNode;
   actions: WorkspaceDetailAction[];
   context: [WorkspaceContextItem, WorkspaceContextItem, WorkspaceContextItem];
   timeline: WorkspaceTimelineItem[];

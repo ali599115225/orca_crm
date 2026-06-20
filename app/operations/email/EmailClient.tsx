@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Archive, Clock, Eye, Mail, MailOpen, PlusCircle, Send, UserPlus } from "lucide-react";
+import { Clock, Mail, MailOpen, Send } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 
 import { getEmailMessagesAction, sendEmailAction } from "@/app/actions/email";
 import { useApp } from "@/app/context/AppContext";
 import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
-import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
+import type { WorkspaceDetail, WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
 import { toArabicNumerals } from "@/lib/formatters";
 
 interface EmailMessage {
@@ -37,17 +37,19 @@ interface EmailClientProps {
 }
 
 const PAGE_SIZE = 5;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const TEXT = {
   AR: {
     title: "البريد الإلكتروني",
     description: "إدارة البريد الإلكتروني بنفس نموذج العمل الموحد داخل مركز العمليات.",
-    newMessages: "الرسائل الجديدة",
-    unread: "غير المقروءة",
-    waiting: "بانتظار الرد",
-    avgReply: "متوسط زمن الرد",
+    totalEmails: "إجمالي الرسائل",
+    sentEmails: "المرسلة",
+    pendingEmails: "قيد الانتظار",
+    failedEmails: "المتعذرة",
     listTitle: "البريد الإلكتروني",
     latestFirst: "الأحدث أولًا",
+    messageCount: "رسالة",
     newLabel: "رسالة جديدة",
     search: "ابحث...",
     filter: "تصفية البريد",
@@ -56,38 +58,47 @@ const TEXT = {
     pending: "قيد الانتظار",
     failed: "متعذرة",
     read: "مقروءة",
-    unreadBadge: "غير مقروءة",
+    unknownStatus: "حالة غير محددة",
     customer: "العميل",
     owner: "المسؤول",
     priority: "الأولوية",
-    assignee: "إسناد",
-    createTask: "إنشاء مهمة",
-    archive: "أرشفة",
-    openDetails: "فتح التفاصيل",
-    archiveConfirm: "هل تريد أرشفة هذه الرسالة؟",
-    archiveUnavailable: "الأرشفة غير مفعلة بدون تغيير API.",
+    from: "من",
+    status: "الحالة",
+    draft: "مسودة",
     to: "إلى",
     subject: "الموضوع",
-    body: "اكتب محتوى البريد...",
+    body: "محتوى الرسالة",
+    bodyPlaceholder: "اكتب محتوى البريد...",
     send: "إرسال",
+    sending: "جارٍ الإرسال...",
     noData: "لا توجد بيانات",
     select: "اختر رسالة لمشاهدة التفاصيل",
-    noMessages: "لا توجد رسائل بعد",
+    contentUnavailable: "محتوى الرسالة غير متاح في السجل الحالي.",
+    externalRecipient: "مستلم خارجي",
+    emailRecord: "سجل بريد",
+    paymentNotice: "إشعار دفعة",
+    contractUpdate: "تحديث العقد",
+    projectInquiry: "استفسار عن مشروع",
+    bookingConfirmation: "تأكيد حجز وحدة",
+    externalRecipientNumber: "مستلم خارجي",
     operations: "فريق العمليات",
     normal: "متوسطة",
     sentOk: "تم إرسال البريد",
     sendError: "تعذر إرسال البريد",
-    none: "لا يوجد",
+    invalidEmail: "أدخل بريدًا إلكترونيًا صحيحًا",
+    bodyRequired: "اكتب محتوى الرسالة",
+    notAvailable: "—",
   },
   EN: {
     title: "Email",
     description: "Manage email with the same unified operations workspace model.",
-    newMessages: "New messages",
-    unread: "Unread",
-    waiting: "Awaiting reply",
-    avgReply: "Average reply time",
+    totalEmails: "Total emails",
+    sentEmails: "Sent",
+    pendingEmails: "Pending",
+    failedEmails: "Failed",
     listTitle: "Email",
     latestFirst: "Latest first",
+    messageCount: "emails",
     newLabel: "New message",
     search: "Search...",
     filter: "Filter email",
@@ -96,28 +107,36 @@ const TEXT = {
     pending: "Pending",
     failed: "Failed",
     read: "Read",
-    unreadBadge: "Unread",
+    unknownStatus: "Unknown status",
     customer: "Customer",
     owner: "Owner",
     priority: "Priority",
-    assignee: "Assign",
-    createTask: "Create task",
-    archive: "Archive",
-    openDetails: "Open details",
-    archiveConfirm: "Archive this message?",
-    archiveUnavailable: "Archiving is unavailable without changing the API.",
+    from: "From",
+    status: "Status",
+    draft: "Draft",
     to: "To",
     subject: "Subject",
-    body: "Write email content...",
+    body: "Message body",
+    bodyPlaceholder: "Write email content...",
     send: "Send",
+    sending: "Sending...",
     noData: "No data",
     select: "Select a message to view details",
-    noMessages: "No messages yet",
+    contentUnavailable: "Message content is unavailable in the current record.",
+    externalRecipient: "External recipient",
+    emailRecord: "Email record",
+    paymentNotice: "Payment notice",
+    contractUpdate: "Contract update",
+    projectInquiry: "Project inquiry",
+    bookingConfirmation: "Unit booking confirmation",
+    externalRecipientNumber: "External recipient",
     operations: "Operations team",
     normal: "Medium",
     sentOk: "Email sent",
     sendError: "Failed to send email",
-    none: "None",
+    invalidEmail: "Enter a valid email address",
+    bodyRequired: "Write the message body",
+    notAvailable: "—",
   },
 };
 
@@ -144,16 +163,27 @@ function cleanDisplayText(value: unknown, fallback: string) {
   return cleaned || fallback;
 }
 
-export default function EmailClient({ initialMessages, leads, emailFrom }: EmailClientProps) {
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateTimeValue(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${String(date.getFullYear()).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export default function EmailClient({ initialMessages, emailFrom }: EmailClientProps) {
   const { lang } = useApp();
   const searchParams = useSearchParams();
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
-  const locale = isArabic ? "ar-SA" : "en-US";
 
   const [messages, setMessages] = useState<EmailMessage[]>(initialMessages);
   const [selectedId, setSelectedId] = useState<string | null>(initialMessages[0]?.id || null);
+  const [isComposing, setIsComposing] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -164,22 +194,38 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
   const [isSending, setIsSending] = useState(false);
 
   const formatNumber = (value: number | string) => (isArabic ? toArabicNumerals(value) : String(value));
-  const formatDateTime = (value?: string | null) => {
-    if (!value) return t.none;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return t.none;
-    return date.toLocaleString(locale, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const formatDateTime = (value?: string | null) => formatDateTimeValue(value, t.notAvailable);
+  const isTestRecipient = (value: string) => /(?:stress\.test|example\.(?:com|test)|demo)/i.test(value);
+  const recordNumber = (value: string) => {
+    const localPart = value.split("@")[0] || "";
+    const match = localPart.match(/(\d{1,4})$/);
+    return match ? formatNumber(match[1]) : "";
+  };
+  const displayRecipient = (value: string) => {
+    if (!isTestRecipient(value)) return cleanDisplayText(value, t.externalRecipient);
+    const number = recordNumber(value);
+    return number ? `${t.externalRecipientNumber} ${number}` : t.externalRecipient;
+  };
+  const displaySubject = (message: EmailMessage) => {
+    const raw = String(message.subject || "").toLowerCase();
+    if (/دفعة|payment/.test(raw)) return t.paymentNotice;
+    if (/عقد|contract/.test(raw)) return t.contractUpdate;
+    if (/استفسار|مشروع|inquiry|project/.test(raw)) return t.projectInquiry;
+    if (/حجز|وحدة|booking|unit/.test(raw)) return t.bookingConfirmation;
+    if (isTestRecipient(message.to) || /(?:stress|demo)/i.test(raw)) {
+      const number = recordNumber(message.to);
+      return number ? `${t.emailRecord} ${number}` : t.emailRecord;
+    }
+    return cleanDisplayText(message.subject, t.emailRecord);
   };
 
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort(
-      (a, b) => new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime()
-    );
-  }, [messages]);
-
-  useEffect(() => {
-    if (!selectedId && sortedMessages[0]) setSelectedId(sortedMessages[0].id);
-  }, [selectedId, sortedMessages]);
+  const sortedMessages = useMemo(
+    () =>
+      [...messages].sort(
+        (a, b) => new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime()
+      ),
+    [messages]
+  );
 
   useEffect(() => {
     const leadParam = searchParams.get("leadId");
@@ -188,13 +234,15 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
     if (emailParam) setTo(emailParam);
   }, [searchParams]);
 
-  const filteredMessages = sortedMessages.filter((message) => {
-    const leadName = message.lead ? `${message.lead.firstName} ${message.lead.lastName || ""}` : "";
-    const haystack = `${cleanDisplayText(message.to, "")} ${cleanDisplayText(message.subject, "")} ${leadName}`.toLowerCase();
-    const matchesSearch = haystack.includes(query.toLowerCase());
-    const matchesFilter = filter === "ALL" || message.status === filter;
-    return matchesSearch && matchesFilter;
-  });
+  const filteredMessages = useMemo(
+    () =>
+      sortedMessages.filter((message) => {
+        const leadName = message.lead ? `${message.lead.firstName} ${message.lead.lastName || ""}` : "";
+        const haystack = `${displayRecipient(message.to)} ${displaySubject(message)} ${leadName}`.toLowerCase();
+        return haystack.includes(query.toLowerCase()) && (filter === "ALL" || message.status === filter);
+      }),
+    [filter, query, sortedMessages, language]
+  );
 
   const totalPages = Math.max(1, Math.ceil(filteredMessages.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -205,36 +253,60 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    if (isComposing) return;
+    if (selectedId && filteredMessages.some((message) => message.id === selectedId)) return;
+    setSelectedId(filteredMessages[0]?.id || null);
+  }, [filteredMessages, isComposing, selectedId]);
+
   const statusLabel = (status: string) => {
     if (status === "SENT") return t.sent;
     if (status === "FAILED") return t.failed;
     if (status === "PENDING") return t.pending;
-    return t.read;
+    if (status === "READ") return t.read;
+    return t.unknownStatus;
   };
 
   const statusTone = (status: string) => {
-    if (status === "SENT") return "success" as const;
+    if (status === "SENT" || status === "READ") return "success" as const;
     if (status === "FAILED") return "danger" as const;
     if (status === "PENDING") return "warning" as const;
     return "neutral" as const;
   };
 
   const leadName = (message: EmailMessage | null) => {
-    if (!message?.lead) return t.none;
-    return `${message.lead.firstName} ${message.lead.lastName || ""}`.trim();
+    if (!message?.lead) return t.notAvailable;
+    return cleanDisplayText(`${message.lead.firstName} ${message.lead.lastName || ""}`.trim(), t.notAvailable);
   };
 
   async function handleSend() {
-    if (!to.trim() || !subject.trim() || isSending) return;
+    const recipient = to.trim();
+    const cleanSubject = subject.trim();
+    const cleanBody = body.trim();
+    if (isSending) return;
+    if (!cleanSubject) return;
+    if (!EMAIL_PATTERN.test(recipient)) {
+      toast.error(t.invalidEmail);
+      return;
+    }
+    if (!cleanBody) {
+      toast.error(t.bodyRequired);
+      return;
+    }
+
     setIsSending(true);
-    const formData = new FormData();
-    formData.append("to", to.trim());
-    formData.append("subject", subject.trim());
-    formData.append("htmlBody", body.trim());
-    if (leadId) formData.append("leadId", leadId);
-    const result = await sendEmailAction(formData);
-    setIsSending(false);
-    if (result.success) {
+    try {
+      const formData = new FormData();
+      formData.append("to", recipient);
+      formData.append("subject", cleanSubject);
+      formData.append("htmlBody", cleanBody);
+      if (leadId) formData.append("leadId", leadId);
+      const result = await sendEmailAction(formData);
+      if (!result.success) {
+        toast.error(t.sendError);
+        return;
+      }
+
       toast.success(t.sentOk);
       setTo("");
       setSubject("");
@@ -249,63 +321,101 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
           lead: message.lead ? { firstName: message.lead.firstName, lastName: message.lead.lastName || null } : null,
         }));
         setMessages(next);
+        setIsComposing(false);
         setSelectedId(next[0]?.id || null);
       }
-    } else {
-      toast.error(t.sendError);
+    } finally {
+      setIsSending(false);
     }
   }
 
   function openMessage(messageId: string) {
+    setIsComposing(false);
     setSelectedId(messageId);
   }
 
-  function archiveMessage(messageId?: string) {
-    if (messageId) setSelectedId(messageId);
-    if (window.confirm(t.archiveConfirm)) toast(t.archiveUnavailable);
-  }
-
-  const listItems: WorkspaceListItem[] = pageItems.map((message) => ({
-    id: message.id,
-    title: cleanDisplayText(message.subject, t.noData),
-    snippet: cleanDisplayText(message.to, t.noData),
-    timestamp: formatDateTime(message.sentAt || message.createdAt),
-    avatar: "@" ,
-    selected: message.id === selectedId,
-    badge: { label: statusLabel(message.status), tone: statusTone(message.status) },
-    onSelect: () => openMessage(message.id),
-    actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => openMessage(message.id) },
-      { label: t.archive, icon: Archive, onClick: () => archiveMessage(message.id) },
-    ],
-  }));
+  const listItems: WorkspaceListItem[] = pageItems.map((message) => {
+    const recipient = displayRecipient(message.to);
+    return {
+      id: message.id,
+      title: displaySubject(message),
+      snippet: recipient,
+      timestamp: formatDateTime(message.sentAt || message.createdAt),
+      avatar: displaySubject(message).charAt(0).toUpperCase() || "@",
+      selected: message.id === selectedId && !isComposing,
+      badge: { label: statusLabel(message.status), tone: statusTone(message.status) },
+      onSelect: () => openMessage(message.id),
+      actions: [],
+    };
+  });
 
   const timeline: WorkspaceTimelineItem[] = selectedMessage
     ? [
-        {
-          id: `${selectedMessage.id}-summary`,
-          body: cleanDisplayText(selectedMessage.subject, t.noData),
-          time: formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt),
-          side: "neutral",
-        },
         selectedMessage.errorMessage
           ? {
               id: `${selectedMessage.id}-error`,
               body: cleanDisplayText(selectedMessage.errorMessage, t.sendError),
-              time: undefined,
+              time: formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt),
               side: "out" as const,
             }
           : {
-              id: `${selectedMessage.id}-body`,
-              body: t.noMessages,
-              time: undefined,
-              side: "in" as const,
+              id: `${selectedMessage.id}-status`,
+              body: t.contentUnavailable,
+              time: formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt),
+              side: "neutral" as const,
             },
       ]
     : [];
 
+  const sentCount = messages.filter((message) => message.status === "SENT" || message.status === "READ").length;
   const pendingCount = messages.filter((message) => message.status === "PENDING").length;
   const failedCount = messages.filter((message) => message.status === "FAILED").length;
+
+  const detail: WorkspaceDetail | null = isComposing
+    ? {
+        avatar: "+",
+        title: t.newLabel,
+        meta: emailFrom,
+        actions: [],
+        context: [
+          { label: t.from, value: emailFrom },
+          { label: t.status, value: t.draft },
+          { label: t.priority, value: t.normal },
+        ],
+        timeline: [],
+        emptyTitle: t.newLabel,
+        emptyDescription: t.bodyRequired,
+        composer: {
+          mode: "message",
+          value: body,
+          bodyLabel: t.body,
+          placeholder: t.bodyPlaceholder,
+          sendLabel: isSending ? t.sending : t.send,
+          onChange: setBody,
+          onSend: handleSend,
+          disabled: isSending || !EMAIL_PATTERN.test(to.trim()) || !subject.trim() || !body.trim(),
+          fields: [
+            { id: "to", label: t.to, value: to, placeholder: t.to, onChange: setTo, type: "email", dir: "ltr", required: true },
+            { id: "subject", label: t.subject, value: subject, placeholder: t.subject, onChange: setSubject, required: true },
+          ],
+        },
+      }
+    : selectedMessage
+      ? {
+          avatar: displaySubject(selectedMessage).charAt(0).toUpperCase() || "@",
+          title: displaySubject(selectedMessage),
+          meta: `${t.to}: ${displayRecipient(selectedMessage.to)}`,
+          actions: [],
+          context: [
+            { label: t.customer, value: leadName(selectedMessage) },
+            { label: t.owner, value: t.operations },
+            { label: t.status, value: statusLabel(selectedMessage.status) },
+          ],
+          timeline,
+          emptyTitle: t.noData,
+          emptyDescription: t.contentUnavailable,
+        }
+      : null;
 
   return (
     <UnifiedOperationsWorkspace
@@ -314,15 +424,18 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
       title={t.title}
       description={t.description}
       kpis={[
-        { label: t.newMessages, value: formatNumber(messages.length), icon: Mail },
-        { label: t.unread, value: formatNumber(pendingCount), icon: MailOpen },
-        { label: t.waiting, value: formatNumber(pendingCount + failedCount), icon: Clock },
-        { label: t.avgReply, value: t.none, icon: Send },
+        { label: t.totalEmails, value: formatNumber(messages.length), icon: Mail },
+        { label: t.sentEmails, value: formatNumber(sentCount), icon: Send },
+        { label: t.pendingEmails, value: formatNumber(pendingCount), icon: Clock },
+        { label: t.failedEmails, value: formatNumber(failedCount), icon: MailOpen },
       ]}
       listTitle={t.listTitle}
-      listSubtitle={`${t.latestFirst} · ${formatNumber(filteredMessages.length)} ${t.listTitle}`}
+      listSubtitle={isArabic
+        ? `${formatNumber(filteredMessages.length)} ${t.messageCount} · ${t.latestFirst}`
+        : `${formatNumber(filteredMessages.length)} ${t.messageCount} · ${t.latestFirst}`}
       newLabel={t.newLabel}
       onNew={() => {
+        setIsComposing(true);
         setSelectedId(null);
         setSubject("");
         setBody("");
@@ -338,6 +451,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
       filterOptions={[
         { value: "ALL", label: t.all },
         { value: "SENT", label: t.sent },
+        { value: "READ", label: t.read },
         { value: "PENDING", label: t.pending },
         { value: "FAILED", label: t.failed },
       ]}
@@ -352,37 +466,7 @@ export default function EmailClient({ initialMessages, leads, emailFrom }: Email
         onPrevious: () => setPage((current) => Math.max(1, current - 1)),
         onNext: () => setPage((current) => Math.min(totalPages, current + 1)),
       }}
-      detail={{
-        avatar: selectedMessage ? selectedMessage.to.charAt(0).toUpperCase() : "@",
-        title: selectedMessage ? cleanDisplayText(selectedMessage.subject, t.noData) : t.newLabel,
-        meta: selectedMessage ? `${t.to}: ${cleanDisplayText(selectedMessage.to, t.noData)}` : emailFrom,
-        actions: [
-          { label: t.assignee, icon: UserPlus, onClick: () => toast(t.assignee) },
-          { label: t.createTask, icon: PlusCircle, onClick: () => toast(t.createTask) },
-          { label: t.archive, icon: Archive, tone: "danger", onClick: () => archiveMessage(selectedMessage?.id) },
-        ],
-        context: [
-          { label: t.customer, value: leadName(selectedMessage) },
-          { label: t.owner, value: t.operations },
-          { label: t.priority, value: t.normal },
-        ],
-        timeline,
-        emptyTitle: t.noData,
-        emptyDescription: t.noMessages,
-        composer: {
-          mode: "message",
-          value: body,
-          placeholder: t.body,
-          sendLabel: t.send,
-          onChange: setBody,
-          onSend: handleSend,
-          disabled: isSending || !to.trim() || !subject.trim(),
-          fields: [
-            { id: "to", label: t.to, value: to, placeholder: t.to, onChange: setTo, type: "email", dir: "ltr", required: true },
-            { id: "subject", label: t.subject, value: subject, placeholder: t.subject, onChange: setSubject, required: true },
-          ],
-        },
-      }}
+      detail={detail}
       emptyDetailTitle={t.noData}
       emptyDetailDescription={t.select}
     />
