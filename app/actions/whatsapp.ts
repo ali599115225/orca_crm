@@ -67,25 +67,112 @@ export async function getCloudAPIStatusAction() {
   }
 }
 
-export async function getWhatsAppChatsAction() {
+type WhatsAppChatListMode = "active" | "archived";
+
+const WHATSAPP_PHONE_RULES = [
+  { code: "966", localLength: 9 },
+  { code: "971", localLength: 9 },
+  { code: "965", localLength: 8 },
+  { code: "974", localLength: 8 },
+  { code: "973", localLength: 8 },
+  { code: "968", localLength: 8 },
+] as const;
+
+function normalizeWhatsAppPhone(value: string) {
+  let digits = String(value || "").replace(/[^\d]/g, "");
+  while (digits.startsWith("00")) digits = digits.slice(2);
+  return digits;
+}
+
+function validateWhatsAppPhone(phone: string) {
+  const rule = WHATSAPP_PHONE_RULES.find((country) => phone.startsWith(country.code));
+  if (!rule) return false;
+  const local = phone.slice(rule.code.length);
+  return local.length === rule.localLength && !local.startsWith("0");
+}
+
+function isTemplateRequiredError(result: any) {
+  const code = String(result?.error?.code || "");
+  const subcode = String(result?.error?.error_subcode || "");
+  const message = String(result?.error?.message || "").toLowerCase();
+  return (
+    code === "131047" ||
+    subcode === "131047" ||
+    (message.includes("24") && message.includes("hour")) ||
+    message.includes("template") ||
+    message.includes("outside the allowed window")
+  );
+}
+
+function metaErrorCode(responseStatus: number, result: any) {
+  return String(
+    result?.error?.code ||
+      (responseStatus ? `HTTP_${responseStatus}` : "WHATSAPP_SEND_FAILED"),
+  );
+}
+
+function metaErrorSubcode(result: any) {
+  const subcode = result?.error?.error_subcode;
+  return subcode === undefined || subcode === null || subcode === "" ? undefined : String(subcode);
+}
+
+function metaErrorMessage(result: any) {
+  const message = String(result?.error?.message || "").trim();
+  return message ? message.slice(0, 240) : "تعذر إرسال رسالة واتساب";
+}
+
+function safeSendResult<T extends {
+  success: boolean;
+  status: string;
+  errorCode?: string;
+  errorSubcode?: string;
+  errorMessage?: string;
+  contactId?: string | null;
+  messageId?: string | null;
+}>(result: T) {
+  if (process.env.NODE_ENV === "development") {
+    console.info("[WhatsApp] send result", {
+      success: result.success,
+      status: result.status,
+      errorCode: result.errorCode,
+      errorSubcode: result.errorSubcode,
+      errorMessage: result.errorMessage,
+      contactId: result.contactId,
+      messageId: result.messageId,
+    });
+  }
+  return result;
+}
+
+export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListMode } = {}) {
   try {
     const tenant = await getActiveTenant();
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
     const isCloudAPI = !!(accessToken && phoneNumberId);
+    const archived = options.mode === "archived";
 
     if (!isCloudAPI) {
       return {
         success: true,
         chats: [],
         provider: "none",
-        warning: "WhatsApp Cloud API غير مفعل. أضف WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID في Vercel.",
+        warning: "واتساب غير متصل. أكمل إعدادات الربط قبل استخدام المحادثات.",
       };
     }
 
     const contacts = await prisma.whatsAppContact.findMany({
-      where: { tenantId: tenant.id },
-      select: { id: true, name: true, phone: true, leadId: true, lastMessageAt: true },
+      where: { tenantId: tenant.id, archived },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        leadId: true,
+        lastMessageAt: true,
+        assignedUserId: true,
+        assignedUserName: true,
+        archived: true,
+      },
       orderBy: { lastMessageAt: "desc" },
       take: 50,
     });
@@ -103,10 +190,11 @@ export async function getWhatsAppChatsAction() {
         });
         const lastMsg = messages[messages.length - 1];
         const safeText = (t: string | null | undefined) => typeof t === "string" ? t : String(t ?? "");
+        const displayPhone = normalizeWhatsAppPhone(c.phone);
         return {
           id: c.id,
-          contactName: c.name || c.phone,
-          contactPhone: c.phone,
+          contactName: c.name || displayPhone,
+          contactPhone: displayPhone,
           lastMessage: safeText(lastMsg?.messageText).substring(0, 100) || "",
           time: lastMsg?.createdAt?.toISOString() || c.lastMessageAt?.toISOString() || "",
           unread: false,
@@ -114,10 +202,15 @@ export async function getWhatsAppChatsAction() {
           leadStatus: lead?.status || null,
           leadSource: lead?.source || null,
           leadPriority: lead?.priority || null,
+          assignedUserId: c.assignedUserId || null,
+          assignedUserName: c.assignedUserName || null,
+          archived: c.archived,
           messages: messages.map((m) => ({
+            id: m.id,
             sender: m.direction === "inbound" ? "client" : "agent",
             text: safeText(m.messageText),
             time: m.createdAt?.toISOString() || "",
+            status: m.status || null,
           })),
         };
       })
@@ -137,29 +230,42 @@ export async function getWhatsAppChatsAction() {
 }
 
 export async function sendWhatsAppMessageAction(chatId: string, messageText: string) {
+  const normalizedPhone = normalizeWhatsAppPhone(chatId);
+  if (!normalizedPhone || !validateWhatsAppPhone(normalizedPhone)) {
+    return safeSendResult({
+      success: false,
+      messageId: null,
+      contactId: null,
+      phone: normalizedPhone,
+      status: "failed",
+      errorCode: "WHATSAPP_INVALID_PHONE",
+      errorSubcode: undefined,
+      errorMessage: "رقم واتساب غير صالح",
+    });
+  }
+
   try {
     const tenant = await getActiveTenant();
     await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || "";
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 
-    if (!accessToken || !phoneNumberId) {
-      return { success: false, error: "WhatsApp Cloud API غير مفعل" };
-    }
-
     // Step 1: Save message to DB first with status "pending"
     let savedMessageId: string | null = null;
+    let savedContactId: string | null = null;
     try {
-      await prisma.whatsAppContact.upsert({
-        where: { tenantId_phoneHash: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, chatId) } },
-        create: { tenantId: tenant.id, phone: chatId, phoneHash: hashPhone(tenant.id, chatId), provider: "meta", lastMessageAt: new Date() },
+      const phoneHash = hashPhone(tenant.id, normalizedPhone);
+      const savedContact = await prisma.whatsAppContact.upsert({
+        where: { tenantId_phoneHash: { tenantId: tenant.id, phoneHash } },
+        create: { tenantId: tenant.id, phone: normalizedPhone, phoneHash, provider: "meta", lastMessageAt: new Date() },
         update: { lastMessageAt: new Date() },
       });
+      savedContactId = savedContact.id;
       const savedMessage = await prisma.whatsAppMessage.create({
         data: {
           tenantId: tenant.id,
-          phone: chatId,
-          phoneHash: hashPhone(tenant.id, chatId),
+          phone: normalizedPhone,
+          phoneHash,
           direction: "outbound",
           provider: "meta",
           messageText,
@@ -171,14 +277,51 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
       savedMessageId = savedMessage.id;
 
       const lead = await prisma.lead.findFirst({
-        where: { tenantId: tenant.id, phone: chatId },
+        where: { tenantId: tenant.id, phone: normalizedPhone },
       });
       if (lead) {
-        await logWhatsAppActivity(tenant.id, lead.id, chatId, "outbound", messageText);
+        await logWhatsAppActivity(tenant.id, lead.id, normalizedPhone, "outbound", messageText);
       }
     } catch (dbErr) {
       console.error("[WhatsApp] Failed to save message to DB:", dbErr);
-      return { success: false, error: "فشل حفظ الرسالة في قاعدة البيانات" };
+      return safeSendResult({
+        success: false,
+        messageId: null,
+        contactId: savedContactId,
+        phone: normalizedPhone,
+        status: "failed",
+        errorCode: "WHATSAPP_DB_SAVE_FAILED",
+        errorSubcode: undefined,
+        errorMessage: "فشل حفظ الرسالة في قاعدة البيانات",
+      });
+    }
+
+    if (!accessToken || !phoneNumberId) {
+      const errorCode = "WHATSAPP_NOT_CONFIGURED";
+      const errorSubcode = undefined;
+      const errorMessage = "WhatsApp Cloud API غير مفعل";
+      if (savedMessageId) {
+        await prisma.whatsAppMessage.update({
+          where: { id: savedMessageId },
+          data: {
+            status: "failed",
+            failedAt: new Date(),
+            rawPayload: { provider: "meta", errorCode, errorSubcode, errorMessage } as any,
+          },
+        }).catch((updateErr) => {
+          console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
+        });
+      }
+      return safeSendResult({
+        success: false,
+        messageId: savedMessageId,
+        contactId: savedContactId,
+        phone: normalizedPhone,
+        status: "failed",
+        errorCode,
+        errorSubcode,
+        errorMessage,
+      });
     }
 
     // Step 2: Call Meta API
@@ -193,7 +336,7 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
         body: JSON.stringify({
           messaging_product: "whatsapp",
           recipient_type: "individual",
-          to: chatId,
+          to: normalizedPhone,
           type: "text",
           text: { preview_url: false, body: messageText },
         }),
@@ -202,25 +345,32 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
 
     const result = await response.json();
     const metaMessageId = result.messages?.[0]?.id || null;
+    const acceptedByMeta = response.ok && Boolean(metaMessageId);
+    const errorCode = acceptedByMeta
+      ? undefined
+      : isTemplateRequiredError(result)
+        ? "WHATSAPP_TEMPLATE_REQUIRED"
+        : metaErrorCode(response.status, result);
+    const errorSubcode = acceptedByMeta ? undefined : metaErrorSubcode(result);
+    const errorMessage = acceptedByMeta ? undefined : metaErrorMessage(result);
 
     // Step 3: Update message status based on Meta API result
-    if (response.ok && metaMessageId && savedMessageId) {
+    if (acceptedByMeta && metaMessageId && savedMessageId) {
       try {
         await prisma.whatsAppMessage.update({
           where: { id: savedMessageId },
           data: {
             metaMessageId,
-            status: "sent",
-          rawPayload: redactPiiFromPayload(result) as any,
-        },
-      });
-      await prisma.auditLog.create({
+            rawPayload: redactPiiFromPayload(result) as any,
+          },
+        });
+        await prisma.auditLog.create({
           data: {
             tenantId: tenant.id,
-            action: "WHATSAPP_MESSAGE_SENT",
+            action: "WHATSAPP_MESSAGE_ACCEPTED",
             tableName: "WhatsAppMessage",
             recordId: savedMessageId,
-            details: JSON.stringify({ to: chatId, length: messageText.length, provider: "meta" }),
+            details: JSON.stringify({ to: normalizedPhone, length: messageText.length, provider: "meta" }),
           },
         });
       } catch (updateErr) {
@@ -234,58 +384,101 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
           data: {
             status: "failed",
             failedAt: new Date(),
-          rawPayload: redactPiiFromPayload(result) as any,
-        },
-      });
-    } catch (updateErr) {
+            rawPayload: {
+              provider: "meta",
+              httpStatus: response.status,
+              errorCode,
+              errorSubcode,
+              errorMessage,
+              payload: redactPiiFromPayload(result),
+            } as any,
+          },
+        });
+      } catch (updateErr) {
         console.error("[WhatsApp] Failed to update message status to failed:", updateErr);
       }
     }
 
-    return {
-      success: response.ok,
-      provider: "meta",
-      metaMessageId,
+    return safeSendResult({
+      success: acceptedByMeta,
       messageId: savedMessageId,
-      metaResponse: result,
-    };
+      contactId: savedContactId,
+      phone: normalizedPhone,
+      status: acceptedByMeta ? "pending" : "failed",
+      errorCode,
+      errorSubcode,
+      errorMessage,
+    });
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
-      return { success: false, error: error.message, code: error.code };
+      return safeSendResult({
+        success: false,
+        messageId: null,
+        contactId: null,
+        phone: normalizedPhone,
+        status: "failed",
+        errorCode: error.code,
+        errorSubcode: undefined,
+        errorMessage: error.message,
+      });
     }
-    return { success: false, error: error.message };
+    return safeSendResult({
+      success: false,
+      messageId: null,
+      contactId: null,
+      phone: normalizedPhone,
+      status: "failed",
+      errorCode: "WHATSAPP_SEND_EXCEPTION",
+      errorSubcode: undefined,
+      errorMessage: "تعذر إرسال رسالة واتساب",
+    });
   }
 }
 
-export async function deleteWhatsAppConversationAction(contactId: string) {
+export async function archiveChatAction(contactId: string) {
   try {
     const tenant = await getActiveTenant();
-
     const contact = await prisma.whatsAppContact.findFirst({
       where: { id: contactId, tenantId: tenant.id },
     });
     if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
-    await prisma.whatsAppMessage.deleteMany({
-      where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contact.phone) },
+    await prisma.whatsAppContact.update({
+      where: { id: contactId },
+      data: { archived: !contact.archived },
     });
-    await prisma.whatsAppContact.delete({
+    revalidatePath("/operations/whatsapp");
+    return { success: true, archived: !contact.archived };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function assignChatAction(contactId: string, userId: string) {
+  try {
+    const tenant = await getActiveTenant();
+    const contact = await prisma.whatsAppContact.findFirst({
       where: { id: contactId, tenantId: tenant.id },
     });
+    if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
-    await prisma.auditLog.create({
-      data: {
+    const assignee = await prisma.user.findFirst({
+      where: {
+        id: userId,
         tenantId: tenant.id,
-        action: "WHATSAPP_CONVERSATION_DELETED",
-        tableName: "WhatsAppContact",
-        recordId: contactId,
-        details: JSON.stringify({ phone: contact.phone, name: contact.name }),
+        isActive: true,
       },
+      select: { id: true, name: true },
     });
+    if (!assignee) return { success: false, error: "المستخدم غير فعال أو لا ينتمي لهذا المستأجر" };
 
+    await prisma.whatsAppContact.update({
+      where: { id: contactId },
+      data: { assignedUserId: assignee.id, assignedUserName: assignee.name },
+    });
     revalidatePath("/operations/whatsapp");
-    return { success: true, deletedId: contactId };
+    return { success: true, assignedUserId: assignee.id, assignedUserName: assignee.name };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

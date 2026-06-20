@@ -970,11 +970,15 @@ model WhatsAppContact {
   metaContactId String?   @map("meta_contact_id")
   leadId        String?   @unique @map("lead_id") @db.Uuid
   lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  assignedUserId String?   @map("assigned_user_id") @db.Uuid
+  assignedUserName String? @map("assigned_user_name")
+  archived       Boolean   @default(false) @map("archived")
   lastMessageAt DateTime? @map("last_message_at")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([tenantId, phoneHash])
+  @@index([tenantId, archived, lastMessageAt])
   @@index([tenantId, lastMessageAt])
   @@index([tenantId, phoneHash])
   @@map("whatsapp_contacts")
