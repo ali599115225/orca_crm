@@ -205,6 +205,10 @@ model Tenant {
   extraAgents           Int       @default(0) @map("extra_agents")
   whatsappConnected     Boolean   @default(false) @map("whatsapp_connected")
   growthWarning         Boolean   @default(false) @map("growth_warning")
+  messagingDisabled     Boolean   @default(false) @map("messaging_disabled")
+  automationDisabled    Boolean   @default(false) @map("automation_disabled")
+
+  whatsappConnection    WhatsAppConnection?
 
   createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz
   users                User[]
@@ -984,21 +988,6 @@ model WhatsAppContact {
   @@map("whatsapp_contacts")
 }
 
-model WhatsAppPhoneNumber {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId          String   @map("tenant_id") @db.Uuid
-  phoneNumberId     String   @unique(map: "uq_whatsapp_phone_numbers_phone_number_id") @map("phone_number_id")
-  businessAccountId String?  @map("business_account_id")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, isActive], map: "idx_whatsapp_phone_numbers_tenant_active")
-  @@map("whatsapp_phone_numbers")
-}
-
 model WhatsAppMessage {
   id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId      String               @map("tenant_id") @db.Uuid
@@ -1009,7 +998,7 @@ model WhatsAppMessage {
   provider      String               @default("meta")
   messageText   String?              @map("message_text") @db.Text
   messageType   String?              @default("text") @map("message_type")
-  metaMessageId String?              @unique(map: "uq_whatsapp_messages_meta_message_id") @map("meta_message_id")
+  metaMessageId String?              @map("meta_message_id")
   rawPayload    Json?                @map("raw_payload")
   status        String?              @default("received")
   aiSummary     String?              @map("ai_summary") @db.Text
@@ -1019,6 +1008,7 @@ model WhatsAppMessage {
   createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
   attachments   WhatsAppAttachment[]
 
+  @@unique([tenantId, metaMessageId])
   @@index([tenantId, phone, createdAt])
   @@index([tenantId, phoneHash])
   @@map("whatsapp_messages")
@@ -1104,3 +1094,285 @@ model SentinelTaskOrder {
   @@index([createdAt(sort: Desc)])
   @@map("sentinel_task_orders")
 }
+
+// ═══════════════════════════════════════════════════════════
+// WHATSAPP MULTI-TENANT SYSTEM — P0 Batch 1
+// ═══════════════════════════════════════════════════════════
+
+enum WhatsAppConnectionStatus {
+  DISCONNECTED
+  SIGNUP_PENDING
+  TOKEN_EXCHANGED
+  ASSETS_VERIFIED
+  WEBHOOK_SUBSCRIBED
+  ACTIVE
+  REAUTH_REQUIRED
+  SUSPENDED
+  DISCONNECTING
+  DISCONNECT_PENDING
+  FAILED
+}
+
+enum WhatsAppSignupSessionStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
+enum WhatsAppWebhookEnvelopeStatus {
+  RECEIVED
+  PROCESSED
+  INVALID_SIGNATURE
+  QUARANTINED
+  DISCARDED
+}
+
+enum WhatsAppWebhookEventType {
+  INBOUND_MESSAGE
+  STATUS_UPDATE
+  UNKNOWN
+}
+
+enum WhatsAppWebhookEventStatus {
+  PENDING
+  PROCESSED
+  QUARANTINED
+  DLQ
+  RETRYING
+}
+
+enum WhatsAppTemplateCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
+enum WhatsAppTemplateSyncStatus {
+  APPROVED
+  REJECTED
+  PENDING
+  PAUSED
+  DISABLED
+}
+
+enum WhatsAppIntegrationAuditAction {
+  CONNECTED
+  DISCONNECTED
+  TOKEN_ROTATED
+  SIGNUP_INITIATED
+  SIGNUP_COMPLETED
+  SIGNUP_FAILED
+  PHONE_ADDED
+  PHONE_REMOVED
+  PRIMARY_CHANGED
+  CREDENTIAL_EXPIRED
+  AUTOMATION_ENABLED
+  AUTOMATION_DISABLED
+  TEMPLATE_SYNCED
+  KILL_SWITCH_ENGAGED
+}
+
+model WhatsAppConnection {
+  id              String                      @id @default(uuid()) @db.Uuid
+  tenantId        String                      @map("tenant_id") @db.Uuid
+  tenant          Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status          WhatsAppConnectionStatus    @default(DISCONNECTED)
+  wabaId          String?                     @unique @map("waba_id")
+  activeSince     DateTime?                   @map("active_since") @db.Timestamptz
+  disconnectedAt  DateTime?                   @map("disconnected_at") @db.Timestamptz
+  lastHealthCheck DateTime?                   @map("last_health_check") @db.Timestamptz
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+
+  credentials     WhatsAppCredential[]
+  phoneNumbers    WhatsAppPhoneNumber[]
+  templates       WhatsAppTemplate[]
+  signupSessions  WhatsAppSignupSession[]
+  auditLogs       WhatsAppIntegrationAudit[]
+
+  @@unique([tenantId])
+  @@index([status])
+  @@map("whatsapp_connections")
+}
+
+model WhatsAppCredential {
+  id                String               @id @default(uuid()) @db.Uuid
+  connectionId      String               @map("connection_id") @db.Uuid
+  connection        WhatsAppConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  encryptedValue    String               @map("encrypted_value")
+  iv                String
+  authTag           String               @map("auth_tag")
+  algorithm         String               @default("AES-256-GCM") @map("algorithm")
+  keyVersion        Int                  @default(1) @map("key_version")
+  tokenFingerprint  String               @map("token_fingerprint")
+  issuedAt          DateTime             @default(now()) @map("issued_at") @db.Timestamptz
+  lastValidatedAt   DateTime?            @map("last_validated_at") @db.Timestamptz
+  revokedAt         DateTime?            @map("revoked_at") @db.Timestamptz
+  rotatedFrom       String?              @map("rotated_from") @db.Uuid
+  isActive          Boolean              @default(true) @map("is_active")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([connectionId])
+  @@index([tokenFingerprint])
+  @@map("whatsapp_credentials")
+}
+
+// WhatsAppPhoneNumber REFINEMENT — connectionId made mandatory, isPrimary added
+model WhatsAppPhoneNumber {
+  id                String               @id @default(uuid()) @db.Uuid
+  tenantId          String               @map("tenant_id") @db.Uuid
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connectionId      String?              @map("connection_id") @db.Uuid
+  connection        WhatsAppConnection?  @relation(fields: [connectionId], references: [id])
+  phoneNumberId     String               @unique @map("phone_number_id")
+  displayPhoneNumber String?             @map("display_phone_number")
+  wabaId            String?              @map("waba_id")
+  certificate       String?
+  businessAccountId String?              @map("business_account_id")
+  isActive          Boolean              @default(true) @map("is_active")
+  isPrimary         Boolean              @default(false) @map("is_primary")
+  verifiedName      String?              @map("verified_name")
+  qualityRating     String?              @map("quality_rating")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, isActive])
+  @@index([connectionId])
+  @@map("whatsapp_phone_numbers")
+}
+
+model WhatsAppSignupSession {
+  id            String                       @id @default(uuid()) @db.Uuid
+  tenantId      String                       @map("tenant_id") @db.Uuid
+  userId        String                       @map("user_id") @db.Uuid
+  connectionId  String?                      @map("connection_id") @db.Uuid
+  connection    WhatsAppConnection?          @relation(fields: [connectionId], references: [id])
+  state         String                       @unique
+  codeVerifier  String?                      @map("code_verifier")
+  redirectUri   String                       @map("redirect_uri")
+  status        WhatsAppSignupSessionStatus  @default(PENDING)
+  expiresAt     DateTime                     @map("expires_at") @db.Timestamptz
+  completedAt   DateTime?                    @map("completed_at") @db.Timestamptz
+  createdAt     DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([state])
+  @@index([tenantId, status])
+  @@map("whatsapp_signup_sessions")
+}
+
+model WhatsAppWebhookEnvelope {
+  id              String                          @id @default(uuid()) @db.Uuid
+  requestHash     String                          @map("request_hash")
+  signatureValid  Boolean                         @default(false) @map("signature_valid")
+  status          WhatsAppWebhookEnvelopeStatus   @default(RECEIVED)
+  rawPayloadSnippet String?                       @map("raw_payload_snippet") @db.Text
+  createdAt       DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt       DateTime                        @map("expires_at") @db.Timestamptz
+
+  events          WhatsAppWebhookEvent[]
+
+  @@index([status])
+  @@index([expiresAt])
+  @@map("whatsapp_webhook_envelopes")
+}
+
+model WhatsAppWebhookEvent {
+  id              String                        @id @default(uuid()) @db.Uuid
+  envelopeId      String                        @map("envelope_id") @db.Uuid
+  envelope        WhatsAppWebhookEnvelope       @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  tenantId        String?                       @map("tenant_id") @db.Uuid
+  wabaId          String?                       @map("waba_id")
+  phoneNumberId   String?                       @map("phone_number_id")
+  eventType       WhatsAppWebhookEventType      @map("event_type")
+  messageId       String?                       @map("message_id")
+  metaMessageId   String?                       @map("meta_message_id")
+  occurredAt      DateTime?                     @map("occurred_at") @db.Timestamptz
+  eventData       Json                          @map("event_data")
+  dedupeKey       String                        @unique @map("dedupe_key")
+  status          WhatsAppWebhookEventStatus    @default(PENDING)
+  attemptCount    Int                           @default(0) @map("attempt_count")
+  maxAttempts     Int                           @default(3) @map("max_attempts")
+  lastError       String?                       @map("last_error")
+  nextRetryAt     DateTime?                     @map("next_retry_at") @db.Timestamptz
+  processedAt     DateTime?                     @map("processed_at") @db.Timestamptz
+  createdAt       DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([envelopeId])
+  @@index([tenantId, status])
+  @@index([status, nextRetryAt])
+  @@map("whatsapp_webhook_events")
+}
+
+model WhatsAppTemplate {
+  id              String                       @id @default(uuid()) @db.Uuid
+  tenantId        String                       @map("tenant_id") @db.Uuid
+  connectionId    String                       @map("connection_id") @db.Uuid
+  connection      WhatsAppConnection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  metaTemplateId  String                       @map("meta_template_id")
+  name            String
+  language        String
+  category        WhatsAppTemplateCategory
+  metaStatus      WhatsAppTemplateSyncStatus   @map("meta_status")
+  isEnabled       Boolean                      @default(false) @map("is_enabled")
+  qualityScore    String?                      @map("quality_score")
+  components      Json?
+  variables       Json?
+  lastSyncedAt    DateTime                     @default(now()) @map("last_synced_at") @db.Timestamptz
+  createdAt       DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([connectionId, metaTemplateId, language])
+  @@index([connectionId, metaStatus])
+  @@index([connectionId, isEnabled])
+  @@map("whatsapp_templates")
+}
+
+model WhatsAppIntegrationAudit {
+  id              String                            @id @default(uuid()) @db.Uuid
+  tenantId        String                            @map("tenant_id") @db.Uuid
+  userId          String?                           @map("user_id") @db.Uuid
+  connectionId    String?                           @map("connection_id") @db.Uuid
+  connection      WhatsAppConnection?               @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  credentialId    String?                           @map("credential_id") @db.Uuid
+  phoneNumberId   String?                           @map("phone_number_id")
+  action          WhatsAppIntegrationAuditAction
+  details         String?                           @db.Text
+  createdAt       DateTime                          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, createdAt])
+  @@index([connectionId])
+  @@map("whatsapp_integration_audits")
+}
+
+model WhatsAppConsent {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  phone         String
+  phoneHash     String    @map("phone_hash")
+  consentedAt   DateTime  @map("consented_at") @db.Timestamptz
+  consentType   String    @map("consent_type")  // EXPLICIT | IMPLIED | WITHDRAWN
+  source        String?   @map("source")        // WEBHOOK | MANUAL | IMPORT
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, phoneHash])
+  @@map("whatsapp_consents")
+}
+
+model WhatsAppOptOut {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  phone       String
+  phoneHash   String    @map("phone_hash")
+  reason      String?
+  source      String?
+  optedOutAt  DateTime  @default(now()) @map("opted_out_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, phoneHash])
+  @@map("whatsapp_opt_outs")
+}
+
+// Composite key correction on WhatsAppMessage
+// REPLACES global @unique on metaMessageId with tenantId + metaMessageId composite
+// Note: Must drop old unique index + create composite via migration SQL
