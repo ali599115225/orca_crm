@@ -41,6 +41,7 @@ type OpportunityForm = {
   value: string;
   probability: string;
   closeDate: string;
+  closeDateText: string;
   unitId: string;
 };
 
@@ -114,6 +115,9 @@ type Copy = {
   opportunityUnit: string;
   opportunityUnitPlaceholder: string;
   opportunityNoUnit: string;
+  unitsLoading: string;
+  noAvailableUnits: string;
+  unitsLoadFailed: string;
   opportunitiesLoading: string;
   saveOpportunity: string;
   savingOpportunity: string;
@@ -121,6 +125,7 @@ type Copy = {
   valueRequired: string;
   invalidValue: string;
   invalidProbability: string;
+  invalidDate: string;
   unitRequired: string;
   opportunityCreateFailed: string;
 };
@@ -183,6 +188,9 @@ const copy: Record<"ar" | "en", Copy> = {
     opportunityUnit: "الوحدة",
     opportunityUnitPlaceholder: "اختر الوحدة",
     opportunityNoUnit: "بدون وحدة",
+    unitsLoading: "جاري تحميل الوحدات...",
+    noAvailableUnits: "لا توجد وحدات متاحة",
+    unitsLoadFailed: "تعذر تحميل الوحدات",
     opportunitiesLoading: "جاري تحميل الفرص...",
     saveOpportunity: "حفظ الفرصة",
     savingOpportunity: "جاري الحفظ...",
@@ -190,6 +198,7 @@ const copy: Record<"ar" | "en", Copy> = {
     valueRequired: "قيمة الصفقة مطلوبة",
     invalidValue: "أدخل قيمة صفقة صحيحة",
     invalidProbability: "أدخل احتمالية بين 1 و100",
+    invalidDate: "أدخل التاريخ بصيغة يوم-شهر-سنة",
     unitRequired: "الوحدة مطلوبة",
     opportunityCreateFailed: "فشل إنشاء الفرصة",
   },
@@ -250,6 +259,9 @@ const copy: Record<"ar" | "en", Copy> = {
     opportunityUnit: "Unit",
     opportunityUnitPlaceholder: "Select unit",
     opportunityNoUnit: "No unit",
+    unitsLoading: "Loading units...",
+    noAvailableUnits: "No available units",
+    unitsLoadFailed: "Failed to load units",
     opportunitiesLoading: "Loading opportunities...",
     saveOpportunity: "Save opportunity",
     savingOpportunity: "Saving...",
@@ -257,6 +269,7 @@ const copy: Record<"ar" | "en", Copy> = {
     valueRequired: "Deal value is required",
     invalidValue: "Enter a valid deal value",
     invalidProbability: "Enter a probability between 1 and 100",
+    invalidDate: "Enter the date as day-month-year",
     unitRequired: "Unit is required",
     opportunityCreateFailed: "Failed to create opportunity",
   },
@@ -318,6 +331,33 @@ function formatDate(value: string | null | undefined, isArabic: boolean, fallbac
         month: "short",
         day: "numeric",
       });
+}
+
+function normalizeDateFieldText(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+
+  return parts.join("-");
+}
+
+function parseDateFieldToIso(value: string): string {
+  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(value);
+  if (!match) return "";
+
+  const [, day, month, year] = match;
+  const iso = `${year}-${month}-${day}`;
+  const date = new Date(`${iso}T00:00:00`);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() + 1 !== Number(month) ||
+    date.getDate() !== Number(day)
+  ) {
+    return "";
+  }
+
+  return iso;
 }
 
 function getStageLabel(stageId: string, isArabic: boolean): string {
@@ -435,6 +475,8 @@ export default function LeadsWorkspace() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [unitsError, setUnitsError] = useState<string | null>(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [opportunitySaving, setOpportunitySaving] = useState(false);
   const [unitSelectOpen, setUnitSelectOpen] = useState(false);
@@ -442,6 +484,7 @@ export default function LeadsWorkspace() {
     value: "",
     probability: "50",
     closeDate: "",
+    closeDateText: "",
     unitId: "",
   });
   const [opportunityErrors, setOpportunityErrors] = useState<OpportunityFormErrors>({});
@@ -491,44 +534,54 @@ export default function LeadsWorkspace() {
     }
   };
 
-  const loadOpportunityData = async () => {
+  const loadOpportunities = async () => {
     try {
       setOpportunitiesLoading(true);
 
-      const [opportunitiesRes, unitsRes] = await Promise.all([
-        fetch("/api/v1/opportunities"),
-        fetch("/api/v1/properties"),
-      ]);
+      const opportunitiesRes = await fetch("/api/v1/opportunities");
       const opportunitiesJson = await opportunitiesRes.json();
-      const unitsJson = await unitsRes.json();
 
       if (opportunitiesJson.success && Array.isArray(opportunitiesJson.data)) {
         setOpportunities(opportunitiesJson.data);
       } else {
         setOpportunities([]);
       }
-
-      if (Array.isArray(unitsJson.data)) {
-        setUnits(
-          unitsJson.data.map((unit: any) => ({
-            id: unit.id,
-            unitNumber: unit.sku || unit.unitNumber || unit.id,
-            priceSar: Number(unit.price || unit.priceSar || 0),
-            status: unit.status || "",
-            projectName:
-              typeof unit.project === "string"
-                ? unit.project
-                : unit.project?.name || "",
-          })),
-        );
-      } else {
-        setUnits([]);
-      }
     } catch {
       setOpportunities([]);
-      setUnits([]);
     } finally {
       setOpportunitiesLoading(false);
+    }
+  };
+
+  const loadUnits = async () => {
+    try {
+      setUnitsLoading(true);
+      setUnitsError(null);
+
+      const unitsRes = await fetch("/api/properties");
+      const unitsJson = await unitsRes.json();
+
+      if (!unitsRes.ok || !unitsJson.success || !Array.isArray(unitsJson.data)) {
+        throw new Error(unitsJson.error || labels.unitsLoadFailed);
+      }
+
+      setUnits(
+        unitsJson.data.map((unit: any) => ({
+          id: unit.id,
+          unitNumber: unit.unitNumber || unit.sku || unit.id,
+          priceSar: Number(unit.price ?? unit.priceSar ?? 0),
+          status: unit.status || "",
+          projectName:
+            typeof unit.project === "string"
+              ? unit.project
+              : unit.project?.name || "",
+        })),
+      );
+    } catch (error: any) {
+      setUnits([]);
+      setUnitsError(error?.message || labels.unitsLoadFailed);
+    } finally {
+      setUnitsLoading(false);
     }
   };
 
@@ -538,7 +591,8 @@ export default function LeadsWorkspace() {
 
   useEffect(() => {
     if (detailTab === "opportunities" && selectedLead) {
-      void loadOpportunityData();
+      void loadOpportunities();
+      void loadUnits();
     }
   }, [detailTab, selectedLead?.id]);
 
@@ -582,6 +636,7 @@ export default function LeadsWorkspace() {
       value: "",
       probability: "50",
       closeDate: "",
+      closeDateText: "",
       unitId: "",
     });
     setOpportunityErrors({});
@@ -591,6 +646,7 @@ export default function LeadsWorkspace() {
   const openOpportunityModal = () => {
     resetOpportunityForm();
     setShowOpportunityModal(true);
+    void loadUnits();
   };
 
   const closeOpportunityModal = () => {
@@ -615,7 +671,11 @@ export default function LeadsWorkspace() {
       errors.probability = labels.invalidProbability;
     }
 
-    if (!opportunityForm.unitId) {
+    if (opportunityForm.closeDateText && (!opportunityForm.closeDate || opportunityForm.closeDateText.length !== 10)) {
+      errors.closeDate = labels.invalidDate;
+    }
+
+    if (!selectableUnits.some((unit) => unit.id === opportunityForm.unitId)) {
       errors.unitId = labels.unitRequired;
     }
 
@@ -652,7 +712,7 @@ export default function LeadsWorkspace() {
 
       setShowOpportunityModal(false);
       resetOpportunityForm();
-      await loadOpportunityData();
+      await Promise.all([loadOpportunities(), loadUnits()]);
     } catch (error: any) {
       setOpportunityErrors({
         form: error?.message || labels.opportunityCreateFailed,
@@ -688,8 +748,9 @@ export default function LeadsWorkspace() {
   const selectedLeadOpportunities = selectedLead
     ? opportunities.filter((opportunity) => opportunity.leadId === selectedLead.id)
     : [];
-  const selectedUnit = units.find((unit) => unit.id === opportunityForm.unitId);
-  const selectableUnits = units.filter((unit) => unit.status !== "Sold");
+  const selectableUnits = units.filter((unit) => unit.status.toLowerCase() !== "sold");
+  const selectedUnit = selectableUnits.find((unit) => unit.id === opportunityForm.unitId);
+  const hasValidSelectedUnit = selectableUnits.some((unit) => unit.id === opportunityForm.unitId);
 
   if (loading) {
     return (
@@ -1141,13 +1202,20 @@ export default function LeadsWorkspace() {
                   {labels.opportunityCloseDate}
                 </label>
                 <input
-                  type="date"
-                  value={opportunityForm.closeDate}
+                  type="text"
+                  value={opportunityForm.closeDateText}
+                  dir="ltr"
+                  lang="en-CA"
                   onChange={(event) => {
-                    setOpportunityForm((form) => ({ ...form, closeDate: event.target.value }));
+                    const closeDateText = normalizeDateFieldText(event.target.value);
+                    const closeDate = parseDateFieldToIso(closeDateText);
+
+                    setOpportunityForm((form) => ({ ...form, closeDate, closeDateText }));
                     setOpportunityErrors((errors) => ({ ...errors, closeDate: undefined, form: undefined }));
                   }}
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+                  inputMode="numeric"
+                  pattern="\d{2}-\d{2}-\d{4}"
                 />
                 <FieldError message={opportunityErrors.closeDate} />
               </div>
@@ -1161,9 +1229,12 @@ export default function LeadsWorkspace() {
                   onClick={() => setUnitSelectOpen((open) => !open)}
                   className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors hover:border-[#C8A45D]"
                   aria-expanded={unitSelectOpen}
+                  aria-busy={unitsLoading}
                 >
                   <span className="min-w-0 truncate text-start">
-                    {selectedUnit
+                    {unitsLoading
+                      ? labels.unitsLoading
+                      : selectedUnit
                       ? `${selectedUnit.projectName ? `${selectedUnit.projectName} · ` : ""}${selectedUnit.unitNumber} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
                       : labels.opportunityUnitPlaceholder}
                   </span>
@@ -1175,9 +1246,17 @@ export default function LeadsWorkspace() {
 
                 {unitSelectOpen && (
                   <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-1 shadow-lg">
-                    {selectableUnits.length === 0 ? (
-                      <div className="px-3 py-3 text-sm text-[var(--nc-text-secondary)]">
-                        {labels.opportunityUnitPlaceholder}
+                    {unitsLoading ? (
+                      <div className="px-3 py-3 text-sm font-semibold text-[var(--nc-text-secondary)]">
+                        {labels.unitsLoading}
+                      </div>
+                    ) : unitsError ? (
+                      <div className="px-3 py-3 text-sm font-semibold text-red-500">
+                        {unitsError}
+                      </div>
+                    ) : selectableUnits.length === 0 ? (
+                      <div className="px-3 py-3 text-sm font-semibold text-[var(--nc-text-secondary)]">
+                        {labels.noAvailableUnits}
                       </div>
                     ) : (
                       selectableUnits.map((unit) => (
@@ -1220,7 +1299,7 @@ export default function LeadsWorkspace() {
               </button>
               <button
                 type="submit"
-                disabled={opportunitySaving}
+                disabled={opportunitySaving || unitsLoading || !hasValidSelectedUnit}
                 className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {opportunitySaving ? labels.savingOpportunity : labels.saveOpportunity}
