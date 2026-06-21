@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendEmailAction } from "@/app/actions/email";
 import { toast } from "@/app/context/ToastContext";
+import Opportunities from "@/components/views/tabs/Opportunities";
 
 const STATUS_NAMES: Record<string, string> = {
   NEW: "جديد", CONTACTED: "تم التواصل", QUALIFIED: "مؤهل",
@@ -54,7 +55,7 @@ interface Lead {
 
 export default function LeadDetailClient({ lead }: { lead: Lead }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"info" | "email" | "activity">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "email" | "activity" | "opportunities">("info");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailTo, setEmailTo] = useState(lead.email || "");
   const [emailSubject, setEmailSubject] = useState("");
@@ -171,6 +172,16 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
             }`}
           >
             النشاط ({lead.leadActivities.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("opportunities")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "opportunities"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            الفرص
           </button>
         </nav>
       </div>
@@ -330,6 +341,14 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
               </div>
             )}
           </div>
+        )}
+
+        {/* Opportunities Tab */}
+        {activeTab === "opportunities" && (
+          <Opportunities
+            leadId={lead.id}
+            leadName={`${lead.firstName} ${lead.lastName || ""}`.trim()}
+          />
         )}
       </div>
 
