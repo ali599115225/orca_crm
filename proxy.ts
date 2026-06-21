@@ -6,7 +6,7 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_CONFIG = {
   api: { windowMs: 60_000, maxRequests: 60 },
   webhook: { windowMs: 60_000, maxRequests: 30 },
-  auth: { windowMs: 60_000, maxRequests: 10 },
+  auth: { windowMs: 60_000, maxRequests: 5 },
   serverAction: { windowMs: 60_000, maxRequests: 30 },
   default: { windowMs: 60_000, maxRequests: 120 },
 };
@@ -52,9 +52,10 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-RateLimit-Reset", String(Math.ceil(entry.resetTime / 1000)));
 
   if (entry.count > config.maxRequests) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
     return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: Object.fromEntries(response.headers) }
+      { error: "Too many requests", retryAfter },
+      { status: 429, headers: { ...Object.fromEntries(response.headers), "Retry-After": String(retryAfter) } }
     );
   }
 

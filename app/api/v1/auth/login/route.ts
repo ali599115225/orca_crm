@@ -21,10 +21,11 @@ export async function POST(request: NextRequest) {
     const clientIp = request.headers.get("x-forwarded-for") || "unknown";
     const rl = await rateLimit(`login:${clientIp}`, 5, 60000, true);
     if (!rl.allowed) {
+      const retryAfter = Math.ceil(rl.resetIn / 1000);
       return NextResponse.json({
-        error: "طلبات تسجيل دخول كثيرة. حاول بعد دقيقة.",
-        retryAfter: Math.ceil(rl.resetIn / 1000),
-      }, { status: 429 });
+        error: `طلبات تسجيل دخول كثيرة. حاول بعد ${retryAfter} ثانية.`,
+        retryAfter,
+      }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
     }
 
     if (!email || !password) {

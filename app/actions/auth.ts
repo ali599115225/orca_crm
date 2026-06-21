@@ -41,9 +41,12 @@ export async function loginAction(formData: FormData) {
   );
 
   if (!limit.allowed) {
+    const retryAfterSeconds = Math.ceil(limit.resetIn / 1000);
     return {
       success: false,
-      error: 'محاولات دخول كثيرة جداً. الرجاء الانتظار دقيقة.',
+      error: `محاولات دخول كثيرة جداً. الرجاء الانتظار ${retryAfterSeconds} ثانية.`,
+      errorEn: `Too many login attempts. Please wait ${retryAfterSeconds} seconds.`,
+      retryAfterSeconds,
     };
   }
 

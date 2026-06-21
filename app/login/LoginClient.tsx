@@ -16,6 +16,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
   const [lang, setLang] = useState<'AR' | 'EN'>('AR');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const router = useRouter();
   const svgRef = useRef(null);
@@ -43,6 +44,26 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       htmlElement.setAttribute('dir', 'ltr');
     }
   }, [lang]);
+
+  // عداد التراجع عند الحظر
+  useEffect(() => {
+    if (retryAfter === null || retryAfter <= 0) {
+      setRetryAfter(null);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [retryAfter]);
 
   // أنيميشن GSAP
   useEffect(() => {
@@ -103,6 +124,12 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // منع الإرسال أثناء الحظر
+    if (retryAfter !== null && retryAfter > 0) {
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -125,7 +152,17 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
           router.push(result.redirectUrl || "/operations");
         }
       } else {
-        setError(result.error || (lang === 'AR' ? "فشل تسجيل الدخول. يرجى التحقق من البيانات." : "Login failed. Please verify your credentials."));
+        // معالجة حالة الحظر
+        if (result.retryAfterSeconds) {
+          setRetryAfter(result.retryAfterSeconds);
+          setError(
+            lang === 'AR'
+              ? `محاولات دخول كثيرة جداً. الرجاء الانتظار ${result.retryAfterSeconds} ثانية.`
+              : `Too many login attempts. Please wait ${result.retryAfterSeconds} seconds.`
+          );
+        } else {
+          setError(result.error || (lang === 'AR' ? "فشل تسجيل الدخول. يرجى التحقق من البيانات." : "Login failed. Please verify your credentials."));
+        }
       }
     } catch (err: any) {
       setLoading(false);
@@ -300,8 +337,17 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
               </div>
 
               <div className="pt-4">
-                <button type="submit" disabled={loading} className="w-full bg-[#b85a44] hover:bg-[#a04c3a] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none">
-                  {loading ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...") : (lang === 'AR' ? "تسجيل الدخول" : "Log In")}
+                <button
+                  type="submit"
+                  disabled={loading || (retryAfter !== null && retryAfter > 0)}
+                  className="w-full bg-[#b85a44] hover:bg-[#a04c3a] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+                >
+                  {loading
+                    ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...")
+                    : (retryAfter !== null && retryAfter > 0)
+                      ? (lang === 'AR' ? `انتظر ${retryAfter} ثانية...` : `Wait ${retryAfter}s...`)
+                      : (lang === 'AR' ? "تسجيل الدخول" : "Log In")
+                  }
                 </button>
               </div>
             </form>
