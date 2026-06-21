@@ -6,6 +6,7 @@ import { useApp } from "@/app/context/AppContext";
 import type { LeadItem } from "./pipeline/KanbanCard";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
+import Opportunities from "./tabs/Opportunities";
 
 const PAGE_SIZE = 5;
 
@@ -553,7 +554,13 @@ export default function LeadsWorkspace() {
                 {detailTab === "tasks" && <EmptyState message={labels.noTasks} />}
                 {detailTab === "tours" && <EmptyState message={labels.noTours} />}
                 {detailTab === "offers" && <EmptyState message={labels.noOffers} />}
-                {detailTab === "opportunities" && <EmptyState message={labels.noOpportunities} />}
+                {detailTab === "opportunities" && (
+                  <Opportunities
+                    key={selectedLead.id}
+                    leadId={selectedLead.id}
+                    leadName={leadDisplayName(selectedLead)}
+                  />
+                )}
 
                 {detailTab === "pipeline" && (
                   <div className="relative">
