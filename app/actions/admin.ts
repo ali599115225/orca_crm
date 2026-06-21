@@ -1,161 +1,214 @@
-// app/actions/admin.ts
-"use server";
+'use server';
 
-import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/session';
+import { isSuperAdmin } from '@/lib/api-auth-guard';
+import { ErrorCode, publicError } from '@/lib/errors';
 
-/**
- * دالة التحقق الأمني الفوقي لمنع أي وصول غير مصرح به للعمليات الإدارية
- */
-async function verifySuperAdmin() {
-  const session = await getSession();
-  if (!session) {
-    throw new Error("يجب تسجيل الدخول أولاً.");
+class SuperAdminAuthorizationError extends Error {
+  constructor() {
+    super('SUPER_ADMIN_REQUIRED');
+    this.name = 'SuperAdminAuthorizationError';
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId as string }
-  });
-
-  const userEmail = user?.email || "";
-  const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
-
-  if (!isSuperAdmin) {
-    throw new Error("عذراً، غير مصرح لك بتنفيذ هذه العملية الإدارية.");
-  }
-
-  return { session, user };
 }
 
-/**
- * تحديث تذكرة الدعم الفني يدوياً من قبل الإدارة الفوقية
- */
-export async function adminUpdateTicketAction(ticketId: string, status: "OPEN" | "CLOSED", responseText: string) {
+function validIdentifier(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100;
+}
+
+function validPlan(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^[A-Za-z0-9_-]{1,50}$/.test(value)
+  );
+}
+
+async function verifySuperAdmin(): Promise<{ userId: string }> {
+  const session = await getSession();
+  const userId =
+    session && typeof session.userId === 'string' ? session.userId : '';
+
+  if (!userId || !(await isSuperAdmin(userId))) {
+    throw new SuperAdminAuthorizationError();
+  }
+
+  return { userId };
+}
+
+function actionFailure(context: string, error: unknown) {
+  if (error instanceof SuperAdminAuthorizationError) {
+    return publicError(ErrorCode.FORBIDDEN, context);
+  }
+
+  return publicError(ErrorCode.INTERNAL_ERROR, context, error);
+}
+
+export async function adminUpdateTicketAction(
+  ticketId: string,
+  status: 'OPEN' | 'CLOSED',
+  responseText: string
+) {
   try {
     await verifySuperAdmin();
+
+    if (
+      !validIdentifier(ticketId) ||
+      !['OPEN', 'CLOSED'].includes(status) ||
+      typeof responseText !== 'string' ||
+      responseText.trim().length === 0 ||
+      responseText.trim().length > 10_000
+    ) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'adminUpdateTicketAction validation failed'
+      );
+    }
 
     await prisma.ticket.update({
       where: { id: ticketId },
       data: {
-        status: status,
+        status,
         aiResponse: responseText.trim(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
-    revalidatePath("/operations");
+    revalidatePath('/operations');
     return { success: true };
-  } catch (error: any) {
-    console.error("خطأ إدارة التذاكر الفوقي:", error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return actionFailure('adminUpdateTicketAction failed', error);
   }
 }
 
-/**
- * تعديل حالة مستأجر النظام أو الباقة يدوياً من قبل الإدارة
- */
-export async function adminUpdateTenantPlanAction(tenantId: string, plan: string, isActive: boolean) {
+export async function adminUpdateTenantPlanAction(
+  tenantId: string,
+  plan: string,
+  isActive: boolean
+) {
   try {
     await verifySuperAdmin();
+
+    if (
+      !validIdentifier(tenantId) ||
+      !validPlan(plan) ||
+      typeof isActive !== 'boolean'
+    ) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'adminUpdateTenantPlanAction validation failed'
+      );
+    }
 
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         subscriptionPlan: plan,
-        isActive: isActive
-      }
+        isActive,
+      },
     });
 
-    revalidatePath("/operations");
+    revalidatePath('/operations');
     return { success: true };
-  } catch (error: any) {
-    console.error("خطأ إدارة باقات المستأجرين الفوقي:", error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return actionFailure('adminUpdateTenantPlanAction failed', error);
   }
 }
 
-/**
- * جلب جميع الشركات من أجل لوحة الإدارة العامة الأصلية
- */
 export async function getTenantsListAction() {
   try {
     await verifySuperAdmin();
+
     return await prisma.tenant.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         _count: {
           select: {
             users: true,
             projects: true,
             leads: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
-  } catch (error) {
-    console.error("خطأ جلب الشركات:", error);
+  } catch (error: unknown) {
+    publicError(ErrorCode.INTERNAL_ERROR, 'getTenantsListAction failed', error);
     return [];
   }
 }
 
-/**
- * جلب جميع تذاكر الدعم الفني بالنظام
- */
 export async function getTicketsListAction() {
   try {
     await verifySuperAdmin();
+
     return await prisma.ticket.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         tenant: {
           select: {
             companyName: true,
             subdomain: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
-  } catch (error) {
-    console.error("خطأ جلب التذاكر الفوقي:", error);
+  } catch (error: unknown) {
+    publicError(ErrorCode.INTERNAL_ERROR, 'getTicketsListAction failed', error);
     return [];
   }
 }
 
-/**
- * تعديل حالة تفعيل الشركة (نشط / معطل)
- */
-export async function toggleTenantStatusAction(tenantId: string, currentStatus: boolean) {
+export async function toggleTenantStatusAction(
+  tenantId: string,
+  currentStatus: boolean
+) {
   try {
     await verifySuperAdmin();
+
+    if (
+      !validIdentifier(tenantId) ||
+      typeof currentStatus !== 'boolean'
+    ) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'toggleTenantStatusAction validation failed'
+      );
+    }
+
     await prisma.tenant.update({
       where: { id: tenantId },
-      data: {
-        isActive: !currentStatus
-      }
+      data: { isActive: !currentStatus },
     });
-    revalidatePath("/operations");
+
+    revalidatePath('/operations');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return actionFailure('toggleTenantStatusAction failed', error);
   }
 }
 
-/**
- * تحديث باقة اشتراك الشركة
- */
-export async function updateTenantPlanAction(tenantId: string, plan: string) {
+export async function updateTenantPlanAction(
+  tenantId: string,
+  plan: string
+) {
   try {
     await verifySuperAdmin();
+
+    if (!validIdentifier(tenantId) || !validPlan(plan)) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'updateTenantPlanAction validation failed'
+      );
+    }
+
     await prisma.tenant.update({
       where: { id: tenantId },
-      data: {
-        subscriptionPlan: plan
-      }
+      data: { subscriptionPlan: plan },
     });
-    revalidatePath("/operations");
+
+    revalidatePath('/operations');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return actionFailure('updateTenantPlanAction failed', error);
   }
 }

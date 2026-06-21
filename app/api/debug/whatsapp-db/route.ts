@@ -1,63 +1,62 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import {
+  isProductionRuntime,
+  requireSuperAdminInDev,
+} from '@/lib/api-auth-guard';
+import { ErrorCode, publicError } from '@/lib/errors';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
-    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
+function maskPhone(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length < 4) return null;
+  return `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}`;
+}
+
+export async function GET(request: NextRequest) {
+  if (isProductionRuntime()) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
   }
+
+  const guardResponse = await requireSuperAdminInDev(request);
+  if (guardResponse) return guardResponse;
+
   try {
     const prismaAny = prisma as any;
-
-    let contacts: any[] = [];
-    let messagesCount = 0;
-    let error: string | null = null;
-
-    try {
-      contacts = await prismaAny.whatsAppContact.findMany({
-        take: 20,
-        orderBy: { lastMessageAt: "desc" },
-      });
-    } catch (e: any) {
-      error = e.message?.substring(0, 200) || "Unknown DB error";
-    }
-
-    try {
-      const result = await prismaAny.whatsAppMessage.count();
-      messagesCount = result;
-    } catch {}
-
-    const withCounts = await Promise.all(
-      contacts.slice(0, 10).map(async (c: any) => {
-        const count = await prismaAny.whatsAppMessage.count({ where: { phone: c.phone } });
-        const last = await prismaAny.whatsAppMessage.findFirst({
-          where: { phone: c.phone },
-          orderBy: { createdAt: "desc" },
-          select: { messageText: true, direction: true, createdAt: true },
-        });
-        return {
-          id: c.id,
-          tenantId: c.tenantId,
-          phone: c.phone,
-          name: c.name,
-          messagesCount: count,
-          rawMessageText: last?.messageText,
-          rawType: typeof last?.messageText,
-          lastMessage: typeof last?.messageText === "string" ? last.messageText.substring(0, 120) : String(last?.messageText ?? ""),
-          lastDirection: last?.direction || null,
-        };
-      })
-    );
-
-    return NextResponse.json({
-      error,
-      contactsCount: contacts.length,
-      messagesCount,
-      contacts: withCounts,
+    const contacts = await prismaAny.whatsAppContact.findMany({
+      take: 10,
+      orderBy: { lastMessageAt: 'desc' },
+      select: {
+        id: true,
+        phone: true,
+        name: true,
+        lastMessageAt: true,
+      },
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+
+    const messagesCount = await prismaAny.whatsAppMessage.count();
+
+    return NextResponse.json(
+      {
+        contactsCount: contacts.length,
+        messagesCount,
+        contacts: contacts.map((contact: any) => ({
+          id: contact.id,
+          phone: maskPhone(contact.phone),
+          hasName: Boolean(contact.name),
+          lastMessageAt: contact.lastMessageAt,
+        })),
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  } catch (error: unknown) {
+    return NextResponse.json(
+      publicError(
+        ErrorCode.INTERNAL_ERROR,
+        'whatsapp debug query failed',
+        error
+      ),
+      { status: 500 }
+    );
   }
 }

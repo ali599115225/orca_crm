@@ -1,11 +1,9 @@
-import * as Sentry from "@sentry/nextjs";
+export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
-export function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN || "",
-      tracesSampleRate: 0.2,
-      environment: process.env.NODE_ENV || "development",
-    });
-  }
+  const { validateStartupSecrets } = await import(
+    './lib/startup-validation'
+  );
+
+  validateStartupSecrets();
 }

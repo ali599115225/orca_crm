@@ -1,69 +1,150 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
 import {
-  postInvoiceEntry,
   findAccountByCode,
+  postInvoiceEntry,
   seedChartOfAccounts,
 } from '@/lib/accounting';
+import {
+  hasDatabaseRole,
+  requireAuth,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/api-auth-guard';
+import {
+  ErrorCode,
+  publicError,
+  statusForErrorCode,
+  type ErrorCodeType,
+} from '@/lib/errors';
 
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload?.tenantId) return payload;
+export const runtime = 'nodejs';
+
+class SettleLeaseError extends Error {
+  constructor(
+    readonly code: ErrorCodeType,
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'SettleLeaseError';
   }
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload?.tenantId) return payload;
+}
+
+function errorResponse(
+  code: ErrorCodeType,
+  context: string,
+  rawError?: unknown,
+  status = statusForErrorCode(code)
+): NextResponse {
+  return NextResponse.json(publicError(code, context, rawError), { status });
+}
+
+function parseAmount(value: unknown): number | null {
+  const amount =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : Number.NaN;
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount > 1_000_000_000
+  ) {
+    return null;
   }
-  return null;
+
+  return Math.round(amount * 100) / 100;
 }
 
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+  const session = await requireAuth(request);
+  if (!session) return unauthorizedResponse();
+
+  if (!(await hasDatabaseRole(session, ['ADMIN']))) {
+    return forbiddenResponse();
   }
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    const { leaseId, amount } = body;
+    body = await request.json();
+  } catch {
+    return errorResponse(
+      ErrorCode.BAD_REQUEST,
+      'settle-lease body is not valid JSON'
+    );
+  }
 
-    if (!leaseId || !amount) {
-      return NextResponse.json({
-        success: false,
-        error: 'Missing leaseId or amount for accounting settlement',
-      }, { status: 400 });
-    }
+  const input =
+    typeof body === 'object' && body !== null
+      ? (body as Record<string, unknown>)
+      : {};
 
-    const tenantId = session.tenantId as string;
-    await seedChartOfAccounts(tenantId);
+  const leaseId =
+    typeof input.leaseId === 'string' ? input.leaseId.trim() : '';
+  const subtotal = parseAmount(input.amount);
 
+  if (!leaseId || leaseId.length > 100 || subtotal === null) {
+    return errorResponse(
+      ErrorCode.VALIDATION_ERROR,
+      'settle-lease input validation failed'
+    );
+  }
+
+  const tenantId = session.tenantId;
+  const vatRate = 15;
+  const vatAmount = Math.round(subtotal * vatRate) / 100;
+  const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
+
+  try {
     const lease = await prisma.rentalLease.findFirst({
       where: { id: leaseId, tenantId },
+      select: { id: true },
     });
+
     if (!lease) {
-      return NextResponse.json({ success: false, error: 'عقد الإيجار غير موجود' }, { status: 404 });
+      return errorResponse(
+        ErrorCode.NOT_FOUND,
+        'settle-lease lease not found'
+      );
     }
 
-    const vatRate = 15.00;
-    const subtotal = parseFloat(amount);
-    const vatAmount = Math.round(subtotal * vatRate) / 100;
-    const totalAmount = subtotal + vatAmount;
+    await seedChartOfAccounts(tenantId);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const [receivableAccount, revenueAccount, vatPayableAccount] =
+      await Promise.all([
+        findAccountByCode(tenantId, '1.1.3'),
+        findAccountByCode(tenantId, '4.1'),
+        findAccountByCode(tenantId, '2.1.1'),
+      ]);
+
+    if (
+      !receivableAccount ||
+      !revenueAccount ||
+      !vatPayableAccount
+    ) {
+      throw new SettleLeaseError(
+        ErrorCode.INTERNAL_ERROR,
+        500,
+        'required settlement accounts are missing'
+      );
+    }
+
+    const invoice = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.update({
         where: { id: tenantId },
         data: { nextInvoiceNumber: { increment: 1 } },
+        select: {
+          nextInvoiceNumber: true,
+          invoicePrefix: true,
+        },
       });
+
       const invoiceNumber = tenant.nextInvoiceNumber - 1;
 
-      const invoice = await tx.rentalInvoice.create({
+      const createdInvoice = await tx.rentalInvoice.create({
         data: {
           tenantId,
           leaseId,
@@ -77,41 +158,60 @@ export async function POST(request: NextRequest) {
           status: 'unpaid',
         },
       });
-      return invoice;
-    });
 
-    const receivableAccount = await findAccountByCode(tenantId, '1.1.3');
-    const revenueAccount = await findAccountByCode(tenantId, '4.1');
-    const vatPayableAccount = await findAccountByCode(tenantId, '2.1.1');
-
-    if (receivableAccount && revenueAccount) {
       await postInvoiceEntry(
         tenantId,
-        result.id,
+        createdInvoice.id,
         subtotal,
         vatAmount,
         totalAmount,
         receivableAccount.id,
         revenueAccount.id,
-        vatPayableAccount?.id || ''
+        vatPayableAccount.id,
+        tx
       );
-    }
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.userId,
+          action: 'SETTLE_LEASE',
+          tableName: 'rental_invoices',
+          recordId: createdInvoice.id,
+          details: `Lease settlement invoice created for lease ${leaseId}`,
+        },
+      });
+
+      return createdInvoice;
+    });
 
     return NextResponse.json({
       success: true,
       message: 'تمت تسوية عقد الإيجار في دفتر الأستاذ',
       settlement: {
-        id: result.id,
+        id: invoice.id,
         leaseId,
         gross: subtotal,
         vat: vatAmount,
         net: totalAmount,
         status: 'completed',
-        ledgerRef: `GL-SETTLE-${result.invoiceNumber}`,
+        ledgerRef: `GL-SETTLE-${invoice.invoiceNumber}`,
       },
     });
-  } catch (err: any) {
-    console.error('[settle-lease]', err);
-    return NextResponse.json({ success: false, error: err.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error: unknown) {
+    if (error instanceof SettleLeaseError) {
+      return errorResponse(
+        error.code,
+        error.message,
+        undefined,
+        error.status
+      );
+    }
+
+    return errorResponse(
+      ErrorCode.INTERNAL_ERROR,
+      'settle-lease failed',
+      error
+    );
   }
 }

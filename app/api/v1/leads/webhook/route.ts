@@ -1,196 +1,496 @@
-// app/api/v1/leads/webhook/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
-import { rateLimit } from "@/lib/rate-limit";
-import { hashPhone, hashEmail } from "@/lib/privacy-mask";
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import {
+  assertPlanLimit,
+  logPlanBlockedAttempt,
+  PlanLimitError,
+} from '@/lib/plan-guard';
+import { rateLimit } from '@/lib/rate-limit';
+import { hashEmail, hashPhone } from '@/lib/privacy-mask';
+import {
+  classifyError,
+  ErrorCode,
+  publicError,
+  statusForErrorCode,
+  type ErrorCodeType,
+} from '@/lib/errors';
+
+export const runtime = 'nodejs';
+
+const MAX_BODY_BYTES = 64 * 1024;
+const MAX_CLOCK_SKEW_SECONDS = 5 * 60;
+
+function errorResponse(
+  code: ErrorCodeType,
+  context: string,
+  error?: unknown,
+  status = statusForErrorCode(code)
+): NextResponse {
+  return NextResponse.json(publicError(code, context, error), { status });
+}
+
+function secureHexEqual(left: string, right: string): boolean {
+  if (
+    !/^[a-f0-9]{64}$/i.test(left) ||
+    !/^[a-f0-9]{64}$/i.test(right)
+  ) {
+    return false;
+  }
+
+  const leftBuffer = Buffer.from(left, 'hex');
+  const rightBuffer = Buffer.from(right, 'hex');
+
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function cleanText(value: unknown, maximumLength: number): string {
+  if (typeof value !== 'string') return '';
+
+  return value
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maximumLength);
+}
+
+function firstText(
+  body: Record<string, unknown>,
+  keys: readonly string[],
+  maximumLength: number
+): string {
+  for (const key of keys) {
+    const value = cleanText(body[key], maximumLength);
+    if (value) return value;
+  }
+
+  return '';
+}
+
+function normalizePhone(value: string): string | null {
+  let normalized = value.replace(/[\s\-().]/g, '');
+
+  if (normalized.startsWith('+')) {
+    normalized = normalized.slice(1);
+  } else if (normalized.startsWith('00')) {
+    normalized = normalized.slice(2);
+  }
+
+  if (
+    !/^\d{9,15}$/.test(normalized) ||
+    /^(\d)\1+$/.test(normalized)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function validEmail(value: string): boolean {
+  return (
+    value.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  );
+}
+
+function requestIp(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip')?.trim() ||
+    'unknown'
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const rl = await rateLimit("leads:webhook", 20, 60000);
-    if (!rl.allowed) {
-      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
-    }
-
-    // 🛡️ التحقق من رمز الويب هوك الخاص بالمستأجر (الـ API Key أو التوكن)
-    // نعتمد على التحقق من وجود التوكن الممرر في الهيدر X-Webhook-Token أو كمعامل استعلام
-    const webhookToken = 
-      request.headers.get("X-Webhook-Token") || 
-      request.nextUrl.searchParams.get("webhook_token");
-
-    if (!webhookToken) {
-      return NextResponse.json(
-        { error: "رمز الويب هوك (Webhook Token) مفقود." },
-        { status: 401 }
+    const contentLength = Number(request.headers.get('content-length') ?? 0);
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAX_BODY_BYTES
+    ) {
+      return errorResponse(
+        ErrorCode.BAD_REQUEST,
+        'leads webhook body exceeds size limit',
+        undefined,
+        413
       );
     }
 
-    // مطابقة التوكن بالنطاق الفرعي (Subdomain) الفريد للمنشأة للتحقق من هويتها
+    const ipLimit = await rateLimit(
+      `leads:webhook:ip:${requestIp(request)}`,
+      60,
+      60_000
+    );
+
+    if (!ipLimit.allowed) {
+      return errorResponse(
+        ErrorCode.RATE_LIMITED,
+        'leads webhook IP rate limit exceeded'
+      );
+    }
+
+    const tenantSubdomain = cleanText(
+      request.headers.get('x-webhook-tenant') ||
+        request.headers.get('x-webhook-token'),
+      100
+    );
+    const timestampHeader = request.headers
+      .get('x-webhook-timestamp')
+      ?.trim();
+    const signatureHeader = request.headers
+      .get('x-webhook-signature')
+      ?.trim();
+
+    if (!tenantSubdomain || !timestampHeader || !signatureHeader) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook authentication headers are missing'
+      );
+    }
+
+    if (!/^[a-zA-Z0-9-]{1,100}$/.test(tenantSubdomain)) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook tenant identifier is invalid'
+      );
+    }
+
+    const timestamp = Number(timestampHeader);
+    const nowSeconds = Math.floor(Date.now() / 1_000);
+
+    if (
+      !Number.isInteger(timestamp) ||
+      Math.abs(nowSeconds - timestamp) > MAX_CLOCK_SKEW_SECONDS
+    ) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook timestamp is invalid or expired'
+      );
+    }
+
+    const secret = process.env.LEADS_WEBHOOK_SECRET?.trim() ?? '';
+    if (secret.length < 32) {
+      return errorResponse(
+        ErrorCode.SERVICE_UNAVAILABLE,
+        'LEADS_WEBHOOK_SECRET is missing or too short'
+      );
+    }
+
+    const rawBody = await request.text();
+    if (Buffer.byteLength(rawBody, 'utf8') > MAX_BODY_BYTES) {
+      return errorResponse(
+        ErrorCode.BAD_REQUEST,
+        'leads webhook body exceeds size limit',
+        undefined,
+        413
+      );
+    }
+
+    const suppliedSignature = signatureHeader.replace(/^sha256=/i, '');
+    const expectedSignature = createHmac('sha256', secret)
+      .update(`${timestampHeader}.${rawBody}`)
+      .digest('hex');
+
+    if (!secureHexEqual(suppliedSignature, expectedSignature)) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook signature verification failed'
+      );
+    }
+
     const tenant = await prisma.tenant.findUnique({
-      where: { subdomain: webhookToken }
+      where: { subdomain: tenantSubdomain },
+      select: {
+        id: true,
+        isActive: true,
+      },
     });
 
-    if (!tenant || !tenant.isActive) {
-      return NextResponse.json(
-        { error: "المنشأة غير موجودة أو معطلة." },
-        { status: 403 }
+    if (!tenant?.isActive) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook tenant is unavailable'
       );
     }
 
-    const body = await request.json();
+    const tenantLimit = await rateLimit(
+      `leads:webhook:tenant:${tenant.id}`,
+      20,
+      60_000
+    );
 
-    // استخراج وتطبيع الحقول الأساسية من حملة Snapchat Ads أو Google Ads
-    const fullName = 
-      body.fullName || 
-      body.full_name || 
-      `${body.firstName || body.first_name || ""} ${body.lastName || body.last_name || ""}`.trim();
-    
-    const phone = body.phone || body.phone_number || body.phoneNumber || "";
-    const email = body.email || "";
-    const campaignSource = body.campaignSource || body.campaign_source || body.source || "Google Ads";
-    const notes = body.notes || body.user_notes || body.user_intent || "";
-    const city = body.city || "الرياض";
-
-    // 🛡️ منطق التصفية والتحقق لمكافحة السبام والبيانات الوهمية (Spam/Fake Data Detection)
-    const cleanPhone = phone.trim().replace(/[\s-()]/g, "");
-    
-    // رفض الهواتف المكررة المكرر أرقامها بالكامل مثل "000000000" أو "111111111" أو الفارغة
-    const isRepetitive = /^(.)\1+$/.test(cleanPhone);
-    const isValidPhone = cleanPhone.length >= 9 && cleanPhone.length <= 15 && /^[+0-9]+$/.test(cleanPhone);
-
-    if (!cleanPhone || isRepetitive || !isValidPhone) {
-      console.warn(`[Agent Saher] Spam lead filtered out: Phone = ${phone}`);
-      return NextResponse.json({
-        success: false,
-        status: "Filtered",
-        message: "تم تصفية العميل لعدم صلاحية رقم الهاتف المرفق."
-      }, { status: 200 });
+    if (!tenantLimit.allowed) {
+      return errorResponse(
+        ErrorCode.RATE_LIMITED,
+        'leads webhook tenant rate limit exceeded'
+      );
     }
 
-    // التحقق من تكرار الهاتف لنفس المنشأة لمنع الازدواجية
+    let parsedBody: unknown;
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      return errorResponse(
+        ErrorCode.BAD_REQUEST,
+        'leads webhook body is not valid JSON'
+      );
+    }
+
+    if (
+      !parsedBody ||
+      typeof parsedBody !== 'object' ||
+      Array.isArray(parsedBody)
+    ) {
+      return errorResponse(
+        ErrorCode.VALIDATION_ERROR,
+        'leads webhook body must be an object'
+      );
+    }
+
+    const body = parsedBody as Record<string, unknown>;
+
+    const providedFullName = firstText(
+      body,
+      ['fullName', 'full_name'],
+      160
+    );
+    const firstNameInput = firstText(
+      body,
+      ['firstName', 'first_name'],
+      80
+    );
+    const lastNameInput = firstText(
+      body,
+      ['lastName', 'last_name'],
+      80
+    );
+    const fullName =
+      providedFullName ||
+      `${firstNameInput} ${lastNameInput}`.trim();
+
+    const phoneInput = firstText(
+      body,
+      ['phone', 'phone_number', 'phoneNumber'],
+      32
+    );
+    const phone = normalizePhone(phoneInput);
+
+    if (!phone) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: 'Filtered',
+          message: 'تمت تصفية العميل لعدم صلاحية رقم الهاتف المرفق.',
+        },
+        { status: 200 }
+      );
+    }
+
+    const email = firstText(body, ['email'], 254).toLowerCase();
+    if (email && !validEmail(email)) {
+      return errorResponse(
+        ErrorCode.VALIDATION_ERROR,
+        'leads webhook email is invalid'
+      );
+    }
+
+    const campaignSource =
+      firstText(
+        body,
+        ['campaignSource', 'campaign_source', 'source'],
+        120
+      ) || 'Google Ads';
+    const notes = firstText(
+      body,
+      ['notes', 'user_notes', 'user_intent'],
+      2_000
+    );
+    const city = firstText(body, ['city'], 100) || 'الرياض';
+
     const existingLead = await prisma.lead.findFirst({
       where: {
         tenantId: tenant.id,
-        phone: cleanPhone
-      }
+        phone,
+      },
+      select: { id: true },
     });
 
     if (existingLead) {
       return NextResponse.json({
         success: false,
-        status: "Duplicate",
-        message: "هذا العميل مسجل مسبقاً في قاعدة بيانات المنشأة."
-      }, { status: 200 });
+        status: 'Duplicate',
+        message: 'هذا العميل مسجل مسبقاً في قاعدة بيانات المنشأة.',
+      });
     }
 
-    // 🧠 تشغيل تقييم الـ NLP لدرجة الجدية والاهتمام العقاري (Buying Intent)
-    let intentScore = 50; // القيمة الافتراضية
+    let intentScore = 50;
     const notesLower = notes.toLowerCase();
+    const highIntentKeywords = [
+      'شراء',
+      'عاجل',
+      'مستعد',
+      'شقة',
+      'استثمار',
+      'كاش',
+      'تمويل',
+      'دفعة',
+      'توقيع',
+      'حجز',
+      'برج',
+      'شراء فوري',
+    ];
+    const lowIntentKeywords = [
+      'سؤال',
+      'استفسار',
+      'غالي',
+      'تصفح',
+      'بين فترة',
+      'خطأ',
+      'غلط',
+      'فضول',
+    ];
 
-    const highIntentKeywords = ["شراء", "عاجل", "مستعد", "شقة", "استثمار", "كاش", "تمويل", "دفعة", "توقيع", "حجز", "برج", "شراء فوري"];
-    const lowIntentKeywords = ["سؤال", "استفسار", "غالي", "تصفح", "بين فترة", "خطأ", "غلط", "فضول"];
+    for (const keyword of highIntentKeywords) {
+      if (notesLower.includes(keyword)) intentScore += 15;
+    }
 
-    highIntentKeywords.forEach(word => {
-      if (notesLower.includes(word)) intentScore += 15;
-    });
-    lowIntentKeywords.forEach(word => {
-      if (notesLower.includes(word)) intentScore -= 15;
-    });
+    for (const keyword of lowIntentKeywords) {
+      if (notesLower.includes(keyword)) intentScore -= 15;
+    }
 
-    // تقييد الدرجة بين 0 و 100
     intentScore = Math.max(0, Math.min(100, intentScore));
 
-    // تقسيم الاسم الأول والأخير
-    const nameParts = fullName.split(" ");
-    const firstName = nameParts[0] || "عميل";
-    const lastName = nameParts.slice(1).join(" ") || "محتمل";
-
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || 'عميل';
+    const lastName = nameParts.slice(1).join(' ') || 'محتمل';
+    const isHotLead = intentScore >= 75;
     let assignedRepId: string | null = null;
-    let isHotLead = intentScore >= 75;
 
     if (isHotLead) {
-      const salesReps = await prisma.user.findMany({
+      const salesRepresentatives = await prisma.user.findMany({
         where: {
           tenantId: tenant.id,
-          role: "SALES_EMPLOYEE"
+          role: 'SALES_EMPLOYEE',
         },
-        select: { id: true }
+        select: { id: true },
       });
 
-      if (salesReps.length > 0) {
-        const repIds = salesReps.map(r => r.id);
+      if (salesRepresentatives.length > 0) {
+        const representativeIds = salesRepresentatives.map(
+          (representative) => representative.id
+        );
         const leadCounts = await prisma.lead.groupBy({
           by: ['assignedTo'],
-          where: { assignedTo: { in: repIds } },
+          where: {
+            assignedTo: { in: representativeIds },
+          },
           _count: { id: true },
         });
-        const countMap = new Map(leadCounts.map(l => [l.assignedTo, l._count.id]));
-        const sortedReps = salesReps.map(rep => ({ id: rep.id, count: countMap.get(rep.id) || 0 }));
-        sortedReps.sort((a, b) => a.count - b.count);
-        assignedRepId = sortedReps[0].id;
+        const countByRepresentative = new Map(
+          leadCounts.map((entry) => [
+            entry.assignedTo,
+            entry._count.id,
+          ])
+        );
+
+        assignedRepId = salesRepresentatives
+          .map((representative) => ({
+            id: representative.id,
+            count: countByRepresentative.get(representative.id) ?? 0,
+          }))
+          .sort((left, right) => left.count - right.count)[0]?.id ?? null;
       }
     }
 
-    // حفظ العميل الجديد في قاعدة البيانات
-    let newLead: any;
+    let newLead;
     try {
       newLead = await prisma.$transaction(async (tx) => {
-        await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
+        await assertPlanLimit({
+          tenantId: tenant.id,
+          feature: 'leads',
+          tx,
+        });
+
         return tx.lead.create({
           data: {
             tenantId: tenant.id,
             firstName,
             lastName,
-            phone: cleanPhone,
-            phoneHash: hashPhone(tenant.id, cleanPhone),
+            phone,
+            phoneHash: hashPhone(tenant.id, phone),
             email: email || null,
             emailHash: email ? hashEmail(email, tenant.id) : null,
-            city: city,
+            city,
             source: campaignSource,
-            status: isHotLead ? "NEW" : "CONTACTED",
+            status: isHotLead ? 'NEW' : 'CONTACTED',
             leadScore: intentScore,
             assignedTo: assignedRepId,
-          }
+          },
         });
       });
-    } catch (e) {
-      if (e instanceof PlanLimitError) {
-        await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
-        return NextResponse.json({
-          success: false,
-          skipped: "plan_limit",
-          error: e.message,
-        }, { status: 403 });
+    } catch (error: unknown) {
+      if (error instanceof PlanLimitError) {
+        await logPlanBlockedAttempt({
+          tenantId: tenant.id,
+          error,
+        }).catch((logError) => {
+          publicError(
+            ErrorCode.INTERNAL_ERROR,
+            'leads webhook plan-limit audit failed',
+            logError
+          );
+        });
+
+        return errorResponse(
+          ErrorCode.PLAN_LIMIT,
+          'leads webhook plan limit reached'
+        );
       }
-      throw e;
+
+      throw error;
     }
 
-    // 🛡️ تدوين سجل تتبع الوكيل ساهر غير القابل للتعديل ليتدفق لحظياً إلى لوحة التحكم
-    const arabicLogMessage = `«قام الوكيل ساهر بفرز عميل جديد من حملة [${campaignSource}] وتوجيهه لفريق النخبة لارتفاع ملاءته المالية تلقائياً»`;
-    
-    await prisma.agentTelemetryLog.create({
-      data: {
-        tenantId: tenant.id,
-        agentId: "Saher",
-        actionType: "Lead_Screening",
-        logMessageAr: arabicLogMessage,
-        severity: "Info"
-      }
-    }).catch(err => console.error("فشل تدوين سجل التتبع التلقائي للوكيل ساهر:", err));
+    const telemetryMessage = `«قام الوكيل ساهر بفرز عميل جديد من حملة [${campaignSource}] وتوجيهه لفريق النخبة لارتفاع ملاءته المالية تلقائياً»`;
 
-    return NextResponse.json({
-      success: true,
-      status: isHotLead ? "Hot_Lead_Routed" : "Lead_Nurture_Pipeline",
-      leadId: newLead.id,
-      assignedTo: assignedRepId,
-      score: intentScore
-    }, { status: 201 });
+    await prisma.agentTelemetryLog
+      .create({
+        data: {
+          tenantId: tenant.id,
+          agentId: 'Saher',
+          actionType: 'Lead_Screening',
+          logMessageAr: telemetryMessage,
+          severity: 'Info',
+        },
+      })
+      .catch((telemetryError) => {
+        publicError(
+          ErrorCode.INTERNAL_ERROR,
+          'leads webhook telemetry failed',
+          telemetryError
+        );
+      });
 
-  } catch (error: any) {
-    console.error("فشل ويب هوك جلب وتصنيف العملاء للوكيل ساهر:", error.message);
     return NextResponse.json(
-      { error: "حدث خطأ داخلي أثناء معالجة وحساب بيانات العميل." },
-      { status: 500 }
+      {
+        success: true,
+        status: isHotLead
+          ? 'Hot_Lead_Routed'
+          : 'Lead_Nurture_Pipeline',
+        leadId: newLead.id,
+        assignedTo: assignedRepId,
+        score: intentScore,
+      },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    const code = classifyError(error);
+    return errorResponse(
+      code,
+      'leads webhook processing failed',
+      error
     );
   }
 }

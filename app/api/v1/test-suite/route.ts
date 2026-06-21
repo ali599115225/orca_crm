@@ -1,27 +1,43 @@
-// app/api/v1/test-suite/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { runLeadsTestSuite } from "@/scripts/test-leads";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import { NextRequest, NextResponse } from 'next/server';
+import { runLeadsTestSuite } from '@/scripts/test-leads';
+import {
+  isProductionRuntime,
+  requireAuth,
+  requireSuperAdminInDev,
+} from '@/lib/api-auth-guard';
+import { ErrorCode, publicError } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
-  try {
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId || !userId) {
-      return NextResponse.json({
-        success: false,
-        error: "معرف المنشأة أو معرف المستخدم مفقود. يرجى تسجيل الدخول أولاً.",
-      }, { status: 401 });
-    }
+  if (isProductionRuntime()) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
 
-    const testResults = await runLeadsTestSuite(tenantId, userId);
-    const hasFailures = testResults.some(r => !r.success);
+  const guardResponse = await requireSuperAdminInDev(request);
+  if (guardResponse) return guardResponse;
+
+  const session = await requireAuth(request);
+  if (!session) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
+  try {
+    const testResults = await runLeadsTestSuite(
+      session.tenantId,
+      session.userId
+    );
+    const hasFailures = testResults.some((result) => !result.success);
 
     return NextResponse.json({
       success: !hasFailures,
-      summary: hasFailures ? "باقة الاختبارات تحتوي على إخفاقات" : "جميع الاختبارات نجحت بنسبة ١٠٠٪",
+      summary: hasFailures
+        ? 'باقة الاختبارات تحتوي على إخفاقات'
+        : 'جميع الاختبارات نجحت بنسبة ١٠٠٪',
       results: testResults,
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      publicError(ErrorCode.INTERNAL_ERROR, 'test suite failed', error),
+      { status: 500 }
+    );
   }
 }
