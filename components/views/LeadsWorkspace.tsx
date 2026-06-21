@@ -4,8 +4,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
 import type { LeadItem } from "./pipeline/KanbanCard";
-import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
+import { displayPerson, displayGeo, displayEnum, displayEntity } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
+import { DateField } from "@/components/ui/date-time/DateField";
 import { TimeField } from "@/components/ui/date-time/TimeField";
 import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
 
@@ -616,8 +617,12 @@ export default function LeadsWorkspace() {
   });
   const [tourErrors, setTourErrors] = useState<Partial<Record<keyof TourForm, string>> & { form?: string }>({});
 
-  const leadDisplayName = (lead: LeadItem): string =>
-    displayPerson(`${lead.firstName || ''} ${lead.lastName || ''}`, displayLocale, { route: '/operations/leads', entityId: lead.id });
+  const leadDisplayName = (lead: LeadItem): string => {
+    const name = `${lead.firstName || ""} ${lead.lastName || ""}`.trim().replace(/\s+/g, " ");
+    if (name) return name;
+    const phone = (lead.phone || "").trim();
+    return phone || labels.notSpecified;
+  };
 
   const leadDisplayCity = (lead: LeadItem): string =>
     displayGeo(lead.city, 'city', displayLocale, { route: '/operations/leads' });
@@ -630,6 +635,24 @@ export default function LeadsWorkspace() {
 
   const leadDisplayOwner = (value?: string | null): string =>
     displayPerson(value, displayLocale, { route: '/operations/leads' });
+
+  const unitDisplayLabel = (unit?: UnitOption | null): string => {
+    if (!unit) return labels.opportunityNoUnit;
+
+    const project = displayEntity(unit.projectName, "project", displayLocale, {
+      route: "/operations/leads",
+      entityId: unit.id,
+      fieldName: "projectName",
+    });
+    const unitNumber = displayEntity(unit.unitNumber, "unit", displayLocale, {
+      route: "/operations/leads",
+      entityId: unit.id,
+      fieldName: "unitNumber",
+    });
+    const parts = [project, unitNumber].filter((part) => part && part !== labels.notSpecified);
+
+    return parts.length > 0 ? parts.join(" · ") : labels.opportunityNoUnit;
+  };
 
   const leadInitials = (lead: LeadItem): string => {
     const dn = leadDisplayName(lead);
@@ -945,7 +968,7 @@ export default function LeadsWorkspace() {
       startDateText: "",
       time: "10:00",
       location: unit
-        ? `${unit.projectName ? `${unit.projectName} - ` : ""}${unit.unitNumber}`
+        ? unitDisplayLabel(unit)
         : "",
     });
     setShowTourModal(true);
@@ -1277,7 +1300,7 @@ export default function LeadsWorkspace() {
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">{tour.location}</p>
                                   <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                                    {unit ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}` : labels.opportunityNoUnit}
+                                    {unitDisplayLabel(unit)}
                                   </p>
                                 </div>
                                 <div className="text-xs font-semibold text-[var(--nc-text-secondary)]">
@@ -1332,7 +1355,7 @@ export default function LeadsWorkspace() {
                                   </p>
                                   <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
                                     {unit
-                                      ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}`
+                                      ? unitDisplayLabel(unit)
                                       : labels.legacyOfferBlocked}
                                   </p>
                                   {opportunity && (
@@ -1415,7 +1438,7 @@ export default function LeadsWorkspace() {
                                 </p>
                                 <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
                                   {unit
-                                    ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}`
+                                    ? unitDisplayLabel(unit)
                                     : labels.opportunityNoUnit}
                                 </p>
                               </div>
@@ -1622,7 +1645,7 @@ export default function LeadsWorkspace() {
                     const unit = units.find((item) => item.id === opportunity.unitId);
                     return (
                       <option key={opportunity.id} value={opportunity.id}>
-                        {formatCurrency(opportunity.value, isArabic)} - {unit ? unit.unitNumber : labels.opportunityNoUnit}
+                        {formatCurrency(opportunity.value, isArabic)} - {unitDisplayLabel(unit)}
                       </option>
                     );
                   })}
@@ -1647,20 +1670,13 @@ export default function LeadsWorkspace() {
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerValidUntil}</label>
-                  <input
-                    type="text"
-                    value={offerForm.validUntilText}
-                    dir="ltr"
-                    lang="en-CA"
-                    inputMode="numeric"
-                    pattern="\d{2}-\d{2}-\d{4}"
-                    onChange={(event) => {
-                      const validUntilText = normalizeDateFieldText(event.target.value);
-                      const validUntil = parseDateFieldToIso(validUntilText);
-                      setOfferForm((form) => ({ ...form, validUntil, validUntilText }));
+                  <DateField
+                    value={offerForm.validUntil}
+                    onChange={(validUntil) => {
+                      setOfferForm((form) => ({ ...form, validUntil, validUntilText: validUntil }));
                       setOfferErrors((errors) => ({ ...errors, validUntil: undefined, form: undefined }));
                     }}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                    className="w-full border-[var(--nc-border)] bg-[var(--nc-surface)] focus-within:border-[#C8A45D] focus-within:ring-0"
                   />
                   <FieldError message={offerErrors.validUntil} />
                 </div>
@@ -1669,9 +1685,7 @@ export default function LeadsWorkspace() {
               <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
                 <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">{labels.offerUnitReadonly}</p>
                 <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                  {offerFormUnit
-                    ? `${offerFormUnit.projectName ? `${offerFormUnit.projectName} · ` : ""}${offerFormUnit.unitNumber}`
-                    : labels.opportunityNoUnit}
+                  {unitDisplayLabel(offerFormUnit)}
                 </p>
               </div>
             </div>
@@ -1903,7 +1917,7 @@ export default function LeadsWorkspace() {
                     {unitsLoading
                       ? labels.unitsLoading
                       : selectedUnit
-                      ? `${selectedUnit.projectName ? `${selectedUnit.projectName} · ` : ""}${selectedUnit.unitNumber} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
+                      ? `${unitDisplayLabel(selectedUnit)} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
                       : labels.opportunityUnitPlaceholder}
                   </span>
                   <span className="shrink-0 text-[var(--nc-text-secondary)]" aria-hidden="true">
@@ -1943,8 +1957,7 @@ export default function LeadsWorkspace() {
                           }
                         >
                           <span className="min-w-0 truncate">
-                            {unit.projectName ? `${unit.projectName} · ` : ""}
-                            {unit.unitNumber}
+                            {unitDisplayLabel(unit)}
                           </span>
                           <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
                             {formatCurrency(unit.priceSar, isArabic)}

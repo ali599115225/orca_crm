@@ -4,6 +4,7 @@ import { COMPANY_ALIASES, COMPANY_AR_DISPLAY, UNIT_TYPE_ALIASES } from './dictio
 import { reportMissingAlias } from './missingAliasReporter';
 
 const STRESS_DEMO_RE = /\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi;
+const UNIT_CODE_RE = /\b(?:U-\d+|[A-Z]{1,3}-?\d+[A-Z0-9-]*)\b/i;
 
 const FALLBACKS: Record<DisplayLocale, Record<string, string>> = {
   ar: {
@@ -59,7 +60,7 @@ export function displayEntity(
     if (entityType === 'unit') {
       const unitAlias = UNIT_TYPE_ALIASES[original] || UNIT_TYPE_ALIASES[cleaned];
       if (unitAlias) return unitAlias;
-      const unitMatch = original.match(/U-\d+/);
+      const unitMatch = original.match(UNIT_CODE_RE);
       if (unitMatch) return `Unit ${unitMatch[0]}`;
     }
     if (entityType === 'company') {
@@ -90,6 +91,10 @@ export function displayEntity(
   if (isProjectLike(entityType)) {
     const enToAr = Object.entries(PROJECT_ALIASES).find(([, en]) => en === cleaned || en === original);
     if (enToAr) return enToAr[0];
+    if (entityType === 'unit') {
+      const unitMatch = original.match(UNIT_CODE_RE);
+      if (unitMatch) return `الوحدة ${unitMatch[0]}`;
+    }
   }
 
   return displayValue;
