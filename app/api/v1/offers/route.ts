@@ -31,16 +31,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { linkedOpportunityId, price, validUntil } = body;
+    const { linkedOpportunityId, unitId, price, validUntil } = body;
 
-    if (!linkedOpportunityId || !price || !validUntil) {
-      return NextResponse.json({ error: "الفرصة المرتبطة وسعر العرض وتاريخ الصلاحية مطلوبين." }, { status: 400 });
+    if (!linkedOpportunityId || !unitId || !price || !validUntil) {
+      return NextResponse.json({ error: "الفرصة المرتبطة والوحدة وسعر العرض وتاريخ الصلاحية مطلوبين." }, { status: 400 });
     }
 
     const offer = await createOffer({
       tenantId,
       userId: userId || "",
       opportunityId: linkedOpportunityId,
+      unitId,
       price: Number(price),
       validUntil: new Date(validUntil),
       documentUrl: `https://orca.az-ez.pro/documents/offer_${linkedOpportunityId}.pdf`,

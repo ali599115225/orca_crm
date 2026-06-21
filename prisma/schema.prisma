@@ -370,7 +370,9 @@ model Unit {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   contract      Contract?
-  tours         Tour[]      @relation("TourUnit")
+  tours         Tour[]          @relation("TourUnit")
+  opportunities Opportunity[]   @relation("OpportunityUnit")
+  offers        Offer[]         @relation("OfferUnit")
 
   @@unique([projectId, unitNumber], name: "uq_project_unit_number")
   @@index([projectId], map: "idx_units_project_id")
@@ -860,6 +862,8 @@ model Opportunity {
   probability   Int
   closeDate     DateTime @map("close_date") @db.Timestamptz
   status        String   @default("OPEN")
+  unitId        String?  @map("unit_id") @db.Uuid
+  unit          Unit?    @relation("OpportunityUnit", fields: [unitId], references: [id], onDelete: SetNull)
   linkedUnitIds String?  @map("linked_unit_ids") @db.Text
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -905,6 +909,8 @@ model Offer {
   tenant              Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   linkedOpportunityId String      @map("linked_opportunity_id") @db.Uuid
   opportunity         Opportunity @relation(fields: [linkedOpportunityId], references: [id], onDelete: Cascade)
+  unitId              String?     @map("unit_id") @db.Uuid
+  unit                Unit?       @relation("OfferUnit", fields: [unitId], references: [id], onDelete: SetNull)
   price               Decimal     @db.Decimal(12, 2)
   validUntil          DateTime    @map("valid_until") @db.Timestamptz
   status              String      @default("PENDING")

@@ -24,21 +24,27 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { price, validUntil } = body;
+    const { price, validUntil, unitId } = body;
+
+    const resolvedUnitId = unitId || opportunity.unitId;
+
+    if (!resolvedUnitId) {
+      return NextResponse.json({ error: "الوحدة العقارية مطلوبة لإنشاء العرض." }, { status: 400 });
+    }
 
     const offerPrice = price ? Number(price) : Number(opportunity.value);
     
     // AI Offer Price Optimization Simulation
-    // Offer optimizer suggests: 5% discount for immediate lock or 30 days validity
-    const optimizedPrice = offerPrice * 0.95; // 5% discount
+    const optimizedPrice = offerPrice * 0.95;
     const finalPrice = price ? Number(price) : optimizedPrice;
     
-    const validityDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 days default
+    const validityDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
 
     const offer = await createOffer({
       tenantId,
       userId: userId || "",
       opportunityId: id,
+      unitId: resolvedUnitId,
       price: finalPrice,
       validUntil: validityDate,
       documentUrl: `https://orca.az-ez.pro/documents/offer_${id}.pdf`,

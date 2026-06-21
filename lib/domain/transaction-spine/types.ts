@@ -15,7 +15,7 @@ export interface CreateOfferInput {
   tenantId: string;
   userId: string;
   opportunityId: string;
-  unitId?: string;
+  unitId: string;
   price: number;
   validUntil: Date;
   documentUrl?: string;

@@ -17,6 +17,12 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
   if (offer.status !== "PENDING") throw new Error("Offer is not in PENDING status.");
   if (offer.validUntil < new Date()) throw new Error("Offer has expired.");
 
+  if (!offer.unitId) {
+    throw new Error("لا يمكن قبول هذا العرض: لم يتم ربط وحدة عقارية به.");
+  }
+
+  await assertTenantOwnership(tenantId, "unit", offer.unitId, "Unit not found in this tenant.");
+
   const opportunity = offer.opportunity;
   if (!opportunity) throw new Error("Opportunity not linked to this offer.");
 
@@ -27,25 +33,10 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
   });
   if (!lead) throw new Error("Lead not found.");
 
-  let unitId: string | null = lead.unitId;
-  if (!unitId && opportunity.linkedUnitIds) {
-    unitId = opportunity.linkedUnitIds.split(",")[0].trim();
-  }
-  if (!unitId) {
-    const availableUnit = await prisma.unit.findFirst({
-      where: { status: "Available", project: { tenantId } },
-    });
-    unitId = availableUnit?.id || null;
-  }
-
-  if (!unitId) throw new Error("No available unit found for this contract.");
-
-  await assertTenantOwnership(tenantId, "unit", unitId, "Unit not found in this tenant.");
+  const unitId = offer.unitId;
 
   const result = await prisma.$transaction(async (tx) => {
-    const existingContract = unitId
-      ? await tx.contract.findUnique({ where: { unitId } })
-      : null;
+    const existingContract = await tx.contract.findUnique({ where: { unitId } });
 
     if (existingContract) throw new Error("Unit already has an active contract.");
 

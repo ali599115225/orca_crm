@@ -10,24 +10,28 @@ import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
 import { formatOfferStatus } from '@/lib/ui-status';
 import { useApp } from '@/app/context/AppContext';
 
-type Offer = { id: string; linkedOpportunityId: string; price: number; validUntil: string; status: string; documentUrl: string | null; };
-type Opportunity = { id: string; leadId: string; value: number; };
+type Offer = { id: string; linkedOpportunityId: string; unitId: string | null; price: number; validUntil: string; status: string; documentUrl: string | null; };
+type Opportunity = { id: string; leadId: string; value: number; unitId: string | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
+type Unit = { id: string; unitNumber: string; priceSar: number; status: string; project: { name: string } | null };
 
 export default function Offers() {
   const { t, lang } = useApp();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true); const [btnLoading, setBtnLoading] = useState(false);
-  const [oppId, setOppId] = useState(""); const [price, setPrice] = useState(""); const [validUntil, setValidUntil] = useState("");
+  const [oppId, setOppId] = useState(""); const [unitId, setUnitId] = useState(""); const [price, setPrice] = useState(""); const [validUntil, setValidUntil] = useState("");
 
-  const loadData = async () => { try { setLoading(true); const [offersRes, oppsRes, leadsRes] = await Promise.all([fetch("/api/v1/offers"), fetch("/api/v1/opportunities"), fetch("/api/v1/leads")]); const offersJson = await offersRes.json(); const oppsJson = await oppsRes.json(); const leadsJson = await leadsRes.json(); if (offersJson.success) setOffers(offersJson.data); if (oppsJson.success) setOpportunities(oppsJson.data); if (leadsJson.success) setLeads(leadsJson.data); } catch (e) { console.error(e); } finally { setLoading(false); } };
+  const loadData = async () => { try { setLoading(true); const [offersRes, oppsRes, leadsRes, unitsRes] = await Promise.all([fetch("/api/v1/offers"), fetch("/api/v1/opportunities"), fetch("/api/v1/leads"), fetch("/api/v1/properties")]); const offersJson = await offersRes.json(); const oppsJson = await oppsRes.json(); const leadsJson = await leadsRes.json(); const unitsJson = await unitsRes.json(); if (offersJson.success) setOffers(offersJson.data); if (oppsJson.success) setOpportunities(oppsJson.data); if (leadsJson.success) setLeads(leadsJson.data); if (unitsJson.data) setUnits(unitsJson.data.map((u: any) => ({ id: u.id, unitNumber: u.sku, priceSar: u.price, status: u.status, project: { name: u.project } }))); } catch (e) { console.error(e); } finally { setLoading(false); } };
   useEffect(() => { loadData(); }, []);
 
-  const handleCreateOffer = async (e: React.FormEvent) => { e.preventDefault(); if (!oppId || !price || !validUntil) return; try { setBtnLoading(true); await fetch("/api/v1/offers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ linkedOpportunityId: oppId, price, validUntil }) }); setOppId(""); setPrice(""); setValidUntil(""); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
+  const handleCreateOffer = async (e: React.FormEvent) => { e.preventDefault(); if (!oppId || !unitId || !price || !validUntil) return; try { setBtnLoading(true); await fetch("/api/v1/offers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ linkedOpportunityId: oppId, unitId, price, validUntil }) }); setOppId(""); setUnitId(""); setPrice(""); setValidUntil(""); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
   const handleAcceptOffer = async (offerId: string) => { try { setBtnLoading(true); await fetch(`/api/v1/offers/${offerId}/accept`, { method: "POST", headers: { "Content-Type": "application/json" } }); loadData(); } catch (err) { console.error(err); } finally { setBtnLoading(false); } };
   const getOpportunityLeadName = (oId: string) => { const opp = opportunities.find(o => o.id === oId); if (!opp) return null; const lead = leads.find(l => l.id === opp.leadId); return lead ? `${lead.firstName} ${lead.lastName || ""}`.trim() : null; };
+
+  const selectedOpp = opportunities.find(o => o.id === oppId);
 
   return (
     <div className="tab-pane space-y-6">
@@ -35,7 +39,8 @@ export default function Offers() {
         <SmartCard className="p-4">
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("offers.createTitle")}</h3>
           <form onSubmit={handleCreateOffer} className="space-y-4 text-xs">
-            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.selectOpp")}</label><select value={oppId} onChange={(e) => setOppId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("offers.selectOppPlaceholder")}</option>{opportunities.map((opp) => (<option key={opp.id} value={opp.id}>{t("offers.dealValue")} {Number(opp.value).toLocaleString()} ر.س ({getOpportunityLeadName(opp.id)})</option>))}</select></div>
+            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.selectOpp")}</label><select value={oppId} onChange={(e) => { setOppId(e.target.value); const opp = opportunities.find(o => o.id === e.target.value); if (opp?.unitId) setUnitId(opp.unitId); }} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("offers.selectOppPlaceholder")}</option>{opportunities.map((opp) => (<option key={opp.id} value={opp.id}>{t("offers.dealValue")} {Number(opp.value).toLocaleString()} ر.س ({getOpportunityLeadName(opp.id)})</option>))}</select></div>
+            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.unit")}</label><select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("offers.selectUnit")}</option>{units.filter(u => u.status !== "Sold").map((u) => (<option key={u.id} value={u.id}>{u.project?.name || ""} — {u.unitNumber}</option>))}</select></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.price")}</label><input type="number" placeholder={t("offers.pricePlaceholder")} value={price} onChange={(e) => setPrice(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required /></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.validUntil")}</label><input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en" required /></div>
             <button type="submit" disabled={btnLoading} className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center">{btnLoading ? t("offers.saving") : t("offers.save")}</button>
@@ -59,8 +64,13 @@ export default function Offers() {
                     <p className="text-slate-450">{t("offers.negotiationPrice")} <MoneyCell amount={offer.price} lang={lang} /></p>
                     <p className="text-slate-450 font-en">{t("offers.validityLabel")} <DateCell value={offer.validUntil} /></p>
                     {offer.documentUrl && (<a href={offer.documentUrl} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9] hover:underline font-semibold block text-xs mt-1 font-en">{t("offers.viewPDF")}</a>)}
+                    {!offer.unitId && <p className="text-amber-400 text-xs">{t("offers.noUnitLinked")}</p>}
                   </div>
-                  {offer.status === "PENDING" && (<button onClick={() => handleAcceptOffer(offer.id)} disabled={btnLoading} className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded text-xs transition-colors font-bold">{t("offers.accept")}</button>)}
+                  {offer.status === "PENDING" && (
+                    offer.unitId
+                      ? <button onClick={() => handleAcceptOffer(offer.id)} disabled={btnLoading} className="bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded text-xs transition-colors font-bold">{t("offers.accept")}</button>
+                      : <span className="text-amber-400 text-xs px-3.5 py-1">{t("offers.acceptRequiresUnit")}</span>
+                  )}
                 </div>
               ))}
             </BoundedCardList>

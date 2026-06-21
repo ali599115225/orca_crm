@@ -30,6 +30,7 @@ type PropertyOffer = {
   posted: string | null;
   description: string;
   linkedOpportunityId?: string;
+  unitId?: string | null;
   validUntil?: string | null;
   documentUrl?: string | null;
   isRealOffer?: boolean;
@@ -362,7 +363,7 @@ export default function OffersView() {
           for (const o of offersRes.data) {
             realOffers.push({
               id: o.id,
-              title: `${t('عرض', 'Offer')} #${o.id.slice(0, 8)}`,
+              title: `${t('عرض', 'Offer')} ${t('رقم', 'No.')} ${o.invoiceNumber || o.id.slice(0, 8)}`,
               type: 'property',
               status: (o.status || 'PENDING') as OfferStatus,
               price: Number(o.price) || null,
@@ -374,6 +375,7 @@ export default function OffersView() {
               posted: o.createdAt || null,
               description: '',
               linkedOpportunityId: o.linkedOpportunityId,
+              unitId: o.unitId || null,
               validUntil: o.validUntil,
               documentUrl: o.documentUrl,
               isRealOffer: true,
@@ -499,7 +501,7 @@ export default function OffersView() {
     setVisitSaving(true);
     try {
       const result = await scheduleTourActionDirect({
-        propertyId: selectedOffer.id,
+        propertyId: selectedOffer.unitId || undefined,
         userName: visitForm.name.trim(),
         phone: visitForm.phone.replace(/\D/g, ''),
         datetime,
@@ -764,14 +766,23 @@ export default function OffersView() {
               </div>
 
               <div className="shrink-0 border-t border-[var(--nc-border)] p-5 pt-4">
-                <button
-                  type="button"
-                  onClick={() => openVisitModal(selectedOffer.id)}
-                  className="nc-btn-primary inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
-                >
-                  <Calendar size={15} />
-                  {t('حجز زيارة', 'Schedule visit')}
-                </button>
+                {selectedOffer.isRealOffer && !selectedOffer.unitId ? (
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-center">
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                      {t('الوحدة غير مرتبطة بهذا العرض', 'No unit is linked to this offer')}
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openVisitModal(selectedOffer.id)}
+                    disabled={selectedOffer.isRealOffer && !selectedOffer.unitId}
+                    className="nc-btn-primary inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Calendar size={15} />
+                    {t('حجز زيارة', 'Schedule visit')}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
