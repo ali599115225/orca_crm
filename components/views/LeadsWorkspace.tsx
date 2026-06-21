@@ -3,198 +3,47 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
-import type { LeadItem } from "./pipeline/KanbanCard";
 import { displayPerson, displayGeo, displayEnum, displayEntity } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
-import { DateField } from "@/components/ui/date-time/DateField";
-import { TimeField } from "@/components/ui/date-time/TimeField";
 import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
+
+import type {
+  DetailTab,
+  LeadItem,
+  Opportunity,
+  Offer,
+  Tour,
+  UnitOption,
+  OpportunityForm,
+  OpportunityFormErrors,
+  OfferForm,
+  TourForm,
+  Copy,
+} from "../leads/types";
+
+import LeadsKpis from "../leads/LeadsKpis";
+import LeadsList from "../leads/LeadsList";
+import LeadDetails from "../leads/LeadDetails";
+import CreateOpportunityDialog from "../leads/dialogs/CreateOpportunityDialog";
+import CreateOfferDialog from "../leads/dialogs/CreateOfferDialog";
+import ScheduleTourDialog from "../leads/dialogs/ScheduleTourDialog";
 
 const PAGE_SIZE = 5;
 
-const PIPELINE_STAGES = [
-  "New",
-  "Contacted",
-  "Qualified",
-  "Tour Scheduled",
-  "Offer Sent",
-  "Negotiation",
-  "Closed",
-];
-
-type Opportunity = {
-  id: string;
-  leadId: string;
-  value: number;
-  probability: number;
-  closeDate: string;
-  status: string;
-  unitId: string | null;
-};
-
-type UnitOption = {
-  id: string;
-  unitNumber: string;
-  priceSar: number;
-  status: string;
-  projectName: string;
-};
-
-type Offer = {
-  id: string;
-  linkedOpportunityId: string;
-  unitId: string | null;
-  price: number;
-  validUntil: string;
-  status: string;
-  createdAt?: string | null;
-};
-
-type Tour = {
-  id: string;
-  leadId: string;
-  opportunityId: string | null;
-  unitId: string | null;
-  startAt: string;
-  endAt: string | null;
-  location: string;
-  status: string;
-  auditLog?: string | null;
-};
-
-type OpportunityForm = {
-  value: string;
-  probability: string;
-  closeDate: string;
-  closeDateText: string;
-  unitId: string;
-};
-
-type OpportunityFormErrors = Partial<Record<keyof OpportunityForm, string>> & {
-  form?: string;
-};
-
-type OfferForm = {
-  opportunityId: string;
-  price: string;
-  validUntil: string;
-  validUntilText: string;
-};
-
-type TourForm = {
-  offerId: string;
-  startDate: string;
-  startDateText: string;
-  time: string;
-  location: string;
-};
-
-type DetailTab =
-  | "summary"
-  | "contacts"
-  | "tasks"
-  | "tours"
-  | "offers"
-  | "opportunities"
-  | "pipeline";
-
-type Copy = {
-  breadcrumb: string;
-  title: string;
-  subtitle: string;
-  totalLeads: string;
-  newLeads: string;
-  qualified: string;
-  conversion: string;
-  leadRegistry: string;
-  thisWeek: string;
-  readyFollowUp: string;
-  closedRate: string;
-  searchPlaceholder: string;
-  leadsList: string;
-  lead: string;
-  status: string;
-  source: string;
-  owner: string;
-  score: string;
-  page: string;
-  of: string;
-  previous: string;
-  next: string;
-  loading: string;
-  noLeads: string;
-  selectLead: string;
-  city: string;
-  notSpecified: string;
-  summary: string;
-  contacts: string;
-  tasks: string;
-  tours: string;
-  offers: string;
-  opportunities: string;
-  pipeline: string;
-  leadInfo: string;
-  currentStatus: string;
-  lastActivity: string;
-  assignedTo: string;
-  stage: string;
-  noContacts: string;
-  noTasks: string;
-  noTours: string;
-  noOffers: string;
-  noOpportunities: string;
-  leadsUnit: string;
-  createOpportunity: string;
-  opportunityListTitle: string;
-  opportunityLead: string;
-  opportunityValue: string;
-  opportunityProbability: string;
-  opportunityCloseDate: string;
-  opportunityStatus: string;
-  opportunityUnit: string;
-  opportunityUnitPlaceholder: string;
-  opportunityNoUnit: string;
-  unitsLoading: string;
-  noAvailableUnits: string;
-  unitsLoadFailed: string;
-  opportunitiesLoading: string;
-  saveOpportunity: string;
-  savingOpportunity: string;
-  cancel: string;
-  valueRequired: string;
-  invalidValue: string;
-  invalidProbability: string;
-  invalidDate: string;
-  unitRequired: string;
-  opportunityCreateFailed: string;
-  offerListTitle: string;
-  createOffer: string;
-  offerOpportunity: string;
-  offerPrice: string;
-  offerValidUntil: string;
-  offerUnitReadonly: string;
-  offerNoOpportunity: string;
-  offerOpportunityRequired: string;
-  offerCreateFailed: string;
-  saveOffer: string;
-  savingOffer: string;
-  acceptOffer: string;
-  acceptingOffer: string;
-  offerAccepted: string;
-  legacyOfferBlocked: string;
-  tourListTitle: string;
-  scheduleTour: string;
-  tourOffer: string;
-  tourDate: string;
-  tourTime: string;
-  tourLocation: string;
-  tourCreateFailed: string;
-  saveTour: string;
-  savingTour: string;
-  noOfferTours: string;
-  offersLoading: string;
-  toursLoading: string;
-};
+import {
+  PIPELINE_STAGES,
+  formatNumber,
+  formatPipelineCount,
+  formatCurrency,
+  formatDate,
+  normalizeDateFieldText,
+  parseDateFieldToIso,
+  getStageLabel,
+  EmptyState,
+  FieldError,
+  LeadStatusBadge,
+  PaginationBar,
+} from "../leads/helpers";
 
 const copy: Record<"ar" | "en", Copy> = {
   ar: {
@@ -403,77 +252,6 @@ const detailTabs: Array<{ id: DetailTab; labelKey: keyof Copy }> = [
   { id: "pipeline", labelKey: "pipeline" },
 ];
 
-function isTechnicalId(value?: string | null): boolean {
-  if (!value) return false;
-
-  const normalized = String(value).trim();
-
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
-    normalized,
-  );
-}
-
-function formatNumber(value: unknown, isArabic: boolean): string {
-  const numberValue = Number(value || 0);
-
-  return Number.isFinite(numberValue)
-    ? numberValue.toLocaleString(isArabic ? "ar-SA" : "en-US")
-    : "0";
-}
-
-function formatPipelineCount(value: unknown): string {
-  const numberValue = Number(value || 0);
-
-  return Number.isFinite(numberValue) ? numberValue.toLocaleString("en-US") : "0";
-}
-
-function formatCurrency(value: unknown, isArabic: boolean): string {
-  const numberValue = Number(value || 0);
-
-  return Number.isFinite(numberValue)
-    ? `${numberValue.toLocaleString(isArabic ? "ar-SA" : "en-US")} ${isArabic ? "ر.س" : "SAR"}`
-    : isArabic
-      ? "0 ر.س"
-      : "0 SAR";
-}
-
-function formatDate(value: string | null | undefined, isArabic: boolean, fallback: string): string {
-  if (!value) return fallback;
-
-  return formatDisplayDate(value) || fallback;
-}
-
-function normalizeDateFieldText(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
-
-  return parts.join("-");
-}
-
-function parseDateFieldToIso(value: string): string {
-  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(value);
-  if (!match) return "";
-
-  const [, day, month, year] = match;
-  const iso = `${year}-${month}-${day}`;
-  const date = new Date(`${iso}T00:00:00`);
-
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() + 1 !== Number(month) ||
-    date.getDate() !== Number(day)
-  ) {
-    return "";
-  }
-
-  return iso;
-}
-
-function getStageLabel(stageId: string, displayLocale: DisplayLocale): string {
-  return displayEnum(stageId, 'leadStatus', displayLocale);
-}
-
 function getStageCounts(leads: LeadItem[]) {
   const map: Record<string, number> = {};
 
@@ -482,83 +260,6 @@ function getStageCounts(leads: LeadItem[]) {
   });
 
   return map;
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-6 text-center">
-      <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{message}</p>
-    </div>
-  );
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-
-  return <p className="mt-1 text-xs font-semibold text-red-500">{message}</p>;
-}
-
-function LeadStatusBadge({
-  status,
-  displayLocale,
-}: {
-  status?: string | null;
-  displayLocale: DisplayLocale;
-}) {
-  const label = displayEnum(status, 'leadStatus', displayLocale);
-
-  return (
-    <span className="inline-flex min-h-[28px] min-w-[96px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
-      {label}
-    </span>
-  );
-}
-
-function PaginationBar({
-  page,
-  totalPages,
-  labels,
-  isArabic,
-  onPrevious,
-  onNext,
-}: {
-  page: number;
-  totalPages: number;
-  labels: Copy;
-  isArabic: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-      <span>
-        {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
-        {formatNumber(totalPages, isArabic)}
-      </span>
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={onPrevious}
-          className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {labels.previous}
-        </button>
-
-        <button
-          type="button"
-          disabled={page >= totalPages}
-          onClick={onNext}
-          className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {labels.next}
-        </button>
-      </div>
-    </div>
-  );
 }
 
 export default function LeadsWorkspace() {
@@ -1156,838 +857,147 @@ export default function LeadsWorkspace() {
           <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.subtitle}</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: labels.totalLeads, value: totalLeads, note: labels.leadRegistry },
-            { label: labels.newLeads, value: newLeads, note: labels.thisWeek },
-            { label: labels.qualified, value: qualified, note: labels.readyFollowUp },
-            { label: labels.conversion, value: `${conversion}%`, note: labels.closedRate },
-          ].map((kpi) => (
-            <div
-              key={kpi.label}
-              className="flex min-h-[104px] flex-col justify-between rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm"
-            >
-              <span className="text-sm text-[var(--nc-text-secondary)]">{kpi.label}</span>
-              <span className="text-2xl font-bold text-[var(--nc-text-primary)]">
-                {typeof kpi.value === "number" ? formatNumber(kpi.value, isArabic) : kpi.value}
-              </span>
-              <span className="text-xs text-[var(--nc-text-secondary)]">{kpi.note}</span>
-            </div>
-          ))}
-        </div>
+        <LeadsKpis
+          labels={labels}
+          totalLeads={totalLeads}
+          newLeads={newLeads}
+          qualified={qualified}
+          conversion={conversion}
+          isArabic={isArabic}
+          formatNumber={formatNumber}
+        />
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
-          <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
-            {selectedLead ? (
-              <div className="space-y-3">
-                <div className="border-b border-[var(--nc-border)] pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-xl font-bold text-[var(--nc-text-primary)]">
-                      {leadInitials(selectedLead)}
-                    </div>
+          <LeadDetails
+            labels={labels}
+            selectedLead={selectedLead}
+            detailTab={detailTab}
+            setDetailTab={setDetailTab}
+            detailTabs={detailTabs}
+            isArabic={isArabic}
+            displayLocale={displayLocale}
+            leadInitials={leadInitials}
+            leadDisplayName={leadDisplayName}
+            leadDisplayCity={leadDisplayCity}
+            leadDisplaySource={leadDisplaySource}
+            leadDisplayStatus={leadDisplayStatus}
+            leadDisplayOwner={leadDisplayOwner}
+            formatNumber={formatNumber}
+            formatDate={formatDate}
+            formatDisplayTime={formatDisplayTime}
+            formatCurrency={formatCurrency}
+            detailData={detailData}
+            toursLoading={toursLoading}
+            selectedLeadTours={selectedLeadTours}
+            units={units}
+            unitDisplayLabel={unitDisplayLabel}
+            offersLoading={offersLoading}
+            selectedLeadOffers={selectedLeadOffers}
+            opportunities={opportunities}
+            offerableOpportunities={offerableOpportunities}
+            acceptingOfferId={acceptingOfferId}
+            openOfferModal={openOfferModal}
+            openTourModal={openTourModal}
+            handleAcceptOffer={handleAcceptOffer}
+            openOpportunityModal={openOpportunityModal}
+            opportunitiesLoading={opportunitiesLoading}
+            selectedLeadOpportunities={selectedLeadOpportunities}
+            stageCounts={stageCounts}
+            getStageLabel={getStageLabel}
+            formatPipelineCount={formatPipelineCount}
+            pipelineStages={PIPELINE_STAGES}
+          />
 
-                    <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-lg font-bold text-[var(--nc-text-primary)]">
-                        {leadDisplayName(selectedLead)}
-                      </h2>
-                      <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                        {leadDisplayCity(selectedLead)} · {leadDisplaySource(selectedLead)}
-                      </p>
-                    </div>
-
-                    <LeadStatusBadge status={selectedLead.stage} displayLocale={displayLocale} />
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    {[
-                      {
-                        label: labels.score,
-                        value: selectedLead.leadScore ? `${selectedLead.leadScore}/100` : labels.notSpecified,
-                      },
-                      { label: labels.city, value: leadDisplayCity(selectedLead) },
-                      { label: labels.source, value: leadDisplaySource(selectedLead) },
-                    ].map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="min-h-[52px] rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3"
-                      >
-                        <p className="truncate text-xs text-[var(--nc-text-secondary)]">{stat.label}</p>
-                        <p className="mt-1 truncate text-sm font-semibold text-[var(--nc-text-primary)]">
-                          {stat.value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {detailTabs.map((tab) => {
-                    const active = detailTab === tab.id;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setDetailTab(tab.id)}
-                        className={
-                          active
-                            ? "nc-btn-primary min-h-[34px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                            : "nc-btn-ghost min-h-[34px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                        }
-                      >
-                        {labels[tab.labelKey]}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {detailTab === "summary" && (
-                  <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-2">
-                    {[
-                      {
-                        title: labels.leadInfo,
-                        body: `${leadDisplayName(selectedLead)} · ${leadDisplayCity(selectedLead)} · ${leadDisplaySource(selectedLead)}`,
-                      },
-                      {
-                        title: labels.currentStatus,
-                        body: `${labels.stage}: ${leadDisplayStatus(selectedLead.stage)} · ${labels.score}: ${
-                          selectedLead.leadScore || 0
-                        }/100`,
-                      },
-                      {
-                        title: labels.lastActivity,
-                        body: (detailData as any)?.updatedAt
-                          ? formatDisplayDate((detailData as any).updatedAt)
-                          : labels.notSpecified,
-                      },
-                      {
-                        title: labels.assignedTo,
-                        body: leadDisplayOwner(selectedLead.assignedTo),
-                      },
-                    ].map((row, index, rows) => (
-                      <div
-                        key={row.title}
-                        className={`grid min-h-[48px] grid-cols-[minmax(110px,0.34fr)_minmax(0,1fr)] items-center gap-3 py-2 ${
-                          index < rows.length - 1 ? "border-b border-[var(--nc-border)]" : ""
-                        }`}
-                      >
-                        <span className="text-xs font-bold text-[var(--nc-text-primary)]">{row.title}</span>
-                        <span className="truncate text-xs leading-6 text-[var(--nc-text-secondary)]">{row.body}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {detailTab === "contacts" && <EmptyState message={labels.noContacts} />}
-                {detailTab === "tasks" && <EmptyState message={labels.noTasks} />}
-                {detailTab === "tours" && (
-                  <div className="space-y-3">
-                    <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
-                      <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.tourListTitle}</h3>
-                      <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
-                    </div>
-                    {toursLoading ? (
-                      <EmptyState message={labels.toursLoading} />
-                    ) : selectedLeadTours.length === 0 ? (
-                      <EmptyState message={labels.noOfferTours} />
-                    ) : (
-                      <div className="space-y-2">
-                        {selectedLeadTours.map((tour) => {
-                          const unit = units.find((item) => item.id === tour.unitId);
-                          return (
-                            <div key={tour.id} className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">{tour.location}</p>
-                                  <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                                    {unitDisplayLabel(unit)}
-                                  </p>
-                                </div>
-                                <div className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)} · {formatDisplayTime(tour.startAt)}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {detailTab === "offers" && (
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.offerListTitle}</h3>
-                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={openOfferModal}
-                        disabled={offerableOpportunities.length === 0}
-                        className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {labels.createOffer}
-                      </button>
-                    </div>
-                    {offerableOpportunities.length === 0 && (
-                      <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300">
-                        {labels.offerNoOpportunity}
-                      </div>
-                    )}
-                    {offersLoading ? (
-                      <EmptyState message={labels.offersLoading} />
-                    ) : selectedLeadOffers.length === 0 ? (
-                      <EmptyState message={labels.noOffers} />
-                    ) : (
-                      <div className="space-y-2">
-                        {selectedLeadOffers.map((offer) => {
-                          const opportunity = opportunities.find((item) => item.id === offer.linkedOpportunityId);
-                          const unit = units.find((item) => item.id === offer.unitId);
-                          const legacyBlocked = !offer.unitId;
-
-                          return (
-                            <div key={offer.id} className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                                    {formatCurrency(offer.price, isArabic)}
-                                  </p>
-                                  <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                                    {unit
-                                      ? unitDisplayLabel(unit)
-                                      : labels.legacyOfferBlocked}
-                                  </p>
-                                  {opportunity && (
-                                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                                      {labels.offerOpportunity}: {formatCurrency(opportunity.value, isArabic)}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => openTourModal(offer)}
-                                    disabled={legacyBlocked}
-                                    className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {labels.scheduleTour}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleAcceptOffer(offer)}
-                                    disabled={legacyBlocked || offer.status === "ACCEPTED" || acceptingOfferId === offer.id}
-                                    className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {acceptingOfferId === offer.id
-                                      ? labels.acceptingOffer
-                                      : offer.status === "ACCEPTED"
-                                        ? labels.offerAccepted
-                                        : labels.acceptOffer}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {detailTab === "opportunities" && (
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
-                          {labels.opportunityListTitle}
-                        </h3>
-                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                          {leadDisplayName(selectedLead)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={openOpportunityModal}
-                        className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-bold"
-                      >
-                        {labels.createOpportunity}
-                      </button>
-                    </div>
-
-                    {opportunitiesLoading ? (
-                      <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-6 text-center">
-                        <p className="text-sm font-medium text-[var(--nc-text-secondary)]">
-                          {labels.opportunitiesLoading}
-                        </p>
-                      </div>
-                    ) : selectedLeadOpportunities.length === 0 ? (
-                      <EmptyState message={labels.noOpportunities} />
-                    ) : (
-                      <div className="space-y-2">
-                        {selectedLeadOpportunities.map((opportunity) => {
-                          const unit = units.find((item) => item.id === opportunity.unitId);
-
-                          return (
-                            <div
-                              key={opportunity.id}
-                              className="grid gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                                  {formatCurrency(opportunity.value, isArabic)}
-                                </p>
-                                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                                  {unit
-                                    ? unitDisplayLabel(unit)
-                                    : labels.opportunityNoUnit}
-                                </p>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--nc-text-secondary)] sm:justify-end">
-                                <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-semibold text-[var(--nc-text-primary)]">
-                                  {formatNumber(opportunity.probability, isArabic)}%
-                                </span>
-                                <span>
-                                  {formatDate(opportunity.closeDate, isArabic, labels.notSpecified)}
-                                </span>
-                                <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-semibold text-[var(--nc-text-primary)]">
-                                  {displayEnum(opportunity.status, "generalStatus", displayLocale) || opportunity.status}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {detailTab === "pipeline" && (
-                  <div className="relative">
-                    <div
-                      tabIndex={0}
-                      aria-label={labels.pipeline}
-                      className="max-h-[220px] space-y-1.5 overflow-y-auto pr-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                    >
-                      {PIPELINE_STAGES.map((stage) => {
-                        const count = stageCounts[stage] || 0;
-
-                        return (
-                          <div
-                            key={stage}
-                            className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2"
-                          >
-                            <span className="truncate text-sm font-semibold text-[var(--nc-text-primary)]">
-                              {getStageLabel(stage, displayLocale)}
-                            </span>
-                            <span className="whitespace-nowrap text-xs text-[var(--nc-text-secondary)]">
-                              {formatPipelineCount(count)} {labels.leadsUnit}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 rounded-b-2xl bg-gradient-to-t from-[var(--nc-surface)] to-transparent" />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <EmptyState message={labels.selectLead} />
-            )}
-          </div>
-
-          <div className="h-fit rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
-            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.leadsList}</h2>
-                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                  {formatNumber(filteredLeads.length, isArabic)} {labels.leadsUnit}
-                </p>
-              </div>
-
-              <input
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setLeadPage(1);
-                }}
-                placeholder={labels.searchPlaceholder}
-                className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm text-[var(--nc-text-primary)] outline-none lg:max-w-md"
-              />
-            </div>
-
-            {filteredLeads.length > 0 ? (
-              <div className="overflow-hidden">
-                <table className="w-full table-fixed text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                      <th className={`w-[30%] px-3 py-3 ${textAlign} font-semibold`}>{labels.lead}</th>
-                      <th className={`w-[16%] px-3 py-3 text-center font-semibold`}>{labels.status}</th>
-                      <th className={`w-[22%] px-3 py-3 ${textAlign} font-semibold`}>{labels.source}</th>
-                      <th className={`w-[18%] px-3 py-3 ${textAlign} font-semibold`}>{labels.owner}</th>
-                      <th className={`w-[14%] px-3 py-3 text-center font-semibold`}>{labels.score}</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {pagedLeads.map((lead) => {
-                      const selected = selectedLead?.id === lead.id;
-
-                      return (
-                        <tr
-                          key={lead.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            void handleSelect(lead);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              void handleSelect(lead);
-                            }
-                          }}
-                          className={
-                            selected
-                              ? "cursor-pointer border-b border-[var(--nc-border)] bg-[var(--nc-surface-soft)] outline-none"
-                              : "cursor-pointer border-b border-[var(--nc-border)] outline-none transition-colors hover:bg-[var(--nc-surface-soft)]"
-                          }
-                        >
-                          <td className="truncate px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                            {leadDisplayName(lead)}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            <span className="inline-flex justify-center">
-                              <LeadStatusBadge status={lead.stage} displayLocale={displayLocale} />
-                            </span>
-                          </td>
-
-                          <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
-                            {leadDisplaySource(lead)}
-                          </td>
-
-                          <td className="truncate px-3 py-3 text-[var(--nc-text-secondary)]">
-                            {leadDisplayOwner(lead.assignedTo)}
-                          </td>
-
-                          <td className="whitespace-nowrap px-3 py-3 text-center font-mono text-xs text-[var(--nc-text-secondary)]">
-                            {formatNumber(lead.leadScore || 0, isArabic)}/100
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                <PaginationBar
-                  page={leadPage}
-                  totalPages={leadTotalPages}
-                  labels={labels}
-                  isArabic={isArabic}
-                  onPrevious={() => setLeadPage((page) => Math.max(1, page - 1))}
-                  onNext={() => setLeadPage((page) => Math.min(leadTotalPages, page + 1))}
-                />
-              </div>
-            ) : (
-              <EmptyState message={labels.noLeads} />
-            )}
-          </div>
+          <LeadsList
+            labels={labels}
+            filteredLeads={filteredLeads}
+            pagedLeads={pagedLeads}
+            selectedLead={selectedLead}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            leadPage={leadPage}
+            setLeadPage={setLeadPage}
+            leadTotalPages={leadTotalPages}
+            isArabic={isArabic}
+            textAlign={textAlign}
+            displayLocale={displayLocale}
+            handleSelect={handleSelect}
+            leadDisplayName={leadDisplayName}
+            leadDisplaySource={leadDisplaySource}
+            leadDisplayOwner={leadDisplayOwner}
+            formatNumber={formatNumber}
+          />
         </div>
       </div>
 
       {showOfferModal && selectedLead && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeOfferModal();
-          }}
-        >
-          <form
-            onSubmit={handleCreateOffer}
-            dir={direction}
-            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
-          >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.createOffer}</h2>
-                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
-              </div>
-              <button type="button" onClick={closeOfferModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)]">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              {offerErrors.form && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-                  {offerErrors.form}
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerOpportunity}</label>
-                <select
-                  value={offerForm.opportunityId}
-                  onChange={(event) => {
-                    const opportunity = offerableOpportunities.find((item) => item.id === event.target.value);
-                    setOfferForm((form) => ({
-                      ...form,
-                      opportunityId: event.target.value,
-                      price: opportunity ? String(Number(opportunity.value || 0)) : "",
-                    }));
-                    setOfferErrors((errors) => ({ ...errors, opportunityId: undefined, form: undefined }));
-                  }}
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
-                >
-                  <option value="">{labels.offerOpportunityRequired}</option>
-                  {offerableOpportunities.map((opportunity) => {
-                    const unit = units.find((item) => item.id === opportunity.unitId);
-                    return (
-                      <option key={opportunity.id} value={opportunity.id}>
-                        {formatCurrency(opportunity.value, isArabic)} - {unitDisplayLabel(unit)}
-                      </option>
-                    );
-                  })}
-                </select>
-                <FieldError message={offerErrors.opportunityId} />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerPrice}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={offerForm.price}
-                    onChange={(event) => {
-                      setOfferForm((form) => ({ ...form, price: event.target.value }));
-                      setOfferErrors((errors) => ({ ...errors, price: undefined, form: undefined }));
-                    }}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
-                  />
-                  <FieldError message={offerErrors.price} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerValidUntil}</label>
-                  <DateField
-                    value={offerForm.validUntil}
-                    onChange={(validUntil) => {
-                      setOfferForm((form) => ({ ...form, validUntil, validUntilText: validUntil }));
-                      setOfferErrors((errors) => ({ ...errors, validUntil: undefined, form: undefined }));
-                    }}
-                    className="w-full border-[var(--nc-border)] bg-[var(--nc-surface)] focus-within:border-[#C8A45D] focus-within:ring-0"
-                  />
-                  <FieldError message={offerErrors.validUntil} />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
-                <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">{labels.offerUnitReadonly}</p>
-                <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                  {unitDisplayLabel(offerFormUnit)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-4 sm:flex-row sm:justify-end">
-              <button type="button" onClick={closeOfferModal} className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold">
-                {labels.cancel}
-              </button>
-              <button type="submit" disabled={offerSaving || !offerFormOpportunity?.unitId} className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60">
-                {offerSaving ? labels.savingOffer : labels.saveOffer}
-              </button>
-            </div>
-          </form>
-        </div>
+        <CreateOfferDialog
+          labels={labels}
+          selectedLead={selectedLead}
+          offerForm={offerForm}
+          setOfferForm={setOfferForm}
+          offerErrors={offerErrors}
+          setOfferErrors={setOfferErrors}
+          offerableOpportunities={offerableOpportunities}
+          units={units}
+          isArabic={isArabic}
+          direction={direction}
+          offerSaving={offerSaving}
+          offerFormOpportunity={offerFormOpportunity}
+          offerFormUnit={offerFormUnit}
+          closeOfferModal={closeOfferModal}
+          handleCreateOffer={handleCreateOffer}
+          leadDisplayName={leadDisplayName}
+          unitDisplayLabel={unitDisplayLabel}
+          formatCurrency={formatCurrency}
+        />
       )}
 
       {showTourModal && selectedLead && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeTourModal();
-          }}
-        >
-          <form
-            onSubmit={handleScheduleTour}
-            dir={direction}
-            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
-          >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.scheduleTour}</h2>
-                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
-              </div>
-              <button type="button" onClick={closeTourModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)]">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              {tourErrors.form && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-                  {tourErrors.form}
-                </div>
-              )}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourDate}</label>
-                  <input
-                    type="text"
-                    value={tourForm.startDateText}
-                    dir="ltr"
-                    lang="en-CA"
-                    inputMode="numeric"
-                    pattern="\d{2}-\d{2}-\d{4}"
-                    onChange={(event) => {
-                      const startDateText = normalizeDateFieldText(event.target.value);
-                      const startDate = parseDateFieldToIso(startDateText);
-                      setTourForm((form) => ({ ...form, startDate, startDateText }));
-                      setTourErrors((errors) => ({ ...errors, startDate: undefined, form: undefined }));
-                    }}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
-                  />
-                  <FieldError message={tourErrors.startDate} />
-                </div>
-                <div dir="ltr">
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)] text-right">{labels.tourTime}</label>
-                  <TimeField value={tourForm.time} onChange={(v) => setTourForm(f => ({ ...f, time: v }))} className="w-full" />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourLocation}</label>
-                <input
-                  value={tourForm.location}
-                  onChange={(event) => {
-                    setTourForm((form) => ({ ...form, location: event.target.value }));
-                    setTourErrors((errors) => ({ ...errors, location: undefined, form: undefined }));
-                  }}
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
-                />
-                <FieldError message={tourErrors.location} />
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-4 sm:flex-row sm:justify-end">
-              <button type="button" onClick={closeTourModal} className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold">
-                {labels.cancel}
-              </button>
-              <button type="submit" disabled={tourSaving} className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60">
-                {tourSaving ? labels.savingTour : labels.saveTour}
-              </button>
-            </div>
-          </form>
-        </div>
+        <ScheduleTourDialog
+          labels={labels}
+          selectedLead={selectedLead}
+          tourForm={tourForm}
+          setTourForm={setTourForm}
+          tourErrors={tourErrors}
+          setTourErrors={setTourErrors}
+          direction={direction}
+          tourSaving={tourSaving}
+          closeTourModal={closeTourModal}
+          handleScheduleTour={handleScheduleTour}
+          leadDisplayName={leadDisplayName}
+          normalizeDateFieldText={normalizeDateFieldText}
+          parseDateFieldToIso={parseDateFieldToIso}
+        />
       )}
 
       {showOpportunityModal && selectedLead && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-opportunity-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeOpportunityModal();
-            }
-          }}
-        >
-          <form
-            onSubmit={handleCreateOpportunity}
-            dir={direction}
-            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
-          >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
-              <div className="min-w-0">
-                <h2 id="create-opportunity-title" className="text-base font-bold text-[var(--nc-text-primary)]">
-                  {labels.createOpportunity}
-                </h2>
-                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
-                  {labels.opportunityLead}: {leadDisplayName(selectedLead)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeOpportunityModal}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
-                aria-label={labels.cancel}
-              >
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <div className="mb-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
-                <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-                  {labels.opportunityLead}
-                </p>
-                <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                  {leadDisplayName(selectedLead)}
-                </p>
-              </div>
-
-              {opportunityErrors.form && (
-                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-                  {opportunityErrors.form}
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                    {labels.opportunityValue}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={opportunityForm.value}
-                    onChange={(event) => {
-                      setOpportunityForm((form) => ({ ...form, value: event.target.value }));
-                      setOpportunityErrors((errors) => ({ ...errors, value: undefined, form: undefined }));
-                    }}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
-                    inputMode="numeric"
-                  />
-                  <FieldError message={opportunityErrors.value} />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                    {labels.opportunityProbability}
-                  </label>
-                  <div className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 focus-within:border-[#C8A45D]">
-                    <input
-                      type="range"
-                      min="1"
-                      max="100"
-                      value={opportunityForm.probability}
-                      onChange={(event) => {
-                        setOpportunityForm((form) => ({ ...form, probability: event.target.value }));
-                        setOpportunityErrors((errors) => ({ ...errors, probability: undefined, form: undefined }));
-                      }}
-                      className="min-w-0 flex-1 accent-[#C8A45D]"
-                    />
-                    <span className="w-12 text-center text-sm font-bold text-[var(--nc-text-primary)]">
-                      {formatNumber(opportunityForm.probability, isArabic)}%
-                    </span>
-                  </div>
-                  <FieldError message={opportunityErrors.probability} />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                  {labels.opportunityCloseDate}
-                </label>
-                <input
-                  type="text"
-                  value={opportunityForm.closeDateText}
-                  dir="ltr"
-                  lang="en-CA"
-                  onChange={(event) => {
-                    const closeDateText = normalizeDateFieldText(event.target.value);
-                    const closeDate = parseDateFieldToIso(closeDateText);
-
-                    setOpportunityForm((form) => ({ ...form, closeDate, closeDateText }));
-                    setOpportunityErrors((errors) => ({ ...errors, closeDate: undefined, form: undefined }));
-                  }}
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
-                  inputMode="numeric"
-                  pattern="\d{2}-\d{2}-\d{4}"
-                />
-                <FieldError message={opportunityErrors.closeDate} />
-              </div>
-
-              <div className="mt-4">
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                  {labels.opportunityUnit}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setUnitSelectOpen((open) => !open)}
-                  className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors hover:border-[#C8A45D]"
-                  aria-expanded={unitSelectOpen}
-                  aria-busy={unitsLoading}
-                >
-                  <span className="min-w-0 truncate text-start">
-                    {unitsLoading
-                      ? labels.unitsLoading
-                      : selectedUnit
-                      ? `${unitDisplayLabel(selectedUnit)} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
-                      : labels.opportunityUnitPlaceholder}
-                  </span>
-                  <span className="shrink-0 text-[var(--nc-text-secondary)]" aria-hidden="true">
-                    {unitSelectOpen ? "^" : "v"}
-                  </span>
-                </button>
-                <FieldError message={opportunityErrors.unitId} />
-
-                {unitSelectOpen && (
-                  <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-1 shadow-lg">
-                    {unitsLoading ? (
-                      <div className="px-3 py-3 text-sm font-semibold text-[var(--nc-text-secondary)]">
-                        {labels.unitsLoading}
-                      </div>
-                    ) : unitsError ? (
-                      <div className="px-3 py-3 text-sm font-semibold text-red-500">
-                        {unitsError}
-                      </div>
-                    ) : selectableUnits.length === 0 ? (
-                      <div className="px-3 py-3 text-sm font-semibold text-[var(--nc-text-secondary)]">
-                        {labels.noAvailableUnits}
-                      </div>
-                    ) : (
-                      selectableUnits.map((unit) => (
-                        <button
-                          key={unit.id}
-                          type="button"
-                          onClick={() => {
-                            setOpportunityForm((form) => ({ ...form, unitId: unit.id }));
-                            setOpportunityErrors((errors) => ({ ...errors, unitId: undefined, form: undefined }));
-                            setUnitSelectOpen(false);
-                          }}
-                          className={
-                            opportunityForm.unitId === unit.id
-                              ? "flex w-full items-center justify-between gap-3 rounded-lg bg-[#C8A45D]/15 px-3 py-2 text-start text-sm font-bold text-[var(--nc-text-primary)]"
-                              : "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-start text-sm font-semibold text-[var(--nc-text-primary)] transition-colors hover:bg-[var(--nc-surface-soft)]"
-                          }
-                        >
-                          <span className="min-w-0 truncate">
-                            {unitDisplayLabel(unit)}
-                          </span>
-                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
-                            {formatCurrency(unit.priceSar, isArabic)}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-5 py-4 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeOpportunityModal}
-                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={opportunitySaving || unitsLoading || !hasValidSelectedUnit}
-                className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {opportunitySaving ? labels.savingOpportunity : labels.saveOpportunity}
-              </button>
-            </div>
-          </form>
-        </div>
+        <CreateOpportunityDialog
+          labels={labels}
+          selectedLead={selectedLead}
+          opportunityForm={opportunityForm}
+          setOpportunityForm={setOpportunityForm}
+          opportunityErrors={opportunityErrors}
+          setOpportunityErrors={setOpportunityErrors}
+          unitSelectOpen={unitSelectOpen}
+          setUnitSelectOpen={setUnitSelectOpen}
+          unitsLoading={unitsLoading}
+          selectedUnit={selectedUnit}
+          hasValidSelectedUnit={hasValidSelectedUnit}
+          unitsError={unitsError}
+          selectableUnits={selectableUnits}
+          opportunitySaving={opportunitySaving}
+          isArabic={isArabic}
+          direction={direction}
+          closeOpportunityModal={closeOpportunityModal}
+          handleCreateOpportunity={handleCreateOpportunity}
+          leadDisplayName={leadDisplayName}
+          unitDisplayLabel={unitDisplayLabel}
+          formatCurrency={formatCurrency}
+          formatNumber={formatNumber}
+          normalizeDateFieldText={normalizeDateFieldText}
+          parseDateFieldToIso={parseDateFieldToIso}
+        />
       )}
     </section>
   );
