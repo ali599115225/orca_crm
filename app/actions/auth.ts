@@ -1,11 +1,11 @@
-'use server';
+﻿'use server';
 
 import { createHash } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { cookies, headers } from 'next/headers';
 import { rawPrisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/session';
-import { rateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, clearRateLimit, rateLimit } from '@/lib/rate-limit';
 import { isConfiguredSuperAdminEmail } from '@/lib/api-auth-guard';
 import { ErrorCode, publicError } from '@/lib/errors';
 
@@ -33,26 +33,32 @@ export async function loginAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
 
-  const limit = await rateLimit(
-    `login:${hashRateLimitIdentity(email || 'missing')}`,
-    5,
-    60_000,
-    true
-  );
-
-  if (!limit.allowed) {
-    const retryAfterSeconds = Math.ceil(limit.resetIn / 1000);
-    return {
-      success: false,
-      error: `محاولات دخول كثيرة جداً. الرجاء الانتظار ${retryAfterSeconds} ثانية.`,
-      errorEn: `Too many login attempts. Please wait ${retryAfterSeconds} seconds.`,
-      retryAfterSeconds,
-    };
-  }
 
   try {
     if (!email || !password) {
       throw new SafeAuthError('البريد الإلكتروني وكلمة المرور مطلوبان.');
+    }
+
+    const rateLimitKey = `login:${hashRateLimitIdentity(email)}`;
+    const existingLock = await checkRateLimit(
+      rateLimitKey,
+      5,
+      60_000,
+      true
+    );
+
+    if (!existingLock.allowed) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil(existingLock.resetIn / 1000)
+      );
+
+      return {
+        success: false,
+        error: `محاولات دخول كثيرة جداً. الرجاء الانتظار ${retryAfterSeconds} ثانية.`,
+        errorEn: `Too many login attempts. Please wait ${retryAfterSeconds} seconds.`,
+        retryAfterSeconds,
+      };
     }
 
     const user = await rawPrisma.user.findFirst({
@@ -60,13 +66,46 @@ export async function loginAction(formData: FormData) {
       include: { tenant: true },
     });
 
-    if (
-      !user ||
-      !user.tenant ||
-      !user.tenant.isActive ||
-      !user.passwordHash ||
-      !(await bcrypt.compare(password, user.passwordHash))
-    ) {
+    const validCredentials = Boolean(
+      user &&
+      user.tenant &&
+      user.tenant.isActive &&
+      user.passwordHash &&
+      (await bcrypt.compare(password, user.passwordHash))
+    );
+
+    if (!validCredentials) {
+      const failedAttempt = await rateLimit(
+        rateLimitKey,
+        5,
+        60_000,
+        true
+      );
+
+      if (!failedAttempt.allowed || failedAttempt.remaining === 0) {
+        const retryAfterSeconds = Math.max(
+          1,
+          Math.ceil(failedAttempt.resetIn / 1000)
+        );
+
+        return {
+          success: false,
+          error: `محاولات دخول كثيرة جداً. الرجاء الانتظار ${retryAfterSeconds} ثانية.`,
+          errorEn: `Too many login attempts. Please wait ${retryAfterSeconds} seconds.`,
+          retryAfterSeconds,
+        };
+      }
+
+      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+    }
+
+    await clearRateLimit(rateLimitKey, true);
+
+    if (!user || !user.tenant) {
+      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+    }
+
+    if (!user || !user.tenant) {
       throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
     }
 
@@ -184,3 +223,8 @@ export async function logoutAction() {
 
   return { success: true };
 }
+
+
+
+
+

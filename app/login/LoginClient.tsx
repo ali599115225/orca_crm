@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -176,11 +176,11 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       <style dangerouslySetInnerHTML={{__html: `
         :root {
             --svg-glass-start: rgba(255, 255, 255, 0.9); --svg-glass-end: rgba(241, 245, 249, 0.7);
-            --svg-stroke-main: #94a3b8; --svg-stroke-window: #cbd5e1; --svg-cyan: #2563EB;
+            --svg-stroke-main: #94a3b8; --svg-stroke-window: #cbd5e1; --svg-cyan: #2563EB; --svg-flow: #C89B2A;
         }
         .dark {
             --svg-glass-start: rgba(3, 7, 18, 0.7); --svg-glass-end: rgba(3, 7, 18, 0.85);
-            --svg-stroke-main: rgba(0, 229, 255, 0.45); --svg-stroke-window: rgba(0, 229, 255, 0.2); --svg-cyan: #00E5FF;
+            --svg-stroke-main: rgba(0, 229, 255, 0.45); --svg-stroke-window: rgba(0, 229, 255, 0.2); --svg-cyan: #00E5FF; --svg-flow: #D4A72C;
         }
         .custom-checkbox { appearance: none; background-color: transparent; margin: 0; width: 1.15em; height: 1.15em; border: 1.5px solid #94a3b8; border-radius: 0.25em; display: grid; place-content: center; cursor: pointer; transition: all 0.2s ease-in-out; }
         .custom-checkbox::before { content: ""; width: 0.65em; height: 0.65em; transform: scale(0); transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em white; background-color: white; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
@@ -274,14 +274,14 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                   </g>
 
                   <g id="data-network">
-                    <path d="M 20,350 Q 130,300 230,400 T 420,250" fill="none" style={{ stroke: 'var(--svg-cyan)' }} strokeWidth="1.5" className="data-line"/>
-                    <path d="M 80,550 L 180,450 L 320,480 L 450,380" fill="none" style={{ stroke: 'var(--svg-cyan)' }} strokeWidth="1" className="data-line-2"/>
+                    <path d="M 20,350 Q 130,300 230,400 T 420,250" fill="none" style={{ stroke: 'var(--svg-flow)' }} strokeWidth="1.5" className="data-line"/>
+                    <path d="M 80,550 L 180,450 L 320,480 L 450,380" fill="none" style={{ stroke: 'var(--svg-flow)' }} strokeWidth="1" className="data-line-2"/>
                     
-                    <circle cx="130" cy="300" r="4" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
-                    <circle cx="230" cy="400" r="6" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
-                    <circle cx="420" cy="250" r="5" className="tech-node" style={{ fill: 'var(--svg-cyan)' }} />
+                    <circle cx="130" cy="300" r="4" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
+                    <circle cx="230" cy="400" r="6" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
+                    <circle cx="420" cy="250" r="5" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
                     
-                    <circle cx="230" cy="400" r="12" fill="none" stroke="var(--svg-cyan)" strokeWidth="1" className="pulse-ring pointer-events-none" />
+                    <circle cx="230" cy="400" r="12" fill="none" stroke="var(--svg-flow)" strokeWidth="1" className="pulse-ring pointer-events-none" />
                   </g>
                 </g>
               </svg>
@@ -340,7 +340,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
                 <button
                   type="submit"
                   disabled={loading || (retryAfter !== null && retryAfter > 0)}
-                  className="w-full bg-[#b85a44] hover:bg-[#a04c3a] text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+                  className="w-full bg-[#D4A72C] hover:bg-[#B98B1F] text-[#111827] font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A72C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220]"
                 >
                   {loading
                     ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...")
@@ -372,3 +372,10 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
     </div>
   );
 }
+
+
+
+
+
+
+

@@ -6,7 +6,7 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_CONFIG = {
   api: { windowMs: 60_000, maxRequests: 60 },
   webhook: { windowMs: 60_000, maxRequests: 30 },
-  auth: { windowMs: 60_000, maxRequests: 5 },
+  auth: { windowMs: 60_000, maxRequests: 30 },
   serverAction: { windowMs: 60_000, maxRequests: 30 },
   default: { windowMs: 60_000, maxRequests: 120 },
 };
@@ -65,3 +65,4 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: '/((?!_next/static|_next/image|favicon.ico).*)',
 };
+

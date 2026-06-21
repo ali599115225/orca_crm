@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+﻿import { prisma } from './prisma';
 
 export type RateLimitResult = {
   allowed: boolean;
@@ -147,6 +147,92 @@ function memoryRateLimit(
   };
 }
 
+export async function checkRateLimit(
+  key: string,
+  limit = 30,
+  windowMs = 60_000,
+  useDb?: boolean
+): Promise<RateLimitResult> {
+  const normalizedKey = key.trim().slice(0, 500);
+  const normalizedLimit = normalizePositiveInteger(limit, 30);
+  const normalizedWindow = normalizePositiveInteger(windowMs, 60_000);
+
+  if (!normalizedKey) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetIn: normalizedWindow,
+    };
+  }
+
+  const distributed = useDb ?? productionRuntime();
+  const now = Date.now();
+
+  if (!distributed) {
+    const entry = MEMORY_BACKUP.get(normalizedKey);
+
+    if (!entry || now >= entry.resetAt) {
+      if (entry) MEMORY_BACKUP.delete(normalizedKey);
+      return {
+        allowed: true,
+        remaining: normalizedLimit,
+        resetIn: 0,
+      };
+    }
+
+    return {
+      allowed: entry.count < normalizedLimit,
+      remaining: Math.max(0, normalizedLimit - entry.count),
+      resetIn: Math.max(0, entry.resetAt - now),
+    };
+  }
+
+  try {
+    const entry = await prisma.rateLimitEntry.findUnique({
+      where: { key: normalizedKey },
+      select: { count: true, resetAt: true },
+    });
+
+    if (!entry || entry.resetAt.getTime() <= now) {
+      return {
+        allowed: true,
+        remaining: normalizedLimit,
+        resetIn: 0,
+      };
+    }
+
+    return {
+      allowed: entry.count < normalizedLimit,
+      remaining: Math.max(0, normalizedLimit - entry.count),
+      resetIn: Math.max(0, entry.resetAt.getTime() - now),
+    };
+  } catch {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetIn: normalizedWindow,
+    };
+  }
+}
+
+export async function clearRateLimit(
+  key: string,
+  useDb?: boolean
+): Promise<void> {
+  const normalizedKey = key.trim().slice(0, 500);
+  if (!normalizedKey) return;
+
+  const distributed = useDb ?? productionRuntime();
+
+  if (!distributed) {
+    MEMORY_BACKUP.delete(normalizedKey);
+    return;
+  }
+
+  await prisma.rateLimitEntry.deleteMany({
+    where: { key: normalizedKey },
+  });
+}
 export async function rateLimit(
   key: string,
   limit = 30,
@@ -171,3 +257,4 @@ export async function rateLimit(
     ? databaseRateLimit(normalizedKey, normalizedLimit, normalizedWindow)
     : memoryRateLimit(normalizedKey, normalizedLimit, normalizedWindow);
 }
+
