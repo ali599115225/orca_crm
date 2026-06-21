@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
 import { _createContractInTx } from "./issue-contract";
+import { calculateVat } from "@/lib/vat/engine";
 import type { AcceptOfferInput } from "./types";
 
 export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
@@ -10,10 +11,20 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
 
   const offer = await prisma.offer.findFirst({
     where: { id: offerId, tenantId },
-    include: { opportunity: true },
+    include: { opportunity: true, contract: { include: { invoices: { include: { installments: true } } } } },
   });
 
   if (!offer) throw new Error("Offer not found.");
+  if (offer.status === "ACCEPTED" && offer.contract) {
+    const invoice = offer.contract.invoices.find((item: any) => item.type === "SALE") || null;
+    return {
+      contract: offer.contract,
+      offer,
+      invoice,
+      installments: invoice?.installments || [],
+      contractCreated: false,
+    };
+  }
   if (offer.status !== "PENDING") throw new Error("Offer is not in PENDING status.");
   if (offer.validUntil < new Date()) throw new Error("Offer has expired.");
 
@@ -36,6 +47,33 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
   const unitId = offer.unitId;
 
   const result = await prisma.$transaction(async (tx) => {
+    const existingOfferContract = await tx.contract.findUnique({
+      where: { offerId: offer.id },
+      include: { invoices: { include: { installments: true } } },
+    });
+
+    if (existingOfferContract) {
+      const invoice = existingOfferContract.invoices.find((item: any) => item.type === "SALE") || null;
+      const updatedOffer = offer.status === "ACCEPTED"
+        ? offer
+        : await tx.offer.update({
+            where: { id: offerId },
+            data: {
+              status: "ACCEPTED",
+              updatedBy: userId,
+              auditLog: `${offer.auditLog || ""}\nOffer accepted at ${new Date().toISOString()}`.trim(),
+            },
+          });
+
+      return {
+        contract: existingOfferContract,
+        offer: updatedOffer,
+        invoice,
+        installments: invoice?.installments || [],
+        contractCreated: false,
+      };
+    }
+
     const existingContract = await tx.contract.findUnique({ where: { unitId } });
 
     if (existingContract) throw new Error("Unit already has an active contract.");
@@ -68,7 +106,54 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
       data: { status: "WON" },
     });
 
-    return { contract, offer: updatedOffer };
+    const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new Error("Tenant not found.");
+
+    const vat = calculateVat(Number(offer.price), "STANDARD");
+    await tx.tenant.update({
+      where: { id: tenantId },
+      data: { nextInvoiceNumber: { increment: 1 } },
+    });
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const invoice = await tx.invoice.create({
+      data: {
+        tenantId,
+        type: "SALE",
+        contractId: contract.id,
+        invoiceNumber: tenant.nextInvoiceNumber,
+        invoicePrefix: tenant.invoicePrefix,
+        issueDate: new Date(),
+        dueDate,
+        subtotal: Number(offer.price),
+        vatRate: 15,
+        vatAmount: vat.vatAmount,
+        totalAmount: vat.totalAmount,
+        status: "unpaid",
+      },
+    });
+
+    const installment = await tx.installment.create({
+      data: {
+        tenantId,
+        contractId: contract.id,
+        invoiceId: invoice.id,
+        installmentNumber: 1,
+        amountSar: vat.totalAmount,
+        dueDate,
+        paymentStatus: "Pending",
+      },
+    });
+
+    return {
+      contract,
+      offer: updatedOffer,
+      invoice,
+      installments: [installment],
+      contractCreated: true,
+    };
   });
 
   return result;

@@ -23,7 +23,9 @@ export async function POST(
       success: true,
       data: result.offer,
       contract: result.contract,
-      contractCreated: true,
+      invoice: result.invoice,
+      installments: result.installments,
+      contractCreated: result.contractCreated,
     });
   } catch (error: any) {
     const status = error.message?.includes("not found") ? 404 : 500;

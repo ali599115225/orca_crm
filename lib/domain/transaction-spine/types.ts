@@ -2,6 +2,7 @@ export interface ScheduleTourInput {
   tenantId: string;
   userId: string;
   leadId: string;
+  offerId?: string;
   opportunityId?: string;
   unitId?: string;
   location: string;

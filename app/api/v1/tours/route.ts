@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { leadId, assignedTo, startAt, endAt, location, attendees, notes } = body;
+    const { leadId, offerId, opportunityId, unitId, assignedTo, startAt, endAt, location, attendees, notes } = body;
 
-    if (!leadId || !startAt || !location) {
-      return NextResponse.json({ error: "معرف العميل ووقت وموقع الجولة مطلوبين." }, { status: 400 });
+    if ((!leadId && !offerId) || !startAt || !location) {
+      return NextResponse.json({ error: "معرف العميل أو العرض ووقت وموقع الجولة مطلوبين." }, { status: 400 });
     }
 
     const agentId = assignedTo || userId || (await prisma.user.findFirst({ where: { tenantId } }))?.id || "";
@@ -47,7 +47,10 @@ export async function POST(request: NextRequest) {
     const tour = await scheduleTour({
       tenantId,
       userId: agentId,
-      leadId,
+      leadId: leadId || "",
+      offerId: offerId || undefined,
+      opportunityId: opportunityId || undefined,
+      unitId: unitId || undefined,
       location,
       startAt: new Date(startAt),
       endAt: endAt ? new Date(endAt) : new Date(new Date(startAt).getTime() + 60 * 60 * 1000),

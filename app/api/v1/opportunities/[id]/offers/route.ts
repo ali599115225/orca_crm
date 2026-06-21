@@ -24,33 +24,26 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { price, validUntil, unitId } = body;
+    const { price, validUntil } = body;
 
-    const resolvedUnitId = unitId || opportunity.unitId;
-
-    if (!resolvedUnitId) {
+    if (!opportunity.unitId) {
       return NextResponse.json({ error: "الوحدة العقارية مطلوبة لإنشاء العرض." }, { status: 400 });
     }
 
     const offerPrice = price ? Number(price) : Number(opportunity.value);
-    
-    // AI Offer Price Optimization Simulation
-    const optimizedPrice = offerPrice * 0.95;
-    const finalPrice = price ? Number(price) : optimizedPrice;
-    
     const validityDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
 
     const offer = await createOffer({
       tenantId,
       userId: userId || "",
       opportunityId: id,
-      unitId: resolvedUnitId,
-      price: finalPrice,
+      unitId: opportunity.unitId,
+      price: offerPrice,
       validUntil: validityDate,
       documentUrl: `https://orca.az-ez.pro/documents/offer_${id}.pdf`,
     });
 
-    return NextResponse.json({ success: true, data: offer, aiOptimizedPrice: optimizedPrice }, { status: 201 });
+    return NextResponse.json({ success: true, data: offer }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

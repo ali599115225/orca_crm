@@ -899,6 +899,8 @@ model Tour {
   createdBy     String?    @map("created_by") @db.Uuid
   updatedBy     String?    @map("updated_by") @db.Uuid
   auditLog      String?    @map("audit_log") @db.Text
+  offerId       String?    @map("offer_id") @db.Uuid
+  offer         Offer?     @relation(fields: [offerId], references: [id])
 
   @@map("tours")
 }
@@ -921,6 +923,7 @@ model Offer {
   updatedBy           String?     @map("updated_by") @db.Uuid
   auditLog            String?     @map("audit_log") @db.Text
   contract            Contract?
+  tours               Tour[]
 
   @@map("offers")
 }

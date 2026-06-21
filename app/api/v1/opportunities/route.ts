@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { leadId, value, probability, closeDate, unitId } = body;
 
-    if (!leadId || !value) {
-      return NextResponse.json({ error: "معرف العميل وقيمة الصفقة مطلوبان." }, { status: 400 });
+    if (!leadId || !value || !unitId) {
+      return NextResponse.json({ error: "معرف العميل وقيمة الصفقة والوحدة مطلوبون." }, { status: 400 });
     }
 
-    if (unitId && !UUID_REGEX.test(unitId)) {
+    if (!UUID_REGEX.test(unitId)) {
       return NextResponse.json({ error: "معرف الوحدة يجب أن يكون UUID صالحًا." }, { status: 400 });
     }
 
@@ -49,13 +49,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
     }
 
-    if (unitId) {
-      const unit = await prisma.unit.findFirst({
-        where: { id: unitId, project: { tenantId } },
-      });
-      if (!unit) {
-        return NextResponse.json({ error: "الوحدة غير موجودة أو لا تتبع منشأتك." }, { status: 403 });
-      }
+    const unit = await prisma.unit.findFirst({
+      where: { id: unitId, project: { tenantId } },
+    });
+    if (!unit) {
+      return NextResponse.json({ error: "الوحدة غير موجودة أو لا تتبع منشأتك." }, { status: 403 });
     }
 
     const opp = await prisma.opportunity.create({
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest) {
         probability: Number(probability || 50),
         closeDate: closeDate ? new Date(closeDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         status: "OPEN",
-        unitId: unitId || null,
+        unitId,
         createdBy: userId || null,
         updatedBy: userId || null,
       },

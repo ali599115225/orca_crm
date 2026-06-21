@@ -192,6 +192,12 @@ describe('Domain Service Unification', () => {
         lead: { update: vi.fn() },
         unit: { update: vi.fn() },
         opportunity: { update: vi.fn() },
+        tenant: {
+          findUnique: vi.fn().mockResolvedValue({ id: 'tenant-1', nextInvoiceNumber: 1, invoicePrefix: 'INV' }),
+          update: vi.fn(),
+        },
+        invoice: { create: vi.fn().mockResolvedValue({ id: 'invoice-1', type: 'SALE', contractId: 'contract-1' }) },
+        installment: { create: vi.fn().mockResolvedValue({ id: 'installment-1', invoiceId: 'invoice-1', contractId: 'contract-1' }) },
         auditLog: { create: vi.fn() },
         telemetryEvent: { create: vi.fn() },
       };

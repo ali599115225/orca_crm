@@ -37,6 +37,28 @@ type UnitOption = {
   projectName: string;
 };
 
+type Offer = {
+  id: string;
+  linkedOpportunityId: string;
+  unitId: string | null;
+  price: number;
+  validUntil: string;
+  status: string;
+  createdAt?: string | null;
+};
+
+type Tour = {
+  id: string;
+  leadId: string;
+  opportunityId: string | null;
+  unitId: string | null;
+  startAt: string;
+  endAt: string | null;
+  location: string;
+  status: string;
+  auditLog?: string | null;
+};
+
 type OpportunityForm = {
   value: string;
   probability: string;
@@ -47,6 +69,21 @@ type OpportunityForm = {
 
 type OpportunityFormErrors = Partial<Record<keyof OpportunityForm, string>> & {
   form?: string;
+};
+
+type OfferForm = {
+  opportunityId: string;
+  price: string;
+  validUntil: string;
+  validUntilText: string;
+};
+
+type TourForm = {
+  offerId: string;
+  startDate: string;
+  startDateText: string;
+  startTime: string;
+  location: string;
 };
 
 type DetailTab =
@@ -128,6 +165,33 @@ type Copy = {
   invalidDate: string;
   unitRequired: string;
   opportunityCreateFailed: string;
+  offerListTitle: string;
+  createOffer: string;
+  offerOpportunity: string;
+  offerPrice: string;
+  offerValidUntil: string;
+  offerUnitReadonly: string;
+  offerNoOpportunity: string;
+  offerOpportunityRequired: string;
+  offerCreateFailed: string;
+  saveOffer: string;
+  savingOffer: string;
+  acceptOffer: string;
+  acceptingOffer: string;
+  offerAccepted: string;
+  legacyOfferBlocked: string;
+  tourListTitle: string;
+  scheduleTour: string;
+  tourOffer: string;
+  tourDate: string;
+  tourTime: string;
+  tourLocation: string;
+  tourCreateFailed: string;
+  saveTour: string;
+  savingTour: string;
+  noOfferTours: string;
+  offersLoading: string;
+  toursLoading: string;
 };
 
 const copy: Record<"ar" | "en", Copy> = {
@@ -201,6 +265,33 @@ const copy: Record<"ar" | "en", Copy> = {
     invalidDate: "أدخل التاريخ بصيغة يوم-شهر-سنة",
     unitRequired: "الوحدة مطلوبة",
     opportunityCreateFailed: "فشل إنشاء الفرصة",
+    offerListTitle: "عروض العميل",
+    createOffer: "إنشاء عرض",
+    offerOpportunity: "الفرصة",
+    offerPrice: "سعر العرض",
+    offerValidUntil: "تاريخ الصلاحية",
+    offerUnitReadonly: "الوحدة من الفرصة",
+    offerNoOpportunity: "لا توجد فرصة بوحدة صالحة لإنشاء عرض",
+    offerOpportunityRequired: "اختر فرصة مرتبطة بوحدة",
+    offerCreateFailed: "فشل إنشاء العرض",
+    saveOffer: "حفظ العرض",
+    savingOffer: "جاري حفظ العرض...",
+    acceptOffer: "قبول العرض",
+    acceptingOffer: "جاري القبول...",
+    offerAccepted: "تم قبول العرض",
+    legacyOfferBlocked: "هذا العرض بلا وحدة، وتم حجبه بأمان",
+    tourListTitle: "جولات العميل",
+    scheduleTour: "حجز جولة",
+    tourOffer: "العرض",
+    tourDate: "تاريخ الجولة",
+    tourTime: "وقت الجولة",
+    tourLocation: "موقع الجولة",
+    tourCreateFailed: "فشل حجز الجولة",
+    saveTour: "حفظ الجولة",
+    savingTour: "جاري الحفظ...",
+    noOfferTours: "لا توجد جولات مرتبطة بعروض هذا العميل",
+    offersLoading: "جاري تحميل العروض...",
+    toursLoading: "جاري تحميل الجولات...",
   },
   en: {
     breadcrumb: "Operations / Leads",
@@ -272,6 +363,33 @@ const copy: Record<"ar" | "en", Copy> = {
     invalidDate: "Enter the date as day-month-year",
     unitRequired: "Unit is required",
     opportunityCreateFailed: "Failed to create opportunity",
+    offerListTitle: "Lead offers",
+    createOffer: "Create offer",
+    offerOpportunity: "Opportunity",
+    offerPrice: "Offer price",
+    offerValidUntil: "Valid until",
+    offerUnitReadonly: "Unit from opportunity",
+    offerNoOpportunity: "No opportunity with a valid unit is available for an offer",
+    offerOpportunityRequired: "Select an opportunity linked to a unit",
+    offerCreateFailed: "Failed to create offer",
+    saveOffer: "Save offer",
+    savingOffer: "Saving offer...",
+    acceptOffer: "Accept offer",
+    acceptingOffer: "Accepting...",
+    offerAccepted: "Offer accepted",
+    legacyOfferBlocked: "This offer has no unit and is safely blocked",
+    tourListTitle: "Lead tours",
+    scheduleTour: "Schedule tour",
+    tourOffer: "Offer",
+    tourDate: "Tour date",
+    tourTime: "Tour time",
+    tourLocation: "Tour location",
+    tourCreateFailed: "Failed to schedule tour",
+    saveTour: "Save tour",
+    savingTour: "Saving...",
+    noOfferTours: "No tours linked to this lead's offers",
+    offersLoading: "Loading offers...",
+    toursLoading: "Loading tours...",
   },
 };
 
@@ -473,12 +591,21 @@ export default function LeadsWorkspace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [leadPage, setLeadPage] = useState(1);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [tours, setTours] = useState<Tour[]>([]);
   const [units, setUnits] = useState<UnitOption[]>([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [toursLoading, setToursLoading] = useState(false);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [unitsError, setUnitsError] = useState<string | null>(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showTourModal, setShowTourModal] = useState(false);
   const [opportunitySaving, setOpportunitySaving] = useState(false);
+  const [offerSaving, setOfferSaving] = useState(false);
+  const [tourSaving, setTourSaving] = useState(false);
+  const [acceptingOfferId, setAcceptingOfferId] = useState<string | null>(null);
   const [unitSelectOpen, setUnitSelectOpen] = useState(false);
   const [opportunityForm, setOpportunityForm] = useState<OpportunityForm>({
     value: "",
@@ -488,6 +615,21 @@ export default function LeadsWorkspace() {
     unitId: "",
   });
   const [opportunityErrors, setOpportunityErrors] = useState<OpportunityFormErrors>({});
+  const [offerForm, setOfferForm] = useState<OfferForm>({
+    opportunityId: "",
+    price: "",
+    validUntil: "",
+    validUntilText: "",
+  });
+  const [offerErrors, setOfferErrors] = useState<Partial<Record<keyof OfferForm, string>> & { form?: string }>({});
+  const [tourForm, setTourForm] = useState<TourForm>({
+    offerId: "",
+    startDate: "",
+    startDateText: "",
+    startTime: "10:00",
+    location: "",
+  });
+  const [tourErrors, setTourErrors] = useState<Partial<Record<keyof TourForm, string>> & { form?: string }>({});
 
   const leadDisplayName = (lead: LeadItem): string =>
     displayPerson(`${lead.firstName || ''} ${lead.lastName || ''}`, displayLocale, { route: '/operations/leads', entityId: lead.id });
@@ -553,6 +695,44 @@ export default function LeadsWorkspace() {
     }
   };
 
+  const loadOffers = async () => {
+    try {
+      setOffersLoading(true);
+
+      const res = await fetch("/api/v1/offers");
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data)) {
+        setOffers(json.data);
+      } else {
+        setOffers([]);
+      }
+    } catch {
+      setOffers([]);
+    } finally {
+      setOffersLoading(false);
+    }
+  };
+
+  const loadTours = async () => {
+    try {
+      setToursLoading(true);
+
+      const res = await fetch("/api/v1/tours");
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data)) {
+        setTours(json.data);
+      } else {
+        setTours([]);
+      }
+    } catch {
+      setTours([]);
+    } finally {
+      setToursLoading(false);
+    }
+  };
+
   const loadUnits = async () => {
     try {
       setUnitsLoading(true);
@@ -594,15 +774,28 @@ export default function LeadsWorkspace() {
       void loadOpportunities();
       void loadUnits();
     }
+    if (detailTab === "offers" && selectedLead) {
+      void loadOpportunities();
+      void loadOffers();
+      void loadUnits();
+    }
+    if (detailTab === "tours" && selectedLead) {
+      void loadOpportunities();
+      void loadOffers();
+      void loadTours();
+      void loadUnits();
+    }
   }, [detailTab, selectedLead?.id]);
 
   useEffect(() => {
-    if (!showOpportunityModal) return;
+    if (!showOpportunityModal && !showOfferModal && !showTourModal) return;
 
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setShowOpportunityModal(false);
+        setShowOfferModal(false);
+        setShowTourModal(false);
         setUnitSelectOpen(false);
       }
     };
@@ -614,7 +807,7 @@ export default function LeadsWorkspace() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [showOpportunityModal]);
+  }, [showOpportunityModal, showOfferModal, showTourModal]);
 
   const handleSelect = async (lead: LeadItem) => {
     setSelectedLead(lead);
@@ -722,6 +915,172 @@ export default function LeadsWorkspace() {
     }
   };
 
+  const resetOfferForm = () => {
+    setOfferForm({
+      opportunityId: "",
+      price: "",
+      validUntil: "",
+      validUntilText: "",
+    });
+    setOfferErrors({});
+  };
+
+  const resetTourForm = () => {
+    setTourForm({
+      offerId: "",
+      startDate: "",
+      startDateText: "",
+      startTime: "10:00",
+      location: "",
+    });
+    setTourErrors({});
+  };
+
+  const openOfferModal = () => {
+    const firstOpportunity = selectedLeadOpportunities.find((opportunity) => opportunity.unitId);
+    resetOfferForm();
+    if (firstOpportunity) {
+      setOfferForm({
+        opportunityId: firstOpportunity.id,
+        price: String(Number(firstOpportunity.value || 0)),
+        validUntil: "",
+        validUntilText: "",
+      });
+    }
+    setShowOfferModal(true);
+    void Promise.all([loadOpportunities(), loadOffers(), loadUnits()]);
+  };
+
+  const openTourModal = (offer: Offer) => {
+    resetTourForm();
+    const unit = units.find((item) => item.id === offer.unitId);
+    setTourForm({
+      offerId: offer.id,
+      startDate: "",
+      startDateText: "",
+      startTime: "10:00",
+      location: unit
+        ? `${unit.projectName ? `${unit.projectName} - ` : ""}${unit.unitNumber}`
+        : "",
+    });
+    setShowTourModal(true);
+  };
+
+  const closeOfferModal = () => {
+    if (offerSaving) return;
+    setShowOfferModal(false);
+    resetOfferForm();
+  };
+
+  const closeTourModal = () => {
+    if (tourSaving) return;
+    setShowTourModal(false);
+    resetTourForm();
+  };
+
+  const handleCreateOffer = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const selectedOpportunity = selectedLeadOpportunities.find((opportunity) => opportunity.id === offerForm.opportunityId);
+    const errors: Partial<Record<keyof OfferForm, string>> & { form?: string } = {};
+
+    if (!selectedOpportunity?.unitId) errors.opportunityId = labels.offerOpportunityRequired;
+    if (!offerForm.price || Number(offerForm.price) <= 0) errors.price = labels.invalidValue;
+    if (offerForm.validUntilText && (!offerForm.validUntil || offerForm.validUntilText.length !== 10)) {
+      errors.validUntil = labels.invalidDate;
+    }
+
+    setOfferErrors(errors);
+    if (Object.keys(errors).length > 0 || !selectedOpportunity) return;
+
+    try {
+      setOfferSaving(true);
+      const res = await fetch(`/api/v1/opportunities/${selectedOpportunity.id}/offers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price: offerForm.price,
+          validUntil: offerForm.validUntil,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || labels.offerCreateFailed);
+      }
+
+      setShowOfferModal(false);
+      resetOfferForm();
+      await Promise.all([loadOffers(), loadOpportunities(), loadLeads()]);
+    } catch (error: any) {
+      setOfferErrors({ form: error?.message || labels.offerCreateFailed });
+    } finally {
+      setOfferSaving(false);
+    }
+  };
+
+  const handleScheduleTour = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const selectedOffer = offers.find((offer) => offer.id === tourForm.offerId);
+    const errors: Partial<Record<keyof TourForm, string>> & { form?: string } = {};
+
+    if (!selectedOffer?.unitId) errors.offerId = labels.legacyOfferBlocked;
+    if (!tourForm.startDate || tourForm.startDateText.length !== 10) errors.startDate = labels.invalidDate;
+    if (!tourForm.startTime) errors.startTime = labels.tourTime;
+    if (!tourForm.location.trim()) errors.location = labels.tourLocation;
+
+    setTourErrors(errors);
+    if (Object.keys(errors).length > 0 || !selectedOffer) return;
+
+    try {
+      setTourSaving(true);
+      const startAt = `${tourForm.startDate}T${tourForm.startTime}:00`;
+      const res = await fetch("/api/v1/tours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offerId: selectedOffer.id,
+          startAt,
+          location: tourForm.location.trim(),
+          attendees: 1,
+          notes: labels.scheduleTour,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || labels.tourCreateFailed);
+      }
+
+      setShowTourModal(false);
+      resetTourForm();
+      await Promise.all([loadTours(), loadOffers(), loadLeads()]);
+    } catch (error: any) {
+      setTourErrors({ form: error?.message || labels.tourCreateFailed });
+    } finally {
+      setTourSaving(false);
+    }
+  };
+
+  const handleAcceptOffer = async (offer: Offer) => {
+    if (!offer.unitId || acceptingOfferId) return;
+
+    try {
+      setAcceptingOfferId(offer.id);
+      const res = await fetch(`/api/v1/offers/${offer.id}/accept`, { method: "POST" });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || labels.offerCreateFailed);
+      }
+
+      await Promise.all([loadOffers(), loadOpportunities(), loadTours(), loadLeads()]);
+    } finally {
+      setAcceptingOfferId(null);
+    }
+  };
+
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
@@ -748,6 +1107,23 @@ export default function LeadsWorkspace() {
   const selectedLeadOpportunities = selectedLead
     ? opportunities.filter((opportunity) => opportunity.leadId === selectedLead.id)
     : [];
+  const selectedLeadOpportunityIds = new Set(selectedLeadOpportunities.map((opportunity) => opportunity.id));
+  const selectedLeadOffers = offers.filter((offer) => selectedLeadOpportunityIds.has(offer.linkedOpportunityId));
+  const selectedLeadOfferIds = new Set(selectedLeadOffers.map((offer) => offer.id));
+  const selectedLeadTours = tours.filter((tour) => {
+    if (selectedLead && tour.leadId === selectedLead.id) return true;
+    if (tour.opportunityId && selectedLeadOpportunityIds.has(tour.opportunityId)) return true;
+    if (!tour.auditLog) return false;
+    try {
+      const parsed = JSON.parse(tour.auditLog);
+      return parsed?.offerId ? selectedLeadOfferIds.has(parsed.offerId) : false;
+    } catch {
+      return false;
+    }
+  });
+  const offerableOpportunities = selectedLeadOpportunities.filter((opportunity) => opportunity.unitId);
+  const offerFormOpportunity = offerableOpportunities.find((opportunity) => opportunity.id === offerForm.opportunityId);
+  const offerFormUnit = units.find((unit) => unit.id === offerFormOpportunity?.unitId);
   const selectableUnits = units.filter((unit) => unit.status.toLowerCase() !== "sold");
   const selectedUnit = selectableUnits.find((unit) => unit.id === opportunityForm.unitId);
   const hasValidSelectedUnit = selectableUnits.some((unit) => unit.id === opportunityForm.unitId);
@@ -898,8 +1274,120 @@ export default function LeadsWorkspace() {
 
                 {detailTab === "contacts" && <EmptyState message={labels.noContacts} />}
                 {detailTab === "tasks" && <EmptyState message={labels.noTasks} />}
-                {detailTab === "tours" && <EmptyState message={labels.noTours} />}
-                {detailTab === "offers" && <EmptyState message={labels.noOffers} />}
+                {detailTab === "tours" && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
+                      <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.tourListTitle}</h3>
+                      <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
+                    </div>
+                    {toursLoading ? (
+                      <EmptyState message={labels.toursLoading} />
+                    ) : selectedLeadTours.length === 0 ? (
+                      <EmptyState message={labels.noOfferTours} />
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedLeadTours.map((tour) => {
+                          const unit = units.find((item) => item.id === tour.unitId);
+                          return (
+                            <div key={tour.id} className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">{tour.location}</p>
+                                  <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                                    {unit ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}` : labels.opportunityNoUnit}
+                                  </p>
+                                </div>
+                                <div className="text-xs font-semibold text-[var(--nc-text-secondary)]">
+                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {detailTab === "offers" && (
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.offerListTitle}</h3>
+                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={openOfferModal}
+                        disabled={offerableOpportunities.length === 0}
+                        className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {labels.createOffer}
+                      </button>
+                    </div>
+                    {offerableOpportunities.length === 0 && (
+                      <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+                        {labels.offerNoOpportunity}
+                      </div>
+                    )}
+                    {offersLoading ? (
+                      <EmptyState message={labels.offersLoading} />
+                    ) : selectedLeadOffers.length === 0 ? (
+                      <EmptyState message={labels.noOffers} />
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedLeadOffers.map((offer) => {
+                          const opportunity = opportunities.find((item) => item.id === offer.linkedOpportunityId);
+                          const unit = units.find((item) => item.id === offer.unitId);
+                          const legacyBlocked = !offer.unitId;
+
+                          return (
+                            <div key={offer.id} className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                                    {formatCurrency(offer.price, isArabic)}
+                                  </p>
+                                  <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
+                                    {unit
+                                      ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}`
+                                      : labels.legacyOfferBlocked}
+                                  </p>
+                                  {opportunity && (
+                                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                                      {labels.offerOpportunity}: {formatCurrency(opportunity.value, isArabic)}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openTourModal(offer)}
+                                    disabled={legacyBlocked}
+                                    className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {labels.scheduleTour}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleAcceptOffer(offer)}
+                                    disabled={legacyBlocked || offer.status === "ACCEPTED" || acceptingOfferId === offer.id}
+                                    className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {acceptingOfferId === offer.id
+                                      ? labels.acceptingOffer
+                                      : offer.status === "ACCEPTED"
+                                        ? labels.offerAccepted
+                                        : labels.acceptOffer}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {detailTab === "opportunities" && (
                   <div className="space-y-3">
                     <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1100,6 +1588,214 @@ export default function LeadsWorkspace() {
           </div>
         </div>
       </div>
+
+      {showOfferModal && selectedLead && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeOfferModal();
+          }}
+        >
+          <form
+            onSubmit={handleCreateOffer}
+            dir={direction}
+            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.createOffer}</h2>
+                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
+              </div>
+              <button type="button" onClick={closeOfferModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)]">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              {offerErrors.form && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
+                  {offerErrors.form}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerOpportunity}</label>
+                <select
+                  value={offerForm.opportunityId}
+                  onChange={(event) => {
+                    const opportunity = offerableOpportunities.find((item) => item.id === event.target.value);
+                    setOfferForm((form) => ({
+                      ...form,
+                      opportunityId: event.target.value,
+                      price: opportunity ? String(Number(opportunity.value || 0)) : "",
+                    }));
+                    setOfferErrors((errors) => ({ ...errors, opportunityId: undefined, form: undefined }));
+                  }}
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                >
+                  <option value="">{labels.offerOpportunityRequired}</option>
+                  {offerableOpportunities.map((opportunity) => {
+                    const unit = units.find((item) => item.id === opportunity.unitId);
+                    return (
+                      <option key={opportunity.id} value={opportunity.id}>
+                        {formatCurrency(opportunity.value, isArabic)} - {unit ? unit.unitNumber : labels.opportunityNoUnit}
+                      </option>
+                    );
+                  })}
+                </select>
+                <FieldError message={offerErrors.opportunityId} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerPrice}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={offerForm.price}
+                    onChange={(event) => {
+                      setOfferForm((form) => ({ ...form, price: event.target.value }));
+                      setOfferErrors((errors) => ({ ...errors, price: undefined, form: undefined }));
+                    }}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                  />
+                  <FieldError message={offerErrors.price} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.offerValidUntil}</label>
+                  <input
+                    type="text"
+                    value={offerForm.validUntilText}
+                    dir="ltr"
+                    lang="en-CA"
+                    inputMode="numeric"
+                    pattern="\d{2}-\d{2}-\d{4}"
+                    onChange={(event) => {
+                      const validUntilText = normalizeDateFieldText(event.target.value);
+                      const validUntil = parseDateFieldToIso(validUntilText);
+                      setOfferForm((form) => ({ ...form, validUntil, validUntilText }));
+                      setOfferErrors((errors) => ({ ...errors, validUntil: undefined, form: undefined }));
+                    }}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                  />
+                  <FieldError message={offerErrors.validUntil} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
+                <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">{labels.offerUnitReadonly}</p>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                  {offerFormUnit
+                    ? `${offerFormUnit.projectName ? `${offerFormUnit.projectName} · ` : ""}${offerFormUnit.unitNumber}`
+                    : labels.opportunityNoUnit}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-4 sm:flex-row sm:justify-end">
+              <button type="button" onClick={closeOfferModal} className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold">
+                {labels.cancel}
+              </button>
+              <button type="submit" disabled={offerSaving || !offerFormOpportunity?.unitId} className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60">
+                {offerSaving ? labels.savingOffer : labels.saveOffer}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showTourModal && selectedLead && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeTourModal();
+          }}
+        >
+          <form
+            onSubmit={handleScheduleTour}
+            dir={direction}
+            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-[var(--nc-text-primary)]">{labels.scheduleTour}</h2>
+                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">{leadDisplayName(selectedLead)}</p>
+              </div>
+              <button type="button" onClick={closeTourModal} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)]">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              {tourErrors.form && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
+                  {tourErrors.form}
+                </div>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourDate}</label>
+                  <input
+                    type="text"
+                    value={tourForm.startDateText}
+                    dir="ltr"
+                    lang="en-CA"
+                    inputMode="numeric"
+                    pattern="\d{2}-\d{2}-\d{4}"
+                    onChange={(event) => {
+                      const startDateText = normalizeDateFieldText(event.target.value);
+                      const startDate = parseDateFieldToIso(startDateText);
+                      setTourForm((form) => ({ ...form, startDate, startDateText }));
+                      setTourErrors((errors) => ({ ...errors, startDate: undefined, form: undefined }));
+                    }}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                  />
+                  <FieldError message={tourErrors.startDate} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourTime}</label>
+                  <input
+                    type="time"
+                    value={tourForm.startTime}
+                    dir="ltr"
+                    onChange={(event) => {
+                      setTourForm((form) => ({ ...form, startTime: event.target.value }));
+                      setTourErrors((errors) => ({ ...errors, startTime: undefined, form: undefined }));
+                    }}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                  />
+                  <FieldError message={tourErrors.startTime} />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourLocation}</label>
+                <input
+                  value={tourForm.location}
+                  onChange={(event) => {
+                    setTourForm((form) => ({ ...form, location: event.target.value }));
+                    setTourErrors((errors) => ({ ...errors, location: undefined, form: undefined }));
+                  }}
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
+                />
+                <FieldError message={tourErrors.location} />
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-4 sm:flex-row sm:justify-end">
+              <button type="button" onClick={closeTourModal} className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold">
+                {labels.cancel}
+              </button>
+              <button type="submit" disabled={tourSaving} className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60">
+                {tourSaving ? labels.savingTour : labels.saveTour}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showOpportunityModal && selectedLead && (
         <div
