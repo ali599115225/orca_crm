@@ -9,6 +9,7 @@ import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
 import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
 import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
 import { formatOpportunityStatus } from "@/lib/ui-status";
+import { DateField } from '@/components/ui/date-time/DateField';
 
 type Opportunity = { id: string; leadId: string; value: number; probability: number; closeDate: string; status: string; unitId: string | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
@@ -206,11 +207,10 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
                   {/* Close Date */}
                   <div className="flex flex-col gap-1">
                     <label className="text-[var(--nc-text-dim)] font-medium">{t("opps.expectedClose")}</label>
-                    <input
-                      type="date"
+                    <DateField
                       value={closeDate}
-                      onChange={(e) => setCloseDate(e.target.value)}
-                      className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en"
+                      onChange={setCloseDate}
+                      className="w-full"
                     />
                   </div>
 
@@ -262,7 +262,7 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
               <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.propertyValue")}</label><input type="number" placeholder={t("opps.propertyPlaceholder")} value={value} onChange={(e) => setValue(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required /></div>
               <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.probability")}</label><input type="range" min="10" max="100" value={probability} onChange={(e) => setProbability(e.target.value)} className="w-full accent-[var(--nc-accent)]" /><span className="text-left font-bold text-[var(--nc-foreground)]">{probability}%</span></div>
               <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.unitIds")}</label><select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"><option value="">{t("opps.unitIdsPlaceholder")}</option>{units.filter(u => u.status !== "Sold").map((u) => (<option key={u.id} value={u.id}>{u.project?.name || ""} — {u.unitNumber} ({u.priceSar.toLocaleString()} {lang === "EN" ? "SAR" : "ر.س"})</option>))}</select></div>
-              <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.expectedClose")}</label><input type="date" value={closeDate} onChange={(e) => setCloseDate(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en" /></div>
+              <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("opps.expectedClose")}</label><DateField value={closeDate} onChange={setCloseDate} /></div>
               <div className="pt-2 flex gap-2"><button type="submit" disabled={btnLoading} className="flex-1 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center">{t("opps.save")}</button><button type="button" onClick={optimizeOfferPrice} className="bg-indigo-650 hover:bg-indigo-700 text-white rounded font-bold px-3 py-2 transition-all">{t("opps.aiOptimize")}</button></div>
             </form>
           </div>

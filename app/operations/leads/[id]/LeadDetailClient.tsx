@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { sendEmailAction } from "@/app/actions/email";
 import { toast } from "@/app/context/ToastContext";
 import Opportunities from "@/components/views/tabs/Opportunities";
+import { formatDisplayDate, formatDisplayDateTime } from '@/lib/display/dateTime';
 
 const STATUS_NAMES: Record<string, string> = {
   NEW: "جديد", CONTACTED: "تم التواصل", QUALIFIED: "مؤهل",
@@ -220,7 +221,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                 </div>
                 <div>
                   <span className="text-gray-500">تاريخ الإنشاء:</span>{" "}
-                  <span className="font-medium">{new Date(lead.createdAt).toLocaleDateString("ar-SA")}</span>
+                  <span className="font-medium">{formatDisplayDate(lead.createdAt)}</span>
                 </div>
               </div>
             </div>
@@ -280,7 +281,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                     {lead.emailMessages.map((msg) => (
                       <tr key={msg.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-gray-600">
-                          {new Date(msg.sentAt || msg.createdAt).toLocaleString("ar-SA", { hour12: false })}
+                          {formatDisplayDateTime(msg.sentAt || msg.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={msg.direction === "outbound" ? "text-blue-600" : "text-green-600"}>
@@ -333,7 +334,7 @@ export default function LeadDetailClient({ lead }: { lead: Lead }) {
                         <p className="text-sm text-gray-900 mt-2">{activity.description}</p>
                       </div>
                       <span className="text-xs text-gray-500">
-                        {new Date(activity.createdAt).toLocaleString("ar-SA", { hour12: false })}
+                        {formatDisplayDateTime(activity.createdAt)}
                       </span>
                     </div>
                   </div>

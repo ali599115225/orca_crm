@@ -12,6 +12,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import type { PipelineStage, TodayTask } from '@/app/actions/dashboard';
 import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
+import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
 
 interface DashboardViewProps {
   tenant?: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number; };
@@ -128,7 +129,7 @@ export default function DashboardView({
           <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
              <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-0.5 whitespace-nowrap">{t('dash.todayDate')}</p>
               <p className="text-[var(--nc-accent-text)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
-                {new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'ar-EG', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {formatDisplayDate(new Date())}
              </p>
           </div>
         </PageHeader>
@@ -298,7 +299,7 @@ export default function DashboardView({
                       {task.assignedName && <span className="flex items-center gap-1"><i className="ph-bold ph-handshake text-[10px]"></i>{task.assignedName}</span>}
                     </div>
                     <p className="text-[11px] text-[var(--nc-text-dim)] mt-1">
-                      {new Date(task.dueDate).toLocaleTimeString(lang === "AR" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                      {formatDisplayTime(task.dueDate)}
                     </p>
                   </FlatRowBlock>
                 );

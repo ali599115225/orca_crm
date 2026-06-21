@@ -4,3 +4,5 @@ export { displayEntity } from './displayEntity';
 export { displayEnum } from './displayEnum';
 export { reportMissingAlias } from './missingAliasReporter';
 export type { DisplayLocale, EntityType, GeoType, EnumType, DisplayOptions } from './types';
+
+export * from './dateTime';

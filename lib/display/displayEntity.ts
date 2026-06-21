@@ -7,28 +7,28 @@ const STRESS_DEMO_RE = /\b(Stress|Demo|Mock|Seed|Test|Fake|Sample)\b/gi;
 
 const FALLBACKS: Record<DisplayLocale, Record<string, string>> = {
   ar: {
-    project: 'مشروع غير محدد',
-    property: 'عقار غير محدد',
-    community: 'مجمع غير محدد',
-    unit: 'وحدة غير محددة',
-    company: 'شركة غير محددة',
-    campaign: 'حملة غير محددة',
-    offer: 'عرض غير محدد',
-    contract: 'عقد غير محدد',
-    task: 'مهمة غير محددة',
+    project: 'غير محدد',
+    property: 'غير محدد',
+    community: 'غير محدد',
+    unit: 'غير محدد',
+    company: 'غير محدد',
+    campaign: 'غير محدد',
+    offer: 'غير محدد',
+    contract: 'غير محدد',
+    task: 'غير محدد',
     unknown: 'غير محدد',
   },
   en: {
-    project: 'Unnamed Project',
-    property: 'Unnamed Property',
-    community: 'Unnamed Community',
-    unit: 'Unnamed Unit',
-    company: 'Unknown Company',
-    campaign: 'Unnamed Campaign',
-    offer: 'Unnamed Offer',
-    contract: 'Unnamed Contract',
-    task: 'Unnamed Task',
-    unknown: 'Unspecified',
+    project: 'Not specified',
+    property: 'Not specified',
+    community: 'Not specified',
+    unit: 'Not specified',
+    company: 'Not specified',
+    campaign: 'Not specified',
+    offer: 'Not specified',
+    contract: 'Not specified',
+    task: 'Not specified',
+    unknown: 'Not specified',
   },
 };
 
@@ -45,6 +45,10 @@ export function displayEntity(
   const original = (value || '').trim().replace(/\s+/g, ' ');
   const cleaned = original.replace(STRESS_DEMO_RE, '').replace(/\s{2,}/g, ' ').trim();
   const displayValue = cleaned || original;
+
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(displayValue)) {
+    return FALLBACKS[locale][entityType] || FALLBACKS[locale].unknown;
+  }
   if (!displayValue) return FALLBACKS[locale][entityType] || FALLBACKS[locale].unknown;
 
   if (locale === 'en') {
@@ -55,6 +59,8 @@ export function displayEntity(
     if (entityType === 'unit') {
       const unitAlias = UNIT_TYPE_ALIASES[original] || UNIT_TYPE_ALIASES[cleaned];
       if (unitAlias) return unitAlias;
+      const unitMatch = original.match(/U-\d+/);
+      if (unitMatch) return `Unit ${unitMatch[0]}`;
     }
     if (entityType === 'company') {
       const enAlias = COMPANY_ALIASES[original] || COMPANY_ALIASES[cleaned];

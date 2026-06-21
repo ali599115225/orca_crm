@@ -21,6 +21,7 @@ import { DateCell } from '@/components/ui/orca-table/cells/DateCell';
 import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
 import { formatLeaseStatus, formatInvoiceStatus } from '@/lib/ui-status';
 import { formatCurrency, formatShortId } from '@/lib/ui-formatters';
+import { formatDisplayDate, formatDisplayDateTime } from '@/lib/display/dateTime';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -246,7 +247,7 @@ function formatDateValue(value: string, locale: RentalLocale): string {
   if (!value) return emptyValue(locale);
   const date = new Date(value);
   if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return formatDisplayDate(date);
   }
   return safeDisplayValue(value, locale);
 }
@@ -756,7 +757,7 @@ export default function RentalPage() {
   const formatEventTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return safeDisplayValue(timestamp, displayLocale);
-    return date.toLocaleString(displayLocale === 'ar' ? 'ar-SA' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+    return formatDisplayDateTime(date);
   };
 
   const getEventLabel = (type: string) => {

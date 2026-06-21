@@ -7,6 +7,7 @@ import { StatusCell } from "@/components/ui/orca-table/cells/StatusCell";
 import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
 import { useApp } from "@/app/context/AppContext";
 import { formatTaskStatus } from "@/lib/ui-status";
+import { DateField } from '@/components/ui/date-time/DateField';
 
 type Task = { id: string; leadId: string; assignedTo: string; title: string; description: string | null; dueDate: string; priority: string; status: string; lead?: { firstName: string; lastName: string | null } | null; };
 type Lead = { id: string; firstName: string; lastName: string | null; };
@@ -37,7 +38,7 @@ export default function Tasks() {
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.selectLead")}</label><select value={leadId} onChange={(e) => setLeadId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("tasksTab.selectLeadPlaceholder")}</option>{leads.map((l) => (<option key={l.id} value={l.id}>{l.firstName} {l.lastName || ""}</option>))}</select></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.taskTitle")}</label><input placeholder={t("tasksTab.taskTitlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required /></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.description")}</label><textarea placeholder={t("tasksTab.descriptionPlaceholder")} value={description} onChange={(e) => setDescription(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded p-2 text-[var(--nc-foreground)] h-16 resize-none" /></div>
-            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.dueDate")}</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en" /></div>
+            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.dueDate")}</label><DateField value={dueDate} onChange={setDueDate} /></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("tasksTab.priority")}</label><select value={priority} onChange={(e) => setPriority(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]"><option value="LOW">{t("tasksTab.priorityLow")}</option><option value="MEDIUM">{t("tasksTab.priorityMedium")}</option><option value="HIGH">{t("tasksTab.priorityHigh")}</option></select></div>
             <button type="submit" disabled={btnLoading} className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center">{t("tasksTab.save")}</button>
           </form>

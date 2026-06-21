@@ -8,6 +8,7 @@ import { useApp } from '@/app/context/AppContext';
 import { useAuth } from '@/app/context/AuthContext';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { toast } from '@/app/context/ToastContext';
+import { formatDisplayDate } from '@/lib/display/dateTime';
 
 interface User {
   id: string;
@@ -435,7 +436,7 @@ export default function SettingsStaff({ tenant, users, lang, isArabic }: Setting
                       <td className="p-3 font-en">
                         {u.email}
                         <span className="text-[9px] text-[var(--nc-foreground-muted)] block mt-0.5">
-                          {toArabicNumerals(new Date(u.createdAt).toLocaleDateString())}
+                          {formatDisplayDate(u.createdAt)}
                         </span>
                       </td>
                       <td className="p-3 text-center">

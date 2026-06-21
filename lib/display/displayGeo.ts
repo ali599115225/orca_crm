@@ -10,8 +10,8 @@ const DICT_MAP: Record<GeoType, Record<string, string>> = {
 };
 
 const FALLBACKS: Record<DisplayLocale, Record<GeoType, string>> = {
-  ar: { city: 'مدينة غير محددة', district: 'حي غير محدد', country: 'دولة غير محددة', region: 'منطقة غير محددة' },
-  en: { city: 'Unknown City', district: 'Unknown District', country: 'Unknown Country', region: 'Unknown Region' },
+  ar: { city: 'غير محدد', district: 'غير محدد', country: 'غير محدد', region: 'غير محدد' },
+  en: { city: 'Not specified', district: 'Not specified', country: 'Not specified', region: 'Not specified' },
 };
 
 export function displayGeo(

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SmartCard } from '@/components/ui/SmartCard';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { Campaign } from '@/components/views/CampaignsView';
+import { formatDisplayDateTime } from '@/lib/display/dateTime';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 type IntegrationStatus = 'connected' | 'pending' | 'disconnected';
@@ -412,7 +413,7 @@ export default function PlatformConnectors({
   /* ── Format date ───────────────────────────────────────────── */
   const fmtDate = (d: string | null) => {
     if (!d) return t.never;
-    return new Date(d).toLocaleString(isArabic ? 'ar-EG' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return formatDisplayDateTime(d);
   };
 
   return (
@@ -799,7 +800,7 @@ export default function PlatformConnectors({
                 <span className="text-xs font-bold text-[var(--nc-foreground-muted)]">{t.lastSync}</span>
                 <span className="text-xs font-semibold text-[var(--nc-foreground)]">
                   {refreshed.has(modalPlatform.id)
-                    ? new Date().toLocaleString(isArabic ? 'ar-EG' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                    ? formatDisplayDateTime(new Date())
                     : fmtDate(modalPlatform.lastSync)
                   }
                 </span>

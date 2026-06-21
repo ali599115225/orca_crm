@@ -18,6 +18,7 @@ import { DateField } from '../ui/DateField';
 import { getPropertiesAction, bookUnitActionDirect, completeHandoverActionDirect } from '@/app/actions/properties';
 import { displayEntity, displayEnum, displayGeo } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
+import { formatDisplayDate } from '@/lib/display/dateTime';
 
 interface PropertyDetailProps {
   propertyId: string;
@@ -226,11 +227,7 @@ function formatDateValue(value: unknown, locale: DisplayLocale): string {
   if (!raw || isTechnicalId(raw) || isDemoOrMockValue(raw)) return emptyValue(locale);
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return safeDisplayText(raw, locale);
-  return date.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatDisplayDate(date);
 }
 
 function initialChecklist(isArabic: boolean): string {

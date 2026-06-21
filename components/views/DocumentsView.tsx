@@ -7,6 +7,7 @@ import { toast } from '@/app/context/ToastContext';
 import { getDocumentsAction, createDocumentActionDirect, deleteDocumentActionDirect } from '@/app/actions/documents';
 import { SmartCard } from '@/components/ui/SmartCard';
 import PageHeader from '@/components/ui/PageHeader';
+import { formatDisplayDate } from '@/lib/display/dateTime';
 
 interface DocumentItem {
   id: string;
@@ -326,7 +327,7 @@ export default function DocumentsView() {
                       {doc.name}
                     </h4>
                     <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">
-                      {getDocTypeLabel(doc.type)} • {formatSize(doc.size)} • {new Date(doc.createdAt).toLocaleDateString(isArabic ? 'ar-EG' : 'en-US')}
+                      {getDocTypeLabel(doc.type)} • {formatSize(doc.size)} • {formatDisplayDate(doc.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -505,7 +506,7 @@ export default function DocumentsView() {
                       </div>
                       <div>
                         <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'تاريخ التخزين:' : 'Storage Date:'}</span>
-                        <span className="block font-mono font-bold text-[var(--nc-foreground)]">{new Date(previewDoc.createdAt).toLocaleDateString()}</span>
+                        <span className="block font-mono font-bold text-[var(--nc-foreground)]">{formatDisplayDate(previewDoc.createdAt)}</span>
                       </div>
                     </div>
                     <div>

@@ -67,8 +67,8 @@ const ENUM_MAPS: Record<EnumType, Record<string, { ar: string; en: string }>> = 
 };
 
 const FALLBACKS: Record<DisplayLocale, string> = {
-  ar: 'حالة غير محددة',
-  en: 'Unknown Status',
+  ar: 'غير محدد',
+  en: 'Not specified',
 };
 
 export function displayEnum(

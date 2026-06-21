@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import LayoutContainer from '@/components/ui/LayoutContainer';
+import { formatDisplayTime } from '@/lib/display/dateTime';
 
 interface HealthData {
   status: string;
@@ -74,7 +75,7 @@ export default function HealthPage() {
               {history.slice().reverse().map((h, i) => (
                 <div key={i} className="flex justify-between text-xs text-gray-400 bg-[#0f172a] px-3 py-1.5 rounded">
                   <span className={statusColor(h.status)}>{h.status}</span>
-                  <span>{new Date(h.timestamp).toLocaleTimeString('ar-SA')}</span>
+                  <span>{formatDisplayTime(h.timestamp)}</span>
                   <span>{h.responseTime}</span>
                 </div>
               ))}

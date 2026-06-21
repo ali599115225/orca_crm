@@ -6,6 +6,8 @@ import { useApp } from "@/app/context/AppContext";
 import type { LeadItem } from "./pipeline/KanbanCard";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
+import { TimeField } from "@/components/ui/date-time/TimeField";
+import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
 
 const PAGE_SIZE = 5;
 
@@ -82,9 +84,7 @@ type TourForm = {
   offerId: string;
   startDate: string;
   startDateText: string;
-  hour: string;
-  minute: string;
-  period: "AM" | "PM";
+  time: string;
   location: string;
 };
 
@@ -439,15 +439,7 @@ function formatCurrency(value: unknown, isArabic: boolean): string {
 function formatDate(value: string | null | undefined, isArabic: boolean, fallback: string): string {
   if (!value) return fallback;
 
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? fallback
-    : date.toLocaleDateString(isArabic ? "ar-SA" : "en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+  return formatDisplayDate(value) || fallback;
 }
 
 function normalizeDateFieldText(value: string): string {
@@ -619,9 +611,7 @@ export default function LeadsWorkspace() {
     offerId: "",
     startDate: "",
     startDateText: "",
-    hour: "10",
-    minute: "00",
-    period: "AM",
+    time: "10:00",
     location: "",
   });
   const [tourErrors, setTourErrors] = useState<Partial<Record<keyof TourForm, string>> & { form?: string }>({});
@@ -925,9 +915,7 @@ export default function LeadsWorkspace() {
       offerId: "",
       startDate: "",
       startDateText: "",
-      hour: "10",
-      minute: "00",
-      period: "AM",
+      time: "10:00",
       location: "",
     });
     setTourErrors({});
@@ -955,9 +943,7 @@ export default function LeadsWorkspace() {
       offerId: offer.id,
       startDate: "",
       startDateText: "",
-      hour: "10",
-      minute: "00",
-      period: "AM",
+      time: "10:00",
       location: unit
         ? `${unit.projectName ? `${unit.projectName} - ` : ""}${unit.unitNumber}`
         : "",
@@ -1034,11 +1020,7 @@ export default function LeadsWorkspace() {
     try {
       setTourSaving(true);
       
-      let hourNumber = parseInt(tourForm.hour, 10);
-      if (tourForm.period === "PM" && hourNumber < 12) hourNumber += 12;
-      if (tourForm.period === "AM" && hourNumber === 12) hourNumber = 0;
-      const formattedHour = hourNumber.toString().padStart(2, '0');
-      const startAt = `${tourForm.startDate}T${formattedHour}:${tourForm.minute}:00`;
+      const startAt = `${tourForm.startDate}T${tourForm.time || "10:00"}:00`;
       
       const res = await fetch("/api/v1/tours", {
         method: "POST",
@@ -1252,10 +1234,7 @@ export default function LeadsWorkspace() {
                       {
                         title: labels.lastActivity,
                         body: (detailData as any)?.updatedAt
-                          ? new Date((detailData as any).updatedAt).toLocaleDateString(
-                              isArabic ? "ar-SA" : "en-US",
-                              { year: "numeric", month: "long", day: "numeric" },
-                            )
+                          ? formatDisplayDate((detailData as any).updatedAt)
                           : labels.notSpecified,
                       },
                       {
@@ -1302,7 +1281,7 @@ export default function LeadsWorkspace() {
                                   </p>
                                 </div>
                                 <div className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)} · {new Date(tour.startAt).toLocaleTimeString(isArabic ? 'ar-SA' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)} · {formatDisplayTime(tour.startAt)}
                                 </div>
                               </div>
                             </div>
@@ -1761,35 +1740,7 @@ export default function LeadsWorkspace() {
                 </div>
                 <div dir="ltr">
                   <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)] text-right">{labels.tourTime}</label>
-                  <div className="flex min-h-[44px] items-center gap-2">
-                    <select
-                      value={tourForm.hour}
-                      onChange={(e) => setTourForm((f) => ({ ...f, hour: e.target.value }))}
-                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                        <option key={h} value={h.toString().padStart(2, '0')}>{h.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
-                    <span className="font-bold">:</span>
-                    <select
-                      value={tourForm.minute}
-                      onChange={(e) => setTourForm((f) => ({ ...f, minute: e.target.value }))}
-                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
-                    >
-                      {Array.from({ length: 60 }, (_, i) => i).map((m) => (
-                        <option key={m} value={m.toString().padStart(2, '0')}>{m.toString().padStart(2, '0')}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={tourForm.period}
-                      onChange={(e) => setTourForm((f) => ({ ...f, period: e.target.value as "AM" | "PM" }))}
-                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <TimeField value={tourForm.time} onChange={(v) => setTourForm(f => ({ ...f, time: v }))} className="w-full" />
                 </div>
               </div>
               <div>

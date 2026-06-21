@@ -11,6 +11,7 @@ import { DateField } from '@/components/ui/DateField';
 import { useApp } from '@/app/context/AppContext';
 import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
+import { formatDisplayDate } from '@/lib/display/dateTime';
 
 type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'available' | 'reserved' | 'sold' | 'unknown';
 type OfferType = 'property' | 'apartment' | 'villa' | 'land' | 'unknown';
@@ -254,7 +255,7 @@ function formatDate(value: string | null, locale: DisplayLocale): string {
   if (!value) return emptyValue(locale);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return emptyValue(locale);
-  return date.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDisplayDate(date);
 }
 
 function getOfferTitle(item: any): string {

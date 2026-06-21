@@ -11,6 +11,7 @@ import { useApp } from "@/app/context/AppContext";
 import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
 import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
 import { toArabicNumerals } from "@/lib/formatters";
+import { formatDisplayDateTime } from '@/lib/display/dateTime';
 
 interface Message {
   id?: string;
@@ -315,7 +316,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     if (!value) return t.now;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t.now;
-    return date.toLocaleString(locale, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return formatDisplayDateTime(date);
   };
 
   const sortedChats = useMemo(() => {

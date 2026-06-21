@@ -9,6 +9,7 @@ import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
 import { RelationCell } from "@/components/ui/orca-table/cells/RelationCell";
 import { formatOfferStatus } from '@/lib/ui-status';
 import { useApp } from '@/app/context/AppContext';
+import { DateField } from '@/components/ui/date-time/DateField';
 
 type Offer = { id: string; linkedOpportunityId: string; unitId: string | null; price: number; validUntil: string; status: string; documentUrl: string | null; };
 type Opportunity = { id: string; leadId: string; value: number; unitId: string | null; };
@@ -42,7 +43,7 @@ export default function Offers() {
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.selectOpp")}</label><select value={oppId} onChange={(e) => { setOppId(e.target.value); const opp = opportunities.find(o => o.id === e.target.value); if (opp?.unitId) setUnitId(opp.unitId); }} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("offers.selectOppPlaceholder")}</option>{opportunities.map((opp) => (<option key={opp.id} value={opp.id}>{t("offers.dealValue")} {Number(opp.value).toLocaleString()} ر.س ({getOpportunityLeadName(opp.id)})</option>))}</select></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.unit")}</label><select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required><option value="">{t("offers.selectUnit")}</option>{units.filter(u => u.status !== "Sold").map((u) => (<option key={u.id} value={u.id}>{u.project?.name || ""} — {u.unitNumber}</option>))}</select></div>
             <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.price")}</label><input type="number" placeholder={t("offers.pricePlaceholder")} value={price} onChange={(e) => setPrice(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)]" required /></div>
-            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.validUntil")}</label><input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="bg-[var(--nc-surface-solid)] border border-slate-700 rounded px-2.5 py-2 text-[var(--nc-foreground)] font-en" required /></div>
+            <div className="flex flex-col gap-1"><label className="text-[var(--nc-text-dim)] font-medium">{t("offers.validUntil")}</label><DateField value={validUntil} onChange={setValidUntil} required /></div>
             <button type="submit" disabled={btnLoading} className="w-full bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold px-3 py-2 transition-all text-center">{btnLoading ? t("offers.saving") : t("offers.save")}</button>
           </form>
         </SmartCard>
