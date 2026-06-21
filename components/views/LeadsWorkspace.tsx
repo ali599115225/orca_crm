@@ -1,12 +1,11 @@
 // components/views/LeadsWorkspace.tsx — ORCA Leads visual contract
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
 import type { LeadItem } from "./pipeline/KanbanCard";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
-import Opportunities from "./tabs/Opportunities";
 
 const PAGE_SIZE = 5;
 
@@ -19,6 +18,35 @@ const STAGES = [
   { id: "Negotiation", titleAr: "تفاوض", titleEn: "Negotiation" },
   { id: "Closed", titleAr: "مغلق", titleEn: "Closed" },
 ];
+
+type Opportunity = {
+  id: string;
+  leadId: string;
+  value: number;
+  probability: number;
+  closeDate: string;
+  status: string;
+  unitId: string | null;
+};
+
+type UnitOption = {
+  id: string;
+  unitNumber: string;
+  priceSar: number;
+  status: string;
+  projectName: string;
+};
+
+type OpportunityForm = {
+  value: string;
+  probability: string;
+  closeDate: string;
+  unitId: string;
+};
+
+type OpportunityFormErrors = Partial<Record<keyof OpportunityForm, string>> & {
+  form?: string;
+};
 
 type DetailTab =
   | "summary"
@@ -76,6 +104,25 @@ type Copy = {
   noOffers: string;
   noOpportunities: string;
   leadsUnit: string;
+  createOpportunity: string;
+  opportunityListTitle: string;
+  opportunityLead: string;
+  opportunityValue: string;
+  opportunityProbability: string;
+  opportunityCloseDate: string;
+  opportunityStatus: string;
+  opportunityUnit: string;
+  opportunityUnitPlaceholder: string;
+  opportunityNoUnit: string;
+  opportunitiesLoading: string;
+  saveOpportunity: string;
+  savingOpportunity: string;
+  cancel: string;
+  valueRequired: string;
+  invalidValue: string;
+  invalidProbability: string;
+  unitRequired: string;
+  opportunityCreateFailed: string;
 };
 
 const copy: Record<"ar" | "en", Copy> = {
@@ -126,6 +173,25 @@ const copy: Record<"ar" | "en", Copy> = {
     noOffers: "لا توجد عروض مرتبطة بهذا العميل",
     noOpportunities: "لا توجد فرص مرتبطة بهذا العميل",
     leadsUnit: "عميل",
+    createOpportunity: "إنشاء فرصة",
+    opportunityListTitle: "فرص العميل",
+    opportunityLead: "العميل",
+    opportunityValue: "قيمة الصفقة",
+    opportunityProbability: "الاحتمالية",
+    opportunityCloseDate: "تاريخ الإغلاق المتوقع",
+    opportunityStatus: "الحالة",
+    opportunityUnit: "الوحدة",
+    opportunityUnitPlaceholder: "اختر الوحدة",
+    opportunityNoUnit: "بدون وحدة",
+    opportunitiesLoading: "جاري تحميل الفرص...",
+    saveOpportunity: "حفظ الفرصة",
+    savingOpportunity: "جاري الحفظ...",
+    cancel: "إلغاء",
+    valueRequired: "قيمة الصفقة مطلوبة",
+    invalidValue: "أدخل قيمة صفقة صحيحة",
+    invalidProbability: "أدخل احتمالية بين 1 و100",
+    unitRequired: "الوحدة مطلوبة",
+    opportunityCreateFailed: "فشل إنشاء الفرصة",
   },
   en: {
     breadcrumb: "Operations / Leads",
@@ -174,6 +240,25 @@ const copy: Record<"ar" | "en", Copy> = {
     noOffers: "No offers linked to this lead",
     noOpportunities: "No opportunities linked to this lead",
     leadsUnit: "leads",
+    createOpportunity: "Create opportunity",
+    opportunityListTitle: "Lead opportunities",
+    opportunityLead: "Lead",
+    opportunityValue: "Deal value",
+    opportunityProbability: "Probability",
+    opportunityCloseDate: "Expected close date",
+    opportunityStatus: "Status",
+    opportunityUnit: "Unit",
+    opportunityUnitPlaceholder: "Select unit",
+    opportunityNoUnit: "No unit",
+    opportunitiesLoading: "Loading opportunities...",
+    saveOpportunity: "Save opportunity",
+    savingOpportunity: "Saving...",
+    cancel: "Cancel",
+    valueRequired: "Deal value is required",
+    invalidValue: "Enter a valid deal value",
+    invalidProbability: "Enter a probability between 1 and 100",
+    unitRequired: "Unit is required",
+    opportunityCreateFailed: "Failed to create opportunity",
   },
 };
 
@@ -211,6 +296,30 @@ function formatPipelineCount(value: unknown): string {
   return Number.isFinite(numberValue) ? numberValue.toLocaleString("en-US") : "0";
 }
 
+function formatCurrency(value: unknown, isArabic: boolean): string {
+  const numberValue = Number(value || 0);
+
+  return Number.isFinite(numberValue)
+    ? `${numberValue.toLocaleString(isArabic ? "ar-SA" : "en-US")} ${isArabic ? "ر.س" : "SAR"}`
+    : isArabic
+      ? "0 ر.س"
+      : "0 SAR";
+}
+
+function formatDate(value: string | null | undefined, isArabic: boolean, fallback: string): string {
+  if (!value) return fallback;
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? fallback
+    : date.toLocaleDateString(isArabic ? "ar-SA" : "en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+}
+
 function getStageLabel(stageId: string, isArabic: boolean): string {
   const stage = STAGES.find((item) => item.id === stageId);
 
@@ -233,6 +342,12 @@ function EmptyState({ message }: { message: string }) {
       <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{message}</p>
     </div>
   );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+
+  return <p className="mt-1 text-xs font-semibold text-red-500">{message}</p>;
 }
 
 function LeadStatusBadge({
@@ -317,6 +432,19 @@ export default function LeadsWorkspace() {
   const [detailData, setDetailData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [leadPage, setLeadPage] = useState(1);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [units, setUnits] = useState<UnitOption[]>([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [showOpportunityModal, setShowOpportunityModal] = useState(false);
+  const [opportunitySaving, setOpportunitySaving] = useState(false);
+  const [unitSelectOpen, setUnitSelectOpen] = useState(false);
+  const [opportunityForm, setOpportunityForm] = useState<OpportunityForm>({
+    value: "",
+    probability: "50",
+    closeDate: "",
+    unitId: "",
+  });
+  const [opportunityErrors, setOpportunityErrors] = useState<OpportunityFormErrors>({});
 
   const leadDisplayName = (lead: LeadItem): string =>
     displayPerson(`${lead.firstName || ''} ${lead.lastName || ''}`, displayLocale, { route: '/operations/leads', entityId: lead.id });
@@ -363,9 +491,76 @@ export default function LeadsWorkspace() {
     }
   };
 
+  const loadOpportunityData = async () => {
+    try {
+      setOpportunitiesLoading(true);
+
+      const [opportunitiesRes, unitsRes] = await Promise.all([
+        fetch("/api/v1/opportunities"),
+        fetch("/api/v1/properties"),
+      ]);
+      const opportunitiesJson = await opportunitiesRes.json();
+      const unitsJson = await unitsRes.json();
+
+      if (opportunitiesJson.success && Array.isArray(opportunitiesJson.data)) {
+        setOpportunities(opportunitiesJson.data);
+      } else {
+        setOpportunities([]);
+      }
+
+      if (Array.isArray(unitsJson.data)) {
+        setUnits(
+          unitsJson.data.map((unit: any) => ({
+            id: unit.id,
+            unitNumber: unit.sku || unit.unitNumber || unit.id,
+            priceSar: Number(unit.price || unit.priceSar || 0),
+            status: unit.status || "",
+            projectName:
+              typeof unit.project === "string"
+                ? unit.project
+                : unit.project?.name || "",
+          })),
+        );
+      } else {
+        setUnits([]);
+      }
+    } catch {
+      setOpportunities([]);
+      setUnits([]);
+    } finally {
+      setOpportunitiesLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadLeads();
   }, []);
+
+  useEffect(() => {
+    if (detailTab === "opportunities" && selectedLead) {
+      void loadOpportunityData();
+    }
+  }, [detailTab, selectedLead?.id]);
+
+  useEffect(() => {
+    if (!showOpportunityModal) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowOpportunityModal(false);
+        setUnitSelectOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showOpportunityModal]);
 
   const handleSelect = async (lead: LeadItem) => {
     setSelectedLead(lead);
@@ -379,6 +574,91 @@ export default function LeadsWorkspace() {
       setDetailData(found || lead);
     } catch {
       setDetailData(lead);
+    }
+  };
+
+  const resetOpportunityForm = () => {
+    setOpportunityForm({
+      value: "",
+      probability: "50",
+      closeDate: "",
+      unitId: "",
+    });
+    setOpportunityErrors({});
+    setUnitSelectOpen(false);
+  };
+
+  const openOpportunityModal = () => {
+    resetOpportunityForm();
+    setShowOpportunityModal(true);
+  };
+
+  const closeOpportunityModal = () => {
+    if (opportunitySaving) return;
+
+    setShowOpportunityModal(false);
+    resetOpportunityForm();
+  };
+
+  const validateOpportunityForm = () => {
+    const errors: OpportunityFormErrors = {};
+    const valueNumber = Number(opportunityForm.value);
+    const probabilityNumber = Number(opportunityForm.probability);
+
+    if (!opportunityForm.value.trim()) {
+      errors.value = labels.valueRequired;
+    } else if (!Number.isFinite(valueNumber) || valueNumber <= 0) {
+      errors.value = labels.invalidValue;
+    }
+
+    if (!Number.isFinite(probabilityNumber) || probabilityNumber < 1 || probabilityNumber > 100) {
+      errors.probability = labels.invalidProbability;
+    }
+
+    if (!opportunityForm.unitId) {
+      errors.unitId = labels.unitRequired;
+    }
+
+    setOpportunityErrors(errors);
+
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCreateOpportunity = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!selectedLead || !validateOpportunityForm()) return;
+
+    try {
+      setOpportunitySaving(true);
+      setOpportunityErrors({});
+
+      const res = await fetch("/api/v1/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: selectedLead.id,
+          value: opportunityForm.value,
+          probability: opportunityForm.probability,
+          closeDate: opportunityForm.closeDate,
+          unitId: opportunityForm.unitId,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || labels.opportunityCreateFailed);
+      }
+
+      setShowOpportunityModal(false);
+      resetOpportunityForm();
+      await loadOpportunityData();
+    } catch (error: any) {
+      setOpportunityErrors({
+        form: error?.message || labels.opportunityCreateFailed,
+      });
+    } finally {
+      setOpportunitySaving(false);
     }
   };
 
@@ -405,6 +685,11 @@ export default function LeadsWorkspace() {
   const newLeads = stageCounts.New || 0;
   const qualified = stageCounts.Qualified || 0;
   const conversion = totalLeads > 0 ? Math.round(((stageCounts.Closed || 0) / totalLeads) * 100) : 0;
+  const selectedLeadOpportunities = selectedLead
+    ? opportunities.filter((opportunity) => opportunity.leadId === selectedLead.id)
+    : [];
+  const selectedUnit = units.find((unit) => unit.id === opportunityForm.unitId);
+  const selectableUnits = units.filter((unit) => unit.status !== "Sold");
 
   if (loading) {
     return (
@@ -555,11 +840,70 @@ export default function LeadsWorkspace() {
                 {detailTab === "tours" && <EmptyState message={labels.noTours} />}
                 {detailTab === "offers" && <EmptyState message={labels.noOffers} />}
                 {detailTab === "opportunities" && (
-                  <Opportunities
-                    key={selectedLead.id}
-                    leadId={selectedLead.id}
-                    leadName={leadDisplayName(selectedLead)}
-                  />
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
+                          {labels.opportunityListTitle}
+                        </h3>
+                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                          {leadDisplayName(selectedLead)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={openOpportunityModal}
+                        className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-xs font-bold"
+                      >
+                        {labels.createOpportunity}
+                      </button>
+                    </div>
+
+                    {opportunitiesLoading ? (
+                      <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-[var(--nc-text-secondary)]">
+                          {labels.opportunitiesLoading}
+                        </p>
+                      </div>
+                    ) : selectedLeadOpportunities.length === 0 ? (
+                      <EmptyState message={labels.noOpportunities} />
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedLeadOpportunities.map((opportunity) => {
+                          const unit = units.find((item) => item.id === opportunity.unitId);
+
+                          return (
+                            <div
+                              key={opportunity.id}
+                              className="grid gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                                  {formatCurrency(opportunity.value, isArabic)}
+                                </p>
+                                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
+                                  {unit
+                                    ? `${unit.projectName ? `${unit.projectName} · ` : ""}${unit.unitNumber}`
+                                    : labels.opportunityNoUnit}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--nc-text-secondary)] sm:justify-end">
+                                <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-semibold text-[var(--nc-text-primary)]">
+                                  {formatNumber(opportunity.probability, isArabic)}%
+                                </span>
+                                <span>
+                                  {formatDate(opportunity.closeDate, isArabic, labels.notSpecified)}
+                                </span>
+                                <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 py-1 font-semibold text-[var(--nc-text-primary)]">
+                                  {displayEnum(opportunity.status, "generalStatus", displayLocale) || opportunity.status}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {detailTab === "pipeline" && (
@@ -695,6 +1039,196 @@ export default function LeadsWorkspace() {
           </div>
         </div>
       </div>
+
+      {showOpportunityModal && selectedLead && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-opportunity-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeOpportunityModal();
+            }
+          }}
+        >
+          <form
+            onSubmit={handleCreateOpportunity}
+            dir={direction}
+            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+              <div className="min-w-0">
+                <h2 id="create-opportunity-title" className="text-base font-bold text-[var(--nc-text-primary)]">
+                  {labels.createOpportunity}
+                </h2>
+                <p className="mt-1 truncate text-xs text-[var(--nc-text-secondary)]">
+                  {labels.opportunityLead}: {leadDisplayName(selectedLead)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeOpportunityModal}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+                aria-label={labels.cancel}
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <div className="mb-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
+                <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">
+                  {labels.opportunityLead}
+                </p>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                  {leadDisplayName(selectedLead)}
+                </p>
+              </div>
+
+              {opportunityErrors.form && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
+                  {opportunityErrors.form}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                    {labels.opportunityValue}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={opportunityForm.value}
+                    onChange={(event) => {
+                      setOpportunityForm((form) => ({ ...form, value: event.target.value }));
+                      setOpportunityErrors((errors) => ({ ...errors, value: undefined, form: undefined }));
+                    }}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+                    inputMode="numeric"
+                  />
+                  <FieldError message={opportunityErrors.value} />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                    {labels.opportunityProbability}
+                  </label>
+                  <div className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 focus-within:border-[#C8A45D]">
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={opportunityForm.probability}
+                      onChange={(event) => {
+                        setOpportunityForm((form) => ({ ...form, probability: event.target.value }));
+                        setOpportunityErrors((errors) => ({ ...errors, probability: undefined, form: undefined }));
+                      }}
+                      className="min-w-0 flex-1 accent-[#C8A45D]"
+                    />
+                    <span className="w-12 text-center text-sm font-bold text-[var(--nc-text-primary)]">
+                      {formatNumber(opportunityForm.probability, isArabic)}%
+                    </span>
+                  </div>
+                  <FieldError message={opportunityErrors.probability} />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                  {labels.opportunityCloseDate}
+                </label>
+                <input
+                  type="date"
+                  value={opportunityForm.closeDate}
+                  onChange={(event) => {
+                    setOpportunityForm((form) => ({ ...form, closeDate: event.target.value }));
+                    setOpportunityErrors((errors) => ({ ...errors, closeDate: undefined, form: undefined }));
+                  }}
+                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+                />
+                <FieldError message={opportunityErrors.closeDate} />
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                  {labels.opportunityUnit}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setUnitSelectOpen((open) => !open)}
+                  className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors hover:border-[#C8A45D]"
+                  aria-expanded={unitSelectOpen}
+                >
+                  <span className="min-w-0 truncate text-start">
+                    {selectedUnit
+                      ? `${selectedUnit.projectName ? `${selectedUnit.projectName} · ` : ""}${selectedUnit.unitNumber} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
+                      : labels.opportunityUnitPlaceholder}
+                  </span>
+                  <span className="shrink-0 text-[var(--nc-text-secondary)]" aria-hidden="true">
+                    {unitSelectOpen ? "^" : "v"}
+                  </span>
+                </button>
+                <FieldError message={opportunityErrors.unitId} />
+
+                {unitSelectOpen && (
+                  <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-1 shadow-lg">
+                    {selectableUnits.length === 0 ? (
+                      <div className="px-3 py-3 text-sm text-[var(--nc-text-secondary)]">
+                        {labels.opportunityUnitPlaceholder}
+                      </div>
+                    ) : (
+                      selectableUnits.map((unit) => (
+                        <button
+                          key={unit.id}
+                          type="button"
+                          onClick={() => {
+                            setOpportunityForm((form) => ({ ...form, unitId: unit.id }));
+                            setOpportunityErrors((errors) => ({ ...errors, unitId: undefined, form: undefined }));
+                            setUnitSelectOpen(false);
+                          }}
+                          className={
+                            opportunityForm.unitId === unit.id
+                              ? "flex w-full items-center justify-between gap-3 rounded-lg bg-[#C8A45D]/15 px-3 py-2 text-start text-sm font-bold text-[var(--nc-text-primary)]"
+                              : "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-start text-sm font-semibold text-[var(--nc-text-primary)] transition-colors hover:bg-[var(--nc-surface-soft)]"
+                          }
+                        >
+                          <span className="min-w-0 truncate">
+                            {unit.projectName ? `${unit.projectName} · ` : ""}
+                            {unit.unitNumber}
+                          </span>
+                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                            {formatCurrency(unit.priceSar, isArabic)}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeOpportunityModal}
+                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+              >
+                {labels.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={opportunitySaving}
+                className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {opportunitySaving ? labels.savingOpportunity : labels.saveOpportunity}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }
