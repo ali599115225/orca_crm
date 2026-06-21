@@ -1,0 +1,83 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode-go/qwen3.7-plus",
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "agent": {
+    "plan": {
+      "description": "تدقيق وقراءة دون تعديل",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4-flash",
+      "steps": 4,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "git log*": "allow"
+        }
+      }
+    },
+    "build": {
+      "description": "تنفيذ مهام ORCA المحددة",
+      "mode": "primary",
+      "model": "opencode-go/qwen3.7-plus",
+      "steps": 8,
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "git log*": "allow",
+          "npx tsc*": "allow",
+          "npm test*": "allow",
+          "npm run build*": "allow",
+          "git push*": "deny",
+          "git clean*": "deny",
+          "git reset --hard*": "deny",
+          "Remove-Item*": "deny",
+          "rm *": "deny"
+        }
+      }
+    },
+    "final-review": {
+      "description": "مراجعة نهائية دون تعديل",
+      "mode": "subagent",
+      "model": "opencode-go/kimi-k2.7-code",
+      "steps": 5,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "npx tsc*": "allow",
+          "npm test*": "allow",
+          "npm run build*": "allow"
+        }
+      }
+    },
+    "security-review": {
+      "description": "مراجعة أمنية ومعمارية دون تعديل",
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.7-max",
+      "steps": 4,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "git log*": "allow"
+        }
+      }
+    }
+  }
+}
