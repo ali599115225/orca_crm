@@ -9,14 +9,14 @@ import type { DisplayLocale } from "@/lib/display";
 
 const PAGE_SIZE = 5;
 
-const STAGES = [
-  { id: "New", titleAr: "جديد", titleEn: "New" },
-  { id: "Contacted", titleAr: "تم التواصل", titleEn: "Contacted" },
-  { id: "Qualified", titleAr: "مؤهل", titleEn: "Qualified" },
-  { id: "Tour Scheduled", titleAr: "مجدول للزيارة", titleEn: "Tour Scheduled" },
-  { id: "Offer Sent", titleAr: "أرسل العرض", titleEn: "Offer Sent" },
-  { id: "Negotiation", titleAr: "تفاوض", titleEn: "Negotiation" },
-  { id: "Closed", titleAr: "مغلق", titleEn: "Closed" },
+const PIPELINE_STAGES = [
+  "New",
+  "Contacted",
+  "Qualified",
+  "Tour Scheduled",
+  "Offer Sent",
+  "Negotiation",
+  "Closed",
 ];
 
 type Opportunity = {
@@ -82,7 +82,9 @@ type TourForm = {
   offerId: string;
   startDate: string;
   startDateText: string;
-  startTime: string;
+  hour: string;
+  minute: string;
+  period: "AM" | "PM";
   location: string;
 };
 
@@ -123,7 +125,6 @@ type Copy = {
   selectLead: string;
   city: string;
   notSpecified: string;
-  statusFallback: string;
   summary: string;
   contacts: string;
   tasks: string;
@@ -223,7 +224,6 @@ const copy: Record<"ar" | "en", Copy> = {
     selectLead: "اختر عميلاً من القائمة لعرض التفاصيل هنا",
     city: "المدينة",
     notSpecified: "غير محدد",
-    statusFallback: "غير محدد",
     summary: "الملخص",
     contacts: "جهات الاتصال",
     tasks: "المهام",
@@ -321,7 +321,6 @@ const copy: Record<"ar" | "en", Copy> = {
     selectLead: "Select a lead from the list to view details here",
     city: "City",
     notSpecified: "Not specified",
-    statusFallback: "Unspecified",
     summary: "Summary",
     contacts: "Contacts",
     tasks: "Tasks",
@@ -478,17 +477,15 @@ function parseDateFieldToIso(value: string): string {
   return iso;
 }
 
-function getStageLabel(stageId: string, isArabic: boolean): string {
-  const stage = STAGES.find((item) => item.id === stageId);
-
-  return stage ? (isArabic ? stage.titleAr : stage.titleEn) : stageId;
+function getStageLabel(stageId: string, displayLocale: DisplayLocale): string {
+  return displayEnum(stageId, 'leadStatus', displayLocale);
 }
 
 function getStageCounts(leads: LeadItem[]) {
   const map: Record<string, number> = {};
 
-  STAGES.forEach((stage) => {
-    map[stage.id] = leads.filter((lead) => lead.stage === stage.id).length;
+  PIPELINE_STAGES.forEach((stage) => {
+    map[stage] = leads.filter((lead) => lead.stage === stage).length;
   });
 
   return map;
@@ -510,16 +507,12 @@ function FieldError({ message }: { message?: string }) {
 
 function LeadStatusBadge({
   status,
-  isArabic,
-  fallback,
   displayLocale,
 }: {
   status?: string | null;
-  isArabic: boolean;
-  fallback: string;
   displayLocale: DisplayLocale;
 }) {
-  const label = displayEnum(status, 'leadStatus', displayLocale) || (isArabic ? fallback : 'Unspecified');
+  const label = displayEnum(status, 'leadStatus', displayLocale);
 
   return (
     <span className="inline-flex min-h-[28px] min-w-[96px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]">
@@ -626,7 +619,9 @@ export default function LeadsWorkspace() {
     offerId: "",
     startDate: "",
     startDateText: "",
-    startTime: "10:00",
+    hour: "10",
+    minute: "00",
+    period: "AM",
     location: "",
   });
   const [tourErrors, setTourErrors] = useState<Partial<Record<keyof TourForm, string>> & { form?: string }>({});
@@ -641,7 +636,7 @@ export default function LeadsWorkspace() {
     displayEnum(lead.source, 'leadSource', displayLocale);
 
   const leadDisplayStatus = (status?: string | null): string =>
-    displayEnum(status, 'leadStatus', displayLocale) || labels.statusFallback;
+    displayEnum(status, 'leadStatus', displayLocale);
 
   const leadDisplayOwner = (value?: string | null): string =>
     displayPerson(value, displayLocale, { route: '/operations/leads' });
@@ -930,7 +925,9 @@ export default function LeadsWorkspace() {
       offerId: "",
       startDate: "",
       startDateText: "",
-      startTime: "10:00",
+      hour: "10",
+      minute: "00",
+      period: "AM",
       location: "",
     });
     setTourErrors({});
@@ -958,7 +955,9 @@ export default function LeadsWorkspace() {
       offerId: offer.id,
       startDate: "",
       startDateText: "",
-      startTime: "10:00",
+      hour: "10",
+      minute: "00",
+      period: "AM",
       location: unit
         ? `${unit.projectName ? `${unit.projectName} - ` : ""}${unit.unitNumber}`
         : "",
@@ -1027,7 +1026,6 @@ export default function LeadsWorkspace() {
 
     if (!selectedOffer?.unitId) errors.offerId = labels.legacyOfferBlocked;
     if (!tourForm.startDate || tourForm.startDateText.length !== 10) errors.startDate = labels.invalidDate;
-    if (!tourForm.startTime) errors.startTime = labels.tourTime;
     if (!tourForm.location.trim()) errors.location = labels.tourLocation;
 
     setTourErrors(errors);
@@ -1035,7 +1033,13 @@ export default function LeadsWorkspace() {
 
     try {
       setTourSaving(true);
-      const startAt = `${tourForm.startDate}T${tourForm.startTime}:00`;
+      
+      let hourNumber = parseInt(tourForm.hour, 10);
+      if (tourForm.period === "PM" && hourNumber < 12) hourNumber += 12;
+      if (tourForm.period === "AM" && hourNumber === 12) hourNumber = 0;
+      const formattedHour = hourNumber.toString().padStart(2, '0');
+      const startAt = `${tourForm.startDate}T${formattedHour}:${tourForm.minute}:00`;
+      
       const res = await fetch("/api/v1/tours", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1095,7 +1099,7 @@ export default function LeadsWorkspace() {
         leadDisplayStatus(lead.stage).toLowerCase().includes(term)
       );
     });
-  }, [leads, searchTerm, isArabic, labels.notSpecified, labels.statusFallback]);
+  }, [leads, searchTerm, isArabic]);
 
   const leadTotalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
   const pagedLeads = filteredLeads.slice((leadPage - 1) * PAGE_SIZE, leadPage * PAGE_SIZE);
@@ -1186,7 +1190,7 @@ export default function LeadsWorkspace() {
                       </p>
                     </div>
 
-                    <LeadStatusBadge status={selectedLead.stage} isArabic={isArabic} fallback={labels.statusFallback} displayLocale={displayLocale} />
+                    <LeadStatusBadge status={selectedLead.stage} displayLocale={displayLocale} />
                   </div>
 
                   <div className="mt-3 grid grid-cols-3 gap-2">
@@ -1298,7 +1302,7 @@ export default function LeadsWorkspace() {
                                   </p>
                                 </div>
                                 <div className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)}
+                                  {formatDate(tour.startAt, isArabic, labels.notSpecified)} · {new Date(tour.startAt).toLocaleTimeString(isArabic ? 'ar-SA' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                 </div>
                               </div>
                             </div>
@@ -1454,7 +1458,6 @@ export default function LeadsWorkspace() {
                     )}
                   </div>
                 )}
-
                 {detailTab === "pipeline" && (
                   <div className="relative">
                     <div
@@ -1462,16 +1465,16 @@ export default function LeadsWorkspace() {
                       aria-label={labels.pipeline}
                       className="max-h-[220px] space-y-1.5 overflow-y-auto pr-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                     >
-                      {STAGES.map((stage) => {
-                        const count = stageCounts[stage.id] || 0;
+                      {PIPELINE_STAGES.map((stage) => {
+                        const count = stageCounts[stage] || 0;
 
                         return (
                           <div
-                            key={stage.id}
+                            key={stage}
                             className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2"
                           >
                             <span className="truncate text-sm font-semibold text-[var(--nc-text-primary)]">
-                              {getStageLabel(stage.id, isArabic)}
+                              {getStageLabel(stage, displayLocale)}
                             </span>
                             <span className="whitespace-nowrap text-xs text-[var(--nc-text-secondary)]">
                               {formatPipelineCount(count)} {labels.leadsUnit}
@@ -1552,7 +1555,7 @@ export default function LeadsWorkspace() {
 
                           <td className="px-3 py-3 text-center">
                             <span className="inline-flex justify-center">
-                              <LeadStatusBadge status={lead.stage} isArabic={isArabic} fallback={labels.statusFallback} displayLocale={displayLocale} />
+                              <LeadStatusBadge status={lead.stage} displayLocale={displayLocale} />
                             </span>
                           </td>
 
@@ -1756,19 +1759,37 @@ export default function LeadsWorkspace() {
                   />
                   <FieldError message={tourErrors.startDate} />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">{labels.tourTime}</label>
-                  <input
-                    type="time"
-                    value={tourForm.startTime}
-                    dir="ltr"
-                    onChange={(event) => {
-                      setTourForm((form) => ({ ...form, startTime: event.target.value }));
-                      setTourErrors((errors) => ({ ...errors, startTime: undefined, form: undefined }));
-                    }}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none focus:border-[#C8A45D]"
-                  />
-                  <FieldError message={tourErrors.startTime} />
+                <div dir="ltr">
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)] text-right">{labels.tourTime}</label>
+                  <div className="flex min-h-[44px] items-center gap-2">
+                    <select
+                      value={tourForm.hour}
+                      onChange={(e) => setTourForm((f) => ({ ...f, hour: e.target.value }))}
+                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                        <option key={h} value={h.toString().padStart(2, '0')}>{h.toString().padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                    <span className="font-bold">:</span>
+                    <select
+                      value={tourForm.minute}
+                      onChange={(e) => setTourForm((f) => ({ ...f, minute: e.target.value }))}
+                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                        <option key={m} value={m.toString().padStart(2, '0')}>{m.toString().padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={tourForm.period}
+                      onChange={(e) => setTourForm((f) => ({ ...f, period: e.target.value as "AM" | "PM" }))}
+                      className="w-1/3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold outline-none"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div>
