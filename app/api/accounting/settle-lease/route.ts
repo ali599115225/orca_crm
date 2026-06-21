@@ -40,32 +40,24 @@ function errorResponse(
   return NextResponse.json(publicError(code, context, rawError), { status });
 }
 
-function parseAmount(value: unknown): number | null {
-  const amount =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && value.trim()
-        ? Number(value)
-        : Number.NaN;
-
-  if (
-    !Number.isFinite(amount) ||
-    amount <= 0 ||
-    amount > 1_000_000_000
-  ) {
+function finiteMoney(value: unknown): number | null {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
     return null;
   }
-
   return Math.round(amount * 100) / 100;
+}
+
+function finiteVatRate(value: unknown): number | null {
+  const rate = Number(value);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return null;
+  return Math.round(rate * 100) / 100;
 }
 
 export async function POST(request: NextRequest) {
   const session = await requireAuth(request);
   if (!session) return unauthorizedResponse();
-
-  if (!(await hasDatabaseRole(session, ['ADMIN']))) {
-    return forbiddenResponse();
-  }
+  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse();
 
   let body: unknown;
   try {
@@ -81,27 +73,26 @@ export async function POST(request: NextRequest) {
     typeof body === 'object' && body !== null
       ? (body as Record<string, unknown>)
       : {};
-
   const leaseId =
     typeof input.leaseId === 'string' ? input.leaseId.trim() : '';
-  const subtotal = parseAmount(input.amount);
 
-  if (!leaseId || leaseId.length > 100 || subtotal === null) {
+  if (!leaseId || leaseId.length > 100) {
     return errorResponse(
       ErrorCode.VALIDATION_ERROR,
-      'settle-lease input validation failed'
+      'settle-lease lease identifier is invalid'
     );
   }
 
   const tenantId = session.tenantId;
-  const vatRate = 15;
-  const vatAmount = Math.round(subtotal * vatRate) / 100;
-  const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
 
   try {
     const lease = await prisma.rentalLease.findFirst({
       where: { id: leaseId, tenantId },
-      select: { id: true },
+      select: {
+        id: true,
+        rentAmount: true,
+        vatRate: true,
+      },
     });
 
     if (!lease) {
@@ -111,19 +102,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const subtotal = finiteMoney(lease.rentAmount);
+    const vatRate = finiteVatRate(lease.vatRate);
+
+    if (subtotal === null || vatRate === null) {
+      return errorResponse(
+        ErrorCode.VALIDATION_ERROR,
+        'settle-lease stored financial values are invalid'
+      );
+    }
+
+    const vatAmount = Math.round(subtotal * vatRate) / 100;
+    const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
+
     await seedChartOfAccounts(tenantId);
 
     const [receivableAccount, revenueAccount, vatPayableAccount] =
       await Promise.all([
         findAccountByCode(tenantId, '1.1.3'),
         findAccountByCode(tenantId, '4.1'),
-        findAccountByCode(tenantId, '2.1.1'),
+        vatAmount > 0
+          ? findAccountByCode(tenantId, '2.1.1')
+          : Promise.resolve(null),
       ]);
 
     if (
       !receivableAccount ||
       !revenueAccount ||
-      !vatPayableAccount
+      (vatAmount > 0 && !vatPayableAccount)
     ) {
       throw new SettleLeaseError(
         ErrorCode.INTERNAL_ERROR,
@@ -143,7 +149,6 @@ export async function POST(request: NextRequest) {
       });
 
       const invoiceNumber = tenant.nextInvoiceNumber - 1;
-
       const createdInvoice = await tx.rentalInvoice.create({
         data: {
           tenantId,
@@ -167,7 +172,7 @@ export async function POST(request: NextRequest) {
         totalAmount,
         receivableAccount.id,
         revenueAccount.id,
-        vatPayableAccount.id,
+        vatPayableAccount?.id ?? '',
         tx
       );
 

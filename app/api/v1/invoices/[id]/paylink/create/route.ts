@@ -1,272 +1,335 @@
+import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
+import {
+  forbiddenResponse,
+  hasDatabaseRole,
+  requireAuth,
+  unauthorizedResponse,
+} from '@/lib/api-auth-guard';
+import {
+  ErrorCode,
+  publicError,
+  statusForErrorCode,
+} from '@/lib/errors';
 import { redactPiiFromPayload } from '@/lib/privacy-mask';
 
-const PAYLINK_BASE = process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa';
-const PAYLINK_API_ID = process.env.PAYLINK_API_ID || '';
-const PAYLINK_SECRET_KEY = process.env.PAYLINK_SECRET_KEY || '';
+export const runtime = 'nodejs';
 
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload?.tenantId) return payload;
+const PROVIDER = 'paylink';
+const ALLOWED_PAYLINK_HOSTS = new Set([
+  'restpilot.paylink.sa',
+  'restapi.paylink.sa',
+]);
+
+class ProviderError extends Error {
+  constructor(message: string, readonly status = 502) {
+    super(message);
+    this.name = 'ProviderError';
   }
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload?.tenantId) return payload;
-  }
-  return null;
 }
 
-function getDiagnostics() {
-  return {
-    hasBaseUrl: !!PAYLINK_BASE,
-    hasApiId: !!(PAYLINK_API_ID && PAYLINK_API_ID.length > 0),
-    hasSecretKey: !!(PAYLINK_SECRET_KEY && PAYLINK_SECRET_KEY !== 'test_secret_key_placeholder'),
-    baseUrlHost: PAYLINK_BASE ? new URL(PAYLINK_BASE).host : 'not-set',
-    authEndpoint: `${PAYLINK_BASE}/api/auth`,
-    invoiceEndpoint: `${PAYLINK_BASE}/api/addInvoice`,
-  };
+function errorResponse(
+  code: (typeof ErrorCode)[keyof typeof ErrorCode],
+  context: string,
+  error?: unknown,
+  status = statusForErrorCode(code)
+): NextResponse {
+  return NextResponse.json(publicError(code, context, error), { status });
 }
 
-// ── Step 1: Authenticate with Paylink ──
-async function authenticatePaylink(): Promise<{ success: boolean; idToken?: string; error?: string; status?: number }> {
+function providerBaseUrl(): string | null {
   try {
-    const resp = await fetch(`${PAYLINK_BASE}/api/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        apiId: PAYLINK_API_ID,
-        secretKey: PAYLINK_SECRET_KEY,
-        persistToken: "false",
-      }),
-    });
-
-    const text = await resp.text();
-    let data: any = {};
-    try { data = JSON.parse(text); } catch {}
-
-    if (!resp.ok) {
-      console.error('[Paylink Auth] Failed:', resp.status, text.substring(0, 300));
-      return {
-        success: false,
-        error: data.message || data.error || data.Message || `Auth HTTP ${resp.status}: ${text.substring(0, 100)}`,
-        status: resp.status,
-      };
+    const url = new URL(
+      process.env.PAYLINK_BASE_URL || 'https://restpilot.paylink.sa'
+    );
+    if (url.protocol !== 'https:' || !ALLOWED_PAYLINK_HOSTS.has(url.host)) {
+      return null;
     }
-
-    const idToken = data.id_token || data.token || data.access_token || '';
-    if (!idToken) {
-      return { success: false, error: 'لم يتم استلام id_token من Paylink', status: 502 };
-    }
-
-    return { success: true, idToken };
-  } catch (err: any) {
-    return { success: false, error: `Auth network error: ${err.message}`, status: 502 };
+    return url.origin;
+  } catch {
+    return null;
   }
 }
 
-// ── Step 2: Create Paylink invoice ──
-async function createPaylinkInvoice(idToken: string, body: Record<string, any>): Promise<{
-  success: boolean;
-  transactionNo?: string;
-  url?: string;
-  orderStatus?: string;
-  rawResponse?: any;
-  error?: string;
-  status?: number;
-}> {
+function appBaseUrl(): string | null {
   try {
-    const resp = await fetch(`${PAYLINK_BASE}/api/addInvoice`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${idToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const text = await resp.text();
-    let data: any = {};
-    try { data = JSON.parse(text); } catch {}
-
-    if (!resp.ok) {
-      return {
-        success: false,
-        error: data.message || data.error || `Invoice creation failed with status ${resp.status}`,
-        status: resp.status,
-      };
+    const url = new URL(
+      process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'
+    );
+    if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') {
+      return null;
     }
-
-    const url = data.url || data.payment_url || data.checkoutUrl || '';
-    const transactionNo = data.transactionNo || data.transaction_no || data.transactionId || '';
-
-    return {
-      success: true,
-      transactionNo,
-      url,
-      orderStatus: data.orderStatus || 'Pending',
-      rawResponse: data,
-    };
-  } catch (err: any) {
-    return { success: false, error: `Invoice network error: ${err.message}`, status: 502 };
+    return url.origin;
+  } catch {
+    return null;
   }
 }
 
-// ── POST: Create Paylink payment link ──
+function providerReference(tenantId: string, invoiceId: string): string {
+  return createHash('sha256')
+    .update(`${PROVIDER}:create:${tenantId}:${invoiceId}`)
+    .digest('hex');
+}
+
+async function providerRequest(
+  url: string,
+  init: RequestInit
+): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const text = await response.text();
+  let data: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') data = parsed;
+  } catch {
+    // Provider returned a non-JSON body; do not expose it publicly.
+  }
+  if (!response.ok) {
+    throw new ProviderError(`Paylink HTTP ${response.status}`, 502);
+  }
+  return data;
+}
+
+async function authenticatePaylink(baseUrl: string): Promise<string> {
+  const apiId = process.env.PAYLINK_API_ID?.trim() ?? '';
+  const secretKey = process.env.PAYLINK_SECRET_KEY?.trim() ?? '';
+  if (!apiId || secretKey.length < 16 || secretKey === 'test_secret_key_placeholder') {
+    throw new ProviderError('Paylink credentials are unavailable', 503);
+  }
+
+  const data = await providerRequest(`${baseUrl}/api/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ apiId, secretKey, persistToken: 'false' }),
+  });
+  const token = String(data.id_token || data.token || data.access_token || '');
+  if (!token) throw new ProviderError('Paylink auth token is missing');
+  return token;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+  const session = await requireAuth(request);
+  if (!session) return unauthorizedResponse();
+  if (!(await hasDatabaseRole(session, ['ADMIN', 'SALES_MANAGER']))) {
+    return forbiddenResponse();
   }
 
   const { id } = await params;
-  const tenantId = session.tenantId as string;
+  const tenantId = session.tenantId;
+  const baseUrl = providerBaseUrl();
+  const appUrl = appBaseUrl();
+  if (!baseUrl || !appUrl) {
+    return errorResponse(
+      ErrorCode.SERVICE_UNAVAILABLE,
+      'Paylink URL configuration is invalid'
+    );
+  }
+
+  const mobile = (process.env.PAYLINK_FALLBACK_MOBILE ?? '').replace(/\D/g, '');
+  if (!/^\d{9,15}$/.test(mobile)) {
+    return errorResponse(
+      ErrorCode.SERVICE_UNAVAILABLE,
+      'PAYLINK_FALLBACK_MOBILE is missing or invalid'
+    );
+  }
+
+  const reference = providerReference(tenantId, id);
+  let claimId: string | null = null;
 
   try {
     const invoice = await prisma.rentalInvoice.findFirst({
       where: { id, tenantId },
-      include: { lease: { select: { unitName: true, tenantName: true } }, tenant: true },
-    });
-    if (!invoice) {
-      return NextResponse.json({ success: false, error: 'الفاتورة غير موجودة' }, { status: 404 });
-    }
-    if (invoice.status === 'paid') {
-      return NextResponse.json({ success: false, error: 'الفاتورة مدفوعة مسبقاً' }, { status: 409 });
-    }
-
-    // Return existing Paylink URL
-    if (invoice.paymentUrl && invoice.gatewayProvider === 'paylink' && invoice.gatewayStatus === 'pending') {
-      return NextResponse.json({
-        success: true, status: 'existing', paymentUrl: invoice.paymentUrl,
-        message: 'رابط الدفع موجود مسبقاً',
-      });
-    }
-
-    // Verify env vars
-    if (!PAYLINK_API_ID || !PAYLINK_SECRET_KEY || PAYLINK_SECRET_KEY === 'test_secret_key_placeholder') {
-      return NextResponse.json({
-        success: false,
-        error: 'بوابة الدفع Paylink غير مفعلة — PAYLINK_API_ID أو PAYLINK_SECRET_KEY غير مضبوط',
-        diagnostics: getDiagnostics(),
-      }, { status: 503 });
-    }
-
-    // Step 1: Authenticate
-    const authResult = await authenticatePaylink();
-    if (!authResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: 'PAYLINK_AUTH_FAILED',
-        message: 'فشل المصادقة مع بوابة Paylink — تحقق من صحة PAYLINK_API_ID و PAYLINK_SECRET_KEY',
-        providerStatus: authResult.status,
-        providerMessage: authResult.error,
-        diagnostics: {
-          ...getDiagnostics(),
-          authStatus: authResult.status,
-          authMessage: authResult.error,
-        },
-      }, { status: 502 });
-    }
-
-    const idToken = authResult.idToken!;
-    const amountHalalas = Math.round(Number(invoice.totalAmount) * 100);
-    const orderNumber = `ORCA-${invoice.invoicePrefix || 'INV'}-${invoice.invoiceNumber}`;
-
-    // Step 2: Create invoice
-    const paylinkResult = await createPaylinkInvoice(idToken, {
-      amount: amountHalalas,
-      currency: 'SAR',
-      orderNumber,
-      clientName: invoice.lease.tenantName || 'عميل',
-      clientMobile: '0500000000', // Paylink requires mobile; fallback
-      callBackUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/api/payment/callback`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://orca.az-ez.pro'}/operations/rental`,
-      products: [{
-        title: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
-        price: amountHalalas,
-        qty: 1,
-      }],
-      note: `ORCA invoice ${invoice.invoiceNumber} for ${invoice.lease.tenantName}`,
-    });
-
-    if (!paylinkResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: 'PAYLINK_CREATE_FAILED',
-        message: 'فشل إنشاء الفاتورة في Paylink',
-        providerStatus: paylinkResult.status,
-        providerMessage: paylinkResult.error,
-        diagnostics: getDiagnostics(),
-      }, { status: 502 });
-    }
-
-    if (!paylinkResult.url) {
-      return NextResponse.json({
-        success: false,
-        error: 'PAYLINK_NO_URL',
-        message: 'لم يتم استلام رابط الدفع من Paylink',
-        diagnostics: {
-          ...getDiagnostics(),
-          hasTransactionNo: !!paylinkResult.transactionNo,
-          hasUrl: false,
-          orderStatus: paylinkResult.orderStatus,
-        },
-      }, { status: 502 });
-    }
-
-    const paymentUrl = paylinkResult.url;
-    const transactionNo = paylinkResult.transactionNo;
-
-    // Store on ORCA
-    await prisma.rentalInvoice.update({
-      where: { id },
-      data: { gatewayProvider: 'paylink', gatewayStatus: 'pending', paymentUrl },
-    });
-
-    await prisma.paymentTransaction.create({
-      data: {
-        tenantId, invoiceId: id, amount: Number(invoice.totalAmount),
-        fee: 0, netAmount: Number(invoice.totalAmount), currency: 'SAR',
-        method: 'paylink', status: 'PENDING', provider: 'paylink',
-        providerTransactionId: transactionNo, providerInvoiceId: transactionNo,
-        paymentUrl, gatewayStatus: paylinkResult.orderStatus || 'Pending',
-        rawPayload: redactPiiFromPayload(paylinkResult.rawResponse || undefined) as any,
+      include: {
+        lease: { select: { unitName: true, tenantName: true } },
       },
     });
 
-    // Audit
-    try {
-      await prisma.auditLog.create({
+    if (!invoice) return errorResponse(ErrorCode.NOT_FOUND, 'Paylink invoice not found');
+    if (invoice.status === 'paid') {
+      return errorResponse(ErrorCode.CONFLICT, 'Paylink invoice already paid');
+    }
+
+    if (
+      invoice.paymentUrl &&
+      invoice.gatewayProvider === PROVIDER &&
+      invoice.gatewayStatus === 'pending'
+    ) {
+      return NextResponse.json({
+        success: true,
+        status: 'existing',
+        paymentUrl: invoice.paymentUrl,
+      });
+    }
+
+    const amount = Number(invoice.totalAmount);
+    const expectedAmountMinor = Math.round(amount * 100);
+    if (!Number.isFinite(amount) || amount <= 0 || expectedAmountMinor <= 0) {
+      return errorResponse(ErrorCode.VALIDATION_ERROR, 'Paylink invoice amount invalid');
+    }
+
+    let claim = await prisma.paymentTransaction.findUnique({
+      where: {
+        provider_providerReference: {
+          provider: PROVIDER,
+          providerReference: reference,
+        },
+      },
+    });
+
+    if (claim?.paymentUrl && ['PENDING', 'COMPLETED'].includes(claim.status)) {
+      return NextResponse.json({
+        success: true,
+        status: 'existing',
+        paymentUrl: claim.paymentUrl,
+      });
+    }
+
+    if (!claim) {
+      try {
+        claim = await prisma.paymentTransaction.create({
+          data: {
+            tenantId,
+            invoiceId: id,
+            amount,
+            netAmount: amount,
+            currency: 'SAR',
+            method: PROVIDER,
+            status: 'INITIATING',
+            provider: PROVIDER,
+            providerReference: reference,
+            idempotencyKey: reference,
+            expectedAmountMinor,
+            expectedCurrency: 'SAR',
+          },
+        });
+      } catch (error: unknown) {
+        const code =
+          typeof error === 'object' && error !== null
+            ? (error as { code?: unknown }).code
+            : null;
+        if (code !== 'P2002') throw error;
+        claim = await prisma.paymentTransaction.findUnique({
+          where: {
+            provider_providerReference: {
+              provider: PROVIDER,
+              providerReference: reference,
+            },
+          },
+        });
+      }
+    } else {
+      claim = await prisma.paymentTransaction.update({
+        where: { id: claim.id },
         data: {
-          tenantId, userId: (session as any).userId || null,
-          action: 'PAYLINK_LINK_CREATED', tableName: 'rental_invoices', recordId: id,
-          details: `Paylink link created, txn: ${transactionNo}`,
+          status: 'INITIATING',
+          lastError: null,
+          expectedAmountMinor,
+          expectedCurrency: 'SAR',
         },
       });
-    } catch {}
+    }
+
+    if (!claim) {
+      return errorResponse(ErrorCode.CONFLICT, 'Paylink request already in progress');
+    }
+    claimId = claim.id;
+
+    const token = await authenticatePaylink(baseUrl);
+    const orderNumber = `ORCA-${invoice.invoicePrefix || 'INV'}-${invoice.invoiceNumber}`;
+    const data = await providerRequest(`${baseUrl}/api/addInvoice`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: expectedAmountMinor,
+        currency: 'SAR',
+        orderNumber,
+        clientName: invoice.lease.tenantName || 'عميل',
+        clientMobile: mobile,
+        callBackUrl: `${appUrl}/api/payment/callback`,
+        cancelUrl: `${appUrl}/operations/rental`,
+        products: [
+          {
+            title: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
+            price: expectedAmountMinor,
+            qty: 1,
+          },
+        ],
+        note: `ORCA invoice ${invoice.invoiceNumber}`,
+      }),
+    });
+
+    const paymentUrl = String(data.url || data.payment_url || data.checkoutUrl || '');
+    const transactionNo = String(
+      data.transactionNo || data.transaction_no || data.transactionId || ''
+    );
+    if (!paymentUrl || !transactionNo) {
+      throw new ProviderError('Paylink response is missing required fields');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentTransaction.update({
+        where: { id: claim!.id },
+        data: {
+          status: 'PENDING',
+          providerTransactionId: transactionNo,
+          providerInvoiceId: transactionNo,
+          paymentUrl,
+          gatewayStatus: String(data.orderStatus || 'Pending'),
+          rawPayload: redactPiiFromPayload(data) as never,
+        },
+      });
+
+      await tx.rentalInvoice.updateMany({
+        where: { id, tenantId, status: { not: 'paid' } },
+        data: {
+          gatewayProvider: PROVIDER,
+          gatewayStatus: 'pending',
+          paymentUrl,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.userId,
+          action: 'PAYLINK_LINK_CREATED',
+          tableName: 'rental_invoices',
+          recordId: id,
+          details: `Paylink transaction created: ${transactionNo}`,
+        },
+      });
+    });
 
     return NextResponse.json({
-      success: true, status: 'created', paymentUrl, paylinkTransactionNo: transactionNo,
-      message: 'تم إنشاء رابط الدفع بنجاح',
+      success: true,
+      status: 'created',
+      paymentUrl,
+      paylinkTransactionNo: transactionNo,
     });
-  } catch (error: any) {
-    console.error('[Paylink] Unexpected:', error.message);
-    return NextResponse.json({
-      success: false,
-      error: 'PAYLINK_INTERNAL_ERROR',
-      message: 'حدث خطأ داخلي',
-      diagnostics: getDiagnostics(),
-    }, { status: 500 });
+  } catch (error: unknown) {
+    if (claimId) {
+      await prisma.paymentTransaction
+        .update({
+          where: { id: claimId },
+          data: { status: 'FAILED', lastError: 'PAYLINK_CREATE_FAILED' },
+        })
+        .catch(() => undefined);
+    }
+
+    const status = error instanceof ProviderError ? error.status : 500;
+    const code =
+      status === 503 ? ErrorCode.SERVICE_UNAVAILABLE : ErrorCode.PAYMENT_ERROR;
+    return errorResponse(code, 'Paylink creation failed', error, status);
   }
 }

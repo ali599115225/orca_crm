@@ -7,6 +7,7 @@ import {
   PlanLimitError,
 } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
+import { decryptSecret } from '@/lib/secret-encryption';
 import { hashEmail, hashPhone } from '@/lib/privacy-mask';
 import {
   classifyError,
@@ -122,7 +123,8 @@ export async function POST(request: NextRequest) {
     const ipLimit = await rateLimit(
       `leads:webhook:ip:${requestIp(request)}`,
       60,
-      60_000
+      60_000,
+      true
     );
 
     if (!ipLimit.allowed) {
@@ -132,11 +134,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantSubdomain = cleanText(
-      request.headers.get('x-webhook-tenant') ||
-        request.headers.get('x-webhook-token'),
-      100
-    );
+    const contentType = request.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().startsWith('application/json')) {
+      return errorResponse(
+        ErrorCode.BAD_REQUEST,
+        'leads webhook requires application/json'
+      );
+    }
+
+    const keyId = cleanText(request.headers.get('x-webhook-key-id'), 100);
     const timestampHeader = request.headers
       .get('x-webhook-timestamp')
       ?.trim();
@@ -144,17 +150,17 @@ export async function POST(request: NextRequest) {
       .get('x-webhook-signature')
       ?.trim();
 
-    if (!tenantSubdomain || !timestampHeader || !signatureHeader) {
+    if (!keyId || !timestampHeader || !signatureHeader) {
       return errorResponse(
         ErrorCode.WEBHOOK_INVALID,
         'leads webhook authentication headers are missing'
       );
     }
 
-    if (!/^[a-zA-Z0-9-]{1,100}$/.test(tenantSubdomain)) {
+    if (!/^[a-f0-9]{32}$/i.test(keyId)) {
       return errorResponse(
         ErrorCode.WEBHOOK_INVALID,
-        'leads webhook tenant identifier is invalid'
+        'leads webhook key identifier is invalid'
       );
     }
 
@@ -171,11 +177,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const secret = process.env.LEADS_WEBHOOK_SECRET?.trim() ?? '';
-    if (secret.length < 32) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { leadsWebhookKeyId: keyId },
+      select: {
+        id: true,
+        isActive: true,
+        encryptedLeadsWebhookSecret: true,
+      },
+    });
+
+    if (
+      !tenant?.isActive ||
+      !tenant.encryptedLeadsWebhookSecret
+    ) {
+      return errorResponse(
+        ErrorCode.WEBHOOK_INVALID,
+        'leads webhook tenant is unavailable'
+      );
+    }
+
+    let secret: string;
+    try {
+      secret = decryptSecret(tenant.encryptedLeadsWebhookSecret);
+    } catch (error: unknown) {
       return errorResponse(
         ErrorCode.SERVICE_UNAVAILABLE,
-        'LEADS_WEBHOOK_SECRET is missing or too short'
+        'leads webhook secret decryption failed',
+        error
       );
     }
 
@@ -201,25 +229,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { subdomain: tenantSubdomain },
-      select: {
-        id: true,
-        isActive: true,
-      },
-    });
+    const replayLimit = await rateLimit(
+      `leads:webhook:replay:${keyId}:${timestampHeader}:${suppliedSignature}`,
+      1,
+      MAX_CLOCK_SKEW_SECONDS * 1_000,
+      true
+    );
 
-    if (!tenant?.isActive) {
+    if (!replayLimit.allowed) {
       return errorResponse(
-        ErrorCode.WEBHOOK_INVALID,
-        'leads webhook tenant is unavailable'
+        ErrorCode.CONFLICT,
+        'leads webhook replay detected'
       );
     }
 
     const tenantLimit = await rateLimit(
       `leads:webhook:tenant:${tenant.id}`,
       20,
-      60_000
+      60_000,
+      true
     );
 
     if (!tenantLimit.allowed) {

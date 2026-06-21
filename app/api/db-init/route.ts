@@ -1,32 +1,16 @@
 // app/api/db-init/route.ts
-// تهيئة الـ Triggers والـ Functions في Neon PostgreSQL
-// يُستدعى مرة واحدة من لوحة الإدارة العليا فقط
+import { NextRequest, NextResponse } from 'next/server';
+import { rawPrisma } from '@/lib/prisma';
+import { requireSuperAdminInDev } from '@/lib/api-auth-guard';
+import { ErrorCode, publicError } from '@/lib/errors';
 
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
-import * as fs from "fs";
-import * as path from "path";
+export const runtime = 'nodejs';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const guard = await requireSuperAdminInDev(request);
+  if (guard) return guard;
+
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId as string }
-    });
-    const isSuperAdmin =
-      user?.email === "ali.orca@outlook.sa" ||
-      user?.email === "elite.orca@outlook.sa";
-
-    if (!isSuperAdmin) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
-    }
-
-    // تنفيذ الـ SQL مباشرةً على قاعدة البيانات
     const sqlStatements = [
       // 1. دالة Cap Lock لمقاعد الوكلاء
       `CREATE OR REPLACE FUNCTION check_agent_slots_cap()
@@ -114,21 +98,18 @@ export async function POST() {
       `CREATE INDEX IF NOT EXISTS idx_leads_assigned ON leads(tenant_id, assigned_to)`,
     ];
 
-    const results: string[] = [];
+
     for (const sql of sqlStatements) {
-      await prisma.$executeRawUnsafe(sql);
-      results.push(`✅ ${sql.substring(0, 60)}...`);
+      await rawPrisma.$executeRawUnsafe(sql);
     }
 
     return NextResponse.json({
       success: true,
-      message: `تم تهيئة ${results.length} دالة وتشغيل بنجاح على قاعدة بيانات Neon PostgreSQL`,
-      results,
+      appliedStatements: sqlStatements.length,
     });
-  } catch (error: any) {
-    console.error("خطأ تهيئة قاعدة البيانات:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message },
+      publicError(ErrorCode.INTERNAL_ERROR, 'db-init failed', error),
       { status: 500 }
     );
   }

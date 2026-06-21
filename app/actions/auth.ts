@@ -1,185 +1,183 @@
-// app/actions/auth.ts
-"use server";
+'use server';
 
-import { prisma, rawPrisma } from "@/lib/prisma";
-import { getActiveTenant } from "@/lib/tenant";
-import { encrypt } from "@/lib/session";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { rateLimit } from "@/lib/rate-limit";
+import { createHash } from 'node:crypto';
+import bcrypt from 'bcryptjs';
+import { cookies, headers } from 'next/headers';
+import { rawPrisma } from '@/lib/prisma';
+import { encrypt } from '@/lib/session';
+import { rateLimit } from '@/lib/rate-limit';
+import { isConfiguredSuperAdminEmail } from '@/lib/api-auth-guard';
+import { ErrorCode, publicError } from '@/lib/errors';
 
-/**
- * حركة تسجيل الدخول والتحقق المشفر من الهوية والشركة النشطة
- */
-export async function loginAction(formData: FormData) {
-  const email = (formData.get("email") as string || "").trim().toLowerCase();
-  const rl = await rateLimit(`login:${email}`, 5, 60000);
-  if (!rl.allowed) {
-    return { success: false, error: "محاولات دخول كثيرة جداً. الرجاء الانتظار دقيقة." };
-  }
-
-  try {
-    const password = formData.get("password") as string;
-
-    if (!email || !password) {
-      throw new Error("البريد الإلكتروني وكلمة المرور مطلوبة لدخول النظام.");
-    }
-
-    console.log("[LOGIN ACTION] login attempt:", email);
-    const user = await rawPrisma.user.findFirst({
-      where: {
-        email,
-        isActive: true,
-      },
-      include: {
-        tenant: true,
-      }
-    });
-
-    if (!user || !user.tenant || !user.tenant.isActive) {
-      throw new Error("بيانات الدخول غير صحيحة، أو أن الحساب غير نشط حالياً.");
-    }
-
-    if (!user.passwordHash) {
-      throw new Error("بيانات الدخول غير صحيحة.");
-    }
-
-    const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isPasswordCorrect) {
-      throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
-    }
-
-    const host = formData.get("clientHost") as string || "orca.az-ez.pro";
-    const isSecureConnection = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production" || (formData.get("clientProto") as string || "https") === "https";
-
-    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-    const isSuperAdmin = superAdminEmails.includes(user.email.toLowerCase());
-
-    const cookieStore = await cookies();
-
-    // 🛡️ حماية الدخول المتقاطع بين المستأجرين (Cross-Tenant Protection)
-    // إذا كان الكوكي مختلف، نسمح بالدخول ونحدّث الكوكي تلقائياً
-    const deviceTenant = cookieStore.get("device_tenant_subdomain")?.value;
-    if (deviceTenant && deviceTenant !== user.tenant.subdomain) {
-      console.log(`[LOGIN ACTION] Device tenant mismatch: ${deviceTenant} → ${user.tenant.subdomain}, updating cookie`);
-    }
-
-    // 🛡️ فحص النطاق العقاري ومطابقة الشركة
-    const domainParts = host.split(".");
-    let currentSubdomain = "orca";
-    const isVercelDomain = host.endsWith(".vercel.app");
-
-    if (domainParts.length > 2 && !isVercelDomain) {
-      currentSubdomain = domainParts[0];
-    }
-
-    const isTenantSubdomain = currentSubdomain !== "orca" && currentSubdomain !== "dar-al-amar" && currentSubdomain !== "orca-crm" && currentSubdomain !== "www";
-
-    if (!isSuperAdmin && isTenantSubdomain && user.tenant.subdomain !== currentSubdomain) {
-      throw new Error("غير مصرح لك بدخول هذه الشركة من هذا الرابط.");
-    }
-
-    const PLATFORM_ARCHITECT_EMAILS = (process.env.PLATFORM_ARCHITECT_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-    const isPlatformArchitect = PLATFORM_ARCHITECT_EMAILS.includes(user.email.toLowerCase());
-
-    const sessionPayload = {
-      userId: user.id,
-      tenantId: user.tenant.id,
-      tenantSubdomain: user.tenant.subdomain,
-      role: isPlatformArchitect ? "PLATFORM_ARCHITECT" : user.role,
-      name: user.name,
-      email: user.email,
-    };
-
-    const sessionToken = await encrypt(sessionPayload);
-    const isCustomDomain = host.includes("orca.az-ez.pro");
-
-    const cookieOptions: {
-      httpOnly: boolean;
-      secure: boolean;
-      sameSite: "lax" | "strict" | "none";
-      path: string;
-      maxAge: number;
-      domain?: string;
-    } = {
-      httpOnly: true,
-      secure: isSecureConnection,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24,
-    };
-
-    // مشاركة الكوكيز عبر جميع النطاقات الفرعية
-    if (isCustomDomain) {
-      cookieOptions.domain = "orca.az-ez.pro";
-    }
-
-    cookieStore.set("session_token", sessionToken, cookieOptions);
-
-    // تعيين النطاق العقاري الدائم للجهاز لمنع التطفل المتقاطع مستقبلاً
-    if (!isPlatformArchitect) {
-      cookieStore.set("device_tenant_subdomain", user.tenant.subdomain, {
-        httpOnly: true,
-        secure: isSecureConnection,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365, // سنة كاملة
-        domain: isCustomDomain ? "orca.az-ez.pro" : undefined,
-      });
-    }
-
-    // ─── توجيه بعد تسجيل الدخول ────────────────────────────────────────────
-    let redirectUrl = "/operations";
-    if (isPlatformArchitect) {
-      redirectUrl = "/operations?tab=monitor";
-    } else if (isCustomDomain) {
-      const isMainDomain =
-        currentSubdomain === "orca" ||
-        currentSubdomain === "www" ||
-        currentSubdomain === "dar-al-amar" ||
-        currentSubdomain === "orca-crm";
-      if (!isMainDomain) {
-        redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
-      }
-    }
-
-    return { success: true, redirectUrl };
-
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "حدث خطأ غير متوقع.";
-    return { success: false, error: message };
+class SafeAuthError extends Error {
+  constructor(readonly publicMessage: string) {
+    super(publicMessage);
+    this.name = 'SafeAuthError';
   }
 }
 
-/**
- * حركة تسجيل الخروج وتدمير الجلسة
- * [MERGED v2.1] — يضيف ?logged_out=true لمنع الـ proxy من إعادة التوجيه الفوري
- */
+function hashRateLimitIdentity(email: string): string {
+  return createHash('sha256').update(email).digest('hex');
+}
+
+function configuredEmails(name: string): Set<string> {
+  return new Set(
+    (process.env[name] ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+export async function loginAction(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '');
+
+  const limit = await rateLimit(
+    `login:${hashRateLimitIdentity(email || 'missing')}`,
+    5,
+    60_000,
+    true
+  );
+
+  if (!limit.allowed) {
+    return {
+      success: false,
+      error: 'محاولات دخول كثيرة جداً. الرجاء الانتظار دقيقة.',
+    };
+  }
+
+  try {
+    if (!email || !password) {
+      throw new SafeAuthError('البريد الإلكتروني وكلمة المرور مطلوبان.');
+    }
+
+    const user = await rawPrisma.user.findFirst({
+      where: { email, isActive: true },
+      include: { tenant: true },
+    });
+
+    if (
+      !user ||
+      !user.tenant ||
+      !user.tenant.isActive ||
+      !user.passwordHash ||
+      !(await bcrypt.compare(password, user.passwordHash))
+    ) {
+      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+    }
+
+    const requestHeaders = await headers();
+    const forwardedHost = requestHeaders.get('x-forwarded-host');
+    const host = (forwardedHost || requestHeaders.get('host') || 'orca.az-ez.pro')
+      .split(',')[0]
+      .trim()
+      .toLowerCase()
+      .replace(/:\d+$/, '');
+    const forwardedProto = requestHeaders
+      .get('x-forwarded-proto')
+      ?.split(',')[0]
+      ?.trim()
+      .toLowerCase();
+    const secure =
+      process.env.NODE_ENV === 'production' ||
+      process.env.VERCEL_ENV === 'production' ||
+      forwardedProto === 'https';
+
+    const parts = host.split('.');
+    const isVercelDomain = host.endsWith('.vercel.app');
+    const currentSubdomain =
+      parts.length > 2 && !isVercelDomain ? parts[0] : 'orca';
+    const mainSubdomains = new Set([
+      'orca',
+      'www',
+      'dar-al-amar',
+      'orca-crm',
+    ]);
+    const tenantHost = !mainSubdomains.has(currentSubdomain);
+    const superAdmin = isConfiguredSuperAdminEmail(user.email);
+
+    if (
+      !superAdmin &&
+      tenantHost &&
+      user.tenant.subdomain !== currentSubdomain
+    ) {
+      throw new SafeAuthError('غير مصرح لك بدخول هذه الشركة من هذا الرابط.');
+    }
+
+    const architectEmails = configuredEmails('PLATFORM_ARCHITECT_EMAILS');
+    const platformArchitect = architectEmails.has(user.email.toLowerCase());
+    const token = await encrypt({
+      userId: user.id,
+      tenantId: user.tenant.id,
+      tenantSubdomain: user.tenant.subdomain,
+      role: platformArchitect ? 'PLATFORM_ARCHITECT' : user.role,
+      name: user.name,
+      email: user.email,
+    });
+
+    const cookieStore = await cookies();
+    const customDomain =
+      host === 'orca.az-ez.pro' || host.endsWith('.orca.az-ez.pro');
+    const sharedDomain = customDomain ? 'orca.az-ez.pro' : undefined;
+
+    cookieStore.set('session_token', token, {
+      httpOnly: true,
+      secure,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 12,
+      domain: sharedDomain,
+    });
+
+    if (!platformArchitect) {
+      cookieStore.set('device_tenant_subdomain', user.tenant.subdomain, {
+        httpOnly: true,
+        secure,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+        domain: sharedDomain,
+      });
+    }
+
+    let redirectUrl = '/operations';
+    if (platformArchitect) {
+      redirectUrl = '/operations?tab=monitor';
+    } else if (customDomain && tenantHost) {
+      redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
+    }
+
+    return { success: true, redirectUrl };
+  } catch (error: unknown) {
+    if (error instanceof SafeAuthError) {
+      return { success: false, error: error.publicMessage };
+    }
+
+    publicError(ErrorCode.INTERNAL_ERROR, 'login action failed', error);
+    return {
+      success: false,
+      error: 'تعذر تسجيل الدخول حالياً. حاول مرة أخرى لاحقاً.',
+    };
+  }
+}
+
 export async function logoutAction() {
   const cookieStore = await cookies();
 
-  // حذف جميع كوكيز الجلسة بكل نطاقاتها الممكنة
-  cookieStore.delete("session_token");
+  cookieStore.delete('session_token');
+  cookieStore.delete({ name: 'session_token', path: '/' });
   cookieStore.delete({
-    name: "session_token",
-    path: "/"
+    name: 'session_token',
+    domain: 'orca.az-ez.pro',
+    path: '/',
   });
   cookieStore.delete({
-    name: "session_token",
-    domain: "orca.az-ez.pro",
-    path: "/"
+    name: 'session_token',
+    domain: '.orca.az-ez.pro',
+    path: '/',
   });
-  cookieStore.delete({
-    name: "session_token",
-    domain: ".orca.az-ez.pro",
-    path: "/"
-  });
-
-  // حذف كوكيز ربط الجهاز بالشركة
-  cookieStore.delete("device_tenant_subdomain");
+  cookieStore.delete('device_tenant_subdomain');
 
   return { success: true };
 }

@@ -3,7 +3,7 @@ import { getPeriod } from './utils';
 
 type PostingTransactionClient = Pick<
   typeof prisma,
-  'journalEntry' | 'accountBalance'
+  'tenant' | 'journalEntry' | 'accountBalance'
 >;
 
 export interface JournalLineInput {
@@ -89,13 +89,13 @@ export async function postJournalEntry(
   const { tenantId, description, source, sourceId, lines } = input;
 
   const execute = async (tx: PostingTransactionClient) => {
-    const lastEntry = await tx.journalEntry.findFirst({
-      where: { tenantId },
-      orderBy: { entryNumber: 'desc' },
-      select: { entryNumber: true },
+    const tenantCounter = await tx.tenant.update({
+      where: { id: tenantId },
+      data: { nextJournalNumber: { increment: 1 } },
+      select: { nextJournalNumber: true },
     });
 
-    const nextNumber = (lastEntry?.entryNumber ?? 0) + 1;
+    const nextNumber = tenantCounter.nextJournalNumber - 1;
 
     const entry = await tx.journalEntry.create({
       data: {

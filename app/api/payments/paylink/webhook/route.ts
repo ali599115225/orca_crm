@@ -1,200 +1,271 @@
-// app/api/payments/paylink/webhook/route.ts
-// Paylink server-to-server webhook — receives payment confirmations
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { writeAuditLog } from "@/lib/audit";
-import { postJournalEntry, findAccountByCode } from "@/lib/accounting";
-import { rateLimit } from "@/lib/rate-limit";
-import { redactPiiFromPayload } from "@/lib/privacy-mask";
+import { timingSafeEqual } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { findAccountByCode, postPaymentEntry } from '@/lib/accounting';
+import { rateLimit } from '@/lib/rate-limit';
+import { redactPiiFromPayload } from '@/lib/privacy-mask';
+import { ErrorCode, publicError } from '@/lib/errors';
 
-const PAYLINK_WEBHOOK_SECRET = process.env.PAYLINK_WEBHOOK_SECRET || "";
+export const runtime = 'nodejs';
+
+const MAX_BODY_BYTES = 64 * 1024;
+const SUCCESS = new Set(['paid', 'success', 'completed']);
+const FAILURE_STATUS: Record<string, string> = {
+  failed: 'FAILED',
+  expired: 'EXPIRED',
+  cancelled: 'CANCELLED',
+  canceled: 'CANCELLED',
+};
+
+function secureTokenEqual(left: string, right: string): boolean {
+  const a = Buffer.from(left, 'utf8');
+  const b = Buffer.from(right, 'utf8');
+  return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
+}
+
+function clean(value: unknown, max = 200): string {
+  return typeof value === 'string'
+    ? value.replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max)
+    : '';
+}
+
+function requestIp(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip')?.trim() ||
+    'unknown'
+  );
+}
+
+function amountMatches(value: unknown, expectedMinor: number): boolean {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0 || expectedMinor <= 0) return false;
+  return (
+    Math.round(amount) === expectedMinor ||
+    Math.round(amount * 100) === expectedMinor
+  );
+}
 
 export async function POST(request: NextRequest) {
+  const limit = await rateLimit(
+    `paylink:webhook:ip:${requestIp(request)}`,
+    60,
+    60_000,
+    true
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      publicError(ErrorCode.RATE_LIMITED, 'Paylink webhook rate limited'),
+      { status: 429 }
+    );
+  }
+
+  const secret = process.env.PAYLINK_WEBHOOK_SECRET?.trim() ?? '';
+  const authorization = request.headers.get('authorization') ?? '';
+  const token = authorization.startsWith('Bearer ')
+    ? authorization.slice(7).trim()
+    : '';
+  if (secret.length < 32) {
+    return NextResponse.json(
+      publicError(ErrorCode.SERVICE_UNAVAILABLE, 'Paylink webhook not configured'),
+      { status: 503 }
+    );
+  }
+  if (!secureTokenEqual(token, secret)) {
+    return NextResponse.json(
+      publicError(ErrorCode.WEBHOOK_INVALID, 'Paylink webhook authentication failed'),
+      { status: 401 }
+    );
+  }
+
+  const contentLength = Number(request.headers.get('content-length') ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json(publicError(ErrorCode.BAD_REQUEST, 'Paylink body too large'), { status: 413 });
+  }
+
   try {
-    const rl = await rateLimit("paylink:webhook", 30, 60000);
-    if (!rl.allowed) {
-      return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+    const rawBody = await request.text();
+    if (Buffer.byteLength(rawBody, 'utf8') > MAX_BODY_BYTES) {
+      return NextResponse.json(publicError(ErrorCode.BAD_REQUEST, 'Paylink body too large'), { status: 413 });
     }
 
-    const authHeader = request.headers.get("authorization") || "";
-    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
-    if (!PAYLINK_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    const parsed = JSON.parse(rawBody);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return NextResponse.json(publicError(ErrorCode.BAD_REQUEST, 'Paylink body invalid'), { status: 400 });
     }
-    if (!bearerToken || bearerToken !== PAYLINK_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const paymentRef = body.transaction_id || body.payment_id || body.reference || "";
-    const paylinkInvoiceId = body.id || body.invoice_id || "";
-    const paymentStatus = (body.status || "").toLowerCase();
-
-    if (!paymentRef) {
-      return NextResponse.json({ error: "Missing payment reference" }, { status: 400 });
+    const body = parsed as Record<string, unknown>;
+    const paymentRef = clean(body.transaction_id || body.payment_id || body.reference);
+    const providerInvoiceId = clean(body.id || body.invoice_id);
+    const status = clean(body.status, 40).toLowerCase();
+    if ((!paymentRef && !providerInvoiceId) || (!SUCCESS.has(status) && !FAILURE_STATUS[status])) {
+      return NextResponse.json(publicError(ErrorCode.WEBHOOK_INVALID, 'Paylink webhook fields invalid'), { status: 400 });
     }
 
-    // ── DB-backed idempotency: check providerTransactionId ──
-    const existingTx = await prisma.paymentTransaction.findFirst({
-      where: { providerTransactionId: paymentRef },
+    const references = [
+      ...(paymentRef
+        ? [
+            { providerTransactionId: paymentRef },
+            { providerReference: paymentRef },
+          ]
+        : []),
+      ...(providerInvoiceId ? [{ providerInvoiceId }] : []),
+    ];
+
+    const payment = await prisma.paymentTransaction.findFirst({
+      where: { provider: 'paylink', OR: references },
     });
-    if (existingTx && existingTx.status === 'COMPLETED') {
-      return NextResponse.json({ status: "already_processed" }, { status: 200 });
+    if (!payment || !payment.invoiceId) {
+      return NextResponse.json(publicError(ErrorCode.NOT_FOUND, 'Paylink transaction not found'), { status: 404 });
+    }
+    if (payment.status === 'COMPLETED') {
+      return NextResponse.json({ status: 'already_processed' });
     }
 
-    // ── Extract tenant + invoice from metadata or body ──
-    const metadata = body.metadata || {};
-    let tenantId = metadata.tenant_id || metadata.tenantId || body.tenant_id || "";
-    let invoiceId = metadata.invoiceId || metadata.invoice_id || body.invoice_id || "";
+    const redactedPayload = redactPiiFromPayload(body) as never;
 
-    // ── If invoiceId not in metadata, try to find by stored PaymentTransaction ──
-    if (!invoiceId && paylinkInvoiceId) {
-      const linkedTx = await prisma.paymentTransaction.findFirst({
-        where: { providerInvoiceId: paylinkInvoiceId },
-        select: { invoiceId: true, tenantId: true },
-      });
-      if (linkedTx) {
-        invoiceId = linkedTx.invoiceId || "";
-        if (!tenantId) tenantId = linkedTx.tenantId;
-      }
-    }
-
-    if (!tenantId) {
-      return NextResponse.json({ error: "Cannot determine tenant" }, { status: 400 });
-    }
-
-    // ── Verify tenant exists ──
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-    }
-
-    const amount = Number(body.amount || body.amount_total || 0);
-    const amountSar = amount > 0 && amount < 10000 ? Math.round(amount / 100) : Math.round(amount);
-
-    // ── Process payment status ──
-    if (paymentStatus === "paid" || paymentStatus === "success" || paymentStatus === "completed") {
-      // Only mark invoice paid if we have a valid invoiceId
-      if (invoiceId) {
-        const invoice = await prisma.rentalInvoice.findFirst({
-          where: { id: invoiceId, tenantId },
+    if (!SUCCESS.has(status)) {
+      await prisma.$transaction(async (tx) => {
+        await tx.paymentTransaction.update({
+          where: { id: payment.id },
+          data: {
+            status: FAILURE_STATUS[status],
+            gatewayStatus: status,
+            rawPayload: redactedPayload,
+            webhookReceivedAt: new Date(),
+            failureReason: clean(body.failure_reason || body.error, 500) || null,
+          },
         });
-        if (invoice && invoice.status !== 'paid') {
-          await prisma.rentalInvoice.update({
-            where: { id: invoiceId },
-            data: {
-              status: 'paid',
-              paidAt: new Date(),
-              paymentMethod: 'paylink',
-              gatewayStatus: 'completed',
-            },
-          });
-        }
-      }
-
-      // Update or create PaymentTransaction
-      const paymentTx = existingTx
-        ? await prisma.paymentTransaction.update({
-            where: { id: existingTx.id },
-            data: {
-              status: 'COMPLETED',
-              gatewayStatus: 'completed',
-              gatewayRef: paymentRef,
-              paidAt: new Date(),
-              webhookReceivedAt: new Date(),
-          rawPayload: redactPiiFromPayload(body) as any,
-        },
-      })
-    : await prisma.paymentTransaction.create({
-            data: {
-              tenantId,
-              invoiceId: invoiceId || undefined,
-              amount: amountSar,
-              fee: 0,
-              netAmount: amountSar,
-              currency: 'SAR',
-              method: 'paylink',
-              status: 'COMPLETED',
-              provider: 'paylink',
-              providerTransactionId: paymentRef,
-              providerInvoiceId: paylinkInvoiceId,
-              gatewayRef: paymentRef,
-              gatewayStatus: 'completed',
-              paidAt: new Date(),
-              webhookReceivedAt: new Date(),
-          rawPayload: redactPiiFromPayload(body) as any,
-        },
-      });
-
-  // Post accounting entries
-      if (amountSar > 0) {
-        try {
-          const cashAcct = await findAccountByCode(tenantId, "1.1.1");
-          const revenueAcct = await findAccountByCode(tenantId, "4.1.1");
-          if (cashAcct && revenueAcct) {
-            await postJournalEntry({
-              tenantId,
-              description: `دفع Paylink — ${paymentRef}`,
-              source: "PAYLINK",
-              sourceId: paymentTx.id,
-              lines: [
-                { accountId: cashAcct.id, debit: amountSar, credit: 0, description: "استلام دفعة" },
-                { accountId: revenueAcct.id, debit: 0, credit: amountSar, description: "إيراد" },
-              ],
-            });
-          }
-        } catch (err: any) {
-          console.error("[Paylink] Accounting entry failed:", err.message);
-        }
-      }
-
-      await writeAuditLog({
-        tenantId, userId: "system",
-        action: "PAYMENT_RECEIVED", tableName: "payment_transactions",
-        recordId: paymentTx.id,
-        details: `Paylink payment confirmed: ${paymentRef}, Amount: ${amountSar} SAR`,
-      });
-
-      return NextResponse.json({ status: "processed", id: paymentTx.id });
-    }
-
-    // ── Failed / expired / cancelled ──
-    if (existingTx) {
-      await prisma.paymentTransaction.update({
-        where: { id: existingTx.id },
-        data: {
-          status: paymentStatus === 'failed' ? 'FAILED' : paymentStatus === 'expired' ? 'EXPIRED' : 'CANCELLED',
-          gatewayStatus: paymentStatus,
-      rawPayload: redactPiiFromPayload(body) as any,
-      webhookReceivedAt: new Date(),
-          failureReason: body.failure_reason || body.error || null,
-        },
-      });
-
-      if (invoiceId) {
-        await prisma.rentalInvoice.update({
-          where: { id: invoiceId },
-          data: { gatewayStatus: paymentStatus },
+        await tx.rentalInvoice.updateMany({
+          where: { id: payment.invoiceId!, tenantId: payment.tenantId },
+          data: { gatewayStatus: status },
         });
-      }
+        await tx.auditLog.create({
+          data: {
+            tenantId: payment.tenantId,
+            userId: null,
+            action: 'PAYLINK_PAYMENT_FAILED',
+            tableName: 'payment_transactions',
+            recordId: payment.id,
+            details: `Paylink payment status: ${status}`,
+          },
+        });
+      });
+      return NextResponse.json({ status: 'recorded' });
     }
 
-    // ── Log failed/expired/cancelled via direct prisma call ──
-    try {
-      await prisma.auditLog.create({
+    const expectedMinor =
+      payment.expectedAmountMinor > 0
+        ? payment.expectedAmountMinor
+        : Math.round(Number(payment.amount) * 100);
+    if (!amountMatches(body.amount ?? body.amount_total, expectedMinor)) {
+      return NextResponse.json(publicError(ErrorCode.WEBHOOK_INVALID, 'Paylink amount mismatch'), { status: 400 });
+    }
+    const currency = clean(body.currency, 10).toUpperCase();
+    if (currency && currency !== (payment.expectedCurrency || 'SAR').toUpperCase()) {
+      return NextResponse.json(publicError(ErrorCode.WEBHOOK_INVALID, 'Paylink currency mismatch'), { status: 400 });
+    }
+
+    const [cashAccount, receivableAccount] = await Promise.all([
+      findAccountByCode(payment.tenantId, '1.1.1'),
+      findAccountByCode(payment.tenantId, '1.1.3'),
+    ]);
+    if (!cashAccount || !receivableAccount) {
+      return NextResponse.json(publicError(ErrorCode.SERVICE_UNAVAILABLE, 'Paylink accounting accounts missing'), { status: 503 });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const current = await tx.paymentTransaction.findFirst({
+        where: { id: payment.id, tenantId: payment.tenantId },
+      });
+      if (!current || current.status === 'COMPLETED') {
+        return { alreadyProcessed: true } as const;
+      }
+
+      const invoice = await tx.rentalInvoice.findFirst({
+        where: { id: payment.invoiceId!, tenantId: payment.tenantId },
+      });
+      if (!invoice) throw new Error('Paylink invoice missing');
+      if (invoice.status === 'paid') {
+        await tx.paymentTransaction.update({
+          where: { id: payment.id },
+          data: {
+            status: 'REVIEW_REQUIRED',
+            gatewayStatus: 'completed',
+            rawPayload: redactedPayload,
+            webhookReceivedAt: new Date(),
+            lastError: 'INVOICE_ALREADY_PAID',
+          },
+        });
+        return { reviewRequired: true } as const;
+      }
+
+      const amount = Number(invoice.totalAmount);
+      const receipt = await tx.receipt.create({
         data: {
-          tenantId, userId: "system",
-          action: "BILLING_RUN", tableName: "payment_transactions",
-          recordId: existingTx?.id || '',
-          details: `Paylink payment ${paymentStatus}: ${paymentRef}`,
+          tenantId: payment.tenantId,
+          invoiceId: invoice.id,
+          amount,
+          paymentMethod: 'paylink',
+          status: 'COMPLETED',
+          receivedDate: new Date(),
         },
       });
-    } catch (auditErr) { console.error('[audit] Paylink fail log:', auditErr); }
 
-    return NextResponse.json({ status: "recorded", paymentStatus });
-  } catch (error: any) {
-    console.error("[Paylink Webhook] Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      const updated = await tx.rentalInvoice.updateMany({
+        where: { id: invoice.id, tenantId: payment.tenantId, status: { not: 'paid' } },
+        data: {
+          status: 'paid',
+          paidAt: new Date(),
+          paymentMethod: 'paylink',
+          paymentRef: receipt.id,
+          gatewayStatus: 'completed',
+        },
+      });
+      if (updated.count !== 1) throw new Error('Paylink invoice changed concurrently');
+
+      await postPaymentEntry(
+        payment.tenantId,
+        receipt.id,
+        amount,
+        cashAccount.id,
+        receivableAccount.id,
+        tx
+      );
+
+      await tx.paymentTransaction.update({
+        where: { id: payment.id },
+        data: {
+          status: 'COMPLETED',
+          gatewayStatus: 'completed',
+          gatewayRef: paymentRef || providerInvoiceId,
+          paidAt: new Date(),
+          processedAt: new Date(),
+          webhookReceivedAt: new Date(),
+          rawPayload: redactedPayload,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: payment.tenantId,
+          userId: null,
+          action: 'PAYMENT_RECEIVED',
+          tableName: 'payment_transactions',
+          recordId: payment.id,
+          details: `Paylink payment confirmed for invoice ${invoice.id}`,
+        },
+      });
+
+      return { processed: true, id: payment.id } as const;
+    });
+
+    if ('alreadyProcessed' in result) return NextResponse.json({ status: 'already_processed' });
+    if ('reviewRequired' in result) return NextResponse.json({ status: 'review_required' });
+    return NextResponse.json({ status: 'processed', id: result.id });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      publicError(ErrorCode.INTERNAL_ERROR, 'Paylink webhook failed', error),
+      { status: 500 }
+    );
   }
 }

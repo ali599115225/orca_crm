@@ -91,6 +91,10 @@ const SUPER_ADMIN_EMAILS = new Set(
     .filter(Boolean)
 );
 
+export function isConfiguredSuperAdminEmail(email: string): boolean {
+  return SUPER_ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
+
 export async function isSuperAdmin(userId: string): Promise<boolean> {
   if (!userId || SUPER_ADMIN_EMAILS.size === 0) return false;
 

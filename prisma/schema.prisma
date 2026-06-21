@@ -198,8 +198,12 @@ model Tenant {
   encryptedClientSecret     String? @map("encrypted_client_secret")
   encryptedApiKey           String? @map("encrypted_api_key")
   encryptedZatcaCredentials String? @map("encrypted_zatca_credentials")
-  invoicePrefix             String  @default("INV") @map("invoice_prefix")
-  nextInvoiceNumber         Int     @default(1) @map("next_invoice_number")
+  invoicePrefix                    String    @default("INV") @map("invoice_prefix")
+  nextInvoiceNumber                Int       @default(1) @map("next_invoice_number")
+  nextJournalNumber                Int       @default(1) @map("next_journal_number")
+  leadsWebhookKeyId                String?   @unique @map("leads_webhook_key_id")
+  encryptedLeadsWebhookSecret      String?   @map("encrypted_leads_webhook_secret") @db.Text
+  leadsWebhookSecretUpdatedAt      DateTime? @map("leads_webhook_secret_updated_at") @db.Timestamptz
 
   subscriptionExpiresAt DateTime? @map("subscription_expires_at") @db.Timestamptz
   paymentStatus         String    @default("UNPAID") @map("payment_status")

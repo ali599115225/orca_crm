@@ -133,7 +133,7 @@ function createExtendedPrismaClient() {
                   },
                 });
               } catch (e) {
-                console.error("[AuditLog Error] Failed to write db action log:", e);
+                console.error("[AuditLog Error] Failed to write db action log");
               }
             })();
           }
