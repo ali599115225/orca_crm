@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const tenantId = session.tenantId as string;
 
-    const statusCounts = await prisma.rentalInvoice.groupBy({
+    const statusCounts = await prisma.invoice.groupBy({
       by: ['zatcaStatus'],
       where: { tenantId },
       _count: { id: true },
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       where: { tenantId, status: 'ACTIVE' },
     });
 
-    const totalInvoices = await prisma.rentalInvoice.count({ where: { tenantId } });
+    const totalInvoices = await prisma.invoice.count({ where: { tenantId } });
 
     const statusMap: Record<string, number> = {
       DRAFT: 0, ISSUED: 0, REPORTED: 0, CLEARED: 0, REJECTED: 0, ERROR: 0,

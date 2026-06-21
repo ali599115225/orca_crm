@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { createOffer } from "@/lib/domain/transaction-spine";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,46 +37,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "الفرصة المرتبطة وسعر العرض وتاريخ الصلاحية مطلوبين." }, { status: 400 });
     }
 
-    const linkedOpp = await prisma.opportunity.findFirst({
-      where: { id: linkedOpportunityId, tenantId },
-    });
-    if (!linkedOpp) {
-      return NextResponse.json({ error: "الفرصة المرتبطة غير موجودة أو لا تتبع منشأتك." }, { status: 403 });
-    }
-
-    const offer = await prisma.offer.create({
-      data: {
-        tenantId,
-        linkedOpportunityId,
-        price: Number(price),
-        validUntil: new Date(validUntil),
-        status: "PENDING",
-        documentUrl: `https://orca.az-ez.pro/documents/offer_${linkedOpportunityId}.pdf`,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-      },
-    });
-
-    // Telemetry Event
-    await prisma.telemetryEvent.create({
-      data: {
-        tenantId,
-        eventType: "offer.sent",
-        eventDataJson: JSON.stringify({ offerId: offer.id, opportunityId: linkedOpportunityId, price }),
-        createdBy: userId || null,
-      },
-    });
-
-    // Trigger Warning Simulation: alert when expires in 48h (telemetry/audit log)
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: userId || null,
-        action: "CREATE_OFFER",
-        tableName: "offers",
-        recordId: offer.id,
-        details: `Sent offer of value ${price} valid until ${validUntil}`,
-      },
+    const offer = await createOffer({
+      tenantId,
+      userId: userId || "",
+      opportunityId: linkedOpportunityId,
+      price: Number(price),
+      validUntil: new Date(validUntil),
+      documentUrl: `https://orca.az-ez.pro/documents/offer_${linkedOpportunityId}.pdf`,
     });
 
     return NextResponse.json({ success: true, data: offer }, { status: 201 });

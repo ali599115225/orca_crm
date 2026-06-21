@@ -12,7 +12,7 @@ import { useApp } from '@/app/context/AppContext';
 import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 
-type OfferStatus = 'available' | 'reserved' | 'sold' | 'unknown';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'available' | 'reserved' | 'sold' | 'unknown';
 type OfferType = 'property' | 'apartment' | 'villa' | 'land' | 'unknown';
 type GeoKind = 'city' | 'district';
 
@@ -29,6 +29,10 @@ type PropertyOffer = {
   agent: string;
   posted: string | null;
   description: string;
+  linkedOpportunityId?: string;
+  validUntil?: string | null;
+  documentUrl?: string | null;
+  isRealOffer?: boolean;
 };
 
 type Filters = {
@@ -184,6 +188,10 @@ function normalizeType(value: unknown): OfferType {
 
 function normalizeStatus(value: unknown): OfferStatus {
   const text = String(value || '').trim().toLowerCase();
+  if (text === 'pending' || text === 'معلق') return 'PENDING';
+  if (text === 'accepted' || text === 'مقبول') return 'ACCEPTED';
+  if (text === 'rejected' || text === 'مرفوض') return 'REJECTED';
+  if (text === 'expired' || text === 'منتهي') return 'EXPIRED';
   if (text === 'available' || text === 'متاح') return 'available';
   if (text === 'reserved' || text === 'hold' || text === 'محجوز') return 'reserved';
   if (text === 'sold' || text === 'مباع') return 'sold';
@@ -209,6 +217,10 @@ function displayStatusLabel(status: OfferStatus, locale: DisplayLocale): string 
     cleanDisplayCandidate(displayEnum(String(status), 'propertyStatus' as any, locale), status, locale);
 
   if (centralized) return centralized;
+  if (status === 'PENDING') return locale === 'ar' ? 'معلّق' : 'Pending';
+  if (status === 'ACCEPTED') return locale === 'ar' ? 'مقبول' : 'Accepted';
+  if (status === 'REJECTED') return locale === 'ar' ? 'مرفوض' : 'Rejected';
+  if (status === 'EXPIRED') return locale === 'ar' ? 'منتهي' : 'Expired';
   if (status === 'available') return locale === 'ar' ? 'متاح' : 'Available';
   if (status === 'reserved') return locale === 'ar' ? 'محجوز' : 'Reserved';
   if (status === 'sold') return locale === 'ar' ? 'مباع' : 'Sold';
@@ -216,6 +228,10 @@ function displayStatusLabel(status: OfferStatus, locale: DisplayLocale): string 
 }
 
 function statusClass(status: OfferStatus): string {
+  if (status === 'PENDING') return 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+  if (status === 'ACCEPTED') return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+  if (status === 'REJECTED') return 'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300';
+  if (status === 'EXPIRED') return 'border-slate-500/25 bg-slate-500/10 text-slate-700 dark:text-slate-300';
   if (status === 'available') return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
   if (status === 'reserved') return 'border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300';
   if (status === 'sold') return 'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300';
@@ -336,12 +352,43 @@ export default function OffersView() {
       setError(null);
 
       try {
-        const result = await getPropertiesAction();
-        const data = result && typeof result === 'object' && 'data' in result
-          ? (result as { data?: unknown }).data
-          : result;
+        const [offersRes, propertiesResult] = await Promise.all([
+          fetch('/api/v1/offers').then(r => r.json()).catch(() => ({ success: false, data: [] })),
+          getPropertiesAction(),
+        ]);
 
-        setOffers(Array.isArray(data) ? data.map(mapPropertyToOffer).filter((item) => item.id) : []);
+        const realOffers: PropertyOffer[] = [];
+        if (offersRes.success && Array.isArray(offersRes.data)) {
+          for (const o of offersRes.data) {
+            realOffers.push({
+              id: o.id,
+              title: `${t('عرض', 'Offer')} #${o.id.slice(0, 8)}`,
+              type: 'property',
+              status: (o.status || 'PENDING') as OfferStatus,
+              price: Number(o.price) || null,
+              beds: null,
+              area: null,
+              city: '',
+              district: '',
+              agent: '',
+              posted: o.createdAt || null,
+              description: '',
+              linkedOpportunityId: o.linkedOpportunityId,
+              validUntil: o.validUntil,
+              documentUrl: o.documentUrl,
+              isRealOffer: true,
+            });
+          }
+        }
+
+        const propData = propertiesResult && typeof propertiesResult === 'object' && 'data' in propertiesResult
+          ? (propertiesResult as { data?: unknown }).data
+          : propertiesResult;
+        const propertyOffers: PropertyOffer[] = Array.isArray(propData)
+          ? propData.map(mapPropertyToOffer).filter((item) => item.id)
+          : [];
+
+        setOffers([...realOffers, ...propertyOffers]);
       } catch {
         setOffers([]);
         setError(t('تعذر تحميل العروض العقارية.', 'Unable to load property offers.'));

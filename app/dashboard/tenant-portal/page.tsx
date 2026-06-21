@@ -35,7 +35,7 @@ export default async function TenantPortalPage() {
 
   const [invoices, payments] = await Promise.all([
     leaseIds.length > 0
-      ? prisma.rentalInvoice.findMany({
+      ? prisma.invoice.findMany({
           where: { tenantId: tenant.id, leaseId: { in: leaseIds } },
           orderBy: { issueDate: 'desc' },
           take: 50,

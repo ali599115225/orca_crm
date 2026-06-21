@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId as string },
       select: {
         id: true,

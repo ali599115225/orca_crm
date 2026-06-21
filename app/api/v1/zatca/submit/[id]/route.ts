@@ -17,9 +17,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId as string },
-      include: { lease: true, tenant: true },
+      include: { lease: true, contract: true, tenant: true },
     });
 
     if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -27,10 +27,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const tenant = invoice.tenant;
     const vatType: VatType = 'STANDARD';
     const taxCat = 'S';
+    const customerLabel = invoice.lease?.tenantName || invoice.contract?.buyerName || 'عميل';
+    const unitLabel = invoice.lease?.unitName || 'وحدة';
 
     const lineItems = [{
       id: 1,
-      description: `Rent - ${invoice.lease.unitName} (${invoice.lease.tenantName})`,
+      description: `${invoice.type === 'RENTAL' ? 'Rent' : 'Sale'} - ${unitLabel} (${customerLabel})`,
       quantity: 1,
       unitCode: 'DAY',
       unitPrice: Number(invoice.subtotal),
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const invoiceTypeCode = invoice.invoiceTypeCode || '388';
     const profileId = invoiceTypeCode === '381' ? 'clearance:1.0' : 'reporting:1.0';
 
-    const previousInvoice = await prisma.rentalInvoice.findFirst({
+    const previousInvoice = await prisma.invoice.findFirst({
       where: { tenantId: session.tenantId as string, createdAt: { lt: invoice.createdAt } },
       orderBy: { createdAt: 'desc' },
       select: { zatcaXml: true, zatcaSignedXml: true },
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         address: tenant.nationalAddress ? parseAddress(tenant.nationalAddress) : undefined,
       },
       buyer: {
-        name: invoice.lease.tenantName,
+        name: customerLabel,
         vatNumber: '',
       },
       lineItems,
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       ? (invoiceTypeCode === '381' ? 'CLEARED' : 'REPORTED')
       : 'REJECTED';
 
-    await prisma.rentalInvoice.update({
+    await prisma.invoice.update({
       where: { id: invoice.id },
       data: {
         zatcaXml: unsignedXml,

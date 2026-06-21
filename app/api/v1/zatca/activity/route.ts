@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const activity = await prisma.rentalInvoice.findMany({
+    const activity = await prisma.invoice.findMany({
       where: { tenantId: session.tenantId as string, zatcaStatus: { not: 'DRAFT' } },
       select: {
         id: true,

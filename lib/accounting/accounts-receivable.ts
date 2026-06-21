@@ -13,9 +13,9 @@ export interface CustomerBalance {
 }
 
 export async function getCustomerBalances(tenantId: string): Promise<CustomerBalance[]> {
-  const invoices = await prisma.rentalInvoice.findMany({
+  const invoices = await prisma.invoice.findMany({
     where: { tenantId },
-    include: { lease: true },
+    include: { lease: true, contract: true },
     orderBy: { issueDate: 'desc' },
   });
 
@@ -33,10 +33,10 @@ export async function getCustomerBalances(tenantId: string): Promise<CustomerBal
   }>();
 
   for (const inv of invoices) {
-    const key = inv.lease.tenantName;
+    const key = inv.lease?.tenantName || inv.contract?.buyerName || 'عميل';
     if (!customerMap.has(key)) {
       customerMap.set(key, {
-        customerName: inv.lease.tenantName,
+        customerName: inv.lease?.tenantName || inv.contract?.buyerName || 'عميل',
         customerPhone: '',
         totalInvoiced: 0,
         totalPaid: 0,
@@ -52,7 +52,7 @@ export async function getCustomerBalances(tenantId: string): Promise<CustomerBal
   for (const rec of receipts) {
     const inv = invoices.find((i) => i.id === rec.invoiceId);
     if (!inv) continue;
-    const key = inv.lease.tenantName;
+    const key = inv.lease?.tenantName || inv.contract?.buyerName || 'عميل';
     const entry = customerMap.get(key);
     if (entry) {
       entry.totalPaid += Number(rec.amount);
@@ -99,7 +99,7 @@ export async function getCustomerBalances(tenantId: string): Promise<CustomerBal
 }
 
 export async function getOutstandingAmount(tenantId: string): Promise<number> {
-  const result = await prisma.rentalInvoice.aggregate({
+  const result = await prisma.invoice.aggregate({
     where: { tenantId, status: { in: ['unpaid', 'overdue'] } },
     _sum: { totalAmount: true },
   });
@@ -108,7 +108,7 @@ export async function getOutstandingAmount(tenantId: string): Promise<number> {
 
 export async function getOverdueAmount(tenantId: string): Promise<number> {
   const today = new Date();
-  const result = await prisma.rentalInvoice.aggregate({
+  const result = await prisma.invoice.aggregate({
     where: { tenantId, status: { not: 'paid' }, dueDate: { lt: today } },
     _sum: { totalAmount: true },
   });
@@ -121,7 +121,7 @@ export async function getCollectionStatus(tenantId: string): Promise<{
   outstanding: number;
   collectionRate: number;
 }> {
-  const invoiced = await prisma.rentalInvoice.aggregate({
+  const invoiced = await prisma.invoice.aggregate({
     where: { tenantId },
     _sum: { totalAmount: true },
   });

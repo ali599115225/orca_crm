@@ -19,7 +19,7 @@ export default async function OwnerPortalPage() {
   const ownerUserId = session?.userId;
   const safeCompanyName = (tenant?.companyName || "الشركة") as string;
 
-  const [contracts, units, rentalLeases, rentalInvoices, maintenanceTickets, installments] = await Promise.all([
+  const [contracts, units, rentalLeases, invoices, maintenanceTickets, installments] = await Promise.all([
     prisma.contract.findMany({
       where: { unit: { project: { tenantId: tenant.id } }, buyerName: ownerName },
       include: { unit: { include: { project: { select: { name: true, city: true } } } }, installments: { select: { amountSar: true, paymentStatus: true } } },
@@ -33,7 +33,7 @@ export default async function OwnerPortalPage() {
       where: { tenantId: tenant.id, status: 'active' },
       include: { invoices: { select: { totalAmount: true, status: true } } },
     }),
-    prisma.rentalInvoice.aggregate({
+    prisma.invoice.aggregate({
       where: { tenantId: tenant.id },
       _sum: { totalAmount: true },
     }),
@@ -60,7 +60,7 @@ export default async function OwnerPortalPage() {
   const totalContractVolume = contracts.reduce((s, c) => s + Number(c.totalVolumeSar), 0);
   const activeContracts = contracts.filter(c => c.status === 'Active').length;
 
-  const totalRentalRevenue = Number(rentalInvoices._sum.totalAmount || 0);
+  const totalRentalRevenue = Number(invoices._sum.totalAmount || 0);
 
   const totalInstallmentsPaid = installments.reduce((s, i) => s + Number(i.amountSar), 0);
 

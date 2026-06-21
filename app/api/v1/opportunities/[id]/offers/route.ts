@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { createOffer } from "@/lib/domain/transaction-spine";
 
 export async function POST(
   request: NextRequest,
@@ -34,27 +35,13 @@ export async function POST(
     
     const validityDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 days default
 
-    const offer = await prisma.offer.create({
-      data: {
-        tenantId,
-        linkedOpportunityId: id,
-        price: finalPrice,
-        validUntil: validityDate,
-        status: "PENDING",
-        documentUrl: `https://orca.az-ez.pro/documents/offer_${id}.pdf`,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-      },
-    });
-
-    // Telemetry Event
-    await prisma.telemetryEvent.create({
-      data: {
-        tenantId,
-        eventType: "offer.sent",
-        eventDataJson: JSON.stringify({ offerId: offer.id, opportunityId: id, price: finalPrice }),
-        createdBy: userId || null,
-      },
+    const offer = await createOffer({
+      tenantId,
+      userId: userId || "",
+      opportunityId: id,
+      price: finalPrice,
+      validUntil: validityDate,
+      documentUrl: `https://orca.az-ez.pro/documents/offer_${id}.pdf`,
     });
 
     return NextResponse.json({ success: true, data: offer, aiOptimizedPrice: optimizedPrice }, { status: 201 });

@@ -6,6 +6,7 @@ import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone } from "@/lib/privacy-mask";
+import { scheduleTour } from "@/lib/domain/transaction-spine";
 
 export type TourListItem = {
   id: string;
@@ -312,29 +313,17 @@ export async function scheduleTourActionDirect(data: {
     const startAt = new Date(datetime);
     const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
 
-    const tour = await prisma.tour.create({
-      data: {
-        tenantId: tenant.id,
-        leadId: lead.id,
-        assignedTo,
-        startAt,
-        endAt,
-        location,
-        status: "SCHEDULED",
-        attendees: 1,
-        notes: "جولة عقارية مجدولة من صفحة الجولات.",
-      },
+    const tour = await scheduleTour({
+      tenantId: tenant.id,
+      userId: assignedTo,
+      leadId: lead.id,
+      unitId: propertyId || undefined,
+      location,
+      startAt,
+      endAt,
+      attendees: 1,
+      notes: "جولة عقارية مجدولة من صفحة الجولات.",
     });
-
-    await prisma.telemetryEvent
-      .create({
-        data: {
-          tenantId: tenant.id,
-          eventType: "tour.scheduled",
-          eventDataJson: JSON.stringify({ tourId: tour.id, leadId: lead.id, startAt: datetime }),
-        },
-      })
-      .catch(() => {});
 
     await prisma.agentTelemetryLog
       .create({

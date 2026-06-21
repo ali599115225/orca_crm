@@ -109,9 +109,12 @@ export async function getAccountsReceivableReport(tenantId: string): Promise<ArR
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const invoices = await prisma.rentalInvoice.findMany({
+  const invoices = await prisma.invoice.findMany({
     where: { tenantId },
-    include: { lease: { select: { tenantName: true, unitName: true } } },
+    include: {
+      lease: { select: { tenantName: true, unitName: true } },
+      contract: { select: { buyerName: true } },
+    },
     orderBy: { dueDate: 'asc' },
   });
 
@@ -136,8 +139,8 @@ export async function getAccountsReceivableReport(tenantId: string): Promise<ArR
     const daysOverdue = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
 
     rows.push({
-      customerName: inv.lease.tenantName,
-      unitName: inv.lease.unitName,
+      customerName: inv.lease?.tenantName || inv.contract?.buyerName || '',
+      unitName: inv.lease?.unitName || '',
       invoiceNumber: `${inv.invoicePrefix}-${inv.invoiceNumber}`,
       issueDate: inv.issueDate.toISOString().split('T')[0],
       dueDate: inv.dueDate.toISOString().split('T')[0],
@@ -176,9 +179,12 @@ export async function getVatReport(
   if (fromDate) where.issueDate = { ...where.issueDate, gte: new Date(fromDate) };
   if (toDate) where.issueDate = { ...where.issueDate, lte: new Date(toDate) };
 
-  const invoices = await prisma.rentalInvoice.findMany({
+  const invoices = await prisma.invoice.findMany({
     where,
-    include: { lease: { select: { tenantName: true } } },
+    include: {
+      lease: { select: { tenantName: true } },
+      contract: { select: { buyerName: true } },
+    },
     orderBy: { issueDate: 'desc' },
   });
 
@@ -186,7 +192,7 @@ export async function getVatReport(
     .filter((inv) => Number(inv.vatAmount) > 0)
     .map((inv) => ({
       invoiceNumber: `${inv.invoicePrefix}-${inv.invoiceNumber}`,
-      customerName: inv.lease.tenantName,
+      customerName: inv.lease?.tenantName || inv.contract?.buyerName || '',
       issueDate: inv.issueDate.toISOString().split('T')[0],
       subtotal: Number(inv.subtotal),
       vatRate: Number(inv.vatRate),

@@ -478,22 +478,7 @@ export default function RentalPage() {
   };
 
   const handleLeaseDocumentUpload = () => {
-    if (!selectedLease) {
-      toast.error('يرجى اختيار عقد أولاً قبل رفع المستند.');
-      return;
-    }
-    if (!selectedDocumentFile) {
-      toast.error('يرجى اختيار ملف للرفع أولاً.');
-      return;
-    }
-
-    addTelemetryEvent('document.uploaded', {
-      contractId: selectedLease.id,
-      fileName: selectedDocumentFile.name,
-      fileSize: selectedDocumentFile.size,
-    });
-
-    toast.success('تم رفع مستند العقد بنجاح.');
+    toast.info('نظام رفع مستندات العقود قيد التطوير. سيُتاح في التحديث القادم.');
     setSelectedDocumentFile(null);
   };
 
@@ -657,115 +642,17 @@ export default function RentalPage() {
     }
   };
 
-  const handleRequestSettlement = (contractId: string, amount: number) => {
-    if (!isAllowed('REQUEST_SETTLEMENT')) {
-      alert('عذراً، لا تملك صلاحية طلب تسوية المستحقات للمالك.');
-      return;
-    }
-
-    const settleId = 'FS-' + Math.floor(3002 + Math.random() * 900);
-    const gross = amount;
-    const deductions = Math.round(gross * 0.1); // 10% administrative deductions
-    const net = gross - deductions;
-
-    const newS: Settlement = {
-      id: settleId,
-      contractId,
-      gross,
-      deductions,
-      net,
-      status: 'pending'
-    };
-
-    setSettlements(prev => [...prev, newS]);
-    setLeases(prev => prev.map(l => l.id === contractId ? { ...l, financialRef: settleId } : l));
-
-    addTelemetryEvent('settlement.requested', {
-      contractId,
-      settlementId: settleId,
-      actorId: 'usr_active',
-      timestamp: new Date().toISOString(),
-      status: 'pending',
-      payload: { gross, deductions, net }
-    });
-
-    alert(`تم إرسال طلب تسوية للمالك بنجاح! رقم التسوية: ${settleId}. جاري إرسالها إلى خدمة الحسابات المركزية (General Ledger Proxy).`);
-
-    // Simulate completion from Accounting general ledger
-    setTimeout(() => {
-      setSettlements(prev => prev.map(s => s.id === settleId ? { ...s, status: 'completed' } : s));
-      addTelemetryEvent('settlement.completed', {
-        contractId,
-        settlementId: settleId,
-        actorId: 'system_accounting',
-        timestamp: new Date().toISOString(),
-        status: 'completed',
-        payload: { gross, deductions, net, ledgerRef: 'GL-REF-' + Math.floor(10000 + Math.random() * 90000) }
-      });
-    }, 4000);
+  const handleRequestSettlement = (_contractId: string, _amount: number) => {
+    toast.info('نظام التسويات المالية قيد التطوير. سيُتاح في التحديث القادم.');
   };
 
   const handleBankFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    if (!isAllowed('MANAGE_RECONCILE')) {
-      alert('عذراً، لا تملك الصلاحية لتشغيل المصالحة البنكية.');
-      return;
-    }
-
-    const file = e.target.files[0];
-    setBankFileLoaded(true);
-
-    addTelemetryEvent('reconciliation.upload', { fileName: file.name, fileSize: file.size });
-
-    // Simulate matching algorithm
-    setReconcileMatches([
-      { transactionId: 'TXN-8892', amount: 12000, invoiceId: 'INV-9004', confidence: 0.98, note: 'تطابق تام لقيمة الفاتورة المتبقية لعقد محمد العلي' }
-    ]);
-    setReconcileExceptions([
-      { transactionId: 'TXN-9981', amount: 450, note: 'تحويل بنكي مجهول الهوية بدون رقم مرجعي متاح' }
-    ]);
-
-    alert('تم تحميل كشف الحساب البنكي بنجاح! جاري تشغيل خوارزميات المطابقة الفورية (Reconciliation Batch)...');
+    toast.info('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.');
   };
 
-  const handleConfirmReconcileMatch = (match: any) => {
-    const inv = invoices.find(i => i.id === match.invoiceId);
-    if (!inv) return;
-
-    const pid = 'P-' + Math.floor(5200 + Math.random() * 100);
-    const newP: Payment = {
-      id: pid,
-      invoiceId: inv.id,
-      date: new Date().toISOString().split('T')[0],
-      amount: inv.totalAmount,
-      method: 'bank',
-      ref: match.transactionId
-    };
-
-    setPayments(prev => [...prev, newP]);
-    setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' } : i));
-    setReconcileMatches(prev => prev.filter(m => m.transactionId !== match.transactionId));
-
-    const newEv: EventLog = {
-      id: `ev_${Date.now()}`,
-      contractId: inv.contractId,
-      type: 'payment.received',
-      timestamp: new Date().toISOString(),
-      note: `تمت تسوية الفاتورة ${inv.id} آلياً عن طريق مصالحة الدفعة البنكية ${match.transactionId}`
-    };
-    setEvents(prev => [...prev, newEv]);
-
-    addTelemetryEvent('payment.received', {
-      contractId: inv.contractId,
-      invoiceId: inv.id,
-      paymentId: pid,
-      actorId: 'system_reconciliation',
-      timestamp: new Date().toISOString(),
-      status: 'paid',
-      payload: { amount: inv.totalAmount, method: 'bank', ref: match.transactionId }
-    });
-
-    alert(`تم اعتماد المطابقة بنجاح وتسوية الفاتورة ${inv.id}.`);
+  const handleConfirmReconcileMatch = (_match: any) => {
+    toast.info('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.');
   };
 
   // Filter lists

@@ -61,7 +61,7 @@ export async function POST(
       });
       const invoiceNumber = counter.nextInvoiceNumber - 1;
 
-      const invoice = await tx.rentalInvoice.create({
+      const invoice = await tx.invoice.create({
         data: {
           tenantId: session.tenantId as string,
           leaseId,
@@ -104,7 +104,7 @@ export async function POST(
         zatcaStatus: inv.zatcaStatus,
         status: inv.status,
         leaseId: inv.leaseId,
-        unitName: inv.lease.unitName,
+        unitName: inv.lease?.unitName || null,
       },
     }, { status: 201 });
 

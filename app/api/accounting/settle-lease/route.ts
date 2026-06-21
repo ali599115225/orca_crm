@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       });
 
       const invoiceNumber = tenant.nextInvoiceNumber - 1;
-      const createdInvoice = await tx.rentalInvoice.create({
+      const createdInvoice = await tx.invoice.create({
         data: {
           tenantId,
           leaseId,
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
           tenantId,
           userId: session.userId,
           action: 'SETTLE_LEASE',
-          tableName: 'rental_invoices',
+          tableName: 'invoices',
           recordId: createdInvoice.id,
           details: `Lease settlement invoice created for lease ${leaseId}`,
         },

@@ -262,7 +262,7 @@ export async function POST(
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const invoice = await tx.rentalInvoice.findFirst({
+      const invoice = await tx.invoice.findFirst({
         where: { id, tenantId },
       });
 
@@ -319,7 +319,7 @@ export async function POST(
         },
       });
 
-      const invoiceUpdate = await tx.rentalInvoice.updateMany({
+      const invoiceUpdate = await tx.invoice.updateMany({
         where: {
           id,
           tenantId,
@@ -355,7 +355,7 @@ export async function POST(
           tenantId,
           userId: session.userId,
           action: 'RECORD_PAYMENT',
-          tableName: 'rental_invoices',
+          tableName: 'invoices',
           recordId: id,
           details: `Manual payment recorded for invoice ${id}; amount=${invoiceAmount}; method=${method}; receipt=${receipt.id}`,
         },

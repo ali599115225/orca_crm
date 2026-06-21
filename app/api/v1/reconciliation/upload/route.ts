@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const unpaidInvoices = await prisma.rentalInvoice.findMany({
+    const unpaidInvoices = await prisma.invoice.findMany({
       where: {
         tenantId,
         status: { not: 'paid' },
@@ -257,13 +257,13 @@ export async function POST(request: NextRequest) {
           amount: Number(matchedPayment.amount),
           invoiceId: invoice.id,
           confidence: 1,
-          note: `تمت المطابقة مع ${invoice.lease.tenantName}`,
+          note: `تمت المطابقة مع ${invoice.lease?.tenantName || 'عميل'}`,
         });
       } else {
         exceptions.push({
           transactionId: `UNMATCHED-${invoice.id.slice(0, 8)}`,
           amount: Number(invoice.totalAmount),
-          note: `فاتورة غير مدفوعة: ${invoice.lease.tenantName} - ${invoice.lease.unitName}`,
+          note: `فاتورة غير مدفوعة: ${invoice.lease?.tenantName || 'عميل'} - ${invoice.lease?.unitName || '-'}`,
         });
       }
     }

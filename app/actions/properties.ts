@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
-import { hashPhone } from "@/lib/privacy-mask";
+import { issueContract } from "@/lib/domain/transaction-spine";
 
 /**
  * جلب العقارات والوحدات التابعة للشركاء والمشاريع الخاصة بالمنشأة الحالية
@@ -140,91 +140,16 @@ export async function bookUnitActionDirect(data: {
 }) {
   try {
     const tenant = await getActiveTenant();
+    const session = await import("@/lib/session").then(m => m.getSession());
+    const userId = session?.userId || "";
 
-    let buyerName = "";
-    let buyerPhone = "";
-
-    // محاولة جلب بيانات العميل من جدول Leads
-    const lead = await prisma.lead.findFirst({
-      where: { id: data.clientId, tenantId: tenant.id },
+    const contract = await issueContract({
+      tenantId: tenant.id,
+      userId: userId as string,
+      clientId: data.clientId,
+      propertyId: data.unitId,
+      amount: Number(data.offerPrice),
     });
-
-    if (lead) {
-      buyerName = `${lead.firstName} ${lead.lastName || ""}`.trim();
-      buyerPhone = lead.phone;
-    } else {
-      // محاولة الجلب من جدول Contacts
-      const contact = await prisma.contact.findFirst({
-        where: { id: data.clientId, tenantId: tenant.id },
-      });
-      if (contact) {
-        buyerName = contact.name;
-        buyerPhone = contact.phone;
-      } else {
-        // Fallback إذا كان مدخلاً نصياً مباشراً
-        buyerName = data.clientId;
-        buyerPhone = "0500000000";
-      }
-    }
-
-    // التحقق من الوحدة
-    const unit = await prisma.unit.findFirst({
-      where: { id: data.unitId, project: { tenantId: tenant.id } },
-      include: { contract: true },
-    });
-
-    if (!unit) {
-      throw new Error("الوحدة العقارية المحددة غير موجودة.");
-    }
-    if (unit.contract) {
-      throw new Error("هذه الوحدة متعاقد عليها بالفعل بموجب عقد قائم.");
-    }
-
-    const bookingDateObj = data.bookingDate ? new Date(data.bookingDate) : new Date();
-
-    // إعداد قائمة الأحداث الجديدة للوحدة
-    const newEvent = {
-      id: `ev_bk_${Date.now()}`,
-      type: "إنشاء حجز وعقد",
-      at: bookingDateObj.toISOString().split("T")[0],
-      note: `حجز للعميل المعرف بـ ${buyerName} بقيمة تعاقدية ${data.offerPrice.toLocaleString()} ر.س`,
-    };
-
-    const updatedEvents = Array.isArray(unit.events) ? [...unit.events, newEvent] : [newEvent];
-
-    // المعاملة الذرية (Prisma Transaction)
-    const [contract] = await prisma.$transaction([
-      // 1. إنشاء سجل العقد الجديد مع ربطه بالوحدة
-      prisma.contract.create({
-        data: {
-          tenantId: tenant.id,
-          unitId: data.unitId,
-          buyerName,
-          buyerPhone,
-          buyerPhoneHash: hashPhone(tenant.id, buyerPhone),
-          totalVolumeSar: data.offerPrice,
-          signedAt: bookingDateObj,
-        },
-      }),
-      // 2. تحديث حالة الوحدة إلى Sold وإضافة الحدث
-      prisma.unit.update({
-        where: { id: data.unitId },
-        data: {
-          status: "Sold",
-          events: updatedEvents,
-        },
-      }),
-      // 3. كتابة سجل تدقيق
-      prisma.auditLog.create({
-        data: {
-          tenantId: tenant.id,
-          action: "CREATE_CONTRACT",
-          tableName: "contracts",
-          recordId: data.unitId,
-          details: `Issued sales contract for unit ${unit.unitNumber} to client ${buyerName} worth ${data.offerPrice} SAR`,
-        },
-      }),
-    ]);
 
     revalidatePath("/operations/properties");
     return { success: true, contractId: contract.id };

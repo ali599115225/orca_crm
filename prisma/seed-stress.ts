@@ -87,7 +87,7 @@ async function main() {
     await prisma.whatsAppMessage.deleteMany({ where: { tenantId } });
     await prisma.whatsAppContact.deleteMany({ where: { tenantId } });
     await prisma.emailMessage.deleteMany({ where: { tenantId } });
-    await prisma.rentalInvoice.deleteMany({ where: { tenantId } });
+    await prisma.invoice.deleteMany({ where: { tenantId } });
     await prisma.rentalLease.deleteMany({ where: { tenantId } });
     await prisma.paymentTransaction.deleteMany({ where: { tenantId } });
     await prisma.agentSlot.deleteMany({ where: { tenantId } });
@@ -317,7 +317,7 @@ async function main() {
     const subtotal = Number(lease.rentAmount);
     const vatRate = 15;
     const vatAmount = Math.round(subtotal * vatRate / 100);
-    const iv = await prisma.rentalInvoice.create({
+    const iv = await prisma.invoice.create({
       data: {
         tenantId, leaseId: lease.id, invoiceNumber: 1000 + i, invoicePrefix: "INV",
         issueDate: pastDate(randInt(1, 60)), dueDate: futureDate(randInt(1, 30)),
@@ -425,7 +425,7 @@ async function main() {
     { model: "Tour", count: 40 },
     { model: "Contract", count: 50 },
     { model: "RentalLease", count: 20 },
-    { model: "RentalInvoice", count: 100 },
+    { model: "Invoice", count: 100 },
     { model: "PaymentTransaction", count: 100 },
     { model: "Installment", count: 120 },
     { model: "AgentSlot", count: 5 },
@@ -446,7 +446,7 @@ async function main() {
     Tour: () => prisma.tour.count({ where: { tenantId } }),
     Contract: () => prisma.contract.count({ where: { tenantId } }),
     RentalLease: () => prisma.rentalLease.count({ where: { tenantId } }),
-    RentalInvoice: () => prisma.rentalInvoice.count({ where: { tenantId } }),
+    Invoice: () => prisma.invoice.count({ where: { tenantId } }),
     PaymentTransaction: () => prisma.paymentTransaction.count({ where: { tenantId } }),
     Installment: () => prisma.installment.count({ where: { tenantId } }),
     AgentSlot: () => prisma.agentSlot.count({ where: { tenantId } }),

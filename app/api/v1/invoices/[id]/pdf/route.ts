@@ -28,10 +28,11 @@ export async function GET(
   const isDownload = searchParams.get('download') === '1';
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId as string },
       include: {
         lease: { select: { unitName: true, tenantName: true } },
+        contract: { select: { buyerName: true, buyerPhone: true } },
         tenant: { select: { companyName: true, vatNumber: true, commercialRegistry: true, nationalAddress: true } },
       },
     });
@@ -98,8 +99,8 @@ export async function GET(
       </div>
       <div class="customer">
         <h3>المشتري / Customer</h3>
-        <p><strong>${invoice.lease.tenantName}</strong></p>
-        <p>الوحدة: ${invoice.lease.unitName}</p>
+        <p><strong>${invoice.lease?.tenantName || invoice.contract?.buyerName || 'عميل'}</strong></p>
+        <p>الوحدة: ${invoice.lease?.unitName || '-'}</p>
       </div>
     </div>
 
@@ -112,7 +113,7 @@ export async function GET(
       </thead>
       <tbody>
         <tr>
-          <td>إيجار الوحدة ${invoice.lease.unitName}</td>
+          <td>${invoice.lease ? `إيجار الوحدة ${invoice.lease.unitName}` : `فاتورة عقد ${invoice.contractId?.slice(0, 8) || ''}`}</td>
           <td style="text-align: left;">${Number(invoice.subtotal).toLocaleString('en-US', {minimumFractionDigits:2})} SAR</td>
         </tr>
       </tbody>

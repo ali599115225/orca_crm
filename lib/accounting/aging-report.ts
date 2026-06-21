@@ -16,7 +16,7 @@ export async function getAgingReport(tenantId: string): Promise<AgingReport> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const invoices = await prisma.rentalInvoice.findMany({
+  const invoices = await prisma.invoice.findMany({
     where: {
       tenantId,
       status: { not: 'paid' },
@@ -57,9 +57,12 @@ export async function getAgingDetail(tenantId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const invoices = await prisma.rentalInvoice.findMany({
+  const invoices = await prisma.invoice.findMany({
     where: { tenantId, status: { not: 'paid' } },
-    include: { lease: { select: { tenantName: true, unitName: true } } },
+    include: {
+      lease: { select: { tenantName: true, unitName: true } },
+      contract: { select: { buyerName: true } },
+    },
     orderBy: { dueDate: 'asc' },
   });
 
@@ -77,8 +80,8 @@ export async function getAgingDetail(tenantId: string) {
     return {
       invoiceId: inv.id,
       invoiceNumber: `${inv.invoicePrefix}-${inv.invoiceNumber}`,
-      customerName: inv.lease.tenantName,
-      unitName: inv.lease.unitName,
+      customerName: inv.lease?.tenantName || inv.contract?.buyerName || '',
+      unitName: inv.lease?.unitName || null,
       dueDate: inv.dueDate.toISOString().split('T')[0],
       totalAmount: Number(inv.totalAmount),
       daysOverdue: diffDays > 0 ? diffDays : 0,

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
-import { hashPhone } from "@/lib/privacy-mask";
+import { issueContract } from "@/lib/domain/transaction-spine";
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,7 +98,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { clientId, propertyId, amount } = body;
 
-    // 1. التحقق من صحة المعطيات الممررة
     if (!clientId) {
       return NextResponse.json({ error: "معرف العميل مطلوب." }, { status: 400 });
     }
@@ -109,92 +108,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "قيمة العقد يجب أن تكون رقمية وأكبر من الصفر." }, { status: 400 });
     }
 
-    // 2. التحقق من وجود العميل وجلب بياناته
-    let buyerName = "";
-    let buyerPhone = "";
-
-    const lead = await prisma.lead.findFirst({
-      where: { id: clientId, tenantId },
+    const contract = await issueContract({
+      tenantId,
+      userId: userId || "",
+      clientId,
+      propertyId,
+      amount: Number(amount),
     });
-
-    if (lead) {
-      buyerName = `${lead.firstName} ${lead.lastName || ""}`.trim();
-      buyerPhone = lead.phone;
-    } else {
-      const contact = await prisma.contact.findFirst({
-        where: { id: clientId, tenantId },
-      });
-      if (contact) {
-        buyerName = contact.name;
-        buyerPhone = contact.phone;
-      } else {
-        return NextResponse.json({ error: "العميل المحدد غير موجود في النظام." }, { status: 404 });
-      }
-    }
-
-    // 3. التحقق من وجود الوحدة العقارية وجاهزيتها
-    const unit = await prisma.unit.findFirst({
-      where: {
-        id: propertyId,
-        project: { tenantId },
-      },
-      include: {
-        contract: true,
-      },
-    });
-
-    if (!unit) {
-      return NextResponse.json({ error: "الوحدة العقارية المحددة غير موجودة." }, { status: 404 });
-    }
-
-    if (unit.contract) {
-      return NextResponse.json({ error: "هذه الوحدة العقارية متعاقد عليها بالفعل بموجب عقد قائم." }, { status: 400 });
-    }
-
-    // 4. إجراء المعاملة الذرية (Prisma Transaction) لحفظ العقد وتحديث الوحدة
-    const [contract] = await prisma.$transaction([
-      // أ. إنشاء سجل العقد الجديد
-      prisma.contract.create({
-        data: {
-          tenantId,
-          unitId: propertyId,
-          buyerName,
-          buyerPhone,
-          buyerPhoneHash: hashPhone(tenantId, buyerPhone),
-          totalVolumeSar: Number(amount),
-        },
-      }),
-      // ب. تحديث حالة الوحدة إلى sold
-      prisma.unit.update({
-        where: { id: propertyId },
-        data: { status: "Sold" },
-      }),
-      // ج. تسجيل حدث الأمن والمراقبة
-      prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId: userId || null,
-          action: "CREATE_CONTRACT",
-          tableName: "contracts",
-          recordId: propertyId, // unique per unit/contract
-          details: `Issued new sales contract for unit ${unit.unitNumber} to client ${buyerName} worth ${amount} SAR`,
-        },
-      }),
-      // د. تسجيل حدث تيليميتري للنظام
-      prisma.telemetryEvent.create({
-        data: {
-          tenantId,
-          eventType: "contract.issued",
-          eventDataJson: JSON.stringify({
-            unitId: propertyId,
-            unitNumber: unit.unitNumber,
-            buyerName,
-            amount,
-          }),
-          createdBy: userId || null,
-        },
-      }),
-    ]);
 
     return NextResponse.json({
       success: true,

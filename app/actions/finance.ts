@@ -24,7 +24,7 @@ export async function processPayment(invoiceId: string, amount: number, method: 
         },
       });
 
-      await tx.rentalInvoice.update({
+      await tx.invoice.update({
         where: { id: invoiceId, tenantId: tenant.id },
         data: {
           status: 'paid',

@@ -32,7 +32,7 @@ export async function GET(
   const tenantId = session.tenantId as string;
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId },
       select: {
         status: true,

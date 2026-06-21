@@ -36,9 +36,12 @@ export async function GET(request: NextRequest) {
     if (leaseId) where.leaseId = leaseId;
     if (status) where.status = status;
 
-    const invoices = await prisma.rentalInvoice.findMany({
+    const invoices = await prisma.invoice.findMany({
       where,
-      include: { lease: { select: { unitName: true, tenantName: true } } },
+      include: {
+        lease: { select: { unitName: true, tenantName: true } },
+        contract: { select: { buyerName: true } },
+      },
       orderBy: { invoiceNumber: "desc" },
     });
 
@@ -48,8 +51,9 @@ export async function GET(request: NextRequest) {
       invoicePrefix: inv.invoicePrefix,
       invoiceLabel: formatInvoiceLabel(inv.invoicePrefix, inv.issueDate.getFullYear(), inv.invoiceNumber),
       zatcaUuid: inv.zatcaUuid,
-      customerName: inv.lease.tenantName,
-      unitName: inv.lease.unitName,
+      customerName: inv.lease?.tenantName || inv.contract?.buyerName || '',
+      unitName: inv.lease?.unitName || null,
+      type: inv.type,
       subtotal: Number(inv.subtotal),
       vatRate: Number(inv.vatRate),
       vatAmount: Number(inv.vatAmount),
@@ -115,7 +119,7 @@ export async function POST(request: NextRequest) {
 
       const invoiceNumber = counter.nextInvoiceNumber - 1;
 
-      const invoice = await tx.rentalInvoice.create({
+      const invoice = await tx.invoice.create({
         data: {
           tenantId: session.tenantId as string,
           leaseId,
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
           tenantId: session.tenantId as string,
           userId: (session as any).userId || null,
           action: 'CREATE_INVOICE',
-          tableName: 'rental_invoices',
+          tableName: 'invoices',
           recordId: result.invoice.id,
           details: `Created invoice #${result.invoice.invoiceNumber} for lease ${leaseId}, total: ${vatBreakdown.totalAmount} SAR`,
         },
@@ -168,7 +172,7 @@ export async function POST(request: NextRequest) {
         sellerVat: result.tenant.vatNumber || '',
         sellerCr: result.tenant.commercialRegistry || '',
         sellerAddress: result.tenant.nationalAddress || '',
-        customerName: inv.lease.tenantName,
+        customerName: inv.lease?.tenantName || '',
         subtotal: Number(inv.subtotal),
         vatRate: Number(inv.vatRate),
         vatAmount: Number(inv.vatAmount),
@@ -179,7 +183,7 @@ export async function POST(request: NextRequest) {
         zatcaStatus: inv.zatcaStatus,
         status: inv.status,
         leaseId: inv.leaseId,
-        unitName: inv.lease.unitName,
+        unitName: inv.lease?.unitName || null,
       },
     }, { status: 201 });
 

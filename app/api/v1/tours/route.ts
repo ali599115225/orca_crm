@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { scheduleTour } from "@/lib/domain/transaction-spine";
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,51 +42,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "معرف العميل ووقت وموقع الجولة مطلوبين." }, { status: 400 });
     }
 
-    const lead = await prisma.lead.findFirst({
-      where: { id: leadId, tenantId },
-    });
-    if (!lead) {
-      return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
-    }
-
     const agentId = assignedTo || userId || (await prisma.user.findFirst({ where: { tenantId } }))?.id || "";
 
-    const tour = await prisma.tour.create({
-      data: {
-        tenantId,
-        leadId,
-        assignedTo: agentId,
-        startAt: new Date(startAt),
-        endAt: endAt ? new Date(endAt) : new Date(new Date(startAt).getTime() + 60 * 60 * 1000), // 1 hour duration
-        location,
-        status: "SCHEDULED",
-        attendees: Number(attendees || 1),
-        notes: notes || null,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-      },
+    const tour = await scheduleTour({
+      tenantId,
+      userId: agentId,
+      leadId,
+      location,
+      startAt: new Date(startAt),
+      endAt: endAt ? new Date(endAt) : new Date(new Date(startAt).getTime() + 60 * 60 * 1000),
+      attendees: Number(attendees || 1),
+      notes: notes || undefined,
     });
-
-    // Telemetry Event
-    await prisma.telemetryEvent.create({
-      data: {
-        tenantId,
-        eventType: "tour.scheduled",
-        eventDataJson: JSON.stringify({ tourId: tour.id, leadId, startAt }),
-        createdBy: userId || null,
-      },
-    });
-
-    // Simulate WhatsApp 24h & 1h hook triggers
-    await prisma.agentTelemetryLog.create({
-      data: {
-        tenantId,
-        agentId: "Saher_WhatsApp",
-        actionType: "WhatsApp_Reminder",
-        logMessageAr: `«تم جدولة إرسال تذكيرات الواتساب التلقائية قبل الجولة بـ ٢٤ ساعة و١ ساعة للعميل تلقائياً»`,
-        severity: "Info",
-      },
-    }).catch(() => {});
 
     return NextResponse.json({ success: true, data: tour }, { status: 201 });
   } catch (error: any) {

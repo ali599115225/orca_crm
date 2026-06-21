@@ -144,10 +144,11 @@ export async function POST(
   let claimId: string | null = null;
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId },
       include: {
         lease: { select: { unitName: true, tenantName: true } },
+        contract: { select: { buyerName: true } },
       },
     });
 
@@ -254,13 +255,13 @@ export async function POST(
         amount: expectedAmountMinor,
         currency: 'SAR',
         orderNumber,
-        clientName: invoice.lease.tenantName || 'عميل',
+        clientName: invoice.lease?.tenantName || invoice.contract?.buyerName || 'عميل',
         clientMobile: mobile,
         callBackUrl: `${appUrl}/api/payment/callback`,
         cancelUrl: `${appUrl}/operations/rental`,
         products: [
           {
-            title: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease.unitName}`,
+            title: `فاتورة #${invoice.invoiceNumber} — ${invoice.lease?.unitName || invoice.contract?.buyerName || 'عقد'}`,
             price: expectedAmountMinor,
             qty: 1,
           },
@@ -290,7 +291,7 @@ export async function POST(
         },
       });
 
-      await tx.rentalInvoice.updateMany({
+      await tx.invoice.updateMany({
         where: { id, tenantId, status: { not: 'paid' } },
         data: {
           gatewayProvider: PROVIDER,
@@ -304,7 +305,7 @@ export async function POST(
           tenantId,
           userId: session.userId,
           action: 'PAYLINK_LINK_CREATED',
-          tableName: 'rental_invoices',
+          tableName: 'invoices',
           recordId: id,
           details: `Paylink transaction created: ${transactionNo}`,
         },

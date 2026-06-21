@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             failureReason: clean(body.failure_reason || body.error, 500) || null,
           },
         });
-        await tx.rentalInvoice.updateMany({
+        await tx.invoice.updateMany({
           where: { id: payment.invoiceId!, tenantId: payment.tenantId },
           data: { gatewayStatus: status },
         });
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
         return { alreadyProcessed: true } as const;
       }
 
-      const invoice = await tx.rentalInvoice.findFirst({
+      const invoice = await tx.invoice.findFirst({
         where: { id: payment.invoiceId!, tenantId: payment.tenantId },
       });
       if (!invoice) throw new Error('Paylink invoice missing');
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      const updated = await tx.rentalInvoice.updateMany({
+      const updated = await tx.invoice.updateMany({
         where: { id: invoice.id, tenantId: payment.tenantId, status: { not: 'paid' } },
         data: {
           status: 'paid',

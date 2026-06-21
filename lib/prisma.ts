@@ -54,7 +54,7 @@ function createExtendedPrismaClient() {
             "Contract",
             "Installment",
             "RentalLease",
-            "RentalInvoice",
+            "Invoice",
             "ZatcaDevice",
             "ZatcaQueue",
             "Receipt",

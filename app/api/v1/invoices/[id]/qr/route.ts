@@ -25,7 +25,7 @@ export async function GET(
   }
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId as string },
       select: { qrCode: true, qrImage: true },
     });

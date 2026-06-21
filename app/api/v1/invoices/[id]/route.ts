@@ -25,10 +25,11 @@ export async function GET(
   }
 
   try {
-    const invoice = await prisma.rentalInvoice.findFirst({
+    const invoice = await prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId as string },
       include: {
         lease: { select: { unitName: true, tenantName: true } },
+        contract: { select: { buyerName: true } },
         tenant: { select: { companyName: true, vatNumber: true, commercialRegistry: true, nationalAddress: true } },
       },
     });
@@ -51,7 +52,7 @@ export async function GET(
         sellerVat: invoice.tenant.vatNumber || '',
         sellerCr: invoice.tenant.commercialRegistry || '',
         sellerAddress: invoice.tenant.nationalAddress || '',
-        customerName: invoice.lease.tenantName,
+        customerName: invoice.lease?.tenantName || invoice.contract?.buyerName || '',
         customerVat: null,
         subtotal: Number(invoice.subtotal),
         vatRate: Number(invoice.vatRate),
@@ -65,7 +66,8 @@ export async function GET(
         paidAt: invoice.paidAt?.toISOString() || null,
         paymentMethod: invoice.paymentMethod,
         leaseId: invoice.leaseId,
-        unitName: invoice.lease.unitName,
+        contractId: invoice.contractId,
+        unitName: invoice.lease?.unitName || null,
       },
     });
   } catch (error: any) {

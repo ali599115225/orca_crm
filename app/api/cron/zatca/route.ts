@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
                 completedAt: new Date(),
               },
             }),
-            prisma.rentalInvoice.update({
+            prisma.invoice.update({
               where: { id: item.invoiceId },
               data: {
                 zatcaStatus: newStatus,

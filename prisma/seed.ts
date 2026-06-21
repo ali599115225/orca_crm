@@ -23,7 +23,7 @@ async function main() {
 
   await prisma.generalLedger.deleteMany({});
   await prisma.receipt.deleteMany({});
-  await prisma.rentalInvoice.deleteMany({});
+  await prisma.invoice.deleteMany({});
   await prisma.installment.deleteMany({});
   await prisma.contract.deleteMany({});
   await prisma.unit.deleteMany({});
@@ -248,7 +248,7 @@ async function main() {
     const vatAmount = quarterlySubtotal.mul(vatRate).div(100);
     const totalAmount = quarterlySubtotal.add(vatAmount);
     for (let j = 0; j < 3; j++) {
-      await prisma.rentalInvoice.create({
+      await prisma.invoice.create({
         data: {
           tenantId: tenant.id,
           leaseId: lease.id,
@@ -407,7 +407,7 @@ async function main() {
         startAt: new Date(Date.now() + Math.floor(Math.random() * 7) * 86400000),
         endAt: new Date(Date.now() + (Math.floor(Math.random() * 7) + 1) * 86400000),
         location: `${projects[Math.floor(Math.random() * projects.length)].name} - الرياض`,
-        status: ["SCHEDULED", "COMPLETED", "CANCELLED"][Math.floor(Math.random() * 3)],
+        status: (["SCHEDULED", "COMPLETED", "CANCELLED"] as const)[Math.floor(Math.random() * 3)],
         attendees: 1 + Math.floor(Math.random() * 3),
         notes: "جولة معاينة ميدانية للعميل",
       },
