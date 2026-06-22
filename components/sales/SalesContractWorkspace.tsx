@@ -155,7 +155,8 @@ type ContractDetail = {
 
 const INSTALLMENTS_PAGE_SIZE = 10;
 const PAYMENTS_PAGE_SIZE = 10;
-const TIMELINE_PAGE_SIZE = 15;
+const AMENDMENTS_PAGE_SIZE = 2;
+const TIMELINE_PAGE_SIZE = 5;
 const COLLECTIBLE = new Set(["Pending", "Partial", "Overdue"]);
 
 function text(locale: Locale, ar: string, en: string) {
@@ -289,6 +290,7 @@ export default function SalesContractWorkspace({
   const [installmentPage, setInstallmentPage] = useState(0);
   const [paymentPage, setPaymentPage] = useState(0);
   const [timelinePage, setTimelinePage] = useState(0);
+  const [amendmentPage, setAmendmentPage] = useState(0);
 
   const [prepaymentAmount, setPrepaymentAmount] = useState("");
   const [restructureMode, setRestructureMode] =
@@ -515,6 +517,11 @@ export default function SalesContractWorkspace({
     paymentPage,
     PAYMENTS_PAGE_SIZE,
   );
+  const amendmentsPaging = paginate(
+    contract?.amendments || [],
+    amendmentPage,
+    AMENDMENTS_PAGE_SIZE,
+  );
   const timelinePaging = paginate(
     contract?.timeline || [],
     timelinePage,
@@ -598,16 +605,27 @@ export default function SalesContractWorkspace({
           </button>
         </div>
       </div>
+      {error && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300">
+          {error}
+        </div>
+      )}
 
-      {(error || notice) && (
+      {notice && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-bold ${
-            error
-              ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-          }`}
+          role="status"
+          aria-live="polite"
+          className="fixed left-6 top-24 z-[80] flex max-w-sm items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/95 px-4 py-3 text-xs font-bold text-emerald-200 shadow-2xl backdrop-blur"
         >
-          {error || notice}
+          <span className="flex-1">{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            className="rounded-md px-1.5 text-sm leading-none text-emerald-100/80 hover:bg-white/10"
+            aria-label={L("إغلاق الإشعار", "Dismiss notification")}
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -944,144 +962,136 @@ export default function SalesContractWorkspace({
       )}
 
       {tab === "amendments" && (
-        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
-          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-            {L("سجل التعديلات", "Amendment history")}
-          </h2>
-          {contract.amendments.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-[var(--nc-glass-border)] p-6 text-center">
-              <p className="text-xs text-[var(--nc-text-dim)]">
-                {L(
-                  "لا توجد تعديلات على خطة الدفع.",
-                  "No payment plan amendments recorded.",
-                )}
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {contract.amendments.map((amendment) => (
-                <div
-                  key={amendment.id}
-                  className="rounded-xl border border-[var(--nc-glass-border)] p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-400">
-                        {amendment.version !== null
-                          ? `${L("نسخة", "Version")} ${amendment.version}`
-                          : L("إعادة هيكلة", "Restructure")}
+        <section className="flex h-[620px] flex-col overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
+          <div className="border-b border-[var(--nc-glass-border)] px-4 py-3">
+            <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+              {L("سجل التعديلات", "Amendment history")}
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-hidden p-4">
+            {contract.amendments.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-[var(--nc-glass-border)] p-6 text-center">
+                <p className="text-xs text-[var(--nc-text-dim)]">
+                  {L(
+                    "لا توجد تعديلات على خطة الدفع.",
+                    "No payment plan amendments recorded.",
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="grid h-full grid-rows-2 gap-3">
+                {amendmentsPaging.rows.map((amendment) => (
+                  <article
+                    key={amendment.id}
+                    className="min-h-0 overflow-y-auto rounded-xl border border-[var(--nc-glass-border)] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+                          {amendment.version !== null
+                            ? `${L("نسخة", "Version")} ${amendment.version}`
+                            : L("إعادة هيكلة", "Restructure")}
+                        </span>
+                        <strong className="ms-2 text-xs text-[var(--nc-text-primary)]">
+                          {formatAmendmentType(amendment.type, locale)}
+                        </strong>
+                      </div>
+                      <span
+                        className="text-[10px] text-[var(--nc-text-dim)]"
+                        dir="ltr"
+                      >
+                        {shortDateTime(amendment.executedAt)}
                       </span>
-                      <strong className="ms-2 text-xs text-[var(--nc-text-primary)]">
-                        {formatAmendmentType(amendment.type, locale)}
-                      </strong>
                     </div>
-                    <span className="text-[10px] text-[var(--nc-text-dim)]" dir="ltr">
-                      {shortDateTime(amendment.executedAt)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[11px] text-[var(--nc-text-secondary)]">
-                    {amendment.reason || L("بدون سبب", "No reason provided")}
-                  </p>
-                  <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
-                    {L("المنفذ:", "Executed by:")} {amendment.executedBy}
-                  </p>
-                  <div className="mt-3 overflow-hidden rounded-lg border border-[var(--nc-glass-border)]">
-                    <table className="w-full text-[10px]">
-                      <thead>
-                        <tr className="bg-[var(--nc-background)]">
-                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
-                            {L("الحقل", "Field")}
-                          </th>
-                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
-                            {L("قبل", "Before")}
-                          </th>
-                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
-                            {L("بعد", "After")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-t border-[var(--nc-glass-border)]">
-                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                            {L("الدفعة المقدمة", "Prepayment")}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                            {amendment.before.prepaymentAmount !== null
-                              ? money(amendment.before.prepaymentAmount, locale)
-                              : "—"}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                            {amendment.after.prepaymentAmount !== null
-                              ? money(amendment.after.prepaymentAmount, locale)
-                              : "—"}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-[var(--nc-glass-border)]">
-                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                            {L("قيمة القسط", "Installment amount")}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                            {amendment.before.installmentAmount !== null
-                              ? money(amendment.before.installmentAmount, locale)
-                              : "—"}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                            {amendment.after.installmentAmount !== null
-                              ? money(amendment.after.installmentAmount, locale)
-                              : "—"}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-[var(--nc-glass-border)]">
-                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                            {L("عدد الأقساط", "Installment count")}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                            {amendment.before.installmentCount ?? "—"}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                            {amendment.after.installmentCount ?? "—"}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-[var(--nc-glass-border)]">
-                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                            {L("الرصيد المتبقي", "Remaining balance")}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                            {amendment.before.remainingBalance !== null
-                              ? money(amendment.before.remainingBalance, locale)
-                              : "—"}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                            {amendment.after.remainingBalance !== null
-                              ? money(amendment.after.remainingBalance, locale)
-                              : "—"}
-                          </td>
-                        </tr>
-                        {(amendment.before.endDate ||
-                          amendment.after.endDate) && (
-                          <tr className="border-t border-[var(--nc-glass-border)]">
-                            <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                              {L("تاريخ النهاية", "End date")}
-                            </td>
-                            <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                              {amendment.before.endDate
-                                ? shortDate(amendment.before.endDate)
-                                : "—"}
-                            </td>
-                            <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                              {amendment.after.endDate
-                                ? shortDate(amendment.after.endDate)
-                                : "—"}
-                            </td>
+
+                    <p className="mt-2 text-[11px] text-[var(--nc-text-secondary)]">
+                      {amendment.reason || L("بدون سبب", "No reason provided")}
+                    </p>
+                    <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
+                      {L("المنفذ:", "Executed by:")} {amendment.executedBy}
+                    </p>
+
+                    <div className="mt-3 overflow-hidden rounded-lg border border-[var(--nc-glass-border)]">
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr className="bg-[var(--nc-background)]">
+                            <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                              {L("الحقل", "Field")}
+                            </th>
+                            <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                              {L("قبل", "Before")}
+                            </th>
+                            <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                              {L("بعد", "After")}
+                            </th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                        </thead>
+                        <tbody>
+                          {[
+                            [
+                              L("الدفعة المقدمة", "Prepayment"),
+                              amendment.before.prepaymentAmount !== null
+                                ? money(amendment.before.prepaymentAmount, locale)
+                                : "—",
+                              amendment.after.prepaymentAmount !== null
+                                ? money(amendment.after.prepaymentAmount, locale)
+                                : "—",
+                            ],
+                            [
+                              L("قيمة القسط", "Installment amount"),
+                              amendment.before.installmentAmount !== null
+                                ? money(amendment.before.installmentAmount, locale)
+                                : "—",
+                              amendment.after.installmentAmount !== null
+                                ? money(amendment.after.installmentAmount, locale)
+                                : "—",
+                            ],
+                            [
+                              L("عدد الأقساط", "Installment count"),
+                              amendment.before.installmentCount ?? "—",
+                              amendment.after.installmentCount ?? "—",
+                            ],
+                            [
+                              L("الرصيد المتبقي", "Remaining balance"),
+                              amendment.before.remainingBalance !== null
+                                ? money(amendment.before.remainingBalance, locale)
+                                : "—",
+                              amendment.after.remainingBalance !== null
+                                ? money(amendment.after.remainingBalance, locale)
+                                : "—",
+                            ],
+                          ].map(([label, beforeValue, afterValue]) => (
+                            <tr
+                              key={String(label)}
+                              className="border-t border-[var(--nc-glass-border)]"
+                            >
+                              <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                                {label}
+                              </td>
+                              <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                                {beforeValue}
+                              </td>
+                              <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                                {afterValue}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Pager
+            locale={locale}
+            page={amendmentsPaging.page}
+            totalPages={amendmentsPaging.totalPages}
+            onPage={setAmendmentPage}
+          />
         </section>
       )}
 
@@ -1103,8 +1113,8 @@ export default function SalesContractWorkspace({
       )}
 
       {tab === "timeline" && (
-        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
-          <div className="space-y-3">
+        <section className="flex h-[500px] flex-col overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
+          <div className="flex-1 space-y-3 overflow-hidden p-4">
             {timelinePaging.rows.length === 0 ? (
               <div className="py-10 text-center text-xs text-[var(--nc-text-dim)]">
                 {L("لا توجد أحداث مسجلة.", "No recorded events.")}
