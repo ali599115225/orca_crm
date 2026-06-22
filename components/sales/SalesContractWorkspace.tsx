@@ -241,6 +241,7 @@ function timelineActionLabel(action: string, locale: Locale): string {
     NGENIUS_PAYMENT_RECEIVED: ["استلام دفعة N-Genius", "N-Genius payment received"],
     NGENIUS_PAYMENT_FAILED: ["فشل دفعة N-Genius", "N-Genius payment failed"],
     RESTRUCTURE_PAYMENT_PLAN: ["إعادة هيكلة خطة الدفع", "Payment plan restructured"],
+    EARLY_SETTLEMENT_COMPLETED: ["إتمام السداد المبكر", "Early settlement completed"],
     UPDATE_CONTRACT: ["تحديث العقد", "Contract updated"],
     UPDATE_INVOICE: ["تحديث الفاتورة", "Invoice updated"],
     CANCEL_CONTRACT: ["إلغاء العقد", "Contract cancelled"],
@@ -314,6 +315,9 @@ export default function SalesContractWorkspace({
   const [restructureMode, setRestructureMode] =
     useState<RestructureMode>("REDUCE_INSTALLMENT");
   const [restructureReason, setRestructureReason] = useState("");
+  const [earlySettlementReason, setEarlySettlementReason] = useState("");
+  const [earlySettlementConfirmed, setEarlySettlementConfirmed] =
+    useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -542,6 +546,62 @@ export default function SalesContractWorkspace({
     }
   }
 
+  async function submitEarlySettlement(event: React.FormEvent) {
+    event.preventDefault();
+    if (!contract || !canEarlySettle) return;
+
+    setBusy("early-settlement");
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch(
+        `/api/v1/contracts/${contract.id}/early-settlement`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: earlySettlementReason,
+            idempotencyKey: makeKey(),
+          }),
+        },
+      );
+
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.error ||
+            L(
+              "تعذر تنفيذ السداد المبكر.",
+              "Failed to complete early settlement.",
+            ),
+        );
+      }
+
+      setNotice(
+        L(
+          "تم تنفيذ السداد المبكر وإغلاق خطة الدفع.",
+          "Early settlement completed and payment plan closed.",
+        ),
+      );
+      setEarlySettlementReason("");
+      setEarlySettlementConfirmed(false);
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : L(
+              "تعذر تنفيذ السداد المبكر.",
+              "Failed to complete early settlement.",
+            ),
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
   const installmentsPaging = paginate(
     contract?.installments || [],
     installmentPage,
@@ -584,6 +644,13 @@ export default function SalesContractWorkspace({
     contract.status === "SIGNED" &&
     !contract.legacyFinancial &&
     Boolean(contract.invoice) &&
+    contract.financials.remainingBalance > 0;
+
+  const canEarlySettle =
+    contract.status === "SIGNED" &&
+    !contract.legacyFinancial &&
+    Boolean(contract.invoice) &&
+    contract.paymentPlan?.status === "ACTIVE" &&
     contract.financials.remainingBalance > 0;
 
   return (
@@ -826,125 +893,210 @@ export default function SalesContractWorkspace({
         </section>
       )}
 
-      {tab === "payment-plan" && (
-        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
-          <div className="flex items-center gap-2">
-            <RotateCcw size={16} className="text-[var(--nc-accent)]" />
-            <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-              {L("إعادة هيكلة خطة الدفع", "Restructure payment plan")}
-            </h2>
+            {tab === "payment-plan" && (
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+            <div className="flex items-center gap-2">
+              <RotateCcw size={16} className="text-[var(--nc-accent)]" />
+              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+                {L("إعادة هيكلة خطة الدفع", "Restructure payment plan")}
+              </h2>
+            </div>
+
+            {!canRestructure ? (
+              <p className="mt-4 text-xs text-[var(--nc-text-dim)]">
+                {L(
+                  "إعادة الهيكلة متاحة للعقود الموقعة الحديثة ذات الرصيد المتبقي فقط.",
+                  "Restructuring is available only for signed cutover contracts with a remaining balance.",
+                )}
+              </p>
+            ) : (
+              <form onSubmit={submitRestructure} className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                    {L("الدفعة المقدمة المؤكدة", "Confirmed advance payment")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    max={Math.max(
+                      0,
+                      contract.financials.remainingBalance - 0.01,
+                    )}
+                    value={prepaymentAmount}
+                    onChange={(event) => setPrepaymentAmount(event.target.value)}
+                    required
+                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                    {L("النتيجة المطلوبة", "Desired outcome")}
+                  </label>
+                  <select
+                    value={restructureMode}
+                    onChange={(event) =>
+                      setRestructureMode(event.target.value as RestructureMode)
+                    }
+                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                  >
+                    <option value="REDUCE_INSTALLMENT">
+                      {L("خفض قيمة الأقساط", "Reduce installment amount")}
+                    </option>
+                    <option value="REDUCE_TERM">
+                      {L(
+                        "تقليل مدة السداد تلقائيًا",
+                        "Automatically reduce payment term",
+                      )}
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                    {L("سبب التعديل", "Reason")}
+                  </label>
+                  <textarea
+                    value={restructureReason}
+                    onChange={(event) => setRestructureReason(event.target.value)}
+                    required
+                    rows={3}
+                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                  />
+                </div>
+
+                {preview && (
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-[11px] text-[var(--nc-text-secondary)]">
+                    <div className="flex justify-between gap-3">
+                      <span>{L("الرصيد بعد الدفعة", "Balance after payment")}</span>
+                      <strong>{money(preview.remaining, locale)}</strong>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-3">
+                      <span>
+                        {L(
+                          "عدد الأقساط المتبقية تلقائيًا",
+                          "Automatic remaining installments",
+                        )}
+                      </span>
+                      <strong>{preview.count}</strong>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-3">
+                      <span>{L("القسط المتوقع", "Expected installment")}</span>
+                      <strong>{money(preview.estimated, locale)}</strong>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-3">
+                      <span>{L("نهاية الخطة المتوقعة", "Expected plan end")}</span>
+                      <strong dir="ltr">
+                        {preview.endDate ? shortDate(preview.endDate) : "—"}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={busy !== ""}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40"
+                >
+                  {busy === "restructure" ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={15} />
+                  )}
+                  {L(
+                    "تسجيل الدفعة وإعادة الجدولة",
+                    "Record payment and reschedule",
+                  )}
+                </button>
+              </form>
+            )}
           </div>
 
-          {!canRestructure ? (
-            <p className="mt-4 text-xs text-[var(--nc-text-dim)]">
-              {L(
-                "إعادة الهيكلة متاحة للعقود الموقعة الحديثة ذات الرصيد المتبقي فقط.",
-                "Restructuring is available only for signed cutover contracts with a remaining balance.",
-              )}
-            </p>
-          ) : (
-            <form onSubmit={submitRestructure} className="mt-4 space-y-3">
-              <div>
-                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                  {L("الدفعة المقدمة المؤكدة", "Confirmed advance payment")}
-                </label>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  max={contract.financials.remainingBalance}
-                  value={prepaymentAmount}
-                  onChange={(event) => setPrepaymentAmount(event.target.value)}
-                  required
-                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                />
-              </div>
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <div className="flex items-center gap-2">
+              <WalletCards size={16} className="text-amber-300" />
+              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+                {L("السداد المبكر الكامل", "Full early settlement")}
+              </h2>
+            </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                  {L("النتيجة المطلوبة", "Desired outcome")}
-                </label>
-                <select
-                  value={restructureMode}
-                  onChange={(event) =>
-                    setRestructureMode(event.target.value as RestructureMode)
-                  }
-                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                >
-                  <option value="REDUCE_INSTALLMENT">
-                    {L("خفض قيمة الأقساط", "Reduce installment amount")}
-                  </option>
-                  <option value="REDUCE_TERM">
-                    {L(
-                      "تقليل مدة السداد تلقائيًا",
-                      "Automatically reduce payment term",
-                    )}
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                  {L("سبب التعديل", "Reason")}
-                </label>
-                <textarea
-                  value={restructureReason}
-                  onChange={(event) => setRestructureReason(event.target.value)}
-                  required
-                  rows={3}
-                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                />
-              </div>
-
-              {preview && (
-                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-[11px] text-[var(--nc-text-secondary)]">
-                  <div className="flex justify-between gap-3">
-                    <span>{L("الرصيد بعد الدفعة", "Balance after payment")}</span>
-                    <strong>{money(preview.remaining, locale)}</strong>
-                  </div>
-                  <div className="mt-2 flex justify-between gap-3">
-                    <span>
-                      {L(
-                        "عدد الأقساط المتبقية تلقائيًا",
-                        "Automatic remaining installments",
-                      )}
-                    </span>
-                    <strong>{preview.count}</strong>
-                  </div>
-                  <div className="mt-2 flex justify-between gap-3">
-                    <span>{L("القسط المتوقع", "Expected installment")}</span>
-                    <strong>{money(preview.estimated, locale)}</strong>
-                  </div>
-                  <div className="mt-2 flex justify-between gap-3">
-                    <span>{L("نهاية الخطة المتوقعة", "Expected plan end")}</span>
-                    <strong dir="ltr">
-                      {preview.endDate ? shortDate(preview.endDate) : "—"}
-                    </strong>
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[10px] text-amber-300">
+            {!canEarlySettle ? (
+              <p className="mt-4 text-xs text-[var(--nc-text-dim)]">
                 {L(
-                  "هذه العملية تسجل دفعة بنكية مؤكدة فورًا ثم تعيد جدولة الأقساط غير المدفوعة. الأقساط التي عليها دفعات تبقى مقفلة.",
-                  "This records a confirmed bank advance immediately, then reschedules unpaid installments. Installments with payments remain locked.",
+                  "السداد المبكر متاح فقط لخطة دفع نشطة بعقد موقع ورصيد متبقٍ.",
+                  "Early settlement is available only for an active payment plan on a signed contract with a remaining balance.",
                 )}
-              </div>
+              </p>
+            ) : (
+              <form onSubmit={submitEarlySettlement} className="mt-4 space-y-3">
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                  <span className="text-[10px] text-[var(--nc-text-dim)]">
+                    {L("مبلغ السداد النهائي", "Final settlement amount")}
+                  </span>
+                  <strong className="mt-1 block text-lg text-[var(--nc-text-primary)]">
+                    {money(contract.financials.remainingBalance, locale)}
+                  </strong>
+                  <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
+                    {L(
+                      "يحسب المبلغ من الخادم عند التنفيذ ولا يقبل التعديل اليدوي.",
+                      "The amount is calculated by the server at execution time and cannot be edited.",
+                    )}
+                  </p>
+                </div>
 
-              <button
-                type="submit"
-                disabled={busy !== ""}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40"
-              >
-                {busy === "restructure" ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={15} />
-                )}
-                {L("تسجيل الدفعة وإعادة الجدولة", "Record payment and reschedule")}
-              </button>
-            </form>
-          )}
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                    {L("سبب السداد المبكر", "Early settlement reason")}
+                  </label>
+                  <textarea
+                    value={earlySettlementReason}
+                    onChange={(event) =>
+                      setEarlySettlementReason(event.target.value)
+                    }
+                    required
+                    rows={3}
+                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                  />
+                </div>
+
+                <label className="flex items-start gap-2 rounded-xl border border-amber-500/20 p-3 text-[11px] text-[var(--nc-text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={earlySettlementConfirmed}
+                    onChange={(event) =>
+                      setEarlySettlementConfirmed(event.target.checked)
+                    }
+                    className="mt-0.5"
+                  />
+                  <span>
+                    {L(
+                      "أؤكد تسجيل كامل الرصيد المتبقي كدفعة مؤكدة وإغلاق خطة الدفع وإلغاء الأقساط غير المسددة.",
+                      "I confirm recording the full remaining balance as a completed payment, closing the payment plan, and cancelling unpaid installments.",
+                    )}
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={
+                    busy !== "" ||
+                    !earlySettlementConfirmed ||
+                    earlySettlementReason.trim().length === 0
+                  }
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950 disabled:opacity-40"
+                >
+                  {busy === "early-settlement" ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={15} />
+                  )}
+                  {L("تنفيذ السداد المبكر", "Complete early settlement")}
+                </button>
+              </form>
+            )}
+          </div>
         </section>
       )}
 
