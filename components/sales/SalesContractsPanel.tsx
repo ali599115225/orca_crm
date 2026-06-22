@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  REALTIME_SYNC_EVENT,
+  shouldInvalidateFromSync,
+} from "@/lib/realtime/client-runtime";
+import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -104,6 +108,19 @@ export default function SalesContractsPanel({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const onRealtimeSync = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (shouldInvalidateFromSync(detail, "deals")) {
+        void load();
+      }
+    };
+
+    window.addEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
+    return () =>
+      window.removeEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
   }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE));

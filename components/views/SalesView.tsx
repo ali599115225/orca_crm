@@ -1,6 +1,6 @@
 // components/views/SalesView.tsx
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import LayoutContainer from '@/components/ui/LayoutContainer';
 import { SmartCard } from '@/components/ui/SmartCard';
@@ -8,6 +8,10 @@ import { getSalesPerformanceAction, SalesRepKPI } from '@/app/actions/sales';
 import { useApp } from '@/app/context/AppContext';
 import { toArabicNumerals } from '@/lib/formatters';
 import { displayPerson } from '@/lib/display';
+import {
+  REALTIME_SYNC_EVENT,
+  shouldInvalidateFromSync,
+} from '@/lib/realtime/client-runtime';
 
 const TRANSLATIONS = {
   AR: {
@@ -99,19 +103,34 @@ export default function SalesView() {
   const [salesReps, setSalesReps] = useState<SalesRepKPI[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadPerformance() {
-      try {
-        const data = await getSalesPerformanceAction();
-        setSalesReps(data);
-      } catch (err) {
-        console.error("Failed to load sales data", err);
-      } finally {
-        setLoading(false);
-      }
+  const loadPerformance = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    try {
+      const data = await getSalesPerformanceAction();
+      setSalesReps(data);
+    } catch (err) {
+      console.error("Failed to load sales data", err);
+    } finally {
+      if (showLoading) setLoading(false);
     }
-    loadPerformance();
   }, []);
+
+  useEffect(() => {
+    void loadPerformance(true);
+  }, [loadPerformance]);
+
+  useEffect(() => {
+    const onRealtimeSync = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (shouldInvalidateFromSync(detail, "deals")) {
+        void loadPerformance(false);
+      }
+    };
+
+    window.addEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
+    return () =>
+      window.removeEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
+  }, [loadPerformance]);
 
   const formatPercentage = (val: string | number): string => {
     let raw = val.toString().replace(/%/g, '');

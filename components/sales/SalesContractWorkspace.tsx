@@ -18,6 +18,10 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
+import {
+  REALTIME_SYNC_EVENT,
+  shouldInvalidateFromSync,
+} from "@/lib/realtime/client-runtime";
 
 type Locale = "ar" | "en";
 type Tab = "overview" | "payment-plan" | "installments" | "payments" | "amendments" | "documents" | "timeline";
@@ -310,6 +314,19 @@ export default function SalesContractWorkspace({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const onRealtimeSync = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (shouldInvalidateFromSync(detail, "deals", contractId)) {
+        void load();
+      }
+    };
+
+    window.addEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
+    return () =>
+      window.removeEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
+  }, [contractId, load]);
 
   useEffect(() => {
     if (searchParams.get("payment") === "return") {

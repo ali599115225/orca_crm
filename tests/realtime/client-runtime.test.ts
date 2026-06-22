@@ -4,6 +4,7 @@ import {
   filterEventsAfter,
   parseClientSyncPage,
   retryDelayMs,
+  shouldInvalidateFromSync,
   selectRealtimeLeader,
   type ClientSyncEvent,
 } from "@/lib/realtime/client-runtime";
@@ -96,6 +97,40 @@ describe("realtime client runtime", () => {
         resetRequired: false,
       }),
     ).toThrow("strictly ordered");
+  });
+
+  it("invalidates deal collections and matching contract workspaces", () => {
+    const detail = {
+      events: [
+        {
+          cursor: "15",
+          topic: "deals",
+          eventType: "payment.completed",
+          aggregateType: "deal",
+          aggregateId: "deal-1",
+          payload: {
+            relatedIds: ["contract-1", "payment-1"],
+          },
+        },
+      ],
+      nextCursor: "15",
+      resetRequired: false,
+    };
+
+    expect(shouldInvalidateFromSync(detail, "deals")).toBe(true);
+    expect(
+      shouldInvalidateFromSync(detail, "deals", "contract-1"),
+    ).toBe(true);
+    expect(
+      shouldInvalidateFromSync(detail, "deals", "contract-2"),
+    ).toBe(false);
+    expect(
+      shouldInvalidateFromSync(
+        { events: [], nextCursor: "15", resetRequired: true },
+        "deals",
+        "contract-2",
+      ),
+    ).toBe(true);
   });
 
   it("caps retry backoff at thirty seconds", () => {

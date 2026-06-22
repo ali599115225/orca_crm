@@ -16,6 +16,12 @@ export interface ClientSyncPage {
   resetRequired: boolean;
 }
 
+export interface RealtimeSyncDetail {
+  events: ClientSyncEvent[];
+  nextCursor: string;
+  resetRequired: boolean;
+}
+
 export interface RealtimePeer {
   id: string;
   visible: boolean;
@@ -60,6 +66,33 @@ export function selectRealtimeLeader(
 export function retryDelayMs(failureCount: number): number {
   const normalized = Math.max(1, Math.trunc(failureCount));
   return Math.min(2_000 * 2 ** (normalized - 1), 30_000);
+}
+
+export function shouldInvalidateFromSync(
+  detail: unknown,
+  topic: string,
+  relatedId?: string,
+): boolean {
+  if (!detail || typeof detail !== "object") return false;
+
+  const candidate = detail as Partial<RealtimeSyncDetail>;
+  if (candidate.resetRequired === true) return true;
+  if (!Array.isArray(candidate.events)) return false;
+
+  return candidate.events.some((event) => {
+    if (!event || event.topic !== topic) return false;
+    if (!relatedId) return true;
+    if (event.aggregateId === relatedId) return true;
+
+    const payload = event.payload;
+    if (!payload || typeof payload !== "object") return false;
+
+    const relatedIds = (payload as Record<string, unknown>).relatedIds;
+    return (
+      Array.isArray(relatedIds) &&
+      relatedIds.some((value) => value === relatedId)
+    );
+  });
 }
 
 export function parseClientSyncPage(value: unknown): ClientSyncPage {
