@@ -141,6 +141,94 @@ export async function GET(
         })
       : [];
 
+    const restructureEvents = timeline.filter(
+      (event) => event.action === "RESTRUCTURE_PAYMENT_PLAN",
+    );
+
+    const userIds = [
+      ...new Set(
+        restructureEvents
+          .map((event) => event.userId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
+    ];
+
+    const userNames = new Map<string, string>();
+    if (userIds.length > 0) {
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds }, tenantId },
+        select: { id: true, name: true },
+      });
+      for (const user of users) {
+        userNames.set(user.id, user.name);
+      }
+    }
+
+    const amendments = restructureEvents.map((event) => {
+      let details: Record<string, unknown> = {};
+      try {
+        details = event.details ? JSON.parse(event.details) : {};
+      } catch {
+        details = {};
+      }
+
+      const before = (details.before as Record<string, unknown>) || {};
+      const after = (details.after as Record<string, unknown>) || {};
+
+      const executedByName =
+        typeof event.userId === "string" && event.userId.length > 0
+          ? userNames.get(event.userId) || "system"
+          : "system";
+
+      return {
+        id: event.id,
+        version:
+          typeof details.newVersion === "number" ? details.newVersion : null,
+        type: typeof details.type === "string" ? details.type : "RESTRUCTURE",
+        reason: typeof details.reason === "string" ? details.reason : "",
+        executedBy: executedByName,
+        executedAt: event.createdAt.toISOString(),
+        before: {
+          prepaymentAmount:
+            typeof before.prepaymentAmount === "number"
+              ? before.prepaymentAmount
+              : null,
+          installmentAmount:
+            typeof before.installmentAmount === "number"
+              ? before.installmentAmount
+              : null,
+          installmentCount:
+            typeof before.installmentCount === "number"
+              ? before.installmentCount
+              : null,
+          remainingBalance:
+            typeof before.remainingBalance === "number"
+              ? before.remainingBalance
+              : null,
+          endDate: typeof before.endDate === "string" ? before.endDate : null,
+        },
+        after: {
+          prepaymentAmount:
+            typeof after.prepaymentAmount === "number"
+              ? after.prepaymentAmount
+              : null,
+          installmentAmount:
+            typeof after.installmentAmount === "number"
+              ? after.installmentAmount
+              : null,
+          installmentCount:
+            typeof after.installmentCount === "number"
+              ? after.installmentCount
+              : null,
+          remainingBalance:
+            typeof after.remainingBalance === "number"
+              ? after.remainingBalance
+              : null,
+          endDate: typeof after.endDate === "string" ? after.endDate : null,
+        },
+      };
+    });
+
     const data = {
       id: contract.id,
       status: contract.status,
@@ -226,6 +314,8 @@ export async function GET(
         details: event.details,
         createdAt: event.createdAt.toISOString(),
       })),
+      amendments,
+      documents: [],
     };
 
     return NextResponse.json({ success: true, data });

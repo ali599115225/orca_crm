@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  FileText,
   History,
   Landmark,
   ListChecks,
@@ -19,8 +20,36 @@ import {
 import { useApp } from "@/app/context/AppContext";
 
 type Locale = "ar" | "en";
-type Tab = "overview" | "installments" | "payments" | "timeline";
+type Tab = "overview" | "payment-plan" | "installments" | "payments" | "amendments" | "documents" | "timeline";
 type RestructureMode = "REDUCE_INSTALLMENT" | "REDUCE_TERM";
+
+type AmendmentValues = {
+  prepaymentAmount: number | null;
+  installmentAmount: number | null;
+  installmentCount: number | null;
+  remainingBalance: number | null;
+  endDate: string | null;
+};
+
+type Amendment = {
+  id: string;
+  version: number | null;
+  type: string;
+  reason: string;
+  executedBy: string;
+  executedAt: string;
+  before: AmendmentValues;
+  after: AmendmentValues;
+};
+
+type Document = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  uploadedBy: string;
+};
 
 type Installment = {
   id: string;
@@ -116,6 +145,8 @@ type ContractDetail = {
   installments: Installment[];
   payments: Payment[];
   timeline: TimelineEvent[];
+  amendments: Amendment[];
+  documents: Document[];
 };
 
 const INSTALLMENTS_PAGE_SIZE = 10;
@@ -162,6 +193,44 @@ function statusLabel(status: string, locale: Locale) {
   };
   const item = map[status] || [status, status];
   return locale === "ar" ? item[0] : item[1];
+}
+
+function timelineActionLabel(action: string, locale: Locale): string {
+  const map: Record<string, [string, string]> = {
+    SIGN_CONTRACT: ["توقيع العقد", "Contract signed"],
+    CREATE_CONTRACT: ["إنشاء العقد", "Contract created"],
+    CREATE_INVOICE: ["إنشاء الفاتورة", "Invoice created"],
+    CREATE_INSTALLMENTS: ["إنشاء الأقساط", "Installments created"],
+    RECORD_PAYMENT: ["تسجيل دفعة", "Payment recorded"],
+    CREATE_NGENIUS_INSTALLMENT_PAYMENT: ["بدء دفع القسط", "Installment payment initiated"],
+    NGENIUS_PAYMENT_RECEIVED: ["استلام دفعة N-Genius", "N-Genius payment received"],
+    NGENIUS_PAYMENT_FAILED: ["فشل دفعة N-Genius", "N-Genius payment failed"],
+    RESTRUCTURE_PAYMENT_PLAN: ["إعادة هيكلة خطة الدفع", "Payment plan restructured"],
+    UPDATE_CONTRACT: ["تحديث العقد", "Contract updated"],
+    UPDATE_INVOICE: ["تحديث الفاتورة", "Invoice updated"],
+    CANCEL_CONTRACT: ["إلغاء العقد", "Contract cancelled"],
+  };
+  const item = map[action];
+  if (item) return locale === "ar" ? item[0] : item[1];
+  return action.replace(/_/g, " ").toLowerCase();
+}
+
+function formatAmendmentType(type: string, locale: Locale): string {
+  const map: Record<string, [string, string]> = {
+    RESTRUCTURE: ["إعادة هيكلة", "Restructure"],
+    AMENDMENT: ["تعديل", "Amendment"],
+    EXTENSION: ["تمديد", "Extension"],
+    REDUCTION: ["تخفيض", "Reduction"],
+  };
+  const item = map[type];
+  if (item) return locale === "ar" ? item[0] : item[1];
+  return type;
+}
+
+function formatFileSize(bytes: number, locale: Locale): string {
+  if (bytes < 1024) return `${bytes} ${locale === "ar" ? "بايت" : "bytes"}`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function paginate<T>(items: T[], page: number, size: number) {
@@ -554,8 +623,11 @@ export default function SalesContractWorkspace({
       <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-2">
         {([
           ["overview", L("نظرة عامة", "Overview"), Landmark],
+          ["payment-plan", L("خطة الدفع", "Payment plan"), CreditCard],
           ["installments", L("الأقساط", "Installments"), ListChecks],
           ["payments", L("المدفوعات", "Payments"), WalletCards],
+          ["amendments", L("التعديلات", "Amendments"), RotateCcw],
+          ["documents", L("المستندات", "Documents"), FileText],
           ["timeline", L("السجل الزمني", "Timeline"), History],
         ] as const).map(([value, label, Icon]) => (
           <button
@@ -575,178 +647,160 @@ export default function SalesContractWorkspace({
       </nav>
 
       {tab === "overview" && (
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
-              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-                {L("ملخص الصفقة", "Deal summary")}
-              </h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  [L("المشتري", "Buyer"), contract.buyerName],
-                  [L("الهاتف", "Phone"), contract.buyerPhone],
-                  [L("تاريخ القبول", "Accepted"), shortDate(contract.acceptedAt)],
-                  [L("تاريخ التوقيع", "Signed"), shortDate(contract.signedAt)],
-                  [
-                    L("نسخة خطة الدفع", "Payment plan version"),
-                    String(contract.paymentPlan?.version || 1),
-                  ],
-                  [
-                    L("نسبة التحصيل", "Collection"),
-                    `${contract.financials.collectionPercent}%`,
-                  ],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-xl border border-[var(--nc-glass-border)] p-3"
-                  >
-                    <span className="text-[10px] text-[var(--nc-text-dim)]">
-                      {label}
-                    </span>
-                    <strong className="mt-1 block text-xs text-[var(--nc-text-primary)]">
-                      {value}
-                    </strong>
-                  </div>
-                ))}
+        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+            {L("ملخص الصفقة", "Deal summary")}
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              [L("المشتري", "Buyer"), contract.buyerName],
+              [L("الهاتف", "Phone"), contract.buyerPhone],
+              [L("تاريخ القبول", "Accepted"), shortDate(contract.acceptedAt)],
+              [L("تاريخ التوقيع", "Signed"), shortDate(contract.signedAt)],
+              [
+                L("نسخة خطة الدفع", "Payment plan version"),
+                String(contract.paymentPlan?.version || 1),
+              ],
+              [
+                L("نسبة التحصيل", "Collection"),
+                `${contract.financials.collectionPercent}%`,
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-[var(--nc-glass-border)] p-3"
+              >
+                <span className="text-[10px] text-[var(--nc-text-dim)]">
+                  {label}
+                </span>
+                <strong className="mt-1 block text-xs text-[var(--nc-text-primary)]">
+                  {value}
+                </strong>
               </div>
-            </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === "payment-plan" && (
+        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+          <div className="flex items-center gap-2">
+            <RotateCcw size={16} className="text-[var(--nc-accent)]" />
+            <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+              {L("إعادة هيكلة خطة الدفع", "Restructure payment plan")}
+            </h2>
           </div>
 
-          <form
-            onSubmit={submitRestructure}
-            className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4"
-          >
-            <div className="flex items-center gap-2">
-              <RotateCcw size={16} className="text-[var(--nc-accent)]" />
-              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-                {L("إعادة هيكلة خطة الدفع", "Restructure payment plan")}
-              </h2>
-            </div>
+          {!canRestructure ? (
+            <p className="mt-4 text-xs text-[var(--nc-text-dim)]">
+              {L(
+                "إعادة الهيكلة متاحة للعقود الموقعة الحديثة ذات الرصيد المتبقي فقط.",
+                "Restructuring is available only for signed cutover contracts with a remaining balance.",
+              )}
+            </p>
+          ) : (
+            <form onSubmit={submitRestructure} className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                  {L("الدفعة المقدمة المؤكدة", "Confirmed advance payment")}
+                </label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  max={contract.financials.remainingBalance}
+                  value={prepaymentAmount}
+                  onChange={(event) => setPrepaymentAmount(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                />
+              </div>
 
-            {!canRestructure ? (
-              <p className="mt-4 text-xs text-[var(--nc-text-dim)]">
-                {L(
-                  "إعادة الهيكلة متاحة للعقود الموقعة الحديثة ذات الرصيد المتبقي فقط.",
-                  "Restructuring is available only for signed cutover contracts with a remaining balance.",
-                )}
-              </p>
-            ) : (
-              <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                  {L("النتيجة المطلوبة", "Desired outcome")}
+                </label>
+                <select
+                  value={restructureMode}
+                  onChange={(event) =>
+                    setRestructureMode(event.target.value as RestructureMode)
+                  }
+                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                >
+                  <option value="REDUCE_INSTALLMENT">
+                    {L("خفض قيمة الأقساط", "Reduce installment amount")}
+                  </option>
+                  <option value="REDUCE_TERM">
+                    {L("تقليل مدة السداد", "Reduce payment term")}
+                  </option>
+                </select>
+              </div>
+
+              {restructureMode === "REDUCE_TERM" && (
                 <div>
                   <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                    {L(
-                      "الدفعة المقدمة المؤكدة",
-                      "Confirmed advance payment",
-                    )}
+                    {L("عدد الأقساط المتبقية", "Desired remaining installments")}
                   </label>
                   <input
                     type="number"
-                    min="0.01"
-                    step="0.01"
-                    max={contract.financials.remainingBalance}
-                    value={prepaymentAmount}
-                    onChange={(event) => setPrepaymentAmount(event.target.value)}
-                    required
+                    min={1}
+                    max={Math.max(1, mutableInstallments.length)}
+                    value={desiredInstallmentCount}
+                    onChange={(event) =>
+                      setDesiredInstallmentCount(event.target.value)
+                    }
                     className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
                   />
                 </div>
+              )}
 
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                    {L("النتيجة المطلوبة", "Desired outcome")}
-                  </label>
-                  <select
-                    value={restructureMode}
-                    onChange={(event) =>
-                      setRestructureMode(
-                        event.target.value as RestructureMode,
-                      )
-                    }
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                  >
-                    <option value="REDUCE_INSTALLMENT">
-                      {L("خفض قيمة الأقساط", "Reduce installment amount")}
-                    </option>
-                    <option value="REDUCE_TERM">
-                      {L("تقليل مدة السداد", "Reduce payment term")}
-                    </option>
-                  </select>
-                </div>
-
-                {restructureMode === "REDUCE_TERM" && (
-                  <div>
-                    <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                      {L(
-                        "عدد الأقساط المتبقية",
-                        "Desired remaining installments",
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={Math.max(1, mutableInstallments.length)}
-                      value={desiredInstallmentCount}
-                      onChange={(event) =>
-                        setDesiredInstallmentCount(event.target.value)
-                      }
-                      className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                    {L("سبب التعديل", "Reason")}
-                  </label>
-                  <textarea
-                    value={restructureReason}
-                    onChange={(event) =>
-                      setRestructureReason(event.target.value)
-                    }
-                    required
-                    rows={3}
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                  />
-                </div>
-
-                {preview && (
-                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-[11px] text-[var(--nc-text-secondary)]">
-                    <div className="flex justify-between gap-3">
-                      <span>{L("الرصيد بعد الدفعة", "Balance after payment")}</span>
-                      <strong>{money(preview.remaining, locale)}</strong>
-                    </div>
-                    <div className="mt-2 flex justify-between gap-3">
-                      <span>{L("القسط التقديري", "Estimated installment")}</span>
-                      <strong>{money(preview.estimated, locale)}</strong>
-                    </div>
-                  </div>
-                )}
-
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[10px] text-amber-300">
-                  {L(
-                    "هذه العملية تسجل دفعة بنكية مؤكدة فورًا ثم تعيد جدولة الأقساط غير المدفوعة. الأقساط التي عليها دفعات تبقى مقفلة.",
-                    "This records a confirmed bank advance immediately, then reschedules unpaid installments. Installments with payments remain locked.",
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={busy !== ""}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40"
-                >
-                  {busy === "restructure" ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <CheckCircle2 size={15} />
-                  )}
-                  {L(
-                    "تسجيل الدفعة وإعادة الجدولة",
-                    "Record payment and reschedule",
-                  )}
-                </button>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
+                  {L("سبب التعديل", "Reason")}
+                </label>
+                <textarea
+                  value={restructureReason}
+                  onChange={(event) => setRestructureReason(event.target.value)}
+                  required
+                  rows={3}
+                  className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                />
               </div>
-            )}
-          </form>
+
+              {preview && (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-[11px] text-[var(--nc-text-secondary)]">
+                  <div className="flex justify-between gap-3">
+                    <span>{L("الرصيد بعد الدفعة", "Balance after payment")}</span>
+                    <strong>{money(preview.remaining, locale)}</strong>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <span>{L("القسط التقديري", "Estimated installment")}</span>
+                    <strong>{money(preview.estimated, locale)}</strong>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[10px] text-amber-300">
+                {L(
+                  "هذه العملية تسجل دفعة بنكية مؤكدة فورًا ثم تعيد جدولة الأقساط غير المدفوعة. الأقساط التي عليها دفعات تبقى مقفلة.",
+                  "This records a confirmed bank advance immediately, then reschedules unpaid installments. Installments with payments remain locked.",
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={busy !== ""}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40"
+              >
+                {busy === "restructure" ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={15} />
+                )}
+                {L("تسجيل الدفعة وإعادة الجدولة", "Record payment and reschedule")}
+              </button>
+            </form>
+          )}
         </section>
       )}
 
@@ -851,6 +905,161 @@ export default function SalesContractWorkspace({
         </section>
       )}
 
+      {tab === "amendments" && (
+        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+            {L("سجل التعديلات", "Amendment history")}
+          </h2>
+          {contract.amendments.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-[var(--nc-glass-border)] p-6 text-center">
+              <p className="text-xs text-[var(--nc-text-dim)]">
+                {L(
+                  "لا توجد تعديلات على خطة الدفع.",
+                  "No payment plan amendments recorded.",
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {contract.amendments.map((amendment) => (
+                <div
+                  key={amendment.id}
+                  className="rounded-xl border border-[var(--nc-glass-border)] p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+                        {L("نسخة", "Version")}{" "}
+                        {amendment.version ?? "—"}
+                      </span>
+                      <strong className="ms-2 text-xs text-[var(--nc-text-primary)]">
+                        {formatAmendmentType(amendment.type, locale)}
+                      </strong>
+                    </div>
+                    <span className="text-[10px] text-[var(--nc-text-dim)]" dir="ltr">
+                      {shortDate(amendment.executedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-[var(--nc-text-secondary)]">
+                    {amendment.reason || L("بدون سبب", "No reason provided")}
+                  </p>
+                  <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
+                    {L("المنفذ:", "Executed by:")} {amendment.executedBy}
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-lg border border-[var(--nc-glass-border)]">
+                    <table className="w-full text-[10px]">
+                      <thead>
+                        <tr className="bg-[var(--nc-background)]">
+                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                            {L("الحقل", "Field")}
+                          </th>
+                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                            {L("قبل", "Before")}
+                          </th>
+                          <th className="px-2 py-1.5 text-start font-bold text-[var(--nc-text-dim)]">
+                            {L("بعد", "After")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t border-[var(--nc-glass-border)]">
+                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                            {L("الدفعة المقدمة", "Prepayment")}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                            {amendment.before.prepaymentAmount !== null
+                              ? money(amendment.before.prepaymentAmount, locale)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                            {amendment.after.prepaymentAmount !== null
+                              ? money(amendment.after.prepaymentAmount, locale)
+                              : "—"}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-[var(--nc-glass-border)]">
+                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                            {L("قيمة القسط", "Installment amount")}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                            {amendment.before.installmentAmount !== null
+                              ? money(amendment.before.installmentAmount, locale)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                            {amendment.after.installmentAmount !== null
+                              ? money(amendment.after.installmentAmount, locale)
+                              : "—"}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-[var(--nc-glass-border)]">
+                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                            {L("عدد الأقساط", "Installment count")}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                            {amendment.before.installmentCount ?? "—"}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                            {amendment.after.installmentCount ?? "—"}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-[var(--nc-glass-border)]">
+                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                            {L("الرصيد المتبقي", "Remaining balance")}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                            {amendment.before.remainingBalance !== null
+                              ? money(amendment.before.remainingBalance, locale)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                            {amendment.after.remainingBalance !== null
+                              ? money(amendment.after.remainingBalance, locale)
+                              : "—"}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-[var(--nc-glass-border)]">
+                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                            {L("تاريخ النهاية", "End date")}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                            {amendment.before.endDate
+                              ? shortDate(amendment.before.endDate)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                            {amendment.after.endDate
+                              ? shortDate(amendment.after.endDate)
+                              : "—"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === "documents" && (
+        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+            {L("المستندات المرتبطة", "Related documents")}
+          </h2>
+          <div className="mt-4 rounded-xl border border-dashed border-[var(--nc-glass-border)] p-8 text-center">
+            <FileText size={24} className="mx-auto text-[var(--nc-text-dim)]" />
+            <p className="mt-3 text-xs text-[var(--nc-text-dim)]">
+              {L(
+                "لا توجد مستندات مرتبطة بهذا العقد حاليًا.",
+                "No documents are currently attached to this contract.",
+              )}
+            </p>
+          </div>
+        </section>
+      )}
+
       {tab === "timeline" && (
         <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
           <div className="space-y-3">
@@ -866,14 +1075,24 @@ export default function SalesContractWorkspace({
                 >
                   <div className="flex items-center justify-between gap-3">
                     <strong className="text-xs text-[var(--nc-text-primary)]">
-                      {event.action}
+                      {timelineActionLabel(event.action, locale)}
                     </strong>
                     <span className="text-[10px] text-[var(--nc-text-dim)]" dir="ltr">
                       {shortDate(event.createdAt)}
                     </span>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[10px] text-[var(--nc-text-dim)]">
-                    {event.details || event.tableName}
+                  <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
+                    {event.tableName === "payment_transactions"
+                      ? L("معاملة دفع", "Payment transaction")
+                      : event.tableName === "contracts"
+                        ? L("عقد", "Contract")
+                        : event.tableName === "invoices"
+                          ? L("فاتورة", "Invoice")
+                          : event.tableName === "installments"
+                            ? L("قسط", "Installment")
+                            : event.tableName === "payment_plans"
+                              ? L("خطة دفع", "Payment plan")
+                              : event.tableName}
                   </p>
                 </div>
               ))
