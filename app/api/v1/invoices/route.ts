@@ -41,6 +41,10 @@ export async function GET(request: NextRequest) {
       include: {
         lease: { select: { unitName: true, tenantName: true } },
         contract: { select: { buyerName: true } },
+        installments: {
+          where: { paymentStatus: 'Pending' },
+          select: { id: true, amountSar: true, paymentStatus: true }
+        }
       },
       orderBy: { invoiceNumber: "desc" },
     });
@@ -63,6 +67,11 @@ export async function GET(request: NextRequest) {
       dueDate: inv.dueDate.toISOString().split("T")[0],
       qrCode: inv.qrCode,
       qrImage: inv.qrImage,
+      installments: inv.installments.map(inst => ({
+        id: inst.id,
+        amountSar: Number(inst.amountSar),
+        paymentStatus: inst.paymentStatus,
+      })),
     }));
 
     return NextResponse.json({ success: true, invoices: list });

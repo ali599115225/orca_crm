@@ -54,6 +54,11 @@ interface Invoice {
   qrImage?: string;
   customerName?: string;
   unitName?: string;
+  installments?: Array<{
+    id: string;
+    amountSar: number;
+    paymentStatus: string;
+  }>;
 }
 
 interface Payment {
@@ -1615,15 +1620,39 @@ export default function RentalPage() {
                                   <button
                                     onClick={async () => {
                                       try {
-                                        const res = await fetch(`/api/v1/invoices/${inv.id}/paylink/create`, { method: 'POST', credentials: 'include' });
+                                        const pendingInstallments = (inv.installments || []).filter(
+                                          inst => inst.paymentStatus === 'Pending'
+                                        );
+
+                                        if (pendingInstallments.length !== 1) {
+                                          alert(
+                                            pendingInstallments.length === 0
+                                              ? L('لا توجد أقساط غير مدفوعة لهذه الفاتورة', 'No unpaid installments for this invoice')
+                                              : L('يوجد أكثر من قسط غير مدفوع. يرجى التواصل مع الدعم', 'Multiple unpaid installments found. Please contact support')
+                                          );
+                                          return;
+                                        }
+
+                                        const installmentId = pendingInstallments[0].id;
+                                        const res = await fetch(`/api/v1/installments/${installmentId}/pay/ngenius`, {
+                                          method: 'POST',
+                                          credentials: 'include'
+                                        });
+
+                                        if (!res.ok) {
+                                          const data = await res.json();
+                                          alert(data.error || L('فشل إنشاء رابط الدفع', 'Failed to create payment link'));
+                                          return;
+                                        }
+
                                         const data = await res.json();
-                                        if (data.success && data.paymentUrl) {
-                                          window.open(data.paymentUrl, '_blank');
+                                        if (data.success && data.redirectUrl) {
+                                          window.location.assign(data.redirectUrl);
                                         } else {
                                           alert(data.error || L('فشل إنشاء رابط الدفع', 'Failed to create payment link'));
                                         }
                                       } catch {
-                                        alert(L('تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات Paylink.', 'Could not create payment link. Check the connection or Paylink settings.'));
+                                        alert(L('تعذر إنشاء رابط الدفع. تحقق من الاتصال أو إعدادات N-Genius.', 'Could not create payment link. Check the connection or N-Genius settings.'));
                                       }
                                     }}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--nc-surface)] border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
