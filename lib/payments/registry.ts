@@ -3,6 +3,7 @@ import "server-only";
 import type { PaymentProviderAdapter, PaymentProviderCode } from './types';
 import { moyasarProvider } from './providers/moyasar';
 import { paylinkProvider } from './providers/paylink';
+import { ngeniusProvider } from './providers/ngenius';
 
 const providers: Map<string, PaymentProviderAdapter> = new Map();
 
@@ -12,6 +13,7 @@ function register(adapter: PaymentProviderAdapter): void {
 
 register(moyasarProvider);
 register(paylinkProvider);
+register(ngeniusProvider);
 
 export function getPaymentProvider(code: string): PaymentProviderAdapter | null {
   return providers.get(code.toUpperCase()) || null;

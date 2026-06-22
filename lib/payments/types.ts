@@ -1,7 +1,7 @@
 // lib/payments/types.ts — SERVER-ONLY
 import "server-only";
 
-export type PaymentProviderCode = 'MOYASAR' | 'PAYLINK';
+export type PaymentProviderCode = 'MOYASAR' | 'PAYLINK' | 'NGENIUS';
 
 export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
