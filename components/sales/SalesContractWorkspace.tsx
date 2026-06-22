@@ -180,6 +180,18 @@ function shortDate(value?: string | null) {
   return `${dd}-${mm}-${yy}`;
 }
 
+function shortDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}-${mm}-${yy} • ${hh}:${min}`;
+}
+
 function statusLabel(status: string, locale: Locale) {
   const map: Record<string, [string, string]> = {
     SIGNED: ["موقّع", "Signed"],
@@ -339,6 +351,12 @@ export default function SalesContractWorkspace({
       void load();
     }
   }, [L, load, searchParams]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const nextInstallment = useMemo(() => {
     if (!contract) return null;
@@ -650,7 +668,10 @@ export default function SalesContractWorkspace({
           <button
             key={value}
             type="button"
-            onClick={() => setTab(value)}
+            onClick={() => {
+              setTab(value);
+              setNotice("");
+            }}
             className={`inline-flex min-w-fit items-center gap-2 rounded-xl px-4 py-2 text-xs font-black ${
               tab === value
                 ? "bg-[var(--nc-accent)] text-slate-950"
@@ -946,15 +967,16 @@ export default function SalesContractWorkspace({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-400">
-                        {L("نسخة", "Version")}{" "}
-                        {amendment.version ?? "—"}
+                        {amendment.version !== null
+                          ? `${L("نسخة", "Version")} ${amendment.version}`
+                          : L("إعادة هيكلة", "Restructure")}
                       </span>
                       <strong className="ms-2 text-xs text-[var(--nc-text-primary)]">
                         {formatAmendmentType(amendment.type, locale)}
                       </strong>
                     </div>
                     <span className="text-[10px] text-[var(--nc-text-dim)]" dir="ltr">
-                      {shortDate(amendment.executedAt)}
+                      {shortDateTime(amendment.executedAt)}
                     </span>
                   </div>
                   <p className="mt-2 text-[11px] text-[var(--nc-text-secondary)]">
@@ -1035,21 +1057,24 @@ export default function SalesContractWorkspace({
                               : "—"}
                           </td>
                         </tr>
-                        <tr className="border-t border-[var(--nc-glass-border)]">
-                          <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
-                            {L("تاريخ النهاية", "End date")}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
-                            {amendment.before.endDate
-                              ? shortDate(amendment.before.endDate)
-                              : "—"}
-                          </td>
-                          <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
-                            {amendment.after.endDate
-                              ? shortDate(amendment.after.endDate)
-                              : "—"}
-                          </td>
-                        </tr>
+                        {(amendment.before.endDate ||
+                          amendment.after.endDate) && (
+                          <tr className="border-t border-[var(--nc-glass-border)]">
+                            <td className="px-2 py-1.5 text-[var(--nc-text-secondary)]">
+                              {L("تاريخ النهاية", "End date")}
+                            </td>
+                            <td className="px-2 py-1.5 font-mono text-[var(--nc-text-dim)]">
+                              {amendment.before.endDate
+                                ? shortDate(amendment.before.endDate)
+                                : "—"}
+                            </td>
+                            <td className="px-2 py-1.5 font-mono text-[var(--nc-text-primary)]">
+                              {amendment.after.endDate
+                                ? shortDate(amendment.after.endDate)
+                                : "—"}
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1095,7 +1120,7 @@ export default function SalesContractWorkspace({
                       {timelineActionLabel(event.action, locale)}
                     </strong>
                     <span className="text-[10px] text-[var(--nc-text-dim)]" dir="ltr">
-                      {shortDate(event.createdAt)}
+                      {shortDateTime(event.createdAt)}
                     </span>
                   </div>
                   <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">

@@ -175,6 +175,65 @@ export async function GET(
       const before = (details.before as Record<string, unknown>) || {};
       const after = (details.after as Record<string, unknown>) || {};
 
+      const numberValue = (...values: unknown[]): number | null => {
+        for (const value of values) {
+          if (typeof value === "number" && Number.isFinite(value)) return value;
+          if (
+            typeof value === "string" &&
+            value.trim() !== "" &&
+            Number.isFinite(Number(value))
+          ) {
+            return Number(value);
+          }
+        }
+        return null;
+      };
+
+      const stringValue = (...values: unknown[]): string | null => {
+        for (const value of values) {
+          if (typeof value === "string" && value.trim() !== "") {
+            return value;
+          }
+        }
+        return null;
+      };
+
+      const beforeCount = numberValue(
+        before.installmentCount,
+        before.mutableInstallmentCount,
+      );
+      const afterCount = numberValue(
+        after.installmentCount,
+        after.mutableInstallmentCount,
+      );
+      const beforeBalance = numberValue(
+        before.remainingBalance,
+        before.invoiceRemaining,
+        before.mutableBalance,
+      );
+      const afterBalance = numberValue(
+        after.remainingBalance,
+        after.invoiceRemaining,
+        after.mutableBalance,
+      );
+      const afterAmounts = Array.isArray(after.amounts)
+        ? after.amounts
+            .map((value) => numberValue(value))
+            .filter((value): value is number => value !== null)
+        : [];
+
+      const beforeInstallmentAmount =
+        numberValue(before.installmentAmount) ??
+        (beforeBalance !== null && beforeCount !== null && beforeCount > 0
+          ? roundMoney(beforeBalance / beforeCount)
+          : null);
+
+      const afterInstallmentAmount =
+        numberValue(after.installmentAmount, afterAmounts[0]) ??
+        (afterBalance !== null && afterCount !== null && afterCount > 0
+          ? roundMoney(afterBalance / afterCount)
+          : null);
+
       const executedByName =
         typeof event.userId === "string" && event.userId.length > 0
           ? userNames.get(event.userId) || "system"
@@ -182,49 +241,27 @@ export async function GET(
 
       return {
         id: event.id,
-        version:
-          typeof details.newVersion === "number" ? details.newVersion : null,
-        type: typeof details.type === "string" ? details.type : "RESTRUCTURE",
-        reason: typeof details.reason === "string" ? details.reason : "",
+        version: numberValue(details.newVersion, details.version),
+        type: stringValue(details.type) || "RESTRUCTURE",
+        reason: stringValue(details.reason) || "",
         executedBy: executedByName,
         executedAt: event.createdAt.toISOString(),
         before: {
-          prepaymentAmount:
-            typeof before.prepaymentAmount === "number"
-              ? before.prepaymentAmount
-              : null,
-          installmentAmount:
-            typeof before.installmentAmount === "number"
-              ? before.installmentAmount
-              : null,
-          installmentCount:
-            typeof before.installmentCount === "number"
-              ? before.installmentCount
-              : null,
-          remainingBalance:
-            typeof before.remainingBalance === "number"
-              ? before.remainingBalance
-              : null,
-          endDate: typeof before.endDate === "string" ? before.endDate : null,
+          prepaymentAmount: numberValue(before.prepaymentAmount),
+          installmentAmount: beforeInstallmentAmount,
+          installmentCount: beforeCount,
+          remainingBalance: beforeBalance,
+          endDate: stringValue(before.endDate),
         },
         after: {
-          prepaymentAmount:
-            typeof after.prepaymentAmount === "number"
-              ? after.prepaymentAmount
-              : null,
-          installmentAmount:
-            typeof after.installmentAmount === "number"
-              ? after.installmentAmount
-              : null,
-          installmentCount:
-            typeof after.installmentCount === "number"
-              ? after.installmentCount
-              : null,
-          remainingBalance:
-            typeof after.remainingBalance === "number"
-              ? after.remainingBalance
-              : null,
-          endDate: typeof after.endDate === "string" ? after.endDate : null,
+          prepaymentAmount: numberValue(
+            after.prepaymentAmount,
+            details.prepaymentAmount,
+          ),
+          installmentAmount: afterInstallmentAmount,
+          installmentCount: afterCount,
+          remainingBalance: afterBalance,
+          endDate: stringValue(after.endDate),
         },
       };
     });
