@@ -299,6 +299,9 @@ export async function restructurePaymentPlan(
   if (prepaymentAmount > before.invoiceRemaining + 0.01) {
     throw new Error("Advance payment exceeds the invoice remaining balance.");
   }
+  if (prepaymentAmount >= before.invoiceRemaining - 0.01) {
+    throw new Error("Use the dedicated early settlement command.");
+  }
   if (prepaymentAmount > before.mutableBalance + 0.01) {
     throw new Error(
       "Advance payment cannot exceed the fully unpaid installment balance while partially paid installments remain locked.",

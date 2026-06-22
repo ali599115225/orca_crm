@@ -28,6 +28,9 @@ function statusForEvent(eventType: DealEventType): DealPassportStatus {
   if (eventType === "payment_plan.restructured") {
     return "PAYMENT_PLAN_RESTRUCTURED";
   }
+  if (eventType === "payment_plan.early_settled") {
+    return "EARLY_SETTLED";
+  }
   if (eventType === "contract.cancelled") return "CANCELLED";
   return "OPEN";
 }

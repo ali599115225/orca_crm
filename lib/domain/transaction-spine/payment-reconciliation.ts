@@ -14,6 +14,7 @@ import {
 import {
   INVOICE_STATUS,
   INSTALLMENT_STATUS,
+  PAYMENT_METHOD,
   PAYMENT_PLAN_STATUS,
   PAYMENT_STATUS,
 } from "./constants";
@@ -89,6 +90,23 @@ export async function completePaymentTransaction(input: {
       }));
     if (!invoice) throw new Error("Invoice not found for payment.");
 
+    const completedForInvoiceBefore = await tx.paymentTransaction.aggregate({
+      where: {
+        tenantId: input.tenantId,
+        invoiceId,
+        status: PAYMENT_STATUS.COMPLETED,
+        id: { not: payment.id },
+      },
+      _sum: { netAmount: true },
+    });
+    const invoicePaidBefore = roundMoney(
+      Number(completedForInvoiceBefore._sum.netAmount || 0),
+    );
+    const invoiceTotal = roundMoney(Number(invoice.totalAmount));
+    if (roundMoney(invoicePaidBefore + amount) > invoiceTotal) {
+      throw new Error("Payment exceeds the invoice remaining balance.");
+    }
+
     if (payment.installment) {
       const completedForInstallment = await tx.paymentTransaction.aggregate({
         where: {
@@ -156,7 +174,6 @@ export async function completePaymentTransaction(input: {
       _sum: { netAmount: true },
     });
     const invoicePaid = roundMoney(Number(completedForInvoice._sum.netAmount || 0));
-    const invoiceTotal = roundMoney(Number(invoice.totalAmount));
     const invoiceStatus =
       invoicePaid >= invoiceTotal
         ? INVOICE_STATUS.PAID
@@ -219,6 +236,138 @@ export async function completePaymentTransaction(input: {
     }
 
     const contractId = invoice.contractId || payment.installment?.contractId || null;
+    let earlySettlement:
+      | {
+          paymentPlanId: string;
+          paymentPlanVersion: number;
+          previousVersion: number;
+          previousInstallmentCount: number;
+          cancelledInstallmentCount: number;
+          reason: string;
+        }
+      | null = null;
+
+    if (
+      payment.planCode === PAYMENT_METHOD.EARLY_SETTLEMENT ||
+      payment.method === PAYMENT_METHOD.EARLY_SETTLEMENT
+    ) {
+      if (!contractId) {
+        throw new Error("Early settlement payment is not linked to a contract.");
+      }
+      if (invoiceStatus !== INVOICE_STATUS.PAID) {
+        throw new Error("Early settlement must settle the full invoice balance.");
+      }
+
+      const paymentPlan = await tx.paymentPlan.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          contractId,
+        },
+      });
+      if (!paymentPlan) {
+        throw new Error("Payment plan not found for early settlement.");
+      }
+      if (paymentPlan.status !== PAYMENT_PLAN_STATUS.ACTIVE) {
+        throw new Error("Only active payment plans can be settled early.");
+      }
+
+      const previousInstallmentCount = await tx.installment.count({
+        where: {
+          tenantId: input.tenantId,
+          contractId,
+          paymentPlanId: paymentPlan.id,
+          paymentStatus: {
+            notIn: [
+              INSTALLMENT_STATUS.PAID,
+              INSTALLMENT_STATUS.CANCELLED,
+            ],
+          },
+        },
+      });
+
+      const cancelled = await tx.installment.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          contractId,
+          paymentPlanId: paymentPlan.id,
+          paymentStatus: {
+            notIn: [
+              INSTALLMENT_STATUS.PAID,
+              INSTALLMENT_STATUS.CANCELLED,
+            ],
+          },
+        },
+        data: {
+          paymentStatus: INSTALLMENT_STATUS.CANCELLED,
+        },
+      });
+
+      const completedAt = new Date();
+      const completedPlan = await tx.paymentPlan.update({
+        where: { id: paymentPlan.id },
+        data: {
+          status: PAYMENT_PLAN_STATUS.COMPLETED,
+          completedAt,
+          lastAmendedAt: completedAt,
+          installmentCount: 0,
+          scheduleJson: [],
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.contract.update({
+        where: { id: contractId },
+        data: { version: { increment: 1 } },
+      });
+
+      const metadata =
+        input.rawPayload &&
+        typeof input.rawPayload === "object" &&
+        !Array.isArray(input.rawPayload)
+          ? (input.rawPayload as Record<string, unknown>)
+          : {};
+      const reason =
+        typeof metadata.reason === "string" ? metadata.reason.trim() : "";
+
+      earlySettlement = {
+        paymentPlanId: completedPlan.id,
+        paymentPlanVersion: completedPlan.version,
+        previousVersion: paymentPlan.version,
+        previousInstallmentCount,
+        cancelledInstallmentCount: cancelled.count,
+        reason,
+      };
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: input.tenantId,
+          userId: input.actorUserId || null,
+          action: "EARLY_SETTLEMENT_COMPLETED",
+          tableName: "payment_plans",
+          recordId: completedPlan.id,
+          details: JSON.stringify({
+            contractId,
+            invoiceId,
+            paymentTransactionId: payment.id,
+            reason,
+            settledAmount: amount,
+            before: {
+              invoiceRemaining: roundMoney(invoiceTotal - invoicePaidBefore),
+              installmentCount: previousInstallmentCount,
+              paymentPlanStatus: paymentPlan.status,
+              version: paymentPlan.version,
+            },
+            after: {
+              invoiceRemaining: 0,
+              installmentCount: 0,
+              paymentPlanStatus: completedPlan.status,
+              version: completedPlan.version,
+            },
+          }),
+        },
+      });
+    }
+
     if (contractId) {
       const deal = await resolveDealInTx(tx, {
         tenantId: input.tenantId,
@@ -257,6 +406,50 @@ export async function completePaymentTransaction(input: {
             status: "PAYMENT_COMPLETED",
           },
         });
+
+        if (earlySettlement) {
+          const paymentEvent = await tx.dealEvent.findFirst({
+            where: {
+              tenantId: input.tenantId,
+              idempotencyKey: `payment.completed:${payment.id}`,
+            },
+            select: { id: true },
+          });
+
+          await appendDealEventInTx(tx, {
+            tenantId: input.tenantId,
+            dealId: deal.passport.id,
+            eventType: "payment_plan.early_settled",
+            idempotencyKey: `payment-plan:${earlySettlement.paymentPlanId}:early-settled:v${earlySettlement.paymentPlanVersion}`,
+            actorId: eventActorId,
+            actorType: input.actorType,
+            correlationId,
+            causationId: paymentEvent?.id || null,
+            entityType: "payment_plan",
+            entityId: earlySettlement.paymentPlanId,
+            beforeState: {
+              version: earlySettlement.previousVersion,
+              installmentCount: earlySettlement.previousInstallmentCount,
+              invoiceRemaining: roundMoney(invoiceTotal - invoicePaidBefore),
+            },
+            afterState: {
+              version: earlySettlement.paymentPlanVersion,
+              installmentCount: 0,
+              invoiceRemaining: 0,
+            },
+            payload: {
+              paymentTransactionId: payment.id,
+              settledAmount: amount,
+              cancelledInstallmentCount:
+                earlySettlement.cancelledInstallmentCount,
+              reason: earlySettlement.reason,
+            },
+            projection: {
+              contractId,
+              status: "EARLY_SETTLED",
+            },
+          });
+        }
       }
     }
 

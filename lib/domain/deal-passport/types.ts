@@ -10,6 +10,7 @@ export type DealEventType =
   | "financials.activated"
   | "payment.completed"
   | "payment_plan.restructured"
+  | "payment_plan.early_settled"
   | "contract.cancelled";
 
 export type DealPassportStatus =
@@ -26,6 +27,7 @@ export type DealPassportStatus =
   | "FINANCIALS_ACTIVE"
   | "PAYMENT_COMPLETED"
   | "PAYMENT_PLAN_RESTRUCTURED"
+  | "EARLY_SETTLED"
   | "CANCELLED";
 
 export type DealEntityType =

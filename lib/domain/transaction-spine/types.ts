@@ -17,6 +17,16 @@ export interface RestructurePaymentPlanInput {
   idempotencyKey: string;
 }
 
+export interface EarlySettlementInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  contractId: string;
+  reason: string;
+  idempotencyKey: string;
+}
+
 export type PaymentPlanTemplate =
   | "SINGLE_PAYMENT"
   | "DEPOSIT_AND_BALANCE"
@@ -129,6 +139,8 @@ export interface RecordPaymentInput {
   installmentId?: string;
   amount: number;
   method: string;
+  planCode?: string;
+  metadata?: Record<string, unknown>;
   idempotencyKey: string;
 }
 
