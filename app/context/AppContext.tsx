@@ -91,6 +91,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
+  return ctx;
+}
+
+export function useLanguage() {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
+  return ctx;
+}
+
 export function useApp() {
   const themeContext = useContext(ThemeContext);
   const langContext = useContext(LanguageContext);
@@ -102,7 +114,6 @@ export function useApp() {
     toggleTheme: themeContext.toggleTheme,
     lang: langContext.lang,
     toggleLang: langContext.toggleLang,
-    // ── Translation shorthand ──
     t: (key: string) => translate(key, langContext.lang),
   };
 }

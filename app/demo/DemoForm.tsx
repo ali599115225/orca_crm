@@ -3,12 +3,10 @@
 import React, { useState } from "react";
 import { createLeadAction } from "@/app/actions/leads";
 import Link from "next/link";
-
-const LANG = { AR: "ar", EN: "en" } as const;
-type Lang = keyof typeof LANG;
+import { useLanguage } from "@/app/context/AppContext";
 
 export default function DemoForm() {
-  const [lang, setLang] = useState<Lang>("AR");
+  const { lang, toggleLang } = useLanguage();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -85,7 +83,7 @@ export default function DemoForm() {
             </svg>
             <span className="demo-brand">ORCA</span>
           </div>
-          <button onClick={() => setLang(lang === "AR" ? "EN" : "AR")} className="demo-lang">
+          <button onClick={toggleLang} className="demo-lang">
             {lang === "AR" ? "EN" : "عربي"}
           </button>
         </div>

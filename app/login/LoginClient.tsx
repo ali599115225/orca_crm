@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { loginAction } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // استيراد مكوّن الروابط لـ Next.js
+import Link from "next/link";
+import { useTheme, useLanguage } from "@/app/context/AppContext";
 
 interface LoginClientProps {
   tenantName?: string;
@@ -12,8 +13,9 @@ interface LoginClientProps {
 }
 
 export default function LoginClient({ tenantName = "منصة ORCA العقارية", host = "" }: LoginClientProps) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [lang, setLang] = useState<'AR' | 'EN'>('AR');
+  const { theme, toggleTheme } = useTheme();
+  const { lang, toggleLang } = useLanguage();
+  const isDarkMode = theme === 'dark';
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
@@ -21,31 +23,6 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
   const router = useRouter();
   const svgRef = useRef(null);
 
-  // التبديل بين الوضع الفاتح والداكن
-  useEffect(() => {
-    const htmlElement = document.documentElement;
-    if (isDarkMode) {
-      htmlElement.classList.add('dark');
-      htmlElement.classList.remove('light');
-    } else {
-      htmlElement.classList.remove('dark');
-      htmlElement.classList.add('light');
-    }
-  }, [isDarkMode]);
-
-  // تحديث اتجاه ولغة الصفحة عند تغيير خيار اللغة
-  useEffect(() => {
-    const htmlElement = document.documentElement;
-    if (lang === 'AR') {
-      htmlElement.setAttribute('lang', 'ar');
-      htmlElement.setAttribute('dir', 'rtl');
-    } else {
-      htmlElement.setAttribute('lang', 'en');
-      htmlElement.setAttribute('dir', 'ltr');
-    }
-  }, [lang]);
-
-  // عداد التراجع عند الحظر
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
       setRetryAfter(null);
@@ -199,7 +176,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
         <div className="flex items-center gap-4 text-sm">
           {/* Language Selector Button */}
           <button 
-            onClick={() => setLang(prev => prev === 'AR' ? 'EN' : 'AR')}
+            onClick={toggleLang}
             className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors focus:outline-none ${isDarkMode ? 'text-slate-300 font-medium hover:text-white' : 'text-slate-800 font-medium hover:text-slate-900'}`}
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-2" xmlns="http://www.w3.org/2000/svg">
@@ -216,7 +193,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
             <span className={isDarkMode ? 'text-slate-300 font-medium' : 'text-slate-800 font-medium'}>
               {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
             </span>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
+            <button onClick={toggleTheme} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
               <span className="sr-only">{isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>
               <div className={`w-4 h-4 rounded-full bg-corporate-blue dark:bg-cyan-glow absolute shadow-md transition-all duration-300 ease-in-out ${isDarkMode ? 'right-7' : 'right-1'}`}></div>
             </button>

@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-
-const LANG = { AR: "ar", EN: "en" } as const;
-type Lang = keyof typeof LANG;
+import { useLanguage } from "@/app/context/AppContext";
 
 const NAV_SECTIONS = ["hero", "trust", "platform", "product", "ai", "properties", "finance", "portals", "compare", "pricing", "demo"];
 
@@ -24,7 +22,7 @@ function getVisibleSection(): string {
 }
 
 export default function EnterpriseHome() {
-  const [lang, setLang] = useState<Lang>("AR");
+  const { lang, toggleLang } = useLanguage();
   const [scrolled, setScrolled] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
@@ -58,11 +56,6 @@ export default function EnterpriseHome() {
     };
   }, []);
 
-  useEffect(() => {
-    document.documentElement.setAttribute("lang", lang === "AR" ? "ar" : "en");
-    document.documentElement.setAttribute("dir", dir);
-  }, [lang, dir]);
-
   const t = (lang === "AR" ? AR : EN) as typeof AR;
 
   return (
@@ -72,7 +65,7 @@ export default function EnterpriseHome() {
 {/* LaunchBanner removed — 30% discount claim was not real */}
 
       {/* ═══ HEADER ═══ */}
-      <Header lang={lang} setLang={setLang} scrolled={scrolled} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} t={t} activeSection={activeSection} />
+      <Header lang={lang} toggleLang={toggleLang} scrolled={scrolled} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} t={t} activeSection={activeSection} />
 
       {/* ═══ 1. EXECUTIVE HERO ═══ */}
       <HeroSection t={t} isRtl={isRtl} lang={lang} />
@@ -137,7 +130,7 @@ function LaunchBanner({ t }: any) {
 /* ══════════════════════════════════════════════════════════════
    HEADER
 ══════════════════════════════════════════════════════════════ */
-function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t, activeSection }: any) {
+function Header({ lang, toggleLang, scrolled, mobileOpen, setMobileOpen, t, activeSection }: any) {
   const sectionFromHref = (href: string) => href.replace("#", "");
   return (
     <header className={`eh-header${scrolled > 50 ? " eh-header-scrolled" : ""}`}>
@@ -166,7 +159,7 @@ function Header({ lang, setLang, scrolled, mobileOpen, setMobileOpen, t, activeS
         </nav>
 
         <div className="eh-header-actions">
-          <button onClick={() => setLang(lang === "AR" ? "EN" : "AR")} className="eh-lang-btn">{lang === "AR" ? "EN" : "عربي"}</button>
+          <button onClick={toggleLang} className="eh-lang-btn">{lang === "AR" ? "EN" : "عربي"}</button>
           <Link href="/login" className="eh-btn-secondary">{t.signIn}</Link>
           <Link href="/demo" className="eh-btn-primary">{t.startFree}</Link>
           <button className="eh-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
