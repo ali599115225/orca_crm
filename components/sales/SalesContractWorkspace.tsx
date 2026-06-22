@@ -146,6 +146,24 @@ type ContractDetail = {
     remainingBalance: number;
     collectionPercent: number;
   };
+  summary: {
+    remainingInstallmentCount: number;
+    overdueInstallmentCount: number;
+    planEndDate: string | null;
+    nextInstallment: null | {
+      installmentNumber: number;
+      amount: number;
+      dueDate: string;
+      status: string;
+    };
+    lastPayment: null | {
+      amount: number;
+      paidAt: string;
+      method: string;
+      provider: string;
+    };
+    lastAmendmentAt: string | null;
+  };
   installments: Installment[];
   payments: Payment[];
   timeline: TimelineEvent[];
@@ -295,7 +313,6 @@ export default function SalesContractWorkspace({
   const [prepaymentAmount, setPrepaymentAmount] = useState("");
   const [restructureMode, setRestructureMode] =
     useState<RestructureMode>("REDUCE_INSTALLMENT");
-  const [desiredInstallmentCount, setDesiredInstallmentCount] = useState("");
   const [restructureReason, setRestructureReason] = useState("");
 
   const load = useCallback(async () => {
@@ -389,26 +406,49 @@ export default function SalesContractWorkspace({
     if (!contract) return null;
     const amount = Number(prepaymentAmount);
     if (!Number.isFinite(amount) || amount <= 0) return null;
-    const remaining = Math.max(0, contract.financials.remainingBalance - amount);
+
+    const remaining = Math.max(
+      0,
+      contract.financials.remainingBalance - amount,
+    );
+    const availableCount = mutableInstallments.length;
+
+    if (remaining <= 0.01) {
+      return {
+        remaining: 0,
+        count: 0,
+        estimated: 0,
+        endDate: null as string | null,
+      };
+    }
+
+    const currentInstallmentAmount = Math.max(
+      mutableInstallments[0]?.amountSar || 0,
+      0.01,
+    );
     const count =
       restructureMode === "REDUCE_INSTALLMENT"
-        ? Math.max(1, mutableInstallments.length)
+        ? Math.max(1, availableCount)
         : Math.max(
             1,
             Math.min(
-              mutableInstallments.length || 1,
-              Number(desiredInstallmentCount) || mutableInstallments.length || 1,
+              availableCount || 1,
+              Math.ceil(remaining / currentInstallmentAmount),
             ),
           );
+
     return {
       remaining,
       count,
-      estimated: count > 0 ? remaining / count : 0,
+      estimated:
+        restructureMode === "REDUCE_INSTALLMENT"
+          ? remaining / count
+          : Math.min(currentInstallmentAmount, remaining),
+      endDate: mutableInstallments[count - 1]?.dueDate || null,
     };
   }, [
     contract,
-    desiredInstallmentCount,
-    mutableInstallments.length,
+    mutableInstallments,
     prepaymentAmount,
     restructureMode,
   ]);
@@ -461,10 +501,6 @@ export default function SalesContractWorkspace({
           body: JSON.stringify({
             prepaymentAmount: Number(prepaymentAmount),
             mode: restructureMode,
-            desiredInstallmentCount:
-              restructureMode === "REDUCE_TERM"
-                ? Number(desiredInstallmentCount) || undefined
-                : undefined,
             reason: restructureReason,
             method: "BANK_TRANSFER_ADVANCE",
             idempotencyKey: makeKey(),
@@ -490,7 +526,6 @@ export default function SalesContractWorkspace({
         ),
       );
       setPrepaymentAmount("");
-      setDesiredInstallmentCount("");
       setRestructureReason("");
       await load();
     } catch (cause) {
@@ -703,28 +738,81 @@ export default function SalesContractWorkspace({
       </nav>
 
       {tab === "overview" && (
-        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
-          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-            {L("ملخص الصفقة", "Deal summary")}
-          </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="space-y-4 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+          <div>
+            <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+              {L("ملخص الصفقة التشغيلي", "Operational deal summary")}
+            </h2>
+            <p className="mt-1 text-[11px] text-[var(--nc-text-dim)]">
+              {L(
+                "بيانات العقد والتحصيل والاستحقاقات في مكان واحد.",
+                "Contract, collection, and due-date details in one place.",
+              )}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              [L("المشروع", "Project"), contract.unit.project.name],
+              [L("الوحدة", "Unit"), contract.unit.unitNumber],
               [L("المشتري", "Buyer"), contract.buyerName],
               [L("الهاتف", "Phone"), contract.buyerPhone],
-              [L("تاريخ القبول", "Accepted"), shortDate(contract.acceptedAt)],
-              [L("تاريخ التوقيع", "Signed"), shortDate(contract.signedAt)],
               [
-                L("نسخة خطة الدفع", "Payment plan version"),
-                String(contract.paymentPlan?.version || 1),
+                L("رقم الفاتورة", "Invoice number"),
+                contract.invoice
+                  ? `${contract.invoice.invoicePrefix}-${contract.invoice.invoiceNumber}`
+                  : "—",
+              ],
+              [
+                L("حالة العقد", "Contract status"),
+                statusLabel(contract.status, locale),
+              ],
+              [
+                L("حالة خطة الدفع", "Payment plan status"),
+                contract.paymentPlan
+                  ? statusLabel(contract.paymentPlan.status, locale)
+                  : "—",
+              ],
+              [
+                L("الأقساط المتبقية", "Remaining installments"),
+                String(contract.summary.remainingInstallmentCount),
+              ],
+              [
+                L("الأقساط المتأخرة", "Overdue installments"),
+                String(contract.summary.overdueInstallmentCount),
+              ],
+              [
+                L("نهاية الخطة", "Plan end"),
+                shortDate(contract.summary.planEndDate),
+              ],
+              [
+                L("آخر دفعة", "Last payment"),
+                contract.summary.lastPayment
+                  ? `${money(contract.summary.lastPayment.amount, locale)} · ${shortDateTime(contract.summary.lastPayment.paidAt)}`
+                  : "—",
+              ],
+              [
+                L("آخر تعديل", "Last amendment"),
+                shortDateTime(contract.summary.lastAmendmentAt),
+              ],
+              [
+                L("القسط القادم", "Next installment"),
+                contract.summary.nextInstallment
+                  ? `${money(contract.summary.nextInstallment.amount, locale)} · ${shortDate(contract.summary.nextInstallment.dueDate)}`
+                  : "—",
               ],
               [
                 L("نسبة التحصيل", "Collection"),
                 `${contract.financials.collectionPercent}%`,
               ],
+              [
+                L("نسخة خطة الدفع", "Payment plan version"),
+                String(contract.paymentPlan?.version || 1),
+              ],
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="rounded-xl border border-[var(--nc-glass-border)] p-3"
+                className="min-h-[76px] rounded-xl border border-[var(--nc-glass-border)] p-3"
               >
                 <span className="text-[10px] text-[var(--nc-text-dim)]">
                   {label}
@@ -787,28 +875,13 @@ export default function SalesContractWorkspace({
                     {L("خفض قيمة الأقساط", "Reduce installment amount")}
                   </option>
                   <option value="REDUCE_TERM">
-                    {L("تقليل مدة السداد", "Reduce payment term")}
+                    {L(
+                      "تقليل مدة السداد تلقائيًا",
+                      "Automatically reduce payment term",
+                    )}
                   </option>
                 </select>
               </div>
-
-              {restructureMode === "REDUCE_TERM" && (
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
-                    {L("عدد الأقساط المتبقية", "Desired remaining installments")}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={Math.max(1, mutableInstallments.length)}
-                    value={desiredInstallmentCount}
-                    onChange={(event) =>
-                      setDesiredInstallmentCount(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
@@ -830,8 +903,23 @@ export default function SalesContractWorkspace({
                     <strong>{money(preview.remaining, locale)}</strong>
                   </div>
                   <div className="mt-2 flex justify-between gap-3">
-                    <span>{L("القسط التقديري", "Estimated installment")}</span>
+                    <span>
+                      {L(
+                        "عدد الأقساط المتبقية تلقائيًا",
+                        "Automatic remaining installments",
+                      )}
+                    </span>
+                    <strong>{preview.count}</strong>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <span>{L("القسط المتوقع", "Expected installment")}</span>
                     <strong>{money(preview.estimated, locale)}</strong>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <span>{L("نهاية الخطة المتوقعة", "Expected plan end")}</span>
+                    <strong dir="ltr">
+                      {preview.endDate ? shortDate(preview.endDate) : "—"}
+                    </strong>
                   </div>
                 </div>
               )}

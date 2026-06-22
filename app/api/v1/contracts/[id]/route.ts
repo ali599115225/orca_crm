@@ -122,6 +122,24 @@ export async function GET(
       };
     });
 
+    const collectibleStatuses = new Set(["Pending", "Partial", "Overdue"]);
+    const openInstallments = installments.filter(
+      (item) =>
+        collectibleStatuses.has(item.paymentStatus) &&
+        item.remainingAmount > 0,
+    );
+    const overdueInstallments = openInstallments.filter(
+      (item) => item.paymentStatus === "Overdue",
+    );
+    const nextOpenInstallment = openInstallments[0] || null;
+    const lastOpenInstallment =
+      openInstallments.length > 0
+        ? openInstallments[openInstallments.length - 1]
+        : null;
+    const latestCompletedPayment =
+      payments.find((payment) => payment.status === PAYMENT_STATUS.COMPLETED) ||
+      null;
+
     const timelineRecordIds = [
       contract.id,
       contract.paymentPlan?.id,
@@ -321,6 +339,33 @@ export async function GET(
           invoiceTotal > 0
             ? Math.min(100, Math.round((completedPaid / invoiceTotal) * 10000) / 100)
             : 0,
+      },
+      summary: {
+        remainingInstallmentCount: openInstallments.length,
+        overdueInstallmentCount: overdueInstallments.length,
+        planEndDate: lastOpenInstallment?.dueDate || null,
+        nextInstallment: nextOpenInstallment
+          ? {
+              installmentNumber: nextOpenInstallment.installmentNumber,
+              amount: nextOpenInstallment.remainingAmount,
+              dueDate: nextOpenInstallment.dueDate,
+              status: nextOpenInstallment.paymentStatus,
+            }
+          : null,
+        lastPayment: latestCompletedPayment
+          ? {
+              amount: Number(latestCompletedPayment.netAmount),
+              paidAt:
+                latestCompletedPayment.paidAt?.toISOString() ||
+                latestCompletedPayment.createdAt.toISOString(),
+              method: latestCompletedPayment.method,
+              provider: latestCompletedPayment.provider,
+            }
+          : null,
+        lastAmendmentAt:
+          amendments[0]?.executedAt ||
+          contract.paymentPlan?.lastAmendedAt?.toISOString() ||
+          null,
       },
       installments,
       payments: payments.map((payment) => ({
