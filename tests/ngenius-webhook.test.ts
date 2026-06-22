@@ -1,303 +1,160 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("server-only", () => ({}));
 
-const { prismaMock, verifyPaymentMock } = vi.hoisted(() => ({
+const {
+  prismaMock,
+  verifyPaymentMock,
+  completePaymentMock,
+  failPaymentMock,
+} = vi.hoisted(() => ({
   prismaMock: {
     paymentTransaction: {
       findFirst: vi.fn(),
-      update: vi.fn(),
       updateMany: vi.fn(),
     },
-    installment: {
-      findFirst: vi.fn(),
-      updateMany: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
-    $transaction: vi.fn(async (fn: any) => fn(prismaMock)),
   },
   verifyPaymentMock: vi.fn(),
+  completePaymentMock: vi.fn(),
+  failPaymentMock: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/rate-limit", () => ({
-  rateLimit: vi.fn(async () => ({ allowed: true, remaining: 59, resetIn: 60_000 })),
-}));
-vi.mock("@/lib/privacy-mask", () => ({
-  redactPiiFromPayload: (p: any) => p,
-}));
-vi.mock("@/lib/errors", () => ({
-  ErrorCode: {
-    RATE_LIMITED: "RATE_LIMITED",
-    WEBHOOK_INVALID: "WEBHOOK_INVALID",
-    NOT_FOUND: "NOT_FOUND",
-    BAD_REQUEST: "BAD_REQUEST",
-    INTERNAL_ERROR: "INTERNAL_ERROR",
-  },
-  publicError: (code: string, msg: string) => ({ code, message: msg }),
-}));
-
 vi.mock("@/lib/payments/providers/ngenius", () => ({
   ngeniusProvider: {
     code: "NGENIUS",
     verifyPayment: verifyPaymentMock,
   },
 }));
+vi.mock("@/lib/domain/transaction-spine", () => ({
+  PAYMENT_STATUS: {
+    PENDING: "PENDING",
+    PROCESSING: "PROCESSING",
+    COMPLETED: "COMPLETED",
+    FAILED: "FAILED",
+  },
+  completePaymentTransaction: completePaymentMock,
+  failPaymentTransaction: failPaymentMock,
+}));
 
 import { POST } from "@/app/api/payments/ngenius/webhook/route";
 
-function makeRequest(body: any): NextRequest {
+function request(body: unknown) {
   return new NextRequest("https://orca.test/api/payments/ngenius/webhook", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-describe("N-Genius webhook", () => {
+describe("N-Genius webhook authoritative reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
+  it("rejects payloads without an order reference", async () => {
+    const response = await POST(request({ status: "PURCHASED" }));
+    expect(response.status).toBe(400);
   });
 
-  it("rejects requests with missing order id", async () => {
-    const req = makeRequest({ status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 404 when payment transaction not found", async () => {
+  it("returns 404 when the internal transaction is missing", async () => {
     prismaMock.paymentTransaction.findFirst.mockResolvedValue(null);
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    expect(res.status).toBe(404);
+    const response = await POST(request({ id: "order-1" }));
+    expect(response.status).toBe(404);
   });
 
-  it("returns already_processed for COMPLETED payments", async () => {
+  it("is idempotent for completed transactions", async () => {
     prismaMock.paymentTransaction.findFirst.mockResolvedValue({
       id: "tx-1",
       status: "COMPLETED",
-      provider: "NGENIUS",
-      providerReference: "order-1",
+      tenantId: "tenant-1",
     });
 
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    const body = await res.json();
-    expect(body.status).toBe("already_processed");
+    const response = await POST(request({ id: "order-1" }));
+    expect((await response.json()).status).toBe("already_completed");
+    expect(verifyPaymentMock).not.toHaveBeenCalled();
   });
 
-  it("verifies order via N-Genius API before processing", async () => {
+  it("completes a payment only after provider verification", async () => {
     prismaMock.paymentTransaction.findFirst.mockResolvedValue({
       id: "tx-1",
-      tenantId: "tenant-1",
       status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      amount: 500,
-      expectedAmountMinor: 500_00,
-      expectedCurrency: "SAR",
-      installmentId: "inst-1",
+      tenantId: "tenant-1",
     });
-
     verifyPaymentMock.mockResolvedValue({
       paid: true,
       providerReference: "order-1",
       amountMinorUnits: 500_00,
       currency: "SAR",
-      providerStatus: "AUTHORIZED",
+      providerStatus: "PURCHASED",
+      rawPayload: { id: "order-1" },
     });
+    completePaymentMock.mockResolvedValue({ idempotent: false });
 
-    prismaMock.installment.findFirst.mockResolvedValue({
-      id: "inst-1",
-      tenantId: "tenant-1",
-      amountSar: 500,
-      paymentStatus: "Pending",
-    });
-
-    prismaMock.paymentTransaction.update.mockResolvedValue({});
-    prismaMock.installment.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.auditLog.create.mockResolvedValue({});
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    const body = await res.json();
-
+    const response = await POST(request({ id: "order-1", status: "PURCHASED" }));
     expect(verifyPaymentMock).toHaveBeenCalledWith("order-1");
-    expect(body.status).toBe("processed");
-    expect(prismaMock.paymentTransaction.update).toHaveBeenCalledWith(
+    expect(completePaymentMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "tx-1" },
-        data: expect.objectContaining({
-          status: "COMPLETED",
-          gatewayStatus: "completed",
-        }),
+        transactionId: "tx-1",
+        tenantId: "tenant-1",
+        amountMinorUnits: 500_00,
+        currency: "SAR",
+        providerStatus: "PURCHASED",
       }),
     );
+    expect((await response.json()).status).toBe("completed");
   });
 
-  it("rejects amount mismatch from N-Genius verification", async () => {
+  it("keeps non-final provider states in processing", async () => {
     prismaMock.paymentTransaction.findFirst.mockResolvedValue({
       id: "tx-1",
-      tenantId: "tenant-1",
       status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      amount: 500,
-      expectedAmountMinor: 500_00,
-      expectedCurrency: "SAR",
-    });
-
-    verifyPaymentMock.mockResolvedValue({
-      paid: true,
-      providerReference: "order-1",
-      amountMinorUnits: 400_00,
-      currency: "SAR",
-      providerStatus: "AUTHORIZED",
-    });
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("rejects currency mismatch from N-Genius verification", async () => {
-    prismaMock.paymentTransaction.findFirst.mockResolvedValue({
-      id: "tx-1",
       tenantId: "tenant-1",
-      status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      amount: 500,
-      expectedAmountMinor: 500_00,
-      expectedCurrency: "SAR",
     });
-
-    verifyPaymentMock.mockResolvedValue({
-      paid: true,
-      providerReference: "order-1",
-      amountMinorUnits: 500_00,
-      currency: "AED",
-      providerStatus: "AUTHORIZED",
-    });
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("marks payment as FAILED when N-Genius verification returns not paid", async () => {
-    prismaMock.paymentTransaction.findFirst.mockResolvedValue({
-      id: "tx-1",
-      tenantId: "tenant-1",
-      status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      installmentId: "inst-1",
-    });
-
     verifyPaymentMock.mockResolvedValue({
       paid: false,
       providerReference: "order-1",
       amountMinorUnits: 500_00,
       currency: "SAR",
-      providerStatus: "FAILED",
+      providerStatus: "PENDING",
+      rawPayload: { id: "order-1" },
     });
+    prismaMock.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
 
-    prismaMock.paymentTransaction.update.mockResolvedValue({});
-    prismaMock.installment.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.auditLog.create.mockResolvedValue({});
-
-    const req = makeRequest({ id: "order-1", status: "FAILED" });
-
-    const res = await POST(req);
-    const body = await res.json();
-
-    expect(body.status).toBe("recorded");
-    expect(prismaMock.paymentTransaction.update).toHaveBeenCalledWith(
+    const response = await POST(request({ id: "order-1" }));
+    expect(prismaMock.paymentTransaction.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "tx-1" },
-        data: expect.objectContaining({
-          status: "FAILED",
-        }),
+        data: expect.objectContaining({ status: "PROCESSING", gatewayStatus: "PENDING" }),
       }),
     );
+    expect(failPaymentMock).not.toHaveBeenCalled();
+    expect((await response.json()).status).toBe("pending");
   });
 
-  it("processes webhook without Bearer auth (N-Genius does not support it)", async () => {
+  it("records only final provider failures as failed", async () => {
     prismaMock.paymentTransaction.findFirst.mockResolvedValue({
       id: "tx-1",
-      tenantId: "tenant-1",
       status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      amount: 500,
-      expectedAmountMinor: 500_00,
-      expectedCurrency: "SAR",
+      tenantId: "tenant-1",
     });
-
     verifyPaymentMock.mockResolvedValue({
-      paid: true,
+      paid: false,
       providerReference: "order-1",
       amountMinorUnits: 500_00,
       currency: "SAR",
-      providerStatus: "AUTHORIZED",
+      providerStatus: "DECLINED",
+      rawPayload: { id: "order-1" },
     });
 
-    prismaMock.paymentTransaction.update.mockResolvedValue({});
-    prismaMock.auditLog.create.mockResolvedValue({});
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    const body = await res.json();
-
-    expect(body.status).toBe("processed");
-  });
-
-  it("accepts webhook without any auth headers", async () => {
-    prismaMock.paymentTransaction.findFirst.mockResolvedValue({
-      id: "tx-1",
-      tenantId: "tenant-1",
-      status: "PENDING",
-      provider: "NGENIUS",
-      providerReference: "order-1",
-      amount: 500,
-      expectedAmountMinor: 500_00,
-      expectedCurrency: "SAR",
-    });
-
-    verifyPaymentMock.mockResolvedValue({
-      paid: true,
-      providerReference: "order-1",
-      amountMinorUnits: 500_00,
-      currency: "SAR",
-      providerStatus: "AUTHORIZED",
-    });
-
-    prismaMock.paymentTransaction.update.mockResolvedValue({});
-    prismaMock.auditLog.create.mockResolvedValue({});
-
-    const req = makeRequest({ id: "order-1", status: "AUTHORIZED" });
-
-    const res = await POST(req);
-    const body = await res.json();
-
-    expect(body.status).toBe("processed");
+    const response = await POST(request({ id: "order-1" }));
+    expect(failPaymentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionId: "tx-1",
+        tenantId: "tenant-1",
+        providerStatus: "DECLINED",
+      }),
+    );
+    expect((await response.json()).status).toBe("failed");
   });
 });

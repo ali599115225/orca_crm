@@ -1,42 +1,57 @@
 import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
 import { calculateVat } from "@/lib/vat/engine";
+import { signContract } from "./sign-contract";
 import type { CreateInvoiceInput } from "./types";
 
 export async function createInvoice(input: CreateInvoiceInput) {
-  const { tenantId, userId, type, contractId, leaseId, subtotal, vatRate = 15, vatType = "STANDARD", dueDate } = input;
+  const {
+    tenantId,
+    userId,
+    type,
+    contractId,
+    leaseId,
+    subtotal,
+    vatRate = 15,
+    vatType = "STANDARD",
+    dueDate,
+  } = input;
 
-  if (!contractId && !leaseId) throw new Error("Invoice must be linked to a contract or a lease.");
-  if (contractId && leaseId) throw new Error("Invoice cannot be linked to both a contract and a lease.");
-  if (subtotal <= 0) throw new Error("Subtotal must be positive.");
-
-  if (contractId) await assertTenantOwnership(tenantId, "contract", contractId, "Contract not found in this tenant.");
-  if (leaseId) {
-    const lease = await prisma.rentalLease.findFirst({ where: { id: leaseId, tenantId } });
-    if (!lease) throw new Error("Lease not found in this tenant.");
+  if (type === "SALE") {
+    if (!contractId) throw new Error("Sale invoice requires a contract.");
+    const result = await signContract({ tenantId, userId, contractId });
+    return result.invoice;
   }
+
+  if (!leaseId || contractId) {
+    throw new Error("Rental invoice must reference one lease and no sale contract.");
+  }
+  if (!Number.isFinite(subtotal) || subtotal <= 0) {
+    throw new Error("Subtotal must be positive.");
+  }
+
+  const lease = await prisma.rentalLease.findFirst({
+    where: { id: leaseId, tenantId },
+  });
+  if (!lease) throw new Error("Lease not found in this tenant.");
 
   const vat = calculateVat(subtotal, vatType);
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) throw new Error("Tenant not found.");
-
-  const invoiceNumber = tenant.nextInvoiceNumber;
-
-  const invoice = await prisma.$transaction(async (tx) => {
-    await tx.tenant.update({
+  return prisma.$transaction(async (tx) => {
+    const counter = await tx.tenant.update({
       where: { id: tenantId },
       data: { nextInvoiceNumber: { increment: 1 } },
+      select: { nextInvoiceNumber: true, invoicePrefix: true },
     });
 
-    const created = await tx.invoice.create({
+    const invoice = await tx.invoice.create({
       data: {
         tenantId,
-        type,
-        contractId: contractId || null,
-        leaseId: leaseId || null,
-        invoiceNumber,
-        invoicePrefix: tenant.invoicePrefix,
+        type: "RENTAL",
+        leaseId,
+        contractId: null,
+        invoiceNumber: counter.nextInvoiceNumber - 1,
+        invoicePrefix: counter.invoicePrefix,
         issueDate: new Date(),
         dueDate,
         subtotal,
@@ -51,15 +66,17 @@ export async function createInvoice(input: CreateInvoiceInput) {
       data: {
         tenantId,
         userId: userId || null,
-        action: "CREATE_INVOICE",
+        action: "CREATE_RENTAL_INVOICE",
         tableName: "invoices",
-        recordId: created.id,
-        details: JSON.stringify({ type, contractId, leaseId, subtotal, totalAmount: vat.totalAmount }),
+        recordId: invoice.id,
+        details: JSON.stringify({
+          leaseId,
+          subtotal,
+          totalAmount: vat.totalAmount,
+        }),
       },
     });
 
-    return created;
+    return invoice;
   });
-
-  return invoice;
 }

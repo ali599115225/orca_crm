@@ -17,7 +17,7 @@ function getNgeniusOutletRef(): string {
 function getNgeniusBaseUrl(): string {
   return (
     process.env.NGENIUS_API_URL ||
-    "https://api-gateway.sandbox.ngenius.com"
+    "https://api-gateway.sandbox.ksa.ngenius-payments.com"
   );
 }
 
@@ -34,6 +34,7 @@ async function getAccessToken(): Promise<string> {
     body: JSON.stringify({
       action: "MERCHANT_ACCESS_TOKEN",
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {
@@ -42,7 +43,9 @@ async function getAccessToken(): Promise<string> {
   }
 
   const data = await res.json();
-  return data.access_token || "";
+  const accessToken = data.access_token || "";
+  if (!accessToken) throw new Error("N-Genius auth response missing access token");
+  return accessToken;
 }
 
 function authHeaders(accessToken: string): Record<string, string> {
@@ -85,6 +88,7 @@ export const ngeniusProvider: PaymentProviderAdapter = {
         method: "POST",
         headers: authHeaders(accessToken),
         body: JSON.stringify(createBody),
+        signal: AbortSignal.timeout(20_000),
       },
     );
 
@@ -120,7 +124,10 @@ export const ngeniusProvider: PaymentProviderAdapter = {
 
     const res = await fetch(
       `${getNgeniusBaseUrl()}/payment/v1/outlets/${encodeURIComponent(outletRef)}/orders/${encodeURIComponent(providerReference)}`,
-      { headers: authHeaders(accessToken) },
+      {
+        headers: authHeaders(accessToken),
+        signal: AbortSignal.timeout(15_000),
+      },
     );
 
     if (!res.ok) {
@@ -129,7 +136,7 @@ export const ngeniusProvider: PaymentProviderAdapter = {
 
     const order = await res.json();
     const status: string = (order.status || "UNKNOWN").toUpperCase();
-    const paid = status === "AUTHORIZED" || status === "CAPTURED";
+    const paid = ["PURCHASED", "CAPTURED", "AUTHORIZED"].includes(status);
 
     return {
       paid,

@@ -1,136 +1,206 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getTenantAndUser } from "@/lib/api-helpers";
 import { ngeniusProvider } from "@/lib/payments/providers/ngenius";
-import { isProviderEnabled } from "@/lib/payments/registry";
+import {
+  CONTRACT_STATUS,
+  INSTALLMENT_STATUS,
+  PAYMENT_STATUS,
+} from "@/lib/domain/transaction-spine";
+
+function idempotencyHash(tenantId: string, installmentId: string, amountMinor: number) {
+  return createHash("sha256")
+    .update(`${tenantId}:NGENIUS:${installmentId}:${amountMinor}`)
+    .digest("hex");
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: installmentId } = await params;
     const { tenantId, userId } = await getTenantAndUser(request);
-
-    if (!tenantId) {
-      return NextResponse.json({ error: "Tenant ID missing." }, { status: 400 });
+    if (!tenantId || !userId) {
+      return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
     }
-
-    if (!isProviderEnabled("NGENIUS")) {
-      return NextResponse.json(
-        { error: "N-Genius payment provider is not enabled" },
-        { status: 400 },
-      );
-    }
+    const { id } = await params;
 
     const installment = await prisma.installment.findFirst({
-      where: { id: installmentId, tenantId },
-      include: { contract: true },
+      where: { id, tenantId },
+      include: {
+        contract: { select: { id: true, status: true, spineVersion: true, legacyFinancial: true } },
+        invoice: { select: { id: true, status: true } },
+        payments: {
+          where: { status: PAYMENT_STATUS.COMPLETED },
+          select: { netAmount: true },
+        },
+      },
     });
 
     if (!installment) {
-      return NextResponse.json(
-        { error: "Installment not found in this tenant." },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "القسط غير موجود." }, { status: 404 });
+    }
+    if (installment.contract.legacyFinancial || installment.contract.spineVersion < 2) {
+      return NextResponse.json({ error: "العقد التاريخي للعرض فقط ولا يقبل دفعات جديدة." }, { status: 409 });
+    }
+    if (installment.contract.status !== CONTRACT_STATUS.SIGNED) {
+      return NextResponse.json({ error: "لا يمكن تحصيل قسط قبل توقيع العقد." }, { status: 409 });
+    }
+    if (!installment.invoiceId || !installment.invoice) {
+      return NextResponse.json({ error: "القسط غير مرتبط بفاتورة بيع." }, { status: 409 });
+    }
+    if (installment.paymentStatus === INSTALLMENT_STATUS.PAID) {
+      return NextResponse.json({ error: "القسط مدفوع بالكامل." }, { status: 409 });
     }
 
-    if (installment.paymentStatus === "Paid") {
-      return NextResponse.json(
-        { error: "Installment is already fully paid." },
-        { status: 400 },
-      );
+    const paidAmount = installment.payments.reduce(
+      (sum, payment) => sum + Number(payment.netAmount),
+      0,
+    );
+    const remainingAmount = Math.round(
+      (Number(installment.amountSar) - paidAmount + Number.EPSILON) * 100,
+    ) / 100;
+    const amountMinor = Math.round(remainingAmount * 100);
+    if (amountMinor <= 0) {
+      return NextResponse.json({ error: "لا يوجد رصيد متبقٍ لهذا القسط." }, { status: 409 });
     }
 
-    if (userId) {
-      const user = await prisma.user.findFirst({
-        where: { id: userId, tenantId },
-        select: { role: true },
+    const active = await prisma.paymentTransaction.findFirst({
+      where: {
+        tenantId,
+        installmentId: installment.id,
+        provider: "NGENIUS",
+        status: { in: [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.PROCESSING] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (active?.paymentUrl) {
+      return NextResponse.json({
+        success: true,
+        redirectUrl: active.paymentUrl,
+        transactionId: active.id,
+        idempotent: true,
       });
-      if (!user || !["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"].includes(user.role)) {
-        return NextResponse.json(
-          { error: "Insufficient permissions." },
-          { status: 403 },
-        );
+    }
+
+    const key = idempotencyHash(tenantId, installment.id, amountMinor);
+    let transaction = active || (await prisma.paymentTransaction.findFirst({
+      where: { tenantId, idempotencyKey: key },
+      orderBy: { createdAt: "desc" },
+    }));
+
+    if (!transaction) {
+      try {
+        transaction = await prisma.paymentTransaction.create({
+          data: {
+            tenantId,
+            invoiceId: installment.invoiceId,
+            installmentId: installment.id,
+            amount: remainingAmount,
+            fee: 0,
+            netAmount: remainingAmount,
+            currency: "SAR",
+            method: "ngenius",
+            status: PAYMENT_STATUS.PROCESSING,
+            provider: "NGENIUS",
+            idempotencyKey: key,
+            planCode: `installment:${installment.id}`,
+            expectedAmountMinor: amountMinor,
+            expectedCurrency: "SAR",
+            paidAt: null,
+          },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          transaction = await prisma.paymentTransaction.findFirst({
+            where: { tenantId, idempotencyKey: key },
+          });
+        } else {
+          throw error;
+        }
       }
     }
-
-    const amountSar = Number(installment.amountSar);
-    const amountMinor = Math.round(amountSar * 100);
-    const currency = "SAR";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://orca.az-ez.pro";
-
-    const callbackUrl = `${appUrl}/api/payments/ngenius/webhook`;
-
-    const payment = await prisma.paymentTransaction.create({
-      data: {
-        tenantId,
-        installmentId,
-        amount: amountSar,
-        fee: 0,
-        netAmount: amountSar,
-        currency,
-        method: "NGENIUS",
-        status: "PENDING",
-        provider: "NGENIUS",
-        expectedAmountMinor: amountMinor,
-        expectedCurrency: currency,
-      },
-    });
-
-    const result = await ngeniusProvider.createPayment({
-      tenantId,
-      planCode: `installment-${installmentId}`,
-      amountMinorUnits: amountMinor,
-      currency,
-      description: `Installment ${installment.installmentNumber} - Contract ${installment.contractId}`,
-      callbackUrl,
-      metadata: {
-        installmentId,
-        contractId: installment.contractId,
-      },
-    });
+    if (!transaction) throw new Error("تعذر إنشاء معاملة الدفع.");
 
     await prisma.paymentTransaction.update({
-      where: { id: payment.id },
+      where: { id: transaction.id },
       data: {
-        providerReference: result.providerReference,
-        paymentUrl: result.redirectUrl,
-        providerTransactionId: result.providerReference,
-        gatewayStatus: result.providerStatus,
-        rawPayload: result.rawPayload as never,
+        status: PAYMENT_STATUS.PROCESSING,
+        lastError: null,
+        failureReason: null,
+        expectedAmountMinor: amountMinor,
+        expectedCurrency: "SAR",
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://orca.az-ez.pro";
+    try {
+      const order = await ngeniusProvider.createPayment({
         tenantId,
-        userId: userId || null,
-        action: "NGENIUS_PAYMENT_INITIATED",
-        tableName: "payment_transactions",
-        recordId: payment.id,
-        details: JSON.stringify({
-          installmentId,
-          amount: amountSar,
-          providerReference: result.providerReference,
-        }),
-      },
-    });
+        planCode: `installment:${installment.id}`,
+        amountMinorUnits: amountMinor,
+        currency: "SAR",
+        description: `ORCA installment ${installment.installmentNumber}`,
+        callbackUrl: `${appUrl}/operations/rental?payment=return&transactionId=${encodeURIComponent(transaction.id)}`,
+        metadata: {
+          internalTransactionId: transaction.id,
+          installmentId: installment.id,
+          invoiceId: installment.invoiceId,
+        },
+      });
 
-    return NextResponse.json({
-      success: true,
-      paymentId: payment.id,
-      redirectUrl: result.redirectUrl,
-      providerReference: result.providerReference,
-    });
-  } catch (error: any) {
-    const status = error.message?.includes("not found")
-      ? 404
-      : error.message?.includes("Insufficient")
-        ? 403
-        : error.message?.includes("not configured")
-          ? 503
-          : 500;
-    return NextResponse.json({ error: error.message }, { status });
+      const updated = await prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PAYMENT_STATUS.PENDING,
+          providerReference: order.providerReference,
+          providerTransactionId: order.providerReference,
+          paymentUrl: order.redirectUrl,
+          gatewayStatus: order.providerStatus,
+          rawPayload: order.rawPayload as any,
+          paidAt: null,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          action: "CREATE_NGENIUS_INSTALLMENT_PAYMENT",
+          tableName: "payment_transactions",
+          recordId: updated.id,
+          details: JSON.stringify({
+            installmentId: installment.id,
+            invoiceId: installment.invoiceId,
+            amountMinor,
+            providerReference: order.providerReference,
+          }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        redirectUrl: order.redirectUrl,
+        transactionId: updated.id,
+        idempotent: false,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "N-Genius payment creation failed";
+      await prisma.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: PAYMENT_STATUS.FAILED,
+          paidAt: null,
+          failureReason: message.slice(0, 2000),
+          lastError: message.slice(0, 2000),
+        },
+      });
+      throw error;
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "فشل إنشاء رابط الدفع.";
+    return NextResponse.json({ success: false, error: message }, { status: 503 });
   }
 }

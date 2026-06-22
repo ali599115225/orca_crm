@@ -15,6 +15,7 @@ import { DateField } from '@/components/ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
 import { Button, Card } from '@/components/ui/orca-components';
 import PageHeader from '@/components/ui/PageHeader';
+import SalesContractsPanel from '@/components/sales/SalesContractsPanel';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
 import { DateCell } from '@/components/ui/orca-table/cells/DateCell';
@@ -43,20 +44,25 @@ interface Invoice {
   invoicePrefix: string;
   invoiceLabel: string;
   zatcaUuid: string;
-  contractId: string;
+  contractId?: string | null;
+  leaseId?: string | null;
+  type?: 'SALE' | 'RENTAL';
   due: string;
+  dueDate?: string;
   subtotal: number;
   vatRate: number;
   vatAmount: number;
   totalAmount: number;
-  status: 'unpaid' | 'paid' | 'overdue';
+  status: 'unpaid' | 'paid' | 'partial' | 'overdue' | 'void';
   qrCode?: string;
   qrImage?: string;
   customerName?: string;
   unitName?: string;
   installments?: Array<{
     id: string;
+    installmentNumber?: number;
     amountSar: number;
+    dueDate?: string;
     paymentStatus: string;
   }>;
 }
@@ -282,7 +288,7 @@ export default function RentalPage() {
   const displayLocale: RentalLocale = isRTL ? 'ar' : 'en';
   const L = (ar: string, en: string) => textFor(displayLocale, ar, en);
   const [mounted, setMounted] = useState(false);
-  const [activePane, setActivePane] = useState<'dashboard' | 'leases' | 'invoices' | 'reconciliation' | 'settlements'>('leases');
+  const [activePane, setActivePane] = useState<'dashboard' | 'leases' | 'sales' | 'invoices' | 'reconciliation' | 'settlements'>('leases');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -1051,7 +1057,8 @@ export default function RentalPage() {
       {/* ── Tab Bar ── */}
       <div className="flex flex-wrap gap-2">
         {[
-          { id: 'leases', name: L('📄 العقود', '📄 Leases') },
+          { id: 'leases', name: L('📄 عقود الإيجار', '📄 Rental leases') },
+          { id: 'sales', name: L('✍️ عقود البيع', '✍️ Sales contracts') },
           { id: 'invoices', name: L('🧾 الفواتير', '🧾 Invoices') },
           { id: 'reconciliation', name: L('🏦 المصالحة البنكية', '🏦 Bank reconciliation') },
           { id: 'settlements', name: L('💰 التسويات', '💰 Settlements') }
@@ -1533,7 +1540,12 @@ export default function RentalPage() {
             </div>
           )}
 
-          {/* ── Pane 2: Invoices ── */}
+          {/* ── Pane 2: Sales Contracts ── */}
+          {activePane === 'sales' && (
+            <SalesContractsPanel locale={displayLocale} />
+          )}
+
+          {/* ── Pane 3: Invoices ── */}
           {activePane === 'invoices' && (
             <div className="bg-[var(--nc-surface-strong)] border border-white/5 rounded-2xl overflow-hidden fade-in-up">
               <div className="p-4 border-b border-white/5 bg-[var(--nc-surface-solid)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1620,20 +1632,20 @@ export default function RentalPage() {
                                   <button
                                     onClick={async () => {
                                       try {
-                                        const pendingInstallments = (inv.installments || []).filter(
-                                          inst => inst.paymentStatus === 'Pending'
-                                        );
+                                        const nextInstallment = [...(inv.installments || [])]
+                                          .filter(inst => ['Pending', 'Partial', 'Overdue'].includes(inst.paymentStatus))
+                                          .sort((left, right) => {
+                                            const dateOrder = String(left.dueDate || '').localeCompare(String(right.dueDate || ''));
+                                            if (dateOrder !== 0) return dateOrder;
+                                            return Number(left.installmentNumber || 0) - Number(right.installmentNumber || 0);
+                                          })[0];
 
-                                        if (pendingInstallments.length !== 1) {
-                                          alert(
-                                            pendingInstallments.length === 0
-                                              ? L('لا توجد أقساط غير مدفوعة لهذه الفاتورة', 'No unpaid installments for this invoice')
-                                              : L('يوجد أكثر من قسط غير مدفوع. يرجى التواصل مع الدعم', 'Multiple unpaid installments found. Please contact support')
-                                          );
+                                        if (!nextInstallment) {
+                                          alert(L('لا يوجد قسط مستحق قابل للدفع لهذه الفاتورة', 'No collectible installment is due for this invoice'));
                                           return;
                                         }
 
-                                        const installmentId = pendingInstallments[0].id;
+                                        const installmentId = nextInstallment.id;
                                         const res = await fetch(`/api/v1/installments/${installmentId}/pay/ngenius`, {
                                           method: 'POST',
                                           credentials: 'include'
@@ -1657,7 +1669,7 @@ export default function RentalPage() {
                                     }}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--nc-surface)] border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 rounded text-[10px] font-bold transition-all"
                                   >
-                                    {L('رابط الدفع', 'Payment link')}
+                                    {L('دفع القسط التالي', 'Pay next installment')}
                                   </button>
                                 </>
                               )}
@@ -1857,7 +1869,7 @@ export default function RentalPage() {
       {/* Header */}
       <PageHeader
         title={L('نظام العقود والمدفوعات والتسويات', 'Contracts, Payments & Settlements')}
-        description={L('إدارة عقود الإيجار، الفواتير، تحصيل المدفوعات والتسوية المالية مع خدمة المحاسبة.', 'Manage leases, invoices, payment collection, and financial settlements.')}
+        description={L('إدارة عقود البيع والإيجار، خطط الدفع، الفواتير، الأقساط والتحصيل المالي.', 'Manage sales and rental contracts, payment plans, invoices, installments, and collection.')}
       >
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-foreground)] text-xs font-semibold">
           <i className="ph-bold ph-file-text"></i>

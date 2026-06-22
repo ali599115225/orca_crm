@@ -1,170 +1,132 @@
+import { createHash } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
-import {
-  postPaymentEntry,
-  findAccountByCode,
-  seedChartOfAccounts,
-} from "@/lib/accounting";
+import { completePaymentTransaction } from "./payment-reconciliation";
+import { PAYMENT_STATUS } from "./constants";
 import type { RecordPaymentInput } from "./types";
 
+function hashIdempotencyKey(tenantId: string, key: string): string {
+  return createHash("sha256").update(`${tenantId}:${key}`).digest("hex");
+}
+
 export async function recordPayment(input: RecordPaymentInput) {
-  const { tenantId, userId, invoiceId, installmentId, amount, method, idempotencyKey } = input;
+  const {
+    tenantId,
+    userId,
+    invoiceId,
+    installmentId,
+    amount,
+    method,
+    idempotencyKey,
+  } = input;
 
-  if (!invoiceId && !installmentId) throw new Error("Payment must reference an invoice or installment.");
-  if (amount <= 0) throw new Error("Payment amount must be positive.");
-  if (!idempotencyKey) throw new Error("Idempotency key is required.");
+  if (!invoiceId && !installmentId) {
+    throw new Error("Payment must reference an invoice or installment.");
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Payment amount must be positive.");
+  }
+  if (!idempotencyKey?.trim()) throw new Error("Idempotency key is required.");
 
-  await seedChartOfAccounts(tenantId);
+  if (invoiceId) {
+    await assertTenantOwnership(
+      tenantId,
+      "invoice",
+      invoiceId,
+      "Invoice not found in this tenant.",
+    );
+  }
+  if (installmentId) {
+    await assertTenantOwnership(
+      tenantId,
+      "installment",
+      installmentId,
+      "Installment not found in this tenant.",
+    );
+  }
 
-  if (invoiceId) await assertTenantOwnership(tenantId, "invoice", invoiceId, "Invoice not found in this tenant.");
-  if (installmentId) await assertTenantOwnership(tenantId, "installment", installmentId, "Installment not found in this tenant.");
+  const keyHash = hashIdempotencyKey(tenantId, idempotencyKey.trim());
+  const existing = await prisma.paymentTransaction.findFirst({
+    where: { tenantId, idempotencyKey: keyHash },
+  });
+  if (existing) {
+    return { payment: existing, idempotent: true };
+  }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const idempotencyHash = `${tenantId}:${idempotencyKey}`;
-
-    const existingPayment = await tx.paymentTransaction.findFirst({
-      where: {
-        tenantId,
-        idempotencyKey: idempotencyHash,
-        status: "COMPLETED",
-      },
-    });
-
-    if (existingPayment) {
-      return { payment: existingPayment, idempotent: true };
-    }
-
-    let invoice = null;
-    let installment = null;
-
-    if (invoiceId) {
-      invoice = await tx.invoice.findFirst({
-        where: { id: invoiceId, tenantId },
-      });
-      if (!invoice) throw new Error("Invoice not found.");
-      if (invoice.status === "paid") throw new Error("Invoice is already fully paid.");
-    }
-
-    if (installmentId) {
-      installment = await tx.installment.findFirst({
+  const installment = installmentId
+    ? await prisma.installment.findFirst({
         where: { id: installmentId, tenantId },
-      });
-      if (!installment) throw new Error("Installment not found.");
-      if (installment.paymentStatus === "Paid") throw new Error("Installment is already paid.");
+      })
+    : null;
+  const resolvedInvoiceId = invoiceId || installment?.invoiceId || null;
+  if (!resolvedInvoiceId) {
+    throw new Error("Payment target is not linked to an invoice.");
+  }
 
-      const installmentAmount = Number(installment.amountSar);
-      if (amount > installmentAmount) {
-        throw new Error(`Payment amount (${amount}) exceeds installment amount (${installmentAmount}).`);
-      }
-    }
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: resolvedInvoiceId, tenantId },
+  });
+  if (!invoice) throw new Error("Invoice not found.");
+  if (invoice.status === "paid") throw new Error("Invoice is already paid.");
 
-    if (invoice && !installment) {
-      const invoiceTotal = Number(invoice.totalAmount);
-      const paidSoFar = await tx.paymentTransaction.findMany({
-        where: { invoiceId, tenantId, status: "COMPLETED" },
-        select: { netAmount: true },
-      });
-      const totalPaid = paidSoFar.reduce((sum, p) => sum + Number(p.netAmount), 0);
-      const remaining = invoiceTotal - totalPaid;
+  const targetIdFilter = installmentId
+    ? { installmentId }
+    : { invoiceId: resolvedInvoiceId, installmentId: null };
+  const completed = await prisma.paymentTransaction.aggregate({
+    where: {
+      tenantId,
+      ...targetIdFilter,
+      status: PAYMENT_STATUS.COMPLETED,
+    },
+    _sum: { netAmount: true },
+  });
+  const targetTotal = installment
+    ? Number(installment.amountSar)
+    : Number(invoice.totalAmount);
+  const remaining = targetTotal - Number(completed._sum.netAmount || 0);
+  if (amount > remaining + 0.01) {
+    throw new Error("Payment amount exceeds the remaining balance.");
+  }
 
-      if (amount > remaining) {
-        throw new Error(`Payment amount (${amount}) exceeds remaining balance (${remaining}).`);
-      }
-    }
-
-    const payment = await tx.paymentTransaction.create({
+  let payment;
+  try {
+    payment = await prisma.paymentTransaction.create({
       data: {
         tenantId,
-        invoiceId: invoiceId || null,
+        invoiceId: resolvedInvoiceId,
         installmentId: installmentId || null,
         amount,
         fee: 0,
         netAmount: amount,
         currency: "SAR",
         method,
-        status: "PENDING",
+        status: PAYMENT_STATUS.PENDING,
         provider: "MANUAL",
-        idempotencyKey: idempotencyHash,
-        paidAt: new Date(),
+        idempotencyKey: keyHash,
+        expectedAmountMinor: Math.round(amount * 100),
+        expectedCurrency: "SAR",
+        paidAt: null,
       },
     });
-
-    const receipt = await tx.receipt.create({
-      data: {
-        tenantId,
-        invoiceId: invoiceId || "",
-        amount,
-        paymentMethod: method,
-        status: "COMPLETED",
-      },
-    });
-
-    if (invoice) {
-      const paidSoFar = await tx.paymentTransaction.findMany({
-        where: { invoiceId: invoice.id, tenantId, status: "COMPLETED" },
-        select: { netAmount: true },
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const duplicate = await prisma.paymentTransaction.findFirst({
+        where: { tenantId, idempotencyKey: keyHash },
       });
-      const totalPaid = paidSoFar.reduce((sum, p) => sum + Number(p.netAmount), 0) + amount;
-      const invoiceTotal = Number(invoice.totalAmount);
-
-      const isFullyPaid = totalPaid >= invoiceTotal;
-
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          status: isFullyPaid ? "paid" : "partial",
-          paidAt: isFullyPaid ? new Date() : undefined,
-          paymentMethod: method,
-          paymentRef: receipt.id,
-        },
-      });
+      if (duplicate) return { payment: duplicate, idempotent: true };
     }
+    throw error;
+  }
 
-    if (installment) {
-      const installmentAmount = Number(installment.amountSar);
-      const isFullyPaid = amount >= installmentAmount;
-
-      await tx.installment.update({
-        where: { id: installment.id },
-        data: {
-          paymentStatus: isFullyPaid ? "Paid" : "Partial",
-        },
-      });
-    }
-
-    const cashAccount = await findAccountByCode(tenantId, "1.1.1");
-    const receivableAccount = await findAccountByCode(tenantId, "1.1.3");
-    if (cashAccount && receivableAccount) {
-      await postPaymentEntry(tenantId, receipt.id, amount, cashAccount.id, receivableAccount.id);
-    }
-
-    const completedPayment = await tx.paymentTransaction.update({
-      where: { id: payment.id },
-      data: { status: "COMPLETED" },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        tenantId,
-        userId: userId || null,
-        action: "RECORD_PAYMENT",
-        tableName: "payment_transactions",
-        recordId: completedPayment.id,
-        details: JSON.stringify({ invoiceId, installmentId, amount, method, idempotencyKey }),
-      },
-    });
-
-    await tx.telemetryEvent.create({
-      data: {
-        tenantId,
-        eventType: "payment.recorded",
-        eventDataJson: JSON.stringify({ paymentId: completedPayment.id, invoiceId, installmentId, amount }),
-        createdBy: userId,
-      },
-    }).catch(() => {});
-
-    return { payment: completedPayment, idempotent: false };
+  const completedPayment = await completePaymentTransaction({
+    transactionId: payment.id,
+    tenantId,
+    amountMinorUnits: Math.round(amount * 100),
+    currency: "SAR",
+    providerStatus: "MANUAL_CONFIRMED",
+    actorUserId: userId,
   });
 
-  return result;
+  return { payment: completedPayment.payment, idempotent: false };
 }

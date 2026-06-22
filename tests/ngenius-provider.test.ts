@@ -149,6 +149,32 @@ describe("N-Genius provider", () => {
     });
   });
 
+
+  it("verifies a purchased SALE order as paid", async () => {
+    vi.stubEnv("NGENIUS_API_KEY", "ngenius-sandbox-key");
+    vi.stubEnv("NGENIUS_OUTLET_REF", "outlet-123");
+
+    vi.stubGlobal(
+      "fetch",
+      mockFetchSequence([
+        { ok: true, json: { access_token: "token" } },
+        {
+          ok: true,
+          json: {
+            id: "ngenius-order-1",
+            status: "PURCHASED",
+            amount: { value: 500_00, currencyCode: "SAR" },
+          },
+        },
+      ]),
+    );
+
+    await expect(ngeniusProvider.verifyPayment("ngenius-order-1")).resolves.toMatchObject({
+      paid: true,
+      providerStatus: "PURCHASED",
+    });
+  });
+
   it("returns paid=false for non-terminal statuses", async () => {
     vi.stubEnv("NGENIUS_API_KEY", "ngenius-sandbox-key");
     vi.stubEnv("NGENIUS_OUTLET_REF", "outlet-123");

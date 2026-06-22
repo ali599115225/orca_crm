@@ -266,13 +266,13 @@ export async function postInvoiceEntry(
       accountId: receivableAccountId,
       debit: totalAmount,
       credit: 0,
-      description: 'فاتورة إيجار',
+      description: 'فاتورة عميل',
     },
     {
       accountId: revenueAccountId,
       debit: 0,
       credit: subtotal,
-      description: 'إيراد الإيجار',
+      description: 'إيراد الفاتورة',
     },
   ];
 
@@ -292,7 +292,7 @@ export async function postInvoiceEntry(
   return postJournalEntry(
     {
       tenantId,
-      description: 'ترحيل فاتورة إيجار',
+      description: 'ترحيل فاتورة عميل',
       source: 'INVOICE',
       sourceId: invoiceId,
       lines,

@@ -166,31 +166,47 @@ export const DEFAULT_CHART_OF_ACCOUNTS: AccountSeed[] = [
   },
 ];
 
+/**
+ * Ensures the complete default chart exists for a tenant.
+ *
+ * Older behavior returned as soon as any account existed, leaving partially
+ * seeded tenants without mandatory receivable, sales-revenue, or VAT accounts.
+ * Upserting every code keeps the operation idempotent and repairs partial charts.
+ */
 export async function seedChartOfAccounts(tenantId: string): Promise<void> {
-  const existing = await prisma.account.findFirst({ where: { tenantId } });
-  if (existing) return;
-
-  async function insert(seed: AccountSeed, parentId?: string) {
-    const account = await prisma.account.create({
-      data: {
+  async function upsertSeed(seed: AccountSeed, parentId?: string) {
+    const account = await prisma.account.upsert({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: seed.code,
+        },
+      },
+      create: {
         tenantId,
         code: seed.code,
         nameAr: seed.nameAr,
         nameEn: seed.nameEn,
         type: seed.type,
         parentId: parentId || null,
+        isActive: true,
+      },
+      update: {
+        type: seed.type,
+        parentId: parentId || null,
+        isActive: true,
       },
     });
-    if (seed.children) {
-      for (const child of seed.children) {
-        await insert(child, account.id);
-      }
+
+    for (const child of seed.children || []) {
+      await upsertSeed(child, account.id);
     }
+
     return account;
   }
 
   for (const root of DEFAULT_CHART_OF_ACCOUNTS) {
-    await insert(root);
+    await upsertSeed(root);
   }
 }
 

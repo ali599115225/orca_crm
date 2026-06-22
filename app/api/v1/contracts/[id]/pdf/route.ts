@@ -155,7 +155,7 @@ export async function GET(
     ` : ''}
 
     <div style="font-size: 11px; color: #718096; text-align: center;">
-      <p>تاريخ التوقيع: ${new Date(contract.signedAt).toISOString().split('T')[0]} ${contract.endDate ? '| تاريخ الانتهاء: ' + new Date(contract.endDate).toISOString().split('T')[0] : ''}</p>
+      <p>تاريخ التوقيع: ${(contract.signedAt ? new Date(contract.signedAt).toISOString().split('T')[0] : 'غير موقع')} ${contract.endDate ? '| تاريخ الانتهاء: ' + new Date(contract.endDate).toISOString().split('T')[0] : ''}</p>
       <p>رقم العقد: ${contract.id}</p>
     </div>
 

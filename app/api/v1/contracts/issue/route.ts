@@ -1,4 +1,3 @@
-// app/api/v1/contracts/issue/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
@@ -7,110 +6,72 @@ import { issueContract } from "@/lib/domain/transaction-spine";
 export async function GET(request: NextRequest) {
   try {
     const { tenantId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
-    }
+    if (!tenantId) return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
 
-    // 1. جلب العملاء المستثمرين الفعليين (Leads)
-    const leads = await prisma.lead.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-      },
-    });
-
-    // 2. جلب جهات الاتصال البديلة (Contacts) لشمولية الفهرس
-    const contacts = await prisma.contact.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-      },
-    });
-
-    // دمج العملاء في مصفوفة موحدة للواجهة
-    const clients = [
-      ...leads.map((l) => ({
-        id: l.id,
-        name: `${l.firstName} ${l.lastName || ""}`.trim(),
-        phone: l.phone,
-        type: "lead",
-      })),
-      ...contacts.map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        type: "contact",
-      })),
-    ];
-
-    // 3. جلب الوحدات العقارية غير المرتبطة بعقود مسبقة
-    const units = await prisma.unit.findMany({
-      where: {
-        project: { tenantId },
-      },
-      include: {
-        project: {
-          select: { name: true },
-        },
-        contract: true,
-      },
-      orderBy: [
-        { project: { name: "asc" } },
-        { unitNumber: "asc" },
-      ],
-    });
-
-    const availableProperties = units
-      .filter((u) => !u.contract)
-      .map((u) => ({
-        id: u.id,
-        unitNumber: u.unitNumber,
-        priceSar: Number(u.priceSar),
-        status: u.status,
-        projectName: u.project?.name || "مشروع عام",
-      }));
+    const [leads, contacts, units] = await Promise.all([
+      prisma.lead.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, firstName: true, lastName: true, phone: true },
+      }),
+      prisma.contact.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, phone: true },
+      }),
+      prisma.unit.findMany({
+        where: { tenantId },
+        include: { project: { select: { name: true } }, contract: true },
+        orderBy: [{ project: { name: "asc" } }, { unitNumber: "asc" }],
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      clients,
-      properties: availableProperties,
+      clients: [
+        ...leads.map((lead) => ({
+          id: lead.id,
+          name: `${lead.firstName} ${lead.lastName || ""}`.trim(),
+          phone: lead.phone,
+          type: "lead",
+        })),
+        ...contacts.map((contact) => ({
+          id: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+          type: "contact",
+        })),
+      ],
+      properties: units
+        .filter((unit) => !unit.contract)
+        .map((unit) => ({
+          id: unit.id,
+          unitNumber: unit.unitNumber,
+          priceSar: Number(unit.priceSar),
+          status: unit.status,
+          projectName: unit.project.name,
+        })),
     });
-  } catch (error: any) {
-    console.error("Failed to query clients and properties for ContractWizard:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر جلب بيانات العقد.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
-    }
-
+    if (!tenantId || !userId) return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
     const body = await request.json();
     const { clientId, propertyId, amount } = body;
 
-    if (!clientId) {
-      return NextResponse.json({ error: "معرف العميل مطلوب." }, { status: 400 });
-    }
-    if (!propertyId) {
-      return NextResponse.json({ error: "معرف الوحدة العقارية مطلوب." }, { status: 400 });
-    }
-    if (!amount || Number(amount) <= 0) {
-      return NextResponse.json({ error: "قيمة العقد يجب أن تكون رقمية وأكبر من الصفر." }, { status: 400 });
+    if (!clientId || !propertyId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+      return NextResponse.json({ error: "العميل والوحدة وقيمة العقد الصحيحة مطلوبة." }, { status: 400 });
     }
 
     const contract = await issueContract({
       tenantId,
-      userId: userId || "",
+      userId,
       clientId,
       propertyId,
       amount: Number(amount),
@@ -123,11 +84,14 @@ export async function POST(request: NextRequest) {
         buyerName: contract.buyerName,
         buyerPhone: contract.buyerPhone,
         totalVolumeSar: Number(contract.totalVolumeSar),
-        signedAt: contract.signedAt.toISOString(),
+        status: contract.status,
+        acceptedAt: contract.acceptedAt.toISOString(),
+        reservationExpiresAt: contract.reservationExpiresAt?.toISOString() || null,
+        signedAt: contract.signedAt?.toISOString() || null,
       },
-    });
-  } catch (error: any) {
-    console.error("Failed to issue new contract:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر إنشاء مسودة العقد.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -1,3 +1,15 @@
+export type PaymentPlanTemplate =
+  | "SINGLE_PAYMENT"
+  | "DEPOSIT_AND_BALANCE"
+  | "MONTHLY"
+  | "CUSTOM";
+
+export interface PaymentScheduleItem {
+  installmentNumber: number;
+  amountSar: number;
+  dueDate: Date;
+}
+
 export interface ScheduleTourInput {
   tenantId: string;
   userId: string;
@@ -26,6 +38,35 @@ export interface AcceptOfferInput {
   tenantId: string;
   userId: string;
   offerId: string;
+}
+
+export interface ConfigurePaymentPlanInput {
+  tenantId: string;
+  userId: string;
+  contractId: string;
+  template: PaymentPlanTemplate;
+  installmentCount?: number;
+  firstDueDate?: Date | string;
+  intervalDays?: number;
+  depositPercent?: number;
+  customInstallments?: Array<{
+    amountSar: number;
+    dueDate: Date | string;
+  }>;
+}
+
+export interface SignContractInput {
+  tenantId: string;
+  userId: string;
+  contractId: string;
+  signedAt?: Date;
+}
+
+export interface CancelContractInput {
+  tenantId: string;
+  userId: string;
+  contractId: string;
+  reason: string;
 }
 
 export interface CreateInvoiceInput {

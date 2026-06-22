@@ -2,16 +2,32 @@ export { scheduleTour } from "./schedule-tour";
 export { createOffer } from "./create-offer";
 export { acceptOfferAndCreateContract } from "./accept-offer";
 export { issueContract, _createContractInTx } from "./issue-contract";
+export { configurePaymentPlan, ensureDefaultPaymentPlan } from "./payment-plan";
+export { signContract } from "./sign-contract";
+export { cancelDraftContract } from "./cancel-contract";
 export { createInvoice } from "./create-invoice";
 export { createInstallments } from "./create-installments";
 export { recordPayment } from "./record-payment";
-export { assertTenantOwnership, assertTenantOwnershipInTx } from "./validate-tenant";
+export {
+  completePaymentTransaction,
+  failPaymentTransaction,
+} from "./payment-reconciliation";
+export {
+  assertTenantOwnership,
+  assertTenantOwnershipInTx,
+} from "./validate-tenant";
+export * from "./constants";
 export type {
   ScheduleTourInput,
   CreateOfferInput,
   AcceptOfferInput,
-  IssueContractInput,
+  ConfigurePaymentPlanInput,
+  SignContractInput,
+  CancelContractInput,
   CreateInvoiceInput,
   CreateInstallmentsInput,
   RecordPaymentInput,
+  IssueContractInput,
+  PaymentPlanTemplate,
+  PaymentScheduleItem,
 } from "./types";

@@ -1,155 +1,90 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
 import { _createContractInTx } from "./issue-contract";
-import { calculateVat } from "@/lib/vat/engine";
+import { ensureDefaultPaymentPlanInTx } from "./payment-plan";
+import {
+  CONTRACT_STATUS,
+  OFFER_STATUS,
+  OPPORTUNITY_STATUS,
+  UNIT_STATUS,
+} from "./constants";
 import type { AcceptOfferInput } from "./types";
 
-type Tx = any;
-
-async function ensureSaleFinancialsInTx(
-  tx: Tx,
-  input: {
-    tenantId: string;
-    userId: string;
-    offerId: string;
-    offerPrice: number;
-    contractId: string;
-  },
+async function releaseExpiredDraftContractInTx(
+  tx: any,
+  contract: any,
+  actorUserId: string,
 ) {
-  const { tenantId, userId, offerId, offerPrice, contractId } = input;
-
-  const existingSaleInvoices = await tx.invoice.findMany({
-    where: {
-      tenantId,
-      contractId,
-      type: "SALE",
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  if (existingSaleInvoices.length > 1) {
-    throw new Error("Contract has more than one SALE invoice.");
+  if (
+    contract.status !== CONTRACT_STATUS.PENDING_SIGNATURE ||
+    !contract.reservationExpiresAt ||
+    contract.reservationExpiresAt >= new Date()
+  ) {
+    return false;
   }
 
-  let invoice = existingSaleInvoices[0] || null;
-  let invoiceCreated = false;
-  let installmentCreated = false;
-  let installmentLinked = false;
-
-  if (!invoice) {
-    const vat = calculateVat(offerPrice, "STANDARD");
-    const tenantCounter = await tx.tenant.update({
-      where: { id: tenantId },
-      data: { nextInvoiceNumber: { increment: 1 } },
-      select: {
-        nextInvoiceNumber: true,
-        invoicePrefix: true,
-      },
-    });
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    invoice = await tx.invoice.create({
-      data: {
-        tenantId,
-        type: "SALE",
-        contractId,
-        invoiceNumber: tenantCounter.nextInvoiceNumber - 1,
-        invoicePrefix: tenantCounter.invoicePrefix,
-        issueDate: new Date(),
-        dueDate,
-        subtotal: offerPrice,
-        vatRate: 15,
-        vatAmount: vat.vatAmount,
-        totalAmount: vat.totalAmount,
-        status: "unpaid",
-      },
-    });
-    invoiceCreated = true;
-  }
-
-  const contractInstallments = await tx.installment.findMany({
-    where: {
-      tenantId,
-      contractId,
-    },
-    orderBy: { installmentNumber: "asc" },
-  });
-
-  let invoiceInstallments = contractInstallments.filter(
-    (item: any) => item.invoiceId === invoice.id,
-  );
-
-  if (contractInstallments.length === 0) {
-    const installment = await tx.installment.create({
-      data: {
-        tenantId,
-        contractId,
-        invoiceId: invoice.id,
-        installmentNumber: 1,
-        amountSar: Number(invoice.totalAmount),
-        dueDate: invoice.dueDate,
-        paymentStatus: "Pending",
-      },
-    });
-
-    invoiceInstallments = [installment];
-    installmentCreated = true;
-  } else if (invoiceInstallments.length === 0) {
-    const unlinkedInstallments = contractInstallments.filter(
-      (item: any) => item.invoiceId === null,
+  const financialArtifacts = await Promise.all([
+    tx.invoice.count({ where: { contractId: contract.id } }),
+    tx.installment.count({ where: { contractId: contract.id } }),
+  ]);
+  if (financialArtifacts[0] > 0 || financialArtifacts[1] > 0) {
+    throw new Error(
+      "Expired draft contract contains financial records and requires review.",
     );
+  }
 
-    if (
-      contractInstallments.length === 1 &&
-      unlinkedInstallments.length === 1
-    ) {
-      const installment = await tx.installment.update({
-        where: { id: unlinkedInstallments[0].id },
-        data: { invoiceId: invoice.id },
+  await tx.auditLog.create({
+    data: {
+      tenantId: contract.tenantId,
+      userId: actorUserId,
+      action: "EXPIRE_DRAFT_CONTRACT",
+      tableName: "contracts",
+      recordId: contract.id,
+      details: JSON.stringify({
+        contractId: contract.id,
+        unitId: contract.unitId,
+        offerId: contract.offerId,
+        leadId: contract.leadId,
+        reservationExpiresAt: contract.reservationExpiresAt,
+      }),
+    },
+  });
+
+  if (contract.offerId) {
+    const offer = await tx.offer.findUnique({ where: { id: contract.offerId } });
+    if (offer && offer.status === OFFER_STATUS.ACCEPTED) {
+      await tx.offer.update({
+        where: { id: contract.offerId },
+        data: { status: OFFER_STATUS.EXPIRED, updatedBy: actorUserId },
       });
-
-      invoiceInstallments = [installment];
-      installmentLinked = true;
-    } else {
-      throw new Error(
-        "Contract installments cannot be linked to the SALE invoice safely.",
-      );
     }
   }
 
-  if (invoiceCreated || installmentCreated || installmentLinked) {
-    await tx.auditLog.create({
-      data: {
-        tenantId,
-        userId,
-        action: "REPAIR_SALE_FINANCIAL_SPINE",
-        tableName: "contracts",
-        recordId: contractId,
-        details: JSON.stringify({
-          offerId,
-          contractId,
-          invoiceId: invoice.id,
-          invoiceCreated,
-          installmentCreated,
-          installmentLinked,
-        }),
+  if (contract.leadId) {
+    await tx.lead.updateMany({
+      where: {
+        id: contract.leadId,
+        tenantId: contract.tenantId,
+        status: "RESERVED",
       },
+      data: { status: "CONTACTED", stage: "Open" },
     });
   }
 
-  return {
-    invoice,
-    installments: invoiceInstallments,
-    invoiceCreated,
-    installmentCreated,
-    installmentLinked,
-  };
+  await tx.paymentPlan.deleteMany({ where: { contractId: contract.id } });
+  await tx.contract.delete({ where: { id: contract.id } });
+  await tx.unit.update({
+    where: { id: contract.unitId },
+    data: { status: UNIT_STATUS.AVAILABLE },
+  });
+
+  return true;
 }
 
 export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
   const { tenantId, userId, offerId } = input;
+  if (!userId) throw new Error("Authenticated user is required.");
 
   await assertTenantOwnership(
     tenantId,
@@ -158,67 +93,95 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
     "Offer not found in this tenant.",
   );
 
-  const offer = await prisma.offer.findFirst({
-    where: { id: offerId, tenantId },
-    include: { opportunity: true },
-  });
-
-  if (!offer) throw new Error("Offer not found.");
-  if (!["PENDING", "ACCEPTED"].includes(offer.status)) {
-    throw new Error("Offer is not in PENDING or ACCEPTED status.");
-  }
-  if (offer.status === "PENDING" && offer.validUntil < new Date()) {
-    throw new Error("Offer has expired.");
-  }
-  if (!offer.unitId) {
-    throw new Error("لا يمكن قبول هذا العرض: لم يتم ربط وحدة عقارية به.");
-  }
-
-  await assertTenantOwnership(
-    tenantId,
-    "unit",
-    offer.unitId,
-    "Unit not found in this tenant.",
-  );
-
-  const opportunity = offer.opportunity;
-  if (!opportunity) throw new Error("Opportunity not linked to this offer.");
-
-  await assertTenantOwnership(
-    tenantId,
-    "lead",
-    opportunity.leadId,
-    "Lead not found in this tenant.",
-  );
-
-  const lead = await prisma.lead.findFirst({
-    where: { id: opportunity.leadId, tenantId },
-  });
-  if (!lead) throw new Error("Lead not found.");
-
-  const result = await prisma.$transaction(async (tx) => {
-    let contract = await tx.contract.findUnique({
-      where: { offerId: offer.id },
-    });
-    let contractCreated = false;
-
-    if (!contract) {
-      const unitContract = await tx.contract.findUnique({
-        where: { unitId: offer.unitId! },
+  return prisma.$transaction(
+    async (tx) => {
+      const offer = await tx.offer.findFirst({
+        where: { id: offerId, tenantId },
+        include: {
+          opportunity: true,
+          contract: { include: { paymentPlan: true } },
+        },
       });
 
-      if (unitContract) {
-        throw new Error(
-          "Unit already has a contract that is not linked to this offer.",
+      if (!offer) throw new Error("Offer not found.");
+      if (
+        offer.status !== OFFER_STATUS.PENDING &&
+        offer.status !== OFFER_STATUS.ACCEPTED
+      ) {
+        throw new Error("Offer is not available for acceptance.");
+      }
+      if (
+        offer.status === OFFER_STATUS.PENDING &&
+        offer.validUntil < new Date()
+      ) {
+        await tx.offer.update({
+          where: { id: offer.id },
+          data: { status: OFFER_STATUS.EXPIRED, updatedBy: userId },
+        });
+        throw new Error("Offer has expired.");
+      }
+      if (!offer.unitId) {
+        throw new Error("لا يمكن قبول هذا العرض: لم يتم ربط وحدة عقارية به.");
+      }
+
+      const opportunity = offer.opportunity;
+      if (!opportunity) throw new Error("Opportunity not linked to this offer.");
+
+      const lead = await tx.lead.findFirst({
+        where: { id: opportunity.leadId, tenantId },
+      });
+      if (!lead) throw new Error("Lead not found in this tenant.");
+
+      if (offer.contract) {
+        if (offer.contract.legacyFinancial || offer.contract.spineVersion < 2) {
+          throw new Error("Legacy contract is read-only and cannot enter the Phase 1 cutover flow.");
+        }
+
+        const paymentPlan =
+          offer.contract.paymentPlan ||
+          (await ensureDefaultPaymentPlanInTx(tx, offer.contract));
+
+        if (offer.status !== OFFER_STATUS.ACCEPTED) {
+          await tx.offer.update({
+            where: { id: offer.id },
+            data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },
+          });
+        }
+
+        return {
+          offer,
+          contract: offer.contract,
+          paymentPlan,
+          idempotent: true,
+        };
+      }
+
+      const unit = await tx.unit.findFirst({
+        where: { id: offer.unitId, tenantId },
+        include: { contract: true },
+      });
+      if (!unit) throw new Error("Unit not found in this tenant.");
+
+      if (unit.contract) {
+        const released = await releaseExpiredDraftContractInTx(
+          tx,
+          unit.contract,
+          userId,
         );
+        if (!released) {
+          throw new Error(
+            unit.contract.status === CONTRACT_STATUS.SIGNED
+              ? "Unit is already sold under a signed contract."
+              : "Unit is reserved under another active contract.",
+          );
+        }
       }
 
       const buyerName = `${lead.firstName} ${lead.lastName || ""}`.trim();
-
-      contract = await _createContractInTx(tx, {
+      const contract = await _createContractInTx(tx, {
         tenantId,
         userId,
-        unitId: offer.unitId!,
+        unitId: offer.unitId,
         leadId: lead.id,
         offerId: offer.id,
         buyerName,
@@ -226,51 +189,65 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         totalVolumeSar: Number(offer.price),
       });
 
-      contractCreated = true;
-    }
+      const paymentPlan = await tx.paymentPlan.findUnique({
+        where: { contractId: contract.id },
+      });
+      if (!paymentPlan) throw new Error("Default payment plan was not created.");
 
-    if (!contract) {
-      throw new Error("Contract could not be created or resolved.");
-    }
+      const acceptedOffer = await tx.offer.update({
+        where: { id: offer.id },
+        data: {
+          status: OFFER_STATUS.ACCEPTED,
+          updatedBy: userId,
+          auditLog:
+            `${offer.auditLog || ""}\nOffer accepted at ${new Date().toISOString()}`.trim(),
+        },
+      });
 
-    const updatedOffer =
-      offer.status === "ACCEPTED"
-        ? offer
-        : await tx.offer.update({
-            where: { id: offerId },
-            data: {
-              status: "ACCEPTED",
-              updatedBy: userId,
-              auditLog: `${offer.auditLog || ""}\nOffer accepted at ${new Date().toISOString()}`.trim(),
-            },
-          });
+      await tx.offer.updateMany({
+        where: {
+          tenantId,
+          unitId: offer.unitId,
+          id: { not: offer.id },
+          status: OFFER_STATUS.PENDING,
+        },
+        data: {
+          status: OFFER_STATUS.CANCELLED,
+          updatedBy: userId,
+          auditLog: `Superseded by accepted offer ${offer.id}`,
+        },
+      });
 
-    if (opportunity.status !== "WON") {
       await tx.opportunity.update({
         where: { id: opportunity.id },
-        data: { status: "WON" },
+        data: { status: OPPORTUNITY_STATUS.COMMITTED, updatedBy: userId },
       });
-    }
 
-    const financials = await ensureSaleFinancialsInTx(tx, {
-      tenantId,
-      userId,
-      offerId: offer.id,
-      offerPrice: Number(offer.price),
-      contractId: contract.id,
-    });
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          action: "ACCEPT_OFFER_RESERVE_UNIT",
+          tableName: "offers",
+          recordId: offer.id,
+          details: JSON.stringify({
+            offerId: offer.id,
+            contractId: contract.id,
+            paymentPlanId: paymentPlan.id,
+            unitId: offer.unitId,
+            opportunityStatus: OPPORTUNITY_STATUS.COMMITTED,
+            contractStatus: CONTRACT_STATUS.PENDING_SIGNATURE,
+          }),
+        },
+      });
 
-    return {
-      contract,
-      offer: updatedOffer,
-      invoice: financials.invoice,
-      installments: financials.installments,
-      contractCreated,
-      invoiceCreated: financials.invoiceCreated,
-      installmentCreated: financials.installmentCreated,
-      installmentLinked: financials.installmentLinked,
-    };
-  });
-
-  return result;
+      return {
+        offer: acceptedOffer,
+        contract,
+        paymentPlan,
+        idempotent: false,
+      };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }

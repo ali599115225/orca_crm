@@ -1,54 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
-import { createInvoice } from "@/lib/domain/transaction-spine";
+import { signContract } from "@/lib/domain/transaction-spine";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { tenantId } = await getTenantAndUser(request);
+    if (!tenantId) return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
+    const { id } = await params;
+
+    const invoices = await prisma.invoice.findMany({
+      where: { tenantId, contractId: id, type: "SALE" },
+      include: {
+        installments: { orderBy: [{ dueDate: "asc" }, { installmentNumber: "asc" }] },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: invoices.map((invoice) => ({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        invoicePrefix: invoice.invoicePrefix,
+        totalAmount: Number(invoice.totalAmount),
+        status: invoice.status,
+        dueDate: invoice.dueDate.toISOString().slice(0, 10),
+        installments: invoice.installments.map((item) => ({
+          id: item.id,
+          installmentNumber: item.installmentNumber,
+          amountSar: Number(item.amountSar),
+          dueDate: item.dueDate.toISOString().slice(0, 10),
+          paymentStatus: item.paymentStatus,
+        })),
+      })),
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر جلب فواتير العقد.";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: contractId } = await params;
     const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "Tenant ID missing." }, { status: 400 });
-    }
-
-    const body = await request.json();
-    const { subtotal, vatRate, vatType, dueDate, installments } = body;
-
-    if (!subtotal || subtotal <= 0) {
-      return NextResponse.json({ error: "Invalid subtotal." }, { status: 400 });
-    }
-    if (!dueDate) {
-      return NextResponse.json({ error: "Due date is required." }, { status: 400 });
-    }
-
-    const invoice = await createInvoice({
-      tenantId,
-      userId: userId || "",
-      type: "SALE",
-      contractId,
-      subtotal: Number(subtotal),
-      vatRate: vatRate ? Number(vatRate) : 15,
-      vatType: vatType || "STANDARD",
-      dueDate: new Date(dueDate),
+    if (!tenantId || !userId) return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
+    const { id } = await params;
+    const result = await signContract({ tenantId, userId, contractId: id });
+    return NextResponse.json({
+      success: true,
+      data: {
+        invoiceId: result.invoice.id,
+        installmentCount: result.installments.length,
+        idempotent: result.idempotent,
+      },
     });
-
-    if (installments && typeof installments === "object" && installments.count) {
-      const { createInstallments } = await import("@/lib/domain/transaction-spine");
-      await createInstallments({
-        tenantId,
-        userId: userId || "",
-        invoiceId: invoice.id,
-        count: Number(installments.count),
-        startDate: new Date(installments.startDate || dueDate),
-        intervalDays: installments.intervalDays || 30,
-      });
-    }
-
-    return NextResponse.json({ success: true, data: invoice }, { status: 201 });
-  } catch (error: any) {
-    const status = error.message?.includes("not found") ? 404 : 500;
-    return NextResponse.json({ error: error.message }, { status });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر إصدار فاتورة البيع.";
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
 }

@@ -1,7 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { hashPhone } from "@/lib/privacy-mask";
 import { assertTenantOwnership } from "./validate-tenant";
+import { ensureDefaultPaymentPlanInTx } from "./payment-plan";
+import {
+  CONTRACT_STATUS,
+  DEFAULT_RESERVATION_DAYS,
+  UNIT_STATUS,
+} from "./constants";
 import type { IssueContractInput } from "./types";
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
 
 export async function _createContractInTx(
   tx: any,
@@ -14,9 +26,13 @@ export async function _createContractInTx(
     buyerName: string;
     buyerPhone: string;
     totalVolumeSar: number;
-    signedAt?: Date;
+    acceptedAt?: Date;
+    reservationExpiresAt?: Date;
   },
 ) {
+  const acceptedAt = data.acceptedAt || new Date();
+  const reservationExpiresAt =
+    data.reservationExpiresAt || addDays(acceptedAt, DEFAULT_RESERVATION_DAYS);
   const buyerPhoneHash = hashPhone(data.tenantId, data.buyerPhone);
 
   const contract = await tx.contract.create({
@@ -29,27 +45,37 @@ export async function _createContractInTx(
       buyerPhone: data.buyerPhone,
       buyerPhoneHash,
       totalVolumeSar: data.totalVolumeSar,
-      signedAt: data.signedAt || new Date(),
+      acceptedAt,
+      reservationExpiresAt,
+      signedAt: null,
+      status: CONTRACT_STATUS.PENDING_SIGNATURE,
+      spineVersion: 2,
+      legacyFinancial: false,
+      legacyReason: null,
     },
   });
 
   await tx.unit.update({
     where: { id: data.unitId },
-    data: { status: "Sold" },
+    data: { status: UNIT_STATUS.RESERVED },
   });
 
   if (data.leadId) {
     await tx.lead.update({
       where: { id: data.leadId },
-      data: { status: "CONTRACT_SIGNED", stage: "Closed" },
+      data: { status: "RESERVED", stage: "Contract" },
     });
   }
+
+  const paymentPlan = await ensureDefaultPaymentPlanInTx(tx, contract);
 
   await tx.auditLog.create({
     data: {
       tenantId: data.tenantId,
       userId: data.userId,
-      action: data.offerId ? "ACCEPT_OFFER_CREATE_CONTRACT" : "CREATE_CONTRACT",
+      action: data.offerId
+        ? "ACCEPT_OFFER_CREATE_DRAFT_CONTRACT"
+        : "CREATE_DRAFT_CONTRACT",
       tableName: "contracts",
       recordId: contract.id,
       details: JSON.stringify({
@@ -57,25 +83,30 @@ export async function _createContractInTx(
         unitId: data.unitId,
         leadId: data.leadId,
         offerId: data.offerId || null,
-        buyerName: data.buyerName,
         totalVolumeSar: data.totalVolumeSar,
+        status: contract.status,
+        reservationExpiresAt,
+        paymentPlanId: paymentPlan.id,
       }),
     },
   });
 
-  await tx.telemetryEvent.create({
-    data: {
-      tenantId: data.tenantId,
-      eventType: data.offerId ? "offer.accepted.contract.created" : "contract.issued",
-      eventDataJson: JSON.stringify({
-        contractId: contract.id,
-        unitId: data.unitId,
-        buyerName: data.buyerName,
-        totalVolumeSar: data.totalVolumeSar,
-      }),
-      createdBy: data.userId,
-    },
-  });
+  await tx.telemetryEvent
+    .create({
+      data: {
+        tenantId: data.tenantId,
+        eventType: data.offerId
+          ? "offer.accepted.contract.draft_created"
+          : "contract.draft_created",
+        eventDataJson: JSON.stringify({
+          contractId: contract.id,
+          unitId: data.unitId,
+          paymentPlanId: paymentPlan.id,
+        }),
+        createdBy: data.userId,
+      },
+    })
+    .catch(() => {});
 
   return contract;
 }
@@ -85,9 +116,16 @@ export async function issueContract(input: IssueContractInput) {
 
   if (!clientId) throw new Error("Client ID is required.");
   if (!propertyId) throw new Error("Property ID is required.");
-  if (!amount || Number(amount) <= 0) throw new Error("Amount must be positive.");
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    throw new Error("Amount must be positive.");
+  }
 
-  await assertTenantOwnership(tenantId, "unit", propertyId, "Unit not found in this tenant.");
+  await assertTenantOwnership(
+    tenantId,
+    "unit",
+    propertyId,
+    "Unit not found in this tenant.",
+  );
 
   let buyerName = "";
   let buyerPhone = "";
@@ -105,23 +143,19 @@ export async function issueContract(input: IssueContractInput) {
     const contact = await prisma.contact.findFirst({
       where: { id: clientId, tenantId },
     });
-    if (contact) {
-      buyerName = contact.name;
-      buyerPhone = contact.phone;
-    } else {
-      throw new Error("Client not found in this tenant.");
-    }
+    if (!contact) throw new Error("Client not found in this tenant.");
+    buyerName = contact.name;
+    buyerPhone = contact.phone;
   }
 
-  const unit = await prisma.unit.findFirst({
-    where: { id: propertyId, project: { tenantId } },
-    include: { contract: true },
-  });
+  return prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.findFirst({
+      where: { id: propertyId, tenantId },
+      include: { contract: true },
+    });
+    if (!unit) throw new Error("Unit not found.");
+    if (unit.contract) throw new Error("Unit already has an active contract.");
 
-  if (!unit) throw new Error("Unit not found.");
-  if (unit.contract) throw new Error("Unit already has an active contract.");
-
-  const contract = await prisma.$transaction(async (tx) => {
     return _createContractInTx(tx, {
       tenantId,
       userId,
@@ -132,6 +166,4 @@ export async function issueContract(input: IssueContractInput) {
       totalVolumeSar: Number(amount),
     });
   });
-
-  return contract;
 }
