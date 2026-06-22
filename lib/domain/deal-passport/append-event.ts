@@ -1,3 +1,5 @@
+import { publishSyncEvent } from "@/lib/realtime/publish-sync-event";
+import { SYNC_TOPICS } from "@/lib/realtime/topics";
 import type {
   AppendDealEventInput,
   AppendDealEventResult,
@@ -148,6 +150,45 @@ export async function appendDealEventInTx(
       lastEventAt: occurredAt,
     },
   });
+
+  const relatedIds = Array.from(
+    new Set(
+      [
+        input.entityId,
+        finalPassport.opportunityId,
+        finalPassport.contractId,
+        finalPassport.currentOfferId,
+      ].filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  await publishSyncEvent(
+    {
+      tenantId: input.tenantId,
+      topic: SYNC_TOPICS.DEALS,
+      eventType: input.eventType,
+      aggregateType: "deal",
+      aggregateId: input.dealId,
+      aggregateVersion: finalPassport.version,
+      sourceEventId: event.id,
+      idempotencyKey: `deal-event:${event.id}`,
+      payload: {
+        changedFields: [
+          "status",
+          "version",
+          "lastSequence",
+          "lastEventId",
+          "lastEventAt",
+        ],
+        status: finalPassport.status,
+        ...(event.actorType === "USER" && event.actorId
+          ? { actorUserId: event.actorId }
+          : {}),
+        ...(relatedIds.length > 0 ? { relatedIds } : {}),
+      },
+    },
+    tx,
+  );
 
   return {
     passport: finalPassport,

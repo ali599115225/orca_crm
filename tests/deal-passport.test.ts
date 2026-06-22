@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/realtime/publish-sync-event", () => ({
+  publishSyncEvent: vi.fn(),
+}));
+
 import {
   appendDealEventInTx,
   resolveDealInTx,
 } from "@/lib/domain/deal-passport";
+import { publishSyncEvent } from "@/lib/realtime/publish-sync-event";
+import { SYNC_TOPICS } from "@/lib/realtime/topics";
+
+const publishSyncEventMock = vi.mocked(publishSyncEvent);
 
 function createDealTx() {
   const passports: any[] = [];
@@ -105,6 +113,10 @@ function createDealTx() {
 }
 
 describe("Deal Passport", () => {
+  beforeEach(() => {
+    publishSyncEventMock.mockReset();
+    publishSyncEventMock.mockResolvedValue({} as never);
+  });
   it("does not duplicate a passport or event on replay", async () => {
     const { tx, passports, events } = createDealTx();
     const deal = await resolveDealInTx(tx, {
@@ -153,6 +165,25 @@ describe("Deal Passport", () => {
       lastEventId: first.event.id,
       status: "OFFERED",
     });
+    expect(publishSyncEventMock).toHaveBeenCalledTimes(1);
+    expect(publishSyncEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        topic: SYNC_TOPICS.DEALS,
+        eventType: "offer.created",
+        aggregateType: "deal",
+        aggregateId: deal.passport.id,
+        aggregateVersion: 1,
+        sourceEventId: first.event.id,
+        idempotencyKey: `deal-event:${first.event.id}`,
+        payload: expect.objectContaining({
+          status: "OFFERED",
+          actorUserId: "user-1",
+          relatedIds: expect.arrayContaining(["opp-1", "offer-1"]),
+        }),
+      }),
+      tx,
+    );
   });
 
   it("keeps sequence continuous and records mandatory event metadata", async () => {
@@ -323,6 +354,31 @@ describe("Deal Passport", () => {
         entityId: "offer-2",
       }),
     ).rejects.toThrow("same deal and tenant");
+  });
+
+  it("fails the command when durable sync publication fails", async () => {
+    const { tx } = createDealTx();
+    const deal = await resolveDealInTx(tx, {
+      tenantId: "tenant-1",
+      opportunityId: "opp-1",
+    });
+
+    publishSyncEventMock.mockRejectedValueOnce(new Error("sync unavailable"));
+
+    await expect(
+      appendDealEventInTx(tx, {
+        tenantId: "tenant-1",
+        dealId: deal.passport.id,
+        eventType: "offer.created",
+        idempotencyKey: "offer.created:offer-fail",
+        correlationId: "corr-fail",
+        actorId: "user-1",
+        entityType: "offer",
+        entityId: "offer-fail",
+      }),
+    ).rejects.toThrow("sync unavailable");
+
+    expect(publishSyncEventMock).toHaveBeenCalledTimes(1);
   });
 
   it("scopes idempotency and passport resolution by tenant", async () => {
