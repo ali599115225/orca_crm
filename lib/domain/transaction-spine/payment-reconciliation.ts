@@ -1,4 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
+import type { DealActorType } from "@/lib/domain/deal-passport";
 import {
   findAccountByCode,
   postPaymentEntry,
@@ -22,8 +29,16 @@ export async function completePaymentTransaction(input: {
   currency: string;
   providerStatus: string;
   rawPayload?: unknown;
+  actorId?: string | null;
+  actorType?: DealActorType;
+  correlationId?: string | null;
   actorUserId?: string | null;
 }) {
+  const eventActorId = input.actorId || input.actorUserId || null;
+  const correlationId = ensureDealCorrelationId(
+    input.correlationId,
+    "payment",
+  );
   const amount = roundMoney(input.amountMinorUnits / 100);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Verified payment amount is invalid.");
@@ -203,6 +218,48 @@ export async function completePaymentTransaction(input: {
       }
     }
 
+    const contractId = invoice.contractId || payment.installment?.contractId || null;
+    if (contractId) {
+      const deal = await resolveDealInTx(tx, {
+        tenantId: input.tenantId,
+        contractId,
+        actorId: eventActorId,
+        correlationId,
+      });
+
+      if (deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId: input.tenantId,
+          dealId: deal.passport.id,
+          eventType: "payment.completed",
+          idempotencyKey: `payment.completed:${payment.id}`,
+          actorId: eventActorId,
+          actorType: input.actorType,
+          correlationId,
+          causationId: deal.passport.lastEventId || null,
+          entityType: "payment",
+          entityId: payment.id,
+          beforeState: {
+            status: payment.status,
+            invoiceStatus: invoice.status,
+          },
+          afterState: {
+            status: PAYMENT_STATUS.COMPLETED,
+            invoiceStatus,
+          },
+          payload: {
+            invoiceId,
+            installmentId: payment.installmentId,
+            receiptId: receipt.id,
+          },
+          projection: {
+            contractId,
+            status: "PAYMENT_COMPLETED",
+          },
+        });
+      }
+    }
+
     await tx.auditLog.create({
       data: {
         tenantId: input.tenantId,
@@ -239,7 +296,7 @@ export async function completePaymentTransaction(input: {
       .catch(() => {});
 
     return { payment: updatedPayment, receipt, invoiceStatus, idempotent: false };
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function failPaymentTransaction(input: {

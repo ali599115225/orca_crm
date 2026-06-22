@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   appendDealEventInTx,
+  ensureDealCorrelationId,
   resolveDealInTx,
 } from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
@@ -87,8 +88,18 @@ async function releaseExpiredDraftContractInTx(
 }
 
 export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
-  const { tenantId, userId, offerId, actorId, correlationId } = input;
+  const {
+    tenantId,
+    userId,
+    offerId,
+    actorId,
+    correlationId: requestedCorrelationId,
+  } = input;
   const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "deal",
+  );
   if (!userId) throw new Error("Authenticated user is required.");
 
   await assertTenantOwnership(
@@ -236,8 +247,9 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         correlationId,
       });
 
+      let dealOpenedEventId: string | null = null;
       if (deal.created && deal.passport) {
-        await appendDealEventInTx(tx, {
+        const dealOpened = await appendDealEventInTx(tx, {
           tenantId,
           dealId: deal.passport.id,
           eventType: "deal.opened",
@@ -246,24 +258,33 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           correlationId,
           entityType: "opportunity",
           entityId: opportunity.id,
+          afterState: {
+            status: "OPEN",
+            opportunityId: opportunity.id,
+            contractId: contract.id,
+          },
           projection: {
             opportunityId: opportunity.id,
             contractId: contract.id,
             status: "OPEN",
           },
         });
+        dealOpenedEventId = dealOpened.event?.id || null;
       }
 
       if (deal.passport) {
-        await appendDealEventInTx(tx, {
+        const offerAcceptedEvent = await appendDealEventInTx(tx, {
           tenantId,
           dealId: deal.passport.id,
           eventType: "offer.accepted",
           idempotencyKey: `offer.accepted:${offer.id}`,
+          causationId: dealOpenedEventId || deal.passport.lastEventId || null,
           actorId: eventActorId,
           correlationId,
           entityType: "offer",
           entityId: offer.id,
+          beforeState: { status: offer.status },
+          afterState: { status: OFFER_STATUS.ACCEPTED },
           payload: {
             opportunityId: opportunity.id,
             contractId: contract.id,
@@ -281,10 +302,15 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           dealId: deal.passport.id,
           eventType: "contract.issued",
           idempotencyKey: `contract.issued:${contract.id}`,
+          causationId: offerAcceptedEvent.event?.id || null,
           actorId: eventActorId,
           correlationId,
           entityType: "contract",
           entityId: contract.id,
+          afterState: {
+            status: CONTRACT_STATUS.PENDING_SIGNATURE,
+            contractId: contract.id,
+          },
           payload: {
             opportunityId: opportunity.id,
             offerId: offer.id,

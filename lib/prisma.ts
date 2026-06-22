@@ -73,6 +73,8 @@ function createExtendedPrismaClient() {
             "AccountBalance",
             "JournalEntry",
             "PaymentTransaction",
+            "DealPassport",
+            "DealEvent",
             "CommissionPayment",
             "WhatsAppContact",
             "WhatsAppMessage",

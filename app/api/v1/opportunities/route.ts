@@ -1,7 +1,13 @@
-// app/api/v1/opportunities/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import {
+  forbiddenResponse,
+  hasDatabaseRole,
+  requireAuth,
+  unauthorizedResponse,
+} from "@/lib/api-auth-guard";
+import { createOpportunity } from "@/lib/domain/transaction-spine";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,68 +25,51 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: opportunities });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر تحميل الفرص.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    if (!(await hasDatabaseRole(session, ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"]))) {
+      return forbiddenResponse();
     }
+    const { tenantId, userId } = session;
 
     const body = await request.json();
     const { leadId, value, probability, closeDate, unitId } = body;
-
     if (!leadId || !value || !unitId) {
-      return NextResponse.json({ error: "معرف العميل وقيمة الصفقة والوحدة مطلوبون." }, { status: 400 });
+      return NextResponse.json(
+        { error: "معرف العميل وقيمة الصفقة والوحدة مطلوبون." },
+        { status: 400 },
+      );
+    }
+    if (!UUID_REGEX.test(leadId) || !UUID_REGEX.test(unitId)) {
+      return NextResponse.json(
+        { error: "معرف العميل والوحدة يجب أن يكونا UUID صالحين." },
+        { status: 400 },
+      );
     }
 
-    if (!UUID_REGEX.test(unitId)) {
-      return NextResponse.json({ error: "معرف الوحدة يجب أن يكون UUID صالحًا." }, { status: 400 });
-    }
-
-    const lead = await prisma.lead.findFirst({
-      where: { id: leadId, tenantId },
-    });
-    if (!lead) {
-      return NextResponse.json({ error: "العميل غير موجود أو لا يتبع منشأتك." }, { status: 403 });
-    }
-
-    const unit = await prisma.unit.findFirst({
-      where: { id: unitId, project: { tenantId } },
-    });
-    if (!unit) {
-      return NextResponse.json({ error: "الوحدة غير موجودة أو لا تتبع منشأتك." }, { status: 403 });
-    }
-
-    const opp = await prisma.opportunity.create({
-      data: {
-        tenantId,
-        leadId,
-        value: Number(value),
-        probability: Number(probability || 50),
-        closeDate: closeDate ? new Date(closeDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        status: "OPEN",
-        unitId,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-      },
+    const opportunity = await createOpportunity({
+      tenantId,
+      userId,
+      leadId,
+      unitId,
+      value: Number(value),
+      probability: Number(probability || 50),
+      closeDate: closeDate ? new Date(closeDate) : undefined,
+      correlationId: request.headers.get("x-correlation-id") || undefined,
     });
 
-    await prisma.telemetryEvent.create({
-      data: {
-        tenantId,
-        eventType: "opportunity.created",
-        eventDataJson: JSON.stringify({ opportunityId: opp.id, leadId, unitId, value }),
-        createdBy: userId || null,
-      },
-    });
-
-    return NextResponse.json({ success: true, data: opp }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, data: opportunity }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "تعذر إنشاء الفرصة.";
+    const status = message.includes("not found") ? 404 : 400;
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }

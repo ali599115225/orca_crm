@@ -1,6 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from '@/lib/domain/deal-passport';
 import { findAccountByCode, postPaymentEntry } from '@/lib/accounting';
 import { rateLimit } from '@/lib/rate-limit';
 import { redactPiiFromPayload } from '@/lib/privacy-mask';
@@ -123,6 +129,12 @@ export async function POST(request: NextRequest) {
 
     const redactedPayload = redactPiiFromPayload(body) as never;
 
+    const correlationId = ensureDealCorrelationId(
+      request.headers.get('x-correlation-id') ||
+        `paylink:${payment.id}:${paymentRef || providerInvoiceId}`,
+      'paylink'
+    );
+
     if (!SUCCESS.has(status)) {
       await prisma.$transaction(async (tx) => {
         await tx.paymentTransaction.update({
@@ -204,6 +216,7 @@ export async function POST(request: NextRequest) {
         data: {
           tenantId: payment.tenantId,
           invoiceId: invoice.id,
+          paymentTransactionId: payment.id,
           amount,
           paymentMethod: 'paylink',
           status: 'COMPLETED',
@@ -245,6 +258,46 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      if (invoice.contractId) {
+        const deal = await resolveDealInTx(tx, {
+          tenantId: payment.tenantId,
+          contractId: invoice.contractId,
+          actorType: 'PROVIDER',
+          correlationId,
+        });
+        if (deal.passport) {
+          await appendDealEventInTx(tx, {
+            tenantId: payment.tenantId,
+            dealId: deal.passport.id,
+            eventType: 'payment.completed',
+            idempotencyKey: `payment.completed:${payment.id}`,
+            correlationId,
+            causationId: deal.passport.lastEventId || null,
+            actorType: 'PROVIDER',
+            actorId: null,
+            entityType: 'payment',
+            entityId: payment.id,
+            beforeState: {
+              status: current.status,
+              invoiceStatus: String(invoice.status),
+            },
+            afterState: {
+              status: 'COMPLETED',
+              invoiceStatus: 'paid',
+            },
+            payload: {
+              invoiceId: invoice.id,
+              receiptId: receipt.id,
+              provider: 'paylink',
+            },
+            projection: {
+              contractId: invoice.contractId,
+              status: 'PAYMENT_COMPLETED',
+            },
+          });
+        }
+      }
+
       await tx.auditLog.create({
         data: {
           tenantId: payment.tenantId,
@@ -257,7 +310,7 @@ export async function POST(request: NextRequest) {
       });
 
       return { processed: true, id: payment.id } as const;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     if ('alreadyProcessed' in result) return NextResponse.json({ status: 'already_processed' });
     if ('reviewRequired' in result) return NextResponse.json({ status: 'review_required' });

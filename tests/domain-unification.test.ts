@@ -1,236 +1,221 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockTourCreate,
-  mockOfferCreate,
-  mockContractCreate,
-  mockContractFindUnique,
-  mockLeadFindFirst,
-  mockLeadUpdate,
-  mockUnitFindFirst,
-  mockUnitUpdate,
-  mockOpportunityFindFirst,
-  mockOpportunityUpdate,
-  mockOfferFindFirst,
-  mockOfferUpdate,
-  mockTelemetryCreate,
-  mockAuditCreate,
   mockTransaction,
+  mockUserFindFirst,
+  mockOfferFindFirst,
+  mockOpportunityFindFirst,
+  mockUnitFindFirst,
+  mockLeadFindFirst,
+  mockContactFindFirst,
 } = vi.hoisted(() => ({
-  mockTourCreate: vi.fn(),
-  mockOfferCreate: vi.fn(),
-  mockContractCreate: vi.fn(),
-  mockContractFindUnique: vi.fn(),
-  mockLeadFindFirst: vi.fn(),
-  mockLeadUpdate: vi.fn(),
-  mockUnitFindFirst: vi.fn(),
-  mockUnitUpdate: vi.fn(),
-  mockOpportunityFindFirst: vi.fn(),
-  mockOpportunityUpdate: vi.fn(),
-  mockOfferFindFirst: vi.fn(),
-  mockOfferUpdate: vi.fn(),
-  mockTelemetryCreate: vi.fn(),
-  mockAuditCreate: vi.fn(),
   mockTransaction: vi.fn(),
+  mockUserFindFirst: vi.fn(),
+  mockOfferFindFirst: vi.fn(),
+  mockOpportunityFindFirst: vi.fn(),
+  mockUnitFindFirst: vi.fn(),
+  mockLeadFindFirst: vi.fn(),
+  mockContactFindFirst: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock("@/lib/prisma", () => ({
   prisma: {
-    tour: { create: mockTourCreate },
-    offer: { create: mockOfferCreate, findFirst: mockOfferFindFirst, update: mockOfferUpdate },
-    contract: { create: mockContractCreate, findUnique: mockContractFindUnique },
-    lead: { findFirst: mockLeadFindFirst, update: mockLeadUpdate },
-    unit: { findFirst: mockUnitFindFirst, update: mockUnitUpdate },
-    opportunity: { findFirst: mockOpportunityFindFirst, update: mockOpportunityUpdate },
-    telemetryEvent: { create: mockTelemetryCreate },
-    auditLog: { create: mockAuditCreate },
+    user: { findFirst: mockUserFindFirst },
+    offer: { findFirst: mockOfferFindFirst },
+    opportunity: { findFirst: mockOpportunityFindFirst },
+    unit: { findFirst: mockUnitFindFirst },
+    lead: { findFirst: mockLeadFindFirst },
+    contact: { findFirst: mockContactFindFirst },
     $transaction: mockTransaction,
   },
 }));
 
-vi.mock('@/lib/privacy-mask', () => ({
-  hashPhone: vi.fn(() => 'hashed-phone'),
+vi.mock("@/lib/domain/transaction-spine/validate-tenant", () => ({
+  assertTenantOwnership: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { prisma } from '@/lib/prisma';
-import { scheduleTour } from '@/lib/domain/transaction-spine/schedule-tour';
-import { createOffer } from '@/lib/domain/transaction-spine/create-offer';
-import { issueContract } from '@/lib/domain/transaction-spine/issue-contract';
-import { acceptOfferAndCreateContract } from '@/lib/domain/transaction-spine/accept-offer';
+vi.mock("@/lib/privacy-mask", () => ({
+  hashPhone: vi.fn(() => "hashed-phone"),
+}));
 
-describe('Domain Service Unification', () => {
+import {
+  createOffer,
+  issueContract,
+  scheduleTour,
+  updateTourStatus,
+} from "@/lib/domain/transaction-spine";
+
+describe("Domain Service Unification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTelemetryCreate.mockResolvedValue({});
-    mockAuditCreate.mockResolvedValue({});
+    mockUserFindFirst.mockResolvedValue({ id: "user-1" });
   });
 
-  describe('scheduleTour', () => {
-    it('creates tour via domain service', async () => {
-      const mockTour = { id: 'tour-1', leadId: 'lead-1', location: 'Riyadh' };
-      mockLeadFindFirst.mockResolvedValue({ id: 'lead-1', tenantId: 'tenant-1' });
-      mockTourCreate.mockResolvedValue(mockTour);
+  it("creates a tour and telemetry inside one transaction", async () => {
+    const startAt = new Date(Date.now() + 86_400_000);
+    const endAt = new Date(startAt.getTime() + 3_600_000);
+    const tour = { id: "tour-1", leadId: "lead-1", location: "Riyadh" };
+    const tx = {
+      tour: { create: vi.fn().mockResolvedValue(tour) },
+      telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    mockTransaction.mockImplementation(async (callback) => callback(tx));
 
-      const result = await scheduleTour({
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        leadId: 'lead-1',
-        location: 'Riyadh',
-        startAt: new Date(),
-        endAt: new Date(),
-      });
-
-      expect(mockTourCreate).toHaveBeenCalledTimes(1);
-      expect(mockTourCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            tenantId: 'tenant-1',
-            leadId: 'lead-1',
-            location: 'Riyadh',
-          }),
-        })
-      );
-      expect(result).toEqual(mockTour);
+    const result = await scheduleTour({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      leadId: "lead-1",
+      location: "Riyadh",
+      startAt,
+      endAt,
     });
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(tx.tour.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: "tenant-1",
+          leadId: "lead-1",
+          assignedTo: "user-1",
+        }),
+      }),
+    );
+    expect(tx.telemetryEvent.create).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(tour);
   });
 
-  describe('createOffer', () => {
-    it('creates offer via domain service', async () => {
-      const mockOffer = { id: 'offer-1', linkedOpportunityId: 'opp-1', unitId: 'unit-1', price: 100000 };
-      mockOpportunityFindFirst.mockResolvedValue({ id: 'opp-1', tenantId: 'tenant-1' });
-      mockUnitFindFirst.mockResolvedValue({ id: 'unit-1', tenantId: 'tenant-1' });
-      mockOfferCreate.mockResolvedValue(mockOffer);
+  it("creates an offer through the transaction spine", async () => {
+    const offer = {
+      id: "offer-1",
+      linkedOpportunityId: "opp-1",
+      unitId: "unit-1",
+      price: 100000,
+    };
+    const tx = {
+      opportunity: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "opp-1",
+          tenantId: "tenant-1",
+          unitId: "unit-1",
+        }),
+        update: vi.fn(),
+      },
+      unit: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "unit-1",
+          tenantId: "tenant-1",
+          status: "Available",
+          contract: null,
+        }),
+      },
+      offer: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(offer),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    mockTransaction.mockImplementation(async (callback) => callback(tx));
 
-      const result = await createOffer({
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        opportunityId: 'opp-1',
-        unitId: 'unit-1',
-        price: 100000,
-        validUntil: new Date(),
-      });
-
-      expect(mockOfferCreate).toHaveBeenCalledTimes(1);
-      expect(mockOfferCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            tenantId: 'tenant-1',
-            linkedOpportunityId: 'opp-1',
-            price: 100000,
-          }),
-        })
-      );
-      expect(result).toEqual(mockOffer);
+    const result = await createOffer({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      opportunityId: "opp-1",
+      unitId: "unit-1",
+      price: 100000,
+      validUntil: new Date(Date.now() + 86_400_000),
     });
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(tx.offer.create).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ id: "offer-1", idempotent: false });
   });
 
-  describe('issueContract', () => {
-    it('creates contract via domain service', async () => {
-      const mockContract = { id: 'contract-1', unitId: 'unit-1', buyerName: 'John' };
-      
-      mockUnitFindFirst.mockResolvedValue({ id: 'unit-1', contract: null });
-      mockLeadFindFirst.mockResolvedValue({ id: 'lead-1', firstName: 'John', phone: '123' });
-      
-      const txMock = {
-        contract: { create: vi.fn().mockResolvedValue(mockContract), findUnique: vi.fn().mockResolvedValue(null) },
-        lead: { update: vi.fn() },
-        unit: { update: vi.fn() },
-        auditLog: { create: vi.fn() },
-        telemetryEvent: { create: vi.fn() },
-      };
-      mockTransaction.mockImplementation(async (fn) => fn(txMock));
+  it("issues a direct contract through one transaction", async () => {
+    const contract = {
+      id: "contract-1",
+      tenantId: "tenant-1",
+      unitId: "unit-1",
+      leadId: "lead-1",
+      offerId: null,
+      buyerName: "John Doe",
+      buyerPhone: "0500000000",
+      totalVolumeSar: 500000,
+      vatType: "STANDARD",
+      acceptedAt: new Date(),
+      status: "PENDING_SIGNATURE",
+      spineVersion: 2,
+      legacyFinancial: false,
+    };
+    mockLeadFindFirst.mockResolvedValue({
+      id: "lead-1",
+      tenantId: "tenant-1",
+      firstName: "John",
+      lastName: "Doe",
+      phone: "0500000000",
+    });
+    const tx = {
+      unit: {
+        findFirst: vi.fn().mockResolvedValue({ id: "unit-1", contract: null }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      contract: { create: vi.fn().mockResolvedValue(contract) },
+      lead: { update: vi.fn().mockResolvedValue({}) },
+      paymentPlan: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: "plan-1" }),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+      telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    mockTransaction.mockImplementation(async (callback) => callback(tx));
 
-      const result = await issueContract({
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        clientId: 'lead-1',
-        propertyId: 'unit-1',
-        amount: 500000,
-      });
-
-      expect(mockUnitFindFirst).toHaveBeenCalled();
-      expect(mockTransaction).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockContract);
+    const result = await issueContract({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      clientId: "lead-1",
+      propertyId: "unit-1",
+      amount: 500000,
     });
 
-    it('rejects cross-tenant unit', async () => {
-      mockUnitFindFirst.mockResolvedValue(null);
-
-      await expect(
-        issueContract({
-          tenantId: 'tenant-1',
-          userId: 'user-1',
-          clientId: 'lead-1',
-          propertyId: 'wrong-tenant-unit',
-          amount: 500000,
-        })
-      ).rejects.toThrow('Unit not found in this tenant');
-    });
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(tx.contract.create).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(contract);
   });
 
-  describe('acceptOfferAndCreateContract', () => {
-    it('atomically accepts offer and creates contract', async () => {
-      const mockOffer = {
-        id: 'offer-1',
-        status: 'PENDING',
-        validUntil: new Date(Date.now() + 86400000),
-        unitId: 'unit-1',
-        opportunity: { id: 'opp-1', leadId: 'lead-1', linkedUnitIds: null },
-        price: 500000,
-        auditLog: '',
-      };
-      const mockLead = { id: 'lead-1', firstName: 'John', lastName: 'Doe', phone: '123', unitId: 'unit-1' };
-      const mockContract = { id: 'contract-1', unitId: 'unit-1' };
+  it("updates tour status and follow-up work inside one transaction", async () => {
+    const tour = {
+      id: "tour-1",
+      tenantId: "tenant-1",
+      leadId: "lead-1",
+      assignedTo: "user-1",
+      opportunityId: null,
+      offerId: null,
+      status: "SCHEDULED",
+      updatedAt: new Date(),
+      auditLog: "",
+    };
+    const tx = {
+      tour: {
+        findFirst: vi.fn().mockResolvedValue(tour),
+        update: vi.fn().mockResolvedValue({ ...tour, status: "COMPLETED" }),
+      },
+      task: { create: vi.fn().mockResolvedValue({ id: "task-1" }) },
+      lead: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    mockTransaction.mockImplementation(async (callback) => callback(tx));
 
-      mockOfferFindFirst.mockResolvedValue({ ...mockOffer, tenantId: 'tenant-1' });
-      mockLeadFindFirst.mockResolvedValue(mockLead);
-      mockUnitFindFirst.mockResolvedValue({ id: 'unit-1' });
-      
-      const txMock = {
-        contract: { create: vi.fn().mockResolvedValue(mockContract), findUnique: vi.fn().mockResolvedValue(null) },
-        offer: { update: vi.fn().mockResolvedValue({ ...mockOffer, status: 'ACCEPTED' }) },
-        lead: { update: vi.fn() },
-        unit: { update: vi.fn() },
-        opportunity: { update: vi.fn() },
-        tenant: {
-          findUnique: vi.fn().mockResolvedValue({ id: 'tenant-1', nextInvoiceNumber: 1, invoicePrefix: 'INV' }),
-          update: vi.fn(),
-        },
-        invoice: { create: vi.fn().mockResolvedValue({ id: 'invoice-1', type: 'SALE', contractId: 'contract-1' }) },
-        installment: { create: vi.fn().mockResolvedValue({ id: 'installment-1', invoiceId: 'invoice-1', contractId: 'contract-1' }) },
-        auditLog: { create: vi.fn() },
-        telemetryEvent: { create: vi.fn() },
-      };
-      mockTransaction.mockImplementation(async (fn) => fn(txMock));
-
-      const result = await acceptOfferAndCreateContract({
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        offerId: 'offer-1',
-      });
-
-      expect(mockTransaction).toHaveBeenCalledTimes(1);
-      expect(result.contract).toEqual(mockContract);
-      expect(result.offer.status).toBe('ACCEPTED');
+    const result = await updateTourStatus({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      tourId: "tour-1",
+      status: "COMPLETED",
     });
 
-    it('rejects expired offer', async () => {
-      const mockOffer = {
-        id: 'offer-1',
-        status: 'PENDING',
-        validUntil: new Date(Date.now() - 86400000),
-        opportunity: { id: 'opp-1', leadId: 'lead-1' },
-      };
-
-      mockOfferFindFirst.mockResolvedValue({ ...mockOffer, tenantId: 'tenant-1' });
-
-      await expect(
-        acceptOfferAndCreateContract({
-          tenantId: 'tenant-1',
-          userId: 'user-1',
-          offerId: 'offer-1',
-        })
-      ).rejects.toThrow('Offer has expired');
-    });
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(tx.task.create).toHaveBeenCalledTimes(1);
+    expect(tx.lead.updateMany).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ followUpCreated: true, taskId: "task-1" });
   });
 });

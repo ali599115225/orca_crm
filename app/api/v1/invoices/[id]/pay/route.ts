@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from '@/lib/domain/deal-passport';
 import {
   findAccountByCode,
   postPaymentEntry,
@@ -222,6 +228,11 @@ export async function POST(
     idempotencyKey
   );
 
+  const correlationId = ensureDealCorrelationId(
+    request.headers.get('x-correlation-id'),
+    'manual-payment'
+  );
+
   try {
     const existing = await findExistingPayment(
       tenantId,
@@ -312,6 +323,7 @@ export async function POST(
         data: {
           tenantId,
           invoiceId: id,
+          paymentTransactionId: paymentTransaction.id,
           amount: invoiceAmount,
           paymentMethod: method,
           status: 'COMPLETED',
@@ -371,8 +383,47 @@ export async function POST(
         },
       });
 
+      if (invoice.contractId) {
+        const deal = await resolveDealInTx(tx, {
+          tenantId,
+          contractId: invoice.contractId,
+          actorId: session.userId,
+          correlationId,
+        });
+        if (deal.passport) {
+          await appendDealEventInTx(tx, {
+            tenantId,
+            dealId: deal.passport.id,
+            eventType: 'payment.completed',
+            idempotencyKey: `payment.completed:${paymentTransaction.id}`,
+            correlationId,
+            causationId: deal.passport.lastEventId || null,
+            actorId: session.userId,
+            entityType: 'payment',
+            entityId: paymentTransaction.id,
+            beforeState: {
+              status: 'PENDING',
+              invoiceStatus: String(invoice.status),
+            },
+            afterState: {
+              status: 'COMPLETED',
+              invoiceStatus: 'paid',
+            },
+            payload: {
+              invoiceId: invoice.id,
+              receiptId: receipt.id,
+              method,
+            },
+            projection: {
+              contractId: invoice.contractId,
+              status: 'PAYMENT_COMPLETED',
+            },
+          });
+        }
+      }
+
       return { receipt, invoiceAmount };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     return successResponse(
       result.receipt,

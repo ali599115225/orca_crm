@@ -6,6 +6,8 @@ export type RestructureMode =
 export interface RestructurePaymentPlanInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   contractId: string;
   prepaymentAmount: number;
   mode: RestructureMode;
@@ -30,6 +32,9 @@ export interface PaymentScheduleItem {
 export interface ScheduleTourInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
+  assignedTo?: string;
   leadId: string;
   offerId?: string;
   opportunityId?: string;
@@ -79,6 +84,8 @@ export interface ConfigurePaymentPlanInput {
 export interface SignContractInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   contractId: string;
   signedAt?: Date;
 }
@@ -86,6 +93,8 @@ export interface SignContractInput {
 export interface CancelContractInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   contractId: string;
   reason: string;
 }
@@ -114,6 +123,8 @@ export interface CreateInstallmentsInput {
 export interface RecordPaymentInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   invoiceId?: string;
   installmentId?: string;
   amount: number;
@@ -129,4 +140,25 @@ export interface IssueContractInput {
   clientId: string;
   propertyId: string;
   amount: number;
+}
+
+export interface UpdateTourStatusInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  tourId: string;
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "FOLLOW_UP";
+}
+
+export interface CreateOpportunityInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  leadId: string;
+  unitId: string;
+  value: number;
+  probability?: number;
+  closeDate?: Date;
 }

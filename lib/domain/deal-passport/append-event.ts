@@ -4,19 +4,29 @@ import type {
   DealEventType,
   DealPassportStatus,
 } from "./types";
+import { resolveDealActorType } from "./context";
 
 function hasDealEventModels(tx: any): boolean {
   return Boolean(
-    tx?.dealPassport?.update &&
+    tx?.dealPassport?.findUnique &&
+      tx?.dealPassport?.update &&
       tx?.dealEvent?.findFirst &&
       tx?.dealEvent?.create,
   );
 }
 
 function statusForEvent(eventType: DealEventType): DealPassportStatus {
+  if (eventType === "tour.scheduled") return "TOUR_SCHEDULED";
   if (eventType === "offer.created") return "OFFERED";
   if (eventType === "offer.accepted") return "OFFER_ACCEPTED";
   if (eventType === "contract.issued") return "CONTRACT_ISSUED";
+  if (eventType === "contract.signed") return "CONTRACT_SIGNED";
+  if (eventType === "financials.activated") return "FINANCIALS_ACTIVE";
+  if (eventType === "payment.completed") return "PAYMENT_COMPLETED";
+  if (eventType === "payment_plan.restructured") {
+    return "PAYMENT_PLAN_RESTRUCTURED";
+  }
+  if (eventType === "contract.cancelled") return "CANCELLED";
   return "OPEN";
 }
 
@@ -28,15 +38,30 @@ export async function appendDealEventInTx(
     return { passport: null, event: null, idempotent: false, skipped: true };
   }
 
+  const correlationId = String(input.correlationId || "").trim();
+  const idempotencyKey = String(input.idempotencyKey || "").trim();
+  if (!correlationId) {
+    throw new Error("Deal Event correlationId is required.");
+  }
+  if (!idempotencyKey) {
+    throw new Error("Deal Event idempotencyKey is required.");
+  }
+  if (correlationId.length > 200 || idempotencyKey.length > 500) {
+    throw new Error("Deal Event identifiers exceed the supported length.");
+  }
+
   const existing = await tx.dealEvent.findFirst({
     where: {
       tenantId: input.tenantId,
-      idempotencyKey: input.idempotencyKey,
+      idempotencyKey,
     },
   });
 
   if (existing) {
-    const passport = await tx.dealPassport.findUnique?.({
+    if (existing.dealId !== input.dealId) {
+      throw new Error("Deal Event idempotency key belongs to another deal.");
+    }
+    const passport = await tx.dealPassport.findUnique({
       where: { id: existing.dealId },
     });
     return {
@@ -45,6 +70,27 @@ export async function appendDealEventInTx(
       idempotent: true,
       skipped: false,
     };
+  }
+
+  const currentPassport = await tx.dealPassport.findUnique({
+    where: { id: input.dealId },
+  });
+  if (!currentPassport) throw new Error("Deal Passport not found.");
+  if (currentPassport.tenantId !== input.tenantId) {
+    throw new Error("Deal Passport tenant mismatch.");
+  }
+
+  if (input.causationId) {
+    const cause = await tx.dealEvent.findFirst({
+      where: {
+        id: input.causationId,
+        tenantId: input.tenantId,
+        dealId: input.dealId,
+      },
+    });
+    if (!cause) {
+      throw new Error("Deal Event causation must reference the same deal and tenant.");
+    }
   }
 
   const projection = input.projection || {};
@@ -63,8 +109,16 @@ export async function appendDealEventInTx(
       ...(projection.currentOfferId !== undefined
         ? { currentOfferId: projection.currentOfferId }
         : {}),
+      ...(projection.closedAt !== undefined
+        ? { closedAt: projection.closedAt }
+        : {}),
     },
   });
+
+  const occurredAt = input.occurredAt || new Date();
+  if (Number.isNaN(occurredAt.getTime())) {
+    throw new Error("Deal Event occurredAt is invalid.");
+  }
 
   const event = await tx.dealEvent.create({
     data: {
@@ -72,14 +126,33 @@ export async function appendDealEventInTx(
       dealId: input.dealId,
       sequence: passport.lastSequence,
       eventType: input.eventType,
-      idempotencyKey: input.idempotencyKey,
-      correlationId: input.correlationId || null,
-      actorId: input.actorId || null,
-      entityType: input.entityType || null,
-      entityId: input.entityId || null,
-      payload: input.payload || {},
+      eventVersion: input.eventVersion ?? 1,
+      idempotencyKey,
+      correlationId,
+      causationId: input.causationId ?? null,
+      actorType: resolveDealActorType(input.actorId, input.actorType),
+      actorId: input.actorId ?? null,
+      entityType: input.entityType ?? null,
+      entityId: input.entityId ?? null,
+      beforeState: input.beforeState === undefined ? undefined : input.beforeState,
+      afterState: input.afterState === undefined ? undefined : input.afterState,
+      payload: input.payload ?? {},
+      occurredAt,
     },
   });
 
-  return { passport, event, idempotent: false, skipped: false };
+  const finalPassport = await tx.dealPassport.update({
+    where: { id: input.dealId },
+    data: {
+      lastEventId: event.id,
+      lastEventAt: occurredAt,
+    },
+  });
+
+  return {
+    passport: finalPassport,
+    event,
+    idempotent: false,
+    skipped: false,
+  };
 }

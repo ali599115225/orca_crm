@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
 import {
   CONTRACT_STATUS,
@@ -10,7 +15,18 @@ import {
 import type { CancelContractInput } from "./types";
 
 export async function cancelDraftContract(input: CancelContractInput) {
-  const { tenantId, userId, contractId } = input;
+  const {
+    tenantId,
+    userId,
+    contractId,
+    actorId,
+    correlationId: requestedCorrelationId,
+  } = input;
+  const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "cancel-contract",
+  );
   const reason = String(input.reason || "").trim();
   if (!userId) throw new Error("Authenticated user is required.");
   if (reason.length < 3 || reason.length > 500) {
@@ -92,6 +108,46 @@ export async function cancelDraftContract(input: CancelContractInput) {
         await tx.lead.updateMany({
           where: { id: contract.leadId, tenantId, status: "RESERVED" },
           data: { status: "CONTACTED", stage: "Open", updatedBy: userId },
+        });
+      }
+
+      const deal = await resolveDealInTx(tx, {
+        tenantId,
+        opportunityId: contract.offer?.opportunity?.id || null,
+        contractId: contract.id,
+        actorId: eventActorId,
+        correlationId,
+      });
+      if (deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "contract.cancelled",
+          idempotencyKey: `contract.cancelled:${contract.id}`,
+          correlationId,
+          causationId: deal.passport.lastEventId || null,
+          actorId: eventActorId,
+          entityType: "contract",
+          entityId: contract.id,
+          beforeState: {
+            status: contract.status,
+            unitId: contract.unitId,
+          },
+          afterState: {
+            status: "CANCELLED",
+            reason,
+          },
+          payload: {
+            offerId: contract.offerId,
+            opportunityId: contract.offer?.opportunity?.id || null,
+          },
+          projection: {
+            opportunityId: contract.offer?.opportunity?.id || null,
+            contractId: contract.id,
+            currentOfferId: contract.offerId || null,
+            status: "CANCELLED",
+            closedAt: new Date(),
+          },
         });
       }
 

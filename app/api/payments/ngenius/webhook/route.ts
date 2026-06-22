@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
         currency: verified.currency,
         providerStatus: status,
         rawPayload: verified.rawPayload,
+        actorType: "PROVIDER",
+        correlationId: `ngenius:${payment.id}:${providerReference}`,
       });
       return NextResponse.json({
         success: true,

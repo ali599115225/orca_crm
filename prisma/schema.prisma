@@ -147,6 +147,7 @@ model Lead {
   tasks           Task[]
   tours           Tour[]
   contracts       Contract[]
+  opportunities   Opportunity[]
   mansourChats    MansourChat[]
   whatsappContact WhatsAppContact?
   emailMessages   EmailMessage[]
@@ -869,7 +870,7 @@ model PaymentTransaction {
   @@index([provider])
   @@index([providerTransactionId])
   @@index([providerInvoiceId])
-  @@index([idempotencyKey])
+  @@unique([tenantId, idempotencyKey], map: "payment_transactions_tenant_idempotency_uq")
   @@map("payment_transactions")
 }
 
@@ -902,6 +903,7 @@ model Opportunity {
   tenantId      String   @map("tenant_id") @db.Uuid
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   leadId        String   @map("lead_id") @db.Uuid
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Restrict)
   value         Decimal  @db.Decimal(12, 2)
   probability   Int
   closeDate     DateTime @map("close_date") @db.Timestamptz
@@ -933,6 +935,10 @@ model DealPassport {
   status         String       @default("OPEN")
   version        Int          @default(0)
   lastSequence   Int          @default(0) @map("last_sequence")
+  lastEventId    String?      @map("last_event_id") @db.Uuid
+  lastEventAt    DateTime?    @map("last_event_at") @db.Timestamptz
+  openedAt       DateTime     @default(now()) @map("opened_at") @db.Timestamptz
+  closedAt       DateTime?    @map("closed_at") @db.Timestamptz
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   events         DealEvent[]
@@ -951,18 +957,28 @@ model DealEvent {
   deal           DealPassport @relation(fields: [dealId], references: [id], onDelete: Cascade)
   sequence       Int
   eventType      String       @map("event_type")
+  eventVersion   Int          @default(1) @map("event_version")
   idempotencyKey String       @map("idempotency_key")
-  correlationId  String?      @map("correlation_id")
+  correlationId  String       @map("correlation_id")
+  causationId    String?      @map("causation_id") @db.Uuid
+  causedBy       DealEvent?   @relation("DealEventCausation", fields: [causationId], references: [id], onDelete: SetNull)
+  causedEvents   DealEvent[]  @relation("DealEventCausation")
+  actorType      String       @default("USER") @map("actor_type")
   actorId        String?      @map("actor_id") @db.Uuid
   entityType     String?      @map("entity_type")
   entityId       String?      @map("entity_id") @db.Uuid
+  beforeState    Json?        @map("before_state")
+  afterState     Json?        @map("after_state")
   payload        Json         @default("{}")
+  occurredAt     DateTime     @default(now()) @map("occurred_at") @db.Timestamptz
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([dealId, sequence])
   @@unique([tenantId, idempotencyKey])
-  @@index([tenantId, dealId])
-  @@index([tenantId, eventType])
+  @@index([tenantId, dealId, occurredAt])
+  @@index([tenantId, eventType, occurredAt])
+  @@index([correlationId])
+  @@index([causationId])
   @@map("deal_events")
 }
 

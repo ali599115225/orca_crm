@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   appendDealEventInTx,
+  ensureDealCorrelationId,
   resolveDealInTx,
 } from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
@@ -22,9 +23,13 @@ export async function createOffer(input: CreateOfferInput) {
     validUntil,
     documentUrl,
     actorId,
-    correlationId,
+    correlationId: requestedCorrelationId,
   } = input;
   const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "deal",
+  );
 
   if (!userId) throw new Error("Authenticated user is required.");
   if (!unitId) throw new Error("Unit ID is required to create an offer.");
@@ -114,8 +119,9 @@ export async function createOffer(input: CreateOfferInput) {
         correlationId,
       });
 
+      let dealOpenedEventId: string | null = null;
       if (deal.created && deal.passport) {
-        await appendDealEventInTx(tx, {
+        const dealOpened = await appendDealEventInTx(tx, {
           tenantId,
           dealId: deal.passport.id,
           eventType: "deal.opened",
@@ -124,11 +130,16 @@ export async function createOffer(input: CreateOfferInput) {
           correlationId,
           entityType: "opportunity",
           entityId: opportunityId,
+          afterState: {
+            status: "OPEN",
+            opportunityId,
+          },
           projection: {
             opportunityId,
             status: "OPEN",
           },
         });
+        dealOpenedEventId = dealOpened.event?.id || null;
       }
 
       const offer = await tx.offer.create({
@@ -152,9 +163,15 @@ export async function createOffer(input: CreateOfferInput) {
           idempotencyKey: `offer.created:${offer.id}`,
           actorId: eventActorId,
           correlationId,
+          causationId: dealOpenedEventId || deal.passport.lastEventId || null,
           entityType: "offer",
           entityId: offer.id,
           payload: {
+            opportunityId,
+            unitId,
+          },
+          afterState: {
+            status: OFFER_STATUS.PENDING,
             opportunityId,
             unitId,
           },

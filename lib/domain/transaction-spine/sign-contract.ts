@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { calculateVat } from "@/lib/vat/engine";
 import {
   findAccountByCode,
@@ -177,6 +182,8 @@ async function ensureSaleInvoiceAndInstallmentsInTx(
     select: { id: true },
   });
 
+  let journalEntryCreated = false;
+
   if (!existingInvoiceEntry) {
     await postInvoiceEntry(
       contract.tenantId,
@@ -189,7 +196,10 @@ async function ensureSaleInvoiceAndInstallmentsInTx(
       accounts.vatPayableId,
       tx,
     );
+    journalEntryCreated = true;
   }
+
+  const paymentPlanActivated = paymentPlan.status !== PAYMENT_PLAN_STATUS.ACTIVE;
 
   await tx.paymentPlan.update({
     where: { id: paymentPlan.id },
@@ -227,11 +237,24 @@ async function ensureSaleInvoiceAndInstallmentsInTx(
     invoiceCreated,
     installmentsCreated,
     installmentsLinked,
+    journalEntryCreated,
+    paymentPlanActivated,
   };
 }
 
 export async function signContract(input: SignContractInput) {
-  const { tenantId, userId, contractId } = input;
+  const {
+    tenantId,
+    userId,
+    contractId,
+    actorId,
+    correlationId: requestedCorrelationId,
+  } = input;
+  const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "deal",
+  );
   if (!userId) throw new Error("Authenticated user is required.");
 
   await assertTenantOwnership(
@@ -337,6 +360,89 @@ export async function signContract(input: SignContractInput) {
         await tx.opportunity.update({
           where: { id: contract.offer.opportunity.id },
           data: { status: OPPORTUNITY_STATUS.WON, updatedBy: userId },
+        });
+      }
+
+      const deal = await resolveDealInTx(tx, {
+        tenantId,
+        opportunityId: contract.offer?.opportunity?.id || null,
+        contractId: contract.id,
+        actorId: eventActorId,
+        correlationId,
+      });
+
+      let contractSignedEventId: string | null = null;
+      if (deal.passport) {
+        const contractSignedEvent = await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "contract.signed",
+          idempotencyKey: `contract.signed:${contract.id}`,
+          actorId: eventActorId,
+          correlationId,
+          causationId: deal.passport.lastEventId || null,
+          entityType: "contract",
+          entityId: contract.id,
+          beforeState: alreadySigned
+            ? null
+            : {
+                status: contract.status,
+                signedAt: contract.signedAt?.toISOString() || null,
+              },
+          afterState: {
+            status: CONTRACT_STATUS.SIGNED,
+            signedAt: signedContract.signedAt?.toISOString() || signedAt.toISOString(),
+          },
+          payload: {
+            invoiceId: financials.invoice.id,
+            paymentPlanId: paymentPlan.id,
+          },
+          projection: {
+            opportunityId: contract.offer?.opportunity?.id || null,
+            contractId: contract.id,
+            currentOfferId: contract.offerId || null,
+            status: "CONTRACT_SIGNED",
+          },
+        });
+        contractSignedEventId = contractSignedEvent.event?.id || null;
+      }
+
+      if (deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "financials.activated",
+          idempotencyKey: `financials.activated:${contract.id}`,
+          causationId: contractSignedEventId,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "contract",
+          entityId: contract.id,
+          beforeState: {
+            invoiceExists: !financials.invoiceCreated,
+            installmentsExist: !financials.installmentsCreated,
+            paymentPlanActive: !financials.paymentPlanActivated,
+          },
+          afterState: {
+            invoiceExists: true,
+            installmentsExist: true,
+            paymentPlanActive: true,
+          },
+          payload: {
+            invoiceId: financials.invoice.id,
+            paymentPlanId: paymentPlan.id,
+            invoiceCreated: financials.invoiceCreated,
+            installmentsCreated: financials.installmentsCreated,
+            installmentsLinked: financials.installmentsLinked,
+            journalEntryCreated: financials.journalEntryCreated,
+            paymentPlanActivated: financials.paymentPlanActivated,
+          },
+          projection: {
+            opportunityId: contract.offer?.opportunity?.id || null,
+            contractId: contract.id,
+            currentOfferId: contract.offerId || null,
+            status: "FINANCIALS_ACTIVE",
+          },
         });
       }
 

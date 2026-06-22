@@ -1,47 +1,52 @@
 'use server';
+import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/session';
 import { getActiveTenant } from '@/lib/tenant';
+import { recordPayment } from '@/lib/domain/transaction-spine';
 import {
-  postPaymentEntry,
   postInvoiceEntry,
   findAccountByCode,
   seedChartOfAccounts,
 } from '@/lib/accounting';
 
-export async function processPayment(invoiceId: string, amount: number, method: string) {
+export async function processPayment(
+  invoiceId: string,
+  amount: number,
+  method: string,
+  idempotencyKey?: string,
+) {
   try {
-    const tenant = await getActiveTenant();
-    await seedChartOfAccounts(tenant.id);
-
-    return await prisma.$transaction(async (tx) => {
-      const receipt = await tx.receipt.create({
-        data: {
-          tenantId: tenant.id,
-          invoiceId,
-          amount,
-          paymentMethod: method,
-          status: 'COMPLETED',
-        },
-      });
-
-      await tx.invoice.update({
-        where: { id: invoiceId, tenantId: tenant.id },
-        data: {
-          status: 'paid',
-          paidAt: new Date(),
-          paymentMethod: method,
-          paymentRef: receipt.id,
-        },
-      });
-
-      const cashAccount = await findAccountByCode(tenant.id, '1.1.1');
-      const receivableAccount = await findAccountByCode(tenant.id, '1.1.3');
-      if (cashAccount && receivableAccount) {
-        await postPaymentEntry(tenant.id, receipt.id, amount, cashAccount.id, receivableAccount.id);
-      }
-
-      return receipt;
+    const [tenant, session] = await Promise.all([getActiveTenant(), getSession()]);
+    const userId = session?.userId as string | undefined;
+    if (!userId) throw new Error('Authentication required.');
+    const user = await prisma.user.findFirst({
+      where: { id: userId, tenantId: tenant.id },
+      select: { role: true },
     });
+    if (!user || !['ADMIN', 'SALES_MANAGER'].includes(String(user.role))) {
+      throw new Error('Insufficient permissions.');
+    }
+
+    const result = await recordPayment({
+      tenantId: tenant.id,
+      userId,
+      actorId: userId,
+      invoiceId,
+      amount,
+      method,
+      idempotencyKey: idempotencyKey?.trim() || `manual-action:${randomUUID()}`,
+      correlationId: `manual-payment:${randomUUID()}`,
+    });
+
+    const receipt = await prisma.receipt.findFirst({
+      where: {
+        tenantId: tenant.id,
+        paymentTransactionId: result.payment.id,
+      },
+    });
+    if (!receipt) throw new Error('Payment receipt was not created.');
+    return receipt;
   } catch (error) {
     console.error('[processPayment]', error);
     throw new Error('فشل معالجة الدفعة');

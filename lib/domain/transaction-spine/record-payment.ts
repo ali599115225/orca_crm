@@ -19,6 +19,8 @@ export async function recordPayment(input: RecordPaymentInput) {
     amount,
     method,
     idempotencyKey,
+    actorId,
+    correlationId,
   } = input;
 
   if (!invoiceId && !installmentId) {
@@ -125,7 +127,9 @@ export async function recordPayment(input: RecordPaymentInput) {
     amountMinorUnits: Math.round(amount * 100),
     currency: "SAR",
     providerStatus: "MANUAL_CONFIRMED",
+    actorId: actorId || userId,
     actorUserId: userId,
+    correlationId,
   });
 
   return { payment: completedPayment.payment, idempotent: false };

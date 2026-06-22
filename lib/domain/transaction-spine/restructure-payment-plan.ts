@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
 import { recordPayment } from "./record-payment";
 import {
@@ -226,7 +231,14 @@ export async function restructurePaymentPlan(
     reason,
     method,
     idempotencyKey,
+    actorId,
+    correlationId: requestedCorrelationId,
   } = input;
+  const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "restructure",
+  );
 
   if (!userId) throw new Error("Authenticated user is required.");
   if (!Number.isFinite(prepaymentAmount) || prepaymentAmount <= 0) {
@@ -310,6 +322,8 @@ export async function restructurePaymentPlan(
       contractId,
       idempotencyKey.trim(),
     ),
+    actorId: eventActorId,
+    correlationId,
   });
 
   const existingAudit = await prisma.auditLog.findFirst({
@@ -423,6 +437,52 @@ export async function restructurePaymentPlan(
         where: { id: contractId },
         data: { version: { increment: 1 } },
       });
+
+      const deal = await resolveDealInTx(tx, {
+        tenantId,
+        contractId,
+        actorId: eventActorId,
+        correlationId,
+      });
+      if (deal.passport) {
+        const paymentEvent = await tx.dealEvent.findFirst({
+          where: {
+            tenantId,
+            idempotencyKey: `payment.completed:${paymentResult.payment.id}`,
+          },
+          select: { id: true },
+        });
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "payment_plan.restructured",
+          idempotencyKey: `payment-plan:${paymentPlan.id}:restructured:v${paymentPlan.version}`,
+          correlationId,
+          causationId: paymentEvent?.id || null,
+          actorId: eventActorId,
+          entityType: "payment_plan",
+          entityId: paymentPlan.id,
+          beforeState: {
+            version: contract.paymentPlan.version,
+            installmentCount: before.mutable.length,
+            invoiceRemaining: before.invoiceRemaining,
+          },
+          afterState: {
+            version: paymentPlan.version,
+            installmentCount: activeInstallments.length,
+            invoiceRemaining: afterPayment.invoiceRemaining,
+          },
+          payload: {
+            paymentTransactionId: paymentResult.payment.id,
+            mode,
+            prepaymentAmount: roundMoney(prepaymentAmount),
+          },
+          projection: {
+            contractId,
+            status: "PAYMENT_PLAN_RESTRUCTURED",
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

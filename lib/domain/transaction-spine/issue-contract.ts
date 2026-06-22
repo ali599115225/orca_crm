@@ -1,6 +1,8 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   appendDealEventInTx,
+  ensureDealCorrelationId,
   resolveDealInTx,
 } from "@/lib/domain/deal-passport";
 import { hashPhone } from "@/lib/privacy-mask";
@@ -116,8 +118,20 @@ export async function _createContractInTx(
 }
 
 export async function issueContract(input: IssueContractInput) {
-  const { tenantId, userId, clientId, propertyId, amount, actorId, correlationId } = input;
+  const {
+    tenantId,
+    userId,
+    clientId,
+    propertyId,
+    amount,
+    actorId,
+    correlationId: requestedCorrelationId,
+  } = input;
   const eventActorId = actorId || userId;
+  const correlationId = ensureDealCorrelationId(
+    requestedCorrelationId,
+    "deal",
+  );
 
   if (!clientId) throw new Error("Client ID is required.");
   if (!propertyId) throw new Error("Property ID is required.");
@@ -178,8 +192,9 @@ export async function issueContract(input: IssueContractInput) {
       correlationId,
     });
 
+    let dealOpenedEventId: string | null = null;
     if (deal.created && deal.passport) {
-      await appendDealEventInTx(tx, {
+      const dealOpened = await appendDealEventInTx(tx, {
         tenantId,
         dealId: deal.passport.id,
         eventType: "deal.opened",
@@ -188,11 +203,16 @@ export async function issueContract(input: IssueContractInput) {
         correlationId,
         entityType: "contract",
         entityId: contract.id,
+        afterState: {
+          status: "OPEN",
+          contractId: contract.id,
+        },
         projection: {
           contractId: contract.id,
           status: "OPEN",
         },
       });
+      dealOpenedEventId = dealOpened.event?.id || null;
     }
 
     if (deal.passport) {
@@ -201,10 +221,15 @@ export async function issueContract(input: IssueContractInput) {
         dealId: deal.passport.id,
         eventType: "contract.issued",
         idempotencyKey: `contract.issued:${contract.id}`,
+        causationId: dealOpenedEventId || deal.passport.lastEventId || null,
         actorId: eventActorId,
         correlationId,
         entityType: "contract",
         entityId: contract.id,
+        afterState: {
+          status: CONTRACT_STATUS.PENDING_SIGNATURE,
+          contractId: contract.id,
+        },
         projection: {
           contractId: contract.id,
           status: "CONTRACT_ISSUED",
@@ -213,5 +238,5 @@ export async function issueContract(input: IssueContractInput) {
     }
 
     return contract;
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

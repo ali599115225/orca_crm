@@ -1,4 +1,6 @@
+export { createOpportunity } from "./create-opportunity";
 export { scheduleTour } from "./schedule-tour";
+export { updateTourStatus } from "./update-tour-status";
 export { createOffer } from "./create-offer";
 export { acceptOfferAndCreateContract } from "./accept-offer";
 export { issueContract, _createContractInTx } from "./issue-contract";
@@ -19,7 +21,9 @@ export {
 } from "./validate-tenant";
 export * from "./constants";
 export type {
+  CreateOpportunityInput,
   ScheduleTourInput,
+  UpdateTourStatusInput,
   CreateOfferInput,
   AcceptOfferInput,
   ConfigurePaymentPlanInput,

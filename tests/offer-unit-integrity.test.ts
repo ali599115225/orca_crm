@@ -10,6 +10,7 @@ const {
   mockLeadFindFirst,
   mockTourCreate,
   mockTelemetryCreate,
+  mockUserFindFirst,
   mockTransaction,
 } = vi.hoisted(() => ({
   mockOfferCreate: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockLeadFindFirst: vi.fn(),
   mockTourCreate: vi.fn(),
   mockTelemetryCreate: vi.fn(),
+  mockUserFindFirst: vi.fn(),
   mockTransaction: vi.fn(),
 }));
 
@@ -43,6 +45,9 @@ vi.mock("@/lib/prisma", () => ({
     telemetryEvent: {
       create: mockTelemetryCreate,
     },
+    user: {
+      findFirst: mockUserFindFirst,
+    },
     $transaction: mockTransaction,
   },
 }));
@@ -56,10 +61,14 @@ import { scheduleTour } from "@/lib/domain/transaction-spine/schedule-tour";
 import { acceptOfferAndCreateContract } from "@/lib/domain/transaction-spine/accept-offer";
 
 const future = () => new Date(Date.now() + 86_400_000);
+const futureRange = () => {
+  const startAt = future();
+  return { startAt, endAt: new Date(startAt.getTime() + 60 * 60 * 1000) };
+};
 
 function createOfferTx() {
-  let sequence = 0;
-  const dealPassport = {
+  const events: any[] = [];
+  const dealPassport: any = {
     id: "deal-1",
     tenantId: "tenant-1",
     opportunityId: "opp-1",
@@ -68,6 +77,7 @@ function createOfferTx() {
     status: "OPEN",
     version: 0,
     lastSequence: 0,
+    lastEventId: null,
   };
 
   return {
@@ -82,6 +92,9 @@ function createOfferTx() {
       findFirst: mockOfferFindFirst,
       create: mockOfferCreate,
     },
+    tour: {
+      create: mockTourCreate,
+    },
     auditLog: {
       create: vi.fn().mockResolvedValue({}),
     },
@@ -91,23 +104,42 @@ function createOfferTx() {
     dealPassport: {
       findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue(dealPassport),
-      findUnique: vi.fn(),
+      findUnique: vi.fn().mockImplementation(async ({ where }) =>
+        where.id === dealPassport.id ? { ...dealPassport } : null,
+      ),
       update: vi.fn().mockImplementation(async ({ data }) => {
-        if (data.lastSequence?.increment) sequence += data.lastSequence.increment;
-        return {
-          ...dealPassport,
-          ...data,
-          version: data.version?.increment ? sequence : dealPassport.version,
-          lastSequence: sequence,
-        };
+        if (data.lastSequence?.increment) {
+          dealPassport.lastSequence += data.lastSequence.increment;
+        }
+        if (data.version?.increment) {
+          dealPassport.version += data.version.increment;
+        }
+        const plain = { ...data };
+        delete plain.lastSequence;
+        delete plain.version;
+        Object.assign(dealPassport, plain);
+        return { ...dealPassport };
       }),
     },
     dealEvent: {
-      findFirst: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockImplementation(async ({ data }) => ({
-        id: `event-${data.sequence}`,
-        ...data,
-      })),
+      findFirst: vi.fn().mockImplementation(async ({ where }) => {
+        if (where.id) {
+          return events.find((event) =>
+            event.id === where.id &&
+            event.tenantId === where.tenantId &&
+            event.dealId === where.dealId
+          ) || null;
+        }
+        return events.find((event) =>
+          event.tenantId === where.tenantId &&
+          event.idempotencyKey === where.idempotencyKey
+        ) || null;
+      }),
+      create: vi.fn().mockImplementation(async ({ data }) => {
+        const event = { id: `event-${data.sequence}`, ...data };
+        events.push(event);
+        return event;
+      }),
     },
   };
 }
@@ -116,6 +148,7 @@ describe("Offer Unit Integrity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTelemetryCreate.mockResolvedValue({});
+    mockUserFindFirst.mockResolvedValue({ id: "user-1" });
     mockTransaction.mockImplementation(async (callback) =>
       callback(createOfferTx()),
     );
@@ -223,14 +256,14 @@ describe("Offer Unit Integrity", () => {
       unitId: "unit-1",
     });
 
+    const range = futureRange();
     const tour = await scheduleTour({
       tenantId: "tenant-1",
       userId: "user-1",
       leadId: "",
       offerId: "offer-1",
       location: "Unit 1",
-      startAt: future(),
-      endAt: future(),
+      ...range,
     });
 
     expect(tour.unitId).toBe("unit-1");
@@ -255,6 +288,7 @@ describe("Offer Unit Integrity", () => {
       opportunity: { id: "opp-1", leadId: "lead-1" },
     });
 
+    const range = futureRange();
     await expect(
       scheduleTour({
         tenantId: "tenant-1",
@@ -262,8 +296,7 @@ describe("Offer Unit Integrity", () => {
         leadId: "",
         offerId: "offer-legacy",
         location: "Unit",
-        startAt: future(),
-        endAt: future(),
+        ...range,
       }),
     ).rejects.toThrow("without a linked unit");
   });
@@ -310,8 +343,8 @@ describe("Offer Unit Integrity", () => {
       tenantId: "tenant-1",
     });
 
-    let sequence = 0;
-    const dealPassport = {
+    const events: any[] = [];
+    const dealPassport: any = {
       id: "deal-1",
       tenantId: "tenant-1",
       opportunityId: "opp-1",
@@ -320,6 +353,7 @@ describe("Offer Unit Integrity", () => {
       status: "OFFERED",
       version: 2,
       lastSequence: 2,
+      lastEventId: null,
     };
 
     const tx = {
@@ -367,29 +401,42 @@ describe("Offer Unit Integrity", () => {
       dealPassport: {
         findMany: vi.fn().mockResolvedValue([dealPassport]),
         create: vi.fn(),
-        findUnique: vi.fn(),
+        findUnique: vi.fn().mockImplementation(async ({ where }) =>
+          where.id === dealPassport.id ? { ...dealPassport } : null,
+        ),
         update: vi.fn().mockImplementation(async ({ data }) => {
           if (data.lastSequence?.increment) {
-            sequence += data.lastSequence.increment;
+            dealPassport.lastSequence += data.lastSequence.increment;
           }
-          return {
-            ...dealPassport,
-            ...data,
-            version: data.version?.increment
-              ? dealPassport.version + sequence
-              : dealPassport.version,
-            lastSequence: data.lastSequence?.increment
-              ? dealPassport.lastSequence + sequence
-              : dealPassport.lastSequence,
-          };
+          if (data.version?.increment) {
+            dealPassport.version += data.version.increment;
+          }
+          const plain = { ...data };
+          delete plain.lastSequence;
+          delete plain.version;
+          Object.assign(dealPassport, plain);
+          return { ...dealPassport };
         }),
       },
       dealEvent: {
-        findFirst: vi.fn().mockResolvedValue(null),
-        create: vi.fn().mockImplementation(async ({ data }) => ({
-          id: `event-${data.sequence}`,
-          ...data,
-        })),
+        findFirst: vi.fn().mockImplementation(async ({ where }) => {
+          if (where.id) {
+            return events.find((event) =>
+              event.id === where.id &&
+              event.tenantId === where.tenantId &&
+              event.dealId === where.dealId
+            ) || null;
+          }
+          return events.find((event) =>
+            event.tenantId === where.tenantId &&
+            event.idempotencyKey === where.idempotencyKey
+          ) || null;
+        }),
+        create: vi.fn().mockImplementation(async ({ data }) => {
+          const event = { id: `event-${data.sequence}`, ...data };
+          events.push(event);
+          return event;
+        }),
       },
     };
 
