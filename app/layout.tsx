@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeProvider, LanguageProvider } from "@/app/context/AppContext";
 import Script from 'next/script';
 import { AuthProvider } from "@/app/context/AuthContext";
+import { RealtimeSyncProvider } from "@/app/context/RealtimeSyncProvider";
 import { UIBusProvider } from "@/app/context/UIBusContext";
 import { ToastProvider } from "@/app/context/ToastContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -61,6 +62,7 @@ export default function RootLayout({
           <LanguageProvider>
             <ThemeProvider>
               <AuthProvider>
+                <RealtimeSyncProvider>
                 <UIBusProvider>
                   <ToastProvider>
                     <ErrorBoundary>
@@ -68,6 +70,7 @@ export default function RootLayout({
                   </ErrorBoundary>
                   </ToastProvider>
                 </UIBusProvider>
+                </RealtimeSyncProvider>
               </AuthProvider>
             </ThemeProvider>
           </LanguageProvider>
