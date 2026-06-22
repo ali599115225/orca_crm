@@ -434,6 +434,8 @@ model PaymentPlan {
   installmentCount Int           @default(1) @map("installment_count")
   activatedAt      DateTime?     @map("activated_at") @db.Timestamptz
   completedAt      DateTime?     @map("completed_at") @db.Timestamptz
+  version          Int           @default(1)
+  lastAmendedAt    DateTime?     @map("last_amended_at") @db.Timestamptz
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   installments     Installment[]

@@ -143,7 +143,7 @@ export async function POST(
         amountMinorUnits: amountMinor,
         currency: "SAR",
         description: `ORCA installment ${installment.installmentNumber}`,
-        callbackUrl: `${appUrl}/operations/rental?payment=return&transactionId=${encodeURIComponent(transaction.id)}`,
+        callbackUrl: `${appUrl}/operations/sales/contracts/${installment.contract.id}?payment=return&transactionId=${encodeURIComponent(transaction.id)}`,
         metadata: {
           internalTransactionId: transaction.id,
           installmentId: installment.id,

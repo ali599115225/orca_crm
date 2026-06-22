@@ -65,3 +65,9 @@ export const UNIT_STATUS = {
 
 export const DEFAULT_RESERVATION_DAYS = 7;
 export const DEFAULT_PAYMENT_DUE_DAYS = 30;
+
+
+export const RESTRUCTURE_MODE = {
+  REDUCE_INSTALLMENT: "REDUCE_INSTALLMENT",
+  REDUCE_TERM: "REDUCE_TERM",
+} as const;

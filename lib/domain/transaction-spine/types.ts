@@ -1,3 +1,20 @@
+
+export type RestructureMode =
+  | "REDUCE_INSTALLMENT"
+  | "REDUCE_TERM";
+
+export interface RestructurePaymentPlanInput {
+  tenantId: string;
+  userId: string;
+  contractId: string;
+  prepaymentAmount: number;
+  mode: RestructureMode;
+  desiredInstallmentCount?: number;
+  reason: string;
+  method?: string;
+  idempotencyKey: string;
+}
+
 export type PaymentPlanTemplate =
   | "SINGLE_PAYMENT"
   | "DEPOSIT_AND_BALANCE"

@@ -72,7 +72,7 @@ export async function recordPayment(input: RecordPaymentInput) {
 
   const targetIdFilter = installmentId
     ? { installmentId }
-    : { invoiceId: resolvedInvoiceId, installmentId: null };
+    : { invoiceId: resolvedInvoiceId };
   const completed = await prisma.paymentTransaction.aggregate({
     where: {
       tenantId,
