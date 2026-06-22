@@ -17,7 +17,7 @@ function getNgeniusOutletRef(): string {
 function getNgeniusBaseUrl(): string {
   return (
     process.env.NGENIUS_API_URL ||
-    "https://api-gateway.sandbox.ksa.ngenius-payments.com"
+    "https://api-gateway.sandbox.ngenius-payments.com"
   );
 }
 
