@@ -16,14 +16,24 @@ export interface ReadSyncEventsInput {
   limit?: number;
 }
 
+export interface SyncEventCursorWindow {
+  oldestCursor: bigint | null;
+  newestCursor: bigint | null;
+}
+
+function requireTenantId(value: string): string {
+  const tenantId = value.trim();
+  if (!tenantId) {
+    throw new Error("tenantId is required");
+  }
+  return tenantId;
+}
+
 export async function readSyncEvents(
   input: ReadSyncEventsInput,
   db: SyncEventReader = prisma as unknown as SyncEventReader,
 ): Promise<SyncEventPage> {
-  const tenantId = input.tenantId.trim();
-  if (!tenantId) {
-    throw new Error("tenantId is required");
-  }
+  const tenantId = requireTenantId(input.tenantId);
 
   const after = input.after ?? BigInt(0);
   if (after < BigInt(0)) {
@@ -64,4 +74,24 @@ export async function readSyncEvents(
   const nextCursor = events.length > 0 ? events[events.length - 1].cursor : after;
 
   return { events, nextCursor, hasMore };
+}
+
+export async function readSyncEventCursorWindow(
+  tenantIdInput: string,
+  db: SyncEventReader = prisma as unknown as SyncEventReader,
+): Promise<SyncEventCursorWindow> {
+  const tenantId = requireTenantId(tenantIdInput);
+
+  const rows = await db.$queryRaw<
+    Array<{ oldestCursor: bigint | null; newestCursor: bigint | null }>
+  >(Prisma.sql`
+    SELECT
+      MIN("cursor") AS "oldestCursor",
+      MAX("cursor") AS "newestCursor"
+    FROM "sync_events"
+    WHERE "tenant_id" = ${tenantId}
+      AND "expires_at" > NOW()
+  `);
+
+  return rows[0] ?? { oldestCursor: null, newestCursor: null };
 }

@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/retention",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/realtime-retention",
+      "schedule": "17 3 * * *"
     }
   ],
   "buildCommand": "prisma generate && next build",
