@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
 import {
   CONTRACT_STATUS,
@@ -17,7 +21,10 @@ export async function createOffer(input: CreateOfferInput) {
     price,
     validUntil,
     documentUrl,
+    actorId,
+    correlationId,
   } = input;
+  const eventActorId = actorId || userId;
 
   if (!userId) throw new Error("Authenticated user is required.");
   if (!unitId) throw new Error("Unit ID is required to create an offer.");
@@ -100,6 +107,30 @@ export async function createOffer(input: CreateOfferInput) {
         throw new Error("Unit is marked as sold.");
       }
 
+      const deal = await resolveDealInTx(tx, {
+        tenantId,
+        opportunityId,
+        actorId: eventActorId,
+        correlationId,
+      });
+
+      if (deal.created && deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "deal.opened",
+          idempotencyKey: `deal.opened:opportunity:${opportunityId}`,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "opportunity",
+          entityId: opportunityId,
+          projection: {
+            opportunityId,
+            status: "OPEN",
+          },
+        });
+      }
+
       const offer = await tx.offer.create({
         data: {
           tenantId,
@@ -112,6 +143,28 @@ export async function createOffer(input: CreateOfferInput) {
           createdBy: userId,
         },
       });
+
+      if (deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "offer.created",
+          idempotencyKey: `offer.created:${offer.id}`,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "offer",
+          entityId: offer.id,
+          payload: {
+            opportunityId,
+            unitId,
+          },
+          projection: {
+            opportunityId,
+            currentOfferId: offer.id,
+            status: "OFFERED",
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

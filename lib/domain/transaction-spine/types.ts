@@ -44,6 +44,8 @@ export interface ScheduleTourInput {
 export interface CreateOfferInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   opportunityId: string;
   unitId: string;
   price: number;
@@ -54,6 +56,8 @@ export interface CreateOfferInput {
 export interface AcceptOfferInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   offerId: string;
 }
 
@@ -120,6 +124,8 @@ export interface RecordPaymentInput {
 export interface IssueContractInput {
   tenantId: string;
   userId: string;
+  actorId?: string;
+  correlationId?: string;
   clientId: string;
   propertyId: string;
   amount: number;

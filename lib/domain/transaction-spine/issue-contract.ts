@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { hashPhone } from "@/lib/privacy-mask";
 import { assertTenantOwnership } from "./validate-tenant";
 import { ensureDefaultPaymentPlanInTx } from "./payment-plan";
@@ -112,7 +116,8 @@ export async function _createContractInTx(
 }
 
 export async function issueContract(input: IssueContractInput) {
-  const { tenantId, userId, clientId, propertyId, amount } = input;
+  const { tenantId, userId, clientId, propertyId, amount, actorId, correlationId } = input;
+  const eventActorId = actorId || userId;
 
   if (!clientId) throw new Error("Client ID is required.");
   if (!propertyId) throw new Error("Property ID is required.");
@@ -156,7 +161,7 @@ export async function issueContract(input: IssueContractInput) {
     if (!unit) throw new Error("Unit not found.");
     if (unit.contract) throw new Error("Unit already has an active contract.");
 
-    return _createContractInTx(tx, {
+    const contract = await _createContractInTx(tx, {
       tenantId,
       userId,
       unitId: propertyId,
@@ -165,5 +170,48 @@ export async function issueContract(input: IssueContractInput) {
       buyerPhone,
       totalVolumeSar: Number(amount),
     });
+
+    const deal = await resolveDealInTx(tx, {
+      tenantId,
+      contractId: contract.id,
+      actorId: eventActorId,
+      correlationId,
+    });
+
+    if (deal.created && deal.passport) {
+      await appendDealEventInTx(tx, {
+        tenantId,
+        dealId: deal.passport.id,
+        eventType: "deal.opened",
+        idempotencyKey: `deal.opened:contract:${contract.id}`,
+        actorId: eventActorId,
+        correlationId,
+        entityType: "contract",
+        entityId: contract.id,
+        projection: {
+          contractId: contract.id,
+          status: "OPEN",
+        },
+      });
+    }
+
+    if (deal.passport) {
+      await appendDealEventInTx(tx, {
+        tenantId,
+        dealId: deal.passport.id,
+        eventType: "contract.issued",
+        idempotencyKey: `contract.issued:${contract.id}`,
+        actorId: eventActorId,
+        correlationId,
+        entityType: "contract",
+        entityId: contract.id,
+        projection: {
+          contractId: contract.id,
+          status: "CONTRACT_ISSUED",
+        },
+      });
+    }
+
+    return contract;
   });
 }

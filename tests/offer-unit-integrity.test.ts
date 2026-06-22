@@ -58,6 +58,18 @@ import { acceptOfferAndCreateContract } from "@/lib/domain/transaction-spine/acc
 const future = () => new Date(Date.now() + 86_400_000);
 
 function createOfferTx() {
+  let sequence = 0;
+  const dealPassport = {
+    id: "deal-1",
+    tenantId: "tenant-1",
+    opportunityId: "opp-1",
+    contractId: null,
+    currentOfferId: null,
+    status: "OPEN",
+    version: 0,
+    lastSequence: 0,
+  };
+
   return {
     opportunity: {
       findFirst: mockOpportunityFindFirst,
@@ -75,6 +87,27 @@ function createOfferTx() {
     },
     telemetryEvent: {
       create: mockTelemetryCreate,
+    },
+    dealPassport: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue(dealPassport),
+      findUnique: vi.fn(),
+      update: vi.fn().mockImplementation(async ({ data }) => {
+        if (data.lastSequence?.increment) sequence += data.lastSequence.increment;
+        return {
+          ...dealPassport,
+          ...data,
+          version: data.version?.increment ? sequence : dealPassport.version,
+          lastSequence: sequence,
+        };
+      }),
+    },
+    dealEvent: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(async ({ data }) => ({
+        id: `event-${data.sequence}`,
+        ...data,
+      })),
     },
   };
 }
@@ -126,6 +159,7 @@ describe("Offer Unit Integrity", () => {
         }),
       }),
     );
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
   });
 
   it("rejects offer creation when opportunity has no unit and never falls back", async () => {
@@ -276,6 +310,18 @@ describe("Offer Unit Integrity", () => {
       tenantId: "tenant-1",
     });
 
+    let sequence = 0;
+    const dealPassport = {
+      id: "deal-1",
+      tenantId: "tenant-1",
+      opportunityId: "opp-1",
+      contractId: null,
+      currentOfferId: "offer-1",
+      status: "OFFERED",
+      version: 2,
+      lastSequence: 2,
+    };
+
     const tx = {
       offer: {
         findFirst: vi.fn().mockResolvedValue(offer),
@@ -318,6 +364,33 @@ describe("Offer Unit Integrity", () => {
       telemetryEvent: {
         create: vi.fn().mockResolvedValue({}),
       },
+      dealPassport: {
+        findMany: vi.fn().mockResolvedValue([dealPassport]),
+        create: vi.fn(),
+        findUnique: vi.fn(),
+        update: vi.fn().mockImplementation(async ({ data }) => {
+          if (data.lastSequence?.increment) {
+            sequence += data.lastSequence.increment;
+          }
+          return {
+            ...dealPassport,
+            ...data,
+            version: data.version?.increment
+              ? dealPassport.version + sequence
+              : dealPassport.version,
+            lastSequence: data.lastSequence?.increment
+              ? dealPassport.lastSequence + sequence
+              : dealPassport.lastSequence,
+          };
+        }),
+      },
+      dealEvent: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation(async ({ data }) => ({
+          id: `event-${data.sequence}`,
+          ...data,
+        })),
+      },
     };
 
     mockTransaction.mockImplementation(async (callback) => callback(tx));
@@ -340,6 +413,22 @@ describe("Offer Unit Integrity", () => {
     expect(result.contract).toMatchObject({ id: "contract-1" });
     expect(result.paymentPlan).toMatchObject({ id: "plan-1" });
     expect(result.idempotent).toBe(false);
+    expect(tx.dealEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "offer.accepted",
+          sequence: 3,
+        }),
+      }),
+    );
+    expect(tx.dealEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "contract.issued",
+          sequence: 4,
+        }),
+      }),
+    );
   });
 
   it("is idempotent when accepting an already accepted Phase 1 offer", async () => {

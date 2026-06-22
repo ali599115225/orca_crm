@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 import { assertTenantOwnership } from "./validate-tenant";
 import { _createContractInTx } from "./issue-contract";
 import { ensureDefaultPaymentPlanInTx } from "./payment-plan";
@@ -83,7 +87,8 @@ async function releaseExpiredDraftContractInTx(
 }
 
 export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
-  const { tenantId, userId, offerId } = input;
+  const { tenantId, userId, offerId, actorId, correlationId } = input;
+  const eventActorId = actorId || userId;
   if (!userId) throw new Error("Authenticated user is required.");
 
   await assertTenantOwnership(
@@ -222,6 +227,76 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         where: { id: opportunity.id },
         data: { status: OPPORTUNITY_STATUS.COMMITTED, updatedBy: userId },
       });
+
+      const deal = await resolveDealInTx(tx, {
+        tenantId,
+        opportunityId: opportunity.id,
+        contractId: contract.id,
+        actorId: eventActorId,
+        correlationId,
+      });
+
+      if (deal.created && deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "deal.opened",
+          idempotencyKey: `deal.opened:opportunity:${opportunity.id}`,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "opportunity",
+          entityId: opportunity.id,
+          projection: {
+            opportunityId: opportunity.id,
+            contractId: contract.id,
+            status: "OPEN",
+          },
+        });
+      }
+
+      if (deal.passport) {
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "offer.accepted",
+          idempotencyKey: `offer.accepted:${offer.id}`,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "offer",
+          entityId: offer.id,
+          payload: {
+            opportunityId: opportunity.id,
+            contractId: contract.id,
+          },
+          projection: {
+            opportunityId: opportunity.id,
+            contractId: contract.id,
+            currentOfferId: offer.id,
+            status: "OFFER_ACCEPTED",
+          },
+        });
+
+        await appendDealEventInTx(tx, {
+          tenantId,
+          dealId: deal.passport.id,
+          eventType: "contract.issued",
+          idempotencyKey: `contract.issued:${contract.id}`,
+          actorId: eventActorId,
+          correlationId,
+          entityType: "contract",
+          entityId: contract.id,
+          payload: {
+            opportunityId: opportunity.id,
+            offerId: offer.id,
+          },
+          projection: {
+            opportunityId: opportunity.id,
+            contractId: contract.id,
+            currentOfferId: offer.id,
+            status: "CONTRACT_ISSUED",
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

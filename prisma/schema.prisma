@@ -280,6 +280,8 @@ model Tenant {
   whatsappIntegrationAudits WhatsAppIntegrationAudit[]
   whatsappConsents          WhatsAppConsent[]
   whatsappOptOuts           WhatsAppOptOut[]
+  dealPassports             DealPassport[]
+  dealEvents                DealEvent[]
 
   @@map("tenants")
 }
@@ -412,6 +414,7 @@ model Contract {
   installments         Installment[]
   invoices             Invoice[]
   paymentPlan          PaymentPlan?
+  dealPassport         DealPassport?
 
   @@index([unitId], map: "idx_contracts_unit_id")
   @@index([tenantId], map: "idx_contracts_tenant_id")
@@ -913,8 +916,54 @@ model Opportunity {
   auditLog      String?  @map("audit_log") @db.Text
   offers        Offer[]
   tours         Tour[]
+  dealPassport DealPassport?
 
   @@map("opportunities")
+}
+
+model DealPassport {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunityId  String?      @unique @map("opportunity_id") @db.Uuid
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  contractId     String?      @unique @map("contract_id") @db.Uuid
+  contract       Contract?    @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  currentOfferId String?      @map("current_offer_id") @db.Uuid
+  status         String       @default("OPEN")
+  version        Int          @default(0)
+  lastSequence   Int          @default(0) @map("last_sequence")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  events         DealEvent[]
+
+  @@unique([tenantId, opportunityId])
+  @@unique([tenantId, contractId])
+  @@index([tenantId, status])
+  @@map("deal_passports")
+}
+
+model DealEvent {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  dealId         String       @map("deal_id") @db.Uuid
+  deal           DealPassport @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  sequence       Int
+  eventType      String       @map("event_type")
+  idempotencyKey String       @map("idempotency_key")
+  correlationId  String?      @map("correlation_id")
+  actorId        String?      @map("actor_id") @db.Uuid
+  entityType     String?      @map("entity_type")
+  entityId       String?      @map("entity_id") @db.Uuid
+  payload        Json         @default("{}")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([dealId, sequence])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, dealId])
+  @@index([tenantId, eventType])
+  @@map("deal_events")
 }
 
 model Tour {
