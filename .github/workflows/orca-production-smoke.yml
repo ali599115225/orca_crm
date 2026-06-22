@@ -1,0 +1,40 @@
+name: ORCA Production Smoke
+
+on:
+  workflow_run:
+    workflows:
+      - ORCA CI
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Verify production
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://orca.az-ez.pro' }}
+      EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha }}
+
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Wait for Vercel and verify exact commit
+        run: node scripts/production-smoke.mjs

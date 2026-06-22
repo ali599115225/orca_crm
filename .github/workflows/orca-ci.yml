@@ -1,0 +1,49 @@
+name: ORCA CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: orca-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma client
+        run: npx prisma generate
+
+      - name: Production gate
+        run: node scripts/ci-production-gate.mjs
+
+      - name: Core regression tests
+        run: >
+          npx vitest run
+          tests/phase02-full-closure.test.ts
+          tests/realtime/client-runtime.test.ts
+          tests/early-settlement.test.ts
+
+      - name: Build
+        run: npm run build
