@@ -91,14 +91,13 @@ export async function GET(request: NextRequest) {
       if (!lastWeeklyTraining) {
         const model = await trainPredictiveModel(tenant.id, null, 30);
         training = { version: model.version, status: model.status };
-        await rawPrisma.revenueDomainEvent.updateMany({
-          where: {
-            tenantId: tenant.id,
-            aggregateType: "RevenueModelVersion",
-            aggregateId: model.id,
-          },
-          data: { metadata: { weeklyBucket } },
-        });
+        await rawPrisma.$executeRaw`
+          UPDATE revenue_domain_events
+          SET    metadata = COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ weeklyBucket })}::jsonb
+          WHERE  tenant_id   = ${tenant.id}::uuid
+          AND    aggregate_type = ${"RevenueModelVersion"}
+          AND    aggregate_id   = ${model.id}
+        `;
       }
 
       const scoring = latestModel?.status === "ACTIVE" || (training as any)?.status === "ACTIVE"
