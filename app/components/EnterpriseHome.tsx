@@ -132,12 +132,13 @@ function LaunchBanner({ t }: any) {
 ══════════════════════════════════════════════════════════════ */
 function Header({ lang, toggleLang, scrolled, mobileOpen, setMobileOpen, t, activeSection }: any) {
   const sectionFromHref = (href: string) => href.replace("#", "");
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
   return (
     <header className={`eh-header${scrolled > 50 ? " eh-header-scrolled" : ""}`}>
       <div className="eh-header-inner">
-        <div className="eh-logo" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ cursor: "pointer" }}>
+        <button type="button" className="eh-logo" onClick={scrollToTop} style={{ cursor: "pointer" }} aria-label={lang === "AR" ? "شعار ORCA - العودة إلى أعلى الصفحة" : "ORCA logo - return to top"}>
           <div className="eh-logo-icon">
-            <svg viewBox="0 0 40 40" width="32" height="32" fill="none">
+            <svg viewBox="0 0 40 40" width="32" height="32" fill="none" aria-hidden="true">
               <rect x="2" y="2" width="36" height="36" rx="8" stroke="#C9A96E" strokeWidth="2" />
               <path d="M12 28V14l8-6 8 6v14H12z" stroke="#C9A96E" strokeWidth="1.5" fill="rgba(201,169,110,0.08)" />
               <path d="M18 28V20h4v8" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" />
@@ -147,7 +148,7 @@ function Header({ lang, toggleLang, scrolled, mobileOpen, setMobileOpen, t, acti
             <span className="eh-logo-text">ORCA</span>
             <span className="eh-logo-sub">{t.headerSub}</span>
           </div>
-        </div>
+        </button>
 
         <nav className="eh-nav">
           {t.nav.map((item: any) => (
@@ -159,16 +160,16 @@ function Header({ lang, toggleLang, scrolled, mobileOpen, setMobileOpen, t, acti
         </nav>
 
         <div className="eh-header-actions">
-          <button onClick={toggleLang} className="eh-lang-btn">{lang === "AR" ? "EN" : "عربي"}</button>
+          <button onClick={toggleLang} className="eh-lang-btn" aria-label={lang === "AR" ? "تغيير اللغة إلى الإنجليزية" : "Change language to Arabic"}>{lang === "AR" ? "EN" : "عربي"}</button>
           <Link href="/login" className="eh-btn-secondary">{t.signIn}</Link>
           <Link href="/demo" className="eh-btn-primary">{t.startFree}</Link>
-          <button className="eh-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
-            <span /><span /><span />
+          <button className="eh-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? (lang === "AR" ? "إغلاق قائمة الجوال" : "Close mobile menu") : (lang === "AR" ? "فتح قائمة الجوال" : "Open mobile menu")} aria-expanded={mobileOpen} aria-controls="enterprise-mobile-menu">
+            <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
           </button>
         </div>
       </div>
       {mobileOpen && (
-        <div className="eh-mobile-menu">
+        <div className="eh-mobile-menu" id="enterprise-mobile-menu">
           {t.nav.map((item: any) => (
             <a key={item.href} href={item.href} className="eh-mobile-link" onClick={() => setMobileOpen(false)}>{item.label}</a>
           ))}
@@ -206,18 +207,18 @@ function HeroSection({ t, isRtl, lang }: any) {
 
   return (
     <section className="eh-section eh-hero">
-      <div className="eh-hero-grid" />
-      <div className="eh-hero-glow-top" />
-      <div className="eh-hero-glow-bot" />
+      <div className="eh-hero-grid" aria-hidden="true" />
+      <div className="eh-hero-glow-top" aria-hidden="true" />
+      <div className="eh-hero-glow-bot" aria-hidden="true" />
       <div className="eh-hero-container">
         <div className="eh-hero-content">
           <div className={`eh-hero-badges${mounted ? " eh-fade-in" : ""}`}>
             <span className="eh-badge eh-badge-gold">
-              <span className="eh-dot eh-dot-gold" />
+              <span className="eh-dot eh-dot-gold" aria-hidden="true" />
               {t.heroBadge}
             </span>
             <span className="eh-badge eh-badge-glass">
-              <span className="eh-dot eh-dot-emerald" />
+              <span className="eh-dot eh-dot-emerald" aria-hidden="true" />
               {t.heroStatus}
             </span>
           </div>
@@ -249,7 +250,7 @@ function HeroSection({ t, isRtl, lang }: any) {
         <div className={`eh-hero-visual${mounted ? " eh-fade-in" : ""}`} style={{ animationDelay: "0.3s" }}>
           <div className="eh-terminal">
             <div className="eh-terminal-bar">
-              <div className="eh-terminal-dots"><span /><span /><span /></div>
+              <div className="eh-terminal-dots" aria-hidden="true"><span /><span /><span /></div>
               <span className="eh-terminal-title">{t.terminalTitle}</span>
             </div>
             <div className="eh-terminal-body">
@@ -276,7 +277,7 @@ function TrustSection({ t }: any) {
         <div className="eh-grid eh-grid-4">
           {t.trustItems.map((item: any, i: number) => (
             <div key={i} className="eh-card eh-card-glass">
-              <div className="eh-card-icon">{item.icon}</div>
+              <div className="eh-card-icon" aria-hidden="true">{item.icon}</div>
               <h3 className="eh-card-title">{item.title}</h3>
               <p className="eh-card-desc">{item.desc}</p>
             </div>
@@ -299,7 +300,7 @@ function OSSection({ t, isRtl }: any) {
         <p className="eh-section-desc">{t.osDesc}</p>
 
         <div className="eh-os-diagram" style={{ direction: "ltr" }}>
-          <svg viewBox="0 0 900 520" className="eh-os-svg">
+          <svg viewBox="0 0 900 520" className="eh-os-svg" aria-hidden="true">
             <defs>
               <linearGradient id="osGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#C9A96E" stopOpacity="0.3" />
@@ -343,7 +344,7 @@ function ProductSection({ t }: any) {
         <div className="eh-grid eh-grid-3">
           {t.productItems.map((item: any, i: number) => (
             <div key={i} className="eh-card eh-card-product">
-              <div className="eh-card-icon-large">{item.icon}</div>
+              <div className="eh-card-icon-large" aria-hidden="true">{item.icon}</div>
               <h3 className="eh-card-title">{item.title}</h3>
               <p className="eh-card-desc">{item.desc}</p>
             </div>
@@ -368,7 +369,7 @@ function AISection({ t }: any) {
           {t.aiItems.map((item: any, i: number) => (
             <div key={i} className="eh-ai-card">
               <div className="eh-ai-card-header">
-                <span className="eh-ai-icon">{item.icon}</span>
+                <span className="eh-ai-icon" aria-hidden="true">{item.icon}</span>
                 <span className="eh-ai-tag">{item.tag}</span>
               </div>
               <h4 className="eh-ai-card-title">{item.title}</h4>
@@ -398,7 +399,7 @@ function PropertySection({ t }: any) {
         <div className="eh-grid eh-grid-3">
           {t.propItems.map((item: any, i: number) => (
             <div key={i} className="eh-card eh-card-glass">
-              <div className="eh-card-icon">{item.icon}</div>
+              <div className="eh-card-icon" aria-hidden="true">{item.icon}</div>
               <h3 className="eh-card-title">{item.title}</h3>
               <p className="eh-card-desc">{item.desc}</p>
             </div>
@@ -422,7 +423,7 @@ function FinanceSection({ t }: any) {
         <div className="eh-grid eh-grid-3">
           {t.finItems.map((item: any, i: number) => (
             <div key={i} className="eh-card eh-card-glass">
-              <div className="eh-card-icon">{item.icon}</div>
+              <div className="eh-card-icon" aria-hidden="true">{item.icon}</div>
               <h3 className="eh-card-title">{item.title}</h3>
               <p className="eh-card-desc">{item.desc}</p>
             </div>
@@ -490,14 +491,14 @@ function CaseStudySection({ t, lang }: any) {
                 <div className="eh-case-column eh-case-before">
                   <div className="eh-case-column-label">{t.casesBefore}</div>
                   {c.before.map((b: string, j: number) => (
-                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-red" />{b}</div>
+                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-red" aria-hidden="true" />{b}</div>
                   ))}
                 </div>
-                <div className="eh-case-arrow">→</div>
+                <div className="eh-case-arrow" aria-hidden="true">→</div>
                 <div className="eh-case-column eh-case-after">
                   <div className="eh-case-column-label">{t.casesAfter}</div>
                   {c.after.map((a: string, j: number) => (
-                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-green" />{a}</div>
+                    <div key={j} className="eh-case-item"><span className="eh-case-bullet eh-case-bullet-green" aria-hidden="true" />{a}</div>
                   ))}
                 </div>
               </div>
@@ -541,16 +542,16 @@ function ROISection({ t, lang }: any) {
         <div className="eh-roi-calculator">
           <div className="eh-roi-controls">
             <div className="eh-roi-field">
-              <label className="eh-roi-label">{t.roiUnits} <strong>{units.toLocaleString()}</strong></label>
-              <input type="range" min={50} max={10000} step={50} value={units} onChange={e => setUnits(Number(e.target.value))} className="eh-roi-slider" />
+              <label htmlFor="roi-units" className="eh-roi-label">{t.roiUnits} <strong>{units.toLocaleString()}</strong></label>
+              <input id="roi-units" type="range" min={50} max={10000} step={50} value={units} onChange={e => setUnits(Number(e.target.value))} className="eh-roi-slider" />
             </div>
             <div className="eh-roi-field">
-              <label className="eh-roi-label">{t.roiEmployees} <strong>{employees}</strong></label>
-              <input type="range" min={1} max={200} step={1} value={employees} onChange={e => setEmployees(Number(e.target.value))} className="eh-roi-slider" />
+              <label htmlFor="roi-employees" className="eh-roi-label">{t.roiEmployees} <strong>{employees}</strong></label>
+              <input id="roi-employees" type="range" min={1} max={200} step={1} value={employees} onChange={e => setEmployees(Number(e.target.value))} className="eh-roi-slider" />
             </div>
             <div className="eh-roi-field">
-              <label className="eh-roi-label">{t.roiRevenue} <strong>SAR {revenue}M</strong></label>
-              <input type="range" min={5} max={1000} step={5} value={revenue} onChange={e => setRevenue(Number(e.target.value))} className="eh-roi-slider" />
+              <label htmlFor="roi-revenue" className="eh-roi-label">{t.roiRevenue} <strong>SAR {revenue}M</strong></label>
+              <input id="roi-revenue" type="range" min={5} max={1000} step={5} value={revenue} onChange={e => setRevenue(Number(e.target.value))} className="eh-roi-slider" />
             </div>
           </div>
           <div className="eh-roi-results">
@@ -619,8 +620,8 @@ function PricingSection({ t }: any) {
         <p className="eh-section-desc">{t.priceDesc}</p>
         <div className="eh-price-toggle">
           <span className={annual ? "eh-price-toggle-active" : ""}>{t.priceMonthly}</span>
-          <button className={`eh-price-toggle-btn${annual ? " eh-price-toggle-right" : ""}`} onClick={() => setAnnual(!annual)}>
-            <span className="eh-price-toggle-knob" />
+          <button className={`eh-price-toggle-btn${annual ? " eh-price-toggle-right" : ""}`} onClick={() => setAnnual(!annual)} aria-pressed={annual} aria-label={annual ? t.priceMonthly : t.priceAnnual}>
+            <span className="eh-price-toggle-knob" aria-hidden="true" />
           </button>
           <span className={!annual ? "eh-price-toggle-active" : ""}>{t.priceAnnual}</span>
           <span className="eh-price-badge">{t.priceSave}</span>
@@ -655,7 +656,7 @@ function PricingSection({ t }: any) {
 function CTASection({ t }: any) {
   return (
     <section className="eh-section eh-cta" id="demo">
-      <div className="eh-cta-glow" />
+      <div className="eh-cta-glow" aria-hidden="true" />
       <div className="eh-section-container">
         <div className="eh-cta-content">
           <div className="eh-section-label">{t.ctaLabel}</div>
@@ -1152,7 +1153,7 @@ const STYLES = `
     max-width: 1200px; margin: 0 auto; padding: 0 24px;
     height: 64px; display: flex; align-items: center; justify-content: space-between;
   }
-  .eh-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .eh-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; background: transparent; border: 0; padding: 0; color: inherit; font: inherit; }
   .eh-logo-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
   .eh-logo-text { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #FFFFFF; }
   .eh-logo-sub { font-size: 8px; color: #C9A96E; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-top: -1px; }

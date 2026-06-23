@@ -177,9 +177,10 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
           {/* Language Selector Button */}
           <button 
             onClick={toggleLang}
+            aria-label={lang === 'AR' ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
             className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors focus:outline-none ${isDarkMode ? 'text-slate-300 font-medium hover:text-white' : 'text-slate-800 font-medium hover:text-slate-900'}`}
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-2" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-2" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               <path d="M2 12h20" />
@@ -282,7 +283,7 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
             <form className="space-y-5 w-full max-w-[380px] ml-auto" onSubmit={handleSubmit}>
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-3.5 rounded-xl font-bold text-center">
+                <div role="alert" className={`text-xs p-3.5 rounded-xl font-bold text-center ${isDarkMode ? 'bg-red-950/60 border border-red-400/50 text-red-100' : 'bg-red-50 border border-red-600/40 text-red-800'}`}>
                   {error}
                 </div>
               )}
@@ -334,15 +335,15 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
 
       {/* Footer المحدّث بروابط Next.js الديناميكية */}
       <footer className="w-full p-6 text-center text-xs md:text-sm text-[var(--nc-text-dim)] font-medium flex items-center justify-center gap-4 z-10 relative">
-        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white font-medium' : 'text-slate-700 hover:text-slate-900 font-medium'}`}>
+        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
           {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
         </Link>
-        <span>|</span>
-        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white font-medium' : 'text-slate-700 hover:text-slate-900 font-medium'}`}>
+        <span aria-hidden="true">|</span>
+        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
           {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
         </Link>
-        <span>|</span>
-        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white font-medium' : 'text-slate-700 hover:text-slate-900 font-medium'}`}>
+        <span aria-hidden="true">|</span>
+        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
           {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
         </Link>
       </footer>
