@@ -1,6 +1,8 @@
 // app/actions/compliance.ts
 "use server";
 
+import { assertServerActionRole } from "@/lib/api-auth-guard";
+
 import { prisma, rawPrisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
@@ -109,6 +111,8 @@ export async function activateGovernmentConnectionAction() {
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
 
+    await assertServerActionRole(session, ['ADMIN']);
+
     const tenant = await getActiveTenant();
 
     // تطبيق قيد التحقق الأمني الفوري (Guard Clause)
@@ -117,25 +121,18 @@ export async function activateGovernmentConnectionAction() {
 
     // إذا تم اجتياز البوابة، نقوم بتحديث حالة الدفع أو الربط بنجاح
     await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
-      // تعديل حالة الربط
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: {
-          whatsappConnected: true
-        }
-      });
 
       // تسجيل الامتثال في سجل التدقيق
       await rawPrisma.auditLog.create({
         data: {
           tenantId: tenant.id,
           userId: session.userId as string,
-          action: "GOVERNMENT_CONNECTION_ACTIVATED",
+          action: "GOVERNMENT_CONNECTION_READINESS_APPROVED",
           tableName: "System",
-          recordId: "operational-live",
+          recordId: "compliance-gate",
           details: JSON.stringify({
             activatedBy: session.email,
-            status: "OPERATIONAL_LIVE",
+            status: "READY_FOR_PROVIDER_ACTIVATION",
             timestamp: new Date().toISOString()
           })
         }
@@ -189,6 +186,8 @@ export async function saveTenantCredentialsAction(data: {
   try {
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
+
+    await assertServerActionRole(session, ['ADMIN']);
 
     const tenant = await getActiveTenant();
 

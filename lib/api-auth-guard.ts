@@ -149,6 +149,30 @@ export async function hasDatabaseRole(
 }
 
 /**
+ * Database-backed authorization for sensitive Server Actions.
+ * Accepts configured super admin or a verified active tenant role.
+ */
+export async function assertServerActionRole(
+  value: unknown,
+  allowedRoles: readonly string[]
+): Promise<SessionPayload> {
+  const session = normalizeSessionPayload(value);
+
+  if (!session) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  if (await isSuperAdmin(session.userId)) {
+    return session;
+  }
+
+  if (!(await hasDatabaseRole(session, allowedRoles))) {
+    throw new Error('FORBIDDEN');
+  }
+
+  return session;
+}
+/**
  * Lightweight claim check for non-sensitive UI decisions.
  * Sensitive API routes should use hasDatabaseRole().
  */

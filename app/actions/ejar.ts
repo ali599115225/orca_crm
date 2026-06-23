@@ -3,6 +3,8 @@
 // تسجيل العقود العقارية وحساب عمولات الموظفين
 "use server";
 
+import { assertServerActionRole, isProductionRuntime } from "@/lib/api-auth-guard";
+
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
@@ -49,6 +51,8 @@ export async function submitContractToEjarAction(
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
 
+    await assertServerActionRole(session, ['ADMIN', 'rental_manager', 'owner']);
+
     const tenant = await getActiveTenant();
 
     // ===================================================
@@ -67,9 +71,24 @@ export async function submitContractToEjarAction(
     // ===================================================
     // 3. إرسال العقد لـ Ejar API (محاكاة Sandbox)
     // ===================================================
-    const EJAR_API_URL = process.env.EJAR_API_URL || "https://api.ejar.sa/sandbox/v1";
-    const EJAR_API_KEY = process.env.EJAR_API_KEY || "sandbox_key_demo";
-    const isSandbox = !process.env.EJAR_API_KEY;
+    const configuredUrl = process.env.EJAR_API_URL?.trim() ?? "";
+    const configuredKey = process.env.EJAR_API_KEY?.trim() ?? "";
+    const production = isProductionRuntime();
+
+    if (
+      production &&
+      (!configuredUrl || !configuredKey || /sandbox/i.test(configuredUrl))
+    ) {
+      return {
+        success: false,
+        error: "Ejar production credentials are missing or configured for sandbox.",
+      };
+    }
+
+    const EJAR_API_URL =
+      configuredUrl || "https://api.ejar.sa/sandbox/v1";
+    const EJAR_API_KEY = configuredKey;
+    const isSandbox = !production && (!configuredUrl || !configuredKey);
 
     const ejarPayload = {
       contractType: "RESIDENTIAL",
