@@ -3,17 +3,20 @@ import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
 import SettingsView from '@/components/views/SettingsView';
 import { getActiveTenant } from '@/lib/tenant';
+import { getDeploymentLicenseMode } from '@/lib/deployment-license';
 import { getSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
+  const licenseMode = getDeploymentLicenseMode();
   // Default values
   let tenant = {
     companyName: 'ORCA',
     subdomain: 'orca',
     subscriptionPlan: 'BASIC',
     extraAgents: 0,
+    licenseMode,
     growthWarning: false,
   };
   let users: any[] = [];
@@ -45,6 +48,7 @@ export default async function SettingsPage() {
         subdomain:        dbTenant.subdomain,
         subscriptionPlan: dbTenant.subscriptionPlan,
         extraAgents:      dbTenant.extraAgents ?? 0,
+        licenseMode,
         growthWarning,
       };
     }

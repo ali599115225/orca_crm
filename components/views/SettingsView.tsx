@@ -27,6 +27,7 @@ companyName: string;
 subdomain: string;
 subscriptionPlan: string;
 extraAgents: number;
+licenseMode?: "SAAS" | "DEDICATED_COPY";
 };
 users?: User[];
 }
@@ -54,6 +55,7 @@ const router = useRouter();
 const searchParams = useSearchParams();
 const { lang } = useApp();
 const isArabic = lang === "AR";
+const isDedicatedCopy = tenant.licenseMode === "DEDICATED_COPY";
 
 const [activeSection, setActiveSection] = useState(() =>
 resolveSection(searchParams.get("tab")),
@@ -123,7 +125,7 @@ return (
                 {isArabic ? "الباقة الحالية" : "Current Plan"}
               </dt>
               <dd className="mt-2 text-sm font-bold uppercase text-[var(--nc-foreground)] font-en">
-                {tenant.subscriptionPlan}
+                {isDedicatedCopy ? (isArabic ? "نسخة كاملة" : "Full Dedicated Copy") : tenant.subscriptionPlan}
               </dd>
             </div>
           </dl>
