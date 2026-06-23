@@ -1,155 +1,187 @@
-// components/views/SettingsView.tsx
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useApp } from '@/app/context/AppContext';
-import { useAuth } from '@/app/context/AuthContext';
-import { toast } from '@/app/context/ToastContext';
-import { SmartCard } from '@/components/ui/SmartCard';
-import SettingsBilling from '@/components/settings/SettingsBilling';
-import SettingsStaff from '@/components/settings/SettingsStaff';
-import SettingsCompliance from '@/components/settings/SettingsCompliance';
-import WhatsAppIntegrationSettings from '@/components/settings/WhatsAppIntegrationSettings';
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useApp } from "@/app/context/AppContext";
+import SettingsNavigation, {
+type SettingsSection,
+} from "@/components/settings/SettingsNavigation";
+import SettingsBilling from "@/components/settings/SettingsBilling";
+import SettingsStaff from "@/components/settings/SettingsStaff";
+import SettingsCompliance from "@/components/settings/SettingsCompliance";
+import WhatsAppIntegrationSettings from "@/components/settings/WhatsAppIntegrationSettings";
+import { SmartCard } from "@/components/ui/SmartCard";
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  createdAt: Date;
+id: string;
+name: string;
+email: string;
+role: string;
+isActive: boolean;
+createdAt: Date;
 }
 
 interface SettingsViewProps {
-  tenant: {
-    companyName: string;
-    subdomain: string;
-    subscriptionPlan: string;
-    extraAgents: number;
-  };
-  users?: User[];
+tenant: {
+companyName: string;
+subdomain: string;
+subscriptionPlan: string;
+extraAgents: number;
+};
+users?: User[];
 }
 
-const TAB_TRANSLATIONS = {
-  AR: { title: "حوكمة النظام والإعدادات", desc: "إدارة الاشتراك والموظفين والامتثال", tabBilling: "💳 باقة الاشتراك", tabStaff: "👥 إدارة فريق العمل", tabCompliance: "🔒 الربط والامتثال" },
-  EN: { title: "System Settings & Governance", desc: "Manage subscription, staff and compliance", tabBilling: "💳 Subscription Plan", tabStaff: "👥 Staff Management", tabCompliance: "🔒 Compliance" },
+const VALID_SECTIONS: SettingsSection[] = [
+"organization",
+"staff",
+"billing",
+"agents",
+"integrations",
+"compliance",
+];
+
+function resolveSection(value: string | null): SettingsSection {
+return VALID_SECTIONS.includes(value as SettingsSection)
+? (value as SettingsSection)
+: "organization";
+}
+
+export default function SettingsView({
+tenant,
+users = [],
+}: SettingsViewProps) {
+const router = useRouter();
+const searchParams = useSearchParams();
+const { lang } = useApp();
+const isArabic = lang === "AR";
+
+const [activeSection, setActiveSection] = useState(() =>
+resolveSection(searchParams.get("tab")),
+);
+
+const changeSection = (section: SettingsSection) => {
+setActiveSection(section);
+router.replace(`/operations/settings?tab=${section}`, { scroll: false });
 };
 
-export default function SettingsView({ tenant, users = [] }: SettingsViewProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { theme, lang } = useApp();
-  const isArabic = lang === 'AR';
-  const t = TAB_TRANSLATIONS[lang] || TAB_TRANSLATIONS.AR;
+return (
+<main className="nc-page nc-stack" dir={isArabic ? "rtl" : "ltr"}>
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'staff' | 'compliance'>(
-    searchParams.get('tab') === 'compliance' ? 'compliance' : 'billing',
-  );
 
-  return (
-    <div className="nc-page nc-stack">
+{isArabic ? "الإعدادات" : "Settings"}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-semibold mb-3">
-            <i className="ph-bold ph-gear"></i> {isArabic ? "عمليات المنصة والتهيئة" : "System & Client Configurations"}
+
+{isArabic
+? "إدارة بيانات المؤسسة والفريق والاشتراك والتكاملات والامتثال."
+: "Manage organization data, staff, subscription, integrations, and compliance."}
+
+
+
+
+  <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+    <SettingsNavigation
+      activeSection={activeSection}
+      lang={lang}
+      onChange={changeSection}
+    />
+
+    <section className="min-w-0">
+      {activeSection === "organization" && (
+        <SmartCard className="p-6">
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
+              {isArabic ? "بيانات المؤسسة" : "Organization Details"}
+            </h2>
+            <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
+              {isArabic
+                ? "البيانات الأساسية المرتبطة بحساب الشركة."
+                : "Core information associated with the company account."}
+            </p>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-[var(--nc-foreground)] mb-2">
-            {t.title}
-          </h1>
-          <p className="text-xs md:text-sm text-[var(--nc-foreground-muted)] font-medium">
-            {t.desc}
-          </p>
-        </div>
 
-        {/* Tab selector */}
-        <div className="flex bg-[var(--nc-surface)] p-1 rounded-xl border border-[var(--nc-border)] shrink-0">
-          <button
-            onClick={() => setActiveTab('billing')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-              activeTab === 'billing'
-                ? 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)] shadow-sm'
-                : 'text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'
-            }`}
-          >
-            {t.tabBilling}
-          </button>
-          <button
-            onClick={() => setActiveTab('staff')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-              activeTab === 'staff'
-                ? 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)] shadow-sm'
-                : 'text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'
-            }`}
-          >
-            {t.tabStaff}
-          </button>
-          <button
-            onClick={() => setActiveTab('compliance')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-              activeTab === 'compliance'
-                ? 'bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)] shadow-sm'
-                : 'text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'
-            }`}
-          >
-            {t.tabCompliance}
-          </button>
-        </div>
-      </div>
+          <dl className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
+              <dt className="text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic ? "اسم المنشأة" : "Company Name"}
+              </dt>
+              <dd className="mt-2 text-sm font-bold text-[var(--nc-foreground)]">
+                {tenant.companyName}
+              </dd>
+            </div>
 
-      {/* Tab 1: Billing & Upgrades */}
-      {activeTab === 'billing' && (
-        <SettingsBilling tenant={tenant} lang={lang} isArabic={isArabic} />
+            <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
+              <dt className="text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic ? "النطاق الفرعي" : "Subdomain"}
+              </dt>
+              <dd className="mt-2 text-sm font-bold text-[var(--nc-foreground)] font-en">
+                {tenant.subdomain}
+              </dd>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
+              <dt className="text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic ? "الباقة الحالية" : "Current Plan"}
+              </dt>
+              <dd className="mt-2 text-sm font-bold uppercase text-[var(--nc-foreground)] font-en">
+                {tenant.subscriptionPlan}
+              </dd>
+            </div>
+          </dl>
+        </SmartCard>
       )}
 
-      {/* Tab 2: Staff Management */}
-      {activeTab === 'staff' && (
-        <section className="settings-staff-stretch min-h-[620px]">
-          <SettingsStaff tenant={tenant} users={users} lang={lang} isArabic={isArabic} />
-        </section>
+      {activeSection === "staff" && (
+        <SettingsStaff
+          tenant={tenant}
+          users={users}
+          lang={lang}
+          isArabic={isArabic}
+        />
       )}
 
-      {/* Tab 3: Compliance & Connection */}
-      {activeTab === 'compliance' && (
-        <div className="space-y-4">
-          <SettingsCompliance lang={lang} isArabic={isArabic} />
-          <WhatsAppIntegrationSettings lang={lang} />
-        </div>
+      {activeSection === "billing" && (
+        <SettingsBilling
+          tenant={tenant}
+          lang={lang}
+          isArabic={isArabic}
+        />
       )}
 
-      <style>{`
-        .settings-staff-stretch {
-          display: block;
-          min-height: 620px;
-        }
+      {activeSection === "agents" && (
+        <SmartCard className="p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
+                {isArabic ? "اشتراكات الوكلاء" : "Agent Subscriptions"}
+              </h2>
+              <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic
+                  ? "إدارة الاشتراكات والتفعيل والتشغيل تتم من مساحة الوكلاء."
+                  : "Subscriptions, activation, and runtime are managed from the Agents workspace."}
+              </p>
+            </div>
 
-        .settings-staff-stretch > * {
-          min-height: inherit;
-        }
+            <button
+              type="button"
+              onClick={() => router.push("/operations/agents")}
+              className="rounded-xl bg-[var(--nc-accent)] px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-[var(--nc-accent-hover)]"
+            >
+              {isArabic ? "فتح مساحة الوكلاء" : "Open Agents Workspace"}
+            </button>
+          </div>
+        </SmartCard>
+      )}
 
-        .settings-staff-stretch :is(.grid) {
-          align-items: stretch;
-        }
+      {activeSection === "integrations" && (
+        <WhatsAppIntegrationSettings lang={lang} />
+      )}
 
-        .settings-staff-stretch :is(.grid) > * {
-          height: 100%;
-          min-height: 220px;
-        }
+      {activeSection === "compliance" && (
+        <SettingsCompliance lang={lang} isArabic={isArabic} />
+      )}
+    </section>
+  </div>
+</main>
 
-        .settings-staff-stretch :is(.nc-card, .smart-card, [data-card], article) {
-          height: 100%;
-          min-height: 220px;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .settings-staff-stretch :is(.nc-card, .smart-card, [data-card], article) > * {
-          min-width: 0;
-        }
-      `}</style>
-
-    </div>
-  );
+);
 }
