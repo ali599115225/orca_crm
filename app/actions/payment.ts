@@ -2,6 +2,8 @@
 "use server";
 
 import { getActiveTenant } from "@/lib/tenant";
+import { getDeploymentLicenseMode } from "@/lib/deployment-license";
+import { canPurchaseAgentSubscriptions } from "@/lib/agents/entitlements";
 import { getEnabledProviderCodes, isProviderEnabled } from "@/lib/payments/registry";
 import { initiatePayment, getPlanPriceMinor } from "@/lib/payments/service";
 
