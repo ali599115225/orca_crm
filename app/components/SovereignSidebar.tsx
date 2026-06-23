@@ -79,9 +79,9 @@ const menuData: MenuSection[] = [
   {
     titleKey: "sidebar.preview",
     items: [
-      { labelKey: "nav.agents",     icon: Bot,             path: "/operations/agents",     tab: "agents",    badgeKey: "badge.preview", badgeVariant: "preview" },
+      { labelKey: "nav.agents",     icon: Bot,             path: "/operations/agents",     tab: "agents" },
       { labelKey: "nav.email",      icon: Mail,            path: "/operations/email",      tab: "email" },
-      { labelKey: "nav.whatsapp",   icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp",  badgeKey: "badge.paused", badgeVariant: "paused" },
+      { labelKey: "nav.whatsapp",   icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp" },
     ],
   },
   {

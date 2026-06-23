@@ -8,12 +8,7 @@ import {
   XCircle,
   Unlink,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 type Language = "AR" | "EN";
@@ -95,8 +90,7 @@ const TEXT = {
     unavailable: "غير متاح",
     security:
       "لا تظهر الرموز السرية في المتصفح، ويُحفظ الاعتماد مشفرًا لكل شركة.",
-    adminOnly:
-      "يتطلب الربط أو الفصل صلاحية مدير الشركة.",
+    adminOnly: "يتطلب الربط أو الفصل صلاحية مدير الشركة.",
   },
   EN: {
     title: "WhatsApp Integration",
@@ -112,16 +106,12 @@ const TEXT = {
     connecting: "Opening Meta…",
     completing: "Completing connection…",
     loading: "Checking connection…",
-    connectedSuccess:
-      "WhatsApp connected successfully",
-    disconnectedSuccess:
-      "WhatsApp disconnected",
-    failed:
-      "Could not complete WhatsApp connection",
+    connectedSuccess: "WhatsApp connected successfully",
+    disconnectedSuccess: "WhatsApp disconnected",
+    failed: "Could not complete WhatsApp connection",
     failedDescription:
       "The connection was not completed. Retry from a company administrator account after Meta approval.",
-    disconnectFailed:
-      "Could not disconnect WhatsApp",
+    disconnectFailed: "Could not disconnect WhatsApp",
     statusFailed: "Could not load WhatsApp status",
     retryStatus: "Check again",
     confirmDisconnect:
@@ -132,8 +122,7 @@ const TEXT = {
     unavailable: "Unavailable",
     security:
       "Sensitive credentials are never shown in the browser and remain encrypted per company.",
-    adminOnly:
-      "Connecting or disconnecting requires a company administrator.",
+    adminOnly: "Connecting or disconnecting requires a company administrator.",
   },
 };
 
@@ -146,21 +135,14 @@ function parseMessageData(value: unknown) {
     }
   }
 
-  return value &&
-    typeof value === "object"
-    ? value
-    : null;
+  return value && typeof value === "object" ? value : null;
 }
 
 async function readJson(response: Response) {
-  const payload = await response.json().catch(
-    () => ({}),
-  );
+  const payload = await response.json().catch(() => ({}));
 
   if (!response.ok || !payload?.success) {
-    const error = new Error(
-      String(payload?.code || "WHATSAPP_REQUEST_FAILED"),
-    );
+    const error = new Error(String(payload?.code || "WHATSAPP_REQUEST_FAILED"));
     (error as Error & { code?: string }).code = String(
       payload?.code || "WHATSAPP_REQUEST_FAILED",
     );
@@ -188,9 +170,7 @@ async function loadFacebookSdk(appId: string) {
 
     const initialize = () => {
       if (!window.FB) {
-        reject(
-          new Error("WHATSAPP_META_SDK_UNAVAILABLE"),
-        );
+        reject(new Error("WHATSAPP_META_SDK_UNAVAILABLE"));
         return;
       }
 
@@ -209,30 +189,20 @@ async function loadFacebookSdk(appId: string) {
       });
       existing.addEventListener(
         "error",
-        () =>
-          reject(
-            new Error(
-              "WHATSAPP_META_SDK_LOAD_FAILED",
-            ),
-          ),
+        () => reject(new Error("WHATSAPP_META_SDK_LOAD_FAILED")),
         { once: true },
       );
       return;
     }
 
-    const script =
-      document.createElement("script");
+    const script = document.createElement("script");
     script.id = "facebook-jssdk";
     script.async = true;
     script.defer = true;
     script.crossOrigin = "anonymous";
-    script.src =
-      "https://connect.facebook.net/en_US/sdk.js";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.onload = initialize;
-    script.onerror = () =>
-      reject(
-        new Error("WHATSAPP_META_SDK_LOAD_FAILED"),
-      );
+    script.onerror = () => reject(new Error("WHATSAPP_META_SDK_LOAD_FAILED"));
     document.body.appendChild(script);
   });
 }
@@ -244,17 +214,13 @@ export default function WhatsAppIntegrationSettings({
 }) {
   const t = TEXT[lang] || TEXT.AR;
   const isArabic = lang === "AR";
-  const [status, setStatus] =
-    useState<ConnectionStatus | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [statusError, setStatusError] =
-    useState(false);
+  const [statusError, setStatusError] = useState(false);
   const [busy, setBusy] = useState<
     "connect" | "complete" | "disconnect" | null
   >(null);
-  const pendingRef = useRef<PendingSignup | null>(
-    null,
-  );
+  const pendingRef = useRef<PendingSignup | null>(null);
   const completingRef = useRef(false);
 
   const refreshStatus = useCallback(async () => {
@@ -262,28 +228,19 @@ export default function WhatsAppIntegrationSettings({
     setStatusError(false);
 
     try {
-      const response = await fetch(
-        "/api/whatsapp/embedded-signup/status",
-        {
-          cache: "no-store",
-        },
-      );
+      const response = await fetch("/api/whatsapp/embedded-signup/status", {
+        cache: "no-store",
+      });
       const payload = await readJson(response);
 
       setStatus({
         connected: Boolean(payload.connected),
-        status: String(
-          payload.status || "DISCONNECTED",
-        ),
-        displayPhoneNumber:
-          payload.displayPhoneNumber || null,
-        verifiedName:
-          payload.verifiedName || null,
-        qualityRating:
-          payload.qualityRating || null,
+        status: String(payload.status || "DISCONNECTED"),
+        displayPhoneNumber: payload.displayPhoneNumber || null,
+        verifiedName: payload.verifiedName || null,
+        qualityRating: payload.qualityRating || null,
         activeSince: payload.activeSince || null,
-        lastHealthCheck:
-          payload.lastHealthCheck || null,
+        lastHealthCheck: payload.lastHealthCheck || null,
       });
     } catch {
       setStatusError(true);
@@ -319,24 +276,19 @@ export default function WhatsAppIntegrationSettings({
     setBusy("complete");
 
     try {
-      const response = await fetch(
-        "/api/whatsapp/embedded-signup/complete",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            state: pending.state,
-            code: pending.code,
-            wabaId: pending.wabaId,
-            phoneNumberId:
-              pending.phoneNumberId,
-            businessId:
-              pending.businessId || null,
-          }),
+      const response = await fetch("/api/whatsapp/embedded-signup/complete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          state: pending.state,
+          code: pending.code,
+          wabaId: pending.wabaId,
+          phoneNumberId: pending.phoneNumberId,
+          businessId: pending.businessId || null,
+        }),
+      });
 
       await readJson(response);
       toast.success(t.connectedSuccess);
@@ -344,7 +296,11 @@ export default function WhatsAppIntegrationSettings({
       await refreshStatus();
     } catch (error) {
       setStatusError(true);
-      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.failed);
+      toast.error(
+        (error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED"
+          ? t.adminOnly
+          : t.failed,
+      );
     } finally {
       completingRef.current = false;
       setBusy(null);
@@ -363,9 +319,7 @@ export default function WhatsAppIntegrationSettings({
         return;
       }
 
-      const data = parseMessageData(event.data) as
-        | Record<string, any>
-        | null;
+      const data = parseMessageData(event.data) as Record<string, any> | null;
 
       if (!data) {
         return;
@@ -373,13 +327,9 @@ export default function WhatsAppIntegrationSettings({
 
       if (
         event.origin === window.location.origin &&
-        data.type ===
-          "ORCA_WHATSAPP_OAUTH_CALLBACK"
+        data.type === "ORCA_WHATSAPP_OAUTH_CALLBACK"
       ) {
-        if (
-          data.state &&
-          data.state !== current.state
-        ) {
+        if (data.state && data.state !== current.state) {
           return;
         }
 
@@ -396,9 +346,7 @@ export default function WhatsAppIntegrationSettings({
         isMetaOrigin =
           origin.protocol === "https:" &&
           (origin.hostname === "facebook.com" ||
-            origin.hostname.endsWith(
-              ".facebook.com",
-            ));
+            origin.hostname.endsWith(".facebook.com"));
       } catch {
         isMetaOrigin = false;
       }
@@ -407,37 +355,25 @@ export default function WhatsAppIntegrationSettings({
         return;
       }
 
-      if (
-        data.type !== "WA_EMBEDDED_SIGNUP"
-      ) {
+      if (data.type !== "WA_EMBEDDED_SIGNUP") {
         return;
       }
 
-      const signupEvent = String(
-        data.event || "",
-      );
+      const signupEvent = String(data.event || "");
 
       if (
         signupEvent === "FINISH" ||
-        signupEvent ===
-          "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+        signupEvent === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
       ) {
-        current.wabaId = String(
-          data.data?.waba_id || "",
-        );
-        current.phoneNumberId = String(
-          data.data?.phone_number_id || "",
-        );
+        current.wabaId = String(data.data?.waba_id || "");
+        current.phoneNumberId = String(data.data?.phone_number_id || "");
         current.businessId = data.data?.business_id
           ? String(data.data.business_id)
           : null;
         void completeIfReady();
       }
 
-      if (
-        data.event === "CANCEL" ||
-        data.event === "ERROR"
-      ) {
+      if (data.event === "CANCEL" || data.event === "ERROR") {
         pendingRef.current = null;
         setStatusError(data.event === "ERROR");
         setBusy(null);
@@ -446,11 +382,7 @@ export default function WhatsAppIntegrationSettings({
 
     window.addEventListener("message", listener);
 
-    return () =>
-      window.removeEventListener(
-        "message",
-        listener,
-      );
+    return () => window.removeEventListener("message", listener);
   }, [completeIfReady]);
 
   const connect = async () => {
@@ -463,9 +395,7 @@ export default function WhatsAppIntegrationSettings({
           method: "POST",
         },
       );
-      const runtime = (await readJson(
-        sessionResponse,
-      )) as SignupRuntime;
+      const runtime = (await readJson(sessionResponse)) as SignupRuntime;
 
       pendingRef.current = {
         state: runtime.state,
@@ -474,16 +404,12 @@ export default function WhatsAppIntegrationSettings({
       await loadFacebookSdk(runtime.appId);
 
       if (!window.FB) {
-        throw new Error(
-          "WHATSAPP_META_SDK_UNAVAILABLE",
-        );
+        throw new Error("WHATSAPP_META_SDK_UNAVAILABLE");
       }
 
       window.FB.login(
         (response) => {
-          const code = String(
-            response?.authResponse?.code || "",
-          );
+          const code = String(response?.authResponse?.code || "");
 
           if (!code || !pendingRef.current) {
             pendingRef.current = null;
@@ -509,7 +435,11 @@ export default function WhatsAppIntegrationSettings({
       pendingRef.current = null;
       setStatusError(true);
       setBusy(null);
-      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.failed);
+      toast.error(
+        (error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED"
+          ? t.adminOnly
+          : t.failed,
+      );
     }
   };
 
@@ -521,27 +451,26 @@ export default function WhatsAppIntegrationSettings({
     setBusy("disconnect");
 
     try {
-      const response = await fetch(
-        "/api/whatsapp/embedded-signup/disconnect",
-        {
-          method: "POST",
-        },
-      );
+      const response = await fetch("/api/whatsapp/embedded-signup/disconnect", {
+        method: "POST",
+      });
       await readJson(response);
       toast.success(t.disconnectedSuccess);
       await refreshStatus();
     } catch (error) {
       setStatusError(true);
-      toast.error((error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED" ? t.adminOnly : t.disconnectFailed);
+      toast.error(
+        (error as Error & { code?: string }).code === "WHATSAPP_ADMIN_REQUIRED"
+          ? t.adminOnly
+          : t.disconnectFailed,
+      );
     } finally {
       setBusy(null);
     }
   };
 
-  const isPending =
-    busy === "connect" || busy === "complete";
-  const hasFailed =
-    statusError || status?.status === "FAILED";
+  const isPending = busy === "connect" || busy === "complete";
+  const hasFailed = statusError || status?.status === "FAILED";
   const statusText = isPending
     ? t.pending
     : hasFailed
@@ -621,9 +550,7 @@ export default function WhatsAppIntegrationSettings({
                 </dd>
               </div>
               <div className="rounded-xl border border-[var(--nc-border)] p-3">
-                <dt className="text-[var(--nc-foreground-muted)]">
-                  {t.phone}
-                </dt>
+                <dt className="text-[var(--nc-foreground-muted)]">{t.phone}</dt>
                 <dd
                   dir="ltr"
                   className="mt-1 font-semibold text-[var(--nc-foreground)]"

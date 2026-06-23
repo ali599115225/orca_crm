@@ -154,7 +154,7 @@ export default function AgentManagementView({
           ? "الباقة الأساسية"
           : "Basic Plan";
 
-  const [activeTab, setActiveTab] = useState<AgentTab>("catalog");
+  const [activeTab, setActiveTab] = useState<AgentTab>("my-agents");
   const [slots, setSlots] = useState<AgentSlot[]>([]);
   const [subscriptions, setSubscriptions] = useState<AgentSubscription[]>([]);
   const [logs, setLogs] = useState<AgentLog[]>([]);
@@ -249,6 +249,17 @@ export default function AgentManagementView({
   useEffect(() => {
     void Promise.all([loadSlots(), loadSubscriptions()]);
   }, [loadSlots, loadSubscriptions]);
+
+  useEffect(() => {
+    if (
+      notice?.type === "success" &&
+      (notice.text === "اكتمل تشغيل الوكيل." ||
+        notice.text === "Agent run completed.")
+    ) {
+      const timer = window.setTimeout(() => setNotice(null), 4000);
+      return () => window.clearTimeout(timer);
+    }
+  }, [notice]);
 
   const toggleAgent = async (slot: AgentSlot) => {
     setBusyKey(slot.id);
@@ -414,26 +425,33 @@ export default function AgentManagementView({
     }
   };
 
-  const visibleCodes =
-    activeTab === "my-agents"
-      ? AGENT_CODES.filter(
-          (code) =>
-            includedAgents.has(code) ||
-            activeSubscriptions.has(code) ||
-            slotByCode.has(code),
-        )
-      : AGENT_CODES;
+  const visibleCodes = useMemo(() => {
+    if (activeTab === "my-agents") {
+      return AGENT_CODES.filter((code) => {
+        if (isDedicatedCopy) return true;
+        return includedAgents.has(code) || activeSubscriptions.has(code);
+      });
+    }
+    if (activeTab === "catalog" && !isDedicatedCopy) {
+      return AGENT_CODES.filter((code) => {
+        return !includedAgents.has(code) && !activeSubscriptions.has(code);
+      });
+    }
+    return [];
+  }, [activeTab, includedAgents, activeSubscriptions, isDedicatedCopy]);
 
   const activeCount = slots.filter((slot) => slot.isActive).length;
-  const entitledCount = AGENT_CODES.filter(
-    (code) => includedAgents.has(code) || activeSubscriptions.has(code),
-  ).length;
+  const entitledCount = isDedicatedCopy
+    ? AGENT_CODES.length
+    : AGENT_CODES.filter(
+        (code) => includedAgents.has(code) || activeSubscriptions.has(code),
+      ).length;
 
   const tabs: Array<{ id: AgentTab; ar: string; en: string }> = [
-    { id: "catalog", ar: "المتجر", en: "Catalog" },
     { id: "my-agents", ar: "وكلائي", en: "My Agents" },
+    ...(!isDedicatedCopy ? [{ id: "catalog" as AgentTab, ar: "المتجر", en: "Store" }] : []),
     { id: "usage", ar: "الاستخدام", en: "Usage" },
-    { id: "activity", ar: "سجل النشاط", en: "Activity" },
+    { id: "activity", ar: "سجل النشاط", en: "Activity Log" },
   ];
 
   return (
@@ -672,7 +690,7 @@ export default function AgentManagementView({
                       onClick={() => setSelectedSubscription(code)}
                       className="flex-1 rounded-xl bg-[var(--nc-accent)] px-4 py-2.5 text-xs font-bold text-slate-950"
                     >
-                      {isArabic ? "الاشتراك في الوكيل" : "Subscribe"}
+                      {isArabic ? "اشترك الآن" : "Subscribe Now"}
                     </button>
                   )}
 
@@ -683,10 +701,27 @@ export default function AgentManagementView({
                         : "Included, but its runtime slot must be provisioned."}
                     </p>
                   )}
+                  {entitled && (
+                    <Link
+                      href="/operations/settings?tab=ai"
+                      className="w-full text-center mt-2 text-xs font-bold text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 underline"
+                    >
+                      {isArabic ? "إدارة إعدادات الذكاء الاصطناعي" : "Manage AI Settings"}
+                    </Link>
+                  )}
                 </div>
               </SmartCard>
             );
           })}
+          {visibleCodes.length === 0 && activeTab === "catalog" && (
+            <div className="col-span-full py-10 flex items-center justify-center border-2 border-dashed border-[var(--nc-border)] rounded-2xl">
+              <p className="text-center font-bold text-[var(--nc-foreground-muted)] text-sm max-w-sm">
+                {isArabic
+                  ? "جميع الوكلاء المتاحين مشمولون في باقتك أو لديك اشتراك نشط بهم"
+                  : "All available agents are included in your plan or already active through subscription"}
+              </p>
+            </div>
+          )}
         </section>
       )}
 
@@ -745,15 +780,11 @@ export default function AgentManagementView({
                             : "Disabled"}
                       </td>
                       <td className="px-5 py-4 font-bold text-[var(--nc-foreground)]">
-                        {new Intl.NumberFormat(locale).format(
-                          meter?.usageValue || 0,
-                        )}
-                        {meter && meter.limitValue > 0
-                          ? " / " +
-                            new Intl.NumberFormat(locale).format(
-                              meter.limitValue,
-                            )
-                          : ""}
+                        <span dir="ltr">
+                          {meter && meter.limitValue > 0
+                            ? `${meter.usageValue} ${isArabic ? "من" : "of"} ${meter.limitValue} — ${Math.round((meter.usageValue / meter.limitValue) * 100)}%`
+                            : meter?.usageValue || 0}
+                        </span>
                       </td>
                       <td className="px-5 py-4 text-[var(--nc-foreground-muted)]">
                         <span dir="ltr">

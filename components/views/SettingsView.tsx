@@ -11,6 +11,7 @@ import SettingsBilling from "@/components/settings/SettingsBilling";
 import SettingsStaff from "@/components/settings/SettingsStaff";
 import SettingsCompliance from "@/components/settings/SettingsCompliance";
 import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsHub";
+import SettingsAIProviders from "@/components/settings/SettingsAIProviders";
 import { SmartCard } from "@/components/ui/SmartCard";
 
 interface User {
@@ -37,12 +38,13 @@ const VALID_SECTIONS: SettingsSection[] = [
   "organization",
   "staff",
   "billing",
-  "agents",
+  "ai",
   "integrations",
   "compliance",
 ];
 
 function resolveSection(value: string | null): SettingsSection {
+  if (value === "agents") return "ai"; // Handle old redirect/alias
   return VALID_SECTIONS.includes(value as SettingsSection)
     ? (value as SettingsSection)
     : "organization";
@@ -207,31 +209,10 @@ export default function SettingsView({
               />
             ))}
 
-          {activeSection === "agents" && (
-            <SmartCard className="p-6">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
-                    {isArabic
-                      ? "اشتراكات الوكلاء"
-                      : "Agent Subscriptions"}
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm text-[var(--nc-foreground-muted)]">
-                    {isDedicatedCopy
-                      ? isArabic
-                        ? "جميع الوكلاء الخمسة مشمولون في الترخيص. تتم إدارة التفعيل والاستخدام والسجلات من مساحة الوكلاء."
-                        : "All five agents are included in the license. Activation, usage, and activity are managed in the Agents workspace."
-                      : isArabic
-                        ? "إدارة الوكلاء المشمولين والاشتراكات الإضافية والتفعيل والاستخدام تتم من مساحة الوكلاء."
-                        : "Included agents, additional subscriptions, activation, and usage are managed in the Agents workspace."}
-                  </p>
-                </div>
-
-                <Link href="/operations/agents" className="orca-primary-button">
-                  {isArabic ? "فتح مساحة الوكلاء" : "Open Agents Workspace"}
-                </Link>
-              </div>
-            </SmartCard>
+          {activeSection === "ai" && (
+            <div className="orca-settings-ai">
+              <SettingsAIProviders />
+            </div>
           )}
 
           {activeSection === "integrations" && (

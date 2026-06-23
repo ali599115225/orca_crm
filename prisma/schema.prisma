@@ -88,6 +88,11 @@ model User {
   passwordHash              String                     @map("password_hash")
   role                      Role
   isActive                  Boolean                    @default(true) @map("is_active")
+  jobTitle                  String?                    @map("job_title")
+  department                String?
+  phone                     String?
+  contractStartAt           DateTime?                  @map("contract_start_at") @db.Timestamptz
+  contractEndAt             DateTime?                  @map("contract_end_at") @db.Timestamptz
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   leads                     Lead[]                     @relation("AssignedLeads")
   leadActivities            LeadActivity[]

@@ -141,9 +141,7 @@ export default function SettingsBilling({
 
     setError(
       result.error ||
-        (isArabic
-          ? "تعذر بدء عملية الدفع."
-          : "Unable to initialize payment."),
+        (isArabic ? "تعذر بدء عملية الدفع." : "Unable to initialize payment."),
     );
   };
 
@@ -193,8 +191,7 @@ export default function SettingsBilling({
         <div className="grid items-stretch gap-4 lg:grid-cols-3">
           {PLANS.map((plan) => {
             const isCurrent = plan.id === currentPlan;
-            const isUpgrade =
-              PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
+            const isUpgrade = PLAN_ORDER[plan.id] > PLAN_ORDER[currentPlan];
             const disabled = isCurrent || !isUpgrade || loadingPlan !== null;
 
             return (
