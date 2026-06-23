@@ -70,15 +70,21 @@ describe("WhatsApp Embedded Signup architecture", () => {
   });
 
   it("renders Embedded Signup inside the settings integration tab", () => {
-    const settings = read(
+    const settingsView = read(
       "components/views/SettingsView.tsx",
     );
+    const integrationsHub = read(
+      "components/settings/SettingsIntegrationsHub.tsx",
+    );
 
-    expect(settings).toContain(
+    expect(settingsView).toContain(
+      "SettingsIntegrationsHub",
+    );
+    expect(integrationsHub).toContain(
       "WhatsAppIntegrationSettings",
     );
-    expect(settings).toContain(
-      "searchParams.get('tab') === 'compliance'",
+    expect(integrationsHub).toContain(
+      'activeProvider === "WHATSAPP"',
     );
   });
 

@@ -11,5 +11,11 @@ export const PERSON_ALIASES: Record<string, string> = {
   'محمد الغامدي': 'Mohammed Al-Ghamdi',
   'فهد الشهري': 'Fahad Al-Shehri',
   'سارة المبيعات': 'Sarah Al-Mabi\'at',
+  'سارة المطيري': 'Sarah Al-Mutairi',
+  'بدر الدوسري': 'Badr Al-Dossari',
   'خالد مندوب': 'Khalid Mandoub',
+  'مدير النظام': 'System Admin',
+  'مدير العمليات': 'Operations Manager',
+  'بائع 1': 'Sales 1',
+  'بائع 2': 'Sales 2',
 };

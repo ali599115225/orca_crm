@@ -1,0 +1,95 @@
+{
+  "startedAt": "2026-06-23T19:37:46.447Z",
+  "status": "PASS",
+  "checks": {
+    "tables": {
+      "required": 13,
+      "found": 13,
+      "missing": []
+    },
+    "tenant": {
+      "tenantId": "54231841-21e9-4d9d-9851-f3718e309670"
+    },
+    "eventAuditOutbox": {
+      "eventId": "30e0fa00-5155-4e49-bdd3-6d5e0d32012b",
+      "auditId": "b17df691-bd6f-4d16-8e6c-5d2f0d87fcb2",
+      "outboxId": "fa12e7fd-caec-41bd-b6e5-5eafca6bb1e2",
+      "correlationId": "fec7c28f-4c77-41c8-93ac-6b90e8494a4f",
+      "passed": true
+    },
+    "idempotency": {
+      "passed": true,
+      "eventId": "30e0fa00-5155-4e49-bdd3-6d5e0d32012b"
+    },
+    "radar": {
+      "runId": "c951a6a3-ca41-44c9-8a72-8df4e7629537",
+      "detected": 54,
+      "resolved": 0,
+      "evaluatedRules": [
+        "LEAD_UNASSIGNED",
+        "FIRST_RESPONSE_BREACH",
+        "NO_NEXT_ACTION",
+        "TOUR_WITHOUT_OUTCOME",
+        "POSITIVE_TOUR_NO_OFFER",
+        "ACCEPTED_OFFER_NO_CONTRACT",
+        "SIGNED_CONTRACT_NO_INVOICE",
+        "OVERDUE_INVOICE",
+        "INVENTORY_CONFLICT",
+        "COMPLIANCE_BLOCK"
+      ],
+      "skippedRules": []
+    },
+    "trustGates": {
+      "providers": [
+        {
+          "provider": "ZATCA",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        },
+        {
+          "provider": "EJAR",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        },
+        {
+          "provider": "PAYLINK",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        },
+        {
+          "provider": "NGENIUS",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        },
+        {
+          "provider": "RESEND",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        },
+        {
+          "provider": "SIGNATURE",
+          "status": "NOT_CONFIGURED",
+          "configured": false
+        }
+      ],
+      "fakeConnectedCount": 0
+    },
+    "predictive": {
+      "version": 1,
+      "status": "NOT_READY",
+      "failureReason": "INSUFFICIENT_LABELED_ROWS",
+      "scoring": {
+        "status": "NOT_READY",
+        "scored": 0,
+        "reason": "INSUFFICIENT_LABELED_ROWS"
+      }
+    },
+    "tenantIsolation": {
+      "passed": true,
+      "primaryTenantId": "54231841-21e9-4d9d-9851-f3718e309670",
+      "comparisonTenantId": "7f6ce51d-71ec-4751-bde7-143169a8ad61",
+      "crossTenantLeak": 0
+    }
+  },
+  "completedAt": "2026-06-23T19:39:48.037Z"
+}

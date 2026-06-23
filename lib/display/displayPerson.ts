@@ -33,6 +33,10 @@ export function displayPerson(
   if (locale === 'en') {
     const alias = PERSON_ALIASES[raw];
     if (alias) return alias;
+    // Check if it's already an English name from our dictionary
+    const isAlreadyEnglish = Object.values(PERSON_ALIASES).includes(raw);
+    if (isAlreadyEnglish) return raw;
+
     reportMissingAlias({
       route: options?.route || '',
       locale: 'en',
@@ -43,7 +47,7 @@ export function displayPerson(
       fallbackUsed: FALLBACKS.en.person,
       severity: 'P0',
     });
-    return FALLBACKS.en.person;
+    return raw;
   }
 
   const enToAr = Object.entries(PERSON_ALIASES).find(([, en]) => en === raw);

@@ -245,8 +245,9 @@ export default function SettingsCompliance({
                   <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                     {isArabic ? "صالحة" : "Valid"}
                   </span>
-                  <span className="text-[10px] text-[var(--nc-foreground-muted)] font-mono" dir="ltr">
-                    Exp: 2027-12-31
+                  <span className="text-[10px] text-[var(--nc-foreground-muted)] flex items-center gap-1 font-mono">
+                    {isArabic ? "تاريخ الانتهاء:" : "Exp:"}
+                    <span dir="ltr">2027-12-31</span>
                   </span>
                 </div>
               </div>

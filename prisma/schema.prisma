@@ -868,6 +868,7 @@ model PaymentTransaction {
   receipt   Receipt?
 
   @@unique([provider, providerReference], map: "payment_transaction_provider_reference_uq")
+  @@unique([tenantId, idempotencyKey], map: "payment_transactions_tenant_idempotency_uq")
   @@index([tenantId])
   @@index([invoiceId])
   @@index([installmentId])
@@ -875,7 +876,6 @@ model PaymentTransaction {
   @@index([provider])
   @@index([providerTransactionId])
   @@index([providerInvoiceId])
-  @@unique([tenantId, idempotencyKey], map: "payment_transactions_tenant_idempotency_uq")
   @@map("payment_transactions")
 }
 
@@ -904,26 +904,26 @@ model Contact {
 }
 
 model Opportunity {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  leadId        String   @map("lead_id") @db.Uuid
-  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Restrict)
-  value         Decimal  @db.Decimal(12, 2)
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadId        String        @map("lead_id") @db.Uuid
+  lead          Lead          @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  value         Decimal       @db.Decimal(12, 2)
   probability   Int
-  closeDate     DateTime @map("close_date") @db.Timestamptz
-  status        String   @default("OPEN")
-  unitId        String?  @map("unit_id") @db.Uuid
-  unit          Unit?    @relation("OpportunityUnit", fields: [unitId], references: [id], onDelete: SetNull)
-  linkedUnitIds String?  @map("linked_unit_ids") @db.Text
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  createdBy     String?  @map("created_by") @db.Uuid
-  updatedBy     String?  @map("updated_by") @db.Uuid
-  auditLog      String?  @map("audit_log") @db.Text
+  closeDate     DateTime      @map("close_date") @db.Timestamptz
+  status        String        @default("OPEN")
+  unitId        String?       @map("unit_id") @db.Uuid
+  unit          Unit?         @relation("OpportunityUnit", fields: [unitId], references: [id], onDelete: SetNull)
+  linkedUnitIds String?       @map("linked_unit_ids") @db.Text
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy     String?       @map("created_by") @db.Uuid
+  updatedBy     String?       @map("updated_by") @db.Uuid
+  auditLog      String?       @map("audit_log") @db.Text
   offers        Offer[]
   tours         Tour[]
-  dealPassport DealPassport?
+  dealPassport  DealPassport?
 
   @@map("opportunities")
 }
@@ -1581,6 +1581,7 @@ model WhatsAppPlatformSettings {
 
   @@map("whatsapp_platform_settings")
 }
+
 model SyncEvent {
   id               String   @id
   cursor           BigInt   @unique @default(autoincrement())
@@ -1601,3 +1602,349 @@ model SyncEvent {
   @@index([expiresAt])
   @@map("sync_events")
 }
+
+// ORCA_REVENUE_INTEGRITY_SCHEMA_START
+
+enum RevenueRiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RevenueRiskStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum RevenueSuggestionStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  EXECUTED
+  FAILED
+}
+
+enum RevenueProviderStatus {
+  NOT_CONFIGURED
+  PENDING
+  CONNECTED
+  ERROR
+  DISCONNECTED
+}
+
+enum RevenueOutboxStatus {
+  PENDING
+  RETRY
+  DELIVERED
+  DEAD_LETTER
+}
+
+enum RevenueProviderApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum RevenueModelStatus {
+  NOT_READY
+  TRAINING
+  ACTIVE
+  ARCHIVED
+  FAILED
+}
+
+model RevenueRiskSignal {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  ruleCode         String              @map("rule_code") @db.VarChar(80)
+  fingerprint      String              @db.VarChar(255)
+  subjectType      String              @map("subject_type") @db.VarChar(80)
+  subjectId        String              @map("subject_id") @db.VarChar(120)
+  opportunityId    String?             @map("opportunity_id") @db.Uuid
+  invoiceId        String?             @map("invoice_id") @db.Uuid
+  severity         RevenueRiskSeverity
+  status           RevenueRiskStatus   @default(OPEN)
+  reasonAr         String              @map("reason_ar") @db.Text
+  reasonEn         String              @map("reason_en") @db.Text
+  revenueAtRisk    Decimal             @default(0) @map("revenue_at_risk") @db.Decimal(18, 2)
+  assigneeId       String?             @map("assignee_id") @db.Uuid
+  dueAt            DateTime?           @map("due_at") @db.Timestamptz(6)
+  detectedAt       DateTime            @default(now()) @map("detected_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime            @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  acknowledgedAt   DateTime?           @map("acknowledged_at") @db.Timestamptz(6)
+  acknowledgedBy   String?             @map("acknowledged_by") @db.Uuid
+  resolvedAt       DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy       String?             @map("resolved_by") @db.Uuid
+  resolutionReason String?             @map("resolution_reason") @db.Text
+  metadata         Json
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, fingerprint], map: "revenue_risk_tenant_fingerprint_uq")
+  @@index([tenantId, status, severity], map: "revenue_risk_tenant_status_severity_idx")
+  @@index([tenantId, opportunityId], map: "revenue_risk_tenant_opportunity_idx")
+  @@index([tenantId, invoiceId], map: "revenue_risk_tenant_invoice_idx")
+  @@map("revenue_risk_signals")
+}
+
+model RevenueRuleRun {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  idempotencyKey String    @map("idempotency_key") @db.VarChar(160)
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  detectedCount  Int       @default(0) @map("detected_count")
+  resolvedCount  Int       @default(0) @map("resolved_count")
+  skippedRules   Json      @map("skipped_rules")
+  result         Json
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, idempotencyKey], map: "revenue_rule_run_tenant_idempotency_uq")
+  @@index([tenantId, startedAt], map: "revenue_rule_run_tenant_started_idx")
+  @@map("revenue_rule_runs")
+}
+
+model RevenueNextAction {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  targetType         String    @map("target_type") @db.VarChar(80)
+  targetId           String    @map("target_id") @db.VarChar(120)
+  opportunityId      String?   @map("opportunity_id") @db.Uuid
+  actionType         String    @map("action_type") @db.VarChar(80)
+  title              String    @db.VarChar(255)
+  description        String?   @db.Text
+  assignedTo         String?   @map("assigned_to") @db.Uuid
+  dueAt              DateTime  @map("due_at") @db.Timestamptz(6)
+  status             String    @default("OPEN") @db.VarChar(40)
+  sourceSuggestionId String?   @map("source_suggestion_id") @db.Uuid
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, status, dueAt], map: "revenue_next_action_tenant_status_due_idx")
+  @@index([tenantId, opportunityId], map: "revenue_next_action_tenant_opportunity_idx")
+  @@map("revenue_next_actions")
+}
+
+model RevenueActionSuggestion {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                  @map("tenant_id") @db.Uuid
+  sourceType        String                  @map("source_type") @db.VarChar(80)
+  sourceId          String                  @map("source_id") @db.VarChar(120)
+  sourceTextHash    String                  @map("source_text_hash") @db.VarChar(64)
+  opportunityId     String?                 @map("opportunity_id") @db.Uuid
+  contactId         String?                 @map("contact_id") @db.Uuid
+  leadId            String?                 @map("lead_id") @db.Uuid
+  unitId            String?                 @map("unit_id") @db.Uuid
+  intent            String                  @db.VarChar(80)
+  extractedEntities Json                    @map("extracted_entities")
+  actionType        String                  @map("action_type") @db.VarChar(80)
+  actionPayload     Json                    @map("action_payload")
+  confidence        Decimal                 @db.Decimal(5, 4)
+  rationaleAr       String                  @map("rationale_ar") @db.Text
+  rationaleEn       String                  @map("rationale_en") @db.Text
+  status            RevenueSuggestionStatus @default(PENDING_APPROVAL)
+  createdBy         String?                 @map("created_by") @db.Uuid
+  decidedBy         String?                 @map("decided_by") @db.Uuid
+  decidedAt         DateTime?               @map("decided_at") @db.Timestamptz(6)
+  decisionReason    String?                 @map("decision_reason") @db.Text
+  executionResult   Json?                   @map("execution_result")
+  executedAt        DateTime?               @map("executed_at") @db.Timestamptz(6)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, status, createdAt], map: "revenue_suggestion_tenant_status_created_idx")
+  @@index([tenantId, opportunityId], map: "revenue_suggestion_tenant_opportunity_idx")
+  @@map("revenue_action_suggestions")
+}
+
+model RevenueDomainEvent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  actorId        String?  @map("actor_id") @db.Uuid
+  aggregateType  String   @map("aggregate_type") @db.VarChar(80)
+  aggregateId    String   @map("aggregate_id") @db.VarChar(120)
+  eventType      String   @map("event_type") @db.VarChar(120)
+  correlationId  String   @map("correlation_id") @db.VarChar(120)
+  causationId    String?  @map("causation_id") @db.VarChar(120)
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(180)
+  beforeData     Json?    @map("before_data")
+  afterData      Json?    @map("after_data")
+  metadata       Json
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, idempotencyKey], map: "revenue_event_tenant_idempotency_uq")
+  @@index([tenantId, aggregateType, aggregateId, occurredAt], map: "revenue_event_aggregate_idx")
+  @@index([tenantId, correlationId], map: "revenue_event_correlation_idx")
+  @@map("revenue_domain_events")
+}
+
+model RevenueAuditEntry {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  actorId       String?  @map("actor_id") @db.Uuid
+  action        String   @db.VarChar(120)
+  resourceType  String   @map("resource_type") @db.VarChar(80)
+  resourceId    String   @map("resource_id") @db.VarChar(120)
+  correlationId String   @map("correlation_id") @db.VarChar(120)
+  beforeData    Json?    @map("before_data")
+  afterData     Json?    @map("after_data")
+  ipHash        String?  @map("ip_hash") @db.VarChar(64)
+  userAgentHash String?  @map("user_agent_hash") @db.VarChar(64)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, resourceType, resourceId, createdAt], map: "revenue_audit_resource_idx")
+  @@index([tenantId, correlationId], map: "revenue_audit_correlation_idx")
+  @@map("revenue_audit_entries")
+}
+
+model RevenueOutboxMessage {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  eventId       String              @map("event_id") @db.Uuid
+  topic         String              @db.VarChar(120)
+  payload       Json
+  status        RevenueOutboxStatus @default(PENDING)
+  attempts      Int                 @default(0)
+  nextAttemptAt DateTime            @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError     String?             @map("last_error") @db.Text
+  deliveredAt   DateTime?           @map("delivered_at") @db.Timestamptz(6)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, nextAttemptAt], map: "revenue_outbox_status_next_idx")
+  @@index([tenantId, createdAt], map: "revenue_outbox_tenant_created_idx")
+  @@map("revenue_outbox_messages")
+}
+
+model RevenueProviderConnection {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String                @map("tenant_id") @db.Uuid
+  provider             String                @db.VarChar(40)
+  status               RevenueProviderStatus @default(PENDING)
+  baseUrl              String?               @map("base_url") @db.Text
+  encryptedCredentials String                @map("encrypted_credentials") @db.Text
+  credentialsVersion   Int                   @default(1) @map("credentials_version")
+  isDefault            Boolean               @default(false) @map("is_default")
+  lastTestedAt         DateTime?             @map("last_tested_at") @db.Timestamptz(6)
+  lastSuccessAt        DateTime?             @map("last_success_at") @db.Timestamptz(6)
+  lastError            String?               @map("last_error") @db.Text
+  webhookSecretHash    String?               @map("webhook_secret_hash") @db.VarChar(64)
+  metadata             Json
+  createdBy            String?               @map("created_by") @db.Uuid
+  updatedBy            String?               @map("updated_by") @db.Uuid
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, provider], map: "revenue_provider_tenant_provider_uq")
+  @@index([tenantId, status], map: "revenue_provider_tenant_status_idx")
+  @@map("revenue_provider_connections")
+}
+
+model RevenueProviderWebhook {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  provider        String    @db.VarChar(40)
+  connectionId    String    @map("connection_id") @db.Uuid
+  externalEventId String    @map("external_event_id") @db.VarChar(180)
+  payloadHash     String    @map("payload_hash") @db.VarChar(64)
+  verified        Boolean
+  status          String    @default("RECEIVED") @db.VarChar(40)
+  payload         Json
+  error           String?   @db.Text
+  receivedAt      DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, provider, externalEventId], map: "revenue_webhook_tenant_provider_external_uq")
+  @@index([tenantId, provider, receivedAt], map: "revenue_webhook_tenant_provider_idx")
+  @@map("revenue_provider_webhooks")
+}
+
+model RevenueProviderApplication {
+  id                String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                           @map("tenant_id") @db.Uuid
+  provider          String                           @db.VarChar(40)
+  status            RevenueProviderApplicationStatus @default(DRAFT)
+  companyData       Json                             @map("company_data")
+  documents         Json
+  notes             String?                          @db.Text
+  externalReference String?                          @map("external_reference") @db.VarChar(180)
+  submittedBy       String?                          @map("submitted_by") @db.Uuid
+  submittedAt       DateTime?                        @map("submitted_at") @db.Timestamptz(6)
+  reviewedAt        DateTime?                        @map("reviewed_at") @db.Timestamptz(6)
+  decisionReason    String?                          @map("decision_reason") @db.Text
+  createdAt         DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, provider, status], map: "revenue_provider_application_tenant_idx")
+  @@map("revenue_provider_applications")
+}
+
+model RevenueDatasetSnapshot {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  version           Int
+  rowCount          Int       @map("row_count")
+  featureSchema     Json      @map("feature_schema")
+  labelDistribution Json      @map("label_distribution")
+  dataHash          String    @map("data_hash") @db.VarChar(64)
+  periodStart       DateTime? @map("period_start") @db.Timestamptz(6)
+  periodEnd         DateTime? @map("period_end") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, version], map: "revenue_dataset_tenant_version_uq")
+  @@index([tenantId, createdAt], map: "revenue_dataset_tenant_created_idx")
+  @@map("revenue_dataset_snapshots")
+}
+
+model RevenueModelVersion {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String             @map("tenant_id") @db.Uuid
+  version           Int
+  status            RevenueModelStatus @default(TRAINING)
+  algorithm         String             @db.VarChar(80)
+  datasetSnapshotId String?            @map("dataset_snapshot_id") @db.Uuid
+  featureSchema     Json               @map("feature_schema")
+  artifact          Json
+  metrics           Json
+  minimumRows       Int                @default(30) @map("minimum_rows")
+  driftScore        Decimal?           @map("drift_score") @db.Decimal(8, 4)
+  driftStatus       String?            @map("drift_status") @db.VarChar(40)
+  activatedAt       DateTime?          @map("activated_at") @db.Timestamptz(6)
+  archivedAt        DateTime?          @map("archived_at") @db.Timestamptz(6)
+  failureReason     String?            @map("failure_reason") @db.Text
+  createdBy         String?            @map("created_by") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, version], map: "revenue_model_tenant_version_uq")
+  @@index([tenantId, status, createdAt], map: "revenue_model_tenant_status_idx")
+  @@map("revenue_model_versions")
+}
+
+model RevenuePrediction {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  modelVersionId  String    @map("model_version_id") @db.Uuid
+  opportunityId   String    @map("opportunity_id") @db.Uuid
+  probability     Decimal   @db.Decimal(8, 6)
+  confidence      Decimal   @db.Decimal(8, 6)
+  explanation     Json
+  featureSnapshot Json      @map("feature_snapshot")
+  outcome         String?   @db.VarChar(40)
+  scoredAt        DateTime  @default(now()) @map("scored_at") @db.Timestamptz(6)
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, modelVersionId, opportunityId], map: "revenue_prediction_model_opportunity_uq")
+  @@index([tenantId, opportunityId, scoredAt], map: "revenue_prediction_opportunity_idx")
+  @@map("revenue_predictions")
+}
+
+// ORCA_REVENUE_INTEGRITY_SCHEMA_END

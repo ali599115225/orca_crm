@@ -1,550 +1,574 @@
 "use client";
 
-import { useState } from "react";
-import { useApp } from "@/app/context/AppContext";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import {
+  disconnectRevenueProviderAction,
+  getRevenueTrustStateAction,
+  saveRevenueProviderAction,
+  submitRevenueProviderApplicationAction,
+  testRevenueProviderAction,
+} from "@/app/actions/revenue-integrity";
 import { SmartCard } from "@/components/ui/SmartCard";
+import WhatsAppIntegrationSettings from "@/components/settings/WhatsAppIntegrationSettings";
 
-type IntegrationCategory = "payments" | "email" | "communications";
-type IntegrationProvider =
-  | "moyasar"
-  | "hyperpay"
-  | "paytabs"
-  | "tap"
-  | "ngenius"
-  | "resend"
-  | "ses"
-  | "sendgrid"
-  | "mailgun"
-  | "postmark"
-  | "whatsapp";
+type ProviderId =
+  | "ZATCA"
+  | "EJAR"
+  | "PAYLINK"
+  | "MOYASAR"
+  | "HYPERPAY"
+  | "PAYTABS"
+  | "NGENIUS"
+  | "RESEND"
+  | "SIGNATURE"
+  | "WHATSAPP";
 
-interface CategoryDef {
-  id: IntegrationCategory;
+type ProviderState = {
+  id: string | null;
+  provider: ProviderId;
+  status: string;
+  baseUrl: string | null;
+  credentialsVersion: number;
+  isDefault: boolean;
+  lastTestedAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  hasWebhookSecret: boolean;
+};
+
+type ApplicationState = {
+  id: string;
+  provider: ProviderId;
+  status: string;
+  companyData: Record<string, unknown>;
+  notes: string | null;
+  submittedAt: string | null;
+  decisionReason: string | null;
+};
+
+type FieldDefinition = {
+  key: string;
   ar: string;
   en: string;
-  icon: string;
-}
+  secret?: boolean;
+  required?: boolean;
+};
 
-interface ProviderDef {
-  id: IntegrationProvider;
-  categoryId: IntegrationCategory;
+type ProviderDefinition = {
+  id: ProviderId;
   name: string;
-  icon: string;
-  fields: {
-    key: string;
-    labelAr: string;
-    labelEn: string;
-    type: "text" | "password" | "checkbox";
-  }[];
-  descriptionAr: string;
-  descriptionEn: string;
-  isActive?: boolean;
+  ar: string;
+  en: string;
+  defaultBaseUrl?: string;
+  fields: FieldDefinition[];
+};
+
+const PROVIDERS: ProviderDefinition[] = [
+  {
+    id: "WHATSAPP",
+    name: "WhatsApp Business API",
+    ar: "واتساب للأعمال",
+    en: "WhatsApp Business API",
+    fields: [],
+  },
+  {
+    id: "PAYLINK",
+    name: "Paylink",
+    ar: "روابط الدفع والتحصيل",
+    en: "Payment links and collection",
+    defaultBaseUrl: "https://restpilot.paylink.sa",
+    fields: [
+      { key: "apiId", ar: "معرف API", en: "API ID", required: true },
+      { key: "secretKey", ar: "المفتاح السري", en: "Secret key", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "MOYASAR",
+    name: "Moyasar",
+    ar: "ميسر للدفع الإلكتروني",
+    en: "Moyasar payment gateway",
+    defaultBaseUrl: "https://api.moyasar.com",
+    fields: [
+      { key: "publishableKey", ar: "المفتاح العام", en: "Publishable key", required: true },
+      { key: "secretKey", ar: "المفتاح السري", en: "Secret key", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "HYPERPAY",
+    name: "HyperPay",
+    ar: "هايبر باي للدفع الإلكتروني",
+    en: "HyperPay payment gateway",
+    defaultBaseUrl: "https://eu-test.oppwa.com",
+    fields: [
+      { key: "entityId", ar: "معرف المنشأة", en: "Entity ID", required: true },
+      { key: "bearerToken", ar: "رمز الوصول", en: "Bearer Token", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "PAYTABS",
+    name: "PayTabs",
+    ar: "بيتابس للدفع الإلكتروني",
+    en: "PayTabs payment gateway",
+    defaultBaseUrl: "https://secure.paytabs.sa",
+    fields: [
+      { key: "profileId", ar: "معرف الملف", en: "Profile ID", required: true },
+      { key: "serverKey", ar: "مفتاح الخادم", en: "Server Key", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "NGENIUS",
+    name: "N-Genius",
+    ar: "بوابة الدفع من Network International",
+    en: "Network International payment gateway",
+    defaultBaseUrl: "https://api-gateway.ngenius-payments.com",
+    fields: [
+      { key: "outletId", ar: "معرف المنفذ", en: "Outlet ID", required: true },
+      { key: "apiKey", ar: "مفتاح الخدمة", en: "Service API key", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "RESEND",
+    name: "Resend",
+    ar: "الإرسال البريدي الخارجي",
+    en: "External email delivery",
+    defaultBaseUrl: "https://api.resend.com",
+    fields: [
+      { key: "apiKey", ar: "مفتاح API", en: "API key", secret: true, required: true },
+      { key: "fromEmail", ar: "عنوان المرسل", en: "From address", required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "ZATCA",
+    name: "ZATCA",
+    ar: "الفوترة الإلكترونية السعودية",
+    en: "Saudi e-invoicing",
+    fields: [
+      { key: "binarySecurityToken", ar: "رمز الأمان", en: "Binary security token", secret: true, required: true },
+      { key: "secret", ar: "السر", en: "Secret", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "EJAR",
+    name: "Ejar",
+    ar: "توثيق عقود الإيجار",
+    en: "Rental contract documentation",
+    fields: [
+      { key: "accessToken", ar: "رمز الوصول", en: "Access token", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "SIGNATURE",
+    name: "Digital Signature",
+    ar: "التوقيع الإلكتروني الخارجي",
+    en: "External digital signature",
+    fields: [
+      { key: "apiKey", ar: "مفتاح API", en: "API key", secret: true, required: true },
+      { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+];
+
+function badgeClass(status: string) {
+  if (status === "CONNECTED" || status === "APPROVED") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "ERROR" || status === "REJECTED") {
+    return "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+  }
+  if (["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(status)) {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
+  return "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)]";
 }
 
-const CATEGORIES: CategoryDef[] = [
-  {
-    id: "payments",
-    ar: "الدفع والتحصيل",
-    en: "Payments & Collections",
-    icon: "ph-credit-card",
-  },
-  {
-    id: "email",
-    ar: "البريد الإلكتروني",
-    en: "Email Services",
-    icon: "ph-envelope-simple",
-  },
-  {
-    id: "communications",
-    ar: "الاتصالات والمراسلة",
-    en: "Communications & Messaging",
-    icon: "ph-chat-circle-text",
-  },
-];
-
-const PROVIDERS: ProviderDef[] = [
-  {
-    id: "moyasar",
-    categoryId: "payments",
-    name: "Moyasar",
-    icon: "ph-currency-circle-dollar",
-    descriptionAr:
-      "بوابة ميسر للدفع الإلكتروني مع دعم روابط الدفع (Payment Links).",
-    descriptionEn: "Moyasar payment gateway with Payment Links support.",
-    fields: [
-      {
-        key: "secretKey",
-        labelAr: "المفتاح السري (Secret Key)",
-        labelEn: "Secret Key",
-        type: "password",
-      },
-      {
-        key: "publishableKey",
-        labelAr: "المفتاح العام (Publishable Key)",
-        labelEn: "Publishable Key",
-        type: "text",
-      },
-      {
-        key: "enablePaylink",
-        labelAr: "تفعيل روابط الدفع (Payment Links Capability)",
-        labelEn: "Enable Payment Links Capability",
-        type: "checkbox",
-      },
-    ],
-  },
-  {
-    id: "hyperpay",
-    categoryId: "payments",
-    name: "HyperPay",
-    icon: "ph-currency-circle-dollar",
-    descriptionAr: "بوابة هايبر باي للدفع الإلكتروني المتكامل.",
-    descriptionEn: "HyperPay integrated payment gateway.",
-    fields: [
-      {
-        key: "entityId",
-        labelAr: "معرف المنشأة (Entity ID)",
-        labelEn: "Entity ID",
-        type: "text",
-      },
-      {
-        key: "bearerToken",
-        labelAr: "رمز الوصول (Bearer Token)",
-        labelEn: "Bearer Token",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "paytabs",
-    categoryId: "payments",
-    name: "PayTabs",
-    icon: "ph-currency-circle-dollar",
-    descriptionAr: "بوابة بيتابس للدفع الإلكتروني الموثوق.",
-    descriptionEn: "PayTabs secure payment gateway.",
-    fields: [
-      {
-        key: "profileId",
-        labelAr: "معرف الملف (Profile ID)",
-        labelEn: "Profile ID",
-        type: "text",
-      },
-      {
-        key: "serverKey",
-        labelAr: "مفتاح الخادم (Server Key)",
-        labelEn: "Server Key",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "tap",
-    categoryId: "payments",
-    name: "Tap Payments",
-    icon: "ph-currency-circle-dollar",
-    descriptionAr: "بوابة تاب بايمنتس للدفع الإلكتروني.",
-    descriptionEn: "Tap Payments gateway.",
-    fields: [
-      {
-        key: "secretApiKey",
-        labelAr: "المفتاح السري (Secret API Key)",
-        labelEn: "Secret API Key",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "ngenius",
-    categoryId: "payments",
-    name: "N-Genius",
-    icon: "ph-currency-circle-dollar",
-    descriptionAr: "بوابة الدفع N-Genius من Network International.",
-    descriptionEn: "N-Genius payment gateway by Network International.",
-    fields: [
-      {
-        key: "outletId",
-        labelAr: "معرف المنفذ (Outlet ID)",
-        labelEn: "Outlet ID",
-        type: "text",
-      },
-      {
-        key: "apiKey",
-        labelAr: "مفتاح واجهة البرمجة (API Key)",
-        labelEn: "API Key",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "resend",
-    categoryId: "email",
-    name: "Resend",
-    icon: "ph-paper-plane-right",
-    descriptionAr: "خدمة إرسال البريد الإلكتروني السريعة (Resend).",
-    descriptionEn: "Fast transactional email service (Resend).",
-    fields: [
-      {
-        key: "apiKey",
-        labelAr: "مفتاح واجهة البرمجة (API Key)",
-        labelEn: "API Key",
-        type: "password",
-      },
-      {
-        key: "fromEmail",
-        labelAr: "البريد المرسل منه (From Email)",
-        labelEn: "From Email",
-        type: "text",
-      },
-    ],
-  },
-  {
-    id: "ses",
-    categoryId: "email",
-    name: "Amazon SES",
-    icon: "ph-amazon-logo",
-    descriptionAr: "خدمة إرسال البريد الإلكتروني عبر خوادم أمازون.",
-    descriptionEn: "Amazon Simple Email Service.",
-    fields: [
-      {
-        key: "accessKeyId",
-        labelAr: "معرف مفتاح الوصول (Access Key ID)",
-        labelEn: "Access Key ID",
-        type: "text",
-      },
-      {
-        key: "secretAccessKey",
-        labelAr: "مفتاح الوصول السري (Secret Access Key)",
-        labelEn: "Secret Access Key",
-        type: "password",
-      },
-      {
-        key: "region",
-        labelAr: "المنطقة (Region)",
-        labelEn: "Region",
-        type: "text",
-      },
-    ],
-  },
-  {
-    id: "sendgrid",
-    categoryId: "email",
-    name: "SendGrid",
-    icon: "ph-paper-plane-right",
-    descriptionAr: "خدمة SendGrid لإرسال وإدارة البريد الإلكتروني.",
-    descriptionEn: "SendGrid email delivery service.",
-    fields: [
-      {
-        key: "apiKey",
-        labelAr: "مفتاح واجهة البرمجة (API Key)",
-        labelEn: "API Key",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "mailgun",
-    categoryId: "email",
-    name: "Mailgun",
-    icon: "ph-paper-plane-right",
-    descriptionAr: "خدمة Mailgun للمراسلات البريدية.",
-    descriptionEn: "Mailgun email service.",
-    fields: [
-      {
-        key: "apiKey",
-        labelAr: "مفتاح واجهة البرمجة (API Key)",
-        labelEn: "API Key",
-        type: "password",
-      },
-      {
-        key: "domain",
-        labelAr: "النطاق (Domain)",
-        labelEn: "Domain",
-        type: "text",
-      },
-    ],
-  },
-  {
-    id: "postmark",
-    categoryId: "email",
-    name: "Postmark",
-    icon: "ph-paper-plane-right",
-    descriptionAr: "خدمة Postmark للبريد الإلكتروني الموثوق.",
-    descriptionEn: "Postmark fast and reliable email service.",
-    fields: [
-      {
-        key: "serverToken",
-        labelAr: "رمز الخادم (Server Token)",
-        labelEn: "Server Token",
-        type: "password",
-      },
-    ],
-  },
-  {
-    id: "whatsapp",
-    categoryId: "communications",
-    name: "Meta WhatsApp Business",
-    icon: "ph-whatsapp-logo",
-    isActive: true,
-    descriptionAr:
-      "ربط رسمي عبر Meta لإدارة المحادثات العقارية وإرسال التنبيهات من الوكلاء (مثال: منصور).",
-    descriptionEn:
-      "Official Meta WhatsApp integration for real estate conversations and agent alerts.",
-    fields: [
-      {
-        key: "phoneNumberId",
-        labelAr: "معرف رقم الهاتف (Phone Number ID)",
-        labelEn: "Phone Number ID",
-        type: "text",
-      },
-      {
-        key: "wabaId",
-        labelAr: "معرف حساب الأعمال (WABA ID)",
-        labelEn: "WABA ID",
-        type: "text",
-      },
-      {
-        key: "accessToken",
-        labelAr: "رمز الوصول الدائم (System User Token)",
-        labelEn: "Permanent Access Token",
-        type: "password",
-      },
-      {
-        key: "verifyToken",
-        labelAr: "رمز تحقق الـ Webhook",
-        labelEn: "Webhook Verify Token",
-        type: "text",
-      },
-    ],
-  },
-];
-
-export default function SettingsIntegrationsHub({
-  lang,
-}: {
-  lang: "AR" | "EN";
-}) {
+export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" }) {
   const isArabic = lang === "AR";
-  const [activeCategory, setActiveCategory] =
-    useState<IntegrationCategory>("payments");
-  const [activeProvider, setActiveProvider] =
-    useState<IntegrationProvider | null>("moyasar");
-  const [formData, setFormData] = useState<
-    Record<string, Record<string, string>>
-  >({});
-  const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
+  const L = (ar: string, en: string) => (isArabic ? ar : en);
+  const [activeProvider, setActiveProvider] = useState<ProviderId>("PAYLINK");
+  const [mode, setMode] = useState<"CONNECT" | "REQUEST">("CONNECT");
+  const [providers, setProviders] = useState<ProviderState[]>([]);
+  const [applications, setApplications] = useState<ApplicationState[]>([]);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [baseUrl, setBaseUrl] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
+  const [company, setCompany] = useState({
+    companyName: "",
+    commercialRegistry: "",
+    vatNumber: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+  });
+  const [documents, setDocuments] = useState("");
+  const [notes, setNotes] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const handleCategoryChange = (cat: IntegrationCategory) => {
-    setActiveCategory(cat);
-    const firstProvider = PROVIDERS.find((p) => p.categoryId === cat);
-    if (firstProvider) {
-      setActiveProvider(firstProvider.id);
-    } else {
-      setActiveProvider(null);
-    }
-  };
+  const definition = PROVIDERS.find((item) => item.id === activeProvider)!;
+  const connection = providers.find((item) => item.provider === activeProvider);
+  const providerApplications = applications.filter((item) => item.provider === activeProvider);
 
-  const currentProviderDef = PROVIDERS.find((p) => p.id === activeProvider);
-  const currentProvidersList = PROVIDERS.filter(
-    (p) => p.categoryId === activeCategory,
+  function load() {
+    startTransition(async () => {
+      const result = await getRevenueTrustStateAction();
+      if (!result.success) {
+        setNotice({ type: "error", text: result.error });
+        return;
+      }
+      const data = result.data as {
+        providers: ProviderState[];
+        applications: ApplicationState[];
+      };
+      setProviders(data.providers);
+      setApplications(data.applications);
+    });
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    setForm({});
+    setBaseUrl(connection?.baseUrl || definition.defaultBaseUrl || "");
+    setIsDefault(Boolean(connection?.isDefault));
+    setNotice(null);
+  }, [activeProvider, connection?.id]);
+
+  function run(
+    task: () => Promise<{ success: boolean; error?: string }>,
+    successText: string,
+  ) {
+    setNotice(null);
+    startTransition(async () => {
+      const result = await task();
+      if (!result.success) {
+        setNotice({ type: "error", text: result.error || L("تعذر التنفيذ.", "Operation failed.") });
+        return;
+      }
+      setNotice({ type: "success", text: successText });
+      const refreshed = await getRevenueTrustStateAction();
+      if (refreshed.success) {
+        const data = refreshed.data as {
+          providers: ProviderState[];
+          applications: ApplicationState[];
+        };
+        setProviders(data.providers);
+        setApplications(data.applications);
+      }
+    });
+  }
+
+  const missingRequired = useMemo(
+    () => definition.fields.some((field) => field.required && !String(form[field.key] || "").trim()),
+    [definition, form],
   );
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeProvider) return;
+  function submitConnection(event: FormEvent) {
+    event.preventDefault();
+    if (missingRequired) return;
 
-    setSaving(true);
-    setSuccessMsg("");
-    // Simulate save
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    setSuccessMsg(
-      isArabic
-        ? "تم حفظ إعدادات الربط بنجاح."
-        : "Integration settings saved successfully.",
+    const credentials = Object.fromEntries(
+      definition.fields
+        .map((field) => [field.key, String(form[field.key] || "").trim()])
+        .filter(([, value]) => value),
     );
-    setTimeout(() => setSuccessMsg(""), 3000);
-  };
 
-  const handleInputChange = (
-    provider: string,
-    key: string,
-    value: string | boolean,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [provider]: {
-        ...(prev[provider] || {}),
-        [key]: typeof value === "boolean" ? (value ? "true" : "false") : value,
-      },
-    }));
-  };
+    run(
+      () =>
+        saveRevenueProviderAction({
+          provider: activeProvider,
+          baseUrl: baseUrl.trim() || null,
+          credentials,
+          isDefault,
+        }),
+      L("تم حفظ بيانات الاعتماد مشفرة. اختبر الاتصال قبل الاعتماد.", "Encrypted credentials saved. Test the connection before approval."),
+    );
+  }
+
+  function submitApplication(event: FormEvent) {
+    event.preventDefault();
+    const documentReferences = documents
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map((reference) => ({ reference }));
+
+    run(
+      () =>
+        submitRevenueProviderApplicationAction({
+          provider: activeProvider,
+          companyData: company,
+          documents: documentReferences,
+          notes,
+        }),
+      L("تم إرسال طلب المزود وحفظه للتتبع.", "Provider application submitted and stored for tracking."),
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-6">
-      {/* Sidebar - Categories & List */}
-      <div className="space-y-6">
-        <SmartCard className="p-2">
-          <nav
-            className="flex xl:flex-col gap-1 overflow-x-auto"
-            aria-label={isArabic ? "فئات التكامل" : "Integration Categories"}
-          >
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryChange(cat.id)}
-                className={`flex min-w-max items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${activeCategory === cat.id ? "bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]" : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"}`}
-              >
-                <i className={`${cat.icon} text-lg`} />
-                {isArabic ? cat.ar : cat.en}
-              </button>
-            ))}
-          </nav>
-        </SmartCard>
-
-        <SmartCard className="p-3 hidden xl:block">
-          <h3 className="text-xs font-bold text-[var(--nc-foreground-muted)] mb-3 px-2">
-            {isArabic ? "المزودون المتاحون" : "Available Providers"}
-          </h3>
-          <div className="space-y-1">
-            {currentProvidersList.map((provider) => (
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[260px_1fr]">
+      <SmartCard className="h-fit p-3">
+        <h2 className="px-2 pb-3 text-xs font-black text-[var(--nc-foreground-muted)]">
+          {L("مزودو التكامل المعتمدون", "Approved integration providers")}
+        </h2>
+        <div className="space-y-1">
+          {PROVIDERS.map((provider) => {
+            const state = providers.find((item) => item.provider === provider.id);
+            return (
               <button
                 key={provider.id}
+                type="button"
                 onClick={() => setActiveProvider(provider.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-sm font-semibold ${activeProvider === provider.id ? "bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]" : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface)] hover:text-[var(--nc-foreground)]"}`}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-start transition ${
+                  activeProvider === provider.id
+                    ? "bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
+                    : "text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <i className={`${provider.icon} text-lg`} />
-                  <span>{provider.name}</span>
-                </div>
-                {provider.isActive && (
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>
+                  <strong className="block text-sm">{provider.name}</strong>
+                  <small className="mt-1 block text-[10px]">{isArabic ? provider.ar : provider.en}</small>
+                </span>
+                {provider.id !== "WHATSAPP" && (
+                  <span className={`rounded-full border px-2 py-1 text-[9px] font-black ${badgeClass(state?.status || "NOT_CONFIGURED")}`}>
+                    {state?.status || "NOT_CONFIGURED"}
+                  </span>
                 )}
               </button>
-            ))}
-          </div>
-        </SmartCard>
-      </div>
+            );
+          })}
+        </div>
+      </SmartCard>
 
-      {/* Main Detail Area */}
-      <div className="min-w-0">
-        {currentProviderDef ? (
-          <SmartCard className="p-6 md:p-8">
-            <div className="flex items-start justify-between border-b border-[var(--nc-border)] pb-6 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[var(--nc-surface-strong)] rounded-2xl flex items-center justify-center border border-[var(--nc-border)]">
-                  <i
-                    className={`${currentProviderDef.icon} text-2xl text-[var(--nc-foreground)]`}
-                  />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-[var(--nc-foreground)]">
-                    {currentProviderDef.name}
-                  </h2>
-                  <p className="text-sm text-[var(--nc-foreground-muted)] mt-1 max-w-lg">
-                    {isArabic
-                      ? currentProviderDef.descriptionAr
-                      : currentProviderDef.descriptionEn}
-                  </p>
-                </div>
-              </div>
-              {currentProviderDef.isActive && (
-                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
-                  {isArabic ? "نشط حالياً" : "Currently Active"}
-                </span>
-              )}
+      <div className="min-w-0 space-y-5">
+        {activeProvider === "WHATSAPP" ? (
+          <WhatsAppIntegrationSettings lang={lang} />
+        ) : (
+          <>
+        <SmartCard className="p-5 md:p-7">
+          <div className="flex flex-col gap-4 border-b border-[var(--nc-border)] pb-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-[var(--nc-foreground)]">{definition.name}</h2>
+              <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
+                {isArabic ? definition.ar : definition.en}
+              </p>
             </div>
+            <div className="flex items-center gap-2">
+              <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black ${badgeClass(connection?.status || "NOT_CONFIGURED")}`}>
+                {connection?.status || "NOT_CONFIGURED"}
+              </span>
+              {connection?.credentialsVersion ? (
+                <span className="text-[10px] text-[var(--nc-foreground-muted)]">
+                  v{connection.credentialsVersion}
+                </span>
+              ) : null}
+            </div>
+          </div>
 
-            {successMsg && (
-              <div className="p-4 mb-6 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-bold border border-emerald-500/20">
-                {successMsg}
-              </div>
-            )}
+          <div className="mt-5 inline-flex rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-1">
+            <button
+              type="button"
+              onClick={() => setMode("CONNECT")}
+              className={`rounded-lg px-4 py-2 text-xs font-black ${mode === "CONNECT" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
+            >
+              {L("لدي حساب", "I have an account")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("REQUEST")}
+              className={`rounded-lg px-4 py-2 text-xs font-black ${mode === "REQUEST" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
+            >
+              {L("لا أملك حسابًا", "I need an account")}
+            </button>
+          </div>
 
-            <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-              {currentProviderDef.fields.map((field) => {
-                const value =
-                  formData[currentProviderDef.id]?.[field.key] || "";
+          {notice ? (
+            <div
+              role="status"
+              className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${
+                notice.type === "success"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+              }`}
+            >
+              {notice.text}
+            </div>
+          ) : null}
 
-                if (field.type === "checkbox") {
-                  return (
-                    <label
-                      key={field.key}
-                      className="flex items-center gap-3 p-4 border border-[var(--nc-border)] rounded-xl bg-[var(--nc-surface-strong)] cursor-pointer hover:bg-[var(--nc-surface)] transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={value === "true"}
-                        onChange={(e) =>
-                          handleInputChange(
-                            currentProviderDef.id,
-                            field.key,
-                            e.target.checked,
-                          )
-                        }
-                        className="w-5 h-5 rounded accent-[var(--nc-accent)]"
-                      />
-                      <span className="text-sm font-bold text-[var(--nc-foreground)]">
-                        {isArabic ? field.labelAr : field.labelEn}
-                      </span>
-                    </label>
-                  );
-                }
+          {mode === "CONNECT" ? (
+            <form onSubmit={submitConnection} className="mt-6 max-w-3xl space-y-4">
+              <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                {L("عنوان بيئة المزود", "Provider base URL")}
+                <input
+                  value={baseUrl}
+                  onChange={(event) => setBaseUrl(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 text-[var(--nc-foreground)]"
+                  placeholder={definition.defaultBaseUrl || "https://"}
+                  dir="ltr"
+                />
+              </label>
 
-                return (
-                  <div key={field.key}>
-                    <label className="block text-xs font-bold text-[var(--nc-foreground-muted)] mb-2">
-                      {isArabic ? field.labelAr : field.labelEn}
-                    </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                {definition.fields.map((field) => (
+                  <label key={field.key} className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                    {isArabic ? field.ar : field.en}
+                    {field.required ? " *" : ""}
                     <input
-                      type={field.type}
-                      value={value}
-                      onChange={(e) =>
-                        handleInputChange(
-                          currentProviderDef.id,
-                          field.key,
-                          e.target.value,
-                        )
+                      type={field.secret ? "password" : "text"}
+                      value={form[field.key] || ""}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, [field.key]: event.target.value }))
                       }
-                      className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-4 py-3 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
-                      placeholder={
-                        field.type === "password" ? "••••••••••••••••" : ""
-                      }
+                      autoComplete="off"
+                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 text-[var(--nc-foreground)]"
+                      dir="ltr"
                     />
-                  </div>
-                );
-              })}
+                  </label>
+                ))}
+              </div>
 
-              <div className="pt-6 mt-6 border-t border-[var(--nc-border)] flex items-center gap-4">
+              <label className="flex items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-xs font-bold text-[var(--nc-foreground)]">
+                <input
+                  type="checkbox"
+                  checked={isDefault}
+                  onChange={(event) => setIsDefault(event.target.checked)}
+                />
+                {L("تعيين كمزود افتراضي ضمن فئته", "Set as the default provider in its category")}
+              </label>
+
+              <div className="flex flex-wrap gap-2 pt-2">
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="bg-[var(--nc-accent)] text-slate-950 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:bg-[var(--nc-accent-hover)] disabled:opacity-50"
+                  disabled={pending || missingRequired}
+                  className="h-11 rounded-xl bg-[var(--nc-accent)] px-5 text-sm font-black text-slate-950 disabled:opacity-40"
                 >
-                  {saving
-                    ? isArabic
-                      ? "جاري الحفظ..."
-                      : "Saving..."
-                    : isArabic
-                      ? "حفظ التكوين"
-                      : "Save Configuration"}
+                  {connection?.id ? L("تدوير بيانات الاعتماد", "Rotate credentials") : L("حفظ مشفر", "Save encrypted")}
                 </button>
                 <button
                   type="button"
-                  className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground)] hover:bg-[var(--nc-surface)] px-6 py-3 rounded-xl font-bold text-sm transition-all"
+                  disabled={pending || !connection?.id || connection.status === "DISCONNECTED"}
+                  onClick={() =>
+                    run(
+                      () => testRevenueProviderAction(activeProvider),
+                      L("نجح اختبار الاتصال وتم اعتماد الحالة متصل.", "Connection test passed and status is now connected."),
+                    )
+                  }
+                  className="h-11 rounded-xl border border-emerald-500/30 px-5 text-sm font-black text-emerald-700 disabled:opacity-40 dark:text-emerald-300"
                 >
-                  {isArabic ? "إلغاء" : "Cancel"}
+                  {L("اختبار الاتصال", "Test connection")}
+                </button>
+                <button
+                  type="button"
+                  disabled={pending || !connection?.id}
+                  onClick={() =>
+                    run(
+                      () => disconnectRevenueProviderAction(activeProvider),
+                      L("تم فصل المزود.", "Provider disconnected."),
+                    )
+                  }
+                  className="h-11 rounded-xl border border-rose-500/30 px-5 text-sm font-black text-rose-700 disabled:opacity-40 dark:text-rose-300"
+                >
+                  {L("فصل", "Disconnect")}
                 </button>
               </div>
+
+              {connection?.lastError ? (
+                <div className="rounded-xl bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
+                  {connection.lastError}
+                </div>
+              ) : null}
             </form>
+          ) : (
+            <form onSubmit={submitApplication} className="mt-6 max-w-3xl space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  ["companyName", L("اسم الشركة", "Company name")],
+                  ["commercialRegistry", L("السجل التجاري", "Commercial registry")],
+                  ["vatNumber", L("الرقم الضريبي", "VAT number")],
+                  ["contactName", L("اسم المسؤول", "Contact name")],
+                  ["contactEmail", L("البريد", "Email")],
+                  ["contactPhone", L("الهاتف", "Phone")],
+                ].map(([key, label]) => (
+                  <label key={key} className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                    {label}
+                    <input
+                      required
+                      value={company[key as keyof typeof company]}
+                      onChange={(event) =>
+                        setCompany((current) => ({ ...current, [key]: event.target.value }))
+                      }
+                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 text-[var(--nc-foreground)]"
+                    />
+                  </label>
+                ))}
+              </div>
+              <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                {L("مراجع المستندات — مرجع أو رابط في كل سطر", "Document references — one reference or URL per line")}
+                <textarea
+                  value={documents}
+                  onChange={(event) => setDocuments(event.target.value)}
+                  rows={4}
+                  className="mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-[var(--nc-foreground)]"
+                  dir="ltr"
+                />
+              </label>
+              <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                {L("ملاحظات الطلب", "Application notes")}
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-[var(--nc-foreground)]"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={pending || Object.values(company).some((value) => !String(value).trim())}
+                className="h-11 rounded-xl bg-[var(--nc-accent)] px-5 text-sm font-black text-slate-950 disabled:opacity-40"
+              >
+                {L("إرسال الطلب", "Submit application")}
+              </button>
+            </form>
+          )}
+        </SmartCard>
+
+        {providerApplications.length > 0 ? (
+          <SmartCard className="p-5">
+            <h3 className="text-sm font-black text-[var(--nc-foreground)]">
+              {L("سجل طلبات المزود", "Provider application history")}
+            </h3>
+            <div className="mt-4 space-y-2">
+              {providerApplications.map((application) => (
+                <div
+                  key={application.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-[var(--nc-foreground)]">
+                      {String(application.companyData?.companyName || definition.name)}
+                    </div>
+                    <div className="mt-1 text-[10px] text-[var(--nc-foreground-muted)]">
+                      {application.submittedAt || "—"}
+                    </div>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-black ${badgeClass(application.status)}`}>
+                    {application.status}
+                  </span>
+                </div>
+              ))}
+            </div>
           </SmartCard>
-        ) : (
-          <div className="h-full min-h-[400px] flex items-center justify-center border border-[var(--nc-border)] border-dashed rounded-3xl bg-[var(--nc-surface)]/50">
-            <p className="text-[var(--nc-foreground-muted)] font-semibold text-sm">
-              {isArabic
-                ? "الرجاء اختيار مزود من القائمة"
-                : "Please select a provider from the list"}
-            </p>
-          </div>
+        ) : null}
+        </>
         )}
       </div>
     </div>

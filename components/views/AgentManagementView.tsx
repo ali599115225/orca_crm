@@ -251,11 +251,7 @@ export default function AgentManagementView({
   }, [loadSlots, loadSubscriptions]);
 
   useEffect(() => {
-    if (
-      notice?.type === "success" &&
-      (notice.text === "اكتمل تشغيل الوكيل." ||
-        notice.text === "Agent run completed.")
-    ) {
+    if (notice?.type === "success") {
       const timer = window.setTimeout(() => setNotice(null), 4000);
       return () => window.clearTimeout(timer);
     }

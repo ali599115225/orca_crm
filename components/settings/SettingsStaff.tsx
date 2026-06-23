@@ -83,42 +83,7 @@ export default function SettingsStaff({
   const startIndex = (currentPage - 1) * STAFF_PAGE_SIZE;
   const visibleUsers = users.slice(startIndex, startIndex + STAFF_PAGE_SIZE);
 
-  const getContractStatus = (endAt?: Date | string | null) => {
-    if (!endAt)
-      return {
-        labelAr: "غير محدد",
-        labelEn: "Not Set",
-        color: "bg-slate-100 text-slate-600",
-      };
-    const end = new Date(endAt);
-    const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    const diffMonths = diffTime / (1000 * 3600 * 24 * 30.44);
 
-    if (diffMonths < 0)
-      return {
-        labelAr: "منتهي",
-        labelEn: "Expired",
-        color: "bg-slate-500/10 text-slate-500 border-slate-500/20",
-      };
-    if (diffMonths <= 1)
-      return {
-        labelAr: "أقل من شهر",
-        labelEn: "< 1 Month",
-        color: "bg-rose-500/10 text-rose-600 border-rose-500/20",
-      };
-    if (diffMonths <= 6)
-      return {
-        labelAr: "أقل من 6 أشهر",
-        labelEn: "< 6 Months",
-        color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-      };
-    return {
-      labelAr: "ساري (> 6 أشهر)",
-      labelEn: "Valid (> 6m)",
-      color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-    };
-  };
 
   const handleToggleStatus = async (user: User) => {
     setLoadingId(user.id);
@@ -304,15 +269,16 @@ export default function SettingsStaff({
         </SmartCard>
       )}
 
-      <SmartCard className="overflow-hidden">
-        <table className="w-full table-fixed text-sm text-start">
-          <colgroup>
-            <col className="w-[25%]" />
-            <col className="w-[18%]" />
-            <col className="w-[22%]" />
-            <col className="w-[10%]" />
-            <col className="w-[25%]" />
-          </colgroup>
+      <SmartCard className="relative z-0">
+        <div className="min-h-[400px]">
+          <table className="w-full table-fixed text-sm text-start">
+            <colgroup>
+              <col className="w-[25%]" />
+              <col className="w-[18%]" />
+              <col className="w-[25%]" />
+              <col className="w-[10%]" />
+              <col className="w-[22%]" />
+            </colgroup>
           <thead className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border-b border-[var(--nc-border)]">
             <tr>
               <th className="px-5 py-3 text-start font-bold truncate">
@@ -406,6 +372,7 @@ export default function SettingsStaff({
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination - 5 rows exactly */}
         {users.length > 0 && (
@@ -481,7 +448,7 @@ export default function SettingsStaff({
                   {selectedUser.phone || "—"}
                 </dd>
               </div>
-              <div className="grid grid-cols-3 border-b border-[var(--nc-border)] pb-2">
+              <div className="grid grid-cols-3 pt-2">
                 <dt className="text-[var(--nc-foreground-muted)] font-bold">
                   {isArabic ? "الدور والصلاحيات:" : "Role & Permissions:"}
                 </dt>
@@ -489,20 +456,6 @@ export default function SettingsStaff({
                   {ROLE_TRANSLATIONS[lang][
                     selectedUser.role as keyof typeof ROLE_TRANSLATIONS.EN
                   ] || selectedUser.role}
-                </dd>
-              </div>
-              <div className="grid grid-cols-3 pt-2 items-center">
-                <dt className="text-[var(--nc-foreground-muted)] font-bold">
-                  {isArabic ? "حالة العقد:" : "Contract Status:"}
-                </dt>
-                <dd className="col-span-2">
-                  <span
-                    className={`px-2.5 py-1 rounded border text-xs font-bold ${getContractStatus(selectedUser.contractEndAt).color}`}
-                  >
-                    {isArabic
-                      ? getContractStatus(selectedUser.contractEndAt).labelAr
-                      : getContractStatus(selectedUser.contractEndAt).labelEn}
-                  </span>
                 </dd>
               </div>
             </dl>

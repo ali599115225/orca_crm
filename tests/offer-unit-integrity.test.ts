@@ -81,6 +81,7 @@ function createOfferTx() {
   };
 
   return {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: "mock-sync-event-id" }]),
     opportunity: {
       findFirst: mockOpportunityFindFirst,
       update: vi.fn().mockResolvedValue({}),
@@ -357,6 +358,7 @@ describe("Offer Unit Integrity", () => {
     };
 
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "mock-sync-event-id" }]),
       offer: {
         findFirst: vi.fn().mockResolvedValue(offer),
         update: vi.fn().mockResolvedValue({ ...offer, status: "ACCEPTED" }),
@@ -512,6 +514,7 @@ describe("Offer Unit Integrity", () => {
     });
 
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "mock-sync-event-id" }]),
       offer: {
         findFirst: vi.fn().mockResolvedValue(acceptedOffer),
         update: vi.fn(),

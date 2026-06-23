@@ -216,7 +216,9 @@ export default function SettingsView({
           )}
 
           {activeSection === "integrations" && (
-            <SettingsIntegrationsHub lang={lang} />
+            <div className="space-y-6">
+              <SettingsIntegrationsHub lang={lang} />
+            </div>
           )}
 
           {activeSection === "compliance" && (

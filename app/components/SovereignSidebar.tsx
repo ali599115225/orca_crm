@@ -47,6 +47,7 @@ const menuData: MenuSection[] = [
     items: [
       { labelKey: "nav.dashboard",  icon: LayoutDashboard, path: "/operations/dashboard",  tab: "analytics" },
       { labelKey: "nav.leads",      icon: Users,           path: "/operations/leads",      tab: "leads" },
+      { labelKey: "nav.revenue_integrity", icon: Shield,   path: "/operations/revenue-integrity", tab: "revenue-integrity" },
       { labelKey: "nav.offers",     icon: Megaphone,       path: "/operations/offers",     tab: "offers" },
       { labelKey: "nav.tours",      icon: Map,             path: "/operations/tours",      tab: "tours",     tooltipKey: "nav.tours" },
     ],
@@ -74,11 +75,6 @@ const menuData: MenuSection[] = [
       { labelKey: "nav.tasks",      icon: Calendar,        path: "/operations/tasks",      tab: "tasks" },
       { labelKey: "nav.documents",  icon: FolderOpen,      path: "/operations/documents",  tab: "documents", tooltipKey: "nav.documents" },
       { labelKey: "nav.helpdesk",   icon: HelpCircle,      path: "/operations/helpdesk",   tab: "helpdesk",  tooltipKey: "nav.helpdesk" },
-    ],
-  },
-  {
-    titleKey: "sidebar.preview",
-    items: [
       { labelKey: "nav.agents",     icon: Bot,             path: "/operations/agents",     tab: "agents" },
       { labelKey: "nav.email",      icon: Mail,            path: "/operations/email",      tab: "email" },
       { labelKey: "nav.whatsapp",   icon: MessageCircle,   path: "/operations/whatsapp",   tab: "whatsapp" },

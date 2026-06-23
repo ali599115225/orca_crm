@@ -1,0 +1,48 @@
+export function displayRevenueIntegrityValue(value: string, lang: "ar" | "en"): string {
+  const isAr = lang === "ar";
+  switch (value) {
+    case "NOT_CONFIGURED": return isAr ? "غير مهيأ" : "Not configured";
+    case "REVENUE_RISK_DETECTED": return isAr ? "تم اكتشاف مخاطرة إيرادية" : "Revenue risk detected";
+    case "FIRST_RESPONSE_BREACH": return isAr ? "تجاوز وقت الاستجابة الأولى" : "First response breach";
+    case "LEAD_UNASSIGNED": return isAr ? "عميل محتمل غير مسند" : "Unassigned lead";
+    case "NO_NEXT_ACTION": return isAr ? "لا يوجد إجراء تالٍ" : "No next action";
+    case "TOUR_WITHOUT_OUTCOME": return isAr ? "جولة دون نتيجة" : "Tour without outcome";
+    case "POSITIVE_TOUR_NO_OFFER": return isAr ? "جولة إيجابية دون عرض" : "Positive tour without offer";
+    case "ACCEPTED_OFFER_NO_CONTRACT": return isAr ? "عرض مقبول دون عقد" : "Accepted offer without contract";
+    case "SIGNED_CONTRACT_NO_INVOICE": return isAr ? "عقد موقّع دون فاتورة" : "Signed contract without invoice";
+    case "OVERDUE_INVOICE": return isAr ? "فاتورة متأخرة" : "Overdue invoice";
+    case "INVENTORY_CONFLICT": return isAr ? "تعارض في المخزون" : "Inventory conflict";
+    case "COMPLIANCE_BLOCK": return isAr ? "حظر امتثال" : "Compliance block";
+    case "OPEN": return isAr ? "مفتوحة" : "Open";
+    case "RESOLVED": return isAr ? "محلولة" : "Resolved";
+    case "CRITICAL": return isAr ? "حرجة" : "Critical";
+    case "HIGH": return isAr ? "مرتفعة" : "High";
+    case "MEDIUM": return isAr ? "متوسطة" : "Medium";
+    case "LOW": return isAr ? "منخفضة" : "Low";
+    case "PENDING": return isAr ? "قيد الانتظار" : "Pending";
+    case "PROCESSED": return isAr ? "تمت المعالجة" : "Processed";
+    case "FAILED": return isAr ? "فشلت" : "Failed";
+    case "REVENUE_RISK_ACKNOWLEDGED": return isAr ? "تم استلام الخطر" : "Revenue risk acknowledged";
+    case "REVENUE_RADAR_EVALUATED": return isAr ? "تم تقييم رادار الإيراد" : "Revenue radar evaluated";
+    case "REVENUE_RULE_RUN": return isAr ? "تشغيل قاعدة الإيراد" : "Revenue rule run";
+    case "REVENUE_RISK_SIGNAL": return isAr ? "إشارة مخاطرة إيرادية" : "Revenue risk signal";
+    case "NOT_READY": return isAr ? "غير جاهز" : "Not ready";
+    case "MANUAL": return isAr ? "يدوي" : "Manual";
+    case "WHATSAPP": return isAr ? "واتساب" : "WhatsApp";
+    case "EMAIL": return isAr ? "البريد الإلكتروني" : "Email";
+    case "SUPPORT": return isAr ? "الدعم" : "Support";
+    case "OUTBOX": return isAr ? "صندوق الإرسال" : "Outbox";
+    case "ACKNOWLEDGED": return isAr ? "تم الاستلام" : "Acknowledged";
+    case "CONNECTED": return isAr ? "متصل" : "Connected";
+    case "ACTIVE": return isAr ? "نشط" : "Active";
+    case "EXECUTED": return isAr ? "تم التنفيذ" : "Executed";
+    case "DELIVERED": return isAr ? "تم التسليم" : "Delivered";
+    case "ERROR": return isAr ? "خطأ" : "Error";
+    case "DEAD_LETTER": return isAr ? "رسالة ميتة" : "Dead letter";
+    case "PENDING_APPROVAL": return isAr ? "بانتظار الاعتماد" : "Pending approval";
+    case "RETRY": return isAr ? "إعادة المحاولة" : "Retry";
+    case "REJECTED": return isAr ? "مرفوض" : "Rejected";
+    case "APPROVED": return isAr ? "معتمد" : "Approved";
+    default: return value;
+  }
+}
