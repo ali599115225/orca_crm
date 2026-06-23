@@ -307,11 +307,11 @@ export default function SettingsStaff({
       <SmartCard className="overflow-hidden">
         <table className="w-full table-fixed text-sm text-start">
           <colgroup>
-            <col className="w-[28%]" />
-            <col className="w-[22%]" />
             <col className="w-[25%]" />
-            <col className="w-[15%]" />
+            <col className="w-[18%]" />
+            <col className="w-[22%]" />
             <col className="w-[10%]" />
+            <col className="w-[25%]" />
           </colgroup>
           <thead className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border-b border-[var(--nc-border)]">
             <tr>
@@ -327,7 +327,7 @@ export default function SettingsStaff({
               <th className="px-5 py-3 text-start font-bold truncate">
                 {isArabic ? "الحالة" : "Status"}
               </th>
-              <th className="px-5 py-3 text-start font-bold truncate">
+              <th className="px-5 py-3 text-start font-bold">
                 {isArabic ? "الإجراءات" : "Actions"}
               </th>
             </tr>
@@ -357,38 +357,32 @@ export default function SettingsStaff({
                         : "Disabled"}
                   </span>
                 </td>
-                <td className="px-5 py-4 truncate">
-                  <div className="relative inline-block text-start" onClick={(e) => e.stopPropagation()}>
+                <td className="px-5 py-4 text-start">
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}
-                      className="p-1.5 hover:bg-[var(--nc-surface-strong)] rounded-lg text-[var(--nc-foreground)] font-bold transition-colors"
+                      onClick={() => setSelectedUser(u)}
+                      className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 font-bold transition-all text-xs"
                     >
-                      ⋯
+                      {isArabic ? "عرض التفاصيل" : "Details"}
                     </button>
-                    {openMenuId === u.id && (
-                      <div className={`absolute z-10 ${isArabic ? "left-0" : "right-0"} mt-1 w-36 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg shadow-xl py-1 overflow-hidden`}>
-                        <button
-                          onClick={() => { setSelectedUser(u); setOpenMenuId(null); }}
-                          className="block w-full text-start px-4 py-2.5 text-xs font-bold hover:bg-[var(--nc-surface)] text-[var(--nc-foreground)] transition-colors"
-                        >
-                          {isArabic ? "عرض التفاصيل" : "Details"}
-                        </button>
-                        <button
-                          onClick={() => { void handleToggleStatus(u); setOpenMenuId(null); }}
-                          disabled={loadingId === u.id}
-                          className="block w-full text-start px-4 py-2.5 text-xs font-bold hover:bg-[var(--nc-surface)] text-[var(--nc-foreground)] disabled:opacity-50 transition-colors"
-                        >
-                          {u.isActive ? (isArabic ? "تعطيل الحساب" : "Disable Account") : (isArabic ? "تفعيل الحساب" : "Activate Account")}
-                        </button>
-                        <button
-                          onClick={() => { void handleDelete(u); setOpenMenuId(null); }}
-                          disabled={loadingId === u.id}
-                          className="block w-full text-start px-4 py-2.5 text-xs font-bold hover:bg-[var(--nc-surface)] text-rose-500 disabled:opacity-50 transition-colors"
-                        >
-                          {isArabic ? "حذف نهائي" : "Delete"}
-                        </button>
-                      </div>
-                    )}
+                    <span className="text-[var(--nc-border)]">|</span>
+                    <button
+                      onClick={() => { void handleToggleStatus(u); }}
+                      disabled={loadingId === u.id}
+                      className={`font-bold transition-all text-xs disabled:opacity-50 ${
+                        u.isActive ? 'text-amber-600 hover:text-amber-500' : 'text-emerald-600 hover:text-emerald-500'
+                      }`}
+                    >
+                      {u.isActive ? (isArabic ? "تعطيل" : "Disable") : (isArabic ? "تفعيل" : "Activate")}
+                    </button>
+                    <span className="text-[var(--nc-border)]">|</span>
+                    <button
+                      onClick={() => { void handleDelete(u); }}
+                      disabled={loadingId === u.id}
+                      className="text-rose-600 hover:text-rose-500 font-bold transition-all text-xs disabled:opacity-50"
+                    >
+                      {isArabic ? "حذف" : "Delete"}
+                    </button>
                   </div>
                 </td>
               </tr>
