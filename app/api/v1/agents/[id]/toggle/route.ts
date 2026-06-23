@@ -12,6 +12,7 @@ import {
   isKnownAgentCode,
 } from "@/lib/agents/entitlements";
 import { writeAuditLog } from "@/lib/audit";
+import { getDeploymentLicenseMode } from "@/lib/deployment-license";
 
 
 async function handle(
@@ -85,6 +86,7 @@ async function handle(
       ]);
 
       const plan = tenant?.subscriptionPlan || "basic";
+      const licenseMode = getDeploymentLicenseMode();
       const entitlement = getPlanAgentEntitlement(plan);
       const activeSubscriptionCodes = new Set(
         activeLeases
@@ -94,6 +96,7 @@ async function handle(
       );
 
       const decision = canActivateAgent({
+        licenseMode,
         plan,
         agentCode,
         activeAgentCount: activeCount,
