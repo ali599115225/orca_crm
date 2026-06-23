@@ -150,6 +150,7 @@ function isUnsafeDisplayValue(value: unknown, locale: RentalLocale): boolean {
   if (!text) return true;
   if (isTechnicalReference(text) || isDemoOrMockValue(text)) return true;
   if (locale === 'en' && isArabicText(text)) return true;
+  if (locale === 'ar' && !isArabicText(text) && /^[a-zA-Z][a-zA-Z\s]*$/.test(text) && text.length >= 4) return true;
   return false;
 }
 
@@ -176,19 +177,8 @@ function displayEntitySafe(value: unknown, kind: string, locale: RentalLocale): 
   return cleanDisplayCandidate(displayEntity(String(value || ''), kind as any, locale), value, locale) || safeDisplayValue(value, locale);
 }
 
-function displayEnumSafe(value: unknown, enumType: string, locale: RentalLocale): string | null {
-  return cleanDisplayCandidate(displayEnum(String(value || 'UNSPECIFIED'), enumType as any, locale), value, locale);
-}
-
 function leaseStatusLabel(status: Lease['status'] | string, locale: RentalLocale): string {
-  const fromDisplay = displayEnumSafe(status, 'leaseStatus', locale) || displayEnumSafe(status, 'rentalStatus', locale);
-  if (fromDisplay) return fromDisplay;
-  switch (String(status).toLowerCase()) {
-    case 'active': return textFor(locale, 'نشط', 'Active');
-    case 'expired': return textFor(locale, 'منتهي', 'Expired');
-    case 'terminated': return textFor(locale, 'ملغى', 'Terminated');
-    default: return textFor(locale, 'حالة غير محددة', 'Unspecified');
-  }
+  return displayEnum(String(status || ''), 'rentalStatus', locale);
 }
 
 function leaseStatusBadgeClass(status: Lease['status'] | string): string {
@@ -200,14 +190,7 @@ function leaseStatusBadgeClass(status: Lease['status'] | string): string {
 }
 
 function invoiceStatusLabel(status: Invoice['status'] | string, locale: RentalLocale): string {
-  const fromDisplay = displayEnumSafe(status, 'invoiceStatus', locale);
-  if (fromDisplay) return fromDisplay;
-  switch (String(status).toLowerCase()) {
-    case 'paid': return textFor(locale, 'مدفوعة', 'Paid');
-    case 'overdue': return textFor(locale, 'متأخرة', 'Overdue');
-    case 'unpaid': return textFor(locale, 'غير مدفوعة', 'Unpaid');
-    default: return textFor(locale, 'حالة غير محددة', 'Unspecified');
-  }
+  return displayEnum(String(status || ''), 'invoiceStatus', locale);
 }
 
 function invoiceStatusBadgeClass(status: Invoice['status'] | string): string {
@@ -219,29 +202,15 @@ function invoiceStatusBadgeClass(status: Invoice['status'] | string): string {
 }
 
 function settlementStatusLabel(status: Settlement['status'] | string, locale: RentalLocale): string {
-  switch (String(status).toLowerCase()) {
-    case 'completed': return textFor(locale, 'مكتملة', 'Completed');
-    case 'pending': return textFor(locale, 'قيد المعالجة', 'Pending');
-    default: return textFor(locale, 'حالة غير محددة', 'Unspecified');
-  }
+  return displayEnum(String(status || ''), 'settlementStatus', locale);
 }
 
 function paymentMethodLabel(method: string, locale: RentalLocale): string {
-  switch (String(method).toLowerCase()) {
-    case 'bank': return textFor(locale, 'تحويل بنكي', 'Bank transfer');
-    case 'card': return textFor(locale, 'بطاقة', 'Card');
-    case 'cash': return textFor(locale, 'نقدي', 'Cash');
-    default: return emptyValue(locale);
-  }
+  return displayEnum(String(method || ''), 'paymentMethod', locale);
 }
 
 function vatTypeLabel(type: string, locale: RentalLocale): string {
-  switch (String(type).toUpperCase()) {
-    case 'STANDARD': return textFor(locale, 'ضريبة 15%', 'VAT 15%');
-    case 'ZERO_RATED': return textFor(locale, 'صفرية', 'Zero-rated');
-    case 'EXEMPT': return textFor(locale, 'معفاة', 'Exempt');
-    default: return emptyValue(locale);
-  }
+  return displayEnum(String(type || ''), 'vatType', locale);
 }
 
 function formatNumberValue(value: number, locale: RentalLocale): string {
@@ -430,12 +399,12 @@ export default function RentalPage() {
   const handleCreateLease = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_LEASE')) {
-      alert('عذراً، لا تملك صلاحية إنشاء عقد جديد.');
+      alert(L('عذراً، لا تملك صلاحية إنشاء عقد جديد.', 'Sorry, you do not have permission to create a new lease.'));
       return;
     }
 
     if (!newStart || !newEnd || !newUnit || !newTenant) {
-      alert('يرجى تعبئة جميع الحقول الإجبارية.');
+      alert(L('يرجى تعبئة جميع الحقول الإجبارية.', 'Please fill in all required fields.'));
       return;
     }
 
@@ -454,7 +423,7 @@ export default function RentalPage() {
 
       setLeases(prev => [...prev, json.lease]);
     } catch (err: any) {
-      alert('خطأ في إنشاء العقد: ' + err.message);
+      alert(L('خطأ في إنشاء العقد: ', 'Error creating lease: ') + err.message);
     }
 
     const newEv: EventLog = {
@@ -486,11 +455,11 @@ export default function RentalPage() {
     setNewRent(1000);
     setNewDeposit(0);
     setActiveModal(null);
-    alert('تم تسجيل العقد الجديد بنجاح!');
+    alert(L('تم تسجيل العقد الجديد بنجاح!', 'New lease registered successfully!'));
   };
 
   const handleLeaseDocumentUpload = () => {
-    toast.info('نظام رفع مستندات العقود قيد التطوير. سيُتاح في التحديث القادم.');
+    toast.info(L('نظام رفع مستندات العقود قيد التطوير. سيُتاح في التحديث القادم.', 'Lease document upload is under development. Available in the next update.'));
     setSelectedDocumentFile(null);
   };
 
@@ -514,13 +483,13 @@ export default function RentalPage() {
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAllowed('CREATE_INVOICE')) {
-      alert('عذراً، لا تملك صلاحية إصدار فواتير.');
+      alert(L('عذراً، لا تملك صلاحية إصدار فواتير.', 'Sorry, you do not have permission to issue invoices.'));
       return;
     }
 
     const leaseId = invLeaseId || prefilledContractId;
     if (!leaseId || !invDueDate || invSubtotal <= 0) {
-      alert('يرجى التحقق من المدخلات.');
+      alert(L('يرجى التحقق من المدخلات.', 'Please verify the inputs.'));
       return;
     }
 
@@ -557,7 +526,7 @@ export default function RentalPage() {
         throw new Error(json.error);
       }
     } catch (err: any) {
-      alert('خطأ في إصدار الفاتورة: ' + err.message);
+      alert(L('خطأ في إصدار الفاتورة: ', 'Error issuing invoice: ') + err.message);
       return;
     }
 
@@ -585,19 +554,19 @@ export default function RentalPage() {
     setInvLeaseId('');
     setPrefilledContractId('');
     setActiveModal(null);
-    alert('تم إصدار الفاتورة بنجاح!');
+    alert(L('تم إصدار الفاتورة بنجاح!', 'Invoice issued successfully!'));
   };
 
   const handleRegisterPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoice) return;
     if (!isAllowed('PAY_INVOICE')) {
-      toast.error('عذراً، لا تملك صلاحية تسجيل الدفعات.');
+      toast.error(L('عذراً، لا تملك صلاحية تسجيل الدفعات.', 'Sorry, you do not have permission to record payments.'));
       return;
     }
 
     if (!payDate || !payIdempotencyKey) {
-      toast.error('يرجى تحديد تاريخ السداد وإدخال مفتاح تفادي التكرار (Idempotency Key).');
+      toast.error(L('يرجى تحديد تاريخ السداد وإدخال مفتاح تفادي التكرار (Idempotency Key).', 'Please specify the payment date and enter the idempotency key.'));
       return;
     }
 
@@ -639,7 +608,7 @@ export default function RentalPage() {
         if (json.success) setInvoices(json.invoices);
       }
 
-      toast.success(data.message || 'تم تسجيل الدفعة بنجاح');
+      toast.success(data.message || L('تم تسجيل الدفعة بنجاح', 'Payment recorded successfully'));
 
       // Reset
       setPayRef('');
@@ -648,23 +617,23 @@ export default function RentalPage() {
       setSelectedInvoice(null);
       setActiveModal(null);
     } catch (err: any) {
-      toast.error(err.message || 'حدث خطأ أثناء تسجيل الدفعة');
+      toast.error(err.message || L('حدث خطأ أثناء تسجيل الدفعة', 'An error occurred while recording the payment'));
     } finally {
       setIsPaying(false);
     }
   };
 
   const handleRequestSettlement = (_contractId: string, _amount: number) => {
-    toast.info('نظام التسويات المالية قيد التطوير. سيُتاح في التحديث القادم.');
+    toast.info(L('نظام التسويات المالية قيد التطوير. سيُتاح في التحديث القادم.', 'Financial settlements system is under development. Available in the next update.'));
   };
 
   const handleBankFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    toast.info('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.');
+    toast.info(L('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.', 'Bank reconciliation system is under development. Available in the next update.'));
   };
 
   const handleConfirmReconcileMatch = (_match: any) => {
-    toast.info('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.');
+    toast.info(L('نظام المطابقة البنكية قيد التطوير. سيُتاح في التحديث القادم.', 'Bank reconciliation system is under development. Available in the next update.'));
   };
 
   // Filter lists
@@ -885,7 +854,7 @@ export default function RentalPage() {
         <div className="space-y-3">
           <Button
             onClick={() => {
-              if (!isAllowed("CREATE_LEASE")) { alert("عذراً، لا تملك الصلاحية لإضافة عقد جديد."); return; }
+              if (!isAllowed("CREATE_LEASE")) { alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.')); return; }
               setActiveModal("new_lease");
             }}
             className="w-full py-2 text-xs font-bold flex items-center justify-center gap-2 min-h-[44px]"
@@ -895,7 +864,7 @@ export default function RentalPage() {
           </Button>
           <button
             onClick={() => {
-              if (!isAllowed("CREATE_INVOICE")) { alert("عذراً، لا تملك الصلاحية لإصدار فواتير."); return; }
+              if (!isAllowed("CREATE_INVOICE")) { alert(L('عذراً، لا تملك الصلاحية لإصدار فواتير.', 'Sorry, you do not have permission to issue invoices.')); return; }
               setActiveModal("new_invoice");
             }}
             className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 min-h-[44px]"
@@ -977,7 +946,7 @@ export default function RentalPage() {
           <button
             type="button"
             onClick={() => {
-              if (!isAllowed("CREATE_LEASE")) { alert("عذراً، لا تملك الصلاحية لإضافة عقد جديد."); return; }
+              if (!isAllowed("CREATE_LEASE")) { alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.')); return; }
               setActiveModal("new_lease");
             }}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#8EB1D1] px-3 py-2 text-[11px] font-black text-[#1e293b] transition-colors hover:bg-[#A7C7E7]"
@@ -988,7 +957,7 @@ export default function RentalPage() {
           <button
             type="button"
             onClick={() => {
-              if (!isAllowed("CREATE_INVOICE")) { alert("عذراً، لا تملك الصلاحية لإصدار فواتير."); return; }
+              if (!isAllowed("CREATE_INVOICE")) { alert(L('عذراً، لا تملك الصلاحية لإصدار فواتير.', 'Sorry, you do not have permission to issue invoices.')); return; }
               setActiveModal("new_invoice");
             }}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-[var(--nc-surface-solid)] px-3 py-2 text-[11px] font-black text-white transition-all hover:border-[var(--nc-accent-border)]"
@@ -1097,12 +1066,12 @@ export default function RentalPage() {
                   <span className="text-sm font-bold text-white">{L('قائمة عقود الإيجار', 'Leases list')}</span>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => {
-                        if (!isAllowed('CREATE_LEASE')) {
-                          alert('عذراً، لا تملك الصلاحية لإضافة عقد جديد.');
-                          return;
-                        }
-                        setActiveModal('new_lease');
+                       onClick={() => {
+                         if (!isAllowed('CREATE_LEASE')) {
+                           alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.'));
+                           return;
+                         }
+                         setActiveModal('new_lease');
                       }}
                       className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
                     >
@@ -1257,10 +1226,10 @@ export default function RentalPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
                           onClick={() => {
-                            if (!isAllowed('CREATE_INVOICE')) {
-                              alert('لا تملك صلاحية إصدار فواتير.');
-                              return;
-                            }
+                             if (!isAllowed('CREATE_INVOICE')) {
+                               alert(L('لا تملك صلاحية إصدار فواتير.', 'You do not have permission to issue invoices.'));
+                               return;
+                             }
                             setPrefilledContractId(selectedLease.id);
                             setInvSubtotal(selectedLease.rent);
                             setInvVatType('STANDARD');

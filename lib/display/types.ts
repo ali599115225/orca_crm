@@ -35,6 +35,9 @@ export type EnumType =
   | 'propertyStatus'
   | 'projectStatus'
   | 'invoiceStatus'
+  | 'settlementStatus'
+  | 'paymentMethod'
+  | 'vatType'
   | 'generalStatus';
 
 export interface DisplayOptions {

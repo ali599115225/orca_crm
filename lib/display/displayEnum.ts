@@ -62,6 +62,22 @@ const ENUM_MAPS: Record<EnumType, Record<string, { ar: string; en: string }>> = 
     paid: { ar: 'مدفوعة', en: 'Paid' },
     unpaid: { ar: 'غير مدفوعة', en: 'Unpaid' },
     overdue: { ar: 'متأخرة', en: 'Overdue' },
+    partial: { ar: 'مدفوعة جزئياً', en: 'Partial' },
+    void: { ar: 'ملغاة', en: 'Void' },
+  },
+  settlementStatus: {
+    pending: { ar: 'قيد المعالجة', en: 'Pending' },
+    completed: { ar: 'مكتملة', en: 'Completed' },
+  },
+  paymentMethod: {
+    bank: { ar: 'تحويل بنكي', en: 'Bank transfer' },
+    card: { ar: 'بطاقة', en: 'Card' },
+    cash: { ar: 'نقدي', en: 'Cash' },
+  },
+  vatType: {
+    STANDARD: { ar: 'ضريبة 15%', en: 'VAT 15%' },
+    ZERO_RATED: { ar: 'صفرية', en: 'Zero-rated' },
+    EXEMPT: { ar: 'معفاة', en: 'Exempt' },
   },
   generalStatus: {},
 };
@@ -87,5 +103,5 @@ export function displayEnum(
   const reverseEntry = Object.entries(map).find(([, labels]) => labels[locale] === raw);
   if (reverseEntry) return locale === 'ar' ? reverseEntry[1].ar : reverseEntry[1].en;
 
-  return raw;
+  return Object.keys(map).length > 0 ? FALLBACKS[locale] : raw;
 }
