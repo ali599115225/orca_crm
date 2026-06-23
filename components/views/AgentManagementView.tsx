@@ -141,6 +141,18 @@ export default function AgentManagementView({
   const locale = isArabic ? "ar-SA" : "en-US";
   const plan = normalizeAgentPlan(tenantPlan);
   const isDedicatedCopy = licenseMode === "DEDICATED_COPY";
+  const planLabel =
+    plan === "gold"
+      ? isArabic
+        ? "الباقة الذهبية"
+        : "Gold Plan"
+      : plan === "silver"
+        ? isArabic
+          ? "الباقة الفضية"
+          : "Silver Plan"
+        : isArabic
+          ? "الباقة الأساسية"
+          : "Basic Plan";
 
   const [activeTab, setActiveTab] = useState<AgentTab>("catalog");
   const [slots, setSlots] = useState<AgentSlot[]>([]);
@@ -425,7 +437,7 @@ export default function AgentManagementView({
   ];
 
   return (
-    <main className="nc-page nc-stack" dir={isArabic ? "rtl" : "ltr"}>
+    <main className="orca-agents-final nc-page nc-stack" dir={isArabic ? "rtl" : "ltr"}>
       <header className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h1 className="text-2xl font-black text-[var(--nc-foreground)]">
@@ -444,9 +456,7 @@ export default function AgentManagementView({
               ? isArabic
                 ? "ترخيص نسخة كاملة"
                 : "Full Dedicated License"
-              : isArabic
-                ? "باقة " + plan
-                : plan.toUpperCase() + " Plan"}
+                            : planLabel}
           </span>
           <Link
             href="/operations/settings?tab=agents"
@@ -522,7 +532,7 @@ export default function AgentManagementView({
       </nav>
 
       {(activeTab === "catalog" || activeTab === "my-agents") && (
-        <section className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           {visibleCodes.map((code) => {
             const meta = AGENT_META[code];
             const slot = slotByCode.get(code);

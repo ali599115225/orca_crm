@@ -10,7 +10,7 @@ import SettingsNavigation, {
 import SettingsBilling from "@/components/settings/SettingsBilling";
 import SettingsStaff from "@/components/settings/SettingsStaff";
 import SettingsCompliance from "@/components/settings/SettingsCompliance";
-import WhatsAppIntegrationSettings from "@/components/settings/WhatsAppIntegrationSettings";
+import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsHub";
 import { SmartCard } from "@/components/ui/SmartCard";
 
 interface User {
@@ -46,6 +46,20 @@ function resolveSection(value: string | null): SettingsSection {
   return VALID_SECTIONS.includes(value as SettingsSection)
     ? (value as SettingsSection)
     : "organization";
+}
+
+function displayPlan(value: string, isArabic: boolean): string {
+  const plan = value.trim().toLowerCase();
+
+  if (["gold", "diamond", "platinum", "super"].includes(plan)) {
+    return isArabic ? "الباقة الذهبية" : "Gold Plan";
+  }
+
+  if (["silver", "pro", "professional"].includes(plan)) {
+    return isArabic ? "الباقة الفضية" : "Silver Plan";
+  }
+
+  return isArabic ? "الباقة الأساسية" : "Basic Plan";
 }
 
 export default function SettingsView({
@@ -84,7 +98,10 @@ export default function SettingsView({
   };
 
   return (
-    <main className="nc-page nc-stack" dir={isArabic ? "rtl" : "ltr"}>
+    <main
+      className="orca-settings-final nc-page nc-stack"
+      dir={isArabic ? "rtl" : "ltr"}
+    >
       <header className="space-y-2">
         <h1 className="text-2xl font-black text-[var(--nc-foreground)]">
           {isArabic ? "الإعدادات" : "Settings"}
@@ -96,14 +113,14 @@ export default function SettingsView({
         </p>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 lg:grid-cols-[228px_minmax(0,1fr)]">
         <SettingsNavigation
           activeSection={activeSection}
           lang={lang}
           onChange={changeSection}
         />
 
-        <section className="min-w-0">
+        <section className="orca-settings-content min-w-0">
           {activeSection === "organization" && (
             <SmartCard className="p-6">
               <div className="mb-6">
@@ -118,26 +135,18 @@ export default function SettingsView({
               </div>
 
               <dl className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
-                  <dt className="text-xs text-[var(--nc-foreground-muted)]">
-                    {isArabic ? "اسم المنشأة" : "Company Name"}
-                  </dt>
-                  <dd className="mt-2 text-sm font-bold text-[var(--nc-foreground)]">
-                    {tenant.companyName}
-                  </dd>
+                <div className="orca-info-tile">
+                  <dt>{isArabic ? "اسم المنشأة" : "Company Name"}</dt>
+                  <dd>{tenant.companyName}</dd>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
-                  <dt className="text-xs text-[var(--nc-foreground-muted)]">
-                    {isArabic ? "النطاق الفرعي" : "Subdomain"}
-                  </dt>
-                  <dd className="mt-2 text-sm font-bold text-[var(--nc-foreground)] font-en">
-                    {tenant.subdomain}
-                  </dd>
+                <div className="orca-info-tile">
+                  <dt>{isArabic ? "النطاق الفرعي" : "Subdomain"}</dt>
+                  <dd className="font-en">{tenant.subdomain}</dd>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
-                  <dt className="text-xs text-[var(--nc-foreground-muted)]">
+                <div className="orca-info-tile">
+                  <dt>
                     {isDedicatedCopy
                       ? isArabic
                         ? "نوع الترخيص"
@@ -146,12 +155,12 @@ export default function SettingsView({
                         ? "الباقة الحالية"
                         : "Current Plan"}
                   </dt>
-                  <dd className="mt-2 text-sm font-bold text-[var(--nc-foreground)]">
+                  <dd>
                     {isDedicatedCopy
                       ? isArabic
                         ? "نسخة كاملة مستقلة"
                         : "Full Dedicated Copy"
-                      : tenant.subscriptionPlan}
+                      : displayPlan(tenant.subscriptionPlan, isArabic)}
                   </dd>
                 </div>
               </dl>
@@ -159,12 +168,14 @@ export default function SettingsView({
           )}
 
           {activeSection === "staff" && (
-            <SettingsStaff
-              tenant={tenant}
-              users={staffUsers}
-              lang={lang}
-              isArabic={isArabic}
-            />
+            <div className="orca-settings-staff">
+              <SettingsStaff
+                tenant={tenant}
+                users={staffUsers}
+                lang={lang}
+                isArabic={isArabic}
+              />
+            </div>
           )}
 
           {activeSection === "billing" &&
@@ -183,7 +194,7 @@ export default function SettingsView({
                         : "This deployment includes all licensed agents and features. No agent purchase or plan upgrade is required."}
                     </p>
                   </div>
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  <span className="orca-status-badge orca-status-success">
                     {isArabic ? "ترخيص نشط" : "License Active"}
                   </span>
                 </div>
@@ -216,10 +227,7 @@ export default function SettingsView({
                   </p>
                 </div>
 
-                <Link
-                  href="/operations/agents"
-                  className="rounded-xl bg-[var(--nc-accent)] px-5 py-3 text-center text-sm font-bold text-slate-950 transition hover:bg-[var(--nc-accent-hover)]"
-                >
+                <Link href="/operations/agents" className="orca-primary-button">
                   {isArabic ? "فتح مساحة الوكلاء" : "Open Agents Workspace"}
                 </Link>
               </div>
@@ -227,11 +235,13 @@ export default function SettingsView({
           )}
 
           {activeSection === "integrations" && (
-            <WhatsAppIntegrationSettings lang={lang} />
+            <SettingsIntegrationsHub lang={lang} />
           )}
 
           {activeSection === "compliance" && (
-            <SettingsCompliance lang={lang} isArabic={isArabic} />
+            <div className="orca-settings-compliance">
+              <SettingsCompliance lang={lang} isArabic={isArabic} />
+            </div>
           )}
         </section>
       </div>

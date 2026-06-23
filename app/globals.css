@@ -844,3 +844,248 @@ html { scroll-behavior: smooth; }
 .space-y-6 > *:nth-child(2) { animation-delay: 60ms; }
 .space-y-6 > *:nth-child(3) { animation-delay: 120ms; }
 .space-y-6 > *:nth-child(4) { animation-delay: 180ms; }
+/* ORCA_SETTINGS_AGENTS_FINAL_THEME_START */
+.orca-settings-final,
+.orca-agents-final {
+  --orca-theme-secondary: color-mix(
+    in srgb,
+    var(--nc-foreground) 74%,
+    var(--nc-accent) 26%
+  );
+  --orca-theme-muted: color-mix(
+    in srgb,
+    var(--nc-foreground) 62%,
+    var(--nc-accent) 38%
+  );
+  --orca-theme-field: color-mix(
+    in srgb,
+    var(--nc-surface-strong) 92%,
+    var(--nc-accent) 8%
+  );
+  --orca-theme-field-border: color-mix(
+    in srgb,
+    var(--nc-border) 72%,
+    var(--nc-accent) 28%
+  );
+}
+
+.orca-settings-final [class*="text-[var(--nc-foreground-muted)]"],
+.orca-agents-final [class*="text-[var(--nc-foreground-muted)]"],
+.orca-settings-final [class*="text-slate-3"],
+.orca-settings-final [class*="text-slate-4"],
+.orca-settings-final [class*="text-slate-5"],
+.orca-settings-final [class*="text-gray-3"],
+.orca-settings-final [class*="text-gray-4"],
+.orca-settings-final [class*="text-gray-5"],
+.orca-agents-final [class*="text-slate-3"],
+.orca-agents-final [class*="text-slate-4"],
+.orca-agents-final [class*="text-slate-5"] {
+  color: var(--orca-theme-secondary) !important;
+}
+
+.orca-settings-final input:not([type="checkbox"]):not([type="radio"]),
+.orca-settings-final select,
+.orca-settings-final textarea,
+.orca-agents-final input:not([type="checkbox"]):not([type="radio"]),
+.orca-agents-final select,
+.orca-agents-final textarea {
+  background: var(--orca-theme-field) !important;
+  color: var(--nc-foreground) !important;
+  border-color: var(--orca-theme-field-border) !important;
+  box-shadow: none !important;
+}
+
+.orca-settings-final input::placeholder,
+.orca-settings-final textarea::placeholder,
+.orca-agents-final input::placeholder,
+.orca-agents-final textarea::placeholder {
+  color: var(--orca-theme-muted) !important;
+  opacity: 1;
+}
+
+.orca-settings-final input:focus,
+.orca-settings-final select:focus,
+.orca-settings-final textarea:focus,
+.orca-agents-final input:focus,
+.orca-agents-final select:focus,
+.orca-agents-final textarea:focus {
+  border-color: var(--nc-accent-border) !important;
+  outline: 2px solid color-mix(in srgb, var(--nc-accent) 32%, transparent);
+  outline-offset: 1px;
+}
+
+.orca-settings-final label,
+.orca-settings-final th,
+.orca-settings-final dt,
+.orca-agents-final label,
+.orca-agents-final th,
+.orca-agents-final dt {
+  color: var(--orca-theme-secondary) !important;
+}
+
+.orca-info-tile {
+  min-height: 96px;
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: var(--nc-surface-strong);
+  padding: 1rem;
+}
+
+.orca-info-tile dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.orca-info-tile dd {
+  margin-top: 0.65rem;
+  color: var(--nc-foreground);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.orca-primary-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--nc-accent);
+  padding: 0.75rem 1.25rem;
+  color: #172033 !important;
+  font-size: 0.875rem;
+  font-weight: 800;
+  transition: 160ms ease;
+}
+
+.orca-primary-button:hover {
+  background: var(--nc-accent-hover);
+  transform: translateY(-1px);
+}
+
+.orca-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.orca-status-success {
+  border: 1px solid color-mix(in srgb, #10b981 48%, var(--nc-border));
+  background: color-mix(in srgb, #10b981 14%, var(--nc-surface));
+  color: color-mix(in srgb, #10b981 72%, var(--nc-foreground));
+}
+
+.orca-provider-card {
+  display: grid;
+  min-height: 132px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.9rem;
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: var(--nc-surface);
+  padding: 1rem;
+  text-align: start;
+  transition: 160ms ease;
+}
+
+.orca-provider-card:hover,
+.orca-provider-card-active {
+  border-color: var(--nc-accent-border);
+  background: color-mix(
+    in srgb,
+    var(--nc-surface-strong) 88%,
+    var(--nc-accent) 12%
+  );
+  transform: translateY(-1px);
+}
+
+.orca-provider-card strong {
+  display: block;
+  color: var(--nc-foreground);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.orca-provider-card small {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--orca-theme-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45rem;
+}
+
+.orca-provider-icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--orca-theme-field-border);
+  border-radius: 0.85rem;
+  background: var(--orca-theme-field);
+  color: var(--nc-foreground);
+  font-size: 1.1rem;
+}
+
+.orca-provider-state {
+  border-radius: 999px;
+  background: var(--nc-accent-soft);
+  padding: 0.3rem 0.55rem;
+  color: var(--nc-foreground);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.orca-integration-detail > * {
+  width: 100%;
+}
+
+.orca-settings-staff > .grid {
+  grid-template-columns: minmax(340px, 0.82fr) minmax(0, 1.18fr) !important;
+  align-items: start !important;
+  gap: 1rem !important;
+}
+
+.orca-settings-staff > .grid > * {
+  min-width: 0;
+  height: auto !important;
+}
+
+.orca-settings-compliance > .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  gap: 1rem !important;
+}
+
+.orca-settings-compliance > .grid > * {
+  min-width: 0;
+  height: auto !important;
+}
+
+.orca-agents-final .grid.items-stretch > * {
+  height: 100%;
+}
+
+.orca-agents-final nav button[aria-current="page"] {
+  border: 1px solid var(--nc-accent-border);
+  color: var(--nc-foreground) !important;
+}
+
+@media (max-width: 1023px) {
+  .orca-settings-staff > .grid,
+  .orca-settings-compliance > .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orca-primary-button,
+  .orca-provider-card {
+    transition: none;
+  }
+}
+/* ORCA_SETTINGS_AGENTS_FINAL_THEME_END */
