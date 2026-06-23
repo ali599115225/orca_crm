@@ -2,7 +2,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
+import { requirePlatformOwnerAccess } from "@/lib/agents/access";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
@@ -26,6 +26,7 @@ export interface DiagnosticsReport {
  * يقوم بفحص صحة النظام، الأخطاء، سلامة اتصال قاعدة البيانات، وتنبيه الإدارة بالبريد الإلكتروني
  */
 export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport> {
+  await requirePlatformOwnerAccess();
   const anomalies: string[] = [];
   const recommendations: string[] = [];
   let dbStatus: "HEALTHY" | "ERROR" = "HEALTHY";
@@ -167,11 +168,7 @@ export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport>
  */
 export async function runAllSystemAgentsAction() {
   try {
-    const session = await getSession();
-    if (!session) throw new Error("يجب تسجيل الدخول كمسؤول أولاً.");
-
-    const isSuperAdmin = session.email === "ali.orca@outlook.sa" || session.email === "elite.orca@outlook.sa";
-    if (!isSuperAdmin) throw new Error("غير مصرح لك بتشغيل الوكلاء.");
+    await requirePlatformOwnerAccess();
 
     // 1. تشغيل الوكيل ساهر لتتبع الأخطاء وفحص جدار الأمان وقاعدة البيانات
     const saherReport = await saherTrackSystemErrorsAction();

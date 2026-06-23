@@ -1,79 +1,144 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  AGENT_MANAGER_ROLES,
+  agentErrorResponse,
+  requireAgentAccess,
+} from "@/lib/agents/access";
+import { getAgentDefinition } from "@/lib/agents/registry";
+import { claimAgentIdempotency } from "@/lib/agents/quota";
+import { assertAgentCanRun } from "@/lib/agents/guard";
+import { runSaherTelemetryScanAction } from "@/app/actions/saherAgent";
+import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-
+    const access = await requireAgentAccess({ roles: AGENT_MANAGER_ROLES });
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
 
     const slot = await prisma.agentSlot.findFirst({
-      where: { id, tenantId: session.tenantId as string },
+      where: { id, tenantId: access.tenantId },
     });
-
     if (!slot) {
-      return NextResponse.json({
-        success: false,
-        status: "PARTIAL",
-        agentId: id,
-        message: "فشل تشغيل الوكيل — لم يتم العثور عليه أو ليس ضمن نطاق المنشأة.",
-      }, { status: 404 });
+      return NextResponse.json(
+        { success: false, code: "AGENT_NOT_FOUND", error: "Agent not found." },
+        { status: 404 },
+      );
     }
-
     if (!slot.isActive) {
-      return NextResponse.json({
-        success: false,
-        status: "PARTIAL",
-        agentId: id,
-        message: "الوكيل غير مفعل — يرجى تفعيله أولاً قبل محاولة التشغيل.",
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "AGENT_DISABLED",
+          error: "Agent is disabled.",
+        },
+        { status: 409 },
+      );
     }
 
-    const agentTypeHandlers: Record<string, () => Promise<{ executed: boolean; details: string }>> = {
-      SAHER: async () => {
-        const { runSaherTelemetryScanAction } = await import('@/app/actions/saherAgent');
-        await runSaherTelemetryScanAction();
-        return { executed: true, details: "تم تشغيل فحص ساهر لتحليل البيانات." };
-      },
-      SENTINEL: async () => {
-        const { runSystemDiagnosticsAction } = await import('@/app/actions/sentinel');
-        await runSystemDiagnosticsAction();
-        return { executed: true, details: "تم تشغيل فحص Sentinel لطبقات النظام." };
-      },
-    };
+    const definition = getAgentDefinition(slot.agentType);
+    if (!definition) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "AGENT_TYPE_UNREGISTERED",
+          error: "Agent type is not registered.",
+        },
+        { status: 409 },
+      );
+    }
 
-    const handler = agentTypeHandlers[slot.agentType];
-    if (handler) {
-      const result = await handler();
+    const runtime = await assertAgentCanRun({
+      tenantId: access.tenantId,
+      userId: access.userId,
+      agentName: slot.agentType,
+      actionType: "EXECUTION",
+    });
+    if (!runtime.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "AGENT_RUNTIME_BLOCKED",
+          error: runtime.reason || "Agent runtime is blocked.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const requestedKey =
+      request.headers.get("Idempotency-Key") ||
+      String(body.idempotencyKey || "") ||
+      `${access.userId}:${id}:${Math.floor(Date.now() / 60_000)}`;
+    const claimed = await claimAgentIdempotency(
+      access.tenantId,
+      `manual-run:${id}`,
+      requestedKey,
+    );
+    if (!claimed) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "AGENT_DUPLICATE_RUN",
+          error: "Duplicate agent run was blocked.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (definition.manualRun !== "SAHER_TELEMETRY") {
+      await prisma.agentTelemetryLog.create({
+        data: {
+          tenantId: access.tenantId,
+          agentId: slot.agentType,
+          actionType: "MANUAL_RUN_SKIPPED",
+          logMessageAr: "الوكيل يعمل تلقائياً ولا يدعم التنفيذ اليدوي المباشر.",
+          severity: "Info",
+        },
+      });
       return NextResponse.json({
         success: true,
-        status: "READY",
+        executed: false,
         agentId: id,
         agentType: slot.agentType,
-        message: `تم تشغيل الوكيل ${slot.agentType} بنجاح: ${result.details}`,
-        executedAt: new Date().toISOString(),
+        message:
+          "Agent is automatic and does not support direct manual execution.",
       });
     }
 
+    const result = await runSaherTelemetryScanAction();
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "AGENT_RUN_FAILED",
+          error: result.error || "Agent run failed.",
+        },
+        { status: 500 },
+      );
+    }
+
+    await writeAuditLog({
+      tenantId: access.tenantId,
+      userId: access.userId,
+      action: "AGENT_MANUAL_RUN",
+      tableName: "agent_slots",
+      recordId: slot.id,
+      details: JSON.stringify({ agentType: slot.agentType }),
+    });
+
     return NextResponse.json({
-      success: false,
-      status: "PARTIAL",
+      success: true,
+      executed: true,
       agentId: id,
       agentType: slot.agentType,
-      message: `نوع الوكيل ${slot.agentType} لا يدعم التشغيل اليدوي المباشر حالياً. الوكيل يعمل تلقائياً عبر النظام.`,
+      report: result.report,
     });
-  } catch (error: any) {
-    return NextResponse.json({
-      success: false,
-      status: "PARTIAL",
-      message: error.message || "خطأ في تشغيل الوكيل",
-    }, { status: 500 });
+  } catch (error) {
+    const result = agentErrorResponse(error);
+    return NextResponse.json(result.body, { status: result.status });
   }
 }

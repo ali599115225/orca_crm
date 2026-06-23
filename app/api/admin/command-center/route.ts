@@ -1,4 +1,3 @@
-// app/api/admin/command-center/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
@@ -18,37 +17,65 @@ import {
   sendOwnerChatMessage,
 } from "@/lib/sentinel/task-order";
 import { executeApprovedSaherAction } from "@/app/actions/saherAgent";
+import {
+  AGENT_MANAGER_ROLES,
+  agentErrorResponse,
+  requireAgentAccess,
+} from "@/lib/agents/access";
+
+const OPERATING_MODES = new Set([
+  "NORMAL_MODE",
+  "VACATION_MODE",
+  "EMERGENCY_MODE",
+  "APPROVAL_MODE",
+]);
+
+const DELEGATION_LEVELS = new Set([
+  "MONITORING_ONLY",
+  "MAINTENANCE_MONITORING",
+  "SIMPLE_REPAIRS",
+  "CONDITIONAL_DEEP_REPAIR",
+]);
 
 async function authenticatePlatformOwner() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
   if (!sessionToken) return null;
+
   const payload = await decrypt(sessionToken);
   if (!payload?.email) return null;
-  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
+
+  const allowed = (process.env.SUPER_ADMIN_EMAILS || "")
     .split(",")
-    .map((e) => e.trim().toLowerCase())
+    .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
-  if (!superAdminEmails.includes(String(payload.email).toLowerCase())) return null;
-  return payload;
+
+  return allowed.includes(String(payload.email).toLowerCase())
+    ? payload
+    : null;
 }
 
-async function authenticateUser() {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (!sessionToken) return null;
-  const payload = await decrypt(sessionToken);
-  if (!payload?.userId || !payload?.tenantId) return null;
-  return payload;
+function stripExecutionPayload(tasks: any[]) {
+  return tasks.map(({ executionPayload: _hidden, ...rest }: any) => rest);
 }
 
 export async function GET() {
   const session = await authenticatePlatformOwner();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized — platform owner only" }, { status: 401 });
+    return NextResponse.json(
+      { success: false, error: "Unauthorized — platform owner only" },
+      { status: 401 },
+    );
   }
 
-  const [config, openTasks, pendingApprovals, auditEvents, incidents, chatMessages] = await Promise.all([
+  const [
+    config,
+    openTasks,
+    pendingApprovals,
+    auditEvents,
+    incidents,
+    chatMessages,
+  ] = await Promise.all([
     getOrCreateSentinelConfig(),
     getOpenTasks(),
     getPendingApprovals(),
@@ -56,8 +83,6 @@ export async function GET() {
     getOpenIncidents(),
     getChatMessages(30),
   ]);
-
-  const stripExecutionPayload = (tasks: any[]) => tasks.map(({ executionPayload: _, ...rest }: any) => rest);
 
   return NextResponse.json({
     status: config.operatingMode,
@@ -80,104 +105,189 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { action } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON body." },
+      { status: 400 },
+    );
+  }
 
-  // Platform owner actions
-  if (["change-mode", "delegation-level", "fallback-plan", "deep-repair-wait", "chat-send"].includes(action)) {
+  const action = String(body.action || "");
+
+  if (
+    [
+      "change-mode",
+      "delegation-level",
+      "fallback-plan",
+      "deep-repair-wait",
+      "chat-send",
+    ].includes(action)
+  ) {
     const session = await authenticatePlatformOwner();
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized — platform owner only" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized — platform owner only" },
+        { status: 401 },
+      );
     }
 
-    if (action === "change-mode" && body.mode) {
-      const updated = await updateOperatingMode(body.mode);
-      return NextResponse.json({ success: true, mode: updated.operatingMode });
+    if (action === "change-mode") {
+      const mode = String(body.mode || "");
+      if (!OPERATING_MODES.has(mode)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid operating mode." },
+          { status: 400 },
+        );
+      }
+      const updated = await updateOperatingMode(mode);
+      return NextResponse.json({
+        success: true,
+        mode: updated.operatingMode,
+      });
     }
-    if (action === "delegation-level" && body.level) {
-      const updated = await updateDelegationLevel(body.level);
-      return NextResponse.json({ success: true, delegationLevel: updated.delegationLevel });
+
+    if (action === "delegation-level") {
+      const level = String(body.level || "");
+      if (!DELEGATION_LEVELS.has(level)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid delegation level." },
+          { status: 400 },
+        );
+      }
+      const updated = await updateDelegationLevel(level);
+      return NextResponse.json({
+        success: true,
+        delegationLevel: updated.delegationLevel,
+      });
     }
+
     if (action === "fallback-plan") {
       const updated = await updateFallbackPlan(body.active === true);
-      return NextResponse.json({ success: true, fallbackPlanActive: updated.fallbackPlanActive });
-    }
-    if (action === "deep-repair-wait" && body.minutes) {
-      const updated = await updateDeepRepairWait(Number(body.minutes));
-      return NextResponse.json({ success: true, deepRepairWaitMinutes: updated.deepRepairWaitMinutes });
-    }
-    if (action === "chat-send" && body.message) {
-      const msg = await sendOwnerChatMessage(String(body.message));
-      return NextResponse.json({ success: true, message: msg });
-    }
-  }
-
-  // Tenant admin actions — approve/reject SAHER proposals
-  if (action === "approve-task" && body.taskId) {
-    const session = await authenticateUser();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const tenantId = session.tenantId as string;
-    const userId = session.userId as string;
-
-    const taskOrder = await prisma.sentinelTaskOrder.findFirst({
-      where: { id: body.taskId as string, tenantId },
-    });
-    if (!taskOrder) {
-      return NextResponse.json({ error: "Task not found or access denied" }, { status: 403 });
-    }
-    if (taskOrder.status !== "WAITING_APPROVAL" && taskOrder.status !== "OPEN") {
-      return NextResponse.json({ error: `Task already ${taskOrder.status}` }, { status: 409 });
-    }
-
-    const result = await executeApprovedSaherAction(body.taskId as string, userId);
-
-    if (result.success) {
-      await writeAuditLog({
-        tenantId,
-        userId,
-        action: "SAHER_APPROVAL_APPROVED",
-        tableName: "sentinel_task_orders",
-        recordId: body.taskId as string,
-        details: `Approved by user ${userId}`,
+      return NextResponse.json({
+        success: true,
+        fallbackPlanActive: updated.fallbackPlanActive,
       });
-      return NextResponse.json({ success: true, leadId: result.leadId });
     }
-    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+
+    if (action === "deep-repair-wait") {
+      const minutes = Number(body.minutes);
+      if (![15, 30, 60, 180, 360].includes(minutes)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid deep-repair wait time." },
+          { status: 400 },
+        );
+      }
+      const updated = await updateDeepRepairWait(minutes);
+      return NextResponse.json({
+        success: true,
+        deepRepairWaitMinutes: updated.deepRepairWaitMinutes,
+      });
+    }
+
+    if (action === "chat-send") {
+      const message = String(body.message || "").trim();
+      if (!message || message.length > 2_000) {
+        return NextResponse.json(
+          { success: false, error: "Invalid chat message." },
+          { status: 400 },
+        );
+      }
+      const result = await sendOwnerChatMessage(message);
+      return NextResponse.json({ success: true, message: result });
+    }
   }
 
-  if (action === "reject-task" && body.taskId) {
-    const session = await authenticateUser();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (
+    (action === "approve-task" || action === "reject-task") &&
+    typeof body.taskId === "string"
+  ) {
+    try {
+      const access = await requireAgentAccess({
+        roles: AGENT_MANAGER_ROLES,
+      });
+      const taskId = body.taskId;
+
+      const task = await prisma.sentinelTaskOrder.findFirst({
+        where: {
+          id: taskId,
+          tenantId: access.tenantId,
+          approvalRequired: true,
+        },
+      });
+      if (!task) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Task not found or access denied.",
+          },
+          { status: 404 },
+        );
+      }
+      if (task.status !== "WAITING_APPROVAL") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Task already ${task.status}.`,
+          },
+          { status: 409 },
+        );
+      }
+
+      if (action === "approve-task") {
+        const result = await executeApprovedSaherAction(
+          task.id,
+          access.userId,
+        );
+        return NextResponse.json(
+          result.success
+            ? { success: true, leadId: result.leadId || null }
+            : { success: false, error: result.error || "Approval failed." },
+          { status: result.success ? 200 : 400 },
+        );
+      }
+
+      const rejected = await prisma.sentinelTaskOrder.updateMany({
+        where: {
+          id: task.id,
+          tenantId: access.tenantId,
+          status: "WAITING_APPROVAL",
+        },
+        data: {
+          status: "CANCELLED",
+          completedAt: new Date(),
+        },
+      });
+      if (rejected.count !== 1) {
+        return NextResponse.json(
+          { success: false, error: "Task status changed." },
+          { status: 409 },
+        );
+      }
+
+      await writeAuditLog({
+        tenantId: access.tenantId,
+        userId: access.userId,
+        action: "SAHER_APPROVAL_REJECTED",
+        tableName: "sentinel_task_orders",
+        recordId: task.id,
+        details: "Rejected by an authorized tenant manager.",
+      });
+
+      return NextResponse.json({
+        success: true,
+        status: "CANCELLED",
+      });
+    } catch (error) {
+      const result = agentErrorResponse(error);
+      return NextResponse.json(result.body, { status: result.status });
     }
-    const tenantId = session.tenantId as string;
-    const userId = session.userId as string;
-
-    const taskOrder = await prisma.sentinelTaskOrder.findFirst({
-      where: { id: body.taskId as string, tenantId },
-    });
-    if (!taskOrder) {
-      return NextResponse.json({ error: "Task not found or access denied" }, { status: 403 });
-    }
-
-    await prisma.sentinelTaskOrder.update({
-      where: { id: body.taskId as string },
-      data: { status: "CANCELLED" },
-    });
-
-    await writeAuditLog({
-      tenantId,
-      userId,
-      action: "SAHER_APPROVAL_REJECTED",
-      tableName: "sentinel_task_orders",
-      recordId: body.taskId as string,
-      details: `Rejected by user ${userId}`,
-    });
-
-    return NextResponse.json({ success: true, status: "CANCELLED" });
   }
 
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  return NextResponse.json(
+    { success: false, error: "Invalid action." },
+    { status: 400 },
+  );
 }

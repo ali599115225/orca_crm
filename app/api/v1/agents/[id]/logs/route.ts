@@ -1,27 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  AGENT_READ_ROLES,
+  agentErrorResponse,
+  requireAgentAccess,
+} from "@/lib/agents/access";
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-
+    const access = await requireAgentAccess({ roles: AGENT_READ_ROLES });
     const { id } = await params;
 
+    const slot = await prisma.agentSlot.findFirst({
+      where: { id, tenantId: access.tenantId },
+      select: { id: true, agentType: true },
+    });
+    if (!slot) {
+      return NextResponse.json(
+        { success: false, code: "AGENT_NOT_FOUND", error: "Agent not found." },
+        { status: 404 },
+      );
+    }
+
     const logs = await prisma.agentTelemetryLog.findMany({
-      where: { agentId: id, tenantId: session.tenantId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      where: {
+        tenantId: access.tenantId,
+        agentId: { in: [slot.id, slot.agentType] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
     });
 
-    return NextResponse.json({ success: true, agentId: id, data: logs });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      agentId: id,
+      data: logs,
+    });
+  } catch (error) {
+    const result = agentErrorResponse(error);
+    return NextResponse.json(result.body, { status: result.status });
   }
 }

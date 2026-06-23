@@ -38,7 +38,10 @@ export type AuditAction =
   | "PROMPT_INJECTION_DETECTED"
   | "AGENT_OUTPUT_VALIDATION_FAILED"
   | "AGENT_UNSAFE_ACTION_REJECTED"
-  | "AGENT_SAFE_FALLBACK_USED";
+  | "AGENT_SAFE_FALLBACK_USED"
+  | "AGENT_MANUAL_RUN"
+  | "AGENT_ACTIVATED"
+  | "AGENT_DEACTIVATED";
 
 export async function writeAuditLog(params: {
   tenantId: string;

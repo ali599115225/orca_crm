@@ -1,76 +1,113 @@
-// app/api/v1/ai/summarize-conversation/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import {
+  AGENT_READ_ROLES,
+  agentErrorResponse,
+  requireAgentAccess,
+} from "@/lib/agents/access";
+import {
+  aiErrorResponse,
+  generateAgentJson,
+} from "@/lib/agents/gemini-client";
+
+type ConversationSummary = {
+  summary: string;
+  sentiment: "NEGATIVE" | "NEUTRAL" | "POSITIVE";
+  nextActions: string[];
+  confidence: number;
+};
+
+function messagesFromBody(body: any): string[] {
+  const values = Array.isArray(body?.messages)
+    ? body.messages
+    : typeof body?.conversation === "string"
+      ? [body.conversation]
+      : [];
+
+  return values
+    .slice(-100)
+    .map((entry: any) =>
+      typeof entry === "string"
+        ? entry
+        : `${String(entry?.sender || "unknown")}: ${String(entry?.text || entry?.message || "")}`,
+    )
+    .map((entry: string) => entry.slice(0, 1_000))
+    .filter(Boolean);
+}
+
+function fallback(messages: string[]): ConversationSummary {
+  const combined = messages.join(" ").slice(0, 500);
+  return {
+    summary: combined || "No conversation content was supplied.",
+    sentiment: "NEUTRAL",
+    nextActions: ["Review the conversation manually."],
+    confidence: 0.35,
+  };
+}
+
+function valid(value: unknown): value is ConversationSummary {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.summary === "string" &&
+    ["NEGATIVE", "NEUTRAL", "POSITIVE"].includes(String(item.sentiment)) &&
+    Array.isArray(item.nextActions) &&
+    item.nextActions.every((entry) => typeof entry === "string") &&
+    typeof item.confidence === "number" &&
+    item.confidence >= 0 &&
+    item.confidence <= 1
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
-    }
-
+    const access = await requireAgentAccess({ roles: AGENT_READ_ROLES });
     const body = await request.json();
-    const { chatLog } = body;
-
-    if (!chatLog) {
-      return NextResponse.json({ error: "سجل المحادثة (chatLog) مطلوب." }, { status: 400 });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json({
-        success: true,
-        summaryAr: "ملخص المحادثة غير متاح حالياً — Gemini API غير مفعل.",
-        summaryEn: "Conversation summary unavailable — Gemini API not configured.",
-        status: "PARTIAL",
-        extractedDetails: null,
-      });
-    }
-
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${apiKey}`,
+    const messages = messagesFromBody(body);
+    if (messages.length === 0) {
+      return NextResponse.json(
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: "أنت مساعد تلخيص محادثات عقارية. لخص المحادثة بالعربية والإنجليزية وأعطني النتيجة بصيغة JSON تحتوي على: summaryAr, summaryEn, extractedDetails { interest, locationPreference, budgetMentioned }." }],
-            },
-            contents: [
-              { role: "user", parts: [{ text: `لخص المحادثة التالية:\n\n${JSON.stringify(chatLog)}` }] },
-            ],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 1024, responseMimeType: "application/json" },
-          }),
-        }
+          success: false,
+          code: "CONVERSATION_REQUIRED",
+          error: "Conversation messages are required.",
+        },
+        { status: 400 },
       );
+    }
 
-      if (!response.ok) {
-        throw new Error(`Gemini API: ${response.status}`);
-      }
+    const result = await generateAgentJson<ConversationSummary>({
+      tenantId: access.tenantId,
+      agentName: "MANSOUR",
+      systemPrompt: [
+        "Summarize only the supplied CRM conversation.",
+        "Do not translate customer-authored content and do not invent facts.",
+        "Return JSON: summary, sentiment, nextActions, confidence.",
+        "sentiment is NEGATIVE, NEUTRAL, or POSITIVE.",
+      ].join("\n"),
+      userPrompt: messages.join("\n"),
+      validate: valid,
+      fallback: () => fallback(messages),
+      maxInputLength: 10_000,
+    });
 
-      const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-      const parsed = JSON.parse(rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
-
-      return NextResponse.json({
-        success: true,
-        summaryAr: parsed.summaryAr || "",
-        summaryEn: parsed.summaryEn || "",
-        status: "READY",
-        extractedDetails: parsed.extractedDetails || null,
-      });
-    } catch {
-      return NextResponse.json({
-        success: true,
-        summaryAr: "عذراً، تعذر تلخيص المحادثة حالياً. يرجى المحاولة لاحقاً.",
-        summaryEn: "Sorry, unable to summarize conversation at this time.",
-        status: "PARTIAL",
-        extractedDetails: null,
+    return NextResponse.json({
+      success: true,
+      ...result.data,
+      data: result.data,
+      meta: {
+        source: result.source,
+        model: result.model,
+        usage: result.usage,
+      },
+    });
+  } catch (error) {
+    const ai = aiErrorResponse(error);
+    if (ai.status !== 500 || ai.body.code !== "AI_INTERNAL_ERROR") {
+      return NextResponse.json(ai.body, {
+        status: ai.status,
+        headers: ai.headers,
       });
     }
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const access = agentErrorResponse(error);
+    return NextResponse.json(access.body, { status: access.status });
   }
 }

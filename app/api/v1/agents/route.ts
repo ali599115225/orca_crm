@@ -1,27 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  AGENT_READ_ROLES,
+  agentErrorResponse,
+  requireAgentAccess,
+} from "@/lib/agents/access";
+import { getAgentDefinition } from "@/lib/agents/registry";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-
+    const access = await requireAgentAccess({ roles: AGENT_READ_ROLES });
     const agents = await prisma.agentSlot.findMany({
-      where: { tenantId: session.tenantId },
-      select: {
-        id: true,
-        agentType: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'asc' },
+      where: { tenantId: access.tenantId },
+      include: { usageMeter: true },
+      orderBy: { slotNumber: "asc" },
     });
 
-    return NextResponse.json({ success: true, data: agents });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      data: agents.map((agent) => ({
+        ...agent,
+        definition: getAgentDefinition(agent.agentType),
+      })),
+    });
+  } catch (error) {
+    const result = agentErrorResponse(error);
+    return NextResponse.json(result.body, { status: result.status });
   }
 }
