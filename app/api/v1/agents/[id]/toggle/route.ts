@@ -6,16 +6,13 @@ import {
   requireAgentAccess,
 } from "@/lib/agents/access";
 import { getAgentDefinition } from "@/lib/agents/registry";
+import {
+  canActivateAgent,
+  getPlanAgentEntitlement,
+  isKnownAgentCode,
+} from "@/lib/agents/entitlements";
 import { writeAuditLog } from "@/lib/audit";
 
-const PLAN_SLOT_LIMITS: Record<string, number> = {
-  basic: 1,
-  silver: 5,
-  gold: 999_999,
-  platinum: 999_999,
-  professional: 999_999,
-  diamond: 999_999,
-};
 
 async function handle(
   request: NextRequest,
@@ -57,21 +54,68 @@ async function handle(
     }
 
     if (body.isActive && !slot.isActive) {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: access.tenantId },
-        select: { subscriptionPlan: true },
-      });
-      const activeCount = await prisma.agentSlot.count({
-        where: { tenantId: access.tenantId, isActive: true },
-      });
-      const plan = (tenant?.subscriptionPlan || "basic").toLowerCase();
-      const limit = PLAN_SLOT_LIMITS[plan] ?? 1;
-      if (activeCount >= limit) {
+      const agentCode = String(slot.agentType || "").trim().toUpperCase();
+
+      if (!isKnownAgentCode(agentCode)) {
         return NextResponse.json(
           {
             success: false,
-            code: "AGENT_CAP_LOCK",
-            error: `Active agent limit reached (${limit}).`,
+            code: "AGENT_TYPE_UNREGISTERED",
+            error: "Agent type is not registered.",
+          },
+          { status: 409 },
+        );
+      }
+
+      const [tenant, activeCount, activeLeases] = await Promise.all([
+        prisma.tenant.findUnique({
+          where: { id: access.tenantId },
+          select: { subscriptionPlan: true },
+        }),
+        prisma.agentSlot.count({
+          where: { tenantId: access.tenantId, isActive: true },
+        }),
+        prisma.agentLease.findMany({
+          where: {
+            tenantId: access.tenantId,
+            endDate: { gt: new Date() },
+          },
+          select: { agentId: true },
+        }),
+      ]);
+
+      const plan = tenant?.subscriptionPlan || "basic";
+      const entitlement = getPlanAgentEntitlement(plan);
+      const activeSubscriptionCodes = new Set(
+        activeLeases
+          .map((lease) => String(lease.agentId || "").trim().toUpperCase())
+          .filter(isKnownAgentCode)
+          .filter((code) => !entitlement.includedAgents.includes(code)),
+      );
+
+      const decision = canActivateAgent({
+        plan,
+        agentCode,
+        activeAgentCount: activeCount,
+        activeSubscriptionCount: activeSubscriptionCodes.size,
+        hasActiveSubscription: activeLeases.some(
+          (lease) =>
+            String(lease.agentId || "").trim().toUpperCase() === agentCode,
+        ),
+      });
+
+      if (!decision.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            code:
+              decision.reason === "AGENT_NOT_ENTITLED"
+                ? "AGENT_NOT_ENTITLED"
+                : "AGENT_CAP_LOCK",
+            error:
+              decision.reason === "AGENT_NOT_ENTITLED"
+                ? "Agent is not included in the plan and has no active subscription."
+                : `Active agent limit reached (${decision.effectiveLimit}).`,
           },
           { status: 409 },
         );
