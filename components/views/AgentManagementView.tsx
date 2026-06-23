@@ -1,499 +1,936 @@
-// components/views/AgentManagementView.tsx
-'use client';
-import React, { useState, useEffect } from 'react';
+"use client";
 
-import PageHeader from '@/components/ui/PageHeader';
-import LayoutContainer from '@/components/ui/LayoutContainer';
-import { SmartCard } from '@/components/ui/SmartCard';
-import { useSearchParams } from 'next/navigation';
-import { useApp } from '@/app/context/AppContext';
-import { getAgentLeasesAction, leaseAgentAction } from '@/app/actions/growth';
-import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
-
-interface AgentLease {
-  id: string;
-  agentId: string;
-  startDate: string;
-  endDate: string;
-  leasePrice: number;
-  autoRenewal: boolean;
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useApp } from "@/app/context/AppContext";
+import { SmartCard } from "@/components/ui/SmartCard";
+import {
+  getAgentLeasesAction as getAgentSubscriptionsAction,
+  leaseAgentAction as subscribeAgentAction,
+} from "@/app/actions/growth";
+import {
+  AGENT_CODES,
+  AGENT_MONTHLY_PRICE_SAR,
+  getIncludedAgents,
+  normalizeAgentPlan,
+  type AgentCode,
+  type LicenseMode,
+} from "@/lib/agents/entitlements";
 
 interface AgentManagementViewProps {
   tenantPlan?: string;
   totalLeads?: number;
-  totalProjects?: number;
   totalUsers?: number;
+  licenseMode?: LicenseMode;
+}
+
+interface AgentSubscription {
+  id: string;
+  agentId: string;
+  startDate: string;
+  endDate: string;
+  autoRenewal: boolean;
+}
+
+interface AgentDefinition {
+  name?: string;
+  nameAr?: string;
+  nameEn?: string;
+  description?: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
+}
+
+interface UsageMeter {
+  metricType: string;
+  limitValue: number;
+  usageValue: number;
+  resetAt: string;
+}
+
+interface AgentSlot {
+  id: string;
+  agentType: string;
+  slotNumber: number;
+  isActive: boolean;
+  usageMeter?: UsageMeter | null;
+  definition?: AgentDefinition | null;
+}
+
+interface AgentLog {
+  id: string;
+  actionType: string;
+  logMessageAr: string;
+  severity: string;
+  createdAt: string;
+}
+
+type AgentTab = "catalog" | "my-agents" | "usage" | "activity";
+
+const AGENT_META: Record<
+  AgentCode,
+  {
+    nameAr: string;
+    nameEn: string;
+    descriptionAr: string;
+    descriptionEn: string;
+    icon: string;
+  }
+> = {
+  SAHER: {
+    nameAr: "ساهر",
+    nameEn: "Saher",
+    descriptionAr: "بوابة الحوكمة والتحقق من الامتثال والتكاملات الحكومية.",
+    descriptionEn: "Compliance, governance, and government-integration validation.",
+    icon: "ph-shield-check",
+  },
+  SANAD: {
+    nameAr: "سند",
+    nameEn: "Sanad",
+    descriptionAr: "تشغيل الفوترة والمهام الخلفية والتنبيهات المالية.",
+    descriptionEn: "Billing operations, background tasks, and financial alerts.",
+    icon: "ph-currency-circle-dollar",
+  },
+  BASEER: {
+    nameAr: "بصير",
+    nameEn: "Baseer",
+    descriptionAr: "تحليل النمو والعائد التسويقي وتكلفة الاستحواذ.",
+    descriptionEn: "Growth, marketing ROI, and acquisition-cost analytics.",
+    icon: "ph-chart-pie",
+  },
+  KHABEER: {
+    nameAr: "خبير",
+    nameEn: "Khabeer",
+    descriptionAr: "مراجعة العقود والدعم القانوني والأتمتة التعاقدية.",
+    descriptionEn: "Contract review, legal support, and document automation.",
+    icon: "ph-file-text",
+  },
+  MANSOUR: {
+    nameAr: "منصور",
+    nameEn: "Mansour",
+    descriptionAr: "تأهيل العملاء ومتابعة المحادثات وحجز المعاينات.",
+    descriptionEn: "Lead qualification, conversations, and tour booking.",
+    icon: "ph-whatsapp-logo",
+  },
+};
+
+function normalizeCode(value: unknown): AgentCode | null {
+  const code = String(value || "").trim().toUpperCase();
+  return AGENT_CODES.includes(code as AgentCode) ? (code as AgentCode) : null;
+}
+
+function formatDate(value: string | undefined, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export default function AgentManagementView({
-  tenantPlan = 'basic',
+  tenantPlan = "basic",
   totalLeads = 0,
-  totalProjects = 0,
   totalUsers = 0,
+  licenseMode = "SAAS",
 }: AgentManagementViewProps) {
-  const { theme, lang } = useApp();
-  const isArabic = lang === 'AR';
-  const dir = isArabic ? 'rtl' : 'ltr';
-  
-  const searchParams = useSearchParams();
-  const actionParam = searchParams.get('action');
-  const agentIdParam = searchParams.get('agentId') || 'BASEER';
+  const { lang } = useApp();
+  const isArabic = lang === "AR";
+  const locale = isArabic ? "ar-SA" : "en-US";
+  const plan = normalizeAgentPlan(tenantPlan);
+  const isDedicatedCopy = licenseMode === "DEDICATED_COPY";
 
-  const [leases, setLeases] = useState<AgentLease[]>([]);
-  const [loadingLeases, setLoadingLeases] = useState(true);
-  const [leasingModal, setLeasingModal] = useState<{ isOpen: boolean; agentId: string } | null>(null);
-  const [autoRenewalOption, setAutoRenewalOption] = useState(false);
-  const [submittingLease, setSubmittingLease] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [countdownTicks, setCountdownTicks] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<AgentTab>("catalog");
+  const [slots, setSlots] = useState<AgentSlot[]>([]);
+  const [subscriptions, setSubscriptions] = useState<AgentSubscription[]>([]);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [selectedLogSlotId, setSelectedLogSlotId] = useState("");
+  const [selectedSubscription, setSelectedSubscription] =
+    useState<AgentCode | null>(null);
+  const [autoRenewal, setAutoRenewal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
-  const fetchLeases = async () => {
-    setLoadingLeases(true);
-    const res = await getAgentLeasesAction();
-    setLoadingLeases(false);
-    if (res.success && res.data) {
-      setLeases(res.data as AgentLease[]);
-    }
-  };
+  const includedAgents = useMemo(
+    () => new Set(getIncludedAgents({ licenseMode, plan })),
+    [licenseMode, plan],
+  );
 
-  useEffect(() => {
-    fetchLeases();
-  }, []);
+  const activeSubscriptions = useMemo(() => {
+    const result = new Map<AgentCode, AgentSubscription>();
+    const now = Date.now();
 
-  useEffect(() => {
-    if (actionParam === 'renew-lease' || actionParam === 'lease') {
-      setLeasingModal({ isOpen: true, agentId: agentIdParam.toUpperCase() });
-    }
-  }, [actionParam, agentIdParam]);
-
-  const updateCountdowns = (activeLeases: AgentLease[]) => {
-    const ticks: Record<string, string> = {};
-    const now = new Date().getTime();
-
-    activeLeases.forEach(l => {
-      const end = new Date(l.endDate).getTime();
-      const diff = end - now;
-
-      if (diff > 0) {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        
-        ticks[l.agentId] = isArabic 
-          ? `متبقي ${days} يوم و ${hours} ساعة` 
-          : `${days}d ${hours}h left`;
-      } else {
-        ticks[l.agentId] = isArabic ? "منتهي الصلاحية" : "Expired";
+    for (const subscription of subscriptions) {
+      const code = normalizeCode(subscription.agentId);
+      if (
+        code &&
+        new Date(subscription.endDate).getTime() > now
+      ) {
+        result.set(code, subscription);
       }
-    });
+    }
 
-    setCountdownTicks(ticks);
-  };
+    return result;
+  }, [subscriptions]);
+
+  const slotByCode = useMemo(() => {
+    const result = new Map<AgentCode, AgentSlot>();
+
+    for (const slot of slots) {
+      const code = normalizeCode(slot.agentType);
+      if (code) result.set(code, slot);
+    }
+
+    return result;
+  }, [slots]);
+
+  const loadSlots = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/v1/agents", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to load agents.");
+      }
+
+      setSlots(Array.isArray(payload.data) ? payload.data : []);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر تحميل الوكلاء."
+              : "Unable to load agents.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [isArabic]);
+
+  const loadSubscriptions = useCallback(async () => {
+    if (isDedicatedCopy) {
+      setSubscriptions([]);
+      return;
+    }
+
+    const result = await getAgentSubscriptionsAction();
+
+    if (result.success && Array.isArray(result.data)) {
+      setSubscriptions(result.data as unknown as AgentSubscription[]);
+    }
+  }, [isDedicatedCopy]);
 
   useEffect(() => {
-    if (leases.length === 0) return;
-    updateCountdowns(leases);
-    const interval = setInterval(() => {
-      updateCountdowns(leases);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [leases, lang]);
+    void Promise.all([loadSlots(), loadSubscriptions()]);
+  }, [loadSlots, loadSubscriptions]);
 
-  const handleConfirmLease = async () => {
-    if (!leasingModal) return;
-    setSubmittingLease(true);
-    setError(null);
-    setSuccess(null);
+  const toggleAgent = async (slot: AgentSlot) => {
+    setBusyKey(slot.id);
+    setNotice(null);
 
-    const res = await leaseAgentAction({
-      agentId: leasingModal.agentId,
-      autoRenewal: autoRenewalOption
-    });
-
-    setSubmittingLease(false);
-    if (res.success) {
-      setSuccess(
-        isArabic 
-          ? `تم تفعيل استئجار الوكيل ${leasingModal.agentId} بنجاح بقيمة ${res.data?.leasePrice} ر.س!` 
-          : `Agent ${leasingModal.agentId} leased successfully for ${res.data?.leasePrice} SAR!`
+    try {
+      const response = await fetch(
+        "/api/v1/agents/" + slot.id + "/toggle",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !slot.isActive }),
+        },
       );
-      setLeasingModal(null);
-      fetchLeases();
-      setTimeout(() => setSuccess(null), 5000);
-    } else {
-      setError(res.error || 'Failed to lease agent.');
-    }
-  };
+      const payload = await response.json();
 
-  // Normalize legacy plan aliases to canonical basic/silver/gold
-  const CANONICAL_PLAN_MAP: Record<string, string> = {
-    basic: "basic", starter: "basic",
-    silver: "silver", pro: "silver", professional: "silver",
-    gold: "gold", diamond: "gold", platinum: "gold", enterprise: "gold",
-  };
-  const normalizePlanDisplay = (p: string): string =>
-    CANONICAL_PLAN_MAP[p] || "basic";
-
-  // Resolve plan — normalized for display & agent lookups
-  const plan = normalizePlanDisplay(tenantPlan.toLowerCase());
-
-  const getAgentStatus = (agentId: string) => {
-    const allowedMap: Record<string, string[]> = {
-      gold: ["SAHER", "SANAD", "BASEER", "KHABEER", "MANSOUR"],
-      silver: ["SAHER", "MANSOUR"],
-      basic: ["MANSOUR"]
-    };
-
-    const allowed = allowedMap[plan] || allowedMap["basic"];
-    if (allowed.includes(agentId)) {
-      return { status: "ACTIVE", label: isArabic ? "متاح بالباقة" : "Included in Plan" };
-    }
-
-    const lease = leases.find(l => l.agentId === agentId);
-    if (lease) {
-      const isExpired = new Date(lease.endDate).getTime() < new Date().getTime();
-      if (!isExpired) {
-        return { status: "LEASED", label: isArabic ? "مستأجر نشط" : "Active Leased" };
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to update agent.");
       }
-      return { status: "EXPIRED", label: isArabic ? "استئجار منتهي" : "Lease Expired" };
+
+      setNotice({
+        type: "success",
+        text: isArabic
+          ? slot.isActive
+            ? "تم تعطيل الوكيل."
+            : "تم تفعيل الوكيل."
+          : slot.isActive
+            ? "Agent disabled."
+            : "Agent activated.",
+      });
+
+      await loadSlots();
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر تحديث الوكيل."
+              : "Unable to update agent.",
+      });
+    } finally {
+      setBusyKey(null);
     }
-
-    return { status: "LOCKED", label: isArabic ? "مغلق" : "Locked" };
   };
 
-  // Convert numbers to Arabic Eastern numerals if Arabic language is active
-  const toArabicNumerals = (num: string | number): string => {
-    if (!isArabic) return num.toString();
-    return toArabicNumeralsImport(num);
-  };
+  const runAgent = async (slot: AgentSlot) => {
+    setBusyKey(slot.id);
+    setNotice(null);
 
-  const formatCurrency = (amount: number): string => {
-    return formatCurrencyImport(amount, isArabic ? 'AR' : 'EN');
-  };
+    try {
+      const key = slot.id + ":" + String(Math.floor(Date.now() / 60000));
+      const response = await fetch("/api/v1/agents/" + slot.id + "/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": key,
+        },
+        body: JSON.stringify({ idempotencyKey: key }),
+      });
+      const payload = await response.json();
 
-  // Calculate pricing calculator details
-  const getComparisonCalculator = (agentId: string) => {
-    const hasLeaseBefore = leases.some(l => l.agentId === agentId);
-    const leasePrice = hasLeaseBefore ? 800 : 400;
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to run agent.");
+      }
 
-    let currentPlanPrice = 450;
-    let nextPlanPrice = 900;
-    let currentPlanName = isArabic ? "الباقة الأساسية" : "Basic Plan";
-    let nextPlanName = isArabic ? "الباقة الفضية" : "Silver Plan";
-    let nextPlanBenefits = isArabic 
-      ? "موظفين أكثر (حتى ١٠) ومشاريع أكثر (حتى ١٠) مع وكيلين مفعلين دائماً (ساهر ومنصور)." 
-      : "More staff (up to 10), more projects (up to 10), and 2 permanent agents (Saher & Mansour).";
-
-    if (plan === 'silver') {
-      currentPlanPrice = 900;
-      nextPlanPrice = 2400;
-      currentPlanName = isArabic ? "الباقة الفضية" : "Silver Plan";
-      nextPlanName = isArabic ? "الباقة الذهبية" : "Gold Plan";
-      nextPlanBenefits = isArabic 
-        ? "وصول كامل ودائم لجميع الوكلاء الخمسة وإلغاء كافة قيود سعة العمليات والموظفين." 
-        : "Permanent access to all 5 virtual agents, and unlimited staff seats/operational limits.";
+      setNotice({
+        type: "success",
+        text: payload.executed
+          ? isArabic
+            ? "اكتمل تشغيل الوكيل."
+            : "Agent run completed."
+          : isArabic
+            ? "هذا الوكيل يعمل تلقائيًا."
+            : "This agent runs automatically.",
+      });
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر تشغيل الوكيل."
+              : "Unable to run agent.",
+      });
+    } finally {
+      setBusyKey(null);
     }
-
-    const totalCurrentCost = currentPlanPrice + leasePrice;
-    const isCloseToUpgrade = totalCurrentCost >= nextPlanPrice;
-
-    return {
-      leasePrice,
-      currentPlanPrice,
-      nextPlanPrice,
-      currentPlanName,
-      nextPlanName,
-      nextPlanBenefits,
-      totalCurrentCost,
-      isCloseToUpgrade
-    };
   };
+
+  const loadLogs = async (slotId: string) => {
+    setSelectedLogSlotId(slotId);
+    setLoadingLogs(true);
+    setLogs([]);
+
+    try {
+      const response = await fetch(
+        "/api/v1/agents/" + slotId + "/logs",
+        { cache: "no-store" },
+      );
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to load activity.");
+      }
+
+      setLogs(Array.isArray(payload.data) ? payload.data : []);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر تحميل سجل النشاط."
+              : "Unable to load activity.",
+      });
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const confirmSubscription = async () => {
+    if (!selectedSubscription || isDedicatedCopy) return;
+
+    setBusyKey(selectedSubscription);
+    setNotice(null);
+
+    try {
+      const result = await subscribeAgentAction({
+        agentId: selectedSubscription,
+        autoRenewal,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Subscription failed.");
+      }
+
+      setSelectedSubscription(null);
+      setAutoRenewal(false);
+      setNotice({
+        type: "success",
+        text: isArabic
+          ? "تم تفعيل اشتراك الوكيل."
+          : "Agent subscription activated.",
+      });
+
+      await Promise.all([loadSubscriptions(), loadSlots()]);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : isArabic
+              ? "تعذر تفعيل الاشتراك."
+              : "Unable to activate subscription.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const visibleCodes =
+    activeTab === "my-agents"
+      ? AGENT_CODES.filter(
+          (code) =>
+            includedAgents.has(code) ||
+            activeSubscriptions.has(code) ||
+            slotByCode.has(code),
+        )
+      : AGENT_CODES;
+
+  const activeCount = slots.filter((slot) => slot.isActive).length;
+  const entitledCount = AGENT_CODES.filter(
+    (code) => includedAgents.has(code) || activeSubscriptions.has(code),
+  ).length;
+
+  const tabs: Array<{ id: AgentTab; ar: string; en: string }> = [
+    { id: "catalog", ar: "المتجر", en: "Catalog" },
+    { id: "my-agents", ar: "وكلائي", en: "My Agents" },
+    { id: "usage", ar: "الاستخدام", en: "Usage" },
+    { id: "activity", ar: "سجل النشاط", en: "Activity" },
+  ];
 
   return (
-    <div className="nc-page nc-stack" dir={dir}>
-      
-      {/* Header */}
-      <PageHeader
-        title={isArabic ? "إدارة الوكلاء وعقود الاستئجار" : "Virtual Agents Console"}
-        description={isArabic 
-          ? "إدارة رخص تشغيل الوكلاء الأذكياء ومراقبة حالة عقود الاستئجار المؤقتة وتوسيع كفاءة المبيعات والحوكمة."
-          : "Manage smart agent execution licenses, monitor temporary campaign leases, and scale productivity."}
-      />
+    <main className="nc-page nc-stack" dir={isArabic ? "rtl" : "ltr"}>
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-[var(--nc-foreground)]">
+            {isArabic ? "الوكلاء التشغيليون" : "Operational Agents"}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm text-[var(--nc-foreground-muted)]">
+            {isArabic
+              ? "إدارة الاستحقاقات والتفعيل والاستخدام وسجل النشاط من مساحة واحدة."
+              : "Manage entitlements, activation, usage, and activity from one workspace."}
+          </p>
+        </div>
 
-      <LayoutContainer
-        actions={
-          <>
-            {success && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-sm">
-                {success}
-              </div>
-            )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 text-xs font-bold text-[var(--nc-foreground)]">
+            {isDedicatedCopy
+              ? isArabic
+                ? "ترخيص نسخة كاملة"
+                : "Full Dedicated License"
+              : isArabic
+                ? "باقة " + plan
+                : plan.toUpperCase() + " Plan"}
+          </span>
+          <Link
+            href="/operations/settings?tab=agents"
+            className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] transition hover:border-[var(--nc-accent-border)]"
+          >
+            {isArabic ? "إعدادات الاشتراك" : "Subscription Settings"}
+          </Link>
+        </div>
+      </header>
 
-            {error && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold shadow-sm">
-                {error}
-              </div>
-            )}
+      {notice && (
+        <div
+          role="status"
+          className={
+            notice.type === "success"
+              ? "rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+              : "rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-300"
+          }
+        >
+          {notice.text}
+        </div>
+      )}
 
-            {plan !== 'gold' && (
-              <a
-                href="/operations?tab=settings"
-                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-brand-interactive to-brand-interactive-hover hover:shadow-[0_0_20px_rgba(142,177,209,0.35)] text-brand-bg font-bold text-xs transition-all cursor-pointer border border-brand-interactive/45 shrink-0"
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            label: isArabic ? "الوكلاء النشطون" : "Active Agents",
+            value: activeCount,
+          },
+          {
+            label: isArabic ? "الوكلاء المستحقون" : "Entitled Agents",
+            value: entitledCount,
+          },
+          {
+            label: isArabic ? "العملاء المحتملون" : "Leads",
+            value: totalLeads,
+          },
+          {
+            label: isArabic ? "أعضاء الفريق" : "Team Members",
+            value: totalUsers,
+          },
+        ].map((item) => (
+          <SmartCard key={item.label} className="min-h-[96px] p-5">
+            <p className="text-xs font-semibold text-[var(--nc-foreground-muted)]">
+              {item.label}
+            </p>
+            <p className="mt-3 text-2xl font-black text-[var(--nc-foreground)]">
+              {new Intl.NumberFormat(locale).format(item.value)}
+            </p>
+          </SmartCard>
+        ))}
+      </section>
+
+      <nav
+        aria-label={isArabic ? "أقسام الوكلاء" : "Agent sections"}
+        className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-2"
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            aria-current={activeTab === tab.id ? "page" : undefined}
+            className={
+              activeTab === tab.id
+                ? "min-w-max rounded-xl bg-[var(--nc-accent-soft)] px-4 py-2.5 text-xs font-bold text-[var(--nc-foreground)]"
+                : "min-w-max rounded-xl px-4 py-2.5 text-xs font-bold text-[var(--nc-foreground-muted)] transition hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"
+            }
+          >
+            {isArabic ? tab.ar : tab.en}
+          </button>
+        ))}
+      </nav>
+
+      {(activeTab === "catalog" || activeTab === "my-agents") && (
+        <section className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {visibleCodes.map((code) => {
+            const meta = AGENT_META[code];
+            const slot = slotByCode.get(code);
+            const definition = slot?.definition;
+            const included = includedAgents.has(code);
+            const subscription = activeSubscriptions.get(code);
+            const entitled = included || Boolean(subscription);
+            const supportsManualRun = code === "SAHER";
+            const busy = busyKey === (slot?.id || code);
+
+            const name = isArabic
+              ? definition?.nameAr || meta.nameAr
+              : definition?.nameEn || definition?.name || meta.nameEn;
+            const description = isArabic
+              ? definition?.descriptionAr || meta.descriptionAr
+              : definition?.descriptionEn ||
+                definition?.description ||
+                meta.descriptionEn;
+
+            const statusLabel = isDedicatedCopy
+              ? isArabic
+                ? "مشمول في الترخيص"
+                : "Included in License"
+              : included
+                ? isArabic
+                  ? "مشمول في الباقة"
+                  : "Included in Plan"
+                : subscription
+                  ? isArabic
+                    ? "اشتراك نشط"
+                    : "Active Subscription"
+                  : isArabic
+                    ? "غير مشمول"
+                    : "Not Included";
+
+            return (
+              <SmartCard
+                key={code}
+                className="flex min-h-[320px] flex-col justify-between p-5"
               >
-                <i className="ph-bold ph-sparkle text-sm"></i>
-                <span>{isArabic ? "الترقية للباقة الذهبية" : "Upgrade to Gold Tier"}</span>
-              </a>
-            )}
-          </>
-        }
-        details={
-          /* Agents Grid (Universal layout) */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            {[
-              {
-                id: "SAHER",
-                nameAr: "ساهر (بوابة الفحص)",
-                nameEn: "Saher (Compliance Gate)",
-                descAr: "وكيل الحوكمة والتحقق من صحة العقود وهوية العملاء ومطابقتها للمعايير الحكومية (إيجار وزاتكا).",
-                descEn: "Compliance check agent validating tenant credentials, CR database records, and active CSID signatures.",
-                icon: "ph-shield-check",
-                color: "from-blue-600/25 to-slate-900 border-blue-900/30"
-              },
-              {
-                id: "SANAD",
-                nameAr: "سند (طابور العمليات)",
-                nameEn: "Sanad (Task Queue Manager)",
-                descAr: "وكيل الفوترة والعمليات السحابية المسؤول عن ترحيل المهام، وتحديث الفواتير، والتحذيرات المالية اليومية.",
-                descEn: "Background operations manager handling automated invoicing resets, payment checks, and audit logging.",
-                icon: "ph-currency-circle-dollar",
-                color: "from-emerald-600/25 to-slate-900 border-emerald-900/30"
-              },
-              {
-                id: "BASEER",
-                nameAr: "بصير (النمو والتسويق)",
-                nameEn: "Baseer (Ad ROI Analytics)",
-                descAr: "وكيل التحليل الاستباقي للنمو الذي يتنبأ بالعوائد التسويقية، ويحلل تكلفة الاستحواذ مقابل قيم العقود.",
-                descEn: "Strategic analysis agent calculating ROI forecasts, CAC metrics, and multi-channel marketing spend.",
-                icon: "ph-chart-pie",
-                color: "from-indigo-600/25 to-slate-900 border-indigo-900/30"
-              },
-              {
-                id: "KHABEER",
-                nameAr: "خبير (الأتمتة القانونية)",
-                nameEn: "Khabeer (Legal Support)",
-                descAr: "وكيل صياغة ومراجعة العقود العقارية، وتقديم الدعم الآلي، وتأمين التوقيعات الرقمية للمفوضين.",
-                descEn: "Support agent drafting lease contracts, matching properties, and confirming digital disclaimer compliance.",
-                icon: "ph-file-text",
-                color: "from-purple-600/25 to-slate-900 border-purple-900/30"
-              },
-              {
-                id: "MANSOUR",
-                nameAr: "منصور (مسؤول المحادثات)",
-                nameEn: "Mansour (Lead Pipeline)",
-                descAr: "وكيل التواصل المباشر مع العملاء عبر الواتساب لتأهيل الفرص وحجز مواعيد معاينة المشاريع على الطبيعة.",
-                descEn: "Interactive CRM engine automating followups and welcome templates acrossMeta, Google, and TikTok.",
-                icon: "ph-whatsapp-logo",
-                color: "from-yellow-600/25 to-slate-900 border-yellow-900/30"
-              }
-            ].map(ag => {
-              const statusInfo = getAgentStatus(ag.id);
-              const tick = countdownTicks[ag.id];
-              
-              let badgeColor = "bg-[var(--nc-surface)] border-[var(--nc-border)] text-[var(--nc-foreground-muted)]";
-              if (statusInfo.status === 'ACTIVE') badgeColor = "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
-              else if (statusInfo.status === 'LEASED') badgeColor = "bg-indigo-500/10 border-indigo-500/20 text-indigo-400 animate-pulse";
-              else if (statusInfo.status === 'EXPIRED') badgeColor = "bg-amber-500/10 border-amber-500/20 text-amber-400";
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-lg text-[var(--nc-foreground)]">
+                      <i
+                        className={"ph-bold " + meta.icon}
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-2.5 py-1 text-[10px] font-black text-[var(--nc-foreground)]">
+                      {statusLabel}
+                    </span>
+                  </div>
 
-              return (
-                <div 
-                  key={ag.id} 
-                  className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${ag.color} border p-5 shadow-xl backdrop-blur-md flex flex-col justify-between h-[340px] transition-all duration-300 hover:scale-[1.02]`}
-                >
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center text-[var(--nc-foreground)] text-lg">
-                        <i className={`ph-fill ${ag.icon}`}></i>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {ag.id === "MANSOUR" && (
-                          <span className="px-2 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase bg-amber-500/10 border-amber-500/20 text-amber-400">
-                            {isArabic ? 'معاينة' : 'Preview'}
-                          </span>
-                        )}
-                        <span className={`px-2.5 py-0.5 rounded-full border text-[9px] font-black tracking-wide uppercase ${badgeColor}`}>
-                          {statusInfo.label}
-                        </span>
-                      </div>
+                  <h2 className="mt-5 text-base font-black text-[var(--nc-foreground)]">
+                    {name}
+                  </h2>
+                  <p className="mt-2 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                    {description}
+                  </p>
+
+                  <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-xl bg-[var(--nc-surface-strong)] p-3">
+                      <dt className="text-[var(--nc-foreground-muted)]">
+                        {isArabic ? "التشغيل" : "Runtime"}
+                      </dt>
+                      <dd className="mt-1 font-bold text-[var(--nc-foreground)]">
+                        {slot
+                          ? slot.isActive
+                            ? isArabic
+                              ? "نشط"
+                              : "Active"
+                            : isArabic
+                              ? "متوقف"
+                              : "Disabled"
+                          : isArabic
+                            ? "غير مهيأ"
+                            : "Not Provisioned"}
+                      </dd>
                     </div>
-
-                    <h3 className="text-[var(--nc-foreground)] font-extrabold text-sm tracking-wide mb-2">
-                      {isArabic ? ag.nameAr : ag.nameEn}
-                    </h3>
-                    
-                    <p className="text-[10px] md:text-xs text-[var(--nc-foreground-muted)] leading-relaxed font-sans">
-                      {isArabic ? ag.descAr : ag.descEn}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-[var(--nc-border)] space-y-3">
-                    {tick && (
-                      <p className="text-[9px] font-mono text-indigo-300 font-bold flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                        {tick}
-                      </p>
-                    )}
-
-                    {statusInfo.status === 'ACTIVE' ? (
-                      <div className="text-xs text-emerald-400 font-bold flex items-center gap-1.5">
-                        <i className="ph-bold ph-shield-check text-base"></i>
-                        <span>{isArabic ? "مفعل ومتاح بالكامل" : "Fully Available"}</span>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setLeasingModal({ isOpen: true, agentId: ag.id })}
-                          className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[var(--nc-foreground)] font-bold text-[10px] transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
-                        >
-                          {statusInfo.status === 'LEASED' || statusInfo.status === 'EXPIRED'
-                            ? (isArabic ? "تجديد الاستئجار" : "Renew Lease")
-                            : (isArabic ? "استئجار الوكيل" : "Lease Agent")
-                          }
-                        </button>
-                        {(plan === 'basic' || plan === 'silver') && (
-                          <a
-                            href="/operations?tab=settings"
-                            className="px-3 py-2 rounded-xl bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] font-bold text-[10px] text-center cursor-pointer transition-colors"
-                          >
-                            {isArabic ? "ترقية الباقة" : "Upgrade"}
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    <div className="rounded-xl bg-[var(--nc-surface-strong)] p-3">
+                      <dt className="text-[var(--nc-foreground-muted)]">
+                        {isArabic ? "النمط" : "Mode"}
+                      </dt>
+                      <dd className="mt-1 font-bold text-[var(--nc-foreground)]">
+                        {supportsManualRun
+                          ? isArabic
+                            ? "يدوي وتلقائي"
+                            : "Manual + Auto"
+                          : isArabic
+                            ? "تلقائي"
+                            : "Automatic"}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
-              );
-            })}
-          </div>
-        }
-      />
 
-      {/* Campaign Leasing Config & Comparison Calculator Modal */}
-      {leasingModal?.isOpen && (() => {
-        const calc = getComparisonCalculator(leasingModal.agentId);
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface)]/80 backdrop-blur-md">
-            <SmartCard className="relative w-full max-w-xl overflow-hidden p-6 shadow-2xl animate-scale-up">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
-              
-              <h3 className="text-[var(--nc-foreground)] font-extrabold text-base flex items-center gap-2 border-b border-[var(--nc-border)] pb-3 mb-4">
-                <i className="ph-bold ph-hand-coins text-brand-interactive"></i>
-                {isArabic 
-                  ? `تفاصيل استئجار الوكيل ${leasingModal.agentId}` 
-                  : `Lease Details for ${leasingModal.agentId}`}
-              </h3>
-
-              <div className="space-y-4">
-                <p className="text-[var(--nc-foreground-muted)] text-xs leading-relaxed">
-                  {isArabic 
-                    ? `استئجار وكيل مخصص لتشغيل خدماتك وتجاوز قيود الباقة الحالية دون الحاجة لتحديث اشتراكك بالكامل.`
-                    : `Lease this virtual agent to scale campaign throughput without committing to a full subscription tier change.`}
-                </p>
-
-                {/* Pricing summary */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)]">
-                    <span className="block text-[9px] font-bold text-[var(--nc-foreground-muted)] uppercase">{isArabic ? "التكلفة (٣٠ يوماً)" : "Cost (30 Days)"}</span>
-                    <span className="block text-[var(--nc-foreground)] font-black text-base mt-1 price-tag">{formatCurrency(calc.leasePrice)}</span>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)]">
-                    <span className="block text-[9px] font-bold text-[var(--nc-foreground-muted)] uppercase">{isArabic ? "حالة المعاملة" : "Transaction"}</span>
-                    <span className="block text-indigo-400 font-bold text-xs mt-1">
-                      {calc.leasePrice === 800 
-                        ? (isArabic ? "تجديد / تمديد" : "Lease Renewal") 
-                        : (isArabic ? "استئجار لأول مرة" : "New Lease")
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--nc-border)] pt-4">
+                  {entitled && slot && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void toggleAgent(slot)}
+                      className={
+                        slot.isActive
+                          ? "flex-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-bold text-rose-700 disabled:opacity-50 dark:text-rose-300"
+                          : "flex-1 rounded-xl bg-[var(--nc-accent)] px-4 py-2.5 text-xs font-bold text-slate-950 disabled:opacity-50"
                       }
-                    </span>
-                  </div>
-                </div>
-
-                {/* Comparison Calculator Panel (حاسبة مقارنة) */}
-                <div className="p-4 rounded-xl border border-indigo-900/25 bg-indigo-950/15 space-y-3">
-                  <h4 className="text-indigo-400 font-black text-[10px] tracking-wide uppercase flex items-center gap-1.5">
-                    <i className="ph-bold ph-calculator text-xs"></i>
-                    {isArabic ? "حاسبة الجدوى ومقارنة الترقيات" : "Investment Feasibility & Upgrade Comparison"}
-                  </h4>
-                  
-                  <div className="space-y-2 text-xs font-medium text-slate-355 leading-relaxed">
-                    <div className="flex justify-between text-[11px] border-b border-[var(--nc-border)] pb-1.5">
-                      <span>{isArabic ? `قيمة باقتك الحالية (${calc.currentPlanName}):` : `Current ${calc.currentPlanName} Cost:`}</span>
-                      <span className="text-[var(--nc-foreground)] font-bold price-tag">{formatCurrency(calc.currentPlanPrice)}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] border-b border-[var(--nc-border)] pb-1.5">
-                      <span>{isArabic ? `تكلفة استئجار هذا الوكيل المضافة:` : `This Agent Lease Cost:`}</span>
-                      <span className="text-indigo-300 font-bold price-tag">{formatCurrency(calc.leasePrice)}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] border-b border-brand-interactive/10 pb-1.5 text-[var(--nc-foreground)]">
-                      <span>{isArabic ? `الإجمالي الفعلي بعد الاستئجار:` : `Total Combined Monthly Cost:`}</span>
-                      <span className="text-brand-interactive font-black price-tag">{formatCurrency(calc.totalCurrentCost)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between text-[11px] font-bold text-emerald-400 pt-1">
-                      <span>{isArabic ? `باقة الترقية الأعلى (${calc.nextPlanName}):` : `Upgrade Option (${calc.nextPlanName}):`}</span>
-                      <span className="font-extrabold price-tag">{formatCurrency(calc.nextPlanPrice)}</span>
-                    </div>
-                    <p className="text-[10px] text-slate-450 mt-1 leading-relaxed">
-                      💡 {isArabic ? "ملاحظة: " : "Benefit: "} {calc.nextPlanBenefits}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Auto Renewal */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)]">
-                  <div>
-                    <span className="block text-[10px] font-bold text-[var(--nc-foreground)]">{isArabic ? "التجديد التلقائي للوكيل" : "Auto-Renewal"}</span>
-                    <span className="block text-[9px] text-[var(--nc-foreground-muted)] mt-0.5">
-                      {isArabic ? "تجديد العقد تلقائياً كل شهر بسعر التجديد." : "Lease will renew and charge automatically."}
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={autoRenewalOption}
-                    onChange={(e) => setAutoRenewalOption(e.target.checked)}
-                    className="w-4 h-4 rounded border-[var(--nc-border)] bg-[var(--nc-surface)] text-brand-interactive focus:ring-0 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 mt-6 pt-4 border-t border-[var(--nc-border)]">
-                <button
-                  type="button"
-                  onClick={() => setLeasingModal(null)}
-                  className="flex-1 py-2.5 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] font-bold text-xs rounded-xl cursor-pointer transition-colors border border-[var(--nc-border)]"
-                >
-                  {isArabic ? "إلغاء" : "Cancel"}
-                </button>
-                <button
-                  type="button"
-                  disabled={submittingLease}
-                  onClick={handleConfirmLease}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-[var(--nc-foreground)] text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {submittingLease ? (
-                    <div className="w-3.5 h-3.5 border-2 border-[var(--nc-foreground)]/20 border-t-[var(--nc-foreground)] rounded-full animate-spin"></div>
-                  ) : (
-                    <i className="ph-bold ph-check"></i>
+                    >
+                      {busy
+                        ? isArabic
+                          ? "جارٍ التنفيذ..."
+                          : "Working..."
+                        : slot.isActive
+                          ? isArabic
+                            ? "تعطيل"
+                            : "Disable"
+                          : isArabic
+                            ? "تفعيل"
+                            : "Activate"}
+                    </button>
                   )}
-                  <span>{isArabic ? "تفعيل واستئجار" : "Confirm & Lease"}</span>
-                </button>
-              </div>
-            </SmartCard>
-          </div>
-        );
-      })()}
 
-    </div>
+                  {entitled && slot?.isActive && supportsManualRun && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void runAgent(slot)}
+                      className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 py-2.5 text-xs font-bold text-[var(--nc-foreground)] disabled:opacity-50"
+                    >
+                      {isArabic ? "تشغيل الآن" : "Run Now"}
+                    </button>
+                  )}
+
+                  {!entitled && !isDedicatedCopy && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSubscription(code)}
+                      className="flex-1 rounded-xl bg-[var(--nc-accent)] px-4 py-2.5 text-xs font-bold text-slate-950"
+                    >
+                      {isArabic ? "الاشتراك في الوكيل" : "Subscribe"}
+                    </button>
+                  )}
+
+                  {entitled && !slot && (
+                    <p className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      {isArabic
+                        ? "الوكيل مشمول ويحتاج تهيئة فتحة تشغيل."
+                        : "Included, but its runtime slot must be provisioned."}
+                    </p>
+                  )}
+                </div>
+              </SmartCard>
+            );
+          })}
+        </section>
+      )}
+
+      {activeTab === "usage" && (
+        <SmartCard className="overflow-hidden">
+          <div className="border-b border-[var(--nc-border)] p-5">
+            <h2 className="text-base font-black text-[var(--nc-foreground)]">
+              {isArabic ? "استخدام الوكلاء" : "Agent Usage"}
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="bg-[var(--nc-surface-strong)] text-[11px] text-[var(--nc-foreground-muted)]">
+                <tr>
+                  <th className="px-5 py-3 text-start">
+                    {isArabic ? "الوكيل" : "Agent"}
+                  </th>
+                  <th className="px-5 py-3 text-start">
+                    {isArabic ? "الحالة" : "Status"}
+                  </th>
+                  <th className="px-5 py-3 text-start">
+                    {isArabic ? "الاستهلاك" : "Usage"}
+                  </th>
+                  <th className="px-5 py-3 text-start">
+                    {isArabic ? "إعادة الضبط" : "Reset"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {slots.map((slot) => {
+                  const code = normalizeCode(slot.agentType);
+                  const meter = slot.usageMeter;
+
+                  return (
+                    <tr
+                      key={slot.id}
+                      className="border-t border-[var(--nc-border)]"
+                    >
+                      <td className="px-5 py-4 font-bold text-[var(--nc-foreground)]">
+                        {code
+                          ? isArabic
+                            ? AGENT_META[code].nameAr
+                            : AGENT_META[code].nameEn
+                          : isArabic
+                            ? "وكيل تشغيلي"
+                            : "Operational Agent"}
+                      </td>
+                      <td className="px-5 py-4 text-[var(--nc-foreground-muted)]">
+                        {slot.isActive
+                          ? isArabic
+                            ? "نشط"
+                            : "Active"
+                          : isArabic
+                            ? "متوقف"
+                            : "Disabled"}
+                      </td>
+                      <td className="px-5 py-4 font-bold text-[var(--nc-foreground)]">
+                        {new Intl.NumberFormat(locale).format(
+                          meter?.usageValue || 0,
+                        )}
+                        {meter && meter.limitValue > 0
+                          ? " / " +
+                            new Intl.NumberFormat(locale).format(
+                              meter.limitValue,
+                            )
+                          : ""}
+                      </td>
+                      <td className="px-5 py-4 text-[var(--nc-foreground-muted)]">
+                        <span dir="ltr">
+                          {formatDate(meter?.resetAt, locale)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {!loading && slots.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-5 py-10 text-center text-sm text-[var(--nc-foreground-muted)]"
+                    >
+                      {isArabic
+                        ? "لا توجد فتحات وكلاء مهيأة."
+                        : "No agent slots are provisioned."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SmartCard>
+      )}
+
+      {activeTab === "activity" && (
+        <div className="grid items-start gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <SmartCard className="p-3">
+            <div className="space-y-2">
+              {slots.map((slot) => {
+                const code = normalizeCode(slot.agentType);
+
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => void loadLogs(slot.id)}
+                    className={
+                      selectedLogSlotId === slot.id
+                        ? "w-full rounded-xl bg-[var(--nc-accent-soft)] px-4 py-3 text-start text-xs font-bold text-[var(--nc-foreground)]"
+                        : "w-full rounded-xl px-4 py-3 text-start text-xs font-bold text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)]"
+                    }
+                  >
+                    {code
+                      ? isArabic
+                        ? AGENT_META[code].nameAr
+                        : AGENT_META[code].nameEn
+                      : isArabic
+                        ? "وكيل تشغيلي"
+                        : "Operational Agent"}
+                  </button>
+                );
+              })}
+            </div>
+          </SmartCard>
+
+          <SmartCard className="overflow-hidden">
+            <div className="border-b border-[var(--nc-border)] p-5">
+              <h2 className="text-base font-black text-[var(--nc-foreground)]">
+                {isArabic ? "سجل النشاط" : "Activity Log"}
+              </h2>
+            </div>
+
+            <div className="divide-y divide-[var(--nc-border)]">
+              {loadingLogs && (
+                <p className="p-6 text-sm text-[var(--nc-foreground-muted)]">
+                  {isArabic ? "جارٍ تحميل السجل..." : "Loading activity..."}
+                </p>
+              )}
+
+              {!loadingLogs &&
+                logs.map((log) => (
+                  <article key={log.id} className="p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-bold text-[var(--nc-foreground)]">
+                        {isArabic ? "حدث تشغيلي" : "Operational Event"}
+                      </h3>
+                      <time
+                        className="text-xs text-[var(--nc-foreground-muted)]"
+                        dir="ltr"
+                      >
+                        {formatDate(log.createdAt, locale)}
+                      </time>
+                    </div>
+                    <p className="mt-2 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                      {isArabic
+                        ? log.logMessageAr || "تم تسجيل حدث للوكيل."
+                        : "An agent activity event was recorded."}
+                    </p>
+                  </article>
+                ))}
+
+              {!loadingLogs && selectedLogSlotId && logs.length === 0 && (
+                <p className="p-8 text-center text-sm text-[var(--nc-foreground-muted)]">
+                  {isArabic ? "لا توجد أحداث مسجلة." : "No activity recorded."}
+                </p>
+              )}
+
+              {!selectedLogSlotId && (
+                <p className="p-8 text-center text-sm text-[var(--nc-foreground-muted)]">
+                  {isArabic
+                    ? "اختر وكيلاً لعرض سجله."
+                    : "Select an agent to view its activity."}
+                </p>
+              )}
+            </div>
+          </SmartCard>
+        </div>
+      )}
+
+      {selectedSubscription && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="agent-subscription-title"
+        >
+          <SmartCard className="w-full max-w-lg p-6">
+            <h2
+              id="agent-subscription-title"
+              className="text-lg font-black text-[var(--nc-foreground)]"
+            >
+              {isArabic
+                ? "اشتراك الوكيل " + AGENT_META[selectedSubscription].nameAr
+                : "Subscribe to " + AGENT_META[selectedSubscription].nameEn}
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-[var(--nc-foreground-muted)]">
+              {isArabic
+                ? "اشتراك تشغيلي لمدة 30 يومًا مع إمكانية التجديد التلقائي."
+                : "A 30-day operational subscription with optional auto-renewal."}
+            </p>
+
+            <div className="mt-5 rounded-2xl bg-[var(--nc-surface-strong)] p-4">
+              <p className="text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic ? "السعر الشهري" : "Monthly Price"}
+              </p>
+              <p className="mt-2 text-2xl font-black text-[var(--nc-foreground)]">
+                {new Intl.NumberFormat(locale, {
+                  style: "currency",
+                  currency: "SAR",
+                  maximumFractionDigits: 0,
+                }).format(AGENT_MONTHLY_PRICE_SAR)}
+              </p>
+            </div>
+
+            <label className="mt-5 flex items-center justify-between rounded-2xl border border-[var(--nc-border)] p-4">
+              <span className="text-sm font-bold text-[var(--nc-foreground)]">
+                {isArabic ? "التجديد التلقائي" : "Auto Renewal"}
+              </span>
+              <input
+                type="checkbox"
+                checked={autoRenewal}
+                onChange={(event) => setAutoRenewal(event.target.checked)}
+                className="h-4 w-4"
+              />
+            </label>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedSubscription(null)}
+                className="flex-1 rounded-xl border border-[var(--nc-border)] px-4 py-3 text-sm font-bold text-[var(--nc-foreground)]"
+              >
+                {isArabic ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                disabled={busyKey === selectedSubscription}
+                onClick={() => void confirmSubscription()}
+                className="flex-1 rounded-xl bg-[var(--nc-accent)] px-4 py-3 text-sm font-bold text-slate-950 disabled:opacity-50"
+              >
+                {busyKey === selectedSubscription
+                  ? isArabic
+                    ? "جارٍ التنفيذ..."
+                    : "Working..."
+                  : isArabic
+                    ? "تأكيد الاشتراك"
+                    : "Confirm Subscription"}
+              </button>
+            </div>
+          </SmartCard>
+        </div>
+      )}
+    </main>
   );
 }
