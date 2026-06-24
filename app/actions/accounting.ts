@@ -1,8 +1,11 @@
 "use server";
+// app/actions/accounting.ts
+// Hardened: session required for all functions. seedChartOfAccounts requires ADMIN role.
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
+import { assertServerActionRole } from "@/lib/api-auth-guard";
 import {
   getCustomerBalances,
   getAgingReport,
@@ -25,11 +28,23 @@ import {
   getPayablesSummary,
 } from "@/lib/accounting";
 
+// All accounting reads require at minimum a valid session
+const ACCOUNTING_READER_ROLES = [
+  "ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager",
+] as const;
+const ACCOUNTING_ADMIN_ROLES = ["ADMIN", "owner"] as const;
+
+/** Helper: require session + reader role */
+async function requireAccountingSession() {
+  const session = await getSession();
+  if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
+  await assertServerActionRole(session, ACCOUNTING_READER_ROLES);
+  return { session, tenant: await getActiveTenant() };
+}
+
 export async function getLedgerEntriesAction() {
   try {
-    const session = await getSession();
-    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
 
     const paidInstallments = await prisma.installment.findMany({
       where: {
@@ -107,9 +122,7 @@ export async function getLedgerEntriesAction() {
 
 export async function getErpStatsAction() {
   try {
-    const session = await getSession();
-    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
 
     const activeContractsCount = await prisma.contract.count({
       where: { unit: { project: { tenantId: tenant.id } } },
@@ -166,9 +179,7 @@ export async function getErpStatsAction() {
 
 export async function getArCustomersAction() {
   try {
-    const session = await getSession();
-    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const customers = await getCustomerBalances(tenant.id);
     return { success: true, customers };
   } catch (error: any) {
@@ -178,7 +189,7 @@ export async function getArCustomersAction() {
 
 export async function getAgingReportAction() {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const report = await getAgingReport(tenant.id);
     return { success: true, report };
   } catch (error: any) {
@@ -188,7 +199,7 @@ export async function getAgingReportAction() {
 
 export async function getTrialBalanceAction(period?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const result = await getTrialBalance(tenant.id, period);
     return { success: true, ...result };
   } catch (error: any) {
@@ -198,7 +209,7 @@ export async function getTrialBalanceAction(period?: string) {
 
 export async function getArReportAction() {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const rows = await getAccountsReceivableReport(tenant.id);
     return { success: true, rows };
   } catch (error: any) {
@@ -208,7 +219,7 @@ export async function getArReportAction() {
 
 export async function getVatReportAction(fromDate?: string, toDate?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const report = await getVatReport(tenant.id, fromDate, toDate);
     return { success: true, ...report };
   } catch (error: any) {
@@ -218,7 +229,7 @@ export async function getVatReportAction(fromDate?: string, toDate?: string) {
 
 export async function runAccountingAuditAction() {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const checks = await runAuditChecks(tenant.id);
     const summary = await getAuditSummary(tenant.id);
     const allPassed = checks.every((c) => c.status === "PASS");
@@ -230,6 +241,11 @@ export async function runAccountingAuditAction() {
 
 export async function seedChartOfAccountsAction() {
   try {
+    // Seeding chart of accounts is an admin-only setup operation
+    const session = await getSession();
+    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
+    await assertServerActionRole(session, ACCOUNTING_ADMIN_ROLES);
+
     const tenant = await getActiveTenant();
     await seedChartOfAccounts(tenant.id);
     const accounts = await getChartOfAccounts(tenant.id);
@@ -241,7 +257,7 @@ export async function seedChartOfAccountsAction() {
 
 export async function getGeneralLedgerAction(accountId?: string, fromDate?: string, toDate?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const accounts = await prisma.account.findMany({
       where: { tenantId: tenant.id, isActive: true },
       orderBy: { code: "asc" },
@@ -255,7 +271,7 @@ export async function getGeneralLedgerAction(accountId?: string, fromDate?: stri
 
 export async function getIncomeStatementAction(period?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const result = await getIncomeStatement(tenant.id, period);
     return { success: true, ...result };
   } catch (error: any) {
@@ -265,7 +281,7 @@ export async function getIncomeStatementAction(period?: string) {
 
 export async function getBalanceSheetAction(period?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const result = await getBalanceSheet(tenant.id, period);
     return { success: true, ...result };
   } catch (error: any) {
@@ -275,7 +291,7 @@ export async function getBalanceSheetAction(period?: string) {
 
 export async function getCashFlowAction(period?: string) {
   try {
-    const tenant = await getActiveTenant();
+    const { tenant } = await requireAccountingSession();
     const result = await getCashFlowStatement(tenant.id, period);
     return { success: true, ...result };
   } catch (error: any) {
@@ -285,12 +301,12 @@ export async function getCashFlowAction(period?: string) {
 
 export async function getPayablesAction(view?: string) {
   try {
-    const tenant = await getActiveTenant();
-    if (view === 'report') {
+    const { tenant } = await requireAccountingSession();
+    if (view === "report") {
       const items = await getPayablesReport(tenant.id);
       return { success: true, items };
     }
-    if (view === 'summary') {
+    if (view === "summary") {
       const summary = await getPayablesSummary(tenant.id);
       return { success: true, ...summary };
     }

@@ -1,16 +1,23 @@
 // app/actions/email.ts
+// Hardened: session + role check before sending external emails.
 "use server";
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
+import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { sendEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
+const EMAIL_SENDER_ROLES = ["ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager"] as const;
+
 export async function sendEmailAction(formData: FormData) {
   try {
-    const tenant = await getActiveTenant();
+    // ── Auth: session + role required before sending external email ──────────
     const session = await getSession();
+    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
+    const verified = await assertServerActionRole(session, EMAIL_SENDER_ROLES);
+    const tenant = await getActiveTenant();
 
     const to = formData.get("to") as string;
     const cc = formData.get("cc") as string | null;
@@ -33,7 +40,7 @@ export async function sendEmailAction(formData: FormData) {
         tenantId: tenant.id,
         leadId: leadId || null,
         contactId: contactId || null,
-        userId: session?.userId as string | undefined || null,
+        userId: verified.userId || null,
         direction: "outbound",
         provider: "resend",
         from,
@@ -81,7 +88,7 @@ export async function sendEmailAction(formData: FormData) {
             data: {
               tenantId: tenant.id,
               leadId,
-              userId: session?.userId as string | undefined || null,
+              userId: verified.userId || null,
               activityType: "EMAIL_SENT",
               description: `أرسل بريد إلى ${to} — الموضوع: ${subject}`,
             },
@@ -119,6 +126,9 @@ export async function sendEmailAction(formData: FormData) {
 
 export async function getEmailMessagesAction(limit = 50) {
   try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "يجب تسجيل الدخول.", messages: [] };
+    await assertServerActionRole(session, EMAIL_SENDER_ROLES);
     const tenant = await getActiveTenant();
 
     const messages = await prisma.emailMessage.findMany({
@@ -144,6 +154,9 @@ export async function getEmailMessagesAction(limit = 50) {
 
 export async function getLeadEmailMessagesAction(leadId: string) {
   try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "يجب تسجيل الدخول.", messages: [] };
+    await assertServerActionRole(session, EMAIL_SENDER_ROLES);
     const tenant = await getActiveTenant();
 
     // Verify lead belongs to this tenant
