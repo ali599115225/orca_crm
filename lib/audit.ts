@@ -73,7 +73,20 @@ export type AuditAction =
   | "CONTRACT_WIZARD_DATA_READ"
   // ─── Leads ────────────────────────────────────────────────────────────────
   | "LEAD_STATUS_UPDATED"
-  | "LEAD_DETAIL_READ";
+  | "LEAD_DETAIL_READ"
+  // ─── Projects ─────────────────────────────────────────────────────────────
+  | "PROJECT_CREATED"
+  | "PROJECT_UPDATED"
+  | "UNIT_STATUS_TOGGLED"
+  // ─── Tasks ────────────────────────────────────────────────────────────────
+  | "TASK_CREATED"
+  | "TASK_STATUS_CHANGED"
+  // ─── Helpdesk ─────────────────────────────────────────────────────────────
+  | "TICKET_CREATED"
+  | "TICKET_CLOSED"
+  // ─── Settings ─────────────────────────────────────────────────────────────
+  | "SETTINGS_UPDATED"
+  | "WHATSAPP_CONNECTION_TOGGLED";
 
 export async function writeAuditLog(params: {
   tenantId: string;

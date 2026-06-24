@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import {
+  requireAuth,
+  hasDatabaseRole,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/api-auth-guard';
+import { writeAuditLog } from '@/lib/audit';
+
+const SETTINGS_READER_ROLES = ["ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager"] as const;
+const SETTINGS_WRITER_ROLES = ["ADMIN", "owner"] as const;
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    const allowed = await hasDatabaseRole(session, SETTINGS_READER_ROLES);
+    if (!allowed) return forbiddenResponse();
 
     const dbTenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId },
@@ -32,10 +41,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    // Settings mutations are ADMIN/owner only
+    const allowed = await hasDatabaseRole(session, SETTINGS_WRITER_ROLES);
+    if (!allowed) return forbiddenResponse();
 
     const body = await request.json();
     const { commercialRegistry, vatNumber, nationalAddress, companyName } = body;
@@ -48,6 +58,15 @@ export async function PUT(request: NextRequest) {
         ...(nationalAddress !== undefined && { nationalAddress }),
         ...(companyName !== undefined && { companyName }),
       },
+    });
+
+    await writeAuditLog({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      action: 'SETTINGS_UPDATED',
+      tableName: 'tenants',
+      recordId: session.tenantId,
+      details: JSON.stringify({ commercialRegistry, vatNumber, nationalAddress, companyName }),
     });
 
     return NextResponse.json({ success: true, data: updated });

@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from 'next/cache';
 import { getActiveTenant } from "@/lib/tenant";
@@ -12,6 +12,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function fetchLeads() {
   try {
+    const session = await getSession();
+    if (!session) return [];
     const tenant = await getActiveTenant();
     return await prisma.lead.findMany({ where: { tenantId: tenant.id }, orderBy: { createdAt: 'desc' } });
   } catch { return []; }
@@ -43,8 +45,14 @@ export async function createLead(data: Omit<Lead, 'id' | 'createdAt' | 'updatedA
 
 export async function updateLeadStatus(id: string, status: LeadStatus) {
   try {
+    const session = await getSession();
+    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً" };
     const tenant = await getActiveTenant();
-    const updatedLead = await prisma.lead.update({ where: { id, tenantId: tenant.id }, data: { status } });
+    // tenantId-scoped update prevents cross-tenant mutation
+    const updatedLead = await prisma.lead.update({
+      where: { id, tenantId: tenant.id },
+      data: { status, updatedBy: session.userId as string },
+    });
     revalidatePath('/leads');
     return { success: true, lead: updatedLead };
   } catch (error: unknown) {

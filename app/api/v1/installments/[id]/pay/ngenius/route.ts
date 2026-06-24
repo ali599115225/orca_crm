@@ -2,13 +2,20 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import {
+  requireAuth,
+  hasDatabaseRole,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/lib/api-auth-guard";
 import { ngeniusProvider } from "@/lib/payments/providers/ngenius";
 import {
   CONTRACT_STATUS,
   INSTALLMENT_STATUS,
   PAYMENT_STATUS,
 } from "@/lib/domain/transaction-spine";
+
+const NGENIUS_ALLOWED_ROLES = ["ADMIN", "owner", "SALES_MANAGER", "rental_manager"] as const;
 
 function idempotencyHash(tenantId: string, installmentId: string, amountMinor: number) {
   return createHash("sha256")
@@ -21,10 +28,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId || !userId) {
-      return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    const allowed = await hasDatabaseRole(session, NGENIUS_ALLOWED_ROLES);
+    if (!allowed) return forbiddenResponse();
+
+    const tenantId = session.tenantId;
+    const userId = session.userId;
     const { id } = await params;
 
     const installment = await prisma.installment.findFirst({

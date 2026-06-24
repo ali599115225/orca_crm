@@ -1,10 +1,17 @@
-// R1 FIXED: Authentication + RBAC + Masking + Encryption + Audit
+// R1 FIXED: Authentication + DB-backed RBAC + Masking + Encryption + Audit
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import {
+  requireAuth,
+  hasDatabaseRole,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/api-auth-guard';
 import { encryptText } from '@/lib/crypto';
 import { writeAuditLog } from '@/lib/audit';
+
+const API_KEY_ADMIN_ROLES = ["ADMIN", "owner"] as const;
 
 function maskKey(key: string): string {
   if (key.length <= 8) return '********';
@@ -17,13 +24,10 @@ function generateApiKey(): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-    if (session.role !== 'ADMIN') {
-      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
+    if (!allowed) return forbiddenResponse();
 
     const prismaAny = prisma as any;
     const keys = await prismaAny.apiKey.findMany({
@@ -46,13 +50,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-    if (session.role !== 'ADMIN') {
-      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
+    if (!allowed) return forbiddenResponse();
 
     const body = await request.json();
     const { name } = body;
@@ -99,13 +100,10 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-    if (session.role !== 'ADMIN') {
-      return NextResponse.json({ success: false, error: 'صلاحية ADMIN مطلوبة' }, { status: 403 });
-    }
+    const session = await requireAuth(request);
+    if (!session) return unauthorizedResponse();
+    const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
+    if (!allowed) return forbiddenResponse();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
