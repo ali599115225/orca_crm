@@ -166,6 +166,23 @@ export async function analyzeConversationToAction(input: ConversationAnalysisInp
   if (text.length < 3) throw new Error("CONVERSATION_TEXT_REQUIRED");
   if (!input.sourceId.trim()) throw new Error("SOURCE_ID_REQUIRED");
 
+  if (input.leadId) {
+    const lead = await rawPrisma.lead.findFirst({ where: { id: input.leadId, tenantId: input.tenantId } });
+    if (!lead) throw new Error("CROSS_TENANT_LEAD_ACCESS_DENIED");
+  }
+  if (input.opportunityId) {
+    const opportunity = await rawPrisma.opportunity.findFirst({ where: { id: input.opportunityId, tenantId: input.tenantId } });
+    if (!opportunity) throw new Error("CROSS_TENANT_OPPORTUNITY_ACCESS_DENIED");
+  }
+  if (input.unitId) {
+    const unit = await rawPrisma.unit.findFirst({ where: { id: input.unitId, tenantId: input.tenantId } });
+    if (!unit) throw new Error("CROSS_TENANT_UNIT_ACCESS_DENIED");
+  }
+  if (input.contactId) {
+    const contact = await rawPrisma.contact.findFirst({ where: { id: input.contactId, tenantId: input.tenantId } });
+    if (!contact) throw new Error("CROSS_TENANT_CONTACT_ACCESS_DENIED");
+  }
+
   const entities = extractEntities({ ...input, text });
   const intent = inferIntent(text, entities);
   const suggestion = buildSuggestion(intent, entities);
@@ -322,64 +339,102 @@ async function executeSuggestion(suggestion: any, actorId: string) {
 
 export async function approveActionSuggestion(tenantId: string, actorId: string, suggestionId: string) {
   const suggestion = await rawPrisma.revenueActionSuggestion.findFirst({
-    where: { id: suggestionId, tenantId, status: "PENDING_APPROVAL" },
+    where: { id: suggestionId, tenantId },
   });
-  if (!suggestion) throw new Error("PENDING_SUGGESTION_NOT_FOUND");
+  if (!suggestion) throw new Error("SUGGESTION_NOT_FOUND");
 
-  const approved = await rawPrisma.revenueActionSuggestion.update({
-    where: { id: suggestion.id },
-    data: { status: "APPROVED", decidedBy: actorId, decidedAt: new Date() },
-  });
-  await appendRevenueEvent({
-    tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
-    eventType: "ACTION_SUGGESTION_APPROVED", idempotencyKey: `suggestion-approved:${suggestion.id}`,
-    before: suggestion, after: approved,
-  });
+  if (suggestion.status === "APPROVED") return suggestion;
+  if (suggestion.status === "REJECTED") throw new Error("CANNOT_APPROVE_REJECTED");
+  if (suggestion.status === "EXECUTED") throw new Error("CANNOT_APPROVE_EXECUTED");
+  if (suggestion.status === "FAILED") throw new Error("CANNOT_APPROVE_FAILED");
+  if (suggestion.status !== "PENDING_APPROVAL") throw new Error("INVALID_SUGGESTION_STATUS");
 
-  try {
-    const executionResult = await executeSuggestion(approved, actorId);
-    const executed = await rawPrisma.revenueActionSuggestion.update({
+  const approved = await rawPrisma.$transaction(async (tx: any) => {
+    const updated = await tx.revenueActionSuggestion.update({
       where: { id: suggestion.id },
-      data: { status: "EXECUTED", executionResult: executionResult as any, executedAt: new Date() },
+      data: { status: "APPROVED", decidedBy: actorId, decidedAt: new Date() },
     });
     await appendRevenueEvent({
       tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
-      eventType: "ACTION_SUGGESTION_EXECUTED", idempotencyKey: `suggestion-executed:${suggestion.id}`,
-      before: approved, after: executed,
+      eventType: "ACTION_SUGGESTION_APPROVED", idempotencyKey: `suggestion-approved:${suggestion.id}`,
+      before: suggestion, after: updated,
     });
-    return executed;
-  } catch (error) {
-    const failed = await rawPrisma.revenueActionSuggestion.update({
-      where: { id: suggestion.id },
-      data: {
-        status: "FAILED",
-        executionResult: { error: error instanceof Error ? error.message : "UNKNOWN_EXECUTION_ERROR" } as any,
-        executedAt: new Date(),
-      },
-    });
-    await appendRevenueEvent({
-      tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
-      eventType: "ACTION_SUGGESTION_EXECUTION_FAILED", idempotencyKey: `suggestion-failed:${suggestion.id}`,
-      before: approved, after: failed,
-    });
-    throw error;
-  }
+    return updated;
+  });
+
+  return approved;
 }
 
 export async function rejectActionSuggestion(tenantId: string, actorId: string, suggestionId: string, reason: string) {
   if (!reason.trim()) throw new Error("REJECTION_REASON_REQUIRED");
   const suggestion = await rawPrisma.revenueActionSuggestion.findFirst({
-    where: { id: suggestionId, tenantId, status: "PENDING_APPROVAL" },
+    where: { id: suggestionId, tenantId },
   });
-  if (!suggestion) throw new Error("PENDING_SUGGESTION_NOT_FOUND");
-  const rejected = await rawPrisma.revenueActionSuggestion.update({
-    where: { id: suggestion.id },
-    data: { status: "REJECTED", decidedBy: actorId, decidedAt: new Date(), decisionReason: reason.trim() },
+  if (!suggestion) throw new Error("SUGGESTION_NOT_FOUND");
+
+  if (suggestion.status === "REJECTED") return suggestion;
+  if (suggestion.status === "APPROVED") throw new Error("CANNOT_REJECT_APPROVED");
+  if (suggestion.status === "EXECUTED") throw new Error("CANNOT_REJECT_EXECUTED");
+  if (suggestion.status === "FAILED") throw new Error("CANNOT_REJECT_FAILED");
+  if (suggestion.status !== "PENDING_APPROVAL") throw new Error("INVALID_SUGGESTION_STATUS");
+
+  const rejected = await rawPrisma.$transaction(async (tx: any) => {
+    const updated = await tx.revenueActionSuggestion.update({
+      where: { id: suggestion.id },
+      data: { status: "REJECTED", decidedBy: actorId, decidedAt: new Date(), decisionReason: reason.trim() },
+    });
+    await appendRevenueEvent({
+      tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
+      eventType: "ACTION_SUGGESTION_REJECTED", idempotencyKey: `suggestion-rejected:${suggestion.id}`,
+      before: suggestion, after: updated,
+    });
+    return updated;
   });
-  await appendRevenueEvent({
-    tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
-    eventType: "ACTION_SUGGESTION_REJECTED", idempotencyKey: `suggestion-rejected:${suggestion.id}`,
-    before: suggestion, after: rejected,
-  });
+
   return rejected;
+}
+
+export async function executeActionSuggestion(tenantId: string, actorId: string, suggestionId: string) {
+  const suggestion = await rawPrisma.revenueActionSuggestion.findFirst({
+    where: { id: suggestionId, tenantId },
+  });
+  if (!suggestion) throw new Error("SUGGESTION_NOT_FOUND");
+
+  if (suggestion.status === "EXECUTED") return suggestion;
+  if (suggestion.status === "FAILED") return suggestion;
+  if (suggestion.status !== "APPROVED") throw new Error("CANNOT_EXECUTE_NOT_APPROVED");
+
+  let executionResult: Record<string, unknown>;
+  let finalStatus: "EXECUTED" | "FAILED";
+
+  try {
+    executionResult = await executeSuggestion(suggestion, actorId);
+    finalStatus = "EXECUTED";
+  } catch (error) {
+    executionResult = { error: error instanceof Error ? error.message : "UNKNOWN_EXECUTION_ERROR" };
+    finalStatus = "FAILED";
+  }
+
+  const result = await rawPrisma.$transaction(async (tx: any) => {
+    const updated = await tx.revenueActionSuggestion.update({
+      where: { id: suggestion.id },
+      data: { status: finalStatus, executionResult: executionResult as any, executedAt: new Date() },
+    });
+    const eventType = finalStatus === "EXECUTED"
+      ? "ACTION_SUGGESTION_EXECUTED"
+      : "ACTION_SUGGESTION_EXECUTION_FAILED";
+    await appendRevenueEvent({
+      tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
+      eventType, idempotencyKey: `suggestion-executed:${suggestion.id}`,
+      before: suggestion, after: updated,
+      metadata: { executionResult },
+    });
+    return updated;
+  });
+
+  if (finalStatus === "FAILED") {
+    throw new Error(`EXECUTION_FAILED:${executionResult.error}`);
+  }
+
+  return result;
 }

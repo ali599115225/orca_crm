@@ -196,3 +196,27 @@ export async function loadRevenueIntegrityDashboard(tenantId: string) {
 export type RevenueIntegrityDashboard = Awaited<
   ReturnType<typeof loadRevenueIntegrityDashboard>
 >;
+
+export async function loadRevenueSuggestions(tenantId: string) {
+  const suggestions = await rawPrisma.revenueActionSuggestion.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return suggestions.map((suggestion: any) => ({
+    id: suggestion.id,
+    sourceType: suggestion.sourceType,
+    sourceId: suggestion.sourceId,
+    actionType: suggestion.actionType,
+    intent: suggestion.intent,
+    rationaleAr: suggestion.rationaleAr,
+    rationaleEn: suggestion.rationaleEn,
+    confidence: numberValue(suggestion.confidence),
+    status: suggestion.status,
+    decisionReason: suggestion.decisionReason,
+    executionResult: suggestion.executionResult,
+    createdAt: iso(suggestion.createdAt),
+    decidedAt: iso(suggestion.decidedAt),
+    executedAt: iso(suggestion.executedAt),
+  }));
+}

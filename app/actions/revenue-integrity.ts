@@ -11,6 +11,7 @@ import {
 import {
   analyzeConversationToAction,
   approveActionSuggestion,
+  executeActionSuggestion,
   rejectActionSuggestion,
 } from "@/lib/revenue-integrity/conversation-to-action";
 import {
@@ -151,26 +152,60 @@ export async function analyzeConversationAction(input: {
   }
 }
 
-export async function decideRevenueSuggestionAction(
+export async function approveRevenueSuggestionAction(
   suggestionId: string,
-  decision: "APPROVE" | "REJECT",
-  reason = "",
 ): Promise<ActionResult> {
   try {
     const auth = await requireRevenuePermission("revenue.action.approve");
-    const data =
-      decision === "APPROVE"
-        ? await approveActionSuggestion(
-            auth.tenantId,
-            auth.userId,
-            String(suggestionId),
-          )
-        : await rejectActionSuggestion(
-            auth.tenantId,
-            auth.userId,
-            String(suggestionId),
-            String(reason || "").trim() || "Rejected by operator",
-          );
+    const data = await approveActionSuggestion(
+      auth.tenantId,
+      auth.userId,
+      String(suggestionId),
+    );
+    refresh();
+    return {
+      success: true,
+      data: { id: data.id, status: data.status },
+    };
+  } catch (error) {
+    return { success: false, error: errorMessage(error) };
+  }
+}
+
+export async function rejectRevenueSuggestionAction(
+  suggestionId: string,
+  reason: string,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.action.approve");
+    const normalizedReason = String(reason || "").trim();
+    if (normalizedReason.length < 3) throw new Error("REJECTION_REASON_REQUIRED");
+    const data = await rejectActionSuggestion(
+      auth.tenantId,
+      auth.userId,
+      String(suggestionId),
+      normalizedReason,
+    );
+    refresh();
+    return {
+      success: true,
+      data: { id: data.id, status: data.status },
+    };
+  } catch (error) {
+    return { success: false, error: errorMessage(error) };
+  }
+}
+
+export async function executeRevenueSuggestionAction(
+  suggestionId: string,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.action.approve");
+    const data = await executeActionSuggestion(
+      auth.tenantId,
+      auth.userId,
+      String(suggestionId),
+    );
     refresh();
     return {
       success: true,

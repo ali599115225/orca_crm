@@ -6,8 +6,10 @@ import { useApp } from "@/app/context/AppContext";
 import {
   acknowledgeRevenueRiskAction,
   analyzeConversationAction,
-  decideRevenueSuggestionAction,
+  approveRevenueSuggestionAction,
+  executeRevenueSuggestionAction,
   processRevenueOutboxAction,
+  rejectRevenueSuggestionAction,
   resolveRevenueRiskAction,
   runRevenueRadarAction,
   scoreRevenueOpportunitiesAction,
@@ -120,7 +122,9 @@ export default function RevenueIntegrityView({ initialData }: Props) {
   const [riskPage, setRiskPage] = useState(1);
   const [eventPage, setEventPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
+  const [suggestionPage, setSuggestionPage] = useState(1);
   const [isRadarRunning, setIsRadarRunning] = useState(false);
+  const [mutatingSuggestionId, setMutatingSuggestionId] = useState<string | null>(null);
 
   const L = (ar: string, en: string) => (isArabic ? ar : en);
   const langEnum = isArabic ? "ar" : "en";
@@ -192,10 +196,17 @@ export default function RevenueIntegrityView({ initialData }: Props) {
         L("تم إغلاق الخطر مع حفظ السبب.", "Risk resolved with an audit reason."),
       );
     } else {
-      execute(
-        () => decideRevenueSuggestionAction(reasonDialog.id, "REJECT", reason.trim()),
-        L("تم رفض الاقتراح مع حفظ السبب.", "Suggestion rejected with an audit reason."),
-      );
+      setNotice(null);
+      startTransition(async () => {
+        const result = await rejectRevenueSuggestionAction(reasonDialog.id, reason.trim());
+        if (!result.success) {
+          setNotice({ type: "error", text: result.error || L("تعذر الرفض.", "Rejection failed.") });
+        } else {
+          showSuccessToast(L("تم رفض الاقتراح مع حفظ السبب.", "Suggestion rejected with an audit reason."));
+          setSuggestionPage(1);
+          router.refresh();
+        }
+      });
     }
     setReasonDialog(null);
     setReason("");
@@ -532,70 +543,157 @@ export default function RevenueIntegrityView({ initialData }: Props) {
 
           <Panel title={L("طابور الاعتماد", "Approval queue")}>
             <div className="space-y-3">
-              {initialData.suggestions.map((suggestion) => (
-                <article
-                  key={suggestion.id}
-                  className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-black text-[var(--nc-foreground)]">
-                          {displayRevenueIntegrityValue(suggestion.actionType, langEnum)}
-                        </h3>
-                        <StatusBadge value={suggestion.status} lang={langEnum} />
+              {(() => {
+                const pageSize = 10;
+                const total = initialData.suggestions.length;
+                const totalPages = Math.max(1, Math.ceil(total / pageSize));
+                const safePage = Math.min(suggestionPage, totalPages);
+                const pageItems = initialData.suggestions.slice((safePage - 1) * pageSize, safePage * pageSize);
+                return (
+                  <>
+                    {pageItems.map((suggestion) => {
+                      const isMutating = mutatingSuggestionId === suggestion.id;
+                      const execResult = suggestion.executionResult as Record<string, unknown> | null;
+                      const failureReason = execResult && typeof execResult.error === "string" ? execResult.error : null;
+                      return (
+                        <article
+                          key={suggestion.id}
+                          className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-sm font-black text-[var(--nc-foreground)]">
+                                  {displayRevenueIntegrityValue(suggestion.actionType, langEnum)}
+                                </h3>
+                                <StatusBadge value={suggestion.status} lang={langEnum} />
+                                <span className="text-[10px] text-[var(--nc-foreground-muted)]">
+                                  {displayRevenueIntegrityValue(suggestion.sourceType, langEnum)}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-xs text-[var(--nc-foreground-muted)]">
+                                {isArabic ? suggestion.rationaleAr : suggestion.rationaleEn}
+                              </p>
+                              <time className="mt-1 block text-[10px] text-[var(--nc-foreground-muted)]">
+                                {formatDate(suggestion.createdAt, locale)}
+                              </time>
+                              {failureReason ? (
+                                <p className="mt-2 rounded-lg bg-rose-500/10 px-2 py-1 text-[11px] text-rose-700 dark:text-rose-300">
+                                  {failureReason}
+                                </p>
+                              ) : null}
+                              {suggestion.status === "EXECUTED" && execResult && !failureReason ? (
+                                <p className="mt-2 rounded-lg bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-700 dark:text-emerald-300">
+                                  {L("تم التنفيذ بنجاح", "Executed successfully")}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="text-end">
+                              <div className="text-[11px] text-[var(--nc-foreground-muted)]">
+                                {L("الثقة", "Confidence")}
+                              </div>
+                              <div className="mt-1 font-black text-[var(--nc-foreground)]">
+                                {Math.round(suggestion.confidence * 100)}%
+                              </div>
+                            </div>
+                          </div>
+                          {suggestion.status === "PENDING_APPROVAL" ? (
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                disabled={pending || isMutating}
+                                onClick={() => {
+                                  setMutatingSuggestionId(suggestion.id);
+                                  setNotice(null);
+                                  startTransition(async () => {
+                                    const result = await approveRevenueSuggestionAction(suggestion.id);
+                                    if (!result.success) {
+                                      setNotice({ type: "error", text: result.error || L("تعذر الاعتماد.", "Approval failed.") });
+                                    } else {
+                                      showSuccessToast(L("تم اعتماد الاقتراح.", "Suggestion approved."));
+                                      setSuggestionPage(1);
+                                      router.refresh();
+                                    }
+                                    setMutatingSuggestionId(null);
+                                  });
+                                }}
+                                className="rounded-lg bg-[var(--nc-accent)] px-3 py-2 text-xs font-black text-slate-950 disabled:opacity-50"
+                              >
+                                {L("اعتماد", "Approve")}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pending || isMutating}
+                                onClick={() => {
+                                  setReason("");
+                                  setReasonDialog({ mode: "reject-suggestion", id: suggestion.id });
+                                }}
+                                className="rounded-lg border border-rose-500/30 px-3 py-2 text-xs font-black text-rose-700 dark:text-rose-300"
+                              >
+                                {L("رفض", "Reject")}
+                              </button>
+                            </div>
+                          ) : null}
+                          {suggestion.status === "APPROVED" ? (
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                disabled={pending || isMutating}
+                                onClick={() => {
+                                  setMutatingSuggestionId(suggestion.id);
+                                  setNotice(null);
+                                  startTransition(async () => {
+                                    const result = await executeRevenueSuggestionAction(suggestion.id);
+                                    if (!result.success) {
+                                      setNotice({ type: "error", text: result.error || L("تعذر التنفيذ.", "Execution failed.") });
+                                    } else {
+                                      showSuccessToast(L("تم تنفيذ الاقتراح.", "Suggestion executed."));
+                                      setSuggestionPage(1);
+                                      router.refresh();
+                                    }
+                                    setMutatingSuggestionId(null);
+                                  });
+                                }}
+                                className="rounded-lg bg-[var(--nc-accent)] px-3 py-2 text-xs font-black text-slate-950 disabled:opacity-50"
+                              >
+                                {L("تنفيذ", "Execute")}
+                              </button>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                    {total === 0 ? (
+                      <div className="py-16 text-center text-sm text-[var(--nc-foreground-muted)]">
+                        {L("لا توجد اقتراحات بعد.", "No suggestions yet.")}
                       </div>
-                      <p className="mt-2 text-xs text-[var(--nc-foreground-muted)]">
-                        {isArabic ? suggestion.rationaleAr : suggestion.rationaleEn}
-                      </p>
-                    </div>
-                    <div className="text-end">
-                      <div className="text-[11px] text-[var(--nc-foreground-muted)]">
-                        {L("الثقة", "Confidence")}
+                    ) : null}
+                    {total > pageSize ? (
+                      <div className="flex items-center justify-between border-t border-[var(--nc-border)] pt-4">
+                        <button
+                          type="button"
+                          disabled={safePage === 1}
+                          onClick={() => setSuggestionPage(p => p - 1)}
+                          className="rounded-lg border border-[var(--nc-border)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] disabled:opacity-40"
+                        >
+                          {L("السابق", "Previous")}
+                        </button>
+                        <span className="text-xs text-[var(--nc-foreground-muted)]">
+                          {isArabic ? `صفحة ${safePage} من ${totalPages}` : `Page ${safePage} of ${totalPages}`}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safePage >= totalPages}
+                          onClick={() => setSuggestionPage(p => p + 1)}
+                          className="rounded-lg border border-[var(--nc-border)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] disabled:opacity-40"
+                        >
+                          {L("التالي", "Next")}
+                        </button>
                       </div>
-                      <div className="mt-1 font-black text-[var(--nc-foreground)]">
-                        {Math.round(suggestion.confidence * 100)}%
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 rounded-xl bg-[var(--nc-surface)] p-3 text-[11px] text-[var(--nc-foreground-muted)]">
-                    <code className="break-all">{JSON.stringify(suggestion.extractedEntities)}</code>
-                  </div>
-                  {suggestion.status === "PENDING_APPROVAL" ? (
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          execute(
-                            () => decideRevenueSuggestionAction(suggestion.id, "APPROVE"),
-                            L("تم اعتماد الاقتراح وتنفيذه.", "Suggestion approved and executed."),
-                          )
-                        }
-                        className="rounded-lg bg-[var(--nc-accent)] px-3 py-2 text-xs font-black text-slate-950"
-                      >
-                        {L("اعتماد وتنفيذ", "Approve & execute")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => {
-                          setReason("");
-                          setReasonDialog({ mode: "reject-suggestion", id: suggestion.id });
-                        }}
-                        className="rounded-lg border border-rose-500/30 px-3 py-2 text-xs font-black text-rose-700 dark:text-rose-300"
-                      >
-                        {L("رفض", "Reject")}
-                      </button>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-              {initialData.suggestions.length === 0 ? (
-                <div className="py-16 text-center text-sm text-[var(--nc-foreground-muted)]">
-                  {L("لا توجد اقتراحات بعد.", "No suggestions yet.")}
-                </div>
-              ) : null}
+                    ) : null}
+                  </>
+                );
+              })()}
             </div>
           </Panel>
         </div>

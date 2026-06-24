@@ -43,6 +43,17 @@ export function displayRevenueIntegrityValue(value: string, lang: "ar" | "en"): 
     case "RETRY": return isAr ? "إعادة المحاولة" : "Retry";
     case "REJECTED": return isAr ? "مرفوض" : "Rejected";
     case "APPROVED": return isAr ? "معتمد" : "Approved";
+    case "CREATE_TASK": return isAr ? "إنشاء مهمة متابعة" : "Create follow-up task";
+    case "SCHEDULE_TOUR": return isAr ? "جدولة جولة" : "Schedule tour";
+    case "CREATE_OFFER": return isAr ? "إنشاء عرض سعر" : "Create offer";
+    case "COLLECTION_FOLLOW_UP": return isAr ? "متابعة تحصيل" : "Collection follow-up";
+    case "FOLLOW_UP": return isAr ? "متابعة عميل" : "Customer follow-up";
+    case "ACTION_SUGGESTION_CREATED": return isAr ? "تم إنشاء اقتراح" : "Suggestion created";
+    case "ACTION_SUGGESTION_APPROVED": return isAr ? "تم اعتماد الاقتراح" : "Suggestion approved";
+    case "ACTION_SUGGESTION_REJECTED": return isAr ? "تم رفض الاقتراح" : "Suggestion rejected";
+    case "ACTION_SUGGESTION_EXECUTED": return isAr ? "تم تنفيذ الاقتراح" : "Suggestion executed";
+    case "ACTION_SUGGESTION_EXECUTION_FAILED": return isAr ? "فشل تنفيذ الاقتراح" : "Suggestion execution failed";
+    case "RevenueActionSuggestion": return isAr ? "اقتراح إجراء" : "Action suggestion";
     default: return value;
   }
 }
