@@ -1,14 +1,21 @@
 'use server';
+// app/actions/finance.ts
+// Hardened: session + DB role check + audit on all financial mutations.
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { getActiveTenant } from '@/lib/tenant';
+import { assertServerActionRole } from '@/lib/api-auth-guard';
+import { writeAuditLog } from '@/lib/audit';
 import { recordPayment } from '@/lib/domain/transaction-spine';
 import {
   postInvoiceEntry,
   findAccountByCode,
   seedChartOfAccounts,
 } from '@/lib/accounting';
+
+const FINANCE_ROLES = ['ADMIN', 'SALES_MANAGER'] as const;
+const COMMISSION_ROLES = ['ADMIN', 'owner'] as const;
 
 export async function processPayment(
   invoiceId: string,
@@ -18,20 +25,13 @@ export async function processPayment(
 ) {
   try {
     const [tenant, session] = await Promise.all([getActiveTenant(), getSession()]);
-    const userId = session?.userId as string | undefined;
-    if (!userId) throw new Error('Authentication required.');
-    const user = await prisma.user.findFirst({
-      where: { id: userId, tenantId: tenant.id },
-      select: { role: true },
-    });
-    if (!user || !['ADMIN', 'SALES_MANAGER'].includes(String(user.role))) {
-      throw new Error('Insufficient permissions.');
-    }
+    if (!session) throw new Error('Authentication required.');
+    const verified = await assertServerActionRole(session, FINANCE_ROLES);
 
     const result = await recordPayment({
       tenantId: tenant.id,
-      userId,
-      actorId: userId,
+      userId: verified.userId,
+      actorId: verified.userId,
       invoiceId,
       amount,
       method,
@@ -46,6 +46,17 @@ export async function processPayment(
       },
     });
     if (!receipt) throw new Error('Payment receipt was not created.');
+
+    // ── Audit ──────────────────────────────────────────────────────────────
+    await writeAuditLog({
+      tenantId: tenant.id,
+      userId: verified.userId,
+      action: 'INVOICE_PAYMENT_RECORDED',
+      tableName: 'receipts',
+      recordId: receipt.id,
+      details: JSON.stringify({ invoiceId, amount, method }),
+    });
+
     return receipt;
   } catch (error) {
     console.error('[processPayment]', error);
@@ -55,18 +66,24 @@ export async function processPayment(
 
 export async function processCommissionPayment(commissionId: string) {
   try {
-    const tenant = await getActiveTenant();
+    // ── Auth: DB-backed — only ADMIN/owner may pay commissions ───────────────
+    const [tenant, session] = await Promise.all([getActiveTenant(), getSession()]);
+    if (!session) throw new Error('Authentication required.');
+    const verified = await assertServerActionRole(session, COMMISSION_ROLES);
+
     await seedChartOfAccounts(tenant.id);
 
+    // FK: commission must belong to this tenant
     const commission = await prisma.payrollCommission.findFirst({
       where: { id: commissionId, tenantId: tenant.id },
     });
     if (!commission) throw new Error('العمولة غير موجودة');
     if (commission.status !== 'PENDING') throw new Error('العمولة ليست معلقة');
 
-    return await prisma.$transaction(async (tx) => {
-      await tx.payrollCommission.update({
-        where: { id: commissionId },
+    const result = await prisma.$transaction(async (tx) => {
+      // tenantId-scoped updateMany to prevent cross-tenant mutation
+      await tx.payrollCommission.updateMany({
+        where: { id: commissionId, tenantId: tenant.id },
         data: { status: 'PAID' },
       });
 
@@ -95,6 +112,18 @@ export async function processCommissionPayment(commissionId: string) {
 
       return { success: true };
     });
+
+    // ── Audit ──────────────────────────────────────────────────────────────
+    await writeAuditLog({
+      tenantId: tenant.id,
+      userId: verified.userId,
+      action: 'COMMISSION_PAYMENT_PROCESSED',
+      tableName: 'payroll_commissions',
+      recordId: commissionId,
+      details: JSON.stringify({ amount: String(commission.amount) }),
+    });
+
+    return result;
   } catch (error) {
     console.error('[processCommissionPayment]', error);
     throw new Error('فشل صرف العمولة');

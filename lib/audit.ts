@@ -56,7 +56,24 @@ export type AuditAction =
   | "EJAR_CONTRACT_TX2_COMMITTED"
   | "EJAR_CONTRACT_IDEMPOTENT_RETURN"
   // ─── Credentials ──────────────────────────────────────────────────────────
-  | "CREDENTIALS_INTEGRITY_FAILED";
+  | "CREDENTIALS_INTEGRITY_FAILED"
+  // ─── Authorization / Security ─────────────────────────────────────────────
+  | "AUTHORIZATION_FORBIDDEN"
+  | "AUTHORIZATION_UNAUTHENTICATED"
+  | "CROSS_TENANT_ACCESS_BLOCKED"
+  // ─── Payment / Finance ────────────────────────────────────────────────────
+  | "SUBSCRIPTION_PAYMENT_INITIATED"
+  | "ADDON_PAYMENT_INITIATED"
+  | "INSTALLMENT_PAID"
+  | "INVOICE_PAYMENT_RECORDED"
+  | "COMMISSION_PAYMENT_PROCESSED"
+  // ─── Contract ─────────────────────────────────────────────────────────────
+  | "CONTRACT_ISSUED"
+  | "CONTRACT_TERMS_UPDATED"
+  | "CONTRACT_WIZARD_DATA_READ"
+  // ─── Leads ────────────────────────────────────────────────────────────────
+  | "LEAD_STATUS_UPDATED"
+  | "LEAD_DETAIL_READ";
 
 export async function writeAuditLog(params: {
   tenantId: string;
