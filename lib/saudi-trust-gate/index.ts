@@ -165,14 +165,16 @@ export class SaudiTrustGateService {
       return blocked('CREDENTIALS_INTEGRITY_FAILED');
     }
 
-    // ── 4. Active ZATCA device ───────────────────────────────────────────────
-    const device = await rawPrisma.zatcaDevice.findFirst({
-      where: { tenantId, status: 'ACTIVE' },
-      select: { id: true, expiresAt: true },
-    });
-    if (!device) return providerUnavailable('NO_ACTIVE_DEVICE');
-    if (device.expiresAt && device.expiresAt < new Date()) {
-      return providerUnavailable('DEVICE_EXPIRED');
+    // ── 4. Active ZATCA device (skip for create — we're making the first one) ─
+    if (input.operation !== 'ZATCA_CREATE_DEVICE') {
+      const device = await rawPrisma.zatcaDevice.findFirst({
+        where: { tenantId, status: 'ACTIVE' },
+        select: { id: true, expiresAt: true },
+      });
+      if (!device) return providerUnavailable('NO_ACTIVE_DEVICE');
+      if (device.expiresAt && device.expiresAt < new Date()) {
+        return providerUnavailable('DEVICE_EXPIRED');
+      }
     }
 
     return { status: 'READY' };
