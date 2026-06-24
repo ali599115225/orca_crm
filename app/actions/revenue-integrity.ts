@@ -26,6 +26,11 @@ import {
   scoreOpenOpportunities,
   trainPredictiveModel,
 } from "@/lib/revenue-integrity/predictive";
+import {
+  loadIntelligenceScores,
+  scoreAllOpportunitiesIntelligence,
+  scoreOpportunityIntelligence,
+} from "@/lib/revenue-integrity/predictive-intelligence";
 import { processRevenueOutbox } from "@/lib/revenue-integrity/events";
 import { loadRevenueIntegrityDashboard } from "@/lib/revenue-integrity/queries";
 import type { ProviderCredentials } from "@/lib/revenue-integrity/contracts";
@@ -383,6 +388,56 @@ export async function getRevenueAuditProofAction(
         })),
       },
     };
+  } catch (error) {
+    return { success: false, error: errorMessage(error) };
+  }
+}
+
+export async function scoreOpportunityIntelligenceAction(
+  opportunityId: string,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.predictive.manage");
+    const id = String(opportunityId || "").trim();
+    if (!id) throw new Error("OPPORTUNITY_ID_REQUIRED");
+    const data = await scoreOpportunityIntelligence(auth.tenantId, auth.userId, id);
+    refresh();
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: errorMessage(error) };
+  }
+}
+
+export async function scoreAllIntelligenceAction(): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.predictive.manage");
+    const data = await scoreAllOpportunitiesIntelligence(auth.tenantId, auth.userId);
+    refresh();
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: errorMessage(error) };
+  }
+}
+
+export async function getIntelligenceScoresAction(options?: {
+  category?: string;
+  entityType?: string;
+  entityId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.predictive.read");
+    const pageSize = Math.min(Math.max(Number(options?.pageSize || 5), 1), 20);
+    const page = Math.max(1, Number(options?.page || 1));
+    const data = await loadIntelligenceScores(auth.tenantId, {
+      category: options?.category,
+      entityType: options?.entityType,
+      entityId: options?.entityId,
+      page,
+      pageSize,
+    });
+    return { success: true, data };
   } catch (error) {
     return { success: false, error: errorMessage(error) };
   }

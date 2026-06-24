@@ -8,15 +8,20 @@ import {
   analyzeConversationAction,
   approveRevenueSuggestionAction,
   executeRevenueSuggestionAction,
+  getIntelligenceScoresAction,
   processRevenueOutboxAction,
   rejectRevenueSuggestionAction,
   resolveRevenueRiskAction,
   runRevenueRadarAction,
-  scoreRevenueOpportunitiesAction,
+  scoreAllIntelligenceAction,
   testRevenueProviderAction,
-  trainRevenuePredictiveModelAction,
 } from "@/app/actions/revenue-integrity";
-import { displayRevenueIntegrityValue } from "@/lib/display/revenueIntegrity";
+import {
+  displayRevenueIntegrityValue,
+  intelligenceRiskClass,
+  intelligenceRiskLevel,
+  safeDisplayId,
+} from "@/lib/display/revenueIntegrity";
 import type { RevenueIntegrityDashboard } from "@/lib/revenue-integrity/queries";
 
 type Tab = "radar" | "actions" | "trust" | "audit" | "predictive";
@@ -99,6 +104,353 @@ function Panel({
   );
 }
 
+const INTELLIGENCE_PAGE_SIZE = 5;
+
+type IntelligenceScore = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  category: string;
+  score: number;
+  confidence: number;
+  reasons: unknown;
+  sourceSignals: unknown;
+  recommendedAction: string | null;
+  recommendedActionPayload: unknown;
+  modelVersion: string;
+  modelAlgorithm: string;
+  windowKey: string;
+  generatedAt: string;
+};
+
+type IntelligencePageData = {
+  items: IntelligenceScore[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+function PredictiveIntelligenceTab({
+  lang,
+  isArabic,
+  locale,
+  globalPending,
+}: {
+  lang: "ar" | "en";
+  isArabic: boolean;
+  locale: string;
+  globalPending: boolean;
+}) {
+  const router = useRouter();
+  const [scoring, startScoring] = useTransition();
+  const [loading, startLoading] = useTransition();
+  const [pageData, setPageData] = useState<IntelligencePageData | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [scoreSuccess, setScoreSuccess] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const L = (ar: string, en: string) => (isArabic ? ar : en);
+
+  function fetchPage(page: number) {
+    setFetchError(null);
+    startLoading(async () => {
+      const result = await getIntelligenceScoresAction({ page, pageSize: INTELLIGENCE_PAGE_SIZE });
+      if (!result.success) {
+        setFetchError(L("تعذر تحميل نتائج التنبؤ.", "Failed to load prediction results."));
+        return;
+      }
+      const data = result.data as IntelligencePageData;
+      setPageData(data);
+      setCurrentPage(page);
+    });
+  }
+
+  useEffect(() => {
+    fetchPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function runScoring() {
+    setScoreError(null);
+    setScoreSuccess(null);
+    startScoring(async () => {
+      const result = await scoreAllIntelligenceAction();
+      if (!result.success) {
+        setScoreError(L("تعذر تشغيل التقييم.", "Failed to run scoring."));
+        return;
+      }
+      setScoreSuccess(L("اكتمل تشغيل التقييم على جميع الفرص.", "Scoring completed for all open opportunities."));
+      fetchPage(1);
+      router.refresh();
+    });
+  }
+
+  const isPending = scoring || loading || globalPending;
+
+  const itemReasonsList = (item: IntelligenceScore) => {
+    if (!Array.isArray(item.reasons)) return [];
+    return (item.reasons as any[]).slice(0, 3);
+  };
+
+  const itemSignalsList = (item: IntelligenceScore) => {
+    if (!Array.isArray(item.sourceSignals)) return [];
+    return (item.sourceSignals as any[]).slice(0, 3);
+  };
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[340px_1fr]">
+      <section className="flex flex-col rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-black text-[var(--nc-foreground)]">
+            {L("لوحة التحكم التنبؤي", "Predictive Intelligence")}
+          </h2>
+          <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
+            {L(
+              "تحليل حتمي قائم على إشارات الإيراد. النتائج تعكس بيانات الفرص الحالية.",
+              "Deterministic analysis from revenue signals. Results reflect current opportunity data.",
+            )}
+          </p>
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {scoreSuccess ? (
+            <div
+              className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-700 dark:text-emerald-300"
+              role="status"
+            >
+              {scoreSuccess}
+            </div>
+          ) : null}
+          {scoreError ? (
+            <div
+              className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-700 dark:text-rose-300"
+              role="alert"
+            >
+              {scoreError}
+            </div>
+          ) : null}
+
+          <button
+            id="pi-run-scoring-btn"
+            type="button"
+            disabled={isPending}
+            onClick={runScoring}
+            className="h-11 rounded-xl bg-[var(--nc-accent)] px-4 text-sm font-black text-slate-950 transition hover:opacity-90 disabled:opacity-50"
+          >
+            {scoring
+              ? L("جارٍ التقييم...", "Scoring...")
+              : L("تشغيل التقييم الآن", "Run scoring now")}
+          </button>
+          <button
+            id="pi-refresh-btn"
+            type="button"
+            disabled={isPending}
+            onClick={() => fetchPage(currentPage)}
+            className="h-10 rounded-xl border border-[var(--nc-border)] px-4 text-sm font-bold text-[var(--nc-foreground)] transition hover:bg-[var(--nc-surface-strong)] disabled:opacity-40"
+          >
+            {L("تحديث النتائج", "Refresh results")}
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-2xl bg-[var(--nc-surface-strong)] p-4">
+          <dl className="space-y-2 text-xs">
+            <div className="flex justify-between gap-2">
+              <dt className="text-[var(--nc-foreground-muted)]">{L("حجم الصفحة", "Page size")}</dt>
+              <dd className="font-black text-[var(--nc-foreground)]">{INTELLIGENCE_PAGE_SIZE}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-[var(--nc-foreground-muted)]">{L("إجمالي النتائج", "Total results")}</dt>
+              <dd className="font-black text-[var(--nc-foreground)]">{pageData?.total ?? "—"}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-[var(--nc-foreground-muted)]">{L("الخوارزمية", "Algorithm")}</dt>
+              <dd className="font-black text-[var(--nc-foreground)]">Deterministic</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="flex flex-col rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] shadow-sm">
+        <div className="border-b border-[var(--nc-border)] p-5">
+          <h2 className="text-base font-black text-[var(--nc-foreground)]">
+            {L("نتائج التنبؤ", "Prediction Results")}
+          </h2>
+          <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
+            {L("خمس نتائج لكل صفحة · النص الطويل مُقطَّع", "5 results per page · Long text truncated")}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-hidden" style={{ minHeight: "380px" }}>
+          {loading && !pageData ? (
+            <div className="flex h-[380px] items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--nc-accent)] border-t-transparent" />
+                <span className="text-xs text-[var(--nc-foreground-muted)]">
+                  {L("جارٍ التحميل...", "Loading...")}
+                </span>
+              </div>
+            </div>
+          ) : fetchError ? (
+            <div className="flex h-[380px] items-center justify-center px-6">
+              <p className="text-center text-sm font-bold text-rose-600 dark:text-rose-400">
+                {fetchError}
+              </p>
+            </div>
+          ) : pageData && pageData.items.length === 0 ? (
+            <div className="flex h-[380px] items-center justify-center px-6">
+              <p className="text-center text-sm text-[var(--nc-foreground-muted)]">
+                {L(
+                  "لا توجد تنبؤات بعد. شغّل التقييم لإنشاء نتائج من البيانات الحالية.",
+                  "No predictions yet. Run scoring to generate results from current data.",
+                )}
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[var(--nc-border)]" style={{ minHeight: "380px" }}>
+              {(pageData?.items ?? []).map((item) => {
+                const isExpanded = expandedId === item.id;
+                const riskClass = intelligenceRiskClass(item.score);
+                const riskLabel = intelligenceRiskLevel(item.score, lang);
+                const itemReasons = itemReasonsList(item);
+                const itemSignals = itemSignalsList(item);
+                const displayEntity = safeDisplayId(item.entityId, lang);
+
+                return (
+                  <li key={item.id} className="p-4">
+                    <button
+                      type="button"
+                      className="w-full text-start"
+                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-xs font-black text-[var(--nc-foreground)]">
+                              {displayEntity || L("كيان", "Entity")}
+                            </span>
+                            <span className="inline-flex rounded-full border border-[var(--nc-border)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-foreground-muted)]">
+                              {displayRevenueIntegrityValue(item.category, lang)}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
+                            <span className="font-black text-[var(--nc-foreground)]">
+                              {item.score}/100
+                            </span>
+                            <span className="text-[var(--nc-foreground-muted)]">
+                              {item.confidence}% {L("ثقة", "confidence")}
+                            </span>
+                            <span className={`font-bold ${riskClass}`}>{riskLabel}</span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-[10px] text-[var(--nc-foreground-muted)]">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </div>
+                    </button>
+
+                    {isExpanded ? (
+                      <div className="mt-3 space-y-3 rounded-2xl bg-[var(--nc-surface-strong)] p-4 text-xs">
+                        {item.recommendedAction ? (
+                          <div>
+                            <span className="font-bold text-[var(--nc-foreground-muted)]">
+                              {L("الإجراء المقترح:", "Recommended action:")}
+                            </span>{" "}
+                            <span className="font-black text-[var(--nc-accent)]">
+                              {displayRevenueIntegrityValue(item.recommendedAction, lang)}
+                            </span>
+                            <p className="mt-0.5 text-[10px] text-[var(--nc-foreground-muted)]">
+                              {L("هذا اقتراح فقط ولا يُنفَّذ تلقائيًا.", "This is a suggestion only — no automatic execution.")}
+                            </p>
+                          </div>
+                        ) : null}
+
+                        {itemReasons.length > 0 ? (
+                          <div>
+                            <p className="mb-1 font-bold text-[var(--nc-foreground-muted)]">
+                              {L("أهم الأسباب:", "Top reasons:")}
+                            </p>
+                            <ul className="space-y-1">
+                              {itemReasons.map((r: any, i: number) => (
+                                <li key={i} className="truncate text-[var(--nc-foreground)]">
+                                  · {r.label}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+
+                        {itemSignals.length > 0 ? (
+                          <div>
+                            <p className="mb-1 font-bold text-[var(--nc-foreground-muted)]">
+                              {L("إشارات المصدر:", "Source signals:")}
+                            </p>
+                            <ul className="space-y-1">
+                              {itemSignals.map((s: any, i: number) => (
+                                <li key={i} className="truncate text-[var(--nc-foreground-muted)]">
+                                  · {displayRevenueIntegrityValue(s.type, lang)}
+                                  {s.severity ? ` (${displayRevenueIntegrityValue(s.severity, lang)})` : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+
+                        <div className="flex flex-wrap gap-4 border-t border-[var(--nc-border)] pt-2 text-[10px] text-[var(--nc-foreground-muted)]">
+                          <span>
+                            {L("وقت التوليد:", "Generated:")} {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.generatedAt))}
+                          </span>
+                          <span>{L("إصدار النموذج:", "Model:")} {item.modelVersion}</span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+              {pageData && pageData.items.length > 0 && pageData.items.length < INTELLIGENCE_PAGE_SIZE
+                ? Array.from({ length: INTELLIGENCE_PAGE_SIZE - pageData.items.length }).map((_, i) => (
+                    <li key={`placeholder-${i}`} className="h-[76px]" aria-hidden="true" />
+                  ))
+                : null}
+            </ul>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-[var(--nc-border)] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              id="pi-prev-btn"
+              type="button"
+              disabled={isPending || currentPage <= 1}
+              onClick={() => fetchPage(currentPage - 1)}
+              className="h-9 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold text-[var(--nc-foreground)] transition hover:bg-[var(--nc-surface-strong)] disabled:opacity-40"
+            >
+              {L("السابق", "Previous")}
+            </button>
+            <span className="text-xs font-bold text-[var(--nc-foreground-muted)]">
+              {isArabic
+                ? `صفحة ${currentPage} من ${pageData?.totalPages ?? 1}`
+                : `Page ${currentPage} of ${pageData?.totalPages ?? 1}`}
+            </span>
+            <button
+              id="pi-next-btn"
+              type="button"
+              disabled={isPending || currentPage >= (pageData?.totalPages ?? 1)}
+              onClick={() => fetchPage(currentPage + 1)}
+              className="h-9 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold text-[var(--nc-foreground)] transition hover:bg-[var(--nc-surface-strong)] disabled:opacity-40"
+            >
+              {L("التالي", "Next")}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function RevenueIntegrityView({ initialData }: Props) {
   const { lang } = useApp();
   const isArabic = lang === "AR";
@@ -112,7 +464,6 @@ export default function RevenueIntegrityView({ initialData }: Props) {
   const [sourceType, setSourceType] = useState<"WHATSAPP" | "EMAIL" | "SUPPORT" | "MANUAL">("MANUAL");
   const [sourceId, setSourceId] = useState(`manual-${Date.now()}`);
   const [conversationText, setConversationText] = useState("");
-  const [minimumRows, setMinimumRows] = useState(30);
   const [reasonDialog, setReasonDialog] = useState<{
     mode: "resolve-risk" | "reject-suggestion";
     id: string;
@@ -880,113 +1231,12 @@ export default function RevenueIntegrityView({ initialData }: Props) {
       ) : null}
 
       {activeTab === "predictive" ? (
-        <div className="grid gap-5 xl:grid-cols-[.55fr_1.45fr]">
-          <Panel title={L("دورة النموذج", "Model lifecycle")}>
-            <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-              {L("الحد الأدنى للعينات المصنفة", "Minimum labeled rows")}
-              <input
-                type="number"
-                min={20}
-                max={10000}
-                value={minimumRows}
-                onChange={(event) => setMinimumRows(Number(event.target.value))}
-                className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 text-[var(--nc-foreground)]"
-              />
-            </label>
-            <div className="mt-4 grid gap-2">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  execute(
-                    () => trainRevenuePredictiveModelAction(minimumRows),
-                    L("اكتملت دورة التدريب أو تم تسجيل عدم الجاهزية.", "Training cycle completed or readiness was recorded."),
-                  )
-                }
-                className="h-11 rounded-xl bg-[var(--nc-accent)] px-4 text-sm font-black text-slate-950 disabled:opacity-50"
-              >
-                {L("بناء إصدار نموذج", "Build model version")}
-              </button>
-              <button
-                type="button"
-                disabled={pending || initialData.model?.status !== "ACTIVE"}
-                onClick={() =>
-                  execute(
-                    scoreRevenueOpportunitiesAction,
-                    L("تم تحديث توقعات الفرص المفتوحة.", "Open-opportunity predictions updated."),
-                  )
-                }
-                className="h-11 rounded-xl border border-[var(--nc-border)] px-4 text-sm font-black text-[var(--nc-foreground)] disabled:opacity-40"
-              >
-                {L("تقييم الفرص المفتوحة", "Score open opportunities")}
-              </button>
-            </div>
-            <div className="mt-5 rounded-2xl bg-[var(--nc-surface-strong)] p-4">
-              {initialData.model ? (
-                <dl className="space-y-3 text-xs">
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[var(--nc-foreground-muted)]">{L("الإصدار", "Version")}</dt>
-                    <dd className="font-black text-[var(--nc-foreground)]">{initialData.model.version}</dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[var(--nc-foreground-muted)]">{L("الحالة", "Status")}</dt>
-                    <dd><StatusBadge value={initialData.model.status} lang={langEnum} /></dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[var(--nc-foreground-muted)]">{L("الانحراف", "Drift")}</dt>
-                    <dd className="font-bold text-[var(--nc-foreground)]">
-                      {initialData.model.driftScore == null ? "—" : initialData.model.driftScore.toFixed(4)}
-                    </dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="text-sm text-[var(--nc-foreground-muted)]">
-                  {L("لا يوجد إصدار نموذج بعد.", "No model version exists yet.")}
-                </p>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title={L("توقعات الفرص", "Opportunity predictions")}>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] table-fixed text-xs">
-                <thead>
-                  <tr className="border-b border-[var(--nc-border)] text-[11px] text-[var(--nc-foreground-muted)]">
-                    <th className="w-[35%] px-3 py-3 text-start">{L("الفرصة", "Opportunity")}</th>
-                    <th className="w-[18%] px-3 py-3 text-start">{L("احتمال الإغلاق", "Close probability")}</th>
-                    <th className="w-[18%] px-3 py-3 text-start">{L("الثقة", "Confidence")}</th>
-                    <th className="w-[29%] px-3 py-3 text-start">{L("وقت التقييم", "Scored at")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {initialData.predictions.map((prediction) => (
-                    <tr key={prediction.id} className="h-14 border-b border-[var(--nc-border)] last:border-0">
-                      <td className="truncate px-3 py-3 font-mono text-[var(--nc-foreground)]">
-                        {shortRef(prediction.opportunityId, langEnum)}
-                      </td>
-                      <td className="px-3 py-3 font-black text-[var(--nc-foreground)]">
-                        {Math.round(prediction.probability * 100)}%
-                      </td>
-                      <td className="px-3 py-3 font-black text-[var(--nc-foreground)]">
-                        {Math.round(prediction.confidence * 100)}%
-                      </td>
-                      <td className="px-3 py-3 text-[var(--nc-foreground-muted)]">
-                        {formatDate(prediction.scoredAt, locale)}
-                      </td>
-                    </tr>
-                  ))}
-                  {initialData.predictions.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="h-40 text-center text-sm text-[var(--nc-foreground-muted)]">
-                        {L("لا توجد توقعات. لا يُنشأ نموذج نشط قبل كفاية البيانات.", "No predictions. An active model is never created before data is sufficient.")}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-        </div>
+        <PredictiveIntelligenceTab
+          lang={langEnum}
+          isArabic={isArabic}
+          locale={locale}
+          globalPending={pending}
+        />
       ) : null}
 
       {reasonDialog ? (

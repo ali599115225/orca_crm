@@ -288,6 +288,7 @@ model Tenant {
   whatsappOptOuts           WhatsAppOptOut[]
   dealPassports             DealPassport[]
   dealEvents                DealEvent[]
+  revenueIntelligenceScores RevenueIntelligenceScore[]
 
   @@map("tenants")
 }
@@ -1945,6 +1946,40 @@ model RevenuePrediction {
   @@unique([tenantId, modelVersionId, opportunityId], map: "revenue_prediction_model_opportunity_uq")
   @@index([tenantId, opportunityId, scoredAt], map: "revenue_prediction_opportunity_idx")
   @@map("revenue_predictions")
+}
+
+enum RevenueIntelligenceCategory {
+  REVENUE_LEAK
+  COLLECTION_DELAY
+  DEAL_FALL
+  INTERVENTION_PRIORITY
+}
+
+model RevenueIntelligenceScore {
+  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String                      @map("tenant_id") @db.Uuid
+  tenant                   Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType               String                      @map("entity_type") @db.VarChar(80)
+  entityId                 String                      @map("entity_id") @db.VarChar(120)
+  category                 RevenueIntelligenceCategory
+  score                    Int
+  confidence               Int
+  reasons                  Json
+  sourceSignals            Json                        @map("source_signals")
+  recommendedAction        String?                     @map("recommended_action") @db.VarChar(80)
+  recommendedActionPayload Json?                       @map("recommended_action_payload")
+  modelVersion             String                      @map("model_version") @db.VarChar(80)
+  modelAlgorithm           String                      @map("model_algorithm") @db.VarChar(80)
+  windowKey                String                      @map("window_key") @db.VarChar(160)
+  generatedAt              DateTime                    @map("generated_at") @db.Timestamptz(6)
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, entityType, entityId, category, windowKey], map: "revenue_intelligence_entity_category_window_uq")
+  @@index([tenantId, generatedAt], map: "revenue_intelligence_tenant_generated_idx")
+  @@index([tenantId, category, generatedAt], map: "revenue_intelligence_tenant_category_generated_idx")
+  @@index([tenantId, entityType, entityId], map: "revenue_intelligence_entity_idx")
+  @@map("revenue_intelligence_scores")
 }
 
 // ORCA_REVENUE_INTEGRITY_SCHEMA_END
