@@ -41,7 +41,22 @@ export type AuditAction =
   | "AGENT_SAFE_FALLBACK_USED"
   | "AGENT_MANUAL_RUN"
   | "AGENT_ACTIVATED"
-  | "AGENT_DEACTIVATED";
+  | "AGENT_DEACTIVATED"
+  // ─── Saudi Trust Gate ─────────────────────────────────────────────────────
+  | "SAUDI_TRUST_GATE_PASSED"
+  | "SAUDI_TRUST_GATE_BLOCKED"
+  | "SAUDI_TRUST_GATE_PROVIDER_UNAVAILABLE"
+  // ─── Government Outbox ────────────────────────────────────────────────────
+  | "GOVERNMENT_OUTBOX_ENQUEUED"
+  | "GOVERNMENT_OUTBOX_DELIVERED"
+  | "GOVERNMENT_OUTBOX_RETRYING"
+  | "GOVERNMENT_OUTBOX_DEAD_LETTER"
+  // ─── Ejar ─────────────────────────────────────────────────────────────────
+  | "EJAR_CONTRACT_SUBMITTED"
+  | "EJAR_CONTRACT_TX2_COMMITTED"
+  | "EJAR_CONTRACT_IDEMPOTENT_RETURN"
+  // ─── Credentials ──────────────────────────────────────────────────────────
+  | "CREDENTIALS_INTEGRITY_FAILED";
 
 export async function writeAuditLog(params: {
   tenantId: string;

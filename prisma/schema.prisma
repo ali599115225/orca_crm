@@ -289,6 +289,7 @@ model Tenant {
   dealPassports             DealPassport[]
   dealEvents                DealEvent[]
   revenueIntelligenceScores RevenueIntelligenceScore[]
+  governmentOutboxEntries   GovernmentOutbox[]
 
   @@map("tenants")
 }
@@ -631,9 +632,71 @@ model AuditLog {
   details   String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  // Saudi Trust Gate tracking — null for non-Gate audit entries
+  gateProvider   String? @map("gate_provider") @db.VarChar(10)
+  gateOperation  String? @map("gate_operation") @db.VarChar(50)
+  gateResult     String? @map("gate_result") @db.VarChar(30)
+  gateReason     String? @map("gate_reason") @db.VarChar(60)
+  idempotencyKey String? @map("idempotency_key") @db.VarChar(80)
+
   @@index([tenantId], map: "idx_audit_logs_tenant_id")
   @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@index([tenantId, gateProvider, gateResult], map: "idx_audit_gate_result")
   @@map("audit_logs")
+}
+
+// ─── Government Outbox ────────────────────────────────────────────────────────
+// Idempotent, provider-agnostic outbox for ZATCA and Ejar government calls.
+// ZatcaQueue remains for ZATCA retry (legacy); GovernmentOutbox is for all new flows.
+model GovernmentOutbox {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  provider         String    @db.VarChar(10)
+  // "ZATCA" | "EJAR" — used to route cron workers
+
+  operation        String    @db.VarChar(50)
+  // "ZATCA_SUBMIT_INVOICE" | "EJAR_REGISTER_CONTRACT" | ...
+
+  idempotencyKey   String    @unique @map("idempotency_key") @db.VarChar(80)
+  // SHA-256(tenantId:provider:operation:businessEntityType:businessEntityId)
+  // UNIQUE guarantees exactly-once reservation via INSERT ON CONFLICT DO NOTHING
+
+  businessEntityType String? @map("business_entity_type") @db.VarChar(30)
+  // "invoice" | "device" | "device_creation" | "contract"
+
+  businessEntityId String?   @map("business_entity_id") @db.Uuid
+  // invoice.id | device.id | contract.id — nullable for device_creation
+
+  payload          String    @db.Text
+  // Full JSON request payload stored for retry without recalculation
+
+  status           String    @default("PENDING")
+  // PENDING | PROCESSING | DELIVERED | RETRYING | FAILED | DEAD_LETTER
+
+  retryCount       Int       @default(0) @map("retry_count")
+  maxRetries       Int       @default(5) @map("max_retries")
+
+  lastError        String?   @map("last_error") @db.Text
+  // Last error from provider — for debugging
+
+  nextRetryAt      DateTime? @map("next_retry_at") @db.Timestamptz
+  // Exponential backoff: 2^retryCount minutes. null = PENDING (process immediately)
+
+  providerResponse String?   @map("provider_response") @db.Text
+  // Raw provider response (ejarContractId, zatcaStatus, ...) — stored for idempotent re-reads
+
+  deliveredAt      DateTime? @map("delivered_at") @db.Timestamptz
+  // Set when status transitions to DELIVERED — for SLA monitoring
+
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, status], map: "idx_gov_outbox_tenant_status")
+  @@index([nextRetryAt, status], map: "idx_gov_outbox_retry")
+  @@index([provider, status], map: "idx_gov_outbox_provider_status")
+  @@map("government_outbox")
 }
 
 model FollowupSequence {
