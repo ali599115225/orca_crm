@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt, getPlanLimits, normalizePlan } from "@/lib/plan-guard";
 import { hashEmail } from "@/lib/privacy-mask";
+import { writeAuditLog } from "@/lib/audit";
 
 /**
  * دالة مساعدة للتحقق من هوية المشرف العقاري للشركة
@@ -19,7 +20,7 @@ async function verifyTenantAdmin() {
   }
 
   // السماح للمدير العام فقط (أو مشرف النظام) بإدارة المستخدمين
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { id: session.userId as string },
   });
 
@@ -106,6 +107,14 @@ export async function createTenantUserAction(formData: FormData) {
       });
     });
 
+    await writeAuditLog({
+      tenantId: tenant.id,
+      action: "USER_CREATED",
+      entity: "User",
+      entityId: email.trim().toLowerCase(),
+      metadata: { name: name.trim(), role },
+    });
+
     revalidatePath("/operations/settings");
     revalidatePath("/operations/sales");
     return { success: true };
@@ -142,13 +151,21 @@ export async function updateTenantUserAction(userId: string, formData: FormData)
       throw new Error("المستخدم غير موجود أو لا ينتمي لشركتك العقارية.");
     }
 
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.user.updateMany({
+      where: { id: userId, tenantId: tenant.id },
       data: {
         name: name.trim(),
         role: role,
         isActive: isActive,
       },
+    });
+
+    await writeAuditLog({
+      tenantId: tenant.id,
+      action: "USER_UPDATED",
+      entity: "User",
+      entityId: userId,
+      metadata: { name: name.trim(), role, isActive },
     });
 
     revalidatePath("/operations/settings");
@@ -168,7 +185,7 @@ export async function deleteTenantUserAction(userId: string) {
 
     // منع الموظف من حذف نفسه
     if (user.id === userId) {
-      throw new Error("لا يمكنك حذف حسابك الحالي الذي تستخدمه لتسجيل الدخول.");
+      throw new Error("لا يمكنك حذف حسابك الذي تستخدمه لتسجيل الدخول.");
     }
 
     // التحقق من أن الموظف ينتمي لنفس الشركة
@@ -180,8 +197,16 @@ export async function deleteTenantUserAction(userId: string) {
       throw new Error("الموظف غير موجود أو لا ينتمي لشركتك العقارية.");
     }
 
-    await prisma.user.delete({
-      where: { id: userId },
+    await prisma.user.deleteMany({
+      where: { id: userId, tenantId: tenant.id },
+    });
+
+    await writeAuditLog({
+      tenantId: tenant.id,
+      action: "USER_DELETED",
+      entity: "User",
+      entityId: userId,
+      metadata: { email: targetUser.email },
     });
 
     revalidatePath("/operations/settings");

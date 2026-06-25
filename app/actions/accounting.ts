@@ -166,6 +166,8 @@ export async function getErpStatsAction() {
 
 export async function getArCustomersAction() {
   try {
+    const session = await getSession();
+    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
     const tenant = await getActiveTenant();
     const customers = await getCustomerBalances(tenant.id);
     return { success: true, customers };
