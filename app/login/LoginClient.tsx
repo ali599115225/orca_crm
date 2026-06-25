@@ -1,27 +1,110 @@
 ﻿'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { loginAction } from "@/app/actions/auth";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useTheme, useLanguage } from "@/app/context/AppContext";
+import React, { useEffect, useState } from 'react';
+import { loginAction } from '@/app/actions/auth';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useLanguage, useTheme } from '@/app/context/AppContext';
 
 interface LoginClientProps {
   tenantName?: string;
   host?: string;
 }
 
-export default function LoginClient({ tenantName = "منصة ORCA العقارية", host = "" }: LoginClientProps) {
-  const { theme, toggleTheme } = useTheme();
+function GlobeIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.5 9h17M3.5 15h17M12 3c2.2 2.3 3.3 5.3 3.3 9S14.2 18.7 12 21c-2.2-2.3-3.3-5.3-3.3-9S9.8 5.3 12 3Z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+    </svg>
+  );
+}
+
+function EyeIcon({ hidden }: { hidden: boolean }) {
+  return hidden ? (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M3 3 21 21M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.4A10.8 10.8 0 0 1 12 4c5.8 0 9 8 9 8a17.7 17.7 0 0 1-2.5 3.7M6.4 6.4C4.2 8 3 12 3 12s3.2 8 9 8c1.4 0 2.7-.5 3.8-1.1" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M3 12s3.2-8 9-8 9 8 9 8-3.2 8-9 8-9-8-9-8Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M12 3 4.5 6v5.2c0 4.6 3 8.1 7.5 9.8 4.5-1.7 7.5-5.2 7.5-9.8V6L12 3Z" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.2a2.7 2.7 0 1 1 4.7 1.8c-.9.8-2.3 1.3-2.3 2.8M12 17h.01" />
+    </svg>
+  );
+}
+
+function OrcaMark() {
+  return (
+    <div className="flex items-center gap-4" aria-label="ORCA Real Estate Platform">
+      <svg viewBox="0 0 64 76" className="h-[56px] w-[44px] shrink-0" fill="none" aria-hidden="true">
+        <path d="M31.7 4 48 16.4V55l-7.7 4.5V21L31.7 14 23 20.5V65l-8.8-5V29.5L6 35.8V67l25.7 5 26-5V42.5l-8.4-6.2V62L31.7 66.2V4Z" fill="url(#orcaGold)" />
+        <path d="M31.7 19.5v39.7M14.2 55.2l9-5.2M49.3 54.7l8.4-5" stroke="#FFF" strokeOpacity=".28" strokeWidth="1.4" />
+        <defs>
+          <linearGradient id="orcaGold" x1="5" y1="4" x2="55" y2="69" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#F5C85E" />
+            <stop offset=".52" stopColor="#D49D25" />
+            <stop offset="1" stopColor="#F0C35D" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="leading-none">
+        <div className="text-[38px] font-light tracking-[0.16em] text-white">ORCA</div>
+        <div className="mt-1.5 text-[9px] font-semibold tracking-[0.26em] text-[#D8A83B]">REAL ESTATE PLATFORM</div>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginClient({
+  tenantName = 'منصة ORCA العقارية',
+  host = '',
+}: LoginClientProps) {
+  const router = useRouter();
+  const { theme } = useTheme();
   const { lang, toggleLang } = useLanguage();
+
+  const isArabic = lang === 'AR';
   const isDarkMode = theme === 'dark';
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
-
-  const router = useRouter();
-  const svgRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
@@ -29,331 +112,364 @@ export default function LoginClient({ tenantName = "منصة ORCA العقاري
       return;
     }
 
-    const timer = setInterval(() => {
-      setRetryAfter((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
+    const timer = window.setInterval(() => {
+      setRetryAfter((current) => {
+        if (current === null || current <= 1) {
+          window.clearInterval(timer);
           return null;
         }
-        return prev - 1;
+        return current - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => window.clearInterval(timer);
   }, [retryAfter]);
 
-  // أنيميشن GSAP
-  useEffect(() => {
-    let timerId: NodeJS.Timeout;
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-      // 1. رسم خطوط المباني مرة واحدة بعد استقرار التخطيط لمنع طول صفر
-      timerId = setTimeout(() => {
-        gsap.utils.toArray('.main-outline').forEach((path: any) => {
-          if (path.getTotalLength) {
-            const length = path.getTotalLength();
-            if (length > 0) {
-              gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
-              tl.to(path, { strokeDashoffset: 0, duration: 2.5, ease: 'power2.inOut' }, 0.2);
-            }
-          }
-        });
-      }, 100);
-
-      // 2. حركة مستمرة للخطوط المتقطعة بين الأبراج (Infinite Flow)
-      gsap.utils.toArray('.data-line, .data-line-2').forEach((path: any) => {
-         gsap.set(path, { strokeDasharray: '6 6' });
-         gsap.to(path, { strokeDashoffset: -100, duration: 4, repeat: -1, ease: 'none' });
-      });
-
-      // ظهور المباني الخلفية والنوافذ
-      tl.fromTo('#building-bg', { opacity: 0, y: 20 }, { opacity: 0.6, y: 0, duration: 1.5 }, 1)
-        .fromTo('#building-mid', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 1.5 }, 1.2)
-        .fromTo('.window-line', { opacity: 0 }, { opacity: 1, duration: 1, stagger: 0.1 }, 1.5);
-
-      // ظهور النقاط (العقد)
-      tl.fromTo('.tech-node', { scale: 0, transformOrigin: 'center' }, { scale: 1, duration: 0.5, stagger: 0.1, ease: 'back.out(1.7)' }, 2.5);
-
-      // تأثير النبض والعائم
-      gsap.to('.pulse-ring', { scale: 2.5, opacity: 0, duration: 2, repeat: -1, transformOrigin: 'center', ease: 'power1.out', stagger: 1 });
-      gsap.to('#building-main', { y: '-=3', duration: 4, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-
-      // الرافعة
-      const craneJib = document.getElementById('crane-jib');
-      if (craneJib) {
-        gsap.set('#crane-jib', { transformOrigin: '215px 100px' });
-        gsap.to('#crane-jib', { rotation: 15, duration: 10, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-        
-        // Cable stretching sync: scale from top anchor point (150px, 110px)
-        gsap.set('#crane-cable', { transformOrigin: '150px 110px' });
-        gsap.to('#crane-cable', { scaleY: 1.3, duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 2 });
-        // Hook translating sync: translate matching the bottom scale
-        gsap.to('#crane-hook', { y: 21, duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 2 });
-      }
-    }, svgRef);
-
-    return () => {
-      clearTimeout(timerId);
-      ctx.revert(); // التنظيف عند الخروج
-    };
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    // منع الإرسال أثناء الحظر
-    if (retryAfter !== null && retryAfter > 0) {
-      return;
-    }
+    if (loading || (retryAfter !== null && retryAfter > 0)) return;
 
     setError(null);
     setLoading(true);
 
     try {
-      const formData = new FormData(e.currentTarget);
-      formData.append("clientHost", host || window.location.host);
-      formData.append("clientProto", window.location.protocol.replace(":", ""));
+      const formData = new FormData(event.currentTarget);
+      formData.append('clientHost', host || window.location.host);
+      formData.append('clientProto', window.location.protocol.replace(':', ''));
+
       const result = await loginAction(formData);
-      setLoading(false);
 
       if (!result) {
-        setError(lang === 'AR' ? "لم يتم تلقي أي استجابة من خادم النظام. يرجى تحديث الصفحة والمحاولة مجدداً." : "No response from server. Please refresh and try again.");
+        setError(
+          isArabic
+            ? 'لم يتم تلقي استجابة من الخادم. حدّث الصفحة وحاول مرة أخرى.'
+            : 'No response was received from the server. Refresh the page and try again.',
+        );
         return;
       }
 
       if (result.success) {
-        if (result.redirectUrl && result.redirectUrl.startsWith("http")) {
-          window.location.href = result.redirectUrl;
+        if (result.redirectUrl?.startsWith('http')) {
+          window.location.assign(result.redirectUrl);
         } else {
-          router.push(result.redirectUrl || "/operations");
+          router.push(result.redirectUrl || '/operations');
         }
-      } else {
-        // معالجة حالة الحظر
-        if (result.retryAfterSeconds) {
-          setRetryAfter(result.retryAfterSeconds);
-          setError(
-            lang === 'AR'
-              ? `محاولات دخول كثيرة جداً. الرجاء الانتظار ${result.retryAfterSeconds} ثانية.`
-              : `Too many login attempts. Please wait ${result.retryAfterSeconds} seconds.`
-          );
-        } else {
-          setError(result.error || (lang === 'AR' ? "فشل تسجيل الدخول. يرجى التحقق من البيانات." : "Login failed. Please verify your credentials."));
-        }
+        return;
       }
-    } catch (err: any) {
+
+      if (result.retryAfterSeconds) {
+        setRetryAfter(result.retryAfterSeconds);
+        setError(
+          isArabic
+            ? `محاولات دخول كثيرة. حاول مجددًا بعد ${result.retryAfterSeconds} ثانية.`
+            : `Too many login attempts. Try again in ${result.retryAfterSeconds} seconds.`,
+        );
+      } else {
+        setError(
+          result.error ||
+            (isArabic
+              ? 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.'
+              : 'Unable to sign in. Check your email and password.'),
+        );
+      }
+    } catch (loginError) {
+      const message =
+        loginError instanceof Error
+          ? loginError.message
+          : isArabic
+            ? 'حدث خطأ غير متوقع أثناء تسجيل الدخول.'
+            : 'An unexpected error occurred while signing in.';
+      setError(message);
+    } finally {
       setLoading(false);
-      setError(err.message || (lang === 'AR' ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "An unexpected error occurred during login."));
     }
   };
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-500 font-sans ${isDarkMode ? 'bg-void text-slate-100' : 'bg-lightBg text-slate-900'}`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        :root {
-            --svg-glass-start: rgba(255, 255, 255, 0.9); --svg-glass-end: rgba(241, 245, 249, 0.7);
-            --svg-stroke-main: #94a3b8; --svg-stroke-window: #cbd5e1; --svg-cyan: #2563EB; --svg-flow: #C89B2A;
+    <div
+      dir="ltr"
+      className={`relative min-h-screen overflow-hidden font-sans text-white ${
+        isDarkMode ? 'bg-[#071427]' : 'bg-[#102541]'
+      }`}
+    >
+      <style dangerouslySetInnerHTML={{ __html: `
+        .orca-login-shell {
+          background:
+            radial-gradient(circle at 18% 34%, rgba(30, 66, 109, .14), transparent 28%),
+            #081A31;
         }
-        .dark {
-            --svg-glass-start: rgba(3, 7, 18, 0.7); --svg-glass-end: rgba(3, 7, 18, 0.85);
-            --svg-stroke-main: rgba(0, 229, 255, 0.45); --svg-stroke-window: rgba(0, 229, 255, 0.2); --svg-cyan: #00E5FF; --svg-flow: #D4A72C;
+        .orca-login-backdrop {
+          object-position: right bottom;
+          filter: saturate(.98) contrast(1.03) brightness(.98);
         }
-        .custom-checkbox { appearance: none; background-color: transparent; margin: 0; width: 1.15em; height: 1.15em; border: 1.5px solid #94a3b8; border-radius: 0.25em; display: grid; place-content: center; cursor: pointer; transition: all 0.2s ease-in-out; }
-        .custom-checkbox::before { content: ""; width: 0.65em; height: 0.65em; transform: scale(0); transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em white; background-color: white; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
-        .custom-checkbox:checked { background-color: #2563EB; border-color: #2563EB; }
-        .dark .custom-checkbox:checked { background-color: #00E5FF; border-color: #00E5FF; }
-        .custom-checkbox:checked::before { transform: scale(1); }
+        .orca-login-overlay {
+          background:
+            linear-gradient(90deg, #081A31 0%, rgba(8,26,49,.98) 30%, rgba(8,26,49,.62) 49%, rgba(8,26,49,.12) 72%, rgba(8,26,49,.02) 100%),
+            linear-gradient(180deg, rgba(8,26,49,.10) 0%, rgba(8,26,49,.02) 54%, rgba(8,26,49,.22) 100%);
+        }
+        @media (min-width: 1024px) {
+          .orca-login-backdrop {
+            position: fixed;
+            inset: auto 0 0 auto;
+            width: 72%;
+            height: calc(100vh - 1px);
+            object-fit: contain;
+            object-position: right bottom;
+            transform: none;
+          }
+        }
+        @media (max-width: 1023px) {
+          .orca-login-backdrop {
+            object-fit: cover;
+            object-position: 70% center;
+            opacity: .46;
+          }
+          .orca-login-overlay {
+            background: linear-gradient(180deg, rgba(5,16,31,.88), rgba(5,16,31,.96));
+          }
+        }
+        .orca-login-grid {
+          background-image:
+            linear-gradient(rgba(255,255,255,.014) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
+          background-size: 42px 42px;
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,.4), transparent 82%);
+        }
+        .orca-login-card {
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.018),
+            0 14px 34px rgba(0,0,0,.14);
+        }
+        .orca-field:-webkit-autofill,
+        .orca-field:-webkit-autofill:hover,
+        .orca-field:-webkit-autofill:focus {
+          -webkit-text-fill-color: #f8fafc;
+          -webkit-box-shadow: 0 0 0 1000px rgba(10,28,51,.96) inset;
+          transition: background-color 9999s ease-out;
+        }
+        @media (max-width: 1023px) {
+          .orca-login-stage { min-height: auto !important; }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .orca-hero-image { animation: orcaHeroReveal .8s ease-out both; }
+          .orca-login-card { animation: orcaCardReveal .65s ease-out both; }
+          @keyframes orcaHeroReveal {
+            from { opacity: 0; transform: translateY(14px) scale(.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes orcaCardReveal {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        }
       `}} />
 
-      {/* Header */}
-      <header className="w-full p-6 flex justify-between items-center z-10">
-        <div className="flex items-center gap-3">
-          <span className="font-bold tracking-widest text-lg">ORCA</span>
-          <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
-          <span className={`border text-xs px-2 py-1 rounded transition-colors ${isDarkMode ? 'border-slate-700 text-slate-300 font-medium bg-white/5' : 'border-slate-300 text-slate-800 font-medium bg-white/50'}`}>Secure Edition</span>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          {/* Language Selector Button */}
-          <button 
+      <div className="orca-login-shell absolute inset-0" aria-hidden="true" />
+      <img
+        src="/orca-login-hero.png"
+        alt=""
+        className="orca-login-backdrop pointer-events-none absolute inset-0 h-full w-full object-cover"
+        aria-hidden="true"
+        draggable={false}
+      />
+      <div className="orca-login-overlay pointer-events-none absolute inset-0" aria-hidden="true" />
+      <div className="orca-login-grid pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
+
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <header className="flex h-[96px] shrink-0 items-center justify-between px-6 sm:px-10 lg:px-[50px]">
+          <button
+            type="button"
             onClick={toggleLang}
-            aria-label={lang === 'AR' ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
-            className={`flex items-center gap-1.5 font-bold cursor-pointer transition-colors focus:outline-none ${isDarkMode ? 'text-slate-300 font-medium hover:text-white' : 'text-slate-800 font-medium hover:text-slate-900'}`}
+            aria-label={isArabic ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
+            className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D8A83B]"
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-current stroke-2" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              <path d="M2 12h20" />
+            <GlobeIcon />
+            <span dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العربية' : 'English'}</span>
+            <svg viewBox="0 0 20 20" className="h-4 w-4 transition group-hover:translate-y-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <path d="m5 7.5 5 5 5-5" />
             </svg>
-            <span>{lang === 'AR' ? 'English' : 'العربية'}</span>
           </button>
 
-          <div className="h-4 w-px bg-[var(--nc-surface)] dark:bg-[var(--nc-surface)]"></div>
+          <OrcaMark />
+        </header>
 
-          <div className="flex items-center gap-2">
-            <span className={isDarkMode ? 'text-slate-300 font-medium' : 'text-slate-800 font-medium'}>
-              {lang === 'AR' ? (isDarkMode ? 'الوضع الداكن' : 'الوضع الفاتح') : (isDarkMode ? 'Dark Mode' : 'Light Mode')}
-            </span>
-            <button onClick={toggleTheme} aria-label={isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'} className={`w-12 h-6 rounded-full relative p-1 transition-colors flex items-center shadow-inner cursor-pointer focus:outline-none ${isDarkMode ? 'bg-[var(--nc-surface)]' : 'bg-[var(--nc-surface)]'}`}>
-              <span className="sr-only">{isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>
-              <div className={`w-4 h-4 rounded-full bg-corporate-blue dark:bg-cyan-glow absolute shadow-md transition-all duration-300 ease-in-out ${isDarkMode ? 'right-7' : 'right-1'}`}></div>
-            </button>
+        <main className="orca-login-stage flex min-h-0 flex-1 items-start px-6 pb-3 pt-2 sm:px-10 lg:px-[50px] lg:pt-0">
+          <div className="mx-auto grid w-full max-w-[1480px] grid-cols-1 items-center lg:grid-cols-[minmax(390px,480px)_1fr] lg:gap-12 xl:gap-16">
+            <section
+              aria-labelledby="login-heading"
+              dir={isArabic ? 'rtl' : 'ltr'}
+              className="orca-login-card order-2 rounded-[22px] border border-white/[0.045] bg-[#081A31]/96 px-6 py-5 backdrop-blur-[4px] sm:px-8 sm:py-6 lg:order-1 lg:-translate-y-5 lg:px-[32px] lg:py-[24px]"
+            >
+              <div className="mx-auto max-w-[540px]">
+                <h1 id="login-heading" className="mb-5 text-center text-[28px] font-bold leading-tight tracking-[-0.01em] text-white sm:text-[34px]">
+                  {isArabic ? 'تسجيل الدخول' : 'Sign in'}
+                </h1>
+
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  {error && (
+                    <div
+                      role="alert"
+                      aria-live="polite"
+                      className="rounded-2xl border border-red-300/35 bg-red-950/35 px-4 py-3 text-center text-sm font-semibold text-red-100"
+                    >
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-slate-300">
+                      {isArabic ? 'البريد الإلكتروني' : 'Email address'}
+                    </label>
+                    <div className="relative">
+                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${isArabic ? 'right-5' : 'left-5'}`}>
+                        <MailIcon />
+                      </span>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="username"
+                        required
+                        dir="ltr"
+                        placeholder={isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
+                        className={`orca-field h-[54px] w-full rounded-[13px] border border-white/12 bg-[#07182D]/66 text-[15px] text-white outline-none transition placeholder:text-slate-400/75 hover:border-white/24 focus:border-[#E2B548] focus:ring-2 focus:ring-[#E2B548]/20 ${
+                          isArabic ? 'pr-[58px] pl-5 text-right' : 'pl-[58px] pr-5 text-left'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="mb-2 block text-[15px] font-medium text-slate-300">
+                      {isArabic ? 'كلمة المرور' : 'Password'}
+                    </label>
+                    <div className="relative">
+                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${isArabic ? 'right-5' : 'left-5'}`}>
+                        <LockIcon />
+                      </span>
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        dir="ltr"
+                        placeholder={isArabic ? 'أدخل كلمة المرور' : 'Enter your password'}
+                        className={`orca-field h-[54px] w-full rounded-[13px] border border-white/12 bg-[#07182D]/66 text-[15px] text-white outline-none transition placeholder:text-slate-400/75 hover:border-white/24 focus:border-[#E2B548] focus:ring-2 focus:ring-[#E2B548]/20 ${
+                          isArabic ? 'pr-[58px] pl-[58px] text-right' : 'pl-[58px] pr-[58px] text-left'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        aria-label={
+                          showPassword
+                            ? isArabic
+                              ? 'إخفاء كلمة المرور'
+                              : 'Hide password'
+                            : isArabic
+                              ? 'إظهار كلمة المرور'
+                              : 'Show password'
+                        }
+                        className={`absolute top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E2B548] ${
+                          isArabic ? 'left-4' : 'right-4'
+                        }`}
+                      >
+                        <EyeIcon hidden={!showPassword} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 pt-1 text-[14px]">
+                    <label className="flex cursor-pointer items-center gap-3 text-slate-300">
+                      <input
+                        type="checkbox"
+                        name="remember"
+                        className="h-[18px] w-[18px] rounded border-white/40 bg-transparent accent-[#D8A83B]"
+                      />
+                      <span>{isArabic ? 'تذكرني' : 'Remember me'}</span>
+                    </label>
+                    <button
+                      type="button"
+                      className="font-medium text-[#E0B44B] transition hover:text-[#F2CB6C] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E2B548]"
+                    >
+                      {isArabic ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || (retryAfter !== null && retryAfter > 0)}
+                    className="mt-1 h-[56px] w-full rounded-[13px] bg-gradient-to-r from-[#DDA72D] via-[#FFC54A] to-[#E8AE2A] text-[17px] font-bold text-[#142238] shadow-[0_10px_24px_rgba(209,153,34,.18)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFE093] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1C34]"
+                  >
+                    {loading
+                      ? isArabic
+                        ? 'جاري التحقق...'
+                        : 'Verifying...'
+                      : retryAfter !== null && retryAfter > 0
+                        ? isArabic
+                          ? `حاول بعد ${retryAfter} ثانية`
+                          : `Try again in ${retryAfter}s`
+                        : isArabic
+                          ? 'تسجيل دخول'
+                          : 'Sign in'}
+                  </button>
+
+                  <div className="flex items-center gap-5 py-1 text-slate-400" aria-hidden="true">
+                    <span className="h-px flex-1 bg-white/20" />
+                    <span className="text-[14px]">{isArabic ? 'أو' : 'or'}</span>
+                    <span className="h-px flex-1 bg-white/20" />
+                  </div>
+
+                  <p className="text-center text-[14px] text-slate-400">
+                    {isArabic ? 'ليس لديك حساب؟' : "Don't have an account?"}{' '}
+                    <span className="font-semibold text-[#E0B44B]">
+                      {isArabic ? 'تواصل مع إدارة المنصة' : 'Contact platform administration'}
+                    </span>
+                  </p>
+
+                  <p className="sr-only">{tenantName}</p>
+                </form>
+              </div>
+            </section>
+
+            <div className="order-1 hidden min-h-[560px] lg:block" aria-hidden="true" />
           </div>
-        </div>
-      </header>
+        </main>
 
-      {/* Main Content */}
-      <main className="flex-grow flex items-center justify-center p-4 z-10 relative w-full">
-        <div className={`w-full max-w-[950px] rounded-[1.5rem] shadow-xl overflow-hidden flex flex-col md:flex-row border transition-colors duration-500 min-h-[550px] backdrop-blur-xl ${isDarkMode ? 'bg-white/5 border-white/10 shadow-2xl' : 'bg-white/70 border-slate-200/50 shadow-2xl'}`}>
-          
-          {/* Left Graphic Panel */}
-          <div className={`w-full md:w-[45%] relative border-l overflow-hidden flex flex-col transition-colors duration-500 ${isDarkMode ? 'bg-void/50 border-white/10' : 'bg-lightBg/50 border-slate-200/50'}`}>
-            <div className={`absolute inset-0 bg-gradient-to-br to-transparent z-0 ${isDarkMode ? 'from-cyan-glow/10' : 'from-corporate-blue/5'}`}></div>
-            
-            <div className="relative flex-grow flex items-center justify-center" ref={svgRef}>
-              <svg viewBox="0 0 500 700" preserveAspectRatio="xMidYMid slice" className="w-full h-full absolute inset-0 z-10">
-                <defs>
-                  <linearGradient id="grad-glass" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: 'var(--svg-glass-start)' }} />
-                    <stop offset="100%" style={{ stopColor: 'var(--svg-glass-end)' }} />
-                  </linearGradient>
-                  <linearGradient id="grad-accent" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#2563EB" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
+        <footer className="relative z-20 mt-auto border-t border-white/10 bg-[#081A31] px-6 py-3 backdrop-blur-none sm:px-10 lg:px-[46px]">
+          <div className="mx-auto flex max-w-[1480px] flex-col-reverse items-center justify-between gap-4 text-[12px] text-slate-300 lg:flex-row">
+            <nav aria-label={isArabic ? 'روابط السياسات والمساعدة' : 'Policy and help links'} className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
+              <Link href="/terms-and-conditions" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+                <ShieldIcon />
+                <span>{isArabic ? 'الشروط والأحكام' : 'Terms and conditions'}</span>
+              </Link>
+              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
+              <Link href="/privacy-policy" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+                <LockIcon />
+                <span>{isArabic ? 'سياسة الخصوصية' : 'Privacy policy'}</span>
+              </Link>
+              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
+              <Link href="/disclaimer" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+                <HelpIcon />
+                <span>{isArabic ? 'الأسئلة الشائعة' : 'Frequently asked questions'}</span>
+              </Link>
+              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
+              <span className="flex items-center gap-2">
+                <MailIcon />
+                <span>{isArabic ? 'تواصل معنا' : 'Contact us'}</span>
+              </span>
+            </nav>
 
-                <g id="city-scene" transform="translate(0, 80)">
-                  <g id="crane" transform="translate(-10, -50)" opacity="0.8">
-                    <path d="M 220,300 L 220,100" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    <path d="M 210,300 L 210,100" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    <g id="crane-jib">
-                      <path d="M 140,100 L 300,100" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                      <path d="M 140,110 L 300,110" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                      <line id="crane-cable" x1="150" y1="110" x2="150" y2="180" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="1" />
-                      <path id="crane-hook" d="M 145,180 L 155,180 M 150,180 L 150,190 Q 150,195 145,195" fill="none" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    </g>
-                  </g>
-
-                  <g id="building-bg" opacity="0.6">
-                    <path d="M 80,500 L 80,250 L 180,200 L 260,250 L 260,500 Z" fill="url(#grad-glass)" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="1"/>
-                  </g>
-
-                  <g id="building-mid" transform="translate(160, 50)">
-                    <path d="M 50,450 L 50,150 L 150,100 L 230,150 L 230,450 Z" fill="url(#grad-glass)" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="1.5"/>
-                    <path d="M 150,100 L 150,500" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="1.5" />
-                  </g>
-
-                  <g id="building-main" transform="translate(30, 150)">
-                    <path d="M 150,450 L 150,50 L 250,0 L 250,400 Z" fill="url(#grad-glass)" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    <path d="M 250,0 L 350,50 L 350,450 L 250,400 Z" fill="transparent" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    <path d="M 250,0 L 250,400" className="main-outline" style={{ stroke: 'var(--svg-stroke-main)' }} strokeWidth="2" />
-                    <path d="M 150,450 L 150,300 L 250,250 L 250,400 Z" fill="url(#grad-accent)" />
-                  </g>
-
-                  <g id="data-network">
-                    <path d="M 20,350 Q 130,300 230,400 T 420,250" fill="none" style={{ stroke: 'var(--svg-flow)' }} strokeWidth="1.5" className="data-line"/>
-                    <path d="M 80,550 L 180,450 L 320,480 L 450,380" fill="none" style={{ stroke: 'var(--svg-flow)' }} strokeWidth="1" className="data-line-2"/>
-                    
-                    <circle cx="130" cy="300" r="4" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
-                    <circle cx="230" cy="400" r="6" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
-                    <circle cx="420" cy="250" r="5" className="tech-node" style={{ fill: 'var(--svg-flow)' }} />
-                    
-                    <circle cx="230" cy="400" r="12" fill="none" stroke="var(--svg-flow)" strokeWidth="1" className="pulse-ring pointer-events-none" />
-                  </g>
-                </g>
-              </svg>
-            </div>
+            <p className="text-center text-slate-400 lg:text-start">
+              © {new Date().getFullYear()}{' '}
+              <span className="font-semibold text-[#D8A83B]">ORCA Real Estate</span>.{' '}
+              {isArabic ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
+            </p>
           </div>
-
-          {/* Right Form Panel */}
-          <div className={`w-full md:w-[55%] p-8 md:p-10 flex flex-col justify-center transition-colors duration-500 ${isDarkMode ? 'bg-void/30' : 'bg-white/40'}`}>
-            <div className="mb-8 text-right">
-              <h1 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {lang === 'AR' ? 'تسجيل الدخول' : 'Sign In'}
-              </h1>
-              <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
-                {lang === 'AR' ? (
-                  <>أهلاً بك في البوابة الإلكترونية لمنشأة <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{tenantName}</span>.</>
-                ) : (
-                  <>Welcome to the secure portal of <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{tenantName}</span>.</>
-                )}
-              </p>
-            </div>
-
-            <form className="space-y-5 w-full max-w-[380px] ml-auto" onSubmit={handleSubmit}>
-              {error && (
-                <div role="alert" className={`text-xs p-3.5 rounded-xl font-bold text-center ${isDarkMode ? 'bg-red-950/60 border border-red-400/50 text-red-100' : 'bg-red-50 border border-red-600/40 text-red-800'}`}>
-                  {error}
-                </div>
-              )}
-
-              <div className="space-y-1.5 text-right">
-                <label htmlFor="email" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                  {lang === 'AR' ? 'البريد الإلكتروني' : 'Email Address'}
-                </label>
-                <input id="email" type="email" name="email" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="example@domain.com" required />
-              </div>
-
-              <div className="space-y-1.5 text-right">
-                <label htmlFor="password" className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                  {lang === 'AR' ? 'كلمة المرور' : 'Password'}
-                </label>
-                <input id="password" type="password" name="password" className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-corporate-blue dark:focus:ring-cyan-glow border text-left tracking-widest transition-colors ${isDarkMode ? 'bg-void text-white border-gray-800' : 'bg-slate-50 text-slate-900 border-slate-300'}`} dir="ltr" placeholder="••••••••" required />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <a href="#" className={`text-sm font-semibold hover:underline ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-800 hover:text-slate-900'}`}>
-                  {lang === 'AR' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
-                </a>
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="remember-me" defaultChecked className="custom-checkbox" aria-label={lang === 'AR' ? 'تذكرني' : 'Remember Me'} />
-                  <label htmlFor="remember-me" className={`text-sm cursor-pointer ${isDarkMode ? 'text-slate-300 font-medium' : 'text-slate-800 font-medium'}`}>
-                    {lang === 'AR' ? 'تذكرني' : 'Remember Me'}
-                  </label>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={loading || (retryAfter !== null && retryAfter > 0)}
-                  className="w-full bg-[#D4A72C] hover:bg-[#B98B1F] text-[#111827] font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A72C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1220]"
-                >
-                  {loading
-                    ? (lang === 'AR' ? "جاري التحقق والدخول..." : "Verifying Credentials...")
-                    : (retryAfter !== null && retryAfter > 0)
-                      ? (lang === 'AR' ? `انتظر ${retryAfter} ثانية...` : `Wait ${retryAfter}s...`)
-                      : (lang === 'AR' ? "تسجيل الدخول" : "Log In")
-                  }
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer المحدّث بروابط Next.js الديناميكية */}
-      <footer className="w-full p-6 text-center text-xs md:text-sm text-[var(--nc-text-dim)] font-medium flex items-center justify-center gap-4 z-10 relative">
-        <Link href="/privacy-policy" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
-          {lang === 'AR' ? 'سياسة الخصوصية والأمان' : 'Privacy & Security Policy'}
-        </Link>
-        <span aria-hidden="true">|</span>
-        <Link href="/disclaimer" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
-          {lang === 'AR' ? 'إخلاء المسؤولية' : 'Disclaimer'}
-        </Link>
-        <span aria-hidden="true">|</span>
-        <Link href="/terms-and-conditions" prefetch={false} className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white font-medium' : 'text-slate-800 hover:text-slate-950 font-medium'}`}>
-          {lang === 'AR' ? 'الأحكام والشروط' : 'Terms & Conditions'}
-        </Link>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
-
-
-
-
-
-
-
