@@ -39,6 +39,10 @@ export function displayRevenueIntegrityValue(value: string, lang: "ar" | "en"): 
     case "NOT_READY": return isAr ? "غير جاهز" : "Not ready";
     case "MANUAL": return isAr ? "يدوي" : "Manual";
 
+    // Predictive intelligence status
+    case "READY": return isAr ? "جاهز" : "Ready";
+    case "INSUFFICIENT_DATA": return isAr ? "بيانات غير كافية" : "Insufficient data";
+
     // Channels
     case "WHATSAPP": return isAr ? "واتساب" : "WhatsApp";
     case "EMAIL": return isAr ? "البريد الإلكتروني" : "Email";
@@ -128,4 +132,50 @@ export function displayMetadataValue(metadata: unknown, lang: "ar" | "en"): stri
     }
   }
   return parts.join(" · ");
+}
+
+/** Returns a human-readable risk band label */
+export function riskBandLabel(band: string | null | undefined, lang: "ar" | "en"): string {
+  if (!band) return "";
+  const isAr = lang === "ar";
+  switch (band) {
+    case "LOW": return isAr ? "خطر منخفض" : "Low risk";
+    case "MEDIUM": return isAr ? "خطر متوسط" : "Medium risk";
+    case "HIGH": return isAr ? "خطر مرتفع" : "High risk";
+    case "CRITICAL": return isAr ? "خطر حرج" : "Critical risk";
+    default: return band;
+  }
+}
+
+/** Returns CSS color class for a risk band */
+export function riskBandClass(band: string | null | undefined): string {
+  switch (band) {
+    case "CRITICAL": return "text-rose-600 dark:text-rose-400";
+    case "HIGH": return "text-orange-600 dark:text-orange-400";
+    case "MEDIUM": return "text-amber-600 dark:text-amber-400";
+    case "LOW": return "text-emerald-600 dark:text-emerald-400";
+    default: return "text-[var(--nc-foreground-muted)]";
+  }
+}
+
+/** Returns a human-readable horizon label */
+export function horizonLabel(days: number | null | undefined, lang: "ar" | "en"): string {
+  if (days == null) return "";
+  const isAr = lang === "ar";
+  if (days <= 7) return isAr ? "٧ أيام" : "7 days";
+  if (days <= 14) return isAr ? "١٤ يومًا" : "14 days";
+  return isAr ? "٣٠ يومًا" : "30 days";
+}
+
+/** Returns a human-readable expiry label */
+export function expiryLabel(expiresAt: string | null | undefined, lang: "ar" | "en"): string {
+  if (!expiresAt) return "";
+  const isAr = lang === "ar";
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / 86_400_000);
+  if (diffDays <= 0) return isAr ? "منتهي" : "Expired";
+  if (diffDays === 1) return isAr ? "ينتهي غدًا" : "Expires tomorrow";
+  return isAr ? `ينتهي خلال ${diffDays} أيام` : `Expires in ${diffDays} days`;
 }

@@ -2018,31 +2018,66 @@ enum RevenueIntelligenceCategory {
   INTERVENTION_PRIORITY
 }
 
+enum RevenueIntelligenceStatus {
+  READY
+  INSUFFICIENT_DATA
+}
+
+enum RevenueRiskBand {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model RevenueIntelligenceScore {
-  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId                 String                      @map("tenant_id") @db.Uuid
-  tenant                   Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType               String                      @map("entity_type") @db.VarChar(80)
-  entityId                 String                      @map("entity_id") @db.VarChar(120)
+  id                       String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String                        @map("tenant_id") @db.Uuid
+  tenant                   Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType               String                        @map("entity_type") @db.VarChar(80)
+  entityId                 String                        @map("entity_id") @db.VarChar(120)
   category                 RevenueIntelligenceCategory
-  score                    Int
-  confidence               Int
+  status                   RevenueIntelligenceStatus     @default(READY)
+  score                    Int?
+  confidence               Int?
+  riskBand                 RevenueRiskBand?              @map("risk_band")
+  horizonDays              Int?                          @map("horizon_days")
+  featureHash              String?                       @map("feature_hash") @db.VarChar(64)
+  expiresAt                DateTime?                     @map("expires_at") @db.Timestamptz(6)
   reasons                  Json
-  sourceSignals            Json                        @map("source_signals")
-  recommendedAction        String?                     @map("recommended_action") @db.VarChar(80)
-  recommendedActionPayload Json?                       @map("recommended_action_payload")
-  modelVersion             String                      @map("model_version") @db.VarChar(80)
-  modelAlgorithm           String                      @map("model_algorithm") @db.VarChar(80)
-  windowKey                String                      @map("window_key") @db.VarChar(160)
-  generatedAt              DateTime                    @map("generated_at") @db.Timestamptz(6)
-  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sourceSignals            Json                          @map("source_signals")
+  recommendedAction        String?                       @map("recommended_action") @db.VarChar(80)
+  recommendedActionPayload Json?                         @map("recommended_action_payload")
+  modelVersion             String                        @map("model_version") @db.VarChar(80)
+  modelAlgorithm           String                        @map("model_algorithm") @db.VarChar(80)
+  windowKey                String                        @map("window_key") @db.VarChar(160)
+  generatedAt              DateTime                      @map("generated_at") @db.Timestamptz(6)
+  createdAt                DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, entityType, entityId, category, windowKey], map: "revenue_intelligence_entity_category_window_uq")
   @@index([tenantId, generatedAt], map: "revenue_intelligence_tenant_generated_idx")
   @@index([tenantId, category, generatedAt], map: "revenue_intelligence_tenant_category_generated_idx")
   @@index([tenantId, entityType, entityId], map: "revenue_intelligence_entity_idx")
+  @@index([tenantId, expiresAt], map: "revenue_intelligence_expires_idx")
   @@map("revenue_intelligence_scores")
+}
+
+model RevenuePredictiveRun {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  idempotencyKey  String    @map("idempotency_key") @db.VarChar(160)
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  scoredCount     Int       @default(0) @map("scored_count")
+  failedCount     Int       @default(0) @map("failed_count")
+  failedEntities  Json      @default("[]") @map("failed_entities")
+  result          Json      @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, idempotencyKey], map: "revenue_predictive_run_tenant_key_uq")
+  @@index([tenantId, startedAt], map: "revenue_predictive_run_tenant_started_idx")
+  @@map("revenue_predictive_runs")
 }
 
 // ORCA_REVENUE_INTEGRITY_SCHEMA_END

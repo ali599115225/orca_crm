@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { rawPrisma } from "@/lib/prisma";
 import { evaluateRevenueLeakRadar } from "@/lib/revenue-integrity/radar";
 import { processRevenueOutbox } from "@/lib/revenue-integrity/events";
-import { scoreOpenOpportunities, trainPredictiveModel } from "@/lib/revenue-integrity/predictive";
+import { trainPredictiveModel } from "@/lib/revenue-integrity/predictive";
+import { runIntelligenceBatch } from "@/lib/revenue-integrity/predictive-intelligence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,10 +76,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const latestModel = await rawPrisma.revenueModelVersion.findFirst({
-        where: { tenantId: tenant.id },
-        orderBy: { version: "desc" },
-      });
       const lastWeeklyTraining = await rawPrisma.revenueDomainEvent.findFirst({
         where: {
           tenantId: tenant.id,
@@ -100,11 +97,9 @@ export async function GET(request: NextRequest) {
         `;
       }
 
-      const scoring = latestModel?.status === "ACTIVE" || (training as any)?.status === "ACTIVE"
-        ? await scoreOpenOpportunities(tenant.id, null)
-        : { status: "NOT_READY", scored: 0 };
+      const batchResult = await runIntelligenceBatch(tenant.id, null);
 
-      report.predictive.push({ tenantId: tenant.id, training, scoring });
+      report.predictive.push({ tenantId: tenant.id, training, intelligenceBatch: batchResult });
     } catch (error) {
       report.errors.push({
         tenantId: tenant.id,

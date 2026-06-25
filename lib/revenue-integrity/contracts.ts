@@ -54,3 +54,11 @@ export type RadarRunResult = {
 };
 
 export type ProviderCredentials = Record<string, unknown>;
+
+export type PredictiveRunResult = {
+  runId: string;
+  scored: number;
+  failed: number;
+  failedEntities: Array<{ entityId: string; error: string }>;
+  windowKey: string;
+};

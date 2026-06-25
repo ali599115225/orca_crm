@@ -1,8 +1,18 @@
 import { rawPrisma } from "@/lib/prisma";
 import { appendRevenueEvent } from "./events";
+import {
+  computeExpiresAt,
+  computeFeatureHash,
+  computeHorizonDays,
+  computeRiskBand,
+  buildWindowKey,
+  type IntelligenceCategory,
+  type RiskBand,
+} from "./predictive-helpers";
 
 const MODEL_VERSION = "RI-DETERMINISTIC-v1";
 const MODEL_ALGORITHM = "RULE_BASED_DETERMINISTIC";
+const RADAR_FRESHNESS_HOURS = 24;
 
 type SeverityWeight = { CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number };
 
@@ -65,18 +75,16 @@ function num(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** Clamp integer to [min, max] range */
 function clampInt(value: number, min = 0, max = 100): number {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
-/** Clamp fractional factor to [0, 1] */
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
 export function windowKeyForNow(): string {
-  return new Date().toISOString().slice(0, 13);
+  return buildWindowKey();
 }
 
 export function computeRevenueLeakScore(
@@ -457,41 +465,104 @@ async function loadOpenOpportunities(tenantId: string): Promise<OpportunityRow[]
   `, tenantId);
 }
 
-async function loadLatestRadarRunInfo(tenantId: string): Promise<{ evaluatedRules: number }> {
+async function loadLatestRadarRunInfo(tenantId: string): Promise<{ evaluatedRules: number; completedAt: Date | null }> {
   const run = await rawPrisma.revenueRuleRun.findFirst({
     where: { tenantId, completedAt: { not: null } },
     orderBy: { startedAt: "desc" },
   });
-  if (!run) return { evaluatedRules: 0 };
+  if (!run) return { evaluatedRules: 0, completedAt: null };
   const result = run.result as any;
   const evaluatedRules = Array.isArray(result?.evaluatedRules) ? result.evaluatedRules.length : 0;
-  return { evaluatedRules };
+  return { evaluatedRules, completedAt: run.completedAt };
+}
+
+export function isRadarFresh(radarCompletedAt: Date | null, now: Date = new Date()): boolean {
+  if (!radarCompletedAt) return false;
+  const hoursSinceRadar = (now.getTime() - radarCompletedAt.getTime()) / 3_600_000;
+  return hoursSinceRadar <= RADAR_FRESHNESS_HOURS;
+}
+
+function buildFeatureSnapshot(
+  category: IntelligenceCategory,
+  inputs: {
+    riskCount: number;
+    invoiceCount: number;
+    opportunityAge?: number;
+    probability?: number;
+    tourCount?: number;
+    offerCount?: number;
+  },
+): Record<string, unknown> {
+  const base: Record<string, unknown> = { category, riskCount: inputs.riskCount, invoiceCount: inputs.invoiceCount };
+  if (inputs.opportunityAge !== undefined) base.opportunityAge = inputs.opportunityAge;
+  if (inputs.probability !== undefined) base.probability = inputs.probability;
+  if (inputs.tourCount !== undefined) base.tourCount = inputs.tourCount;
+  if (inputs.offerCount !== undefined) base.offerCount = inputs.offerCount;
+  return base;
+}
+
+async function getPreviousBand(
+  tenantId: string,
+  entityType: string,
+  entityId: string,
+  category: IntelligenceCategory,
+  windowKey: string,
+): Promise<RiskBand | null> {
+  const previous = await rawPrisma.revenueIntelligenceScore.findFirst({
+    where: {
+      tenantId,
+      entityType,
+      entityId,
+      category,
+      status: "READY",
+      windowKey: { not: windowKey },
+    },
+    orderBy: { generatedAt: "desc" },
+    select: { riskBand: true },
+  });
+  return previous?.riskBand as RiskBand | null;
 }
 
 async function upsertIntelligenceScore(
   tenantId: string,
   entityType: string,
   entityId: string,
-  category: "REVENUE_LEAK" | "COLLECTION_DELAY" | "DEAL_FALL" | "INTERVENTION_PRIORITY",
+  category: IntelligenceCategory,
   windowKey: string,
-  result: ScoreResult,
-  recommendation: { actionType: string; payload: Record<string, unknown> } | null,
+  params: {
+    status: "READY" | "INSUFFICIENT_DATA";
+    score: number | null;
+    confidence: number | null;
+    riskBand: RiskBand | null;
+    horizonDays: number | null;
+    featureHash: string | null;
+    expiresAt: Date | null;
+    reasons: PredictionReason[];
+    sourceSignals: SourceSignal[];
+    recommendation: { actionType: string; payload: Record<string, unknown> } | null;
+    generatedAt: Date;
+  },
 ) {
   const data = {
     tenantId,
     entityType,
     entityId,
     category,
-    score: result.score,
-    confidence: result.confidence,
-    reasons: result.reasons as any,
-    sourceSignals: result.sourceSignals as any,
-    recommendedAction: recommendation?.actionType || null,
-    recommendedActionPayload: (recommendation?.payload || null) as any,
+    status: params.status,
+    score: params.score,
+    confidence: params.confidence,
+    riskBand: params.riskBand,
+    horizonDays: params.horizonDays,
+    featureHash: params.featureHash,
+    expiresAt: params.expiresAt,
+    reasons: params.reasons as any,
+    sourceSignals: params.sourceSignals as any,
+    recommendedAction: params.recommendation?.actionType || null,
+    recommendedActionPayload: (params.recommendation?.payload || null) as any,
     modelVersion: MODEL_VERSION,
     modelAlgorithm: MODEL_ALGORITHM,
     windowKey,
-    generatedAt: new Date(),
+    generatedAt: params.generatedAt,
   };
 
   return rawPrisma.revenueIntelligenceScore.upsert({
@@ -517,7 +588,7 @@ export async function scoreOpportunityIntelligence(
   const now = new Date();
   const window = windowKeyForNow();
 
-  const [opportunityRows, risks, invoices, radarInfo] = await Promise.all([
+  const [opportunityRows, radarInfo] = await Promise.all([
     rawPrisma.$queryRawUnsafe<OpportunityRow[]>(`
       SELECT
         o.id,
@@ -530,13 +601,83 @@ export async function scoreOpportunityIntelligence(
       FROM opportunities o
       WHERE o.tenant_id = $1::uuid AND o.id = $2::uuid
     `, tenantId, opportunityId),
-    loadOpenRisksForOpportunity(tenantId, opportunityId),
-    loadOverdueInvoicesForOpportunity(tenantId, opportunityId),
     loadLatestRadarRunInfo(tenantId),
   ]);
 
   if (opportunityRows.length === 0) throw new Error("OPPORTUNITY_NOT_FOUND");
   const opportunity = opportunityRows[0];
+
+  const radarFresh = isRadarFresh(radarInfo.completedAt, now);
+
+  if (!radarFresh) {
+    const insufficientReasons: PredictionReason[] = [{
+      code: "RADAR_STALE",
+      label: "Radar data is stale or missing",
+      weight: 0,
+      detail: `No completed radar run within the last ${RADAR_FRESHNESS_HOURS} hours`,
+    }];
+
+    const categories: IntelligenceCategory[] = ["REVENUE_LEAK", "COLLECTION_DELAY", "DEAL_FALL", "INTERVENTION_PRIORITY"];
+    const scores = [];
+
+    for (const category of categories) {
+      const horizonDays = computeHorizonDays(category);
+      const score = await upsertIntelligenceScore(tenantId, "Opportunity", opportunityId, category, window, {
+        status: "INSUFFICIENT_DATA",
+        score: null,
+        confidence: null,
+        riskBand: null,
+        horizonDays,
+        featureHash: null,
+        expiresAt: computeExpiresAt(now, horizonDays),
+        reasons: insufficientReasons,
+        sourceSignals: [],
+        recommendation: null,
+        generatedAt: now,
+      });
+      scores.push(score);
+
+      await appendRevenueEvent({
+        tenantId,
+        actorId,
+        aggregateType: "RevenueIntelligenceScore",
+        aggregateId: score.id,
+        eventType: "PREDICTIVE_INSUFFICIENT_DATA",
+        idempotencyKey: `insufficient-data:${opportunityId}:${category}:${window}`,
+        after: {
+          opportunityId,
+          category,
+          window,
+          modelVersion: MODEL_VERSION,
+          missingInputs: ["radar_run_fresh"],
+        },
+      });
+    }
+
+    return {
+      opportunityId,
+      window,
+      status: "INSUFFICIENT_DATA" as const,
+      scores: scores.map((s) => ({
+        id: s.id,
+        category: s.category,
+        status: s.status,
+        score: s.score,
+        confidence: s.confidence,
+        riskBand: s.riskBand,
+        horizonDays: s.horizonDays,
+        expiresAt: s.expiresAt?.toISOString() ?? null,
+        reasons: s.reasons,
+        modelVersion: s.modelVersion,
+        generatedAt: s.generatedAt.toISOString(),
+      })),
+    };
+  }
+
+  const [risks, invoices] = await Promise.all([
+    loadOpenRisksForOpportunity(tenantId, opportunityId),
+    loadOverdueInvoicesForOpportunity(tenantId, opportunityId),
+  ]);
 
   const leakResult = computeRevenueLeakScore(risks, radarInfo.evaluatedRules);
   const collectionResult = computeCollectionDelayScore(invoices, now);
@@ -546,28 +687,75 @@ export async function scoreOpportunityIntelligence(
     leakResult.confidence, collectionResult.confidence, dealFallResult.confidence,
   );
 
-  const categoryResults = [
-    { category: "REVENUE_LEAK" as const, result: leakResult },
-    { category: "COLLECTION_DELAY" as const, result: collectionResult },
-    { category: "DEAL_FALL" as const, result: dealFallResult },
-    { category: "INTERVENTION_PRIORITY" as const, result: priorityResult },
+  const categoryResults: Array<{ category: IntelligenceCategory; result: ScoreResult }> = [
+    { category: "REVENUE_LEAK", result: leakResult },
+    { category: "COLLECTION_DELAY", result: collectionResult },
+    { category: "DEAL_FALL", result: dealFallResult },
+    { category: "INTERVENTION_PRIORITY", result: priorityResult },
   ];
 
   const scores = [];
   for (const { category, result } of categoryResults) {
+    const horizonDays = computeHorizonDays(category);
+    const riskBand = computeRiskBand(result.score);
+    const featureSnapshot = buildFeatureSnapshot(category, {
+      riskCount: risks.length,
+      invoiceCount: invoices.length,
+      opportunityAge: Math.max(0, (now.getTime() - new Date(opportunity.createdAt).getTime()) / 86_400_000),
+      probability: num(opportunity.probability),
+      tourCount: num(opportunity.tourCount),
+      offerCount: num(opportunity.offerCount),
+    });
+    const featureHash = computeFeatureHash(featureSnapshot);
+    const expiresAt = computeExpiresAt(now, horizonDays);
+
     let recommendation: { actionType: string; payload: Record<string, unknown> } | null = null;
     if (category !== "INTERVENTION_PRIORITY") {
       recommendation = recommendAction(category, result.score, result.reasons, result.sourceSignals);
     } else {
       const dominant = [
-        { name: "REVENUE_LEAK", score: leakResult.score },
-        { name: "COLLECTION_DELAY", score: collectionResult.score },
-        { name: "DEAL_FALL", score: dealFallResult.score },
+        { name: "REVENUE_LEAK" as const, score: leakResult.score },
+        { name: "COLLECTION_DELAY" as const, score: collectionResult.score },
+        { name: "DEAL_FALL" as const, score: dealFallResult.score },
       ].sort((a, b) => b.score - a.score)[0];
       recommendation = recommendAction(dominant.name, result.score, result.reasons, result.sourceSignals);
     }
-    const score = await upsertIntelligenceScore(tenantId, "Opportunity", opportunityId, category, window, result, recommendation);
+
+    const previousBand = await getPreviousBand(tenantId, "Opportunity", opportunityId, category, window);
+
+    const score = await upsertIntelligenceScore(tenantId, "Opportunity", opportunityId, category, window, {
+      status: "READY",
+      score: result.score,
+      confidence: result.confidence,
+      riskBand,
+      horizonDays,
+      featureHash,
+      expiresAt,
+      reasons: result.reasons,
+      sourceSignals: result.sourceSignals,
+      recommendation,
+      generatedAt: now,
+    });
     scores.push(score);
+
+    if (previousBand && previousBand !== riskBand) {
+      await appendRevenueEvent({
+        tenantId,
+        actorId,
+        aggregateType: "RevenueIntelligenceScore",
+        aggregateId: score.id,
+        eventType: "PREDICTIVE_BAND_CHANGED",
+        idempotencyKey: `band-changed:${opportunityId}:${category}:${window}`,
+        after: {
+          opportunityId,
+          category,
+          window,
+          previousBand,
+          currentBand: riskBand,
+          modelVersion: MODEL_VERSION,
+        },
+      });
+    }
   }
 
   await appendRevenueEvent({
@@ -580,10 +768,12 @@ export async function scoreOpportunityIntelligence(
     after: {
       opportunityId,
       window,
-      scores: scores.map((score) => ({
-        category: score.category,
-        score: score.score,
-        confidence: score.confidence,
+      modelVersion: MODEL_VERSION,
+      scores: scores.map((s) => ({
+        category: s.category,
+        score: s.score,
+        confidence: s.confidence,
+        riskBand: s.riskBand,
       })),
     },
   });
@@ -591,18 +781,24 @@ export async function scoreOpportunityIntelligence(
   return {
     opportunityId,
     window,
-    scores: scores.map((score) => ({
-      id: score.id,
-      category: score.category,
-      score: score.score,
-      confidence: score.confidence,
-      reasons: score.reasons,
-      sourceSignals: score.sourceSignals,
-      recommendedAction: score.recommendedAction,
-      recommendedActionPayload: score.recommendedActionPayload,
-      modelVersion: score.modelVersion,
-      modelAlgorithm: score.modelAlgorithm,
-      generatedAt: score.generatedAt.toISOString(),
+    status: "READY" as const,
+    scores: scores.map((s) => ({
+      id: s.id,
+      category: s.category,
+      status: s.status,
+      score: s.score,
+      confidence: s.confidence,
+      riskBand: s.riskBand,
+      horizonDays: s.horizonDays,
+      featureHash: s.featureHash,
+      expiresAt: s.expiresAt?.toISOString() ?? null,
+      reasons: s.reasons,
+      sourceSignals: s.sourceSignals,
+      recommendedAction: s.recommendedAction,
+      recommendedActionPayload: s.recommendedActionPayload,
+      modelVersion: s.modelVersion,
+      modelAlgorithm: s.modelAlgorithm,
+      generatedAt: s.generatedAt.toISOString(),
     })),
   };
 }
@@ -620,6 +816,8 @@ export async function scoreAllOpportunitiesIntelligence(
     loadAllOverdueInvoices(tenantId),
     loadLatestRadarRunInfo(tenantId),
   ]);
+
+  const radarFresh = isRadarFresh(radarInfo.completedAt, now);
 
   const risksByOpportunity = new Map<string, RiskSignalRow[]>();
   for (const risk of allRisks) {
@@ -652,52 +850,170 @@ export async function scoreAllOpportunitiesIntelligence(
   }
 
   let scored = 0;
+  let insufficient = 0;
+  const failedEntities: Array<{ entityId: string; error: string }> = [];
   const results = [];
 
   for (const opportunity of opportunities) {
-    const risks = risksByOpportunity.get(opportunity.id) || [];
-    const invoices = invoicesByOpportunity.get(opportunity.id) || [];
+    try {
+      const risks = risksByOpportunity.get(opportunity.id) || [];
+      const invoices = invoicesByOpportunity.get(opportunity.id) || [];
 
-    const leakResult = computeRevenueLeakScore(risks, radarInfo.evaluatedRules);
-    const collectionResult = computeCollectionDelayScore(invoices, now);
-    const dealFallResult = computeDealFallScore(opportunity, risks, now);
-    const priorityResult = computeInterventionPriority(
-      leakResult.score, collectionResult.score, dealFallResult.score,
-      leakResult.confidence, collectionResult.confidence, dealFallResult.confidence,
-    );
+      if (!radarFresh) {
+        const insufficientReasons: PredictionReason[] = [{
+          code: "RADAR_STALE",
+          label: "Radar data is stale or missing",
+          weight: 0,
+          detail: `No completed radar run within the last ${RADAR_FRESHNESS_HOURS} hours`,
+        }];
 
-    const categoryResults = [
-      { category: "REVENUE_LEAK" as const, result: leakResult },
-      { category: "COLLECTION_DELAY" as const, result: collectionResult },
-      { category: "DEAL_FALL" as const, result: dealFallResult },
-      { category: "INTERVENTION_PRIORITY" as const, result: priorityResult },
-    ];
+        const categories: IntelligenceCategory[] = ["REVENUE_LEAK", "COLLECTION_DELAY", "DEAL_FALL", "INTERVENTION_PRIORITY"];
+        for (const category of categories) {
+          const horizonDays = computeHorizonDays(category);
+          await upsertIntelligenceScore(tenantId, "Opportunity", opportunity.id, category, window, {
+            status: "INSUFFICIENT_DATA",
+            score: null,
+            confidence: null,
+            riskBand: null,
+            horizonDays,
+            featureHash: null,
+            expiresAt: computeExpiresAt(now, horizonDays),
+            reasons: insufficientReasons,
+            sourceSignals: [],
+            recommendation: null,
+            generatedAt: now,
+          });
 
-    for (const { category, result } of categoryResults) {
-      let recommendation: { actionType: string; payload: Record<string, unknown> } | null = null;
-      if (category !== "INTERVENTION_PRIORITY") {
-        recommendation = recommendAction(category, result.score, result.reasons, result.sourceSignals);
-      } else {
-        const dominant = [
-          { name: "REVENUE_LEAK", score: leakResult.score },
-          { name: "COLLECTION_DELAY", score: collectionResult.score },
-          { name: "DEAL_FALL", score: dealFallResult.score },
-        ].sort((a, b) => b.score - a.score)[0];
-        recommendation = recommendAction(dominant.name, result.score, result.reasons, result.sourceSignals);
+          await appendRevenueEvent({
+            tenantId,
+            actorId,
+            aggregateType: "RevenueIntelligenceScore",
+            aggregateId: opportunity.id,
+            eventType: "PREDICTIVE_INSUFFICIENT_DATA",
+            idempotencyKey: `insufficient-data:${opportunity.id}:${category}:${window}`,
+            after: {
+              opportunityId: opportunity.id,
+              category,
+              window,
+              modelVersion: MODEL_VERSION,
+              missingInputs: ["radar_run_fresh"],
+            },
+          }).catch(() => undefined);
+        }
+        insufficient += 1;
+        results.push({ opportunityId: opportunity.id, status: "INSUFFICIENT_DATA" });
+        continue;
       }
-      await upsertIntelligenceScore(tenantId, "Opportunity", opportunity.id, category, window, result, recommendation);
+
+      const leakResult = computeRevenueLeakScore(risks, radarInfo.evaluatedRules);
+      const collectionResult = computeCollectionDelayScore(invoices, now);
+      const dealFallResult = computeDealFallScore(opportunity, risks, now);
+      const priorityResult = computeInterventionPriority(
+        leakResult.score, collectionResult.score, dealFallResult.score,
+        leakResult.confidence, collectionResult.confidence, dealFallResult.confidence,
+      );
+
+      const categoryResults: Array<{ category: IntelligenceCategory; result: ScoreResult }> = [
+        { category: "REVENUE_LEAK", result: leakResult },
+        { category: "COLLECTION_DELAY", result: collectionResult },
+        { category: "DEAL_FALL", result: dealFallResult },
+        { category: "INTERVENTION_PRIORITY", result: priorityResult },
+      ];
+
+      for (const { category, result } of categoryResults) {
+        const horizonDays = computeHorizonDays(category);
+        const riskBand = computeRiskBand(result.score);
+        const featureSnapshot = buildFeatureSnapshot(category, {
+          riskCount: risks.length,
+          invoiceCount: invoices.length,
+          opportunityAge: Math.max(0, (now.getTime() - new Date(opportunity.createdAt).getTime()) / 86_400_000),
+          probability: num(opportunity.probability),
+          tourCount: num(opportunity.tourCount),
+          offerCount: num(opportunity.offerCount),
+        });
+        const featureHash = computeFeatureHash(featureSnapshot);
+        const expiresAt = computeExpiresAt(now, horizonDays);
+
+        let recommendation: { actionType: string; payload: Record<string, unknown> } | null = null;
+        if (category !== "INTERVENTION_PRIORITY") {
+          recommendation = recommendAction(category, result.score, result.reasons, result.sourceSignals);
+        } else {
+          const dominant = [
+            { name: "REVENUE_LEAK" as const, score: leakResult.score },
+            { name: "COLLECTION_DELAY" as const, score: collectionResult.score },
+            { name: "DEAL_FALL" as const, score: dealFallResult.score },
+          ].sort((a, b) => b.score - a.score)[0];
+          recommendation = recommendAction(dominant.name, result.score, result.reasons, result.sourceSignals);
+        }
+
+        const previousBand = await getPreviousBand(tenantId, "Opportunity", opportunity.id, category, window);
+
+        await upsertIntelligenceScore(tenantId, "Opportunity", opportunity.id, category, window, {
+          status: "READY",
+          score: result.score,
+          confidence: result.confidence,
+          riskBand,
+          horizonDays,
+          featureHash,
+          expiresAt,
+          reasons: result.reasons,
+          sourceSignals: result.sourceSignals,
+          recommendation,
+          generatedAt: now,
+        });
+
+        if (previousBand && previousBand !== riskBand) {
+          await appendRevenueEvent({
+            tenantId,
+            actorId,
+            aggregateType: "RevenueIntelligenceScore",
+            aggregateId: opportunity.id,
+            eventType: "PREDICTIVE_BAND_CHANGED",
+            idempotencyKey: `band-changed:${opportunity.id}:${category}:${window}`,
+            after: {
+              opportunityId: opportunity.id,
+              category,
+              window,
+              previousBand,
+              currentBand: riskBand,
+              modelVersion: MODEL_VERSION,
+            },
+          }).catch(() => undefined);
+        }
+      }
+      scored += 1;
+      results.push({
+        opportunityId: opportunity.id,
+        status: "READY",
+        leakScore: leakResult.score,
+        collectionDelayScore: collectionResult.score,
+        dealFallScore: dealFallResult.score,
+        priorityScore: priorityResult.score,
+      });
+    } catch (error) {
+      failedEntities.push({
+        entityId: opportunity.id,
+        error: error instanceof Error ? error.message.slice(0, 200) : "UNKNOWN_ERROR",
+      });
+
+      await appendRevenueEvent({
+        tenantId,
+        actorId,
+        aggregateType: "RevenueIntelligenceScore",
+        aggregateId: opportunity.id,
+        eventType: "PREDICTIVE_ENTITY_FAILED",
+        idempotencyKey: `entity-failed:${opportunity.id}:${window}`,
+        after: {
+          opportunityId: opportunity.id,
+          window,
+          modelVersion: MODEL_VERSION,
+          error: error instanceof Error ? error.message.slice(0, 500) : "UNKNOWN_ERROR",
+        },
+      }).catch(() => undefined);
     }
-    scored += 1;
-    results.push({
-      opportunityId: opportunity.id,
-      leakScore: leakResult.score,
-      collectionDelayScore: collectionResult.score,
-      dealFallScore: dealFallResult.score,
-      priorityScore: priorityResult.score,
-    });
   }
 
-  if (scored > 0) {
+  if (scored > 0 || insufficient > 0) {
     await appendRevenueEvent({
       tenantId,
       actorId,
@@ -705,11 +1021,75 @@ export async function scoreAllOpportunitiesIntelligence(
       aggregateId: results[0]?.opportunityId || tenantId,
       eventType: "PREDICTIVE_INTELLIGENCE_BATCH_SCORED",
       idempotencyKey: `intelligence-batch:${window}`,
-      after: { scored, window },
+      after: { scored, insufficient, failed: failedEntities.length, window, modelVersion: MODEL_VERSION },
     });
   }
 
-  return { scored, window, results };
+  return { scored, insufficient, failed: failedEntities.length, failedEntities, window, results };
+}
+
+export async function runIntelligenceBatch(
+  tenantId: string,
+  actorId: string | null,
+) {
+  const window = windowKeyForNow();
+  const idempotencyKey = `predictive:${window}`;
+
+  const existingRun = await rawPrisma.revenuePredictiveRun.findFirst({
+    where: { tenantId, idempotencyKey },
+  });
+
+  if (existingRun?.completedAt) {
+    return {
+      runId: existingRun.id,
+      skipped: true,
+      scored: existingRun.scoredCount,
+      failed: existingRun.failedCount,
+      failedEntities: existingRun.failedEntities as Array<{ entityId: string; error: string }>,
+      windowKey: window,
+    };
+  }
+
+  const run = existingRun || await rawPrisma.revenuePredictiveRun.create({
+    data: { tenantId, idempotencyKey },
+  });
+
+  try {
+    const result = await scoreAllOpportunitiesIntelligence(tenantId, actorId);
+
+    await rawPrisma.revenuePredictiveRun.update({
+      where: { id: run.id },
+      data: {
+        completedAt: new Date(),
+        scoredCount: result.scored,
+        failedCount: result.failed,
+        failedEntities: result.failedEntities as any,
+        result: { scored: result.scored, insufficient: result.insufficient, failed: result.failed, window: result.window } as any,
+      },
+    });
+
+    return {
+      runId: run.id,
+      skipped: false,
+      scored: result.scored,
+      insufficient: result.insufficient,
+      failed: result.failed,
+      failedEntities: result.failedEntities,
+      windowKey: window,
+    };
+  } catch (error) {
+    await rawPrisma.revenuePredictiveRun.update({
+      where: { id: run.id },
+      data: {
+        completedAt: new Date(),
+        failedCount: 1,
+        failedEntities: [{ entityId: tenantId, error: error instanceof Error ? error.message.slice(0, 200) : "BATCH_FAILED" }] as any,
+        result: { error: error instanceof Error ? error.message.slice(0, 500) : "BATCH_FAILED" } as any,
+      },
+    });
+
+    throw error;
+  }
 }
 
 export async function loadIntelligenceScores(
@@ -736,7 +1116,7 @@ export async function loadIntelligenceScores(
   const [items, total] = await Promise.all([
     rawPrisma.revenueIntelligenceScore.findMany({
       where,
-      orderBy: [{ score: "desc" }, { generatedAt: "desc" }],
+      orderBy: [{ generatedAt: "desc" }],
       skip,
       take: pageSize,
     }),
@@ -749,8 +1129,13 @@ export async function loadIntelligenceScores(
       entityType: score.entityType,
       entityId: score.entityId,
       category: score.category,
+      status: score.status,
       score: score.score,
       confidence: score.confidence,
+      riskBand: score.riskBand,
+      horizonDays: score.horizonDays,
+      featureHash: score.featureHash,
+      expiresAt: score.expiresAt?.toISOString() ?? null,
       reasons: score.reasons,
       sourceSignals: score.sourceSignals,
       recommendedAction: score.recommendedAction,

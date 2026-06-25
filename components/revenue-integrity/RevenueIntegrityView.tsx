@@ -18,8 +18,12 @@ import {
 } from "@/app/actions/revenue-integrity";
 import {
   displayRevenueIntegrityValue,
+  expiryLabel,
+  horizonLabel,
   intelligenceRiskClass,
   intelligenceRiskLevel,
+  riskBandClass,
+  riskBandLabel,
   safeDisplayId,
 } from "@/lib/display/revenueIntegrity";
 import type { RevenueIntegrityDashboard } from "@/lib/revenue-integrity/queries";
@@ -111,8 +115,12 @@ type IntelligenceScore = {
   entityType: string;
   entityId: string;
   category: string;
-  score: number;
-  confidence: number;
+  status: string;
+  score: number | null;
+  confidence: number | null;
+  riskBand: string | null;
+  horizonDays: number | null;
+  expiresAt: string | null;
   reasons: unknown;
   sourceSignals: unknown;
   recommendedAction: string | null;
@@ -312,8 +320,14 @@ function PredictiveIntelligenceTab({
             <ul className="divide-y divide-[var(--nc-border)]" style={{ minHeight: "380px" }}>
               {(pageData?.items ?? []).map((item) => {
                 const isExpanded = expandedId === item.id;
-                const riskClass = intelligenceRiskClass(item.score);
-                const riskLabel = intelligenceRiskLevel(item.score, lang);
+                const isInsufficient = item.status === "INSUFFICIENT_DATA";
+                const riskClass = isInsufficient ? "" : intelligenceRiskClass(item.score ?? 0);
+                const riskLabel = isInsufficient
+                  ? ""
+                  : item.riskBand
+                    ? riskBandLabel(item.riskBand, lang)
+                    : intelligenceRiskLevel(item.score ?? 0, lang);
+                const bandClass = item.riskBand ? riskBandClass(item.riskBand) : riskClass;
                 const itemReasons = itemReasonsList(item);
                 const itemSignals = itemSignalsList(item);
                 const displayEntity = safeDisplayId(item.entityId, lang);
@@ -335,16 +349,26 @@ function PredictiveIntelligenceTab({
                             <span className="inline-flex rounded-full border border-[var(--nc-border)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-foreground-muted)]">
                               {displayRevenueIntegrityValue(item.category, lang)}
                             </span>
+                            <StatusBadge value={item.status} lang={lang} />
                           </div>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
-                            <span className="font-black text-[var(--nc-foreground)]">
-                              {item.score}/100
-                            </span>
-                            <span className="text-[var(--nc-foreground-muted)]">
-                              {item.confidence}% {L("ثقة", "confidence")}
-                            </span>
-                            <span className={`font-bold ${riskClass}`}>{riskLabel}</span>
-                          </div>
+                          {isInsufficient ? (
+                            <div className="mt-1.5 text-[11px] text-[var(--nc-foreground-muted)]">
+                              {L(
+                                "بيانات غير كافية للتقييم. شغّل الرادار أولًا.",
+                                "Insufficient data for assessment. Run radar first.",
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
+                              <span className="font-black text-[var(--nc-foreground)]">
+                                {item.score}/100
+                              </span>
+                              <span className="text-[var(--nc-foreground-muted)]">
+                                {item.confidence}% {L("ثقة", "confidence")}
+                              </span>
+                              <span className={`font-bold ${bandClass}`}>{riskLabel}</span>
+                            </div>
+                          )}
                         </div>
                         <span className="shrink-0 text-[10px] text-[var(--nc-foreground-muted)]">
                           {isExpanded ? "▲" : "▼"}
@@ -354,6 +378,21 @@ function PredictiveIntelligenceTab({
 
                     {isExpanded ? (
                       <div className="mt-3 space-y-3 rounded-2xl bg-[var(--nc-surface-strong)] p-4 text-xs">
+                        {!isInsufficient && item.horizonDays ? (
+                          <div className="flex flex-wrap gap-4">
+                            <span>
+                              {L("الأفق:", "Horizon:")}{" "}
+                              <span className="font-bold">{horizonLabel(item.horizonDays, lang)}</span>
+                            </span>
+                            {item.expiresAt ? (
+                              <span>
+                                {L("الانتهاء:", "Expires:")}{" "}
+                                <span className="font-bold">{expiryLabel(item.expiresAt, lang)}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+
                         {item.recommendedAction ? (
                           <div>
                             <span className="font-bold text-[var(--nc-foreground-muted)]">

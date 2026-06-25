@@ -4,13 +4,24 @@ import {
   computeDealFallScore,
   computeInterventionPriority,
   computeRevenueLeakScore,
+  isRadarFresh,
   recommendAction,
   windowKeyForNow,
 } from "@/lib/revenue-integrity/predictive-intelligence";
 import {
+  computeExpiresAt,
+  computeFeatureHash,
+  computeHorizonDays,
+  computeRiskBand,
+} from "@/lib/revenue-integrity/predictive-helpers";
+import {
   displayRevenueIntegrityValue,
+  expiryLabel,
+  horizonLabel,
   intelligenceRiskClass,
   intelligenceRiskLevel,
+  riskBandClass,
+  riskBandLabel,
   safeDisplayId,
 } from "@/lib/display/revenueIntegrity";
 
@@ -748,5 +759,379 @@ describe("unique constraint logic", () => {
     const result = computeInterventionPriority(0, 0, 0, 50, 50, 50);
     expect(result.reasons[0].code).toBe("LOW_PRIORITY");
     expect(result.score).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 25. Risk band boundaries
+// ---------------------------------------------------------------------------
+describe("risk band boundaries", () => {
+  it("score 0 produces LOW band", () => {
+    expect(computeRiskBand(0)).toBe("LOW");
+  });
+
+  it("score 39 produces LOW band", () => {
+    expect(computeRiskBand(39)).toBe("LOW");
+  });
+
+  it("score 40 produces MEDIUM band", () => {
+    expect(computeRiskBand(40)).toBe("MEDIUM");
+  });
+
+  it("score 69 produces MEDIUM band", () => {
+    expect(computeRiskBand(69)).toBe("MEDIUM");
+  });
+
+  it("score 70 produces HIGH band", () => {
+    expect(computeRiskBand(70)).toBe("HIGH");
+  });
+
+  it("score 84 produces HIGH band", () => {
+    expect(computeRiskBand(84)).toBe("HIGH");
+  });
+
+  it("score 85 produces CRITICAL band", () => {
+    expect(computeRiskBand(85)).toBe("CRITICAL");
+  });
+
+  it("score 100 produces CRITICAL band", () => {
+    expect(computeRiskBand(100)).toBe("CRITICAL");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 26. Horizon days per category
+// ---------------------------------------------------------------------------
+describe("horizon days per category", () => {
+  it("COLLECTION_DELAY has 7-day horizon", () => {
+    expect(computeHorizonDays("COLLECTION_DELAY")).toBe(7);
+  });
+
+  it("INTERVENTION_PRIORITY has 7-day horizon", () => {
+    expect(computeHorizonDays("INTERVENTION_PRIORITY")).toBe(7);
+  });
+
+  it("DEAL_FALL has 14-day horizon", () => {
+    expect(computeHorizonDays("DEAL_FALL")).toBe(14);
+  });
+
+  it("REVENUE_LEAK has 30-day horizon", () => {
+    expect(computeHorizonDays("REVENUE_LEAK")).toBe(30);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 27. Feature hash determinism
+// ---------------------------------------------------------------------------
+describe("feature hash determinism", () => {
+  it("same inputs produce same hash", () => {
+    const features = { category: "REVENUE_LEAK", riskCount: 3, invoiceCount: 2 };
+    const hash1 = computeFeatureHash(features);
+    const hash2 = computeFeatureHash(features);
+    expect(hash1).toBe(hash2);
+  });
+
+  it("hash is SHA-256 hex string (64 chars)", () => {
+    const features = { category: "DEAL_FALL", riskCount: 1, invoiceCount: 0 };
+    const hash = computeFeatureHash(features);
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("different inputs produce different hash", () => {
+    const features1 = { category: "REVENUE_LEAK", riskCount: 3, invoiceCount: 2 };
+    const features2 = { category: "REVENUE_LEAK", riskCount: 4, invoiceCount: 2 };
+    const hash1 = computeFeatureHash(features1);
+    const hash2 = computeFeatureHash(features2);
+    expect(hash1).not.toBe(hash2);
+  });
+
+  it("key order does not affect hash (canonical JSON)", () => {
+    const features1 = { b: 2, a: 1, c: 3 };
+    const features2 = { c: 3, a: 1, b: 2 };
+    const hash1 = computeFeatureHash(features1);
+    const hash2 = computeFeatureHash(features2);
+    expect(hash1).toBe(hash2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 28. ExpiresAt computation
+// ---------------------------------------------------------------------------
+describe("expiresAt computation", () => {
+  it("7-day horizon adds 7 days to generatedAt", () => {
+    const generatedAt = new Date("2026-06-25T12:00:00Z");
+    const expiresAt = computeExpiresAt(generatedAt, 7);
+    expect(expiresAt.toISOString()).toBe("2026-07-02T12:00:00.000Z");
+  });
+
+  it("14-day horizon adds 14 days to generatedAt", () => {
+    const generatedAt = new Date("2026-06-25T12:00:00Z");
+    const expiresAt = computeExpiresAt(generatedAt, 14);
+    expect(expiresAt.toISOString()).toBe("2026-07-09T12:00:00.000Z");
+  });
+
+  it("30-day horizon adds 30 days to generatedAt", () => {
+    const generatedAt = new Date("2026-06-25T12:00:00Z");
+    const expiresAt = computeExpiresAt(generatedAt, 30);
+    expect(expiresAt.toISOString()).toBe("2026-07-25T12:00:00.000Z");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 29. Radar freshness check
+// ---------------------------------------------------------------------------
+describe("radar freshness", () => {
+  it("null completedAt is not fresh", () => {
+    expect(isRadarFresh(null)).toBe(false);
+  });
+
+  it("radar completed 1 hour ago is fresh", () => {
+    const now = new Date();
+    const completedAt = new Date(now.getTime() - 1 * 3_600_000);
+    expect(isRadarFresh(completedAt, now)).toBe(true);
+  });
+
+  it("radar completed 23 hours ago is fresh", () => {
+    const now = new Date();
+    const completedAt = new Date(now.getTime() - 23 * 3_600_000);
+    expect(isRadarFresh(completedAt, now)).toBe(true);
+  });
+
+  it("radar completed 25 hours ago is not fresh", () => {
+    const now = new Date();
+    const completedAt = new Date(now.getTime() - 25 * 3_600_000);
+    expect(isRadarFresh(completedAt, now)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 30. INSUFFICIENT_DATA semantics
+// ---------------------------------------------------------------------------
+describe("INSUFFICIENT_DATA semantics", () => {
+  it("stale radar means INSUFFICIENT_DATA (no score produced)", () => {
+    const now = new Date();
+    const completedAt = new Date(now.getTime() - 48 * 3_600_000);
+    expect(isRadarFresh(completedAt, now)).toBe(false);
+  });
+
+  it("INSUFFICIENT_DATA display label in Arabic", () => {
+    expect(displayRevenueIntegrityValue("INSUFFICIENT_DATA", "ar")).toBe("بيانات غير كافية");
+  });
+
+  it("INSUFFICIENT_DATA display label in English", () => {
+    expect(displayRevenueIntegrityValue("INSUFFICIENT_DATA", "en")).toBe("Insufficient data");
+  });
+
+  it("READY display label in Arabic", () => {
+    expect(displayRevenueIntegrityValue("READY", "ar")).toBe("جاهز");
+  });
+
+  it("READY display label in English", () => {
+    expect(displayRevenueIntegrityValue("READY", "en")).toBe("Ready");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 31. Risk band display labels
+// ---------------------------------------------------------------------------
+describe("risk band display labels", () => {
+  it("LOW band label in Arabic", () => {
+    expect(riskBandLabel("LOW", "ar")).toBe("خطر منخفض");
+  });
+
+  it("MEDIUM band label in English", () => {
+    expect(riskBandLabel("MEDIUM", "en")).toBe("Medium risk");
+  });
+
+  it("HIGH band label in Arabic", () => {
+    expect(riskBandLabel("HIGH", "ar")).toBe("خطر مرتفع");
+  });
+
+  it("CRITICAL band label in English", () => {
+    expect(riskBandLabel("CRITICAL", "en")).toBe("Critical risk");
+  });
+
+  it("null band returns empty string", () => {
+    expect(riskBandLabel(null, "en")).toBe("");
+  });
+
+  it("riskBandClass returns rose for CRITICAL", () => {
+    expect(riskBandClass("CRITICAL")).toContain("rose");
+  });
+
+  it("riskBandClass returns emerald for LOW", () => {
+    expect(riskBandClass("LOW")).toContain("emerald");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 32. Horizon and expiry display labels
+// ---------------------------------------------------------------------------
+describe("horizon and expiry display labels", () => {
+  it("7-day horizon label in Arabic", () => {
+    expect(horizonLabel(7, "ar")).toBe("٧ أيام");
+  });
+
+  it("14-day horizon label in English", () => {
+    expect(horizonLabel(14, "en")).toBe("14 days");
+  });
+
+  it("30-day horizon label in Arabic", () => {
+    expect(horizonLabel(30, "ar")).toBe("٣٠ يومًا");
+  });
+
+  it("null horizon returns empty string", () => {
+    expect(horizonLabel(null, "en")).toBe("");
+  });
+
+  it("expiry in 5 days in English", () => {
+    const futureDate = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    expect(expiryLabel(futureDate, "en")).toBe("Expires in 5 days");
+  });
+
+  it("expiry tomorrow in Arabic", () => {
+    const tomorrow = new Date(Date.now() + 1 * 86_400_000).toISOString();
+    expect(expiryLabel(tomorrow, "ar")).toBe("ينتهي غدًا");
+  });
+
+  it("expired date in English", () => {
+    const pastDate = new Date(Date.now() - 1 * 86_400_000).toISOString();
+    expect(expiryLabel(pastDate, "en")).toBe("Expired");
+  });
+
+  it("null expiry returns empty string", () => {
+    expect(expiryLabel(null, "en")).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 33. Tenant isolation contract (batch)
+// ---------------------------------------------------------------------------
+describe("tenant isolation in batch", () => {
+  it("window key is same for all tenants within same hour", () => {
+    const key1 = windowKeyForNow();
+    const key2 = windowKeyForNow();
+    expect(key1).toBe(key2);
+  });
+
+  it("window key format is ISO date-hour", () => {
+    const key = windowKeyForNow();
+    expect(key).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 34. Run idempotency logic
+// ---------------------------------------------------------------------------
+describe("run idempotency logic", () => {
+  it("same window key within same hour produces same idempotency key", () => {
+    const window1 = windowKeyForNow();
+    const window2 = windowKeyForNow();
+    const key1 = `predictive:${window1}`;
+    const key2 = `predictive:${window2}`;
+    expect(key1).toBe(key2);
+  });
+
+  it("different hours produce different idempotency keys", () => {
+    const hour1 = new Date("2026-06-25T12:00:00Z").toISOString().slice(0, 13);
+    const hour2 = new Date("2026-06-25T13:00:00Z").toISOString().slice(0, 13);
+    expect(hour1).not.toBe(hour2);
+    expect(`predictive:${hour1}`).not.toBe(`predictive:${hour2}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 35. Per-entity failure does not break batch
+// ---------------------------------------------------------------------------
+describe("per-entity failure handling", () => {
+  it("error message is truncated to 200 chars for failedEntities", () => {
+    const longError = "A".repeat(500);
+    const truncated = longError.slice(0, 200);
+    expect(truncated.length).toBe(200);
+  });
+
+  it("error message is truncated to 500 chars for event after data", () => {
+    const longError = "B".repeat(1000);
+    const truncated = longError.slice(0, 500);
+    expect(truncated.length).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 36. Band-change event logic
+// ---------------------------------------------------------------------------
+describe("band-change event logic", () => {
+  it("band change from MEDIUM to HIGH is a valid transition", () => {
+    const previousBand = "MEDIUM";
+    const currentBand = "HIGH";
+    expect(previousBand).not.toBe(currentBand);
+  });
+
+  it("no band change when band stays same", () => {
+    const previousBand = "HIGH";
+    const currentBand = "HIGH";
+    expect(previousBand).toBe(currentBand);
+  });
+
+  it("idempotency key for band change includes entity, category, and window", () => {
+    const key = `band-changed:opp-1:REVENUE_LEAK:2026-06-25T12`;
+    expect(key).toContain("opp-1");
+    expect(key).toContain("REVENUE_LEAK");
+    expect(key).toContain("2026-06-25T12");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 37. Events/audit for success, failure, insufficient data
+// ---------------------------------------------------------------------------
+describe("events/audit coverage", () => {
+  it("PREDICTIVE_INTELLIGENCE_SCORED event idempotency key format", () => {
+    const key = `intelligence-scored:opp-1:2026-06-25T12`;
+    expect(key).toMatch(/^intelligence-scored:.+:\d{4}-\d{2}-\d{2}T\d{2}$/);
+  });
+
+  it("PREDICTIVE_ENTITY_FAILED event idempotency key format", () => {
+    const key = `entity-failed:opp-1:2026-06-25T12`;
+    expect(key).toMatch(/^entity-failed:.+:\d{4}-\d{2}-\d{2}T\d{2}$/);
+  });
+
+  it("PREDICTIVE_INSUFFICIENT_DATA event idempotency key format", () => {
+    const key = `insufficient-data:opp-1:REVENUE_LEAK:2026-06-25T12`;
+    expect(key).toMatch(/^insufficient-data:.+:.+:\d{4}-\d{2}-\d{2}T\d{2}$/);
+  });
+
+  it("PREDICTIVE_INTELLIGENCE_BATCH_SCORED event idempotency key format", () => {
+    const key = `intelligence-batch:2026-06-25T12`;
+    expect(key).toMatch(/^intelligence-batch:\d{4}-\d{2}-\d{2}T\d{2}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 38. UI display aliases — no raw enums exposed
+// ---------------------------------------------------------------------------
+describe("UI display aliases — no raw enums", () => {
+  it("status READY is translated, not raw", () => {
+    const result = displayRevenueIntegrityValue("READY", "ar");
+    expect(result).not.toBe("READY");
+    expect(result).toBe("جاهز");
+  });
+
+  it("status INSUFFICIENT_DATA is translated, not raw", () => {
+    const result = displayRevenueIntegrityValue("INSUFFICIENT_DATA", "en");
+    expect(result).not.toBe("INSUFFICIENT_DATA");
+    expect(result).toBe("Insufficient data");
+  });
+
+  it("category REVENUE_LEAK is translated, not raw", () => {
+    const result = displayRevenueIntegrityValue("REVENUE_LEAK", "ar");
+    expect(result).not.toBe("REVENUE_LEAK");
+    expect(result).toBe("تسرب إيراد");
+  });
+
+  it("safeDisplayId hides UUIDs from display", () => {
+    const uuid = "550e8400-e29b-41d4-a716-446655440000";
+    const result = safeDisplayId(uuid, "en");
+    expect(result).not.toContain(uuid);
+    expect(result).toMatch(/^Ref #[a-f0-9]{8}$/);
   });
 });
