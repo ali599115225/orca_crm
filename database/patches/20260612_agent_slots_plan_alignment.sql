@@ -3,6 +3,10 @@
 -- Date: 2026-06-13
 -- Aligns DB trigger limits with lib/plan-guard.ts
 -- ============================================================
+-- SUPERSEDED 2026-06-26: confirmed still live via Gate 0 (SCHEMA_GAP closure)
+-- and ported verbatim into prisma/migrations/20260626130000_adopt_agent_slots_cap_trigger.
+-- Do not run this file again -- it is now tracked Prisma migration history.
+-- ============================================================
 -- Drops conflicting triggers from:
 --   database/agent_systems.sql (old)
 --   database/migrations/rls_and_trigger.sql (deprecated taxonomy)

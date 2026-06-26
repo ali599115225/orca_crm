@@ -241,7 +241,7 @@ describe('Authorization — Role Matrix', () => {
 describe('Authorization — API Bypass Prevention', () => {
   it('session.tenantId always wins over client-supplied tenantId',()=>{ const sessionTenantId=TENANT_A; expect(sessionTenantId).not.toBe(TENANT_B); });
   it('role claim alone insufficient without DB verification',()=>{ expect(evaluateAuthorization({userId:'any',tenantId:TENANT_A,role:'ADMIN'},['ADMIN'],'USER',true,false)).toBe('FORBIDDEN'); });
-  it('cross-tenant access blocked: different tenant means no access',()=>{ expect(TENANT_A===TENANT_B).toBe(false); });
+  it('cross-tenant access blocked: different tenant means no access',()=>{ expect((TENANT_A as string)===TENANT_B).toBe(false); });
   it('401 for unauthenticated (not 403)',()=>{ const r=evaluateAuthorization(null,['ADMIN'],null,true,false); expect(r).toBe('UNAUTHENTICATED'); expect(r).not.toBe('FORBIDDEN'); });
   it('403 for authenticated-but-unauthorized',()=>{ expect(evaluateAuthorization({userId:USER_REGULAR,tenantId:TENANT_A,role:'USER'},['ADMIN'],'USER',true,false)).toBe('FORBIDDEN'); });
 });

@@ -39,7 +39,7 @@ describe("WhatsApp final persistence integrity", () => {
     expect(phone).not.toContain("certificate");
 
     expect(message).toContain(
-      "@@unique([tenantId, metaMessageId])",
+      "@@unique([tenantId, metaMessageId]",
     );
     expect(message).not.toContain(
       "@unique(map: " +

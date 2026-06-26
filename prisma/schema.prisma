@@ -94,6 +94,7 @@ model User {
   contractStartAt           DateTime?                  @map("contract_start_at") @db.Timestamptz
   contractEndAt             DateTime?                  @map("contract_end_at") @db.Timestamptz
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   leads                     Lead[]                     @relation("AssignedLeads")
   leadActivities            LeadActivity[]
   tasks                     Task[]
@@ -103,7 +104,7 @@ model User {
   whatsappSignupSessions    WhatsAppSignupSession[]
   whatsappIntegrationAudits WhatsAppIntegrationAudit[]
 
-  @@index([emailHash])
+  @@index([emailHash], map: "idx_users_email_hash")
   @@map("users")
 }
 
@@ -166,7 +167,7 @@ model Lead {
   updatedBy       String?          @map("updated_by") @db.Uuid
   auditLog        String?          @map("audit_log") @db.Text
 
-  @@index([tenantId, phoneHash])
+  @@index([tenantId, phoneHash], map: "idx_leads_tenant_phone_hash")
   @@map("leads")
 }
 
@@ -385,7 +386,7 @@ model Unit {
   opportunities Opportunity[] @relation("OpportunityUnit")
   offers        Offer[]       @relation("OfferUnit")
 
-  @@unique([projectId, unitNumber], name: "uq_project_unit_number")
+  @@unique([projectId, unitNumber], name: "uq_project_unit_number", map: "uq_project_unit_number")
   @@index([projectId], map: "idx_units_project_id")
   @@index([tenantId], map: "idx_units_tenant_id")
   @@map("units")
@@ -428,7 +429,10 @@ model Contract {
   @@index([tenantId], map: "idx_contracts_tenant_id")
   @@index([tenantId, status], map: "idx_contracts_tenant_status")
   @@index([reservationExpiresAt], map: "idx_contracts_reservation_expiry")
-  @@index([tenantId, buyerPhoneHash])
+  @@index([tenantId, buyerPhoneHash], map: "idx_contracts_tenant_buyer_phone_hash")
+  @@index([leadId], map: "idx_contracts_lead_id")
+  @@index([offerId], map: "idx_contracts_offer_id")
+  @@index([tenantId, spineVersion, legacyFinancial], map: "idx_contracts_tenant_spine_legacy")
   @@map("contracts")
 }
 
@@ -452,6 +456,7 @@ model PaymentPlan {
   installments     Installment[]
 
   @@index([tenantId, status], map: "idx_payment_plans_tenant_status")
+  @@index([lastAmendedAt], map: "idx_payment_plans_last_amended_at")
   @@map("payment_plans")
 }
 
@@ -507,18 +512,18 @@ model RentalLease {
 }
 
 model Invoice {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String       @id(map: "rental_invoices_pkey1") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId   String       @map("tenant_id") @db.Uuid
-  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "rental_invoices_tenant_id_fkey")
   type       InvoiceType  @default(RENTAL)
   leaseId    String?      @map("lease_id") @db.Uuid
-  lease      RentalLease? @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+  lease      RentalLease? @relation(fields: [leaseId], references: [id], onDelete: SetNull, map: "rental_invoices_lease_id_fkey")
   contractId String?      @map("contract_id") @db.Uuid
   contract   Contract?    @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
   invoiceNumber Int    @map("invoice_number")
   invoicePrefix String @default("INV") @map("invoice_prefix")
-  zatcaUuid     String @default(uuid()) @map("zatca_uuid") @db.Uuid
+  zatcaUuid     String @default(dbgenerated("gen_random_uuid()")) @map("zatca_uuid") @db.Uuid
 
   issueDate DateTime @default(now()) @map("issue_date") @db.Date
   dueDate   DateTime @map("due_date") @db.Date
@@ -557,10 +562,10 @@ model Invoice {
   installments        Installment[]        @relation("InvoiceInstallments")
   paymentTransactions PaymentTransaction[]
 
-  @@unique([tenantId, invoiceNumber], name: "uq_tenant_invoice_number")
-  @@index([leaseId], map: "idx_invoices_lease_id")
+  @@unique([tenantId, invoiceNumber], name: "uq_tenant_invoice_number", map: "uq_tenant_invoice_number")
+  @@index([leaseId], map: "invoices_lease_id_idx")
   @@index([contractId], map: "idx_invoices_contract_id")
-  @@index([tenantId], map: "idx_invoices_tenant_id")
+  @@index([tenantId], map: "invoices_tenant_id_idx")
   @@map("invoices")
 }
 
@@ -659,7 +664,7 @@ model GovernmentOutbox {
   operation        String    @db.VarChar(50)
   // "ZATCA_SUBMIT_INVOICE" | "EJAR_REGISTER_CONTRACT" | ...
 
-  idempotencyKey   String    @unique @map("idempotency_key") @db.VarChar(80)
+  idempotencyKey   String    @unique(map: "gov_outbox_idempotency_key_uq") @map("idempotency_key") @db.VarChar(80)
   // SHA-256(tenantId:provider:operation:businessEntityType:businessEntityId)
   // UNIQUE guarantees exactly-once reservation via INSERT ON CONFLICT DO NOTHING
 
@@ -727,7 +732,7 @@ model MansourChat {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@index([tenantId, contactPhoneHash])
+  @@index([tenantId, contactPhoneHash], map: "idx_mansour_chats_tenant_contact_phone_hash")
   @@map("mansour_chats")
 }
 
@@ -933,10 +938,10 @@ model PaymentTransaction {
 
   @@unique([provider, providerReference], map: "payment_transaction_provider_reference_uq")
   @@unique([tenantId, idempotencyKey], map: "payment_transactions_tenant_idempotency_uq")
-  @@index([tenantId])
-  @@index([invoiceId])
-  @@index([installmentId])
-  @@index([status])
+  @@index([tenantId], map: "idx_payment_transactions_tenant_id")
+  @@index([invoiceId], map: "idx_payment_transactions_invoice_id")
+  @@index([installmentId], map: "idx_payment_transactions_installment_id")
+  @@index([status], map: "idx_payment_transactions_status")
   @@index([provider])
   @@index([providerTransactionId])
   @@index([providerInvoiceId])
@@ -963,7 +968,7 @@ model Contact {
   auditLog             String?        @map("audit_log") @db.Text
   emailMessages        EmailMessage[]
 
-  @@index([tenantId, phoneHash])
+  @@index([tenantId, phoneHash], map: "idx_contacts_tenant_phone_hash")
   @@map("contacts")
 }
 
@@ -989,6 +994,7 @@ model Opportunity {
   tours         Tour[]
   dealPassport  DealPassport?
 
+  @@index([unitId], map: "idx_opportunities_unit_id")
   @@map("opportunities")
 }
 
@@ -1077,6 +1083,9 @@ model Tour {
   offerId       String?      @map("offer_id") @db.Uuid
   offer         Offer?       @relation(fields: [offerId], references: [id])
 
+  @@index([opportunityId], map: "idx_tours_opportunity_id")
+  @@index([unitId], map: "idx_tours_unit_id")
+  @@index([offerId], map: "tours_offer_id_idx")
   @@map("tours")
 }
 
@@ -1100,6 +1109,7 @@ model Offer {
   contract            Contract?
   tours               Tour[]
 
+  @@index([unitId], map: "idx_offers_unit_id")
   @@map("offers")
 }
 
@@ -1219,9 +1229,9 @@ model WhatsAppContact {
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([tenantId, phoneHash])
-  @@index([tenantId, archived, lastMessageAt])
-  @@index([tenantId, lastMessageAt])
-  @@index([tenantId, phoneHash])
+  @@index([tenantId, archived, lastMessageAt], map: "idx_whatsapp_contacts_tenant_archived_last_message")
+  @@index([tenantId, lastMessageAt], map: "idx_whatsapp_contacts_tenant_last")
+  @@index([tenantId, phoneHash], map: "idx_whatsapp_contacts_tenant_phone_hash")
   @@map("whatsapp_contacts")
 }
 
@@ -1246,9 +1256,10 @@ model WhatsAppMessage {
   attachments   WhatsAppAttachment[]
   webhookEvents WhatsAppWebhookEvent[]
 
-  @@unique([tenantId, metaMessageId])
-  @@index([tenantId, phone, createdAt])
-  @@index([tenantId, phoneHash])
+  @@unique([tenantId, metaMessageId], map: "uq_whatsapp_messages_tenant_meta")
+  @@index([tenantId, phone, createdAt], map: "idx_whatsapp_messages_tenant_phone")
+  @@index([tenantId, phoneHash], map: "idx_whatsapp_messages_tenant_phone_hash")
+  @@index([metaMessageId], map: "idx_whatsapp_messages_meta_id")
   @@map("whatsapp_messages")
 }
 
@@ -1303,7 +1314,7 @@ model SentinelChatMessage {
   message   String   @db.Text
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)], map: "idx_sentinel_chat_created")
   @@map("sentinel_chat_messages")
 }
 
@@ -1326,10 +1337,10 @@ model SentinelTaskOrder {
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   completedAt      DateTime? @map("completed_at") @db.Timestamptz
 
-  @@index([status])
-  @@index([assignedToType, status])
-  @@index([correlationId])
-  @@index([createdAt(sort: Desc)])
+  @@index([status], map: "idx_sentinel_task_orders_status")
+  @@index([assignedToType, status], map: "idx_sentinel_task_orders_assigned")
+  @@index([correlationId], map: "idx_sentinel_task_orders_correlation")
+  @@index([createdAt(sort: Desc)], map: "idx_sentinel_task_orders_created")
   @@map("sentinel_task_orders")
 }
 
@@ -1414,9 +1425,9 @@ enum WhatsAppIntegrationAuditAction {
 model WhatsAppConnection {
   id              String                   @id @default(uuid()) @db.Uuid
   tenantId        String                   @map("tenant_id") @db.Uuid
-  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_connections_tenant")
   status          WhatsAppConnectionStatus @default(DISCONNECTED)
-  wabaId          String?                  @unique @map("waba_id")
+  wabaId          String?                  @unique(map: "whatsapp_connections_waba_id_unique") @map("waba_id")
   activeSince     DateTime?                @map("active_since") @db.Timestamptz
   disconnectedAt  DateTime?                @map("disconnected_at") @db.Timestamptz
   lastHealthCheck DateTime?                @map("last_health_check") @db.Timestamptz
@@ -1429,15 +1440,15 @@ model WhatsAppConnection {
   signupSessions WhatsAppSignupSession[]
   auditLogs      WhatsAppIntegrationAudit[]
 
-  @@unique([tenantId])
-  @@index([status])
+  @@unique([tenantId], map: "whatsapp_connections_tenant_id_unique")
+  @@index([status], map: "idx_whatsapp_connections_status")
   @@map("whatsapp_connections")
 }
 
 model WhatsAppCredential {
   id                    String                     @id @default(uuid()) @db.Uuid
   connectionId          String                     @map("connection_id") @db.Uuid
-  connection            WhatsAppConnection         @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connection            WhatsAppConnection         @relation(fields: [connectionId], references: [id], onDelete: Cascade, map: "fk_whatsapp_credentials_connection")
   encryptedValue        String                     @map("encrypted_value")
   iv                    String
   authTag               String                     @map("auth_tag")
@@ -1448,14 +1459,14 @@ model WhatsAppCredential {
   lastValidatedAt       DateTime?                  @map("last_validated_at") @db.Timestamptz
   revokedAt             DateTime?                  @map("revoked_at") @db.Timestamptz
   rotatedFrom           String?                    @map("rotated_from") @db.Uuid
-  rotatedFromCredential WhatsAppCredential?        @relation("WhatsAppCredentialRotation", fields: [rotatedFrom], references: [id], onDelete: SetNull)
+  rotatedFromCredential WhatsAppCredential?        @relation("WhatsAppCredentialRotation", fields: [rotatedFrom], references: [id], onDelete: SetNull, map: "fk_whatsapp_credentials_rotated_from")
   rotatedTo             WhatsAppCredential[]       @relation("WhatsAppCredentialRotation")
   isActive              Boolean                    @default(true) @map("is_active")
   createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   auditLogs             WhatsAppIntegrationAudit[]
 
-  @@index([connectionId])
-  @@index([tokenFingerprint])
+  @@index([connectionId], map: "idx_whatsapp_credentials_connection")
+  @@index([tokenFingerprint], map: "idx_whatsapp_credentials_fingerprint")
   @@map("whatsapp_credentials")
 }
 
@@ -1465,8 +1476,8 @@ model WhatsAppPhoneNumber {
   tenantId           String                     @map("tenant_id") @db.Uuid
   tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   connectionId       String?                    @map("connection_id") @db.Uuid
-  connection         WhatsAppConnection?        @relation(fields: [connectionId], references: [id])
-  phoneNumberId      String                     @unique @map("phone_number_id")
+  connection         WhatsAppConnection?        @relation(fields: [connectionId], references: [id], map: "fk_whatsapp_phone_numbers_connection")
+  phoneNumberId      String                     @unique(map: "uq_whatsapp_phone_numbers_phone_number_id") @map("phone_number_id")
   displayPhoneNumber String?                    @map("display_phone_number")
   wabaId             String?                    @map("waba_id")
   businessAccountId  String?                    @map("business_account_id")
@@ -1478,20 +1489,20 @@ model WhatsAppPhoneNumber {
   updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   auditLogs          WhatsAppIntegrationAudit[]
 
-  @@index([tenantId, isActive])
-  @@index([connectionId])
+  @@index([tenantId, isActive], map: "idx_whatsapp_phone_numbers_tenant_active")
+  @@index([connectionId], map: "idx_whatsapp_phone_numbers_connection")
   @@map("whatsapp_phone_numbers")
 }
 
 model WhatsAppSignupSession {
   id           String                      @id @default(uuid()) @db.Uuid
   tenantId     String                      @map("tenant_id") @db.Uuid
-  tenant       Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_signup_sessions_tenant")
   userId       String                      @map("user_id") @db.Uuid
-  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_whatsapp_signup_sessions_user")
   connectionId String?                     @map("connection_id") @db.Uuid
-  connection   WhatsAppConnection?         @relation(fields: [connectionId], references: [id], onDelete: SetNull)
-  stateHash    String                      @unique @map("state_hash")
+  connection   WhatsAppConnection?         @relation(fields: [connectionId], references: [id], onDelete: SetNull, map: "fk_whatsapp_signup_sessions_connection")
+  stateHash    String                      @unique(map: "uq_whatsapp_signup_sessions_state_hash") @map("state_hash")
   codeVerifier String?                     @map("code_verifier")
   redirectUri  String                      @map("redirect_uri")
   status       WhatsAppSignupSessionStatus @default(PENDING)
@@ -1499,7 +1510,7 @@ model WhatsAppSignupSession {
   completedAt  DateTime?                   @map("completed_at") @db.Timestamptz
   createdAt    DateTime                    @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([tenantId, status])
+  @@index([tenantId, status], map: "idx_whatsapp_signup_sessions_tenant_status")
   @@map("whatsapp_signup_sessions")
 }
 
@@ -1514,26 +1525,26 @@ model WhatsAppWebhookEnvelope {
 
   events WhatsAppWebhookEvent[]
 
-  @@index([status])
-  @@index([expiresAt])
+  @@index([status], map: "idx_whatsapp_webhook_envelopes_status")
+  @@index([expiresAt], map: "idx_whatsapp_webhook_envelopes_expires")
   @@map("whatsapp_webhook_envelopes")
 }
 
 model WhatsAppWebhookEvent {
   id            String                     @id @default(uuid()) @db.Uuid
   envelopeId    String                     @map("envelope_id") @db.Uuid
-  envelope      WhatsAppWebhookEnvelope    @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  envelope      WhatsAppWebhookEnvelope    @relation(fields: [envelopeId], references: [id], onDelete: Cascade, map: "fk_whatsapp_webhook_events_envelope")
   tenantId      String?                    @map("tenant_id") @db.Uuid
-  tenant        Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant        Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: SetNull, map: "fk_whatsapp_webhook_events_tenant")
   wabaId        String?                    @map("waba_id")
   phoneNumberId String?                    @map("phone_number_id")
   eventType     WhatsAppWebhookEventType   @map("event_type")
   messageId     String?                    @map("message_id") @db.Uuid
-  message       WhatsAppMessage?           @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  message       WhatsAppMessage?           @relation(fields: [messageId], references: [id], onDelete: SetNull, map: "fk_whatsapp_webhook_events_message")
   metaMessageId String?                    @map("meta_message_id")
   occurredAt    DateTime?                  @map("occurred_at") @db.Timestamptz
   eventData     Json                       @map("event_data")
-  dedupeKey     String                     @unique @map("dedupe_key")
+  dedupeKey     String                     @unique(map: "uq_whatsapp_webhook_events_dedupe") @map("dedupe_key")
   status        WhatsAppWebhookEventStatus @default(PENDING)
   attemptCount  Int                        @default(0) @map("attempt_count")
   maxAttempts   Int                        @default(3) @map("max_attempts")
@@ -1542,19 +1553,19 @@ model WhatsAppWebhookEvent {
   processedAt   DateTime?                  @map("processed_at") @db.Timestamptz
   createdAt     DateTime                   @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([envelopeId])
-  @@index([messageId])
-  @@index([tenantId, status])
-  @@index([status, nextRetryAt])
+  @@index([envelopeId], map: "idx_whatsapp_webhook_events_envelope")
+  @@index([messageId], map: "idx_whatsapp_webhook_events_message")
+  @@index([tenantId, status], map: "idx_whatsapp_webhook_events_tenant_status")
+  @@index([status, nextRetryAt], map: "idx_whatsapp_webhook_events_status_retry")
   @@map("whatsapp_webhook_events")
 }
 
 model WhatsAppTemplate {
   id             String                     @id @default(uuid()) @db.Uuid
   tenantId       String                     @map("tenant_id") @db.Uuid
-  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_templates_tenant")
   connectionId   String                     @map("connection_id") @db.Uuid
-  connection     WhatsAppConnection         @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connection     WhatsAppConnection         @relation(fields: [connectionId], references: [id], onDelete: Cascade, map: "fk_whatsapp_templates_connection")
   metaTemplateId String                     @map("meta_template_id")
   name           String
   language       String
@@ -1568,40 +1579,40 @@ model WhatsAppTemplate {
   createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([connectionId, metaTemplateId, language])
-  @@index([connectionId, metaStatus])
-  @@index([connectionId, isEnabled])
+  @@unique([connectionId, metaTemplateId, language], map: "uq_whatsapp_templates_conn_template_lang")
+  @@index([connectionId, metaStatus], map: "idx_whatsapp_templates_conn_meta_status")
+  @@index([connectionId, isEnabled], map: "idx_whatsapp_templates_conn_enabled")
   @@map("whatsapp_templates")
 }
 
 model WhatsAppIntegrationAudit {
   id            String                         @id @default(uuid()) @db.Uuid
   tenantId      String                         @map("tenant_id") @db.Uuid
-  tenant        Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_integration_audits_tenant")
   userId        String?                        @map("user_id") @db.Uuid
-  user          User?                          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user          User?                          @relation(fields: [userId], references: [id], onDelete: SetNull, map: "fk_whatsapp_integration_audits_user")
   connectionId  String?                        @map("connection_id") @db.Uuid
-  connection    WhatsAppConnection?            @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  connection    WhatsAppConnection?            @relation(fields: [connectionId], references: [id], onDelete: SetNull, map: "fk_whatsapp_integration_audits_connection")
   credentialId  String?                        @map("credential_id") @db.Uuid
-  credential    WhatsAppCredential?            @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  credential    WhatsAppCredential?            @relation(fields: [credentialId], references: [id], onDelete: SetNull, map: "fk_whatsapp_integration_audits_credential")
   phoneNumberId String?                        @map("phone_number_id")
-  phoneNumber   WhatsAppPhoneNumber?           @relation(fields: [phoneNumberId], references: [phoneNumberId], onDelete: SetNull)
+  phoneNumber   WhatsAppPhoneNumber?           @relation(fields: [phoneNumberId], references: [phoneNumberId], onDelete: SetNull, map: "fk_whatsapp_integration_audits_phone")
   action        WhatsAppIntegrationAuditAction
   details       String?                        @db.Text
   createdAt     DateTime                       @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([tenantId, createdAt])
-  @@index([userId])
-  @@index([connectionId])
-  @@index([credentialId])
-  @@index([phoneNumberId])
+  @@index([tenantId, createdAt], map: "idx_whatsapp_integration_audits_tenant")
+  @@index([userId], map: "idx_whatsapp_integration_audits_user")
+  @@index([connectionId], map: "idx_whatsapp_integration_audits_connection")
+  @@index([credentialId], map: "idx_whatsapp_integration_audits_credential")
+  @@index([phoneNumberId], map: "idx_whatsapp_integration_audits_phone")
   @@map("whatsapp_integration_audits")
 }
 
 model WhatsAppConsent {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_consents_tenant")
   phone       String
   phoneHash   String   @map("phone_hash")
   consentedAt DateTime @map("consented_at") @db.Timestamptz
@@ -1609,14 +1620,14 @@ model WhatsAppConsent {
   source      String?  @map("source") // WEBHOOK | MANUAL | IMPORT
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  @@unique([tenantId, phoneHash])
+  @@unique([tenantId, phoneHash], map: "uq_whatsapp_consents_tenant_phone_hash")
   @@map("whatsapp_consents")
 }
 
 model WhatsAppOptOut {
   id         String   @id @default(uuid()) @db.Uuid
   tenantId   String   @map("tenant_id") @db.Uuid
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "fk_whatsapp_opt_outs_tenant")
   phone      String
   phoneHash  String   @map("phone_hash")
   reason     String?
@@ -1624,7 +1635,7 @@ model WhatsAppOptOut {
   optedOutAt DateTime @default(now()) @map("opted_out_at") @db.Timestamptz
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  @@unique([tenantId, phoneHash])
+  @@unique([tenantId, phoneHash], map: "uq_whatsapp_opt_outs_tenant_phone_hash")
   @@map("whatsapp_opt_outs")
 }
 
@@ -1637,7 +1648,7 @@ model WhatsAppOptOut {
 // ═══════════════════════════════════════════════════════════
 model WhatsAppPlatformSettings {
   id                         String   @id @default(uuid()) @db.Uuid
-  singletonKey               String   @unique @default("global") @map("singleton_key")
+  singletonKey               String   @unique(map: "uq_whatsapp_platform_settings_singleton") @default("global") @map("singleton_key")
   whatsappMessagingDisabled  Boolean  @default(false) @map("whatsapp_messaging_disabled")
   whatsappAutomationDisabled Boolean  @default(false) @map("whatsapp_automation_disabled")
   updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamptz
