@@ -12,6 +12,8 @@ DECLARE
     actual_nullable TEXT;
     actual_default TEXT;
     matching_count INTEGER;
+    provider_null_count INTEGER;
+    provider_nullable_after TEXT;
 BEGIN
     ---------------------------------------------------------------------------
     -- whatsapp_contacts
@@ -44,7 +46,7 @@ BEGIN
                     ('tenant_id',        'uuid',                     'NO',  'none',      NULL),
                     ('phone',            'text',                     'NO',  'none',      NULL),
                     ('name',             'text',                     'YES', 'none',      NULL),
-                    ('provider',         'text',                     'NO',  'contains',  'meta'),
+                    ('provider',         'text',                     'FIX', 'contains',  'meta'),
                     ('meta_contact_id',  'text',                     'YES', 'none',      NULL),
                     ('lead_id',          'uuid',                     'YES', 'none',      NULL),
                     ('last_message_at',  'timestamp with time zone', 'YES', 'none',      NULL),
@@ -71,7 +73,36 @@ BEGIN
                     r.column_name, r.data_type, actual_type;
             END IF;
 
-            IF actual_nullable <> r.is_nullable THEN
+            IF r.column_name = 'provider' AND r.is_nullable = 'FIX' THEN
+                -- Historical legacy creation (scripts/create-whatsapp-tables.sql) left
+                -- provider nullable. Tighten it here instead of failing outright, but
+                -- only when it is provably safe: zero NULLs at the moment of migration.
+                IF actual_nullable = 'YES' THEN
+                    EXECUTE 'SELECT COUNT(*) FROM public.whatsapp_contacts WHERE provider IS NULL'
+                        INTO provider_null_count;
+
+                    IF provider_null_count > 0 THEN
+                        RAISE EXCEPTION
+                            'whatsapp_contacts.provider: % row(s) have NULL provider — refusing to guess a backfill value; resolve manually before this migration can proceed',
+                            provider_null_count;
+                    END IF;
+
+                    ALTER TABLE public.whatsapp_contacts
+                        ALTER COLUMN provider SET NOT NULL;
+
+                    SELECT is_nullable INTO provider_nullable_after
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'whatsapp_contacts'
+                      AND column_name = 'provider';
+
+                    IF provider_nullable_after <> 'NO' THEN
+                        RAISE EXCEPTION
+                            'whatsapp_contacts.provider: SET NOT NULL did not take effect (still nullable)';
+                    END IF;
+                END IF;
+                -- actual_nullable was 'NO' already (or just fixed above) — fall through.
+            ELSIF actual_nullable <> r.is_nullable THEN
                 RAISE EXCEPTION
                     'whatsapp_contacts.%: nullable expected %, got %',
                     r.column_name, r.is_nullable, actual_nullable;
