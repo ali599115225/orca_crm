@@ -1,3 +1,4 @@
+import { displayUiAlias } from "@/lib/display/uiAliases";
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
@@ -264,7 +265,7 @@ export default async function OwnerPortalPage() {
                     </td>
                     <td>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${t.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : t.status === 'in_progress' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                        {t.status === 'pending' ? 'معلق' : t.status === 'in_progress' ? 'قيد التنفيذ' : t.status === 'completed' ? 'مكتمل' : t.status}
+                        {displayUiAlias("maintenanceStatus", t.status, "ar")}
                       </span>
                     </td>
                     <td className="text-[var(--nc-text-dim)]">{t.assignedTo || '—'}</td>

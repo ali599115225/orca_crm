@@ -1,4 +1,5 @@
 "use client";
+import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1384,7 +1385,18 @@ export default function SalesContractWorkspace({
                             ? L("قسط", "Installment")
                             : event.tableName === "payment_plans"
                               ? L("خطة دفع", "Payment plan")
-                              : event.tableName}
+                              : L(
+                                  displayUiAlias(
+                                    "salesEntity",
+                                    event.tableName,
+                                    "ar"
+                                  ),
+                                  displayUiAlias(
+                                    "salesEntity",
+                                    event.tableName,
+                                    "en"
+                                  )
+                                )}
                   </p>
                 </div>
               ))

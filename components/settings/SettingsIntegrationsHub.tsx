@@ -1,4 +1,5 @@
 "use client";
+import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import {
@@ -340,7 +341,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                 </span>
                 {provider.id !== "WHATSAPP" && (
                   <span className={`rounded-full border px-2 py-1 text-[9px] font-black ${badgeClass(state?.status || "NOT_CONFIGURED")}`}>
-                    {state?.status || "NOT_CONFIGURED"}
+                    {L(displayUiAlias("integrationStatus", state?.status || "NOT_CONFIGURED", "ar"), displayUiAlias("integrationStatus", state?.status || "NOT_CONFIGURED", "en"))}
                   </span>
                 )}
               </button>
@@ -364,7 +365,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
             </div>
             <div className="flex items-center gap-2">
               <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black ${badgeClass(connection?.status || "NOT_CONFIGURED")}`}>
-                {connection?.status || "NOT_CONFIGURED"}
+                {L(displayUiAlias("integrationStatus", connection?.status || "NOT_CONFIGURED", "ar"), displayUiAlias("integrationStatus", connection?.status || "NOT_CONFIGURED", "en"))}
               </span>
               {connection?.credentialsVersion ? (
                 <span className="text-[10px] text-[var(--nc-foreground-muted)]">

@@ -1,6 +1,7 @@
 // app/operations/agents/AgentsHudView.tsx
 // 🖥️ لوحة HUD التفاعلية للوكلاء الذكيين
 "use client";
+import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from '@/app/context/AppContext';
@@ -286,9 +287,9 @@ export default function AgentsHudView({
               onChange={(e) => setNewAgentType(e.target.value)}
               className="w-full bg-white/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-900 dark:text-white text-xs rounded-lg p-2.5 focus:outline-none focus:border-corporate-blue dark:focus:border-cyan-glow transition-all"
             >
-              <option value="CHAT_BOT" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">💬 وكيل المحادثة (Chat Bot)</option>
-              <option value="SAHER" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">🤖 ساهر الصيانة (Sentinel)</option>
-              <option value="SANAD" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">🤖 سند الفوترة (Billing)</option>
+              <option value="CHAT_BOT" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">{displayUiAlias("agentType", "CHAT_BOT", "ar")}</option>
+              <option value="SAHER" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">{displayUiAlias("agentType", "SAHER", "ar")}</option>
+              <option value="SANAD" className="bg-lightBg dark:bg-void text-slate-900 dark:text-white">{displayUiAlias("agentType", "SANAD", "ar")}</option>
             </select>
           </div>
 

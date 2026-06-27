@@ -1,5 +1,6 @@
 // app/admin/command-center/page.tsx
 'use client';
+import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import { useState, useEffect, useRef } from 'react';
 import { SmartCard } from '@/components/ui/SmartCard';
@@ -25,9 +26,9 @@ interface SentinelData {
 
 const DELEGATION_LEVELS = [
   { key: 'MONITORING_ONLY', label: 'مراقبة فقط', desc: 'يراقب الأعطال والتذاكر والدفع والواتساب وأداء الوكلاء وأخطاء النظام. لا ينفذ أي إصلاح.' },
-  { key: 'MAINTENANCE_MONITORING', label: 'صيانة ومراقبة', desc: 'يفتح Incidents ويصنفها، يرسل تنبيهات، يوجه مهام للفريق الخارجي، يفعل رسائل fallback.' },
-  { key: 'SIMPLE_REPAIRS', label: 'إصلاحات بسيطة', desc: 'يعطل ردود آلية مكسورة، يفعل رسائل صيانة، يعيد محاولة مهام فاشلة، يغير status الخدمات.' },
-  { key: 'CONDITIONAL_DEEP_REPAIR', label: 'إصلاح عميق مشروط', desc: 'يعمل فقط في الحالات الحرجة بعد انتظار المالك، ضمن Runbook معتمد مسبقًا.' },
+  { key: 'MAINTENANCE_MONITORING', label: 'صيانة ومراقبة', desc: 'يفتح البلاغات التشغيلية ويصنفها، يرسل تنبيهات، يوجه مهام للفريق الخارجي، ويفعّل رسائل الاستجابة البديلة.' },
+  { key: 'SIMPLE_REPAIRS', label: 'إصلاحات بسيطة', desc: 'يعطل ردودًا آلية مكسورة، يفعّل رسائل الصيانة، يعيد محاولة المهام الفاشلة، ويغيّر حالات الخدمات.' },
+  { key: 'CONDITIONAL_DEEP_REPAIR', label: 'إصلاح عميق مشروط', desc: 'يعمل فقط في الحالات الحرجة بعد انتظار المالك، ضمن دليل إجراءات معتمد مسبقًا.' },
 ];
 
 const WAIT_OPTIONS = [15, 30, 60, 180, 360];
@@ -153,7 +154,7 @@ export default function CommandCenterPage() {
             <SmartCard className="p-4 text-center">
               <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">وضع التشغيل</p>
               <p className="text-sm font-black text-[var(--nc-foreground)] mt-1">
-                {data.status === 'NORMAL_MODE' ? 'Normal' : data.status === 'VACATION_MODE' ? 'Vacation' : data.status === 'EMERGENCY_MODE' ? 'Emergency' : data.status === 'APPROVAL_MODE' ? 'Approval' : data.status}
+                {displayUiAlias("commandMode", data.status, "ar")}
               </p>
             </SmartCard>
             <SmartCard className="p-4 text-center">
@@ -168,7 +169,16 @@ export default function CommandCenterPage() {
           <SmartCard className="p-5">
             <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">وضع التشغيل</h3>
             <div className="flex flex-wrap gap-2">
-              {[{ key: 'NORMAL_MODE', label: 'Normal' }, { key: 'VACATION_MODE', label: 'Vacation' }, { key: 'EMERGENCY_MODE', label: 'Emergency' }, { key: 'APPROVAL_MODE', label: 'Approval' }].map(m => {
+              {[
+                "NORMAL_MODE",
+                "VACATION_MODE",
+                "EMERGENCY_MODE",
+                "APPROVAL_MODE",
+              ].map((key) => {
+                const m = {
+                  key,
+                  label: displayUiAlias("commandMode", key, "ar"),
+                };
                 const active = isMode(m.key);
                 return (
                   <button key={m.key} onClick={() => postAction({ action: 'change-mode', mode: m.key })}
