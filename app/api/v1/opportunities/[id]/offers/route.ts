@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { createOffer } from "@/lib/domain/transaction-spine";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function POST(
   request: NextRequest,
@@ -45,6 +46,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: offer }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/opportunities/[id]/offers failed", error).messageAr }, { status: 500 });
   }
 }

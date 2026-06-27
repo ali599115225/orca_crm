@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/reports/leads-performance failed", error).messageAr }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { computeNextRetryAt, isExpired } from '@/lib/zatca/queue';
 import { submitReporting, submitClearance } from '@/lib/zatca/api';
 import { rateLimit } from '@/lib/rate-limit';
 import { writeAuditLog } from '@/lib/audit';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -153,6 +154,6 @@ export async function GET(request: NextRequest) {
       }),
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/cron/zatca failed", error).messageAr }, { status: 500 });
   }
 }

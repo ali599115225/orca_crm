@@ -18,6 +18,7 @@ import {
   markRetrying,
   isSandboxRuntime,
 } from '@/lib/zatca/gate-adapter';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 // ─── ZATCA Invoice Submit Route (Hardened) ────────────────────────────────────
 //
@@ -317,7 +318,7 @@ export async function POST(
     return NextResponse.json(providerPayload);
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/submit/[id] failed", error).messageAr }, { status: 500 });
   }
 }
 

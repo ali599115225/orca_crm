@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/leases failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/leases failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -128,6 +129,6 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, lease: updated });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "PUT /api/v1/leases failed", error).messageAr }, { status: 500 });
   }
 }

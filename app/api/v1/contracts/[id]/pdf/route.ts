@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 async function authenticateRequest() {
   const cookieStore = await cookies();
@@ -180,6 +181,6 @@ export async function GET(
     }
     return new NextResponse(html, { headers });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/contracts/[id]/pdf failed", error).messageAr }, { status: 500 });
   }
 }

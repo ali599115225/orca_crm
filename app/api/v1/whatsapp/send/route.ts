@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/api-auth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send-service";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function POST(request: NextRequest) {
   const session = await authenticateRequest(request);
@@ -27,6 +28,6 @@ export async function POST(request: NextRequest) {
       errorCode: result.errorCode,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/whatsapp/send failed", error).messageAr }, { status: 500 });
   }
 }

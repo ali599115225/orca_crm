@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
 import QRCode from 'qrcode';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 async function authenticateRequest() {
   const cookieStore = await cookies();
@@ -48,6 +49,6 @@ export async function GET(
       headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/invoices/[id]/qr failed", error).messageAr }, { status: 500 });
   }
 }

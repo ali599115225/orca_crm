@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTenantAndUser } from '@/lib/api-helpers';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -27,6 +28,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ success: true, ticket });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "PATCH /api/v1/maintenance/[id] failed", error).messageAr }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 import { tenantContext } from "@/lib/tenant-context";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: tasks });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/tasks failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: newTask }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/tasks failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -144,7 +145,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: updatedTask });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "PUT /api/tasks failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -180,6 +181,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: "تم حذف مهمة المتابعة بنجاح." });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/tasks failed", error).messageAr }, { status: 500 });
   }
 }

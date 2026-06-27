@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -55,7 +56,7 @@ export async function GET(
       }
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/projects/[id] failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -94,7 +95,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "PUT /api/projects/[id] failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -117,6 +118,6 @@ export async function DELETE(
     await prisma.project.delete({ where: { id } });
     return NextResponse.json({ success: true, message: "تم حذف المشروع" });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/projects/[id] failed", error).messageAr }, { status: 500 });
   }
 }

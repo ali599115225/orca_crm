@@ -11,6 +11,7 @@ import {
   markDelivered,
   markRetrying,
 } from '@/lib/zatca/gate-adapter';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 // ─── POST: Issue/Renew CSID for a ZATCA device (Hardened) ────────────────────
 //
@@ -124,6 +125,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responsePayload);
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/csid failed", error).messageAr }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone, hashEmail } from "@/lib/privacy-mask";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: leads });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/leads failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -108,6 +109,6 @@ export async function POST(request: NextRequest) {
       await logPlanBlockedAttempt({ tenantId: error.message.includes("TENANT") ? "" : "", error }).catch(() => {});
       return NextResponse.json(error.toJSON(), { status: 403 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/leads failed", error).messageAr }, { status: 500 });
   }
 }

@@ -8,6 +8,7 @@ import { sendAdminEmailAlert } from "@/lib/email";
 import { sendSMSNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -363,7 +364,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("Cron Job Error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/cron/billing failed", error).messageAr },
       { status: 500 }
     );
   }

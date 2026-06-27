@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { LeadStatus } from "@prisma/client";
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function PATCH(
   request: NextRequest,
@@ -106,6 +107,6 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updatedLead });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "PATCH /api/v1/leads/[id]/move failed", error).messageAr }, { status: 500 });
   }
 }

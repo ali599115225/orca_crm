@@ -10,6 +10,7 @@ import {
 } from '@/lib/api-auth-guard';
 import { encryptText } from '@/lib/crypto';
 import { writeAuditLog } from '@/lib/audit';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 const API_KEY_ADMIN_ROLES = ["ADMIN", "owner"] as const;
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: masked });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
   }
 }
 
@@ -133,6 +134,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'تم حذف المفتاح' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
   }
 }

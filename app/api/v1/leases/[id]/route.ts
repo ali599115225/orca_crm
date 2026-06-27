@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/api-auth';
+import { ErrorCode, publicError } from "@/lib/errors";
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +30,6 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: lease });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/leases/[id] failed", error).messageAr }, { status: 500 });
   }
 }
