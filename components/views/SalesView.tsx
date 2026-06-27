@@ -37,6 +37,10 @@ const TRANSLATIONS = {
     tableTarget: "تحقيق الهدف",
     loading: "جاري حساب وتحليل مؤشرات الأداء...",
     noData: "لا يوجد بيانات مبيعات مسجلة حالياً.",
+    loadErrorTitle: "تعذر تحميل بيانات المبيعات",
+    loadErrorDescription: "لم نتمكن من جلب مؤشرات أداء فريق المبيعات. تحقق من الاتصال ثم أعد المحاولة.",
+    retry: "إعادة المحاولة",
+    staleDataWarning: "تعذر تحديث البيانات لحظياً. المعروض هو آخر بيانات تم تحميلها.",
     bookingSuffix: " حجز",
     contractSuffix: " عقد",
     leadSuffix: " عميل"
@@ -64,6 +68,10 @@ const TRANSLATIONS = {
     tableTarget: "KPI Target",
     loading: "Calculating performance metrics...",
     noData: "No sales data found.",
+    loadErrorTitle: "Unable to load sales data",
+    loadErrorDescription: "Sales performance metrics could not be retrieved. Check the connection and try again.",
+    retry: "Try again",
+    staleDataWarning: "Live refresh failed. The page is showing the most recently loaded data.",
     bookingSuffix: " res.",
     contractSuffix: " contr.",
     leadSuffix: " leads"
@@ -102,14 +110,21 @@ export default function SalesView() {
 
   const [salesReps, setSalesReps] = useState<SalesRepKPI[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadPerformance = useCallback(async (showLoading = false) => {
-    if (showLoading) setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+      setLoadError(false);
+    }
+
     try {
       const data = await getSalesPerformanceAction();
       setSalesReps(data);
+      setLoadError(false);
     } catch (err) {
       console.error("Failed to load sales data", err);
+      setLoadError(true);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -152,8 +167,60 @@ export default function SalesView() {
     );
   }
 
+  if (loadError && salesReps.length === 0) {
+    return (
+      <div
+        className="flex min-h-[50vh] items-center justify-center p-6 text-center"
+        dir={dir}
+        role="alert"
+        aria-live="assertive"
+      >
+        <SmartCard className="w-full max-w-xl p-8">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+            <i className="ph-bold ph-warning-circle text-2xl" aria-hidden="true"></i>
+          </div>
+          <h2 className="text-xl font-black text-[var(--nc-text-primary)]">
+            {t.loadErrorTitle}
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-[var(--nc-text-dim)]">
+            {t.loadErrorDescription}
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadPerformance(true)}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-5 py-2.5 text-sm font-bold text-white"
+          >
+            <i className="ph-bold ph-arrow-clockwise" aria-hidden="true"></i>
+            {t.retry}
+          </button>
+        </SmartCard>
+      </div>
+    );
+  }
+
   return (
     <div className="nc-page nc-stack p-6" dir={dir}>
+
+      {loadError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-[var(--nc-text-primary)]"
+        >
+          <div className="flex items-center gap-2">
+            <i className="ph-bold ph-warning-circle text-amber-500" aria-hidden="true"></i>
+            <span>{t.staleDataWarning}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadPerformance(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-bold text-amber-600"
+          >
+            <i className="ph-bold ph-arrow-clockwise" aria-hidden="true"></i>
+            {t.retry}
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <PageHeader title={t.title} description={t.desc}>
