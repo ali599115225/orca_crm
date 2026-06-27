@@ -72,7 +72,10 @@ async function runUAT() {
 
     // Now, trigger the cron endpoint via fetch
     console.log("Triggering billing cron API endpoint to calculate growth warning...");
-    const cronSecret = "cron_secret_orca_2026";
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    if (!cronSecret) {
+      throw new Error("CRON_SECRET is required for UAT verification");
+    }
     const cronRes = await fetch("http://localhost:3000/api/cron/billing", {
       method: "GET",
       headers: {
