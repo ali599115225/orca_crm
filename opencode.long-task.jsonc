@@ -1,0 +1,71 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode-go/qwen3.7-plus",
+  "shell": "pwsh",
+  "agent": {
+    "plan": {
+      "description": "قراءة سريعة فقط عند الحاجة؛ لا تنفذ ولا توسع النطاق",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4-flash",
+      "steps": 3,
+      "temperature": 0.1,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "git log*": "allow",
+          "git branch*": "allow",
+          "git rev-parse*": "allow"
+        }
+      }
+    },
+    "build": {
+      "description": "تنفيذ مهمة ORCA الطويلة مباشرة دون تكرار الفحص أو تفويض لوكلاء فرعيين",
+      "mode": "primary",
+      "model": "opencode-go/qwen3.7-plus",
+      "steps": 48,
+      "temperature": 0.1,
+      "prompt": "نفّذ الأمر المحدد مباشرة. لا تعِد قراءة النطاق، لا تفوض المهمة، لا تعدّل الكود أو السكربت أو schema أو migrations، ولا تحاول إصلاح الحواجز. شغّل سكربت الإغلاق مرة واحدة، ثم أعد FINAL-REPORT.md وFINAL-REPORT.json ومسارات logs كما صدرت. توقف فور ظهور حاجز حقيقي.",
+      "permission": {
+        "edit": "deny",
+        "external_directory": {
+          "~/AppData/Local/Temp/ORCA-Closure/**": "allow",
+          "~/OneDrive/سطح المكتب/سكريبت/**": "allow"
+        },
+        "bash": {
+          "*": "deny",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git grep*": "allow",
+          "git log*": "allow",
+          "git branch*": "allow",
+          "git rev-parse*": "allow",
+          "Test-Path *": "allow",
+          "Resolve-Path *": "allow",
+          "Get-ChildItem *ORCA-Closure*": "allow",
+          "Get-Content *FINAL-REPORT.md*": "allow",
+          "Get-Content *FINAL-REPORT.json*": "allow",
+          "pwsh -NoProfile -ExecutionPolicy Bypass -File *orca-revenue-integrity-full-closure.ps1*": "allow",
+          "powershell -NoProfile -ExecutionPolicy Bypass -File *orca-revenue-integrity-full-closure.ps1*": "allow",
+          "pwsh -NoProfile -ExecutionPolicy Bypass -File *run-orca-closure.ps1*": "allow",
+          "powershell -NoProfile -ExecutionPolicy Bypass -File *run-orca-closure.ps1*": "allow"
+        }
+      }
+    },
+    "final-review": {
+      "description": "معطّل مؤقتًا أثناء مهمة الإغلاق الطويلة لمنع إعادة الفحص",
+      "mode": "subagent",
+      "model": "opencode-go/kimi-k2.7-code",
+      "disable": true
+    },
+    "security-review": {
+      "description": "معطّل مؤقتًا أثناء مهمة الإغلاق الطويلة لمنع تكرار التدقيق",
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.7-max",
+      "disable": true
+    }
+  }
+}

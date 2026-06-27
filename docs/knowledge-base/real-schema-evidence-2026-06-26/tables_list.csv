@@ -1,0 +1,6 @@
+"table_schema","table_name","table_type"
+"public","contracts","BASE TABLE"
+"public","installments","BASE TABLE"
+"public","invoices","BASE TABLE"
+"public","payment_transactions","BASE TABLE"
+"public","units","BASE TABLE"
