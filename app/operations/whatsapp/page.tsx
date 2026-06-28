@@ -1,7 +1,10 @@
 import { getWhatsAppChatsAction, getCloudAPIStatusAction } from "@/app/actions/whatsapp";
 import WhatsAppView from "@/components/views/WhatsAppView";
+import { requireAuth } from "@/lib/api-auth-guard";
 
 export default async function WHATSAPPPage() {
+  const session = await requireAuth();
+
   let chatResult: any = { success: false, chats: [], tenant: null, warning: null };
   let cloudStatus: any = { configured: false, provider: "none", status: "disconnected", error: null };
 
@@ -20,6 +23,7 @@ export default async function WHATSAPPPage() {
       tenant={tenant}
       cloudStatus={cloudStatus}
       warning={chatResult.warning || null}
+      currentUserId={session?.userId || null}
     />
   );
 }

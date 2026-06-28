@@ -8,6 +8,7 @@ import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
 import { archiveChatAction, assignChatAction, getWhatsAppChatsAction, sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
 import { getTenantUsersAction } from "@/app/actions/users";
 import { useApp } from "@/app/context/AppContext";
+import { useNotify } from "@/app/context/UIBusContext";
 import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
 import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
 import { toArabicNumerals } from "@/lib/formatters";
@@ -46,6 +47,7 @@ interface WhatsAppViewProps {
   };
   cloudStatus: any;
   warning: string | null;
+  currentUserId: string | null;
 }
 
 const PAGE_SIZE = 5;
@@ -77,6 +79,7 @@ const TEXT = {
     unreadFilter: "غير مقروءة",
     waitingFilter: "بانتظار الرد",
     archivedFilter: "المؤرشفة",
+    assignedToMe: "مسندة إليّ",
     connected: "واتساب — متصل",
     disconnected: "واتساب — غير متصل",
     notConfigured: "يلزم إكمال إعدادات الربط قبل استخدام المحادثات.",
@@ -152,6 +155,7 @@ const TEXT = {
     unreadFilter: "Unread",
     waitingFilter: "Awaiting reply",
     archivedFilter: "Archived",
+    assignedToMe: "Assigned to me",
     connected: "WhatsApp — Connected",
     disconnected: "WhatsApp — Disconnected",
     notConfigured: "Connection settings must be completed before using conversations.",
@@ -253,8 +257,9 @@ function isValidLocalPhone(countryCode: string, localPhone: string) {
   return Boolean(rule && local.length === rule.localLength && !local.startsWith("0"));
 }
 
-export default function WhatsAppView({ initialChats, tenant, cloudStatus, warning }: WhatsAppViewProps) {
+export default function WhatsAppView({ initialChats, tenant, cloudStatus, warning, currentUserId }: WhatsAppViewProps) {
   const { lang } = useApp();
+  const { notify } = useNotify();
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
@@ -280,6 +285,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const sendInFlightRef = useRef(false);
   const createSendInFlightRef = useRef(false);
   const selectedChatRef = useRef<Chat | null>(null);
+  const latestIncomingMessageRef = useRef<string | null>(null);
 
   const fetchFreshChats = useCallback(async (mode: "active" | "archived" = filter === "ARCHIVED" ? "archived" : "active") => {
     if (fetchInFlightRef.current) return fetchInFlightRef.current;
@@ -355,6 +361,60 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     return raw;
   };
 
+  useEffect(() => {
+    if (filter === "ARCHIVED") return;
+
+    const latestIncoming = sortedChats
+      .flatMap((chat) =>
+        chat.messages.map((message, index) => ({ chat, message, index }))
+      )
+      .filter(({ message }) => message.sender === "client")
+      .sort(
+        (left, right) =>
+          new Date(right.message.time || 0).getTime() -
+          new Date(left.message.time || 0).getTime()
+      )[0];
+
+    if (!latestIncoming) {
+      latestIncomingMessageRef.current = null;
+      return;
+    }
+
+    const key =
+      latestIncoming.message.id ||
+      `${latestIncoming.chat.id}:${latestIncoming.message.time}:${latestIncoming.message.text}:${latestIncoming.index}`;
+
+    if (latestIncomingMessageRef.current === null) {
+      latestIncomingMessageRef.current = key;
+      return;
+    }
+
+    if (latestIncomingMessageRef.current !== key) {
+      const fallbackCustomer = isArabic ? TEXT.AR.fallbackCustomer : TEXT.EN.fallbackCustomer;
+      const fallbackMessage = isArabic ? TEXT.AR.noData : TEXT.EN.noData;
+      const rawName = String(latestIncoming.chat.contactName || "").trim();
+      const phone = normalizeWhatsAppPhone(latestIncoming.chat.contactPhone);
+      const contactName =
+        !rawName ||
+        rawName === phone ||
+        /^[+\d\s-]{6,}$/.test(rawName) ||
+        isTechnical(rawName)
+          ? phone || fallbackCustomer
+          : rawName;
+
+      notify({
+        type: "info",
+        title: isArabic
+          ? `رسالة واتساب جديدة من ${contactName}`
+          : `New WhatsApp message from ${contactName}`,
+        message: cleanDisplayText(latestIncoming.message.text, fallbackMessage),
+        duration: 6000,
+      });
+    }
+
+    latestIncomingMessageRef.current = key;
+  }, [filter, isArabic, notify, sortedChats]);
+
   const statusLabel = (status?: string | null) => {
     if (status === "sent") return t.statusSent;
     if (status === "delivered") return t.statusDelivered;
@@ -411,6 +471,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       (filter === "ARCHIVED" && chat.archived) ||
       (filter === "UNREAD" && chat.unread) ||
       (filter === "WAITING" && isWaitingReply(chat)) ||
+      (filter === "ASSIGNED_TO_ME" && Boolean(currentUserId) && chat.assignedUserId === currentUserId) ||
       (filter === "OPEN" && !chat.archived);
     return matchesSearch && matchesFilter;
   });
@@ -598,7 +659,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       id: message.id || `${selectedChat.id}-${message.time}-${index}`,
       body: (
           <span style={{ display: "grid", gap: 5 }}>
-            <span style={{ fontSize: 14, lineHeight: 1.65 }}>{cleanDisplayText(message.text, t.noData)}</span>
+            <span style={{ fontSize: 16, lineHeight: 1.7 }}>{cleanDisplayText(message.text, t.noData)}</span>
           <span style={{ fontSize: 11, lineHeight: 1.2, opacity: 0.72 }}>
             {formatDateTime(message.time)}
             {message.sender === "agent" ? ` · ${statusLabel(message.status)}` : ""}
@@ -639,6 +700,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
         { value: "ARCHIVED", label: t.archivedFilter },
         { value: "UNREAD", label: t.unreadFilter },
         { value: "WAITING", label: t.waitingFilter },
+        ...(currentUserId ? [{ value: "ASSIGNED_TO_ME", label: t.assignedToMe }] : []),
       ]}
       onFilterChange={(value) => {
         setFilter(value);
