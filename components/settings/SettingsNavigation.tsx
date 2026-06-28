@@ -68,15 +68,14 @@ export default function SettingsNavigation({
   return (
     <nav
       aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}
-      className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-3"
+      className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-2"
     >
-      {" "}
-      <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+      <div className="flex gap-1.5 overflow-x-auto">
         {ITEMS.map((item) => {
           const active = item.id === activeSection;
 
           const buttonClassName = [
-            "flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all",
+            "flex min-w-max shrink-0 items-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)]",
             active
               ? "border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"

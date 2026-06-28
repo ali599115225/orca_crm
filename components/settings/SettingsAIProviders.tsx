@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "@/app/context/AppContext";
 import { SmartCard } from "@/components/ui/SmartCard";
+import SettingsButton from "@/components/settings/SettingsButton";
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import { testAIProviderConnectionAction } from "@/app/actions/ai-providers"; // We will create this
 
 type ProviderType = "openai" | "anthropic" | "gemini" | "azure" | "bedrock";
@@ -111,9 +114,46 @@ const PROVIDERS: AIProvider[] = [
   },
 ];
 
+const PROVIDER_OPTIONS = [
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "gemini", label: "Google Gemini" },
+  { value: "azure", label: "Azure OpenAI" },
+  { value: "bedrock", label: "AWS Bedrock" },
+];
+
+const MODEL_OPTIONS = [
+  { value: "gpt-4o", label: "gpt-4o" },
+  { value: "gpt-4-turbo", label: "gpt-4-turbo" },
+  { value: "claude-3-5-sonnet", label: "claude-3-5-sonnet" },
+];
+
+const AGENTS = [
+  { id: "MANSOUR", nameAr: "منصور", nameEn: "Mansour" },
+  { id: "SAHER", nameAr: "ساهر", nameEn: "Saher" },
+  { id: "SANAD", nameAr: "سند", nameEn: "Sanad" },
+  { id: "BASEER", nameAr: "بصير", nameEn: "Baseer" },
+  { id: "KHABEER", nameAr: "خبير", nameEn: "Khabeer" },
+];
+
+type AgentAssignment = {
+  provider: string;
+  model: string;
+  fallback1: string;
+  fallback2: string;
+};
+
+const DEFAULT_ASSIGNMENT: AgentAssignment = {
+  provider: "openai",
+  model: "gpt-4o",
+  fallback1: "",
+  fallback2: "",
+};
+
 export default function SettingsAIProviders() {
   const { lang } = useApp();
   const isArabic = lang === "AR";
+  const L = (ar: string, en: string) => (isArabic ? ar : en);
 
   const [selectedProvider, setSelectedProvider] = useState<ProviderType | null>(
     null,
@@ -123,6 +163,11 @@ export default function SettingsAIProviders() {
     "idle" | "testing" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [assignments, setAssignments] = useState<Record<string, AgentAssignment>>(() =>
+    Object.fromEntries(AGENTS.map((agent) => [agent.id, { ...DEFAULT_ASSIGNMENT }])),
+  );
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const handleTestConnection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,205 +201,275 @@ export default function SettingsAIProviders() {
     }
   };
 
+  function openProvider(id: ProviderType) {
+    if (document.activeElement && document.activeElement !== document.body) {
+      lastFocusedRef.current = document.activeElement as HTMLElement;
+    }
+    setSelectedProvider(id);
+    setStatus("idle");
+    setFormData({});
+  }
+
+  function closeDrawer() {
+    setSelectedProvider(null);
+    lastFocusedRef.current?.focus();
+  }
+
+  function updateAssignment(agentId: string, field: keyof AgentAssignment, value: string) {
+    setAssignments((current) => ({
+      ...current,
+      [agentId]: { ...current[agentId], [field]: value },
+    }));
+  }
+
+  const activeDefinition = PROVIDERS.find((p) => p.id === selectedProvider) || null;
+
+  const isDirty = useMemo(
+    () => Object.values(formData).some((value) => String(value || "").trim()),
+    [formData],
+  );
+
+  function handleOverlayClick() {
+    if (isDirty) return;
+    closeDrawer();
+  }
+
+  useEffect(() => {
+    if (!activeDefinition) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeDrawer();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDefinition]);
+
+  useEffect(() => {
+    if (activeDefinition) titleRef.current?.focus();
+  }, [activeDefinition]);
+
+  useEffect(() => {
+    if (!activeDefinition) return;
+    const scrollContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement | null;
+    const previousContainerOverflow = scrollContainer?.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    if (scrollContainer) scrollContainer.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (scrollContainer) scrollContainer.style.overflow = previousContainerOverflow || "";
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [activeDefinition]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-4 space-y-4">
-        <SmartCard className="p-4">
-          <h3 className="font-bold text-[var(--nc-foreground)] mb-4">
-            {isArabic ? "مزودو الذكاء الاصطناعي" : "AI Providers"}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-black text-[var(--nc-foreground)]">
+          {L("إعدادات الذكاء الاصطناعي", "AI Settings")}
+        </h2>
+        <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
+          {L(
+            "إدارة مزودي الذكاء الاصطناعي وتعيين الوكلاء والنماذج البديلة.",
+            "Manage AI providers and assign agents and fallback models.",
+          )}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {PROVIDERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => openProvider(p.id)}
+            className={`flex h-16 flex-col items-center justify-center gap-1.5 rounded-2xl border transition-colors ${
+              selectedProvider === p.id
+                ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
+                : "border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
+            }`}
+          >
+            <i className={`${p.icon} text-lg`} aria-hidden="true" />
+            <span className="truncate px-2 text-xs font-semibold">{p.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <SmartCard className="overflow-hidden">
+        <div className="border-b border-[var(--nc-border)] p-5">
+          <h3 className="text-lg font-bold text-[var(--nc-foreground)]">
+            {L("تعيين مزود ونموذج لكل وكيل", "Assign Provider & Model per Agent")}
           </h3>
-          <div className="space-y-2">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setSelectedProvider(p.id);
-                  setStatus("idle");
-                  setFormData({});
-                }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all border ${selectedProvider === p.id ? "bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-foreground)]" : "bg-[var(--nc-surface)] border-transparent text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"}`}
-              >
-                <i className={`${p.icon} text-lg`} />
-                <span className="font-semibold text-sm">{p.name}</span>
-              </button>
-            ))}
-          </div>
-        </SmartCard>
-      </div>
+          <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
+            {L(
+              "حدد المزود الأساسي والنموذج ونظام الترتيب البديل (Fallback) لكل وكيل.",
+              "Select the primary provider, model, and fallback priority for each agent.",
+            )}
+          </p>
+        </div>
 
-      <div className="lg:col-span-8">
-        {selectedProvider ? (
-          <SmartCard className="p-6">
-            <h3 className="font-bold text-[var(--nc-foreground)] text-lg mb-2">
-              {isArabic ? "إعدادات الربط:" : "Connection Settings:"}{" "}
-              {PROVIDERS.find((p) => p.id === selectedProvider)?.name}
-            </h3>
-            <p className="text-[var(--nc-foreground-muted)] text-sm mb-6">
-              {isArabic
-                ? "يتم تشفير هذه البيانات وتخزينها بشكل آمن. يمكنك اختبار الاتصال لضمان صلاحية المفاتيح قبل الحفظ."
-                : "These credentials are encrypted and stored securely. Test the connection to ensure validity before saving."}
-            </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-start text-sm">
+            <thead className="border-b border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)]">
+              <tr>
+                <th className="px-5 py-3 text-start font-bold">{L("الوكيل", "Agent")}</th>
+                <th className="px-5 py-3 text-start font-bold">{L("المزود الأساسي", "Default Provider")}</th>
+                <th className="px-5 py-3 text-start font-bold">{L("النموذج", "Default Model")}</th>
+                <th className="px-5 py-3 text-start font-bold">Fallback 1</th>
+                <th className="px-5 py-3 text-start font-bold">Fallback 2</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--nc-border)]">
+              {AGENTS.map((agent) => {
+                const assignment = assignments[agent.id] ?? DEFAULT_ASSIGNMENT;
+                const fallback1Options = [
+                  { value: "", label: L("لا يوجد", "None") },
+                  { value: "anthropic", label: "Anthropic" },
+                  { value: "azure", label: "Azure OpenAI" },
+                ];
+                const fallback2Options = [
+                  { value: "", label: L("لا يوجد", "None") },
+                  { value: "gemini", label: "Google Gemini" },
+                  { value: "bedrock", label: "AWS Bedrock" },
+                ];
 
-            <form onSubmit={handleTestConnection} className="space-y-4">
-              {PROVIDERS.find((p) => p.id === selectedProvider)?.fields.map(
-                (field) => (
-                  <div key={field.key}>
-                    <label className="block text-xs font-semibold text-[var(--nc-foreground-muted)] mb-1">
-                      {isArabic ? field.labelAr : field.labelEn}
-                    </label>
-                    <input
-                      type={field.type}
-                      value={formData[field.key] || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [field.key]: e.target.value,
-                        })
-                      }
-                      required
-                      className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
-                    />
-                  </div>
-                ),
-              )}
-
-              <div className="pt-4 flex items-center gap-4 border-t border-[var(--nc-border)]">
-                <button
-                  type="submit"
-                  disabled={status === "testing"}
-                  className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground)] hover:bg-[var(--nc-surface)] px-5 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                >
-                  {status === "testing"
-                    ? isArabic
-                      ? "جاري الاختبار..."
-                      : "Testing..."
-                    : isArabic
-                      ? "اختبار الاتصال ⚡"
-                      : "Test Connection ⚡"}
-                </button>
-                <button
-                  type="button"
-                  disabled={status !== "success"}
-                  className="bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                >
-                  {isArabic ? "حفظ وتشفير البيانات 🔒" : "Save & Encrypt 🔒"}
-                </button>
-              </div>
-
-              {status === "success" && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-xl mt-4">
-                  {isArabic
-                    ? "✅ نجاح الاتصال! المفاتيح صالحة ويمكنك حفظها."
-                    : "✅ Connection successful! Keys are valid and can be saved."}
-                </div>
-              )}
-              {status === "error" && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl mt-4">
-                  ❌ {errorMessage}
-                </div>
-              )}
-            </form>
-          </SmartCard>
-        ) : (
-          <div className="h-full flex items-center justify-center border-2 border-dashed border-[var(--nc-border)] rounded-3xl p-10">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-[var(--nc-surface-strong)] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl text-[var(--nc-foreground-muted)]">
-                <i className="ph-cpu" />
-              </div>
-              <h3 className="text-lg font-bold text-[var(--nc-foreground)] mb-2">
-                {isArabic ? "اختر مزود الخدمة" : "Select a Provider"}
-              </h3>
-              <p className="text-[var(--nc-foreground-muted)] text-sm max-w-xs mx-auto">
-                {isArabic
-                  ? "قم باختيار مزود الذكاء الاصطناعي من القائمة الجانبية لإدارة مفاتيح الربط واختبارها."
-                  : "Select an AI provider from the sidebar to manage API keys and test connections."}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="lg:col-span-12 mt-6">
-        <SmartCard className="overflow-hidden">
-          <div className="p-5 border-b border-[var(--nc-border)]">
-            <h3 className="font-bold text-[var(--nc-foreground)] text-lg">
-              {isArabic ? "تعيين مزود ونموذج لكل وكيل" : "Assign Provider & Model per Agent"}
-            </h3>
-            <p className="text-[var(--nc-foreground-muted)] text-sm mt-1">
-              {isArabic
-                ? "حدد المزود الأساسي والنموذج ونظام الترتيب البديل (Fallback) لكل وكيل."
-                : "Select the primary provider, model, and fallback priority for each agent."}
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-start">
-              <thead className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] border-b border-[var(--nc-border)]">
-                <tr>
-                  <th className="px-5 py-3 text-start font-bold">{isArabic ? "الوكيل" : "Agent"}</th>
-                  <th className="px-5 py-3 text-start font-bold">{isArabic ? "المزود الأساسي" : "Default Provider"}</th>
-                  <th className="px-5 py-3 text-start font-bold">{isArabic ? "النموذج" : "Default Model"}</th>
-                  <th className="px-5 py-3 text-start font-bold">Fallback 1</th>
-                  <th className="px-5 py-3 text-start font-bold">Fallback 2</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--nc-border)]">
-                {[
-                  { id: 'MANSOUR', nameAr: 'منصور', nameEn: 'Mansour' },
-                  { id: 'SAHER', nameAr: 'ساهر', nameEn: 'Saher' },
-                  { id: 'SANAD', nameAr: 'سند', nameEn: 'Sanad' },
-                  { id: 'BASEER', nameAr: 'بصير', nameEn: 'Baseer' },
-                  { id: 'KHABEER', nameAr: 'خبير', nameEn: 'Khabeer' },
-                ].map((agent) => (
+                return (
                   <tr key={agent.id} className="hover:bg-[var(--nc-surface)]">
                     <td className="px-5 py-4 font-bold text-[var(--nc-foreground)]">
                       {isArabic ? agent.nameAr : agent.nameEn}
                     </td>
                     <td className="px-5 py-4">
-                      <select className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] outline-none">
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
-                        <option value="gemini">Google Gemini</option>
-                        <option value="azure">Azure OpenAI</option>
-                        <option value="bedrock">AWS Bedrock</option>
-                      </select>
+                      <SettingsSelect
+                        className="w-44"
+                        aria-label={L("المزود الأساسي", "Default Provider")}
+                        value={assignment.provider}
+                        onChange={(value) => updateAssignment(agent.id, "provider", value)}
+                        options={PROVIDER_OPTIONS}
+                      />
                     </td>
                     <td className="px-5 py-4">
-                      <select className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] outline-none font-mono">
-                        <option value="gpt-4o">gpt-4o</option>
-                        <option value="gpt-4-turbo">gpt-4-turbo</option>
-                        <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
-                      </select>
+                      <SettingsSelect
+                        className="w-44"
+                        mono
+                        aria-label={L("النموذج", "Default Model")}
+                        value={assignment.model}
+                        onChange={(value) => updateAssignment(agent.id, "model", value)}
+                        options={MODEL_OPTIONS}
+                      />
                     </td>
                     <td className="px-5 py-4">
-                      <select className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] outline-none text-[var(--nc-foreground-muted)]">
-                        <option value="">{isArabic ? "لا يوجد" : "None"}</option>
-                        <option value="anthropic">Anthropic</option>
-                        <option value="azure">Azure OpenAI</option>
-                      </select>
+                      <SettingsSelect
+                        className="w-36"
+                        aria-label="Fallback 1"
+                        value={assignment.fallback1}
+                        onChange={(value) => updateAssignment(agent.id, "fallback1", value)}
+                        options={fallback1Options}
+                      />
                     </td>
                     <td className="px-5 py-4">
-                      <select className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] outline-none text-[var(--nc-foreground-muted)]">
-                        <option value="">{isArabic ? "لا يوجد" : "None"}</option>
-                        <option value="gemini">Google Gemini</option>
-                        <option value="bedrock">AWS Bedrock</option>
-                      </select>
+                      <SettingsSelect
+                        className="w-36"
+                        aria-label="Fallback 2"
+                        value={assignment.fallback2}
+                        onChange={(value) => updateAssignment(agent.id, "fallback2", value)}
+                        options={fallback2Options}
+                      />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="p-4 bg-[var(--nc-surface)] border-t border-[var(--nc-border)] flex justify-end">
-             <button
-               type="button"
-               className="bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] border border-[var(--nc-border)] text-[var(--nc-foreground)] px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
-             >
-               {isArabic ? "حفظ التعيينات" : "Save Assignments"}
-             </button>
-          </div>
-        </SmartCard>
-      </div>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-end border-t border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
+          <SettingsButton variant="secondary">
+            {L("حفظ التعيينات", "Save Assignments")}
+          </SettingsButton>
+        </div>
+      </SmartCard>
+
+      {activeDefinition &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex">
+            <div
+              onClick={handleOverlayClick}
+              className="absolute inset-0 bg-black/60"
+            />
+
+            <div className="absolute inset-y-0 left-0 z-[110] flex w-screen flex-col bg-[var(--nc-surface-solid)] shadow-2xl sm:w-[640px]">
+              <div className="flex shrink-0 items-center justify-between border-b border-[var(--nc-border)] p-5">
+                <h2 ref={titleRef} tabIndex={-1} className="text-lg font-black text-[var(--nc-foreground)] outline-none">
+                  {activeDefinition.name}
+                </h2>
+                <SettingsButton variant="icon" onClick={closeDrawer} aria-label={L("إغلاق", "Close")}>
+                  ×
+                </SettingsButton>
+              </div>
+
+              <form onSubmit={handleTestConnection} className="flex min-h-0 flex-1 flex-col">
+                <div className="min-w-0 flex-1 overflow-y-auto p-6">
+                  <SmartCard className="p-5">
+                    <h3 className="mb-2 text-base font-bold text-[var(--nc-foreground)]">
+                      {L("إعدادات الربط", "Connection Settings")}
+                    </h3>
+                    <p className="mb-6 text-sm text-[var(--nc-foreground-muted)]">
+                      {L(
+                        "يتم تشفير هذه البيانات وتخزينها بشكل آمن. يمكنك اختبار الاتصال لضمان صلاحية المفاتيح قبل الحفظ.",
+                        "These credentials are encrypted and stored securely. Test the connection to ensure validity before saving.",
+                      )}
+                    </p>
+
+                    <div className="space-y-4">
+                      {activeDefinition.fields.map((field) => (
+                        <div key={field.key}>
+                          <label className="mb-1 block text-xs font-semibold text-[var(--nc-foreground-muted)]">
+                            {isArabic ? field.labelAr : field.labelEn}
+                          </label>
+                          <input
+                            type={field.type}
+                            value={formData[field.key] || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                [field.key]: e.target.value,
+                              })
+                            }
+                            required
+                            className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                          />
+                        </div>
+                      ))}
+
+                      {status === "success" && (
+                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          {L(
+                            "نجاح الاتصال! المفاتيح صالحة ويمكنك حفظها.",
+                            "Connection successful! Keys are valid and can be saved.",
+                          )}
+                        </div>
+                      )}
+                      {status === "error" && (
+                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs font-bold text-rose-600 dark:text-rose-400">
+                          {errorMessage}
+                        </div>
+                      )}
+                    </div>
+                  </SmartCard>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap gap-2 border-t border-[var(--nc-border)] p-4">
+                  <SettingsButton variant="secondary" type="submit" disabled={status === "testing"}>
+                    {status === "testing"
+                      ? L("جاري الاختبار...", "Testing...")
+                      : L("اختبار الاتصال", "Test Connection")}
+                  </SettingsButton>
+                  <SettingsButton variant="primary" disabled={status !== "success"}>
+                    {L("حفظ وتشفير", "Save & Encrypt")}
+                  </SettingsButton>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

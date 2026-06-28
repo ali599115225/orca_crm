@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SmartCard } from "@/components/ui/SmartCard";
+import SettingsButton from "@/components/settings/SettingsButton";
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import {
   updateTenantUserAction,
   deleteTenantUserAction,
@@ -70,6 +72,7 @@ export default function SettingsStaff({
     text: string;
   } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [newEmployeeRole, setNewEmployeeRole] = useState("SALES_EMPLOYEE");
 
   React.useEffect(() => {
     const handleDocClick = () => setOpenMenuId(null);
@@ -142,6 +145,7 @@ export default function SettingsStaff({
           : "Employee added successfully",
       });
       setIsAddMode(false);
+      setNewEmployeeRole("SALES_EMPLOYEE");
       router.refresh();
     } else {
       setNotice({
@@ -165,12 +169,9 @@ export default function SettingsStaff({
               : "Manage company employees, contracts, and permissions"}
           </p>
         </div>
-        <button
-          onClick={() => setIsAddMode(true)}
-          className="bg-[var(--nc-accent)] text-slate-950 px-4 py-2 rounded-xl font-bold text-sm"
-        >
+        <SettingsButton variant="primary" onClick={() => setIsAddMode(true)}>
           {isArabic ? "+ موظف جديد" : "+ New Employee"}
-        </button>
+        </SettingsButton>
       </div>
 
       {notice && (
@@ -197,7 +198,7 @@ export default function SettingsStaff({
               <input
                 name="name"
                 required
-                className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 text-sm"
+                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
@@ -208,7 +209,7 @@ export default function SettingsStaff({
                 type="email"
                 name="email"
                 required
-                className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 text-sm"
+                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
@@ -217,26 +218,25 @@ export default function SettingsStaff({
               </label>
               <input
                 name="jobTitle"
-                className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 text-sm"
+                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-[var(--nc-foreground-muted)] mb-1">
                 {isArabic ? "الصلاحية" : "Role"}
               </label>
-              <select
+              <SettingsSelect
                 name="role"
-                required
-                className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 text-sm text-[var(--nc-foreground)]"
-              >
-                <option className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]" value="SALES_EMPLOYEE">
-                  {isArabic ? "مستشار عقاري" : "Sales Employee"}
-                </option>
-                <option className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]" value="SALES_MANAGER">
-                  {isArabic ? "مدير مبيعات" : "Sales Manager"}
-                </option>
-                <option className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]" value="ADMIN">{isArabic ? "مدير عام" : "Admin"}</option>
-              </select>
+                className="w-full"
+                aria-label={isArabic ? "الصلاحية" : "Role"}
+                value={newEmployeeRole}
+                onChange={setNewEmployeeRole}
+                options={[
+                  { value: "SALES_EMPLOYEE", label: isArabic ? "مستشار عقاري" : "Sales Employee" },
+                  { value: "SALES_MANAGER", label: isArabic ? "مدير مبيعات" : "Sales Manager" },
+                  { value: "ADMIN", label: isArabic ? "مدير عام" : "Admin" },
+                ]}
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-[var(--nc-foreground-muted)] mb-1">
@@ -246,24 +246,16 @@ export default function SettingsStaff({
                 type="password"
                 name="password"
                 required
-                className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 text-sm"
+                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div className="md:col-span-2 flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={loadingId === "new"}
-                className="bg-[var(--nc-accent)] text-slate-950 px-4 py-2 rounded-lg font-bold text-sm"
-              >
+              <SettingsButton variant="primary" type="submit" disabled={loadingId === "new"}>
                 {loadingId === "new" ? "..." : isArabic ? "حفظ" : "Save"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddMode(false)}
-                className="bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)] px-4 py-2 rounded-lg font-bold text-sm border border-[var(--nc-border)]"
-              >
+              </SettingsButton>
+              <SettingsButton variant="secondary" onClick={() => setIsAddMode(false)}>
                 {isArabic ? "إلغاء" : "Cancel"}
-              </button>
+              </SettingsButton>
             </div>
           </form>
         </SmartCard>
@@ -325,30 +317,23 @@ export default function SettingsStaff({
                 </td>
                 <td className="px-5 py-4 text-start">
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedUser(u)}
-                      className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 font-bold transition-all text-xs"
-                    >
+                    <SettingsButton variant="ghost" onClick={() => setSelectedUser(u)}>
                       {isArabic ? "عرض التفاصيل" : "Details"}
-                    </button>
-                    <span className="text-[var(--nc-border)]">|</span>
-                    <button
+                    </SettingsButton>
+                    <SettingsButton
+                      variant="secondary"
                       onClick={() => { void handleToggleStatus(u); }}
                       disabled={loadingId === u.id}
-                      className={`font-bold transition-all text-xs disabled:opacity-50 ${
-                        u.isActive ? 'text-amber-600 hover:text-amber-500' : 'text-emerald-600 hover:text-emerald-500'
-                      }`}
                     >
                       {u.isActive ? (isArabic ? "تعطيل" : "Disable") : (isArabic ? "تفعيل" : "Activate")}
-                    </button>
-                    <span className="text-[var(--nc-border)]">|</span>
-                    <button
+                    </SettingsButton>
+                    <SettingsButton
+                      variant="danger"
                       onClick={() => { void handleDelete(u); }}
                       disabled={loadingId === u.id}
-                      className="text-rose-600 hover:text-rose-500 font-bold transition-all text-xs disabled:opacity-50"
                     >
                       {isArabic ? "حذف" : "Delete"}
-                    </button>
+                    </SettingsButton>
                   </div>
                 </td>
               </tr>
@@ -377,24 +362,24 @@ export default function SettingsStaff({
         {/* Pagination - 5 rows exactly */}
         {users.length > 0 && (
           <div className="flex items-center justify-between border-t border-[var(--nc-border)] px-5 py-3 bg-[var(--nc-surface)]">
-            <button
+            <SettingsButton
+              variant="secondary"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-xs font-bold text-[var(--nc-foreground)] disabled:opacity-50"
             >
               {isArabic ? "السابق" : "Previous"}
-            </button>
+            </SettingsButton>
             <span className="text-xs font-bold text-[var(--nc-foreground-muted)]">
               {isArabic ? "صفحة" : "Page"} {currentPage}{" "}
               {isArabic ? "من" : "of"} {totalPages}
             </span>
-            <button
+            <SettingsButton
+              variant="secondary"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-xs font-bold text-[var(--nc-foreground)] disabled:opacity-50"
             >
               {isArabic ? "التالي" : "Next"}
-            </button>
+            </SettingsButton>
           </div>
         )}
       </SmartCard>
@@ -407,12 +392,13 @@ export default function SettingsStaff({
               <h3 className="text-lg font-black text-[var(--nc-foreground)]">
                 {isArabic ? "تفاصيل الموظف" : "Employee Details"}
               </h3>
-              <button
+              <SettingsButton
+                variant="icon"
                 onClick={() => setSelectedUser(null)}
-                className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
+                aria-label={isArabic ? "إغلاق" : "Close"}
               >
-                ✕
-              </button>
+                ×
+              </SettingsButton>
             </div>
 
             <dl className="space-y-4 text-sm">

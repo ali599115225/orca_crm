@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { initiateSubscriptionPaymentAction } from "@/app/actions/payment";
 import { SmartCard } from "@/components/ui/SmartCard";
+import SettingsButton from "@/components/settings/SettingsButton";
 
 interface SettingsBillingProps {
   tenant: {
@@ -276,15 +277,11 @@ export default function SettingsBilling({
                   </dl>
                 </div>
 
-                <button
-                  type="button"
+                <SettingsButton
+                  variant={isUpgrade && !isCurrent ? "primary" : "secondary"}
                   disabled={disabled}
                   onClick={() => void startUpgrade(plan.id)}
-                  className={
-                    isUpgrade && !isCurrent
-                      ? "mt-6 w-full rounded-xl bg-[var(--nc-accent)] px-4 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-                      : "mt-6 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 py-3 text-sm font-bold text-[var(--nc-foreground-muted)] disabled:cursor-not-allowed disabled:opacity-70"
-                  }
+                  className="mt-6 w-full"
                 >
                   {loadingPlan === plan.id
                     ? isArabic
@@ -301,7 +298,7 @@ export default function SettingsBilling({
                         : isArabic
                           ? "غير متاح للخفض"
                           : "Downgrade Unavailable"}
-                </button>
+                </SettingsButton>
               </SmartCard>
             );
           })}

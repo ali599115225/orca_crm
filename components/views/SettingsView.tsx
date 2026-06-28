@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/app/context/AppContext";
 import SettingsNavigation, {
@@ -73,6 +72,7 @@ export default function SettingsView({
   const { lang } = useApp();
   const isArabic = lang === "AR";
   const isDedicatedCopy = tenant.licenseMode === "DEDICATED_COPY";
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
     resolveSection(searchParams.get("tab")),
@@ -80,6 +80,7 @@ export default function SettingsView({
 
   useEffect(() => {
     setActiveSection(resolveSection(searchParams.get("tab")));
+    headerRef.current?.scrollIntoView({ block: "start" });
   }, [searchParams]);
 
   const staffUsers = useMemo(
@@ -97,14 +98,17 @@ export default function SettingsView({
   const changeSection = (section: SettingsSection) => {
     setActiveSection(section);
     router.replace("/operations/settings?tab=" + section, { scroll: false });
+    requestAnimationFrame(() => {
+      headerRef.current?.scrollIntoView({ block: "start" });
+    });
   };
 
   return (
     <main
-      className="orca-settings-final nc-page nc-stack"
+      className="orca-settings-final mx-auto w-full max-w-[1440px] space-y-6 px-4 py-4 md:px-8 md:py-6"
       dir={isArabic ? "rtl" : "ltr"}
     >
-      <header className="space-y-2">
+      <header ref={headerRef} className="space-y-2">
         <h1 className="text-2xl font-black text-[var(--nc-foreground)]">
           {isArabic ? "الإعدادات" : "Settings"}
         </h1>
@@ -115,119 +119,119 @@ export default function SettingsView({
         </p>
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[228px_minmax(0,1fr)]">
+      <div className="sticky top-0 z-20 bg-[var(--nc-surface-solid)] py-1">
         <SettingsNavigation
           activeSection={activeSection}
           lang={lang}
           onChange={changeSection}
         />
+      </div>
 
-        <section className="orca-settings-content min-w-0">
-          {activeSection === "organization" && (
-            <SmartCard className="p-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
-                  {isArabic ? "بيانات المؤسسة" : "Organization Details"}
-                </h2>
-                <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                  {isArabic
-                    ? "البيانات الأساسية المرتبطة بحساب الشركة."
-                    : "Core information associated with the company account."}
-                </p>
+      <section className="orca-settings-content w-full min-w-0">
+        {activeSection === "organization" && (
+          <SmartCard className="p-6">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
+                {isArabic ? "بيانات المؤسسة" : "Organization Details"}
+              </h2>
+              <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
+                {isArabic
+                  ? "البيانات الأساسية المرتبطة بحساب الشركة."
+                  : "Core information associated with the company account."}
+              </p>
+            </div>
+
+            <dl className="grid gap-4 md:grid-cols-3">
+              <div className="orca-info-tile">
+                <dt>{isArabic ? "اسم المنشأة" : "Company Name"}</dt>
+                <dd>{tenant.companyName}</dd>
               </div>
 
-              <dl className="grid gap-4 md:grid-cols-3">
-                <div className="orca-info-tile">
-                  <dt>{isArabic ? "اسم المنشأة" : "Company Name"}</dt>
-                  <dd>{tenant.companyName}</dd>
-                </div>
+              <div className="orca-info-tile">
+                <dt>{isArabic ? "النطاق الفرعي" : "Subdomain"}</dt>
+                <dd className="font-en">{tenant.subdomain}</dd>
+              </div>
 
-                <div className="orca-info-tile">
-                  <dt>{isArabic ? "النطاق الفرعي" : "Subdomain"}</dt>
-                  <dd className="font-en">{tenant.subdomain}</dd>
-                </div>
+              <div className="orca-info-tile">
+                <dt>
+                  {isDedicatedCopy
+                    ? isArabic
+                      ? "نوع الترخيص"
+                      : "License Type"
+                    : isArabic
+                      ? "الباقة الحالية"
+                      : "Current Plan"}
+                </dt>
+                <dd>
+                  {isDedicatedCopy
+                    ? isArabic
+                      ? "نسخة كاملة مستقلة"
+                      : "Full Dedicated Copy"
+                    : displayPlan(tenant.subscriptionPlan, isArabic)}
+                </dd>
+              </div>
+            </dl>
+          </SmartCard>
+        )}
 
-                <div className="orca-info-tile">
-                  <dt>
-                    {isDedicatedCopy
-                      ? isArabic
-                        ? "نوع الترخيص"
-                        : "License Type"
-                      : isArabic
-                        ? "الباقة الحالية"
-                        : "Current Plan"}
-                  </dt>
-                  <dd>
-                    {isDedicatedCopy
-                      ? isArabic
-                        ? "نسخة كاملة مستقلة"
-                        : "Full Dedicated Copy"
-                      : displayPlan(tenant.subscriptionPlan, isArabic)}
-                  </dd>
+        {activeSection === "staff" && (
+          <div className="orca-settings-staff">
+            <SettingsStaff
+              tenant={tenant}
+              users={staffUsers}
+              lang={lang}
+              isArabic={isArabic}
+            />
+          </div>
+        )}
+
+        {activeSection === "billing" &&
+          (isDedicatedCopy ? (
+            <SmartCard className="p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
+                    {isArabic
+                      ? "ترخيص نسخة كاملة"
+                      : "Full Dedicated License"}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm text-[var(--nc-foreground-muted)]">
+                    {isArabic
+                      ? "هذه النسخة تشمل جميع الوكلاء والوظائف المرخصة، ولا تتطلب شراء وكلاء أو ترقية باقة."
+                      : "This deployment includes all licensed agents and features. No agent purchase or plan upgrade is required."}
+                  </p>
                 </div>
-              </dl>
+                <span className="orca-status-badge orca-status-success">
+                  {isArabic ? "ترخيص نشط" : "License Active"}
+                </span>
+              </div>
             </SmartCard>
-          )}
+          ) : (
+            <SettingsBilling
+              tenant={tenant}
+              lang={lang}
+              isArabic={isArabic}
+            />
+          ))}
 
-          {activeSection === "staff" && (
-            <div className="orca-settings-staff">
-              <SettingsStaff
-                tenant={tenant}
-                users={staffUsers}
-                lang={lang}
-                isArabic={isArabic}
-              />
-            </div>
-          )}
+        {activeSection === "ai" && (
+          <div className="orca-settings-ai">
+            <SettingsAIProviders />
+          </div>
+        )}
 
-          {activeSection === "billing" &&
-            (isDedicatedCopy ? (
-              <SmartCard className="p-6">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
-                      {isArabic
-                        ? "ترخيص نسخة كاملة"
-                        : "Full Dedicated License"}
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm text-[var(--nc-foreground-muted)]">
-                      {isArabic
-                        ? "هذه النسخة تشمل جميع الوكلاء والوظائف المرخصة، ولا تتطلب شراء وكلاء أو ترقية باقة."
-                        : "This deployment includes all licensed agents and features. No agent purchase or plan upgrade is required."}
-                    </p>
-                  </div>
-                  <span className="orca-status-badge orca-status-success">
-                    {isArabic ? "ترخيص نشط" : "License Active"}
-                  </span>
-                </div>
-              </SmartCard>
-            ) : (
-              <SettingsBilling
-                tenant={tenant}
-                lang={lang}
-                isArabic={isArabic}
-              />
-            ))}
+        {activeSection === "integrations" && (
+          <div className="space-y-6">
+            <SettingsIntegrationsHub lang={lang} />
+          </div>
+        )}
 
-          {activeSection === "ai" && (
-            <div className="orca-settings-ai">
-              <SettingsAIProviders />
-            </div>
-          )}
-
-          {activeSection === "integrations" && (
-            <div className="space-y-6">
-              <SettingsIntegrationsHub lang={lang} />
-            </div>
-          )}
-
-          {activeSection === "compliance" && (
-            <div className="orca-settings-compliance">
-              <SettingsCompliance lang={lang} isArabic={isArabic} />
-            </div>
-          )}
-        </section>
-      </div>
+        {activeSection === "compliance" && (
+          <div className="orca-settings-compliance">
+            <SettingsCompliance lang={lang} isArabic={isArabic} />
+          </div>
+        )}
+      </section>
     </main>
   );
 }
