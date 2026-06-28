@@ -36,9 +36,26 @@ vi.mock("@/lib/whatsapp/credential-service", () => ({
 }));
 
 import {
+  getConnectionStatus,
   getWhatsAppControls,
   resolveConnection,
 } from "@/lib/whatsapp/connection-resolver";
+
+const originalNodeEnv = process.env.NODE_ENV;
+
+function setBridgeEnv() {
+  process.env.ORCA_WHATSAPP_TEST_TENANT_ID = "orca-test-tenant";
+  process.env.WHATSAPP_ACCESS_TOKEN = "bridge-token";
+  process.env.WHATSAPP_PHONE_NUMBER_ID = "bridge-phone";
+  process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = "bridge-waba";
+}
+
+function mockValidBridgePhoneRow() {
+  prismaMock.whatsAppPhoneNumber.findFirst.mockResolvedValue({
+    wabaId: "bridge-waba",
+    businessAccountId: null,
+  });
+}
 
 describe("WhatsApp connection resolver", () => {
   beforeEach(() => {
@@ -67,6 +84,7 @@ describe("WhatsApp connection resolver", () => {
     delete process.env.WHATSAPP_ACCESS_TOKEN;
     delete process.env.WHATSAPP_PHONE_NUMBER_ID;
     delete process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("resolves an active tenant-owned connection", async () => {
@@ -99,11 +117,9 @@ describe("WhatsApp connection resolver", () => {
     });
   });
 
-  it("allows the ORCA bridge only for the exact test tenant", async () => {
-    process.env.ORCA_WHATSAPP_TEST_TENANT_ID = "orca-test-tenant";
-    process.env.WHATSAPP_ACCESS_TOKEN = "bridge-token";
-    process.env.WHATSAPP_PHONE_NUMBER_ID = "bridge-phone";
-    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = "bridge-waba";
+  it("allows the ORCA bridge only for the exact test tenant with a matching active phone row", async () => {
+    setBridgeEnv();
+    mockValidBridgePhoneRow();
 
     await expect(
       resolveConnection("orca-test-tenant"),
@@ -113,11 +129,84 @@ describe("WhatsApp connection resolver", () => {
       phoneNumberId: "bridge-phone",
       wabaId: "bridge-waba",
     });
+    expect(prismaMock.whatsAppPhoneNumber.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId: "orca-test-tenant",
+          phoneNumberId: "bridge-phone",
+          isActive: true,
+        },
+      }),
+    );
 
     await expect(
       resolveConnection("customer-tenant"),
     ).rejects.toMatchObject({
       code: "WHATSAPP_NOT_CONNECTED",
+    });
+  });
+
+  it("rejects the bridge when no active matching phone row exists for the test tenant", async () => {
+    setBridgeEnv();
+    prismaMock.whatsAppPhoneNumber.findFirst.mockResolvedValue(null);
+
+    await expect(
+      resolveConnection("orca-test-tenant"),
+    ).rejects.toMatchObject({
+      code: "WHATSAPP_NOT_CONNECTED",
+    });
+  });
+
+  it("rejects the bridge when the WABA id does not match the phone row", async () => {
+    setBridgeEnv();
+    prismaMock.whatsAppPhoneNumber.findFirst.mockResolvedValue({
+      wabaId: "different-waba",
+      businessAccountId: null,
+    });
+
+    await expect(
+      resolveConnection("orca-test-tenant"),
+    ).rejects.toMatchObject({
+      code: "WHATSAPP_NOT_CONNECTED",
+    });
+  });
+
+  it("rejects the bridge when NODE_ENV is production", async () => {
+    setBridgeEnv();
+    mockValidBridgePhoneRow();
+    process.env.NODE_ENV = "production";
+
+    await expect(
+      resolveConnection("orca-test-tenant"),
+    ).rejects.toMatchObject({
+      code: "WHATSAPP_NOT_CONNECTED",
+    });
+    expect(prismaMock.whatsAppPhoneNumber.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("exposes test-mode status via getConnectionStatus without an access token", async () => {
+    setBridgeEnv();
+    mockValidBridgePhoneRow();
+
+    await expect(
+      getConnectionStatus("orca-test-tenant"),
+    ).resolves.toMatchObject({
+      configured: true,
+      source: "orca-test-bridge",
+      status: "test-mode",
+    });
+
+    const result = await getConnectionStatus("orca-test-tenant");
+    expect(result).not.toHaveProperty("accessToken");
+  });
+
+  it("reports disconnected via getConnectionStatus for a tenant without any valid source", async () => {
+    await expect(
+      getConnectionStatus("customer-tenant"),
+    ).resolves.toMatchObject({
+      configured: false,
+      source: "none",
+      status: "disconnected",
     });
   });
 

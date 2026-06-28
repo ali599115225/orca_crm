@@ -8,7 +8,7 @@ import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
 import { assertFeatureAccess, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
 import { sendWhatsAppMessage, WhatsAppSendError } from "@/lib/whatsapp/send-service";
-import { resolveConnection, isMessagingEnabled } from "@/lib/whatsapp/connection-resolver";
+import { resolveConnection, isMessagingEnabled, getConnectionStatus } from "@/lib/whatsapp/connection-resolver";
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
@@ -35,21 +35,22 @@ export async function toggleWhatsAppConnectionAction(connected: boolean) {
 export async function getCloudAPIStatusAction() {
   try {
     const tenant = await getActiveTenant();
-    const connection = await prisma.whatsAppConnection.findUnique({
-      where: { tenantId: tenant.id },
-    });
-    if (!connection || connection.status !== "ACTIVE") {
-      return { configured: false, provider: "none", status: "disconnected" };
+    const result = await getConnectionStatus(tenant.id);
+
+    if (!result.configured) {
+      return { configured: false, provider: "none", source: "none", status: "disconnected" };
     }
+
     return {
       configured: true,
       provider: "meta",
-      status: "connected",
-      wabaId: connection.wabaId,
-      activeSince: connection.activeSince,
+      source: result.source,
+      status: result.status,
+      wabaId: result.wabaId ?? null,
+      activeSince: result.activeSince ?? null,
     };
   } catch {
-    return { configured: false, provider: "none", status: "disconnected" };
+    return { configured: false, provider: "none", source: "none", status: "disconnected" };
   }
 }
 
@@ -107,6 +108,26 @@ function metaErrorMessage(result: any) {
   return message ? message.slice(0, 240) : "تعذر إرسال رسالة واتساب";
 }
 
+const AUTH_ERROR_CODES = new Set(["190", "200", "10", "OAuthException"]);
+
+function sanitizeSendErrorMessage(errorCode: string | undefined, rawMessage: string | undefined) {
+  const lower = String(rawMessage || "").toLowerCase();
+  const looksLikeAuthError =
+    (errorCode && AUTH_ERROR_CODES.has(errorCode)) ||
+    lower.includes("oauth") ||
+    lower.includes("access token") ||
+    lower.includes("authentication");
+
+  if (looksLikeAuthError) {
+    if (rawMessage) {
+      console.error("[WhatsApp] sanitized auth error from Graph response", { errorCode, rawMessage });
+    }
+    return "تعذر إرسال الرسالة بسبب خلل في إعدادات الربط. تواصل مع الدعم.";
+  }
+
+  return rawMessage;
+}
+
 function safeSendResult<T extends {
   success: boolean;
   status: string;
@@ -134,14 +155,13 @@ export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListM
     const tenant = await getActiveTenant();
     const archived = options.mode === "archived";
 
-    const connection = await prisma.whatsAppConnection.findUnique({
-      where: { tenantId: tenant.id },
-    });
+    const connectionStatus = await getConnectionStatus(tenant.id);
 
-    if (!connection || !["ACTIVE", "SUSPENDED"].includes(connection.status)) {
+    if (!connectionStatus.configured) {
       return {
         success: true,
         chats: [],
+        tenant,
         provider: "none",
         warning: "واتساب غير متصل. أكمل إعدادات الربط قبل استخدام المحادثات.",
       };
@@ -235,12 +255,15 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
     const result = await sendWhatsAppMessage(tenant.id, normalizedPhone, messageText);
 
     return safeSendResult({
-      success: result.success,
+      success: result.success && Boolean(result.metaMessageId),
       messageId: result.messageId || null,
+      metaMessageId: result.metaMessageId || null,
       phone: normalizedPhone,
-      status: result.success ? "pending" : "failed",
+      status: result.success && result.metaMessageId ? "pending" : "failed",
       errorCode: result.errorCode as any,
-      errorMessage: result.error,
+      errorMessage: result.success
+        ? undefined
+        : sanitizeSendErrorMessage(result.errorCode, result.error),
     });
   } catch (error: any) {
     if (error instanceof PlanLimitError) {

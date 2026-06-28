@@ -476,6 +476,148 @@ describe("WhatsApp webhook security and isolation", () => {
     );
   });
 
+  it("does not downgrade a read status when a later delivered event arrives", async () => {
+    prismaMock.whatsAppMessage.findUnique.mockResolvedValue({
+      id: "message-1",
+      status: "read",
+      deliveredAt: new Date("2026-01-01T00:00:00Z"),
+      readAt: new Date("2026-01-01T00:00:05Z"),
+      failedAt: null,
+    });
+
+    const rawBody = JSON.stringify(statusPayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.whatsAppMessage.update).not.toHaveBeenCalled();
+  });
+
+  it("does not downgrade a failed status with a later sent event", async () => {
+    prismaMock.whatsAppMessage.findUnique.mockResolvedValue({
+      id: "message-1",
+      status: "failed",
+      deliveredAt: null,
+      readAt: null,
+      failedAt: new Date("2026-01-01T00:00:00Z"),
+    });
+
+    const rawBody = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "waba-1",
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: "phone-1" },
+                statuses: [
+                  { id: "wamid-1", status: "sent", timestamp: "1780000002" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.whatsAppMessage.update).not.toHaveBeenCalled();
+  });
+
+  it("applies forward status transitions in order", async () => {
+    prismaMock.whatsAppMessage.findUnique.mockResolvedValue({
+      id: "message-1",
+      status: "sent",
+      deliveredAt: null,
+      readAt: null,
+      failedAt: null,
+    });
+
+    const rawBody = JSON.stringify(statusPayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.whatsAppMessage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "delivered" }),
+      }),
+    );
+  });
+
+  it("treats a repeated identical status webhook as idempotent", async () => {
+    prismaMock.whatsAppWebhookEvent.create.mockRejectedValue({
+      code: "P2002",
+    });
+    prismaMock.whatsAppWebhookEvent.findUnique.mockResolvedValue({
+      id: "event-existing",
+      status: "PROCESSED",
+      attemptCount: 1,
+      maxAttempts: 3,
+    });
+
+    const rawBody = JSON.stringify(statusPayload());
+
+    const response = await POST(
+      postRequest(rawBody, sign(rawBody)),
+    );
+    const body = await response.json();
+
+    expect(body.status).toBe("duplicate");
+    expect(prismaMock.whatsAppMessage.update).not.toHaveBeenCalled();
+  });
+
+  it("quarantines test-bridge bound events when NODE_ENV is production", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.ORCA_WHATSAPP_TEST_TENANT_ID = "tenant-1";
+    process.env.WHATSAPP_PHONE_NUMBER_ID = "phone-1";
+    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = "waba-1";
+
+    prismaMock.whatsAppPhoneNumber.findUnique.mockResolvedValue({
+      tenantId: "tenant-1",
+      phoneNumberId: "phone-1",
+      wabaId: "waba-1",
+      businessAccountId: null,
+      isActive: true,
+      tenant: { isActive: true },
+      connectionId: null,
+      connection: null,
+    });
+    prismaMock.whatsAppWebhookEvent.create.mockResolvedValue({
+      id: "event-quarantined",
+      status: "QUARANTINED",
+      attemptCount: 0,
+      maxAttempts: 3,
+    });
+
+    try {
+      const rawBody = JSON.stringify(messagePayload());
+
+      const response = await POST(
+        postRequest(rawBody, sign(rawBody)),
+      );
+      const body = await response.json();
+
+      expect(body.status).toBe("quarantined");
+      expect(prismaMock.whatsAppMessage.create).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+      delete process.env.ORCA_WHATSAPP_TEST_TENANT_ID;
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+      delete process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+    }
+  });
+
   it("uses no in-memory replay cache and exposes the classifier only to the webhook", () => {
     const root = process.cwd();
     const route = readFileSync(

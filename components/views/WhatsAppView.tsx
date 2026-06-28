@@ -82,6 +82,7 @@ const TEXT = {
     assignedToMe: "مسندة إليّ",
     connected: "واتساب — متصل",
     disconnected: "واتساب — غير متصل",
+    testMode: "وضع اختبار Meta",
     notConfigured: "يلزم إكمال إعدادات الربط قبل استخدام المحادثات.",
     customer: "العميل",
     owner: "المسؤول",
@@ -158,6 +159,7 @@ const TEXT = {
     assignedToMe: "Assigned to me",
     connected: "WhatsApp — Connected",
     disconnected: "WhatsApp — Disconnected",
+    testMode: "Meta Test Mode",
     notConfigured: "Connection settings must be completed before using conversations.",
     customer: "Customer",
     owner: "Owner",
@@ -438,6 +440,8 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   const isWaitingReply = (chat: Chat) => chat.messages[chat.messages.length - 1]?.sender === "client";
   const connected = cloudStatus?.configured && cloudStatus?.status === "connected";
+  const testMode = cloudStatus?.configured && cloudStatus?.status === "test-mode";
+  const whatsAppReachable = connected || testMode;
 
   useEffect(() => {
     const startPolling = () => {
@@ -453,7 +457,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     const onVisible = () => { if (document.visibilityState === "visible") startPolling(); };
     const onHidden = () => { if (document.visibilityState === "hidden") stopPolling(); };
 
-    if (connected) startPolling();
+    if (whatsAppReachable) startPolling();
     document.addEventListener("visibilitychange", onVisible);
     document.addEventListener("visibilitychange", onHidden);
     return () => {
@@ -461,7 +465,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       document.removeEventListener("visibilitychange", onVisible);
       document.removeEventListener("visibilitychange", onHidden);
     };
-  }, [connected, fetchFreshChats]);
+  }, [whatsAppReachable, fetchFreshChats]);
 
   const visibleSource = sortedChats.filter((chat) => {
     const haystack = `${safeName(chat)} ${cleanDisplayText(chat.lastMessage, "")}`.toLowerCase();
@@ -609,7 +613,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     setNewChatError(null);
     try {
       const result = await sendWhatsAppMessageAction(normalizedPhone, newMessage.trim());
-      if (result.success && result.messageId) {
+      if (result.success && result.messageId && result.metaMessageId) {
         setFilter("ALL");
         setPage(1);
         setNewPhone("");
@@ -675,7 +679,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
       module="whatsapp"
       language={language}
       title={t.title}
-      description={`${connected ? t.connected : t.disconnected}${!connected ? ` · ${t.notConfigured}` : warning ? ` · ${warning}` : ""}`}
+      description={`${connected ? t.connected : testMode ? t.testMode : t.disconnected}${!whatsAppReachable ? ` · ${t.notConfigured}` : warning ? ` · ${warning}` : ""}`}
       kpis={[
         { label: t.active, value: formatNumber(sortedChats.length), icon: MessageSquare },
         { label: t.unread, value: formatNumber(unreadCount), icon: MessageSquare },
@@ -719,7 +723,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
           ? {
               avatar: safeName(selectedChat).charAt(0),
               title: safeName(selectedChat),
-              meta: `${formatDateTime(selectedChat.time)} · ${connected ? t.connected : t.disconnected}`,
+              meta: `${formatDateTime(selectedChat.time)} · ${connected ? t.connected : testMode ? t.testMode : t.disconnected}`,
               actions: [
                   { label: t.assignee, icon: UserPlus, onClick: openAssign },
                 { label: t.createTask, icon: PlusCircle, onClick: createTaskForSelected },

@@ -497,9 +497,11 @@ async function resolveWebhookBinding(
     process.env.WHATSAPP_BUSINESS_ACCOUNT_ID?.trim();
 
   const activeOrcaBridge =
+    process.env.NODE_ENV !== "production" &&
     Boolean(bridgeTenantId) &&
     phone.tenantId === bridgeTenantId &&
     phone.phoneNumberId === bridgePhoneNumberId &&
+    (!bridgeWabaId || !expectedWabaId || expectedWabaId === bridgeWabaId) &&
     (!incomingWabaId ||
       !bridgeWabaId ||
       incomingWabaId === bridgeWabaId);
@@ -939,11 +941,21 @@ async function processStatusEvent(
       },
     });
 
+  if (!existing) {
+    return null;
+  }
+
+  if (isDuplicateStatus(existing, updateData)) {
+    return existing.id;
+  }
+
   if (
-    !existing ||
-    isDuplicateStatus(existing, updateData)
+    !shouldApplyStatusTransition(
+      existing.status,
+      updateData.status as string,
+    )
   ) {
-    return existing?.id || null;
+    return existing.id;
   }
 
   await prisma.whatsAppMessage.update({
@@ -952,6 +964,36 @@ async function processStatusEvent(
   });
 
   return existing.id;
+}
+
+const STATUS_ORDER = ["pending", "sent", "delivered", "read"];
+
+function shouldApplyStatusTransition(
+  currentStatus: string | null,
+  nextStatus: string,
+): boolean {
+  const current = currentStatus || "pending";
+
+  if (current === nextStatus) {
+    return true;
+  }
+
+  if (current === "failed" || current === "read") {
+    return false;
+  }
+
+  if (nextStatus === "failed") {
+    return true;
+  }
+
+  const currentRank = STATUS_ORDER.indexOf(current);
+  const nextRank = STATUS_ORDER.indexOf(nextStatus);
+
+  if (currentRank === -1 || nextRank === -1) {
+    return true;
+  }
+
+  return nextRank > currentRank;
 }
 
 function buildStatusUpdate(

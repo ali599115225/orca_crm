@@ -107,6 +107,109 @@ export async function assertWhatsAppMessagingEnabled(
   }
 }
 
+async function resolveTestBridgePhone(
+  bridgeTenantId: string,
+  bridgePhoneNumberId: string,
+  bridgeWabaId: string | null,
+) {
+  const phone = await prisma.whatsAppPhoneNumber.findFirst({
+    where: {
+      tenantId: bridgeTenantId,
+      phoneNumberId: bridgePhoneNumberId,
+      isActive: true,
+    },
+    select: { wabaId: true, businessAccountId: true },
+  });
+
+  if (!phone) {
+    return null;
+  }
+
+  const phoneWaba = phone.wabaId || phone.businessAccountId || null;
+
+  if (bridgeWabaId && phoneWaba && phoneWaba !== bridgeWabaId) {
+    return null;
+  }
+
+  return phone;
+}
+
+function readTestBridgeEnv(tenantId: string) {
+  const bridgeTenantId =
+    process.env.ORCA_WHATSAPP_TEST_TENANT_ID?.trim();
+  const bridgeAccessToken =
+    process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+  const bridgePhoneNumberId =
+    process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+  const bridgeWabaId =
+    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID?.trim() || null;
+
+  const eligible =
+    process.env.NODE_ENV !== "production" &&
+    Boolean(bridgeTenantId) &&
+    tenantId === bridgeTenantId &&
+    Boolean(bridgeAccessToken) &&
+    Boolean(bridgePhoneNumberId);
+
+  return {
+    eligible,
+    bridgeTenantId,
+    bridgeAccessToken,
+    bridgePhoneNumberId,
+    bridgeWabaId,
+  };
+}
+
+export interface ConnectionStatusResult {
+  configured: boolean;
+  source: WhatsAppConnectionSource | "none";
+  status: "connected" | "test-mode" | "disconnected";
+  wabaId?: string | null;
+  phoneNumberId?: string | null;
+  activeSince?: Date | null;
+}
+
+export async function getConnectionStatus(
+  tenantId: string,
+): Promise<ConnectionStatusResult> {
+  const connection = await prisma.whatsAppConnection.findUnique({
+    where: { tenantId },
+    select: { status: true, wabaId: true, activeSince: true },
+  });
+
+  if (connection?.status === "ACTIVE") {
+    return {
+      configured: true,
+      source: "tenant-connection",
+      status: "connected",
+      wabaId: connection.wabaId,
+      activeSince: connection.activeSince,
+    };
+  }
+
+  const bridgeEnv = readTestBridgeEnv(tenantId);
+
+  if (bridgeEnv.eligible) {
+    const phone = await resolveTestBridgePhone(
+      bridgeEnv.bridgeTenantId as string,
+      bridgeEnv.bridgePhoneNumberId as string,
+      bridgeEnv.bridgeWabaId,
+    );
+
+    if (phone) {
+      return {
+        configured: true,
+        source: "orca-test-bridge",
+        status: "test-mode",
+        wabaId: bridgeEnv.bridgeWabaId,
+        phoneNumberId: bridgeEnv.bridgePhoneNumberId,
+      };
+    }
+  }
+
+  return { configured: false, source: "none", status: "disconnected" };
+}
+
 export async function resolveConnection(
   tenantId: string,
 ): Promise<ResolvedConnection> {
@@ -169,30 +272,25 @@ export async function resolveConnection(
     };
   }
 
-  const bridgeTenantId =
-    process.env.ORCA_WHATSAPP_TEST_TENANT_ID?.trim();
-  const bridgeAccessToken =
-    process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const bridgePhoneNumberId =
-    process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
-  const bridgeWabaId =
-    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID?.trim() || null;
+  const bridgeEnv = readTestBridgeEnv(tenantId);
 
-  const bridgeAllowed =
-    Boolean(bridgeTenantId) &&
-    tenantId === bridgeTenantId &&
-    Boolean(bridgeAccessToken) &&
-    Boolean(bridgePhoneNumberId);
+  if (bridgeEnv.eligible) {
+    const phone = await resolveTestBridgePhone(
+      bridgeEnv.bridgeTenantId as string,
+      bridgeEnv.bridgePhoneNumberId as string,
+      bridgeEnv.bridgeWabaId,
+    );
 
-  if (bridgeAllowed) {
-    return {
-      source: "orca-test-bridge",
-      tenantId,
-      connectionId: null,
-      phoneNumberId: bridgePhoneNumberId as string,
-      wabaId: bridgeWabaId,
-      accessToken: bridgeAccessToken as string,
-    };
+    if (phone) {
+      return {
+        source: "orca-test-bridge",
+        tenantId,
+        connectionId: null,
+        phoneNumberId: bridgeEnv.bridgePhoneNumberId as string,
+        wabaId: bridgeEnv.bridgeWabaId,
+        accessToken: bridgeEnv.bridgeAccessToken as string,
+      };
+    }
   }
 
   throw new WhatsAppResolveError("WHATSAPP_NOT_CONNECTED");
