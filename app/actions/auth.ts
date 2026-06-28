@@ -43,8 +43,7 @@ export async function loginAction(formData: FormData) {
     const existingLock = await checkRateLimit(
       rateLimitKey,
       5,
-      60_000,
-      true
+      60_000
     );
 
     if (!existingLock.allowed) {
@@ -78,8 +77,7 @@ export async function loginAction(formData: FormData) {
       const failedAttempt = await rateLimit(
         rateLimitKey,
         5,
-        60_000,
-        true
+        60_000
       );
 
       if (!failedAttempt.allowed || failedAttempt.remaining === 0) {
@@ -99,7 +97,7 @@ export async function loginAction(formData: FormData) {
       throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
     }
 
-    await clearRateLimit(rateLimitKey, true);
+    await clearRateLimit(rateLimitKey);
 
     if (!user || !user.tenant) {
       throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
@@ -223,6 +221,7 @@ export async function logoutAction() {
 
   return { success: true };
 }
+
 
 
 
