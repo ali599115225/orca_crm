@@ -20,6 +20,7 @@ export const ErrorCode = {
   INVALID_FILE_TYPE: 'INVALID_FILE_TYPE',
   WEBHOOK_INVALID: 'WEBHOOK_INVALID',
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  PROVIDER_NOT_IMPLEMENTED_IN_CURRENT_BATCH: 'PROVIDER_NOT_IMPLEMENTED_IN_CURRENT_BATCH',
 } as const;
 
 export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -39,6 +40,8 @@ const SAFE_AR_MESSAGES: Record<ErrorCodeType, string> = {
   INVALID_FILE_TYPE: 'نوع الملف غير مدعوم.',
   WEBHOOK_INVALID: 'طلب غير صالح.',
   SERVICE_UNAVAILABLE: 'الخدمة غير متاحة حاليًا. يرجى المحاولة لاحقًا.',
+  PROVIDER_NOT_IMPLEMENTED_IN_CURRENT_BATCH:
+    'هذا المزود غير مفعّل في هذه المرحلة من النظام بعد.',
 };
 
 const SAFE_EN_MESSAGES: Record<ErrorCodeType, string> = {
@@ -56,6 +59,8 @@ const SAFE_EN_MESSAGES: Record<ErrorCodeType, string> = {
   INVALID_FILE_TYPE: 'Unsupported file type.',
   WEBHOOK_INVALID: 'Invalid request.',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable. Please try again later.',
+  PROVIDER_NOT_IMPLEMENTED_IN_CURRENT_BATCH:
+    'This provider is not yet activated in the current implementation batch.',
 };
 
 export interface PublicErrorResponse {
@@ -195,6 +200,8 @@ export function statusForErrorCode(code: ErrorCodeType): number {
       return 429;
     case ErrorCode.SERVICE_UNAVAILABLE:
       return 503;
+    case ErrorCode.PROVIDER_NOT_IMPLEMENTED_IN_CURRENT_BATCH:
+      return 501;
     case ErrorCode.PAYMENT_ERROR:
     case ErrorCode.INTERNAL_ERROR:
     default:

@@ -62,6 +62,8 @@ const UI_ALIASES: Record<
       en: "Reauthentication required",
     },
     SUSPENDED: { ar: "معلق مؤقتًا", en: "Suspended" },
+    TEST_MODE: { ar: "وضع اختبار", en: "Test mode" },
+    DISCONNECTING: { ar: "قيد إنهاء الاتصال", en: "Disconnecting" },
   },
 };
 
