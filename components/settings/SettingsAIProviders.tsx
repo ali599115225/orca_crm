@@ -339,6 +339,7 @@ export default function SettingsAIProviders() {
                     <td className="px-5 py-4">
                       <SettingsSelect
                         className="w-44"
+                        placement="bottom"
                         aria-label={L("المزود الأساسي", "Default Provider")}
                         value={assignment.provider}
                         onChange={(value) => updateAssignment(agent.id, "provider", value)}
@@ -348,6 +349,7 @@ export default function SettingsAIProviders() {
                     <td className="px-5 py-4">
                       <SettingsSelect
                         className="w-44"
+                        placement="bottom"
                         mono
                         aria-label={L("النموذج", "Default Model")}
                         value={assignment.model}
@@ -358,6 +360,7 @@ export default function SettingsAIProviders() {
                     <td className="px-5 py-4">
                       <SettingsSelect
                         className="w-36"
+                        placement="bottom"
                         aria-label="Fallback 1"
                         value={assignment.fallback1}
                         onChange={(value) => updateAssignment(agent.id, "fallback1", value)}
@@ -367,6 +370,7 @@ export default function SettingsAIProviders() {
                     <td className="px-5 py-4">
                       <SettingsSelect
                         className="w-36"
+                        placement="bottom"
                         aria-label="Fallback 2"
                         value={assignment.fallback2}
                         onChange={(value) => updateAssignment(agent.id, "fallback2", value)}

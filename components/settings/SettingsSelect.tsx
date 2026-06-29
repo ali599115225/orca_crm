@@ -20,6 +20,7 @@ interface SettingsSelectProps {
   name?: string;
   disabled?: boolean;
   mono?: boolean;
+  placement?: "auto" | "bottom";
   "aria-label"?: string;
 }
 
@@ -64,6 +65,7 @@ export default function SettingsSelect({
   name,
   disabled,
   mono,
+  placement = "auto",
   ...rest
 }: SettingsSelectProps) {
   const [open, setOpen] = useState(false);
@@ -83,7 +85,8 @@ export default function SettingsSelect({
     const rect = button.getBoundingClientRect();
     const estimatedListHeight = Math.min(options.length * 36 + 8, 240);
     const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpward = spaceBelow < estimatedListHeight && rect.top > estimatedListHeight;
+    const openUpward =
+      placement === "auto" && spaceBelow < estimatedListHeight && rect.top > estimatedListHeight;
 
     setPosition({
       top: openUpward ? Math.max(rect.top - estimatedListHeight - 4, 4) : rect.bottom + 4,
