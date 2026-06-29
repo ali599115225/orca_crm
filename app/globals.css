@@ -124,6 +124,39 @@
   --nc-text-disabled: #6b7280;
 }
 
+:root {
+  /* ── Login: Brand Gold (logo identity — constant across themes) ── */
+  --orca-brand-gold: #C9A96E;
+  /* ── Login: Action Gold (interactive elements — same system gold, separate token) ── */
+  --orca-action-gold: #C9A96E;
+  --orca-action-gold-hover: #D6BA82;
+  --orca-action-gold-soft: rgba(201, 169, 110, 0.14);
+
+  --orca-ui-bg: #F8FAFC;
+  --orca-ui-surface: #FFFFFF;
+  --orca-ui-surface-muted: #F1F5F9;
+  --orca-ui-text-primary: #0F172A;
+  --orca-ui-text-secondary: #334155;
+  --orca-ui-text-muted: #64748B;
+  --orca-ui-border: #CBD5E1;
+  --orca-ui-divider: #E2E8F0;
+  --orca-ui-icon: #64748B;
+  --orca-ui-on-primary: #111827;
+}
+
+.dark {
+  --orca-ui-bg: #0B1120;
+  --orca-ui-surface: #0F172A;
+  --orca-ui-surface-muted: #172033;
+  --orca-ui-text-primary: #F8FAFC;
+  --orca-ui-text-secondary: #CBD5E1;
+  --orca-ui-text-muted: #94A3B8;
+  --orca-ui-border: #334155;
+  --orca-ui-divider: #263449;
+  --orca-ui-icon: #94A3B8;
+  --orca-ui-on-primary: #111827;
+}
+
 .dark {
   --nc-bg: #0b1120;
   --nc-surface: rgba(21, 31, 50, 0.6);

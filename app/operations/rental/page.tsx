@@ -9,13 +9,16 @@ import React, { useState, useTransition, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Calculator, Megaphone, Plus, Search, Eye,
   Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
-  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2, QrCode, Download
+  UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2, QrCode, Download,
+  Receipt, PenLine, Wallet, SlidersHorizontal,
 } from 'lucide-react';
 import { DateField } from '@/components/ui/DateField';
 import { useAuth } from '@/app/context/AuthContext';
 import { Button, Card } from '@/components/ui/orca-components';
 import PageHeader from '@/components/ui/PageHeader';
 import SalesContractsPanel from '@/components/sales/SalesContractsPanel';
+import SettingsButton from '@/components/settings/SettingsButton';
+import SettingsSelect from '@/components/settings/SettingsSelect';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
 import { DateCell } from '@/components/ui/orca-table/cells/DateCell';
@@ -185,7 +188,7 @@ function leaseStatusBadgeClass(status: Lease['status'] | string): string {
   switch (String(status).toLowerCase()) {
     case 'active': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
     case 'expired': return 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
-    default: return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    default: return 'bg-warning/20 text-warning border border-warning/30';
   }
 }
 
@@ -197,7 +200,7 @@ function invoiceStatusBadgeClass(status: Invoice['status'] | string): string {
   switch (String(status).toLowerCase()) {
     case 'paid': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
     case 'overdue': return 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
-    default: return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    default: return 'bg-warning/20 text-warning border border-warning/30';
   }
 }
 
@@ -788,57 +791,51 @@ export default function RentalPage() {
 
 
   // ── KPIs ─────────────────────────────────────────────────────────────────
+  const kpiItems = [
+    {
+      key: 'receivables',
+      label: L('المستحقات المفوترة', 'Billed receivables'),
+      value: formatMoneyValue(totalReceivables, displayLocale),
+      Icon: FileText,
+      tone: 'text-[var(--nc-accent-text)] bg-[var(--nc-accent-soft)]',
+    },
+    {
+      key: 'overdue',
+      label: L('متأخرات السداد', 'Overdue payments'),
+      value: formatMoneyValue(totalOverdue, displayLocale),
+      Icon: AlertCircle,
+      tone: 'text-danger bg-danger/10',
+    },
+    {
+      key: 'collected',
+      label: L('محصل هذا الشهر', 'Collected this month'),
+      value: formatMoneyValue(collectedThisMonth, displayLocale),
+      Icon: CheckCircle2,
+      tone: 'text-success bg-success/10',
+    },
+    {
+      key: 'settlements',
+      label: L('تسويات معلقة', 'Pending settlements'),
+      value: String(pendingSettlementsCount),
+      Icon: Landmark,
+      tone: 'text-info bg-info/10',
+    },
+  ];
+
   const kpisContent = (
-    <>
-      <div className="nc-card-elevated p-5">
-        <div className="flex items-start mb-3">
-          <div className="flex-1">
-            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{L('المستحقات المفوترة', 'Billed receivables')}</p>
-            <h3 className="nc-metric-lg font-black text-[var(--nc-text-primary)]">{formatMoneyValue(totalReceivables, displayLocale)}</h3>
+    <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-[var(--nc-glass-border)] rtl:divide-x-reverse rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] overflow-hidden">
+      {kpiItems.map((item) => (
+        <div key={item.key} className="flex items-center gap-3 px-4 py-3 min-w-0">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
+            <item.Icon size={16} />
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent-text)]">
-            <FileText size={18} />
-          </div>
-        </div>
-        <p className="text-[9px] text-[var(--nc-text-dim)]">{L('إجمالي الفواتير الصادرة', 'Total issued invoices')}</p>
-      </div>
-      <div className="nc-card-elevated p-5">
-        <div className="flex items-start mb-3">
-          <div className="flex-1">
-            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{L('متأخرات السداد', 'Overdue payments')}</p>
-            <h3 className="nc-metric-lg font-black text-[var(--nc-foreground)]">{formatMoneyValue(totalOverdue, displayLocale)}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
-            <AlertCircle size={18} />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)] truncate">{item.label}</p>
+            <h3 className="text-base font-black text-[var(--nc-text-primary)] truncate">{item.value}</h3>
           </div>
         </div>
-        <p className="text-[9px] text-[var(--nc-text-dim)]">{L('مستحقات تجاوزت تاريخ الاستحقاق', 'Receivables past due date')}</p>
-      </div>
-      <div className="nc-card-elevated p-5">
-        <div className="flex items-start mb-3">
-          <div className="flex-1">
-            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{L('محصل هذا الشهر', 'Collected this month')}</p>
-            <h3 className="nc-metric-lg font-black text-[var(--nc-foreground)]">{formatMoneyValue(collectedThisMonth, displayLocale)}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-            <CheckCircle2 size={18} />
-          </div>
-        </div>
-        <p className="text-[9px] text-[var(--nc-text-dim)]">{L('إجمالي التحصيلات خلال الشهر الحالي', 'Total collections this month')}</p>
-      </div>
-      <div className="nc-card-elevated p-5">
-        <div className="flex items-start mb-3">
-          <div className="flex-1">
-            <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{L('تسويات معلقة', 'Pending settlements')}</p>
-            <h3 className="nc-metric-lg font-black text-cyan-400">{pendingSettlementsCount}</h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-            <Landmark size={18} />
-          </div>
-        </div>
-        <p className="text-[9px] text-[var(--nc-text-dim)]">{L('تسويات مالية غير مؤكدة بعد', 'Financial settlements not confirmed yet')}</p>
-      </div>
-    </>
+      ))}
+    </div>
   );
 
   const actionsContent = (
@@ -865,7 +862,7 @@ export default function RentalPage() {
           <button
             onClick={() => {
               if (!isAllowed("CREATE_INVOICE")) { alert(L('عذراً، لا تملك الصلاحية لإصدار فواتير.', 'Sorry, you do not have permission to issue invoices.')); return; }
-              setActiveModal("new_invoice");
+              setActiveModal("create_invoice");
             }}
             className="w-full py-2 bg-[var(--nc-surface-solid)] border border-white/10 hover:border-[var(--nc-accent-border)] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 min-h-[44px]"
           >
@@ -894,8 +891,8 @@ export default function RentalPage() {
           </div>
         )}
         {expiredLeasesCount > 0 && (
-          <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <Clock size={14} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/20 rounded-xl">
+            <Clock size={14} className="text-warning shrink-0 mt-0.5" />
             <p className="text-[var(--nc-text-secondary)]">{L(`${formatNumberValue(expiredLeasesCount, displayLocale)} عقود إيجارية منتهية تحتاج تجديد`, `${formatNumberValue(expiredLeasesCount, displayLocale)} expired leases need renewal`)}</p>
           </div>
         )}
@@ -932,91 +929,82 @@ export default function RentalPage() {
     </Card>
   );
 
+  const hasAlerts = overdueInvoicesCount > 0 || expiredLeasesCount > 0 || pendingSettlementsCount > 0;
+
   const compactOperationsStrip = (
-    <section className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-      <div className="h-fit rounded-2xl border border-white/10 bg-[var(--nc-surface-strong)] px-4 py-3">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Plus size={14} className="text-[var(--nc-text-secondary)]" />
-            <h4 className="text-sm font-black text-white">{L('إجراءات سريعة', 'Quick actions')}</h4>
-          </div>
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('إضافة عقود وفواتير', 'Add leases and invoices')}</span>
-        </div>
+    <section className="flex flex-col gap-3">
+      {/* ── Unified toolbar: primary actions ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <SettingsButton
             type="button"
+            variant="primary"
             onClick={() => {
               if (!isAllowed("CREATE_LEASE")) { alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.')); return; }
               setActiveModal("new_lease");
             }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#8EB1D1] px-3 py-2 text-[11px] font-black text-[#1e293b] transition-colors hover:bg-[#A7C7E7]"
           >
             <Plus size={13} />
             {L('عقد إيجار جديد', 'New lease')}
-          </button>
-          <button
+          </SettingsButton>
+          <SettingsButton
             type="button"
+            variant="secondary"
             onClick={() => {
               if (!isAllowed("CREATE_INVOICE")) { alert(L('عذراً، لا تملك الصلاحية لإصدار فواتير.', 'Sorry, you do not have permission to issue invoices.')); return; }
-              setActiveModal("new_invoice");
+              setActiveModal("create_invoice");
             }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-[var(--nc-surface-solid)] px-3 py-2 text-[11px] font-black text-white transition-all hover:border-[var(--nc-accent-border)]"
           >
             <Plus size={13} />
             {L('إصدار فاتورة (تسجيل يدوي)', 'Issue invoice (manual)')}
-          </button>
+          </SettingsButton>
+          <SettingsButton
+            type="button"
+            variant="ghost"
+            disabled
+            title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
+          >
+            <SlidersHorizontal size={13} />
+            {L("إرسال تنبيهات سداد (قيد الربط)", "Send Payment Reminders (pending)")}
+          </SettingsButton>
+          <SettingsButton
+            type="button"
+            variant="ghost"
+            disabled
+            title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
+          >
+            {L("تشغيل مصالحة بنكية (قيد الربط)", "Run Bank Reconciliation (pending)")}
+          </SettingsButton>
         </div>
       </div>
 
-      <div className="h-fit rounded-2xl border border-white/10 bg-[var(--nc-surface-strong)] px-4 py-3">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Bot size={14} className="text-cyan-400" />
-            <h4 className="text-sm font-black text-white">{L('التنبيهات الذكية', 'Smart alerts')}</h4>
+      {/* ── Side panel: only rendered when there are alerts/activity ── */}
+      {hasAlerts && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 py-2.5 text-[11px]">
+          <div className="flex items-center gap-1.5 text-[var(--nc-text-dim)] font-bold text-[10px] uppercase tracking-wider shrink-0">
+            <Bot size={13} className="text-info" />
+            {L('تنبيهات', 'Alerts')}
           </div>
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('تنبيهات وإجراءات مقترحة', 'Alerts and recommended actions')}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {overdueInvoicesCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 font-bold text-rose-300">
+            <span className="inline-flex items-center gap-1 rounded-full border border-danger/20 bg-danger/10 px-2.5 py-1 font-bold text-danger">
               <AlertCircle size={12} />
               {L(`${formatNumberValue(overdueInvoicesCount, displayLocale)} فواتير متأخرة`, `${formatNumberValue(overdueInvoicesCount, displayLocale)} overdue invoices`)}
             </span>
           )}
           {expiredLeasesCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 font-bold text-[var(--nc-text-secondary)]">
+            <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 font-bold text-warning">
               <Clock size={12} />
               {L(`${formatNumberValue(expiredLeasesCount, displayLocale)} عقود تحتاج تجديد`, `${formatNumberValue(expiredLeasesCount, displayLocale)} leases need renewal`)}
             </span>
           )}
           {pendingSettlementsCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 font-bold text-cyan-300">
+            <span className="inline-flex items-center gap-1 rounded-full border border-info/20 bg-info/10 px-2.5 py-1 font-bold text-info">
               <Landmark size={12} />
               {L(`${formatNumberValue(pendingSettlementsCount, displayLocale)} تسويات معلقة`, `${formatNumberValue(pendingSettlementsCount, displayLocale)} pending settlements`)}
             </span>
           )}
-          {overdueInvoicesCount === 0 && expiredLeasesCount === 0 && pendingSettlementsCount === 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 font-bold text-emerald-300">
-              <CheckCircle2 size={12} />
-              {L('لا توجد تنبيهات عاجلة', 'No urgent alerts')}
-            </span>
-          )}
-          <button
-            disabled
-            className="rounded-lg border border-[var(--nc-glass-border)] px-2.5 py-1 font-bold text-[var(--nc-text-disabled)] opacity-70"
-            title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
-          >
-            {L("إرسال تنبيهات سداد (قيد الربط)", "Send Payment Reminders (pending)")}
-          </button>
-          <button
-            disabled
-            className="rounded-lg border border-[var(--nc-glass-border)] px-2.5 py-1 font-bold text-[var(--nc-text-disabled)] opacity-70"
-            title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
-          >
-            {L("تشغيل مصالحة بنكية (قيد الربط)", "Run Bank Reconciliation (pending)")}
-          </button>
         </div>
-      </div>
+      )}
     </section>
   );
 
@@ -1026,21 +1014,23 @@ export default function RentalPage() {
       {/* ── Tab Bar ── */}
       <div className="flex flex-wrap gap-2">
         {[
-          { id: 'leases', name: L('📄 عقود الإيجار', '📄 Rental leases') },
-          { id: 'sales', name: L('✍️ عقود البيع', '✍️ Sales contracts') },
-          { id: 'invoices', name: L('🧾 الفواتير', '🧾 Invoices') },
-          { id: 'reconciliation', name: L('🏦 المصالحة البنكية', '🏦 Bank reconciliation') },
-          { id: 'settlements', name: L('💰 التسويات', '💰 Settlements') }
+          { id: 'leases', name: L('عقود الإيجار', 'Rental leases'), Icon: FileText },
+          { id: 'sales', name: L('عقود البيع', 'Sales contracts'), Icon: PenLine },
+          { id: 'invoices', name: L('الفواتير', 'Invoices'), Icon: Receipt },
+          { id: 'reconciliation', name: L('المصالحة البنكية', 'Bank reconciliation'), Icon: Landmark },
+          { id: 'settlements', name: L('التسويات', 'Settlements'), Icon: Wallet },
         ].map(t => (
           <button
             key={t.id}
+            type="button"
             onClick={() => startTransition(() => setActivePane(t.id as any))}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`h-10 shrink-0 rounded-xl border px-4 text-sm font-semibold transition-colors flex items-center gap-1.5 ${
               activePane === t.id
-                ? 'bg-[var(--nc-accent)] text-[#1e293b] shadow-sm'
-                : 'bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] hover:border-[var(--nc-accent-border)]'
+                ? 'border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
+                : 'border-[var(--nc-border)] bg-[var(--nc-surface-strong)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] hover:border-[var(--nc-accent-border)]'
             }`}
           >
+            <t.Icon size={14} />
             {t.name}
           </button>
         ))}
@@ -1065,19 +1055,20 @@ export default function RentalPage() {
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 bg-[var(--nc-surface-solid)]">
                   <span className="text-sm font-bold text-white">{L('قائمة عقود الإيجار', 'Leases list')}</span>
                   <div className="flex gap-2">
-                    <button 
+                    <SettingsButton
+                       type="button"
+                       variant="primary"
                        onClick={() => {
                          if (!isAllowed('CREATE_LEASE')) {
                            alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.'));
                            return;
                          }
-                         setActiveModal('new_lease');
-                      }}
-                      className="px-3 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] text-[11px] font-black rounded-lg transition-colors flex items-center gap-1"
+                          setActiveModal('new_lease');
+                       }}
                     >
                       <Plus size={13} />
                       {L('عقد جديد', 'New lease')}
-                    </button>
+                    </SettingsButton>
               </div>
             </div>
 
@@ -1092,20 +1083,22 @@ export default function RentalPage() {
                       className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl pr-8 pl-3 py-2 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
                     />
                   </div>
-                  <select
+                  <SettingsSelect
+                    className="w-40"
+                    placement="bottom"
                     value={leaseStatusFilter}
                     aria-label={L("تصفية حالة العقد", "Filter lease status")}
-                    onChange={(e) => setLeaseStatusFilter(e.target.value)}
-                    className="bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none"
-                  >
-                    <option value="">{L('كل الحالات', 'All statuses')}</option>
-                    <option value="active">{L('نشط', 'Active')}</option>
-                    <option value="expired">{L('منتهي', 'Expired')}</option>
-                    <option value="terminated">{L('ملغى', 'Terminated')}</option>
-                  </select>
+                    onChange={setLeaseStatusFilter}
+                    options={[
+                      { value: '', label: L('كل الحالات', 'All statuses') },
+                      { value: 'active', label: L('نشط', 'Active') },
+                      { value: 'expired', label: L('منتهي', 'Expired') },
+                      { value: 'terminated', label: L('ملغى', 'Terminated') },
+                    ]}
+                  />
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <table className="nc-table nc-table-striped">
                     <thead>
                       <tr>
@@ -1119,7 +1112,7 @@ export default function RentalPage() {
                     <tbody>
                       {filteredLeases.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-xs font-medium text-[var(--nc-text-dim)]">
+                          <td colSpan={5} className="py-6 text-center text-xs font-medium text-[var(--nc-text-dim)]">
                             {L('لا توجد عقود إيجار مسجلة', 'No leases are registered')}
                           </td>
                         </tr>
@@ -1193,10 +1186,10 @@ export default function RentalPage() {
 
               {/* Lease Detail Panel (Detail) */}
               <div className="h-fit flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="p-5 max-h-[560px] overflow-y-auto">
+              <div className="p-5 max-h-[560px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {!selectedLease ? (
                   <div className="flex items-start gap-3 rounded-xl border border-dashed border-white/10 bg-[var(--nc-surface)]/50 px-4 py-5 text-right text-[var(--nc-text-dim)] text-xs">
-                    <Landmark size={20} className="mt-0.5 shrink-0 text-slate-600" />
+                    <Landmark size={20} className="mt-0.5 shrink-0 text-[var(--nc-text-dim)]" />
                     <span>{L('اختر عقدًا من القائمة لعرض تفاصيله.', 'Select a lease from the list to view details.')}</span>
                   </div>
                 ) : (
@@ -1235,7 +1228,7 @@ export default function RentalPage() {
                             setInvVatType('STANDARD');
                             setActiveModal('create_invoice');
                           }}
-                          className="px-2.5 py-1.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] text-[11px] font-black rounded-lg transition-all border border-white/10"
+                          className="px-2.5 py-1.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
                         >
                            {L('فاتورة عقد إيجار (تسجيل يدوي)', 'Lease invoice (manual)')}
                         </button>
@@ -1274,7 +1267,7 @@ export default function RentalPage() {
                           onClick={() => setDetailActiveTab(tab.id)}
                           className={`min-h-[28px] whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
                             detailActiveTab === tab.id 
-                              ? 'bg-[#8EB1D1] text-[#1e293b] shadow-sm' 
+                              ? 'bg-[var(--nc-op-blue)] text-white shadow-sm' 
                               : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:text-white'
                           }`}
                         >
@@ -1315,7 +1308,7 @@ export default function RentalPage() {
 
                       {/* Invoices Tab */}
                       {detailActiveTab === 'invoices' && (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                           <table className="w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
@@ -1337,7 +1330,7 @@ export default function RentalPage() {
                                         ? 'bg-emerald-500/20 text-emerald-400' 
                                         : inv.status === 'overdue'
                                           ? 'bg-rose-500/20 text-rose-400'
-                                          : 'bg-amber-500/20 text-amber-400'
+                                          : 'bg-warning/20 text-warning'
                                     }`}>
                                       {invoiceStatusLabel(inv.status, displayLocale)}
                                     </span>
@@ -1357,7 +1350,7 @@ export default function RentalPage() {
 
                       {/* Payments Tab */}
                       {detailActiveTab === 'payments' && (
-                        <div className="overflow-x-auto space-y-4">
+                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
                           <table className="w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
@@ -1373,7 +1366,7 @@ export default function RentalPage() {
                                 const payStatus = linkedInvoice?.status === 'paid' ? invoiceStatusLabel('paid', displayLocale) : L('مسجلة', 'Recorded');
                                 const payStatusClass = linkedInvoice?.status === 'paid'
                                   ? 'bg-emerald-500/20 text-emerald-400'
-                                  : 'bg-amber-500/20 text-amber-400';
+                                  : 'bg-warning/20 text-warning';
                                 return (
                                 <tr key={pay.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                   <td className="py-2.5 font-mono text-[var(--nc-text-dim)]">{formatDateToDDMMYYYY(pay.date)}</td>
@@ -1440,7 +1433,7 @@ export default function RentalPage() {
 
                       {/* Settlements Tab */}
                       {detailActiveTab === 'settlements' && (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                           <table className="w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
@@ -1459,7 +1452,7 @@ export default function RentalPage() {
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                                       settle.status === 'completed' 
                                         ? 'bg-emerald-500/20 text-emerald-400' 
-                                        : 'bg-amber-500/20 text-amber-400'
+                                        : 'bg-warning/20 text-warning'
                                     }`}>
                                       {settlementStatusLabel(settle.status, displayLocale)}
                                     </span>
@@ -1484,9 +1477,9 @@ export default function RentalPage() {
                           <div className="border-r-2 border-white/5 pr-4 space-y-3">
                             {detailEventPage.items.map(evt => (
                               <div key={evt.id} className="relative">
-                                <div className="absolute right-[-21px] top-1 w-2 h-2 rounded-full bg-[#8EB1D1]"></div>
+                                <div className="absolute right-[-21px] top-1 w-2 h-2 rounded-full bg-[var(--nc-op-blue)]"></div>
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--nc-text-dim)]">
-                                  <span className="font-bold text-slate-200">{getEventLabel(evt.type)}</span>
+                                  <span className="font-bold text-[var(--nc-text-primary)]">{getEventLabel(evt.type)}</span>
                                   <span className="font-mono">{formatEventTimestamp(evt.timestamp)}</span>
                                 </div>
                                 <p className="text-[11px] text-[var(--nc-text-dim)] mt-0.5">{cleanEventNote(evt.note)}</p>
@@ -1531,24 +1524,26 @@ export default function RentalPage() {
                       placeholder={L("بحث برقم الفاتورة أو العقد...", "Search by invoice or lease...")}
                       value={invoiceSearch}
                       onChange={(e) => setInvoiceSearch(e.target.value)}
-                      className="bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl pr-8 pl-3 py-1.5 text-xs text-white outline-none w-52 focus:border-[#8EB1D1]/40"
+                      className="bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl pr-8 pl-3 py-1.5 text-xs text-white outline-none w-52 focus:border-[var(--nc-op-blue-border)]"
                     />
                   </div>
-                  <select
+                  <SettingsSelect
+                    className="w-40"
+                    placement="bottom"
                     value={invoiceStatusFilter}
                     aria-label={L("تصفية حالة الفاتورة", "Filter invoice status")}
-                    onChange={(e) => setInvoiceStatusFilter(e.target.value)}
-                    className="bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
-                  >
-                    <option value="">{L('كل الحالات', 'All statuses')}</option>
-                    <option value="unpaid">{L('غير مدفوعة', 'Unpaid')}</option>
-                    <option value="paid">{L('مدفوعة', 'Paid')}</option>
-                    <option value="overdue">{L('متأخرة', 'Overdue')}</option>
-                  </select>
+                    onChange={setInvoiceStatusFilter}
+                    options={[
+                      { value: '', label: L('كل الحالات', 'All statuses') },
+                      { value: 'unpaid', label: L('غير مدفوعة', 'Unpaid') },
+                      { value: 'paid', label: L('مدفوعة', 'Paid') },
+                      { value: 'overdue', label: L('متأخرة', 'Overdue') },
+                    ]}
+                  />
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <table className="nc-table nc-table-striped">
                   <thead>
                     <tr>
@@ -1644,7 +1639,7 @@ export default function RentalPage() {
                               )}
                               <button
                                 onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] hover:border-slate-500 text-[var(--nc-text-dim)] hover:text-[var(--nc-text-primary)] rounded text-[10px] font-bold transition-all"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] hover:border-[var(--nc-glass-border-hover)] text-[var(--nc-text-dim)] hover:text-[var(--nc-text-primary)] rounded text-[10px] font-bold transition-all"
                                 title={L('تحميل PDF', 'Download PDF')}
                               >
                                 <Download size={11} /> {L('تحميل', 'Download')}
@@ -1702,7 +1697,7 @@ export default function RentalPage() {
               </div>
               <div className="p-6 space-y-6">
                 <div className="border border-dashed border-white/10 p-8 rounded-2xl text-center space-y-3 bg-[var(--nc-surface)] dark:bg-white/5">
-                  <CloudUpload className="mx-auto text-[#8EB1D1]/70" size={32} />
+                  <CloudUpload className="mx-auto text-[var(--nc-op-blue)]/70" size={32} />
                   <div className="text-xs text-[var(--nc-text-dim)]">{L('قم برفع ملف الحساب البنكي (.csv / .xls) للمطابقة', 'Upload a bank statement file (.csv / .xls) for matching')}</div>
                   <input
                     type="file"
@@ -1726,7 +1721,7 @@ export default function RentalPage() {
                             <span className="text-emerald-400">{formatMoneyValue(match.amount, displayLocale)}</span>
                           </div>
                           <p className="text-[var(--nc-text-dim)] text-[11px]">{safeDisplayValue(match.note, displayLocale)}</p>
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                          <div className="flex items-center justify-between pt-2 border-t border-[var(--nc-glass-border)]">
                             <span className="text-[10px] text-[var(--nc-text-dim)]">{L('الفاتورة المقترحة:', 'Suggested invoice:')} {safeDisplayValue(match.invoiceId, displayLocale)}</span>
                             <button
                               onClick={() => handleConfirmReconcileMatch(match)}
@@ -1753,13 +1748,13 @@ export default function RentalPage() {
                             <span className="text-rose-400">{formatMoneyValue(ex.amount, displayLocale)}</span>
                           </div>
                           <p className="text-[var(--nc-text-dim)] text-[11px]">{safeDisplayValue(ex.note, displayLocale)}</p>
-                          <div className="flex justify-end pt-2 border-t border-slate-900">
+                          <div className="flex justify-end pt-2 border-t border-[var(--nc-glass-border)]">
                             <button
                               onClick={() => {
                                 alert(L('تحويل المعاملة للفحص اليدوي من قبل قسم المالية.', 'The transaction was sent to finance for manual review.'));
                                 addTelemetryEvent('reconciliation.exception_checked', { transactionId: ex.transactionId });
                               }}
-                              className="px-2.5 py-1 bg-[var(--nc-surface)] border border-slate-700 hover:border-slate-500 text-[var(--nc-text-dim)] rounded text-[10px] font-bold transition-all"
+                              className="px-2.5 py-1 bg-[var(--nc-surface)] border border-[var(--nc-border)] hover:border-[var(--nc-glass-border-hover)] text-[var(--nc-text-dim)] rounded text-[10px] font-bold transition-all"
                             >
                               {L('تحديد يدوي / فحص', 'Manual review')}
                             </button>
@@ -1787,7 +1782,7 @@ export default function RentalPage() {
               </div>
               <div className="p-6 space-y-4">
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <table className="w-full text-right border-collapse text-xs">
                   <thead>
                     <tr className="bg-[var(--nc-surface-solid)] border-y border-white/5 text-[var(--nc-text-dim)] text-[11px] font-bold">
@@ -1811,7 +1806,7 @@ export default function RentalPage() {
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                             s.status === 'completed' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              : 'bg-warning/20 text-warning border border-warning/30'
                           }`}>
                             {settlementStatusLabel(s.status, displayLocale)}
                           </span>
@@ -1846,11 +1841,13 @@ export default function RentalPage() {
         </div>
       </PageHeader>
 
-      <section className="nc-stagger-enter grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-        {kpisContent}
-      </section>
+      {activePane === 'leases' && (
+        <section className="nc-stagger-enter">
+          {kpisContent}
+        </section>
+      )}
 
-      {compactOperationsStrip}
+      {activePane === 'leases' && compactOperationsStrip}
 
       <section className="w-full">
         {detailsContent}
@@ -1864,7 +1861,7 @@ export default function RentalPage() {
             onSubmit={handleCreateLease}
             className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
               <Plus size={18} />
               {L('إضافة عقد إيجار جديد', 'Add new lease')}
             </h3>
@@ -1877,7 +1874,7 @@ export default function RentalPage() {
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder={L("مثال: A-101", "Example: A-101")}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
               />
             </div>
 
@@ -1889,7 +1886,7 @@ export default function RentalPage() {
                 value={newTenant}
                 onChange={(e) => setNewTenant(e.target.value)}
                 placeholder={L("الاسم الكامل للمستأجر...", "Tenant full name...")}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
               />
             </div>
 
@@ -1918,7 +1915,7 @@ export default function RentalPage() {
                   required
                   value={newRent}
                   onChange={(e) => setNewRent(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
                 />
               </div>
               <div className="space-y-1">
@@ -1928,7 +1925,7 @@ export default function RentalPage() {
                   required
                   value={newDeposit}
                   onChange={(e) => setNewDeposit(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
                 />
               </div>
             </div>
@@ -1936,7 +1933,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all"
               >
                 {L('تأكيد وتسجيل العقد', 'Create lease')}
               </button>
@@ -1960,7 +1957,7 @@ export default function RentalPage() {
             onSubmit={handleCreateInvoice}
             className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
               <FileCheck size={18} />
               {L('إصدار فاتورة ضريبية', 'Issue tax invoice')}
             </h3>
@@ -1978,7 +1975,7 @@ export default function RentalPage() {
                   value={invLeaseId}
                   onChange={(e) => setInvLeaseId(e.target.value)}
                   placeholder={L("مثال: L-1001", "Example: L-1001")}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1] font-mono"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)] font-mono"
                 />
               )}
             </div>
@@ -1991,21 +1988,23 @@ export default function RentalPage() {
                 required
                 value={invSubtotal || ''}
                 onChange={(e) => setInvSubtotal(Number(e.target.value))}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
               />
             </div>
 
             <div className="space-y-1">
                <label className="text-[var(--nc-text-dim)] block">{L('نوع الضريبة:', 'VAT type:')}</label>
-              <select
+              <SettingsSelect
+                className="w-full"
+                placement="bottom"
                 value={invVatType}
-                onChange={(e) => setInvVatType(e.target.value)}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
-              >
-                <option value="STANDARD">{vatTypeLabel('STANDARD', displayLocale)}</option>
-                <option value="ZERO_RATED">{vatTypeLabel('ZERO_RATED', displayLocale)}</option>
-                <option value="EXEMPT">{vatTypeLabel('EXEMPT', displayLocale)}</option>
-              </select>
+                onChange={setInvVatType}
+                options={[
+                  { value: 'STANDARD', label: vatTypeLabel('STANDARD', displayLocale) },
+                  { value: 'ZERO_RATED', label: vatTypeLabel('ZERO_RATED', displayLocale) },
+                  { value: 'EXEMPT', label: vatTypeLabel('EXEMPT', displayLocale) },
+                ]}
+              />
             </div>
 
             {invSubtotal > 0 && (
@@ -2018,7 +2017,7 @@ export default function RentalPage() {
                   <span className="text-[var(--nc-text-dim)]">
                     {L('ضريبة', 'VAT')} ({invVatType === 'EXEMPT' ? 0 : invVatType === 'ZERO_RATED' ? 0 : 15}%):
                   </span>
-                  <span className="text-amber-400">
+                  <span className="text-warning">
                     {formatMoneyValue(invVatType === 'EXEMPT' || invVatType === 'ZERO_RATED' ? 0 : invSubtotal * 0.15, displayLocale)}
                   </span>
                 </div>
@@ -2042,7 +2041,7 @@ export default function RentalPage() {
             <div className="flex gap-2 pt-2">
               <button 
                 type="submit"
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all"
+                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all"
               >
                  {L('إصدار الفاتورة الضريبية', 'Issue tax invoice')}
               </button>
@@ -2069,15 +2068,14 @@ export default function RentalPage() {
             onSubmit={handleRegisterPayment}
             className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
           >
-            <h3 className="text-base font-extrabold text-[#8EB1D1] border-b border-white/5 pb-2 flex items-center gap-2">
+            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
               <Key size={18} />
               {L('تسجيل دفعة يدوية للفاتورة', 'Record manual invoice payment')}
             </h3>
-            {isRTL ? (
-              <p className="text-[10px] text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded-lg mb-3">{L('⚠️ هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.', '⚠️ This records an internal/manual payment and does not process an online gateway payment.')}</p>
-            ) : (
-              <p className="text-[10px] text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-1 rounded-lg mb-3">⚠️ This records an internal/manual payment and does not process an online gateway payment.</p>
-            )}
+            <p className="flex items-center gap-1.5 text-[10px] text-warning bg-warning/5 border border-warning/10 px-2 py-1 rounded-lg mb-3">
+              <AlertCircle size={12} className="shrink-0" />
+              {L('هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.', 'This records an internal/manual payment and does not process an online gateway payment.')}
+            </p>
             
             <div className="space-y-2 bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex justify-between">
@@ -2093,15 +2091,17 @@ export default function RentalPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[var(--nc-text-dim)] block">{L('طريقة التحصيل:', 'Collection method:')}</label>
-                <select
+                <SettingsSelect
+                  className="w-full"
+                  placement="bottom"
                   value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
-                >
-                  <option value="bank">{paymentMethodLabel('bank', displayLocale)}</option>
-                  <option value="card">{paymentMethodLabel('card', displayLocale)}</option>
-                  <option value="cash">{paymentMethodLabel('cash', displayLocale)}</option>
-                </select>
+                  onChange={setPayMethod}
+                  options={[
+                    { value: 'bank', label: paymentMethodLabel('bank', displayLocale) },
+                    { value: 'card', label: paymentMethodLabel('card', displayLocale) },
+                    { value: 'cash', label: paymentMethodLabel('cash', displayLocale) },
+                  ]}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[var(--nc-text-dim)] block">{L('رقم المرجع:', 'Reference number:')}</label>
@@ -2110,7 +2110,7 @@ export default function RentalPage() {
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   placeholder={L("رقم الحوالة البنكية...", "Bank transfer reference...")}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[#8EB1D1]"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
                 />
               </div>
             </div>
@@ -2138,7 +2138,7 @@ export default function RentalPage() {
               <button 
                 type="submit"
                 disabled={isPaying}
-                className="flex-1 py-2.5 bg-[#8EB1D1] hover:bg-[#A7C7E7] text-[#1e293b] font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPaying ? L('جاري التسجيل...', 'Recording...') : L('تأكيد التحصيل والتسوية', 'Confirm collection')}
               </button>

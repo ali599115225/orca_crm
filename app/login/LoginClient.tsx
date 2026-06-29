@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { loginAction } from '@/app/actions/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useLanguage, useTheme } from '@/app/context/AppContext';
+import { useLanguage } from '@/app/context/AppContext';
 
 interface LoginClientProps {
   tenantName?: string;
@@ -84,7 +84,7 @@ function OrcaMark() {
       </svg>
       <div className="leading-none">
         <div className="text-[38px] font-light tracking-[0.16em] text-white">ORCA</div>
-        <div className="mt-1.5 text-[9px] font-semibold tracking-[0.26em] text-[#D8A83B]">REAL ESTATE PLATFORM</div>
+        <div className="mt-1.5 text-[9px] font-semibold tracking-[0.26em] text-[var(--orca-brand-gold)]">REAL ESTATE PLATFORM</div>
       </div>
     </div>
   );
@@ -95,11 +95,9 @@ export default function LoginClient({
   host = '',
 }: LoginClientProps) {
   const router = useRouter();
-  const { theme } = useTheme();
   const { lang, toggleLang } = useLanguage();
 
   const isArabic = lang === 'AR';
-  const isDarkMode = theme === 'dark';
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -189,9 +187,7 @@ export default function LoginClient({
   return (
     <div
       dir="ltr"
-      className={`relative min-h-screen overflow-hidden font-sans text-white ${
-        isDarkMode ? 'bg-[#071427]' : 'bg-[#102541]'
-      }`}
+      className="relative min-h-screen overflow-hidden font-sans text-white bg-[var(--orca-ui-bg)]"
     >
       <style dangerouslySetInnerHTML={{ __html: `
         .orca-login-shell {
@@ -244,8 +240,8 @@ export default function LoginClient({
         .orca-field:-webkit-autofill,
         .orca-field:-webkit-autofill:hover,
         .orca-field:-webkit-autofill:focus {
-          -webkit-text-fill-color: #f8fafc;
-          -webkit-box-shadow: 0 0 0 1000px rgba(10,28,51,.96) inset;
+          -webkit-text-fill-color: var(--orca-ui-text-primary);
+          -webkit-box-shadow: 0 0 0 1000px var(--orca-ui-surface-muted) inset;
           transition: background-color 9999s ease-out;
         }
         @media (max-width: 1023px) {
@@ -282,7 +278,7 @@ export default function LoginClient({
             type="button"
             onClick={toggleLang}
             aria-label={isArabic ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
-            className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D8A83B]"
+            className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
           >
             <GlobeIcon />
             <span dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العربية' : 'English'}</span>
@@ -299,10 +295,10 @@ export default function LoginClient({
             <section
               aria-labelledby="login-heading"
               dir={isArabic ? 'rtl' : 'ltr'}
-              className="orca-login-card order-2 rounded-[22px] border border-white/[0.045] bg-[#081A31]/96 px-6 py-5 backdrop-blur-[4px] sm:px-8 sm:py-6 lg:order-1 lg:-translate-y-5 lg:px-[32px] lg:py-[24px]"
+              className="orca-login-card order-2 rounded-[22px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface)] px-6 pt-5 pb-7 backdrop-blur-[4px] sm:px-8 sm:pt-6 sm:pb-8 lg:order-1 lg:-translate-y-5 lg:px-[32px] lg:pt-[24px] lg:pb-[32px]"
             >
               <div className="mx-auto max-w-[540px]">
-                <h1 id="login-heading" className="mb-5 text-center text-[28px] font-bold leading-tight tracking-[-0.01em] text-white sm:text-[34px]">
+                <h1 id="login-heading" className="mb-5 text-center text-[28px] font-bold leading-tight tracking-[-0.01em] text-[var(--orca-ui-text-primary)] sm:text-[34px]">
                   {isArabic ? 'تسجيل الدخول' : 'Sign in'}
                 </h1>
 
@@ -318,11 +314,11 @@ export default function LoginClient({
                   )}
 
                   <div>
-                    <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-slate-300">
+                    <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
                       {isArabic ? 'البريد الإلكتروني' : 'Email address'}
                     </label>
                     <div className="relative">
-                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${isArabic ? 'right-5' : 'left-5'}`}>
+                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
                         <MailIcon />
                       </span>
                       <input
@@ -333,19 +329,19 @@ export default function LoginClient({
                         required
                         dir="ltr"
                         placeholder={isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
-                        className={`orca-field h-[54px] w-full rounded-[13px] border border-white/12 bg-[#07182D]/66 text-[15px] text-white outline-none transition placeholder:text-slate-400/75 hover:border-white/24 focus:border-[#E2B548] focus:ring-2 focus:ring-[#E2B548]/20 ${
-                          isArabic ? 'pr-[58px] pl-5 text-right' : 'pl-[58px] pr-5 text-left'
+                        className={`orca-field h-[54px] w-full rounded-[13px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface-muted)] text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition placeholder:text-[var(--orca-ui-text-muted)] hover:border-[var(--orca-ui-icon)] focus:border-[var(--orca-action-gold)] focus:ring-2 focus:ring-[var(--orca-action-gold)]/20 ${
+                          isArabic ? 'pr-[58px] pl-5 text-left' : 'pl-[58px] pr-5 text-left'
                         }`}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="mb-2 block text-[15px] font-medium text-slate-300">
+                    <label htmlFor="password" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
                       {isArabic ? 'كلمة المرور' : 'Password'}
                     </label>
                     <div className="relative">
-                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${isArabic ? 'right-5' : 'left-5'}`}>
+                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
                         <LockIcon />
                       </span>
                       <input
@@ -356,7 +352,7 @@ export default function LoginClient({
                         required
                         dir="ltr"
                         placeholder={isArabic ? 'أدخل كلمة المرور' : 'Enter your password'}
-                        className={`orca-field h-[54px] w-full rounded-[13px] border border-white/12 bg-[#07182D]/66 text-[15px] text-white outline-none transition placeholder:text-slate-400/75 hover:border-white/24 focus:border-[#E2B548] focus:ring-2 focus:ring-[#E2B548]/20 ${
+                        className={`orca-field h-[54px] w-full rounded-[13px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface-muted)] text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition placeholder:text-[var(--orca-ui-text-muted)] hover:border-[var(--orca-ui-icon)] focus:border-[var(--orca-action-gold)] focus:ring-2 focus:ring-[var(--orca-action-gold)]/20 ${
                           isArabic ? 'pr-[58px] pl-[58px] text-right' : 'pl-[58px] pr-[58px] text-left'
                         }`}
                       />
@@ -372,7 +368,7 @@ export default function LoginClient({
                               ? 'إظهار كلمة المرور'
                               : 'Show password'
                         }
-                        className={`absolute top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E2B548] ${
+                        className={`absolute top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[var(--orca-ui-icon)] transition hover:bg-[var(--orca-ui-surface-muted)] hover:text-[var(--orca-action-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] ${
                           isArabic ? 'left-4' : 'right-4'
                         }`}
                       >
@@ -382,17 +378,17 @@ export default function LoginClient({
                   </div>
 
                   <div className="flex items-center justify-between gap-4 pt-1 text-[14px]">
-                    <label className="flex cursor-pointer items-center gap-3 text-slate-300">
+                    <label className="flex cursor-pointer items-center gap-3 text-[var(--orca-ui-text-secondary)]">
                       <input
                         type="checkbox"
                         name="remember"
-                        className="h-[18px] w-[18px] rounded border-white/40 bg-transparent accent-[#D8A83B]"
+                        className="h-[18px] w-[18px] rounded border-[var(--orca-ui-border)] bg-transparent accent-[var(--orca-action-gold)]"
                       />
                       <span>{isArabic ? 'تذكرني' : 'Remember me'}</span>
                     </label>
                     <button
                       type="button"
-                      className="font-medium text-[#E0B44B] transition hover:text-[#F2CB6C] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E2B548]"
+                      className="font-medium text-[var(--orca-action-gold)] transition hover:text-[var(--orca-action-gold-hover)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
                     >
                       {isArabic ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
                     </button>
@@ -401,7 +397,7 @@ export default function LoginClient({
                   <button
                     type="submit"
                     disabled={loading || (retryAfter !== null && retryAfter > 0)}
-                    className="mt-1 h-[56px] w-full rounded-[13px] bg-gradient-to-r from-[#DDA72D] via-[#FFC54A] to-[#E8AE2A] text-[17px] font-bold text-[#142238] shadow-[0_10px_24px_rgba(209,153,34,.18)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFE093] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1C34]"
+                    className="mt-2 h-[56px] w-full rounded-[13px] bg-[var(--orca-action-gold)] text-[17px] font-bold text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--orca-action-gold-hover)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--orca-ui-surface)]"
                   >
                     {loading
                       ? isArabic
@@ -416,19 +412,6 @@ export default function LoginClient({
                           : 'Sign in'}
                   </button>
 
-                  <div className="flex items-center gap-5 py-1 text-slate-400" aria-hidden="true">
-                    <span className="h-px flex-1 bg-white/20" />
-                    <span className="text-[14px]">{isArabic ? 'أو' : 'or'}</span>
-                    <span className="h-px flex-1 bg-white/20" />
-                  </div>
-
-                  <p className="text-center text-[14px] text-slate-400">
-                    {isArabic ? 'ليس لديك حساب؟' : "Don't have an account?"}{' '}
-                    <span className="font-semibold text-[#E0B44B]">
-                      {isArabic ? 'تواصل مع إدارة المنصة' : 'Contact platform administration'}
-                    </span>
-                  </p>
-
                   <p className="sr-only">{tenantName}</p>
                 </form>
               </div>
@@ -438,33 +421,33 @@ export default function LoginClient({
           </div>
         </main>
 
-        <footer className="relative z-20 mt-auto border-t border-white/10 bg-[#081A31] px-6 py-3 backdrop-blur-none sm:px-10 lg:px-[46px]">
-          <div className="mx-auto flex max-w-[1480px] flex-col-reverse items-center justify-between gap-4 text-[12px] text-slate-300 lg:flex-row">
+        <footer className="relative z-20 mt-auto border-t border-[var(--orca-ui-divider)] bg-[var(--orca-ui-surface)] px-6 py-3 backdrop-blur-none sm:px-10 lg:px-[46px]">
+          <div className="mx-auto flex max-w-[1480px] flex-col-reverse items-center justify-between gap-4 text-[12px] text-[var(--orca-ui-text-secondary)] lg:flex-row">
             <nav aria-label={isArabic ? 'روابط السياسات والمساعدة' : 'Policy and help links'} className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
-              <Link href="/terms-and-conditions" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+              <Link href="/terms-and-conditions" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
                 <ShieldIcon />
                 <span>{isArabic ? 'الشروط والأحكام' : 'Terms and conditions'}</span>
               </Link>
-              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
-              <Link href="/privacy-policy" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+              <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
+              <Link href="/privacy-policy" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
                 <LockIcon />
                 <span>{isArabic ? 'سياسة الخصوصية' : 'Privacy policy'}</span>
               </Link>
-              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
-              <Link href="/disclaimer" prefetch={false} className="flex items-center gap-2 transition hover:text-white">
+              <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
+              <Link href="/disclaimer" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
                 <HelpIcon />
                 <span>{isArabic ? 'الأسئلة الشائعة' : 'Frequently asked questions'}</span>
               </Link>
-              <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
+              <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
               <span className="flex items-center gap-2">
                 <MailIcon />
                 <span>{isArabic ? 'تواصل معنا' : 'Contact us'}</span>
               </span>
             </nav>
 
-            <p className="text-center text-slate-400 lg:text-start">
+            <p className="text-center text-[var(--orca-ui-text-muted)] lg:text-start">
               © {new Date().getFullYear()}{' '}
-              <span className="font-semibold text-[#D8A83B]">ORCA Real Estate</span>.{' '}
+              <span className="font-semibold text-[var(--orca-ui-link)]">ORCA Real Estate</span>.{' '}
               {isArabic ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
             </p>
           </div>

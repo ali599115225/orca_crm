@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getContractWizardDataAction, issueContractActionDirect } from '@/app/actions/contract';
+import SettingsSelect from '@/components/settings/SettingsSelect';
 
 interface Client {
   id: string;
@@ -137,6 +138,14 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
 
   if (!isOpen) return null;
 
+  // مؤشر خطوات المعالج: العميل → العقار → المبلغ
+  const stepIndex = !clientId ? 0 : !propertyId ? 1 : 2;
+  const steps = [
+    { label: 'العميل', done: !!clientId },
+    { label: 'العقار', done: !!propertyId },
+    { label: 'المبلغ', done: !!amount && Number(amount) > 0 },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface-solid)]/80 backdrop-blur-md" dir="rtl">
       {/* Backdrop click close */}
@@ -163,6 +172,47 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
           >
             ✕
           </button>
+        </div>
+
+        {/* Step Indicator: العميل → العقار → المبلغ */}
+        <div className="flex items-center justify-between mb-5 shrink-0" dir="rtl">
+          {steps.map((step, idx) => (
+            <React.Fragment key={step.label}>
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all ${
+                    step.done
+                      ? 'bg-[var(--color-orca-gold)] border-[var(--color-orca-gold)] text-[var(--nc-bg)]'
+                      : idx === stepIndex
+                      ? 'border-[var(--color-orca-gold)] text-[var(--color-orca-gold)] bg-[var(--color-orca-gold-soft)]'
+                      : 'border-[var(--nc-glass-border)] text-[var(--nc-text-dim)] bg-transparent'
+                  }`}
+                >
+                  {step.done ? '✓' : idx + 1}
+                </div>
+                <span
+                  className={`text-[11px] font-bold ${
+                    idx === stepIndex
+                      ? 'text-[var(--color-orca-gold)]'
+                      : step.done
+                      ? 'text-white'
+                      : 'text-[var(--nc-text-dim)]'
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {idx < steps.length - 1 && (
+                <div
+                  className={`flex-1 h-px mx-2 transition-all ${
+                    steps[idx + 1].done || idx < stepIndex
+                      ? 'bg-[var(--color-orca-gold)]'
+                      : 'bg-[var(--nc-glass-border)]'
+                  }`}
+                ></div>
+              )}
+            </React.Fragment>
+          ))}
         </div>
 
         {/* Status Alerts */}
@@ -192,37 +242,39 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
             {/* 1. Client Select */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[var(--nc-text-dim)]">اختيار العميل</label>
-              <select
+              <SettingsSelect
+                className="w-full !border-[var(--nc-glass-border)] focus:!border-[var(--color-orca-gold)]"
+                placement="bottom"
                 value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
+                onChange={setClientId}
                 disabled={isSubmitting}
-                className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
-              >
-                <option value="" className="bg-[#151f32]">{clients.length === 0 ? 'لا يوجد عملاء نشطين متاحين' : 'اختر العميل المشتري...'}</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id} className="bg-[#151f32]">
-                    {client.name} ({client.phone}) [{client.type === 'lead' ? 'عميل مهتم' : 'دفتر العملاء'}]
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: clients.length === 0 ? 'لا يوجد عملاء نشطين متاحين' : 'اختر العميل المشتري...', disabled: clients.length === 0 },
+                  ...clients.map((client) => ({
+                    value: client.id,
+                    label: `${client.name} (${client.phone}) [${client.type === 'lead' ? 'عميل مهتم' : 'دفتر العملاء'}]`,
+                  })),
+                ]}
+              />
             </div>
 
             {/* 2. Property Select */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[var(--nc-text-dim)]">اختيار العقار/المشروع</label>
-              <select
+              <SettingsSelect
+                className="w-full !border-[var(--nc-glass-border)] focus:!border-[var(--color-orca-gold)]"
+                placement="bottom"
                 value={propertyId}
-                onChange={(e) => handlePropertyChange(e.target.value)}
+                onChange={handlePropertyChange}
                 disabled={isSubmitting}
-                className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all cursor-pointer disabled:opacity-50"
-              >
-                <option value="" className="bg-[#151f32]">{properties.length === 0 ? 'لا توجد وحدات شاغرة متاحة حالياً' : 'اختر الوحدة العقارية المتاحة للبيع...'}</option>
-                {properties.map((prop) => (
-                  <option key={prop.id} value={prop.id} className="bg-[#151f32]">
-                    {prop.projectName} - وحدة رقم: {prop.unitNumber} ({prop.priceSar.toLocaleString('ar-EG')} ر.س)
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: properties.length === 0 ? 'لا توجد وحدات شاغرة متاحة حالياً' : 'اختر الوحدة العقارية المتاحة للبيع...', disabled: properties.length === 0 },
+                  ...properties.map((prop) => ({
+                    value: prop.id,
+                    label: `${prop.projectName} - وحدة رقم: ${prop.unitNumber} (${prop.priceSar.toLocaleString('ar-EG')} ر.س)`,
+                  })),
+                ]}
+              />
             </div>
 
             {/* 3. Amount Input */}
@@ -235,7 +287,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-brand-border rounded-xl pr-4 pl-12 py-2.5 text-xs text-white focus:outline-none focus:border-brand-interactive transition-all disabled:opacity-50 text-right"
+                  className="w-full bg-[var(--nc-surface-strong)] border border-[var(--nc-glass-border)] rounded-xl pr-4 pl-12 py-2.5 text-xs text-white focus:outline-none focus:border-[var(--color-orca-gold)] transition-all disabled:opacity-50 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="absolute left-4 top-2.5 text-[var(--nc-text-dim)] text-[10px] font-bold">ر.س</span>
               </div>
@@ -247,7 +299,7 @@ export default function ContractWizard({ isOpen, onClose, onSuccess }: ContractW
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-grow flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:shadow-[0_0_15px_rgba(99,102,241,0.3)] text-white font-bold text-xs transition-all border border-indigo-400/20 cursor-pointer disabled:opacity-50"
+                className="flex-grow flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--color-orca-gold)] hover:bg-[var(--color-orca-gold-hover)] hover:shadow-[0_0_15px_var(--color-orca-gold-soft)] text-[var(--nc-bg)] font-bold text-xs transition-all border border-[var(--color-orca-gold)] cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
