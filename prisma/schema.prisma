@@ -1383,6 +1383,12 @@ enum SentinelEscalationLevel {
   MANUAL_INTERVENTION
 }
 
+enum SentinelHeartbeatStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
 model SentinelIncident {
   id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId           String?                  @map("tenant_id") @db.Uuid
@@ -1416,6 +1422,19 @@ model SentinelIncident {
   @@index([detectedAt(sort: Desc)], map: "idx_sentinel_incidents_detected")
   @@index([fingerprint, status], map: "idx_sentinel_incidents_fingerprint")
   @@map("sentinel_incidents")
+}
+
+model SentinelHeartbeat {
+  serviceId  String                  @id @map("service_id") @db.VarChar(80)
+  status     SentinelHeartbeatStatus @default(HEALTHY)
+  lastSeenAt DateTime                @default(now()) @map("last_seen_at") @db.Timestamptz
+  version    String?                 @db.VarChar(64)
+  metadata   Json?
+  createdAt  DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, lastSeenAt], map: "idx_sentinel_heartbeat_status_seen")
+  @@map("sentinel_heartbeats")
 }
 
 // ═══════════════════════════════════════════════════════════

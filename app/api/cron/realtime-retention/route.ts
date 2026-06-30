@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { purgeExpiredSyncEvents } from "@/lib/realtime/purge-sync-events";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const deleted = await purgeExpiredSyncEvents(PURGE_BATCH_SIZE);
+
+    try {
+      const heartbeat = await recordHeartbeat({ serviceId: "CRON_REALTIME_RETENTION" });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed:", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed:", heartbeatError);
+    }
 
     return NextResponse.json(
       {

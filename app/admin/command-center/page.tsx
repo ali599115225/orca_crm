@@ -22,6 +22,11 @@ interface SentinelData {
     auditEvents: any[];
     incidents: any[];
     sentinelIncidents: any[];
+    heartbeatSummary: Array<{
+      serviceId: string;
+      status: 'HEALTHY' | 'DEGRADED' | 'DOWN' | string;
+      lastSeenAt: string;
+    }>;
     chatMessages: any[];
   };
 }
@@ -56,6 +61,12 @@ const STATUS_CLASSES: Record<string, string> = {
   IN_PROGRESS: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400',
   RESOLVED: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
   FALSE_POSITIVE: 'bg-neutral-500/20 border-neutral-500/30 text-neutral-400',
+};
+
+const HEARTBEAT_CLASSES: Record<string, string> = {
+  HEALTHY: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
+  DEGRADED: 'bg-amber-500/15 border-amber-500/25 text-amber-400',
+  DOWN: 'bg-rose-500/15 border-rose-500/25 text-rose-400',
 };
 
 const ESCALATION_LABELS: Record<string, string> = {
@@ -219,6 +230,27 @@ export default function CommandCenterPage() {
           </div>
 
           {saving && <div className="text-center text-[10px] text-amber-400 font-bold animate-pulse">جاري الحفظ...</div>}
+
+          <SmartCard className="p-5">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">نبضات الخدمات</h3>
+            {data.data.heartbeatSummary.length === 0 ? (
+              <p className="text-xs text-[var(--nc-foreground-muted)]">لا توجد نبضات مسجلة.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {data.data.heartbeatSummary.map((heartbeat) => (
+                  <div key={heartbeat.serviceId} className="flex items-center justify-between gap-3 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--nc-foreground)] truncate">{heartbeat.serviceId}</p>
+                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">{formatDate(heartbeat.lastSeenAt)}</p>
+                    </div>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${HEARTBEAT_CLASSES[heartbeat.status] || 'bg-neutral-500/15 border-neutral-500/25 text-neutral-400'}`}>
+                      {heartbeat.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SmartCard>
 
           {/* Operating Mode */}
           <SmartCard className="p-5">
