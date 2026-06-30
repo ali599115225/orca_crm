@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { publicError, statusForErrorCode } from "@/lib/errors";
 
 type PublicCode = Parameters<typeof publicError>[0];
 
 export function httpErrorResponse(
-  request: NextRequest | undefined,
+  request: Pick<Request, "headers"> | undefined,
   code: PublicCode,
   internalContext?: string,
   rawError?: unknown,
