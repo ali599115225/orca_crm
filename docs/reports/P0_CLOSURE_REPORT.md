@@ -15,7 +15,7 @@
 - Full suite: 627/627 PASS
 - Production build: PASS
 - Git diff check: PASS
-- Branch: `repair/p0-security-gate`
+- Review branch: `review/p0-security-gate`
 - Baseline: `0251ddb`
 
 ## Baseline Exceptions
@@ -43,13 +43,13 @@
 تم العمل داخل `REDC-orca-repair`. كانت نسخة `REDC` الأصلية بحالة dirty سابقة، لذلك لا يمكن إثبات نظافتها تاريخياً، ولم تستهدفها أوامر الإصلاح.
 
 ## Commits
-- `a4cd7bb`
-- `114d858`
-- `e6a0c39`
-- `d1e1318`
-- `90799df`
-- `d235b2c`
-- `d43d0cb`
+- `9c6ca7c`
+- `63cf565`
+- `c53837c`
+- `0dc89b0`
+- `efd5e34`
+- `adefa98`
+- `63fa22d`
 
 ## Deployment Assessment
 - Safe to merge within P0 scope: YES

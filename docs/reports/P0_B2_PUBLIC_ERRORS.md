@@ -43,7 +43,7 @@ node node_modules/vitest/vitest.mjs run tests/public-errors.test.ts
 - Nested `error` object added for future standardization; top-level fields retained
 
 ## Commit Hash
-114d858
+63cf565
 
 ## Quality Gates
 - PUBLIC_STACK_TRACE=0

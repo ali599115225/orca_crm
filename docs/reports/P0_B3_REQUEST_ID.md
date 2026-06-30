@@ -37,7 +37,7 @@ node node_modules/vitest/vitest.mjs run tests/public-errors.test.ts
 - Header extraction is opt-in per route; future work can standardize middleware
 
 ## Commit Hash
-114d858
+63cf565
 
 ## Quality Gates
 - REQUEST_ID_PRESENT=YES

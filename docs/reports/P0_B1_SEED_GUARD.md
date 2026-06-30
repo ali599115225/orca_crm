@@ -40,7 +40,7 @@ node node_modules/vitest/vitest.mjs run tests/seed-guard.test.ts
 - No runtime override available (intentional)
 
 ## Commit Hash
-a4cd7bb
+9c6ca7c
 
 ## Quality Gates
 - SEED_PRODUCTION_BLOCKED=YES
