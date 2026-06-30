@@ -1,35 +1,17 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { requireDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { ErrorCode } from "@/lib/errors";
 
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
-  }
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload && payload.tenantId) return payload;
-  }
-  return null;
-}
-
 export async function GET(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
+    const session = auth.session;
     const leases = await prisma.rentalLease.findMany({
-      where: { tenantId: session.tenantId as string },
+      where: { tenantId: session.tenantId },
       include: { _count: { select: { invoices: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -56,10 +38,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -68,9 +48,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "الحقول unit, tenant, start, end, rent إلزامية" }, { status: 400 });
     }
 
+    const session = auth.session;
     const lease = await prisma.rentalLease.create({
       data: {
-        tenantId: session.tenantId as string,
+        tenantId: session.tenantId,
         unitName: unit,
         tenantName: tenant,
         startDate: new Date(start),
@@ -103,10 +84,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -115,13 +94,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: "معرّف العقد (id) مطلوب" }, { status: 400 });
     }
 
-    const existing = await prisma.rentalLease.findFirst({ where: { id, tenantId: session.tenantId as string } });
+    const session = auth.session;
+    const existing = await prisma.rentalLease.findFirst({ where: { id, tenantId: session.tenantId } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "العقد غير موجود" }, { status: 404 });
     }
 
     const updated = await prisma.rentalLease.update({
-      where: { id },
+      where: { id, tenantId: session.tenantId },
       data: {
         status: status ?? undefined,
         financialRef: financialRef ?? undefined,
