@@ -53,6 +53,7 @@ export const TASK_STATUSES = [
   "WAITING_APPROVAL",
   "DONE",
   "CANCELLED",
+  "FAILED",
 ] as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];

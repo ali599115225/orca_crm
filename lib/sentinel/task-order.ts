@@ -16,6 +16,12 @@ export interface CreateTaskOrderParams {
   source?: TaskSource;
   correlationId?: string;
   reason?: string;
+  requestedById?: string;
+  requestId?: string;
+}
+
+export function computeApprovalExpiresAt(): Date {
+  return new Date(Date.now() + getApprovalTTLMinutes() * 60_000);
 }
 
 export async function createTaskOrder(params: CreateTaskOrderParams) {
@@ -35,6 +41,10 @@ export async function createTaskOrder(params: CreateTaskOrderParams) {
       status: isSensitive ? "WAITING_APPROVAL" : "OPEN",
       source: params.source || "SYSTEM",
       correlationId: params.correlationId || null,
+      requestedById: isSensitive ? (params.requestedById || null) : undefined,
+      requestId: isSensitive ? (params.requestId || null) : undefined,
+      approvalRequestedAt: isSensitive ? new Date() : undefined,
+      approvalExpiresAt: isSensitive ? computeApprovalExpiresAt() : undefined,
     },
   });
 
@@ -167,7 +177,10 @@ export function getApprovalTTLMinutes(): number {
   return parsed;
 }
 
-export function isTaskExpired(task: { createdAt: Date }): boolean {
+export function isTaskExpired(task: { createdAt: Date; approvalExpiresAt?: Date | null }): boolean {
+  if (task.approvalExpiresAt) {
+    return new Date() > task.approvalExpiresAt;
+  }
   const ttl = getApprovalTTLMinutes();
   const deadline = new Date(task.createdAt.getTime() + ttl * 60_000);
   return new Date() > deadline;

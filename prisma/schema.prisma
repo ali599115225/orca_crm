@@ -103,6 +103,8 @@ model User {
   emailMessages             EmailMessage[]
   whatsappSignupSessions    WhatsAppSignupSession[]
   whatsappIntegrationAudits WhatsAppIntegrationAudit[]
+  sentinelRequestedTasks    SentinelTaskOrder[]        @relation("SentinelTaskOrderRequestedBy")
+  sentinelDecidedTasks      SentinelTaskOrder[]        @relation("SentinelTaskOrderDecidedBy")
 
   @@index([emailHash], map: "idx_users_email_hash")
   @@map("users")
@@ -654,49 +656,49 @@ model AuditLog {
 // Idempotent, provider-agnostic outbox for ZATCA and Ejar government calls.
 // ZatcaQueue remains for ZATCA retry (legacy); GovernmentOutbox is for all new flows.
 model GovernmentOutbox {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId         String    @map("tenant_id") @db.Uuid
-  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  provider         String    @db.VarChar(10)
+  provider String @db.VarChar(10)
   // "ZATCA" | "EJAR" — used to route cron workers
 
-  operation        String    @db.VarChar(50)
+  operation String @db.VarChar(50)
   // "ZATCA_SUBMIT_INVOICE" | "EJAR_REGISTER_CONTRACT" | ...
 
-  idempotencyKey   String    @unique(map: "gov_outbox_idempotency_key_uq") @map("idempotency_key") @db.VarChar(80)
+  idempotencyKey String @unique(map: "gov_outbox_idempotency_key_uq") @map("idempotency_key") @db.VarChar(80)
   // SHA-256(tenantId:provider:operation:businessEntityType:businessEntityId)
   // UNIQUE guarantees exactly-once reservation via INSERT ON CONFLICT DO NOTHING
 
   businessEntityType String? @map("business_entity_type") @db.VarChar(30)
   // "invoice" | "device" | "device_creation" | "contract"
 
-  businessEntityId String?   @map("business_entity_id") @db.Uuid
+  businessEntityId String? @map("business_entity_id") @db.Uuid
   // invoice.id | device.id | contract.id — nullable for device_creation
 
-  payload          String    @db.Text
+  payload String @db.Text
   // Full JSON request payload stored for retry without recalculation
 
-  status           String    @default("PENDING")
+  status String @default("PENDING")
   // PENDING | PROCESSING | DELIVERED | RETRYING | FAILED | DEAD_LETTER
 
-  retryCount       Int       @default(0) @map("retry_count")
-  maxRetries       Int       @default(5) @map("max_retries")
+  retryCount Int @default(0) @map("retry_count")
+  maxRetries Int @default(5) @map("max_retries")
 
-  lastError        String?   @map("last_error") @db.Text
+  lastError String? @map("last_error") @db.Text
   // Last error from provider — for debugging
 
-  nextRetryAt      DateTime? @map("next_retry_at") @db.Timestamptz
+  nextRetryAt DateTime? @map("next_retry_at") @db.Timestamptz
   // Exponential backoff: 2^retryCount minutes. null = PENDING (process immediately)
 
-  providerResponse String?   @map("provider_response") @db.Text
+  providerResponse String? @map("provider_response") @db.Text
   // Raw provider response (ejarContractId, zatcaStatus, ...) — stored for idempotent re-reads
 
-  deliveredAt      DateTime? @map("delivered_at") @db.Timestamptz
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz
   // Set when status transitions to DELIVERED — for SLA monitoring
 
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([tenantId, status], map: "idx_gov_outbox_tenant_status")
   @@index([nextRetryAt, status], map: "idx_gov_outbox_retry")
@@ -1319,28 +1321,40 @@ model SentinelChatMessage {
 }
 
 model SentinelTaskOrder {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId         String?   @map("tenant_id") @db.Uuid
-  createdBy        String    @default("platform_sentinel") @map("created_by")
-  assignedToType   String    @map("assigned_to_type")
-  assignedToName   String    @map("assigned_to_name")
-  title            String
-  description      String?   @db.Text
-  executionPayload String?   @map("execution_payload") @db.Text
-  priority         String    @default("MEDIUM")
-  riskLevel        String    @default("LOW") @map("risk_level")
-  approvalRequired Boolean   @default(false) @map("approval_required")
-  status           String    @default("OPEN")
-  source           String    @default("SYSTEM")
-  correlationId    String?   @map("correlation_id")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  completedAt      DateTime? @map("completed_at") @db.Timestamptz
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String?   @map("tenant_id") @db.Uuid
+  createdBy           String    @default("platform_sentinel") @map("created_by")
+  assignedToType      String    @map("assigned_to_type")
+  assignedToName      String    @map("assigned_to_name")
+  title               String
+  description         String?   @db.Text
+  executionPayload    String?   @map("execution_payload") @db.Text
+  priority            String    @default("MEDIUM")
+  riskLevel           String    @default("LOW") @map("risk_level")
+  approvalRequired    Boolean   @default(false) @map("approval_required")
+  status              String    @default("OPEN")
+  source              String    @default("SYSTEM")
+  correlationId       String?   @map("correlation_id")
+  requestedById       String?   @map("requested_by_id") @db.Uuid
+  requestedBy         User?     @relation("SentinelTaskOrderRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction)
+  approvalRequestedAt DateTime? @map("approval_requested_at") @db.Timestamptz
+  approvalExpiresAt   DateTime? @map("approval_expires_at") @db.Timestamptz
+  decidedById         String?   @map("decided_by_id") @db.Uuid
+  decidedBy           User?     @relation("SentinelTaskOrderDecidedBy", fields: [decidedById], references: [id], onDelete: NoAction)
+  decidedAt           DateTime? @map("decided_at") @db.Timestamptz
+  decisionReason      String?   @map("decision_reason") @db.Text
+  requestId           String?   @map("request_id")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz
 
   @@index([status], map: "idx_sentinel_task_orders_status")
+  @@index([status, approvalExpiresAt], map: "idx_sentinel_task_orders_expiry")
   @@index([assignedToType, status], map: "idx_sentinel_task_orders_assigned")
   @@index([correlationId], map: "idx_sentinel_task_orders_correlation")
   @@index([createdAt(sort: Desc)], map: "idx_sentinel_task_orders_created")
+  @@index([requestId], map: "idx_sentinel_task_orders_request")
+  @@index([decidedById, decidedAt], map: "idx_sentinel_task_orders_decided")
   @@map("sentinel_task_orders")
 }
 
@@ -2042,29 +2056,29 @@ enum RevenueRiskBand {
 }
 
 model RevenueIntelligenceScore {
-  id                       String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId                 String                        @map("tenant_id") @db.Uuid
-  tenant                   Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityType               String                        @map("entity_type") @db.VarChar(80)
-  entityId                 String                        @map("entity_id") @db.VarChar(120)
+  id                       String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String                      @map("tenant_id") @db.Uuid
+  tenant                   Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityType               String                      @map("entity_type") @db.VarChar(80)
+  entityId                 String                      @map("entity_id") @db.VarChar(120)
   category                 RevenueIntelligenceCategory
-  status                   RevenueIntelligenceStatus     @default(READY)
+  status                   RevenueIntelligenceStatus   @default(READY)
   score                    Int?
   confidence               Int?
-  riskBand                 RevenueRiskBand?              @map("risk_band")
-  horizonDays              Int?                          @map("horizon_days")
-  featureHash              String?                       @map("feature_hash") @db.VarChar(64)
-  expiresAt                DateTime?                     @map("expires_at") @db.Timestamptz(6)
+  riskBand                 RevenueRiskBand?            @map("risk_band")
+  horizonDays              Int?                        @map("horizon_days")
+  featureHash              String?                     @map("feature_hash") @db.VarChar(64)
+  expiresAt                DateTime?                   @map("expires_at") @db.Timestamptz(6)
   reasons                  Json
-  sourceSignals            Json                          @map("source_signals")
-  recommendedAction        String?                       @map("recommended_action") @db.VarChar(80)
-  recommendedActionPayload Json?                         @map("recommended_action_payload")
-  modelVersion             String                        @map("model_version") @db.VarChar(80)
-  modelAlgorithm           String                        @map("model_algorithm") @db.VarChar(80)
-  windowKey                String                        @map("window_key") @db.VarChar(160)
-  generatedAt              DateTime                      @map("generated_at") @db.Timestamptz(6)
-  createdAt                DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sourceSignals            Json                        @map("source_signals")
+  recommendedAction        String?                     @map("recommended_action") @db.VarChar(80)
+  recommendedActionPayload Json?                       @map("recommended_action_payload")
+  modelVersion             String                      @map("model_version") @db.VarChar(80)
+  modelAlgorithm           String                      @map("model_algorithm") @db.VarChar(80)
+  windowKey                String                      @map("window_key") @db.VarChar(160)
+  generatedAt              DateTime                    @map("generated_at") @db.Timestamptz(6)
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, entityType, entityId, category, windowKey], map: "revenue_intelligence_entity_category_window_uq")
   @@index([tenantId, generatedAt], map: "revenue_intelligence_tenant_generated_idx")
@@ -2075,16 +2089,16 @@ model RevenueIntelligenceScore {
 }
 
 model RevenuePredictiveRun {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String    @map("tenant_id") @db.Uuid
-  idempotencyKey  String    @map("idempotency_key") @db.VarChar(160)
-  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
-  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
-  scoredCount     Int       @default(0) @map("scored_count")
-  failedCount     Int       @default(0) @map("failed_count")
-  failedEntities  Json      @default("[]") @map("failed_entities")
-  result          Json      @default("{}")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  idempotencyKey String    @map("idempotency_key") @db.VarChar(160)
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  scoredCount    Int       @default(0) @map("scored_count")
+  failedCount    Int       @default(0) @map("failed_count")
+  failedEntities Json      @default("[]") @map("failed_entities")
+  result         Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([tenantId, idempotencyKey], map: "revenue_predictive_run_tenant_key_uq")
   @@index([tenantId, startedAt], map: "revenue_predictive_run_tenant_started_idx")
