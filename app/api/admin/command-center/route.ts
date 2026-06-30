@@ -26,6 +26,20 @@ import {
   requirePlatformOwnerAccess,
 } from "@/lib/agents/access";
 import { writeSentinelAudit } from "@/lib/sentinel/audit";
+import {
+  listActiveIncidents,
+  createIncident,
+  acknowledgeIncident,
+  startIncidentWork,
+  resolveIncident,
+  markIncidentFalsePositive,
+  assignIncident,
+  escalateIncident,
+} from "@/lib/sentinel/incident";
+import {
+  INCIDENT_SEVERITIES,
+  INCIDENT_ESCALATION_LEVELS,
+} from "@/lib/sentinel/types";
 
 const OPERATING_MODES = new Set([
   "NORMAL_MODE",
@@ -63,6 +77,28 @@ function stripExecutionPayload(tasks: any[]) {
   return tasks.map(({ executionPayload: _hidden, ...rest }: any) => rest);
 }
 
+const SENSITIVE_INCIDENT_KEYS = new Set([
+  "diagnosticMetadata",
+]);
+
+function sanitizeIncident(inc: Record<string, unknown>) {
+  const allowed = { ...inc };
+  for (const key of SENSITIVE_INCIDENT_KEYS) {
+    delete allowed[key];
+  }
+  return allowed;
+}
+
+const ALLOWED_INCIDENT_ACTIONS = new Set([
+  "incident-create",
+  "incident-acknowledge",
+  "incident-start",
+  "incident-resolve",
+  "incident-false-positive",
+  "incident-assign",
+  "incident-escalate",
+]);
+
 export async function GET() {
   const session = await authenticatePlatformOwner();
   if (!session) {
@@ -87,8 +123,9 @@ export async function GET() {
     openTasks,
     pendingApprovals,
     auditEvents,
-    incidents,
+    taskIncidents,
     chatMessages,
+    sentinelIncidents,
   ] = await Promise.all([
     getOrCreateSentinelConfig(),
     getOpenTasks(),
@@ -96,6 +133,7 @@ export async function GET() {
     getRecentAuditEvents(20),
     getOpenIncidents(),
     getChatMessages(30),
+    listActiveIncidents(),
   ]);
 
   return NextResponse.json({
@@ -106,14 +144,16 @@ export async function GET() {
     deepRepairWaitMinutes: config.deepRepairWaitMinutes,
     openTasks: openTasks.length,
     pendingApprovals: pendingApprovals.length,
-    openIncidents: incidents.length,
+    openIncidents: taskIncidents.length,
+    sentinelIncidentCount: sentinelIncidents.length,
     approvalTTLMinutes: getApprovalTTLMinutes(),
     data: {
       config,
       openTasks: stripExecutionPayload(openTasks),
       pendingApprovals: stripExecutionPayload(pendingApprovals),
       auditEvents,
-      incidents: stripExecutionPayload(incidents),
+      incidents: stripExecutionPayload(taskIncidents),
+      sentinelIncidents: sentinelIncidents.map(sanitizeIncident),
       chatMessages,
     },
   });
@@ -402,6 +442,207 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const result = agentErrorResponse(error);
       return NextResponse.json(result.body, { status: result.status });
+    }
+  }
+
+  if (ALLOWED_INCIDENT_ACTIONS.has(action)) {
+    const session = await authenticatePlatformOwner();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized — platform owner only" },
+        { status: 401 },
+      );
+    }
+
+    const requestId = String(body.requestId || `cmd-${Date.now()}`);
+    const correlationId = requestId;
+
+    const auditMeta = {
+      source: "PLATFORM_OWNER" as const,
+      correlationId,
+    };
+
+    if (action === "incident-create") {
+      const title = String(body.title || "").trim();
+      if (!title || title.length > 255) {
+        return NextResponse.json(
+          { success: false, error: "Title is required (max 255 characters)." },
+          { status: 400 },
+        );
+      }
+      const severity = String(body.severity || "MEDIUM");
+      if (!INCIDENT_SEVERITIES.includes(severity as any)) {
+        return NextResponse.json(
+          { success: false, error: `Invalid severity. Must be one of: ${INCIDENT_SEVERITIES.join(", ")}.` },
+          { status: 400 },
+        );
+      }
+      let tenantId: string | null = null;
+      if (body.tenantId !== undefined && body.tenantId !== null) {
+        const raw = String(body.tenantId);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+          return NextResponse.json(
+            { success: false, error: "Invalid tenantId UUID." },
+            { status: 400 },
+          );
+        }
+        tenantId = raw;
+      }
+      const summary = String(body.summary || "").trim().slice(0, 2000) || null;
+      const affectedService = String(body.affectedService || "").trim().slice(0, 100) || null;
+      const correlationIdField = String(body.correlationId || "").trim().slice(0, 255) || null;
+      const requestIdField = String(body.requestId || "").trim().slice(0, 80) || null;
+      const fingerprint = String(body.fingerprint || "").trim().slice(0, 64) || null;
+
+      const result = await createIncident({
+        tenantId,
+        title,
+        summary: summary || undefined,
+        severity: severity as any,
+        affectedService: affectedService || undefined,
+        correlationId: correlationIdField || undefined,
+        requestId: requestIdField || undefined,
+        fingerprint: fingerprint || undefined,
+      });
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, error: result.error || "Failed to create incident." },
+          { status: 400 },
+        );
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_INCIDENT_OPENED",
+        decision: `Incident created via command center: ${title}`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) }, { status: 201 });
+    }
+
+    const incidentId = String(body.incidentId || "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incidentId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid incident ID UUID." },
+        { status: 400 },
+      );
+    }
+
+    if (action === "incident-acknowledge") {
+      const result = await acknowledgeIncident(incidentId);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_INCIDENT_ACKNOWLEDGED",
+        decision: `Incident acknowledged via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
+    }
+
+    if (action === "incident-start") {
+      const result = await startIncidentWork(incidentId);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_INCIDENT_IN_PROGRESS",
+        decision: `Incident work started via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
+    }
+
+    if (action === "incident-resolve") {
+      const reason = String(body.reason || "").trim();
+      if (!reason || reason.length > 1000) {
+        return NextResponse.json(
+          { success: false, error: "A resolution reason is required (1-1000 characters)." },
+          { status: 400 },
+        );
+      }
+      const result = await resolveIncident(incidentId);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_INCIDENT_CLOSED",
+        decision: `Incident resolved via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}. Reason: ${reason}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
+    }
+
+    if (action === "incident-false-positive") {
+      const reason = String(body.reason || "").trim();
+      if (!reason || reason.length > 1000) {
+        return NextResponse.json(
+          { success: false, error: "A reason is required for false-positive (1-1000 characters)." },
+          { status: 400 },
+        );
+      }
+      const result = await markIncidentFalsePositive(incidentId);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_INCIDENT_CLOSED",
+        decision: `Incident marked false-positive via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}. Reason: ${reason}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
+    }
+
+    if (action === "incident-assign") {
+      const assignedToId = String(body.assignedToId || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedToId)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid assignee UUID." },
+          { status: 400 },
+        );
+      }
+      const result = await assignIncident(incidentId, assignedToId);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_COMMAND",
+        decision: `Incident assigned via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
+    }
+
+    if (action === "incident-escalate") {
+      const newLevel = String(body.level || "");
+      if (!INCIDENT_ESCALATION_LEVELS.includes(newLevel as any)) {
+        return NextResponse.json(
+          { success: false, error: `Invalid escalation level. Must be one of: ${INCIDENT_ESCALATION_LEVELS.join(", ")}.` },
+          { status: 400 },
+        );
+      }
+      const result = await escalateIncident(incidentId, newLevel as any);
+      if (!result.success) {
+        const status = result.error === "Incident not found." ? 404 : 409;
+        return NextResponse.json({ success: false, error: result.error }, { status });
+      }
+      writeSentinelAudit({
+        eventType: "SENTINEL_COMMAND",
+        decision: `Incident escalated to ${newLevel} via command center`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        ...auditMeta,
+      }).catch(() => {});
+      return NextResponse.json({ success: true, incident: sanitizeIncident(result.incident as any) });
     }
   }
 
