@@ -41,6 +41,9 @@ jobs:
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
 
+      - name: Sentinel regression tests
+        run: npm run test:sentinel
+
       - name: Build
         run: npm run build
 
