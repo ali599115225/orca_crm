@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, hasDatabaseRole, isProductionRuntime } from '@/lib/api-auth-guard';
@@ -9,7 +10,7 @@ import {
   markProcessing,
   markDelivered,
 } from '@/lib/zatca/gate-adapter';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 // ─── GET: List devices for tenant (read-only, any authenticated role) ─────────
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, devices });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/zatca/device failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/zatca/device failed", error, 500);
   }
 }
 
@@ -145,6 +146,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responsePayload, { status: 201 });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/device failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/device failed", error, 500);
   }
 }

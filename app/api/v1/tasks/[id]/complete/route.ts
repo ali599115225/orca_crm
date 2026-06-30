@@ -1,8 +1,9 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/tasks/[id]/complete/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function PATCH(
   request: NextRequest,
@@ -24,7 +25,7 @@ export async function PATCH(
     }
 
     const updatedTask = await prisma.task.update({
-      where: { id },
+      where: { id, tenantId },
       data: {
         status: "COMPLETED",
         updatedBy: userId || null,
@@ -34,6 +35,6 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updatedTask });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "PATCH /api/v1/tasks/[id]/complete failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "PATCH /api/v1/tasks/[id]/complete failed", error, 500);
   }
 }

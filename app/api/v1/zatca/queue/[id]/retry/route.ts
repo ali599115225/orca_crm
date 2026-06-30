@@ -1,8 +1,9 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/api-auth';
 import { isRetryable, isExpired } from '@/lib/zatca/queue';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await authenticateRequest(request);
@@ -36,6 +37,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ success: true, message: 'Queue item queued for retry' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/queue/[id]/retry failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/queue/[id]/retry failed", error, 500);
   }
 }

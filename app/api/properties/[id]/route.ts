@@ -1,8 +1,9 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -74,7 +75,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: formatted });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/properties/[id] failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(_request, ErrorCode.INTERNAL_ERROR, "GET /api/properties/[id] failed", error, 500);
   }
 }
 
@@ -128,7 +129,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "PUT /api/properties/[id] failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "PUT /api/properties/[id] failed", error, 500);
   }
 }
 
@@ -154,6 +155,6 @@ export async function DELETE(
     await prisma.unit.delete({ where: { id } });
     return NextResponse.json({ success: true, message: "تم حذف الوحدة" });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/properties/[id] failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "DELETE /api/properties/[id] failed", error, 500);
   }
 }

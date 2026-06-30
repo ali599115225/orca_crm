@@ -1,7 +1,8 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { prisma } from '@/lib/prisma';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +45,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: chats });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/whatsapp/threads failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/whatsapp/threads failed", error, 500);
   }
 }

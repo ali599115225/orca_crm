@@ -15,8 +15,8 @@ export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
-  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse();
+  if (!session) return unauthorizedResponse(request);
+  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse(request);
 
   const tenant = await prisma.tenant.findFirst({
     where: { id: session.tenantId, isActive: true },
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
-  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse();
+  if (!session) return unauthorizedResponse(request);
+  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse(request);
 
   const limit = await rateLimit(
     `leads-webhook:rotate:${session.tenantId}:${session.userId}`,

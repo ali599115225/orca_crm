@@ -64,6 +64,11 @@ export interface PublicErrorResponse {
   messageAr: string;
   messageEn: string;
   requestId: string;
+  error: {
+    code: ErrorCodeType;
+    message: string;
+    requestId: string;
+  };
 }
 
 const MAX_LOG_VALUE = 1_000;
@@ -77,6 +82,16 @@ const REDACTION_RULES: Array<[RegExp, string]> = [
   [/[A-Za-z]:\\[^\s"',;)]+/g, '[PATH]'],
   [/\/(?:home|var|usr|tmp|root|Users)\/[^\s"',;)]+/g, '[PATH]'],
 ];
+
+let publicErrorLogger: (message: string) => void = (message) => {
+  console.error(message);
+};
+
+export function setPublicErrorLoggerForTest(
+  logger: ((message: string) => void) | null,
+): void {
+  publicErrorLogger = logger || ((message) => console.error(message));
+}
 
 function redactSensitive(value: string): string {
   let output = value.slice(0, MAX_LOG_VALUE);
@@ -107,12 +122,19 @@ function safeSerialize(value: unknown): string {
   }
 }
 
+export function createRequestId(requestId?: string | null): string {
+  const value = String(requestId || '').trim();
+  if (/^[A-Za-z0-9._:-]{8,128}$/.test(value)) return value;
+  return randomUUID();
+}
+
 export function publicError(
   code: ErrorCodeType,
   internalContext?: string,
-  rawError?: unknown
+  rawError?: unknown,
+  requestIdInput?: string | null
 ): PublicErrorResponse {
-  const requestId = randomUUID();
+  const requestId = createRequestId(requestIdInput);
   const details = [`code=${code}`, `requestId=${requestId}`];
 
   if (internalContext) {
@@ -132,7 +154,7 @@ export function publicError(
     details.push(`raw=${redactSensitive(safeSerialize(rawError))}`);
   }
 
-  console.error('[ORCA-ERR]', details.join(' | '));
+  publicErrorLogger(`[ORCA-ERR] ${details.join(' | ')}`);
 
   return {
     success: false,
@@ -140,6 +162,11 @@ export function publicError(
     messageAr: SAFE_AR_MESSAGES[code],
     messageEn: SAFE_EN_MESSAGES[code],
     requestId,
+    error: {
+      code,
+      message: SAFE_AR_MESSAGES[code],
+      requestId,
+    },
   };
 }
 
@@ -210,7 +237,8 @@ export function makeErrorResponse(
   code: ErrorCodeType,
   _httpStatus: number,
   internalContext?: string,
-  rawError?: unknown
+  rawError?: unknown,
+  requestId?: string | null
 ): PublicErrorResponse {
-  return publicError(code, internalContext, rawError);
+  return publicError(code, internalContext, rawError, requestId);
 }

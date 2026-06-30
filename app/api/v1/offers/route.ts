@@ -1,9 +1,10 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/offers/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { createOffer } from "@/lib/domain/transaction-spine";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: offers });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/offers failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/offers failed", error, 500);
   }
 }
 
@@ -50,6 +51,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: offer }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/offers failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/offers failed", error, 500);
   }
 }

@@ -1,8 +1,9 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/contacts/[id]/notes/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function POST(
   request: NextRequest,
@@ -41,6 +42,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: updatedContact });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/contacts/[id]/notes failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/contacts/[id]/notes failed", error, 500);
   }
 }

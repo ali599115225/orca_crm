@@ -23,9 +23,9 @@ export async function PATCH(
   try {
     const { id } = await params;
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     if (!(await hasDatabaseRole(session, ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"]))) {
-      return forbiddenResponse();
+      return forbiddenResponse(request);
     }
     const { tenantId, userId } = session;
 

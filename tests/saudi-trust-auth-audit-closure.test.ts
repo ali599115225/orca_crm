@@ -328,8 +328,20 @@ describe('Idempotency Source — Outbox Guarantees', () => {
 describe('Authorization Source — Guard Quality', () => {
   it('hasDatabaseRole verifies both user AND active tenant',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('Promise.all(['); expect(src).toContain('isActive: true'); });
   it('requireAuth supports cookie AND Bearer token',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('session_token'); expect(src).toContain('Bearer '); });
-  it('unauthorizedResponse returns HTTP 401',()=>{ expect(source('lib/api-auth-guard.ts')).toContain('status: 401'); });
-  it('forbiddenResponse returns HTTP 403',()=>{ expect(source('lib/api-auth-guard.ts')).toContain('status: 403'); });
+  it('unauthorizedResponse returns HTTP 401',()=>{
+  const guard = source('lib/api-auth-guard.ts');
+  const errors = source('lib/errors.ts');
+  expect(guard).toContain('ErrorCode.UNAUTHORIZED');
+  expect(guard).toContain('httpErrorResponse(');
+  expect(errors).toMatch(/case ErrorCode\.UNAUTHORIZED:[\s\S]*?return 401;/);
+});
+  it('forbiddenResponse returns HTTP 403',()=>{
+  const guard = source('lib/api-auth-guard.ts');
+  const errors = source('lib/errors.ts');
+  expect(guard).toContain('ErrorCode.FORBIDDEN');
+  expect(guard).toContain('httpErrorResponse(');
+  expect(errors).toMatch(/case ErrorCode\.FORBIDDEN:[\s\S]*?return 403;/);
+});
   it('isSuperAdmin checks env emails against DB',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('SUPER_ADMIN_EMAILS'); expect(src).toContain('user?.email'); });
 });
 

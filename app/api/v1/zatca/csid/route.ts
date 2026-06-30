@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, hasDatabaseRole } from '@/lib/api-auth-guard';
@@ -11,7 +12,7 @@ import {
   markDelivered,
   markRetrying,
 } from '@/lib/zatca/gate-adapter';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 // ─── POST: Issue/Renew CSID for a ZATCA device (Hardened) ────────────────────
 //
@@ -125,6 +126,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responsePayload);
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/csid failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/zatca/csid failed", error, 500);
   }
 }

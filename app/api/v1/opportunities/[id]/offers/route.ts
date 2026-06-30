@@ -1,9 +1,10 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/opportunities/[id]/offers/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { createOffer } from "@/lib/domain/transaction-spine";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function POST(
   request: NextRequest,
@@ -46,6 +47,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: offer }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/opportunities/[id]/offers failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/opportunities/[id]/offers failed", error, 500);
   }
 }

@@ -1,10 +1,11 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
 import { rateLimit } from "@/lib/rate-limit";
 import { tenantContext } from "@/lib/tenant-context";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: list });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/properties failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/properties failed", error, 500);
   }
 }
 
@@ -161,6 +162,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: formatUnit(newUnit) }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/properties failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/properties failed", error, 500);
   }
 }

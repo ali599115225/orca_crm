@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/projects/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -6,7 +7,7 @@ import { cookies } from "next/headers";
 import { rateLimit } from "@/lib/rate-limit";
 import { tenantContext } from "@/lib/tenant-context";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: formattedProjects });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/projects failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/projects failed", error, 500);
   }
 }
 
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       await logPlanBlockedAttempt({ tenantId: session.tenantId as string, error }).catch(() => {});
       return NextResponse.json(error.toJSON(), { status: 403 });
     }
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/projects failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/projects failed", error, 500);
   }
 }
 
@@ -158,7 +159,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: updatedProject });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "PUT /api/projects failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "PUT /api/projects failed", error, 500);
   }
 }
 
@@ -194,6 +195,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: "تم حذف المشروع العقاري بنجاح من قاعدة البيانات." });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/projects failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "DELETE /api/projects failed", error, 500);
   }
 }

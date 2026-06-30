@@ -1,8 +1,9 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTenantAndUser } from '@/lib/api-helpers';
 import { Priority } from '@prisma/client';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, tickets });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/maintenance failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/maintenance failed", error, 500);
   }
 }
 
@@ -54,6 +55,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, ticket }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/maintenance failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/maintenance failed", error, 500);
   }
 }

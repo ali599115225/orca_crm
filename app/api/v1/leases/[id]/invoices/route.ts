@@ -1,10 +1,11 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { calculateVat } from '@/lib/vat/engine';
 import { buildQrPayload, encodeQrCode, generateQrImage, formatInvoiceLabel } from '@/lib/zatca/qr';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 async function authenticateRequest() {
   const cookieStore = await cookies();
@@ -110,6 +111,6 @@ export async function POST(
     }, { status: 201 });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/leases/[id]/invoices failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/leases/[id]/invoices failed", error, 500);
   }
 }

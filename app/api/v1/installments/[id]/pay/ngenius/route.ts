@@ -29,9 +29,9 @@ export async function POST(
 ) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     const allowed = await hasDatabaseRole(session, NGENIUS_ALLOWED_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const tenantId = session.tenantId;
     const userId = session.userId;

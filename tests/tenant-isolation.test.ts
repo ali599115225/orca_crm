@@ -1,36 +1,113 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  evaluateTenantIsolation,
+  tenantScopedWhere,
+  type TenantScopedSession,
+} from '../lib/tenant-isolation';
 
 describe('Tenant Isolation', () => {
-  const tenantA = { id: 'tenant-a', companyName: 'Company A' };
-  const tenantB = { id: 'tenant-b', companyName: 'Company B' };
-  const leadA = { id: 'lead-1', tenantId: 'tenant-a', firstName: 'Ahmed' };
-  const leadB = { id: 'lead-2', tenantId: 'tenant-b', firstName: 'Sara' };
+  const session: TenantScopedSession = {
+    userId: 'user-a',
+    tenantId: 'tenant-a',
+    role: 'ADMIN',
+  };
 
-  it('should prevent Tenant A from reading Tenant B leads', () => {
-    const userSession = { tenantId: tenantA.id };
-    const accessibleLeads = [leadA];
-    const hasAccess = accessibleLeads.every(l => l.tenantId === userSession.tenantId);
-    expect(hasAccess).toBe(true);
-    expect(leadB.tenantId).not.toBe(userSession.tenantId);
+  it('blocks Tenant A from reading Tenant B resources', () => {
+    const decision = evaluateTenantIsolation({
+      session,
+      resourceTenantId: 'tenant-b',
+    });
+
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) {
+      expect(decision.status).toBe(403);
+      expect(JSON.stringify(decision.publicError)).not.toContain('tenant-b');
+    }
   });
 
-  it('should enforce tenantId in WHERE clause for reads', () => {
-    const query = { where: { tenantId: tenantA.id } };
-    expect(query.where.tenantId).toBe(tenantA.id);
-    expect(query.where.tenantId).not.toBe(tenantB.id);
+  it('blocks Tenant A from writing Tenant B resources', () => {
+    const decision = evaluateTenantIsolation({
+      session,
+      bodyTenantId: 'tenant-b',
+      resourceTenantId: 'tenant-b',
+    });
+
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) expect(decision.status).toBe(403);
   });
 
-  it('should enforce tenantId in WHERE clause for updates', () => {
-    const updateQuery = { where: { id: leadA.id, tenantId: tenantA.id }, data: { status: 'CONTACTED' } };
-    expect(updateQuery.where.tenantId).toBe(tenantA.id);
+  it('blocks route param tenant spoofing', () => {
+    expect(
+      evaluateTenantIsolation({ session, routeTenantId: 'tenant-b' }).allowed,
+    ).toBe(false);
   });
 
-  it('should reject cross-tenant API access via header spoofing', () => {
-    const originalGetTenantAndUser = (sessionTenantId: string | null, headerTenantId: string | null) => {
-      if (!sessionTenantId) return null;
-      return sessionTenantId;
-    };
-    expect(originalGetTenantAndUser('tenant-a', 'tenant-b')).toBe('tenant-a');
-    expect(originalGetTenantAndUser('tenant-a', null)).toBe('tenant-a');
+  it('blocks query param tenant spoofing', () => {
+    expect(
+      evaluateTenantIsolation({ session, queryTenantId: 'tenant-b' }).allowed,
+    ).toBe(false);
+  });
+
+  it('blocks body tenantId spoofing', () => {
+    expect(
+      evaluateTenantIsolation({ session, bodyTenantId: 'tenant-b' }).allowed,
+    ).toBe(false);
+  });
+
+  it('does not trust client-supplied role', () => {
+    const decision = evaluateTenantIsolation({
+      session,
+      clientRole: 'PLATFORM_OWNER',
+    });
+
+    expect(decision.allowed).toBe(true);
+    if (decision.allowed) expect(decision.trustedRole).toBe('ADMIN');
+  });
+
+  it('uses session tenantId in service-layer where clauses', () => {
+    const where = tenantScopedWhere(session, {
+      id: 'lead-1',
+      tenantId: 'tenant-b',
+    });
+
+    expect(where).toEqual({ id: 'lead-1', tenantId: 'tenant-a' });
+  });
+
+  it('returns 403 rather than 500 for forbidden cross-tenant access', () => {
+    const decision = evaluateTenantIsolation({
+      session,
+      routeTenantId: 'tenant-b',
+    });
+
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) expect(decision.status).toBe(403);
+  });
+
+  it('does not disclose whether another tenant resource exists', () => {
+    const decision = evaluateTenantIsolation({
+      session,
+      resourceTenantId: 'tenant-b',
+    });
+
+    expect(JSON.stringify(decision)).not.toContain('resource exists');
+    expect(JSON.stringify(decision)).not.toContain('tenant-b');
+  });
+
+  it('Tenant Admin cannot bypass tenant membership', () => {
+    expect(
+      evaluateTenantIsolation({
+        session: { ...session, role: 'ADMIN' },
+        resourceTenantId: 'tenant-b',
+      }).allowed,
+    ).toBe(false);
+  });
+
+  it('Platform Owner follows the extracted policy and does not bypass membership by role claim', () => {
+    expect(
+      evaluateTenantIsolation({
+        session: { ...session, role: 'PLATFORM_OWNER' },
+        resourceTenantId: 'tenant-b',
+      }).allowed,
+    ).toBe(false);
   });
 });
