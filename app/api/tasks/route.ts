@@ -2,47 +2,20 @@ import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/tasks/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
-import { tenantContext } from "@/lib/tenant-context";
+import { requireDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { ErrorCode } from "@/lib/errors";
-
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) {
-      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
-      return payload;
-    }
-  }
-
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload && payload.tenantId) {
-      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
-      return payload;
-    }
-  }
-
-  return null;
-}
 
 /**
  * GET /api/tasks - جلب المهام لجميع المبيعات للشركة الحالية
  */
 export async function GET(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
+    const session = auth.session;
     const tasks = await prisma.task.findMany({
-      where: { tenantId: session.tenantId as string },
+      where: { tenantId: session.tenantId },
       include: {
         lead: {
           select: { firstName: true, lastName: true, phone: true }
@@ -65,10 +38,8 @@ export async function GET(request: NextRequest) {
  * POST /api/tasks - إنشاء وتكليف مهمة متابعة جديدة
  */
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -79,8 +50,9 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من صلاحية العميل ومستشاره المكلف
+    const session = auth.session;
     const lead = await prisma.lead.findUnique({
-      where: { id: leadId, tenantId: session.tenantId as string },
+      where: { id: leadId, tenantId: session.tenantId },
       select: { assignedTo: true }
     });
 
@@ -111,10 +83,8 @@ export async function POST(request: NextRequest) {
  * PUT /api/tasks - تحديث حالة المهمة أو تعديل تفاصيلها
  */
 export async function PUT(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -125,8 +95,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // التحقق من ملكية المهمة للشركة
+    const session = auth.session;
     const existingTask = await prisma.task.findFirst({
-      where: { id, tenantId: session.tenantId as string }
+      where: { id, tenantId: session.tenantId }
     });
 
     if (!existingTask) {
@@ -154,10 +125,8 @@ export async function PUT(request: NextRequest) {
  * DELETE /api/tasks - حذف المهمة المجدولة نهائياً
  */
 export async function DELETE(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -168,8 +137,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // التحقق من ملكية المهمة قبل الحذف
+    const session = auth.session;
     const existingTask = await prisma.task.findFirst({
-      where: { id, tenantId: session.tenantId as string }
+      where: { id, tenantId: session.tenantId }
     });
 
     if (!existingTask) {

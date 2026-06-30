@@ -1,41 +1,53 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { requireDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { ErrorCode } from "@/lib/errors";
 
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
-  }
-
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload && payload.tenantId) return payload;
-  }
-
-  return null;
+function formatUnit(unit: any) {
+  return {
+    id: unit.id,
+    sku: unit.unitNumber,
+    unitNumber: unit.unitNumber,
+    floorPosition: unit.floorPosition,
+    type: unit.type || "شقة سكنية",
+    area: unit.area || "120 م²",
+    beds: unit.beds,
+    city: unit.city,
+    district: unit.district,
+    lat: unit.lat,
+    lng: unit.lng,
+    agentName: unit.agentName,
+    price: Number(unit.priceSar),
+    priceStr: Number(unit.priceSar).toLocaleString() + " ر.س",
+    status: unit.status,
+    desc: unit.description || "",
+    media: unit.media || [],
+    docs: unit.docs || [],
+    events: unit.events || [],
+    handovers: unit.handovers || [],
+    tourType: unit.tourType,
+    tourUrl: unit.tourUrl,
+    project: unit.project?.name || "",
+    projectId: unit.projectId,
+    contractId: null as string | null,
+    financialSettlementId: null as string | null,
+    createdAt: unit.createdAt,
+  };
 }
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(_request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(_request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
+    const session = auth.session;
     const unit = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId as string } },
+      where: { id, project: { tenantId: session.tenantId } },
       include: { project: { select: { id: true, name: true } } },
     });
 
@@ -43,35 +55,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: "الوحدة غير موجودة" }, { status: 404 });
     }
 
-    const formatted = {
-      id: unit.id,
-      sku: unit.unitNumber,
-      unitNumber: unit.unitNumber,
-      floorPosition: unit.floorPosition,
-      type: unit.type || "شقة سكنية",
-      area: unit.area || "120 م²",
-      beds: unit.beds,
-      city: unit.city,
-      district: unit.district,
-      lat: unit.lat,
-      lng: unit.lng,
-      agentName: unit.agentName,
-      price: Number(unit.priceSar),
-      priceStr: Number(unit.priceSar).toLocaleString() + " ر.س",
-      status: unit.status,
-      desc: unit.description || "",
-      media: unit.media || [],
-      docs: unit.docs || [],
-      events: unit.events || [],
-      handovers: unit.handovers || [],
-      tourType: unit.tourType,
-      tourUrl: unit.tourUrl,
-      project: unit.project?.name || "",
-      projectId: unit.projectId,
-      contractId: null as string | null,
-      financialSettlementId: null as string | null,
-      createdAt: unit.createdAt,
-    };
+    const formatted = formatUnit(unit);
 
     return NextResponse.json({ success: true, data: formatted });
   } catch (error: any) {
@@ -83,17 +67,16 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
     const body = await request.json();
 
+    const session = auth.session;
     const existing = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId as string } },
+      where: { id, project: { tenantId: session.tenantId } },
     });
 
     if (!existing) {
@@ -137,15 +120,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
+    const session = auth.session;
     const existing = await prisma.unit.findFirst({
-      where: { id, project: { tenantId: session.tenantId as string } },
+      where: { id, project: { tenantId: session.tenantId } },
     });
 
     if (!existing) {
