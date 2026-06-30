@@ -1,0 +1,19 @@
+PHASE=P0_SECURITY_RBAC_PRODUCTION_SAFETY
+STATUS=PASS
+ROOT_CAUSE=Public errors generated request IDs but did not support reuse of a supplied safe request ID.
+ROOT_CAUSE_CONFIDENCE=HIGH
+EVIDENCE_FILES=lib/errors.ts; tests/public-errors.test.ts
+CHANGED_FILES=lib/errors.ts; tests/public-errors.test.ts
+DB_CHANGE_REQUIRED=NO
+PRODUCTION_WRITE_REQUIRED=NO
+PRODUCTION_WRITE_OCCURRED=NO
+TESTS_RUN=vitest focused seed/public-errors/rbac/tenant-isolation; npm run build
+TEST_RESULTS=38/38 focused tests PASS; response requestId matches server log metadata in test
+SECURITY_REGRESSION=NO
+TENANT_ISOLATION=NOT_APPLICABLE
+KNOWN_LIMITATIONS=Route-level extraction of request headers can pass requestId into publicError; existing routes that omit it still receive generated UUIDs.
+ROLLBACK_COMMAND=git revert <public-errors-commit>
+COMMIT_HASH=PENDING_LOCAL_COMMIT
+SAFE_TO_MERGE=YES
+SAFE_TO_DEPLOY=YES
+

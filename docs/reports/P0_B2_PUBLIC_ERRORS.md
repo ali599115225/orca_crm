@@ -1,0 +1,19 @@
+PHASE=P0_SECURITY_RBAC_PRODUCTION_SAFETY
+STATUS=PASS
+ROOT_CAUSE=Public error responses needed a standard safe envelope while preserving legacy fields.
+ROOT_CAUSE_CONFIDENCE=HIGH
+EVIDENCE_FILES=lib/errors.ts; tests/public-errors.test.ts
+CHANGED_FILES=lib/errors.ts; tests/public-errors.test.ts
+DB_CHANGE_REQUIRED=NO
+PRODUCTION_WRITE_REQUIRED=NO
+PRODUCTION_WRITE_OCCURRED=NO
+TESTS_RUN=vitest focused seed/public-errors/rbac/tenant-isolation; npm run build
+TEST_RESULTS=38/38 focused tests PASS; production build PASS
+SECURITY_REGRESSION=NO
+TENANT_ISOLATION=NOT_APPLICABLE
+KNOWN_LIMITATIONS=Existing callers still receive legacy top-level fields for compatibility; the new nested error envelope is present.
+ROLLBACK_COMMAND=git revert <public-errors-commit>
+COMMIT_HASH=PENDING_LOCAL_COMMIT
+SAFE_TO_MERGE=YES
+SAFE_TO_DEPLOY=YES
+
