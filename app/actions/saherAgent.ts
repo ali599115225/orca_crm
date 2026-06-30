@@ -35,6 +35,7 @@ import {
 } from "@/lib/agents/persistent-retry";
 import {
   getApprovalTTLMinutes,
+  computeApprovalExpiresAt,
   isTaskExpired,
 } from "@/lib/sentinel/task-order";
 import {
@@ -397,6 +398,8 @@ export async function processSaherWhatsAppLeadAction(
           status: "WAITING_APPROVAL",
           source: "WHATSAPP",
           correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
+          approvalRequestedAt: new Date(),
+          approvalExpiresAt: computeApprovalExpiresAt(),
         },
       });
 
@@ -441,6 +444,8 @@ export async function processSaherWhatsAppLeadAction(
           status: "WAITING_APPROVAL",
           source: "WHATSAPP",
           correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
+          approvalRequestedAt: new Date(),
+          approvalExpiresAt: computeApprovalExpiresAt(),
         },
       });
 
@@ -491,6 +496,8 @@ export async function processSaherWhatsAppLeadAction(
         status: "WAITING_APPROVAL",
         source: "WHATSAPP",
         correlationId: `${tenant.id}_${shortHash(message.senderPhone)}_${message.timestamp}`,
+        approvalRequestedAt: new Date(),
+        approvalExpiresAt: computeApprovalExpiresAt(),
       },
     });
 
@@ -607,6 +614,7 @@ export async function executeApprovedSaherAction(
 
   if (isTaskExpired(taskOrder)) {
     const requestId = `expired-${Date.now()}-${taskOrder.id.slice(0, 8)}`;
+    const now = new Date();
     await prisma.sentinelTaskOrder.updateMany({
       where: {
         id: taskOrderId,
@@ -615,7 +623,9 @@ export async function executeApprovedSaherAction(
       },
       data: {
         status: "CANCELLED",
-        completedAt: new Date(),
+        completedAt: now,
+        decidedAt: now,
+        decisionReason: "Approval TTL expired",
       },
     });
     await writeAuditLog({
@@ -659,7 +669,12 @@ export async function executeApprovedSaherAction(
       tenantId: access.tenantId,
       status: "WAITING_APPROVAL",
     },
-    data: { status: "IN_PROGRESS" },
+    data: {
+      status: "IN_PROGRESS",
+      decidedById: access.userId,
+      decidedAt: new Date(),
+      decisionReason: "Approved by admin",
+    },
   });
   if (claimed.count !== 1) {
     return { success: false, error: "Task was claimed by another request." };
@@ -843,7 +858,7 @@ export async function executeApprovedSaherAction(
           tenantId: access.tenantId,
           status: "IN_PROGRESS",
         },
-        data: { status: "WAITING_APPROVAL" },
+        data: { status: "FAILED" },
       })
       .catch(() => {});
 

@@ -293,6 +293,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (isTaskExpired(task)) {
+        const now = new Date();
         await prisma.sentinelTaskOrder.updateMany({
           where: {
             id: task.id,
@@ -301,7 +302,9 @@ export async function POST(request: NextRequest) {
           },
           data: {
             status: "CANCELLED",
-            completedAt: new Date(),
+            completedAt: now,
+            decidedAt: now,
+            decisionReason: "Approval TTL expired",
           },
         });
         const requestId = `expired-${Date.now()}-${task.id.slice(0, 8)}`;
@@ -363,6 +366,9 @@ export async function POST(request: NextRequest) {
         data: {
           status: "CANCELLED",
           completedAt: new Date(),
+          decidedById: access.userId,
+          decidedAt: new Date(),
+          decisionReason: reason,
         },
       });
       if (rejected.count !== 1) {
