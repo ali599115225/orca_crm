@@ -23,7 +23,12 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
     }
 
-    await prismaAny.document.delete({ where: { id } });
+    const deleted = await prismaAny.document.deleteMany({
+      where: { id, tenantId: session.tenantId },
+    });
+    if (deleted.count !== 1) {
+      return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
+    }
     return NextResponse.json({ success: true, message: 'تم حذف الملف' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/documents/[id] failed", error).messageAr }, { status: 500 });
