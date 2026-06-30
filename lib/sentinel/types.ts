@@ -190,6 +190,51 @@ export const VACATION_MODE_RULES = {
   ],
 } as const;
 
+// ── Incident Types ──
+export const INCIDENT_SEVERITIES = [
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
+] as const;
+
+export type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
+
+export const INCIDENT_STATUSES = [
+  "OPEN",
+  "ACKNOWLEDGED",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "FALSE_POSITIVE",
+] as const;
+
+export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
+
+export const INCIDENT_ESCALATION_LEVELS = [
+  "SENTINEL",
+  "ON_CALL_OPERATOR",
+  "PLATFORM_OWNER",
+  "MANUAL_INTERVENTION",
+] as const;
+
+export type IncidentEscalationLevel = (typeof INCIDENT_ESCALATION_LEVELS)[number];
+
+export const INCIDENT_SERVICES = [
+  "APPLICATION",
+  "DATABASE",
+  "CRON",
+  "WEBHOOK",
+  "PAYMENT",
+  "WHATSAPP",
+  "ZATCA",
+  "EMAIL",
+  "AGENT_SAHER",
+  "AGENT_SANAD",
+  "UNKNOWN",
+] as const;
+
+export type IncidentService = (typeof INCIDENT_SERVICES)[number];
+
 // ── Audit Event Types ──
 export const SENTINEL_AUDIT_EVENTS = [
   "SENTINEL_COMMAND",
