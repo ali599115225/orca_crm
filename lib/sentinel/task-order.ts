@@ -159,6 +159,20 @@ export async function updateDeepRepairWait(minutes: number) {
   return updated;
 }
 
+export function getApprovalTTLMinutes(): number {
+  const raw = process.env.SENTINEL_APPROVAL_TTL_MINUTES;
+  if (!raw) return 1440;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) return 1440;
+  return parsed;
+}
+
+export function isTaskExpired(task: { createdAt: Date }): boolean {
+  const ttl = getApprovalTTLMinutes();
+  const deadline = new Date(task.createdAt.getTime() + ttl * 60_000);
+  return new Date() > deadline;
+}
+
 export async function getChatMessages(limit = 30) {
   return prisma.sentinelChatMessage.findMany({
     orderBy: { createdAt: "asc" },

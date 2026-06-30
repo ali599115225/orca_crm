@@ -34,6 +34,10 @@ import {
   getAgentRetryStatus,
 } from "@/lib/agents/persistent-retry";
 import {
+  getApprovalTTLMinutes,
+  isTaskExpired,
+} from "@/lib/sentinel/task-order";
+import {
   maskPhone,
   maskName,
   redactPiiFromPayload,
@@ -599,6 +603,40 @@ export async function executeApprovedSaherAction(
       details: `Task already in status ${taskOrder.status}`,
     });
     return { success: false, error: `Task already ${taskOrder.status}.` };
+  }
+
+  if (isTaskExpired(taskOrder)) {
+    const requestId = `expired-${Date.now()}-${taskOrder.id.slice(0, 8)}`;
+    await prisma.sentinelTaskOrder.updateMany({
+      where: {
+        id: taskOrderId,
+        tenantId: access.tenantId,
+        status: "WAITING_APPROVAL",
+      },
+      data: {
+        status: "CANCELLED",
+        completedAt: new Date(),
+      },
+    });
+    await writeAuditLog({
+      tenantId: access.tenantId,
+      userId: access.userId,
+      action: "SAHER_APPROVAL_EXPIRED",
+      tableName: "sentinel_task_orders",
+      recordId: taskOrder.id,
+      details: JSON.stringify({
+        requestId,
+        actor: access.userId,
+        taskId: taskOrder.id,
+        previousState: "WAITING_APPROVAL",
+        newState: "CANCELLED",
+        reason: "Approval TTL expired",
+        ttlMinutes: getApprovalTTLMinutes(),
+        createdAt: taskOrder.createdAt.toISOString(),
+        result: "expired",
+      }),
+    });
+    return { success: false, error: "This approval request has expired." };
   }
 
   const runtimeGuard = await assertAgentCanRun({
