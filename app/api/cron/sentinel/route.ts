@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
     anomalies: [] as string[],
     recommendations: [] as string[],
   };
+  let coreTaskFailed = false;
 
   // ===================================================
   // 1. فحص صحة قاعدة البيانات
@@ -48,9 +50,11 @@ export async function GET(request: NextRequest) {
       report.recommendations.push("ترقية Neon DB أو تفعيل Connection Pooling.");
     }
   } catch (dbError: any) {
+    coreTaskFailed = true;
     report.dbStatus = "ERROR";
     report.dbLatencyMs = Date.now() - dbStart;
     report.anomalies.push(`🚨 فشل قاعدة البيانات: ${dbError.message}`);
+    console.error("Sentinel cron database health check failed:", dbError);
 
     // ===================================================
     // 2. Self-Healing: محاولة الإصلاح الذاتي
@@ -71,6 +75,8 @@ export async function GET(request: NextRequest) {
       report.selfHealingApplied = true;
     } catch (retryError: any) {
       report.anomalies.push(`❌ فشل الإصلاح الذاتي: ${retryError.message}`);
+      coreTaskFailed = true;
+      console.error("Sentinel cron database self-healing failed:", retryError);
     }
   }
 
@@ -91,7 +97,11 @@ export async function GET(request: NextRequest) {
       );
       report.recommendations.push("مراجعة الشركات المعلقة وإشعار مديريها بالتجديد.");
     }
-  } catch (_) {}
+  } catch (error) {
+    coreTaskFailed = true;
+    report.anomalies.push("❌ فشل فحص الشركات المعلقة ذات المشاريع النشطة.");
+    console.error("Sentinel cron suspended tenant project check failed:", error);
+  }
 
   // ===================================================
   // 5. فحص عدادات الاستخدام المنتهية
@@ -109,7 +119,11 @@ export async function GET(request: NextRequest) {
       );
       report.recommendations.push("اقتراح ترقية باقة هؤلاء المستخدمين.");
     }
-  } catch (_) {}
+  } catch (error) {
+    coreTaskFailed = true;
+    report.anomalies.push("❌ فشل فحص عدادات الاستخدام المنتهية.");
+    console.error("Sentinel cron exhausted usage meter check failed:", error);
+  }
 
   // إذا لا توجد مشاكل
   if (report.anomalies.length === 0) {
@@ -147,7 +161,20 @@ export async function GET(request: NextRequest) {
       `${hasCritical ? "🚨 حرج" : "🔍 دوري"}: تقرير ساهر - ${report.dbStatus}`,
       emailHtml
     );
-  } catch (_) {}
+  } catch (error) {
+    console.error("Sentinel cron report email failed:", error);
+  }
+
+  if (!coreTaskFailed) {
+    try {
+      const heartbeat = await recordHeartbeat({ serviceId: "CRON_SENTINEL" });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed:", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed:", heartbeatError);
+    }
+  }
 
   return NextResponse.json({ success: true, report });
 }

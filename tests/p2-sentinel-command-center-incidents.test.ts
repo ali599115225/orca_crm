@@ -69,6 +69,7 @@ const mocks = vi.hoisted(() => ({
   // @/lib/prisma — only used by approve-task branch; minimal stub
   prisma: {
     sentinelTaskOrder: { findFirst: vi.fn(), updateMany: vi.fn() },
+    sentinelHeartbeat: { findMany: vi.fn() },
     $disconnect: vi.fn(),
     $connect: vi.fn(),
   },
@@ -182,6 +183,7 @@ function mockGetDependencies() {
   mocks.getOpenIncidents.mockResolvedValue([]);
   mocks.getChatMessages.mockResolvedValue([]);
   mocks.listActiveIncidents.mockResolvedValue([]);
+  mocks.prisma.sentinelHeartbeat.findMany.mockResolvedValue([]);
   mocks.getApprovalTTLMinutes.mockReturnValue(1440);
 }
 
@@ -296,6 +298,50 @@ describe("P2-B2b2 — Sentinel Incident Command Center API", () => {
     expect(inc.diagnosticMetadata).toBeUndefined();
     expect(inc.title).toBe("Test incident");
     expect(inc.severity).toBe("MEDIUM");
+  });
+
+  it("returns heartbeat summary without metadata for authenticated Platform Owner", async () => {
+    mockAuth();
+    mockGetDependencies();
+    mocks.prisma.sentinelHeartbeat.findMany.mockResolvedValue([
+      {
+        serviceId: "CRON_BILLING",
+        status: "HEALTHY",
+        lastSeenAt: new Date("2026-06-30T12:00:00.000Z"),
+        metadata: { hidden: true },
+      },
+      {
+        serviceId: "CRON_ZATCA",
+        status: "DOWN",
+        lastSeenAt: new Date("2026-06-30T10:00:00.000Z"),
+      },
+    ]);
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.prisma.sentinelHeartbeat.findMany).toHaveBeenCalledWith({
+      select: {
+        serviceId: true,
+        status: true,
+        lastSeenAt: true,
+      },
+      orderBy: { serviceId: "asc" },
+    });
+    expect(body.data.heartbeatSummary).toEqual([
+      {
+        serviceId: "CRON_BILLING",
+        status: "HEALTHY",
+        lastSeenAt: "2026-06-30T12:00:00.000Z",
+      },
+      {
+        serviceId: "CRON_ZATCA",
+        status: "DOWN",
+        lastSeenAt: "2026-06-30T10:00:00.000Z",
+      },
+    ]);
+    expect(body.data.heartbeatSummary[0].metadata).toBeUndefined();
   });
 
   // ────────────────────────────────────────────────

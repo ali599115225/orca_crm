@@ -7,6 +7,7 @@ import { submitReporting, submitClearance } from '@/lib/zatca/api';
 import { rateLimit } from '@/lib/rate-limit';
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -146,13 +147,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const pendingTotal = await prisma.zatcaQueue.count({
+      where: { status: { in: ['PENDING', 'RETRYING'] } },
+    });
+
+    try {
+      const heartbeat = await recordHeartbeat({ serviceId: "CRON_ZATCA" });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed:", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed:", heartbeatError);
+    }
+
     return NextResponse.json({
       success: true,
       processed: results.length,
       results,
-      pendingTotal: await prisma.zatcaQueue.count({
-        where: { status: { in: ['PENDING', 'RETRYING'] } },
-      }),
+      pendingTotal,
     });
   } catch (error: any) {
     return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/cron/zatca failed", error, 500);

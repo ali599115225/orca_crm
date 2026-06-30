@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { runInstallmentAgentInternal } from "@/lib/server/internal";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 function isAuthorizedCronRequest(authHeader: string | null, secret: string): boolean {
   if (!authHeader?.startsWith("Bearer ")) return false;
@@ -42,6 +43,15 @@ export async function GET(request: NextRequest) {
   try {
     const result = await runInstallmentAgentInternal();
     if (result.success) {
+      try {
+        const heartbeat = await recordHeartbeat({ serviceId: "CRON_SANAD_INSTALLMENTS" });
+        if (!heartbeat.success) {
+          console.error("Cron heartbeat failed:", heartbeat.error);
+        }
+      } catch (heartbeatError) {
+        console.error("Cron heartbeat failed:", heartbeatError);
+      }
+
       return NextResponse.json({
         ok: true,
         processed: result.processedCount ?? 0,

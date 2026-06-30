@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rawPrisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
     report.operations.push({ table: "failed_login_attempts", action: "DELETED", count: result });
   } catch (e: any) {
     report.operations.push({ table: "failed_login_attempts", action: "ERROR", count: 0, error: e.message });
+    console.error("Retention cron failed_login_attempts cleanup failed:", e);
   }
 
   // ── 2. sentinel_task_orders — DONE/CANCELLED older than 30 days ──
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     report.operations.push({ table: "sentinel_task_orders", action: "DELETED", count: result });
   } catch (e: any) {
     report.operations.push({ table: "sentinel_task_orders", action: "ERROR", count: 0, error: e.message });
+    console.error("Retention cron sentinel_task_orders cleanup failed:", e);
   }
 
   // ── 3. agent_telemetry_logs — older than 90 days ──
@@ -59,6 +62,7 @@ export async function GET(request: NextRequest) {
     report.operations.push({ table: "agent_telemetry_logs", action: "DELETED", count: result });
   } catch (e: any) {
     report.operations.push({ table: "agent_telemetry_logs", action: "ERROR", count: 0, error: e.message });
+    console.error("Retention cron agent_telemetry_logs cleanup failed:", e);
   }
 
   // ── 4. audit_logs — COUNT only (no deletion — requires cold archive first) ──
@@ -75,6 +79,19 @@ export async function GET(request: NextRequest) {
     });
   } catch (e: any) {
     report.operations.push({ table: "audit_logs", action: "ERROR", count: 0, error: e.message });
+    console.error("Retention cron audit_logs count failed:", e);
+  }
+
+  const coreTaskFailed = report.operations.some((operation) => operation.action === "ERROR");
+  if (!coreTaskFailed) {
+    try {
+      const heartbeat = await recordHeartbeat({ serviceId: "CRON_RETENTION" });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed:", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed:", heartbeatError);
+    }
   }
 
   return NextResponse.json({ success: true, report });

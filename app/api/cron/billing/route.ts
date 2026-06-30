@@ -10,6 +10,7 @@ import { sendSMSNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
 import { ErrorCode } from "@/lib/errors";
+import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -356,6 +357,15 @@ export async function GET(request: NextRequest) {
     `;
 
     await sendAdminEmailAlert("⏰ تقرير Cron اليومي - سند", emailHtml);
+
+    try {
+      const heartbeat = await recordHeartbeat({ serviceId: "CRON_BILLING" });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed:", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed:", heartbeatError);
+    }
 
     return NextResponse.json({
       success: true,

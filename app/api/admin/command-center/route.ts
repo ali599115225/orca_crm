@@ -99,6 +99,18 @@ const ALLOWED_INCIDENT_ACTIONS = new Set([
   "incident-escalate",
 ]);
 
+function sanitizeHeartbeat(row: {
+  serviceId: string;
+  status: unknown;
+  lastSeenAt: Date | string;
+}) {
+  return {
+    serviceId: row.serviceId,
+    status: row.status,
+    lastSeenAt: row.lastSeenAt instanceof Date ? row.lastSeenAt.toISOString() : row.lastSeenAt,
+  };
+}
+
 export async function GET() {
   const session = await authenticatePlatformOwner();
   if (!session) {
@@ -126,6 +138,7 @@ export async function GET() {
     taskIncidents,
     chatMessages,
     sentinelIncidents,
+    heartbeatSummary,
   ] = await Promise.all([
     getOrCreateSentinelConfig(),
     getOpenTasks(),
@@ -134,6 +147,14 @@ export async function GET() {
     getOpenIncidents(),
     getChatMessages(30),
     listActiveIncidents(),
+    prisma.sentinelHeartbeat.findMany({
+      select: {
+        serviceId: true,
+        status: true,
+        lastSeenAt: true,
+      },
+      orderBy: { serviceId: "asc" },
+    }),
   ]);
 
   return NextResponse.json({
@@ -154,6 +175,7 @@ export async function GET() {
       auditEvents,
       incidents: stripExecutionPayload(taskIncidents),
       sentinelIncidents: sentinelIncidents.map(sanitizeIncident),
+      heartbeatSummary: heartbeatSummary.map(sanitizeHeartbeat),
       chatMessages,
     },
   });
