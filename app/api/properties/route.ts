@@ -1,35 +1,9 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { requireDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { rateLimit } from "@/lib/rate-limit";
-import { tenantContext } from "@/lib/tenant-context";
 import { ErrorCode } from "@/lib/errors";
-
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) {
-      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
-      return payload;
-    }
-  }
-
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload && payload.tenantId) {
-      tenantContext.enterWith({ tenantId: payload.tenantId as string, userId: (payload.userId as string) || undefined });
-      return payload;
-    }
-  }
-
-  return null;
-}
 
 function formatUnit(unit: any) {
   return {
@@ -64,11 +38,10 @@ function formatUnit(unit: any) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
+  const session = auth.session;
     const rl = await rateLimit(`properties:${session.tenantId}`);
     if (!rl.allowed) {
     return NextResponse.json({ error: "طلبات كثيرة جداً. حاول لاحقاً.", retryAfter: Math.ceil(rl.resetIn / 1000) }, { status: 429 });
@@ -80,7 +53,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "";
     const projectId = searchParams.get("projectId") || "";
 
-    const where: any = { tenantId: session.tenantId as string };
+    const where: any = { tenantId: session.tenantId };
 
     if (status) where.status = status;
     if (projectId) where.projectId = projectId;
@@ -113,10 +86,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -126,8 +97,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "حقل projectId, unitNumber, priceSar إلزامية" }, { status: 400 });
     }
 
+    const session = auth.session;
     const project = await prisma.project.findFirst({
-      where: { id: projectId, tenantId: session.tenantId as string },
+      where: { id: projectId, tenantId: session.tenantId },
     });
     if (!project) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا ينتمي لشركتك" }, { status: 404 });
@@ -135,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     const newUnit = await prisma.unit.create({
       data: {
-        tenantId: session.tenantId as string,
+        tenantId: session.tenantId,
         projectId,
         unitNumber,
         floorPosition: floorPosition || 0,

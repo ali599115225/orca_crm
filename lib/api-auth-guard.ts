@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { httpErrorResponse } from '@/lib/http-error-response';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
+import { tenantContext } from '@/lib/tenant-context';
 import {
   ErrorCode,
   publicError,
@@ -147,6 +148,51 @@ export async function hasDatabaseRole(
   } catch {
     return false;
   }
+}
+
+/**
+ * All database tenant roles from the Prisma enum.
+ * Shared across P1-A routes to preserve the previous authenticated-route
+ * access behavior while adding database revalidation.
+ */
+export const TENANT_ROLES = [
+  "ADMIN",
+  "SALES_MANAGER",
+  "SALES_EMPLOYEE",
+  "MARKETING",
+  "READ_ONLY",
+] as const satisfies readonly string[];
+
+export type DatabaseSessionResult =
+  | { session: SessionPayload; error: null }
+  | { session: null; error: NextResponse };
+
+/**
+ * JWT verification + database-backed revalidation in one call.
+ * Returns the session on success, or an HTTP error response when:
+ * - the JWT is missing/invalid (401)
+ * - the user no longer exists, the tenant is inactive, or the
+ *   current database role is not in `allowedRoles` (403)
+ *
+ * Also initializes the AsyncLocalStorage tenant context so the
+ * Prisma middleware can inject tenantId automatically.
+ */
+export async function requireDatabaseSession(
+  request: NextRequest,
+  allowedRoles: readonly string[],
+): Promise<DatabaseSessionResult> {
+  const session = await requireAuth(request);
+  if (!session) return { session: null, error: unauthorizedResponse(request) };
+
+  const roleOk = await hasDatabaseRole(session, allowedRoles);
+  if (!roleOk) return { session: null, error: forbiddenResponse(request) };
+
+  tenantContext.enterWith({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
+
+  return { session, error: null };
 }
 
 /**

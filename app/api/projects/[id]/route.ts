@@ -1,41 +1,21 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import { requireDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { ErrorCode } from "@/lib/errors";
-
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
-  }
-
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload && payload.tenantId) return payload;
-  }
-
-  return null;
-}
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(_request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(_request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
+    const session = auth.session;
     const project = await prisma.project.findFirst({
-      where: { id, tenantId: session.tenantId as string },
+      where: { id, tenantId: session.tenantId },
       include: {
         _count: { select: { leads: true, units: true } },
         units: {
@@ -65,17 +45,16 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
     const body = await request.json();
     const { name, city, status, unitsTotal, unitsSold, unitsBooked, minPrice, maxPrice } = body;
 
-    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId as string } });
+    const session = auth.session;
+    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا تملك صلاحية الوصول" }, { status: 404 });
     }
@@ -104,14 +83,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
-    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId as string } });
+    const session = auth.session;
+    const existing = await prisma.project.findFirst({ where: { id, tenantId: session.tenantId } });
     if (!existing) {
       return NextResponse.json({ success: false, error: "المشروع غير موجود أو لا تملك صلاحية حذفه" }, { status: 404 });
     }
