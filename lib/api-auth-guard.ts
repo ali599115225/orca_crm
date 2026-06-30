@@ -4,6 +4,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { httpErrorResponse } from '@/lib/http-error-response';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import {
@@ -190,24 +191,27 @@ export function requireRole(
   return null;
 }
 
-export function unauthorizedResponse(): NextResponse {
-  return NextResponse.json(
-    publicError(ErrorCode.UNAUTHORIZED, 'authentication required'),
-    { status: 401 }
+export function unauthorizedResponse(request?: NextRequest): NextResponse {
+  return httpErrorResponse(
+    request,
+    ErrorCode.UNAUTHORIZED,
+    "authentication required",
   );
 }
 
-export function forbiddenResponse(): NextResponse {
-  return NextResponse.json(
-    publicError(ErrorCode.FORBIDDEN, 'authorization failed'),
-    { status: 403 }
+export function forbiddenResponse(request?: NextRequest): NextResponse {
+  return httpErrorResponse(
+    request,
+    ErrorCode.FORBIDDEN,
+    "authorization failed",
   );
 }
 
-export function notFoundResponse(): NextResponse {
-  return NextResponse.json(
-    publicError(ErrorCode.NOT_FOUND, 'resource unavailable'),
-    { status: 404 }
+export function notFoundResponse(request?: NextRequest): NextResponse {
+  return httpErrorResponse(
+    request,
+    ErrorCode.NOT_FOUND,
+    "resource unavailable",
   );
 }
 
@@ -222,10 +226,10 @@ export async function requireSuperAdminInDev(
   }
 
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
+  if (!session) return unauthorizedResponse(request);
 
   if (!(await isSuperAdmin(session.userId))) {
-    return forbiddenResponse();
+    return forbiddenResponse(request);
   }
 
   return null;

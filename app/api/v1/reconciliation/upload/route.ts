@@ -105,10 +105,10 @@ function validateCsvStructure(content: string): string | null {
 
 export async function POST(request: NextRequest) {
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
+  if (!session) return unauthorizedResponse(request);
 
   if (!(await hasDatabaseRole(session, ['ADMIN']))) {
-    return forbiddenResponse();
+    return forbiddenResponse(request);
   }
 
   try {

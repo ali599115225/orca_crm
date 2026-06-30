@@ -56,8 +56,8 @@ function finiteVatRate(value: unknown): number | null {
 
 export async function POST(request: NextRequest) {
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
-  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse();
+  if (!session) return unauthorizedResponse(request);
+  if (!(await hasDatabaseRole(session, ['ADMIN']))) return forbiddenResponse(request);
 
   let body: unknown;
   try {

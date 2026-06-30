@@ -26,9 +26,9 @@ function generateApiKey(): string {
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const prismaAny = prisma as any;
     const keys = await prismaAny.apiKey.findMany({
@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const body = await request.json();
     const { name } = body;
@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     const allowed = await hasDatabaseRole(session, API_KEY_ADMIN_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

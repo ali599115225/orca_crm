@@ -169,10 +169,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await requireAuth(request);
-  if (!session) return unauthorizedResponse();
+  if (!session) return unauthorizedResponse(request);
 
   if (!(await hasDatabaseRole(session, ['ADMIN', 'SALES_MANAGER']))) {
-    return forbiddenResponse();
+    return forbiddenResponse(request);
   }
 
   const { id } = await params;

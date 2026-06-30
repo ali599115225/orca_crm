@@ -15,9 +15,9 @@ const SETTINGS_WRITER_ROLES = ["ADMIN", "owner"] as const;
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     const allowed = await hasDatabaseRole(session, SETTINGS_READER_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const dbTenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId },
@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
     // Settings mutations are ADMIN/owner only
     const allowed = await hasDatabaseRole(session, SETTINGS_WRITER_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const body = await request.json();
     const { commercialRegistry, vatNumber, nationalAddress, companyName } = body;

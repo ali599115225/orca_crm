@@ -15,10 +15,10 @@ export async function POST(
   try {
     // ── Auth: unconditional — both session AND DB role required ───────────────
     const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse();
+    if (!session) return unauthorizedResponse(request);
 
     const allowed = await hasDatabaseRole(session, INSTALLMENT_PAY_ROLES);
-    if (!allowed) return forbiddenResponse();
+    if (!allowed) return forbiddenResponse(request);
 
     const { id: installmentId } = await params;
     const body = await request.json();
