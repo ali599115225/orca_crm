@@ -12,8 +12,8 @@ TEST_RESULTS=38/38 focused tests PASS; RBAC matrix role coverage PASS
 SECURITY_REGRESSION=NO
 TENANT_ISOLATION=MEMBERSHIP_REQUIRED
 KNOWN_LIMITATIONS=Platform Owner is represented by configured SUPER_ADMIN_EMAILS/development super-admin checks, not by a Prisma Role enum value. No tenant bypass was added.
-ROLLBACK_COMMAND=git revert <rbac-tenant-commit>
-COMMIT_HASH=PENDING_LOCAL_COMMIT
+ROLLBACK_COMMAND=git revert 114d858
+COMMIT_HASH=114d858
 SAFE_TO_MERGE=YES
 SAFE_TO_DEPLOY=YES
 
@@ -27,4 +27,3 @@ SAFE_TO_DEPLOY=YES
 | Read Only | READ_ONLY | write | tenant resources | tenant membership required | no |
 
 RBAC_POLICY_AMBIGUOUS=NO
-

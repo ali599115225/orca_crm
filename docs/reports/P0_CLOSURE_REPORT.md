@@ -12,8 +12,8 @@ TEST_RESULTS=Focused tests PASS 38/38; production build PASS; lint script missin
 SECURITY_REGRESSION=NO
 TENANT_ISOLATION=CROSS_TENANT_READ_BLOCKED; CROSS_TENANT_WRITE_BLOCKED
 KNOWN_LIMITATIONS=Cannot declare full P0 PASS because repository-wide typecheck fails in existing WhatsApp tests and no lint script exists. Production build type phase passed.
-ROLLBACK_COMMAND=git revert a4cd7bb <final-p0-commit>
-COMMIT_HASH=a4cd7bb; PENDING_LOCAL_COMMIT
+ROLLBACK_COMMAND=git revert a4cd7bb 114d858
+COMMIT_HASH=a4cd7bb; 114d858
 SAFE_TO_MERGE=PARTIAL
 SAFE_TO_DEPLOY=PARTIAL
 

@@ -12,8 +12,7 @@ TEST_RESULTS=38/38 focused tests PASS; cross-tenant read/write/route/query/body/
 SECURITY_REGRESSION=NO
 TENANT_ISOLATION=CROSS_TENANT_READ_BLOCKED; CROSS_TENANT_WRITE_BLOCKED; FORBIDDEN_RETURNS_403
 KNOWN_LIMITATIONS=Tests are isolated service-layer tests with mocks/pure helpers; no production or external database was used.
-ROLLBACK_COMMAND=git revert <rbac-tenant-commit>
-COMMIT_HASH=PENDING_LOCAL_COMMIT
+ROLLBACK_COMMAND=git revert 114d858
+COMMIT_HASH=114d858
 SAFE_TO_MERGE=YES
 SAFE_TO_DEPLOY=YES
-

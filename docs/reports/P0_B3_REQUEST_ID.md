@@ -12,8 +12,7 @@ TEST_RESULTS=38/38 focused tests PASS; response requestId matches server log met
 SECURITY_REGRESSION=NO
 TENANT_ISOLATION=NOT_APPLICABLE
 KNOWN_LIMITATIONS=Route-level extraction of request headers can pass requestId into publicError; existing routes that omit it still receive generated UUIDs.
-ROLLBACK_COMMAND=git revert <public-errors-commit>
-COMMIT_HASH=PENDING_LOCAL_COMMIT
+ROLLBACK_COMMAND=git revert 114d858
+COMMIT_HASH=114d858
 SAFE_TO_MERGE=YES
 SAFE_TO_DEPLOY=YES
-
