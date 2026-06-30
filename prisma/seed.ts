@@ -2,6 +2,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
+import { assertSeedExecutionAllowed } from './seed-guard';
+
+// Production safety guard: must run before DB client initialization.
+assertSeedExecutionAllowed();
+
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -18,6 +23,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+
   console.log("🚀 جاري الاتصال بقاعدة البيانات...");
   console.log("🧹 جاري التنظيف الشامل...");
 
