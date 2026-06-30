@@ -26,7 +26,7 @@
     },
     {
       "path": "/api/cron/sentinel-heartbeats",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ],
   "buildCommand": "prisma generate && next build",
