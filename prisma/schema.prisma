@@ -105,6 +105,7 @@ model User {
   whatsappIntegrationAudits WhatsAppIntegrationAudit[]
   sentinelRequestedTasks    SentinelTaskOrder[]        @relation("SentinelTaskOrderRequestedBy")
   sentinelDecidedTasks      SentinelTaskOrder[]        @relation("SentinelTaskOrderDecidedBy")
+  sentinelIncidents         SentinelIncident[]
 
   @@index([emailHash], map: "idx_users_email_hash")
   @@map("users")
@@ -293,6 +294,7 @@ model Tenant {
   dealEvents                DealEvent[]
   revenueIntelligenceScores RevenueIntelligenceScore[]
   governmentOutboxEntries   GovernmentOutbox[]
+  sentinelIncidents         SentinelIncident[]
 
   @@map("tenants")
 }
@@ -1321,32 +1323,33 @@ model SentinelChatMessage {
 }
 
 model SentinelTaskOrder {
-  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId            String?   @map("tenant_id") @db.Uuid
-  createdBy           String    @default("platform_sentinel") @map("created_by")
-  assignedToType      String    @map("assigned_to_type")
-  assignedToName      String    @map("assigned_to_name")
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String?            @map("tenant_id") @db.Uuid
+  createdBy           String             @default("platform_sentinel") @map("created_by")
+  assignedToType      String             @map("assigned_to_type")
+  assignedToName      String             @map("assigned_to_name")
   title               String
-  description         String?   @db.Text
-  executionPayload    String?   @map("execution_payload") @db.Text
-  priority            String    @default("MEDIUM")
-  riskLevel           String    @default("LOW") @map("risk_level")
-  approvalRequired    Boolean   @default(false) @map("approval_required")
-  status              String    @default("OPEN")
-  source              String    @default("SYSTEM")
-  correlationId       String?   @map("correlation_id")
-  requestedById       String?   @map("requested_by_id") @db.Uuid
-  requestedBy         User?     @relation("SentinelTaskOrderRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction)
-  approvalRequestedAt DateTime? @map("approval_requested_at") @db.Timestamptz
-  approvalExpiresAt   DateTime? @map("approval_expires_at") @db.Timestamptz
-  decidedById         String?   @map("decided_by_id") @db.Uuid
-  decidedBy           User?     @relation("SentinelTaskOrderDecidedBy", fields: [decidedById], references: [id], onDelete: NoAction)
-  decidedAt           DateTime? @map("decided_at") @db.Timestamptz
-  decisionReason      String?   @map("decision_reason") @db.Text
-  requestId           String?   @map("request_id")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  completedAt         DateTime? @map("completed_at") @db.Timestamptz
+  description         String?            @db.Text
+  executionPayload    String?            @map("execution_payload") @db.Text
+  priority            String             @default("MEDIUM")
+  riskLevel           String             @default("LOW") @map("risk_level")
+  approvalRequired    Boolean            @default(false) @map("approval_required")
+  status              String             @default("OPEN")
+  source              String             @default("SYSTEM")
+  correlationId       String?            @map("correlation_id")
+  requestedById       String?            @map("requested_by_id") @db.Uuid
+  requestedBy         User?              @relation("SentinelTaskOrderRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction)
+  approvalRequestedAt DateTime?          @map("approval_requested_at") @db.Timestamptz
+  approvalExpiresAt   DateTime?          @map("approval_expires_at") @db.Timestamptz
+  decidedById         String?            @map("decided_by_id") @db.Uuid
+  decidedBy           User?              @relation("SentinelTaskOrderDecidedBy", fields: [decidedById], references: [id], onDelete: NoAction)
+  decidedAt           DateTime?          @map("decided_at") @db.Timestamptz
+  decisionReason      String?            @map("decision_reason") @db.Text
+  requestId           String?            @map("request_id")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt         DateTime?          @map("completed_at") @db.Timestamptz
+  sentinelIncidents   SentinelIncident[]
 
   @@index([status], map: "idx_sentinel_task_orders_status")
   @@index([status, approvalExpiresAt], map: "idx_sentinel_task_orders_expiry")
@@ -1356,6 +1359,63 @@ model SentinelTaskOrder {
   @@index([requestId], map: "idx_sentinel_task_orders_request")
   @@index([decidedById, decidedAt], map: "idx_sentinel_task_orders_decided")
   @@map("sentinel_task_orders")
+}
+
+enum SentinelIncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SentinelIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+enum SentinelEscalationLevel {
+  SENTINEL
+  ON_CALL_OPERATOR
+  PLATFORM_OWNER
+  MANUAL_INTERVENTION
+}
+
+model SentinelIncident {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String?                  @map("tenant_id") @db.Uuid
+  tenant             Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  title              String
+  summary            String?                  @db.Text
+  severity           SentinelIncidentSeverity @default(MEDIUM)
+  status             SentinelIncidentStatus   @default(OPEN)
+  escalationLevel    SentinelEscalationLevel  @default(SENTINEL) @map("escalation_level")
+  affectedService    String?                  @map("affected_service")
+  diagnosticMetadata Json?                    @map("diagnostic_metadata")
+  fingerprint        String?                  @map("fingerprint")
+  correlationId      String?                  @map("correlation_id")
+  requestId          String?                  @map("request_id")
+  detectedAt         DateTime                 @default(now()) @map("detected_at") @db.Timestamptz
+  acknowledgedAt     DateTime?                @map("acknowledged_at") @db.Timestamptz
+  resolvedAt         DateTime?                @map("resolved_at") @db.Timestamptz
+  assignedToId       String?                  @map("assigned_to_id") @db.Uuid
+  assignedTo         User?                    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  relatedTaskOrderId String?                  @map("related_task_order_id") @db.Uuid
+  relatedTaskOrder   SentinelTaskOrder?       @relation(fields: [relatedTaskOrderId], references: [id], onDelete: SetNull)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, severity], map: "idx_sentinel_incidents_active")
+  @@index([tenantId, status], map: "idx_sentinel_incidents_tenant_status")
+  @@index([assignedToId, status], map: "idx_sentinel_incidents_assignee_status")
+  @@index([correlationId], map: "idx_sentinel_incidents_correlation")
+  @@index([requestId], map: "idx_sentinel_incidents_request")
+  @@index([relatedTaskOrderId], map: "idx_sentinel_incidents_task_order")
+  @@index([detectedAt(sort: Desc)], map: "idx_sentinel_incidents_detected")
+  @@index([fingerprint, status], map: "idx_sentinel_incidents_fingerprint")
+  @@map("sentinel_incidents")
 }
 
 // ═══════════════════════════════════════════════════════════
