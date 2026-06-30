@@ -14,12 +14,14 @@ interface SentinelData {
   openTasks: number;
   pendingApprovals: number;
   openIncidents: number;
+  sentinelIncidentCount: number;
   data: {
     config: any;
     openTasks: any[];
     pendingApprovals: any[];
     auditEvents: any[];
     incidents: any[];
+    sentinelIncidents: any[];
     chatMessages: any[];
   };
 }
@@ -32,6 +34,36 @@ const DELEGATION_LEVELS = [
 ];
 
 const WAIT_OPTIONS = [15, 30, 60, 180, 360];
+
+const STATUS_LABELS: Record<string, string> = {
+  OPEN: 'مفتوح',
+  ACKNOWLEDGED: 'مؤكد',
+  IN_PROGRESS: 'قيد المعالجة',
+  RESOLVED: 'تم الحل',
+  FALSE_POSITIVE: 'إيجابي كاذب',
+};
+
+const SEVERITY_CLASSES: Record<string, string> = {
+  CRITICAL: 'bg-rose-500/20 border-rose-500/30 text-rose-400',
+  HIGH: 'bg-orange-500/20 border-orange-500/30 text-orange-400',
+  MEDIUM: 'bg-amber-500/20 border-amber-500/30 text-amber-400',
+  LOW: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
+};
+
+const STATUS_CLASSES: Record<string, string> = {
+  OPEN: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
+  ACKNOWLEDGED: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400',
+  IN_PROGRESS: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400',
+  RESOLVED: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
+  FALSE_POSITIVE: 'bg-neutral-500/20 border-neutral-500/30 text-neutral-400',
+};
+
+const ESCALATION_LABELS: Record<string, string> = {
+  SENTINEL: 'Sentinel',
+  ON_CALL_OPERATOR: 'مشغل المناوبة',
+  PLATFORM_OWNER: 'مالك المنصة',
+  MANUAL_INTERVENTION: 'تدخل يدوي',
+};
 
 // Static class maps — Tailwind JIT requires complete class strings
 const MODE_CLASSES: Record<string, { active: string; inactive: string }> = {
@@ -49,6 +81,12 @@ export default function CommandCenterPage() {
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Incident UI state
+  const [incidentConfirm, setIncidentConfirm] = useState<{ incidentId: string; action: string } | null>(null);
+  const [incidentReason, setIncidentReason] = useState('');
+  const [assignInput, setAssignInput] = useState<Record<string, string>>({});
+  const [escalateInput, setEscalateInput] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -89,6 +127,23 @@ export default function CommandCenterPage() {
     } finally {
       setSaving(null);
     }
+  };
+
+  const incidentAction = async (incidentId: string, action: string, extra: Record<string, unknown> = {}) => {
+    await postAction({ action, incidentId, ...extra });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!incidentConfirm) return;
+    const { incidentId, action } = incidentConfirm;
+    const reason = incidentReason.trim();
+    if (!reason || reason.length > 1000) {
+      setError('السبب مطلوب (1-1000 حرف).');
+      return;
+    }
+    setIncidentConfirm(null);
+    setIncidentReason('');
+    await postAction({ action, incidentId, reason });
   };
 
   const sendChat = async () => {
@@ -148,8 +203,8 @@ export default function CommandCenterPage() {
               <p className="text-2xl font-black text-amber-400 mt-1">{data.pendingApprovals}</p>
             </SmartCard>
             <SmartCard className="p-4 text-center">
-              <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">حوادث مفتوحة</p>
-              <p className="text-2xl font-black text-rose-400 mt-1">{data.openIncidents}</p>
+              <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">حوادث Sentinel</p>
+              <p className="text-2xl font-black text-rose-400 mt-1">{data.sentinelIncidentCount}</p>
             </SmartCard>
             <SmartCard className="p-4 text-center">
               <p className="text-[10px] text-[var(--nc-foreground-muted)] font-bold">وضع التشغيل</p>
@@ -264,6 +319,145 @@ export default function CommandCenterPage() {
                 </button>
               </div>
             </div>
+          </SmartCard>
+
+          {/* Incidents */}
+          <SmartCard className="p-5">
+            <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-3">حوادث Sentinel النشطة</h3>
+            {incidentConfirm && (
+              <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <p className="text-xs font-bold text-amber-400 mb-2">
+                  {incidentConfirm.action === 'incident-resolve' ? 'تأكيد حل الحادثة' : 'تأكيد الإبلاغ كإيجابي كاذب'}
+                </p>
+                <textarea value={incidentReason} onChange={(e) => setIncidentReason(e.target.value)}
+                  placeholder="السبب (مطلوب، 1-1000 حرف)..."
+                  className="w-full rounded-xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-2 text-xs text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] mb-2" rows={3} />
+                <div className="flex gap-2">
+                  <button onClick={handleConfirmAction} disabled={saving !== null}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] transition-all cursor-pointer disabled:opacity-50">
+                    تأكيد
+                  </button>
+                  <button onClick={() => { setIncidentConfirm(null); setIncidentReason(''); }}
+                    className="px-4 py-2 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)] font-bold text-[10px] transition-all cursor-pointer">
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {data.data.sentinelIncidents.length === 0 ? (
+              <p className="text-xs text-[var(--nc-foreground-muted)]">لا توجد حوادث نشطة.</p>
+            ) : (
+              <div className="space-y-3">
+                {data.data.sentinelIncidents.map((inc: any) => {
+                  const isGlobal = !inc.tenantId;
+                  const severityKey = String(inc.severity || 'MEDIUM');
+                  const statusKey = String(inc.status || 'OPEN');
+                  const escKey = String(inc.escalationLevel || 'SENTINEL');
+
+                  const validActions: { action: string; label: string; dangerous?: boolean }[] = [];
+                  if (statusKey === 'OPEN') {
+                    validActions.push({ action: 'incident-acknowledge', label: 'تأكيد' });
+                    validActions.push({ action: 'incident-false-positive', label: 'إيجابي كاذب', dangerous: true });
+                  } else if (statusKey === 'ACKNOWLEDGED') {
+                    validActions.push({ action: 'incident-start', label: 'بدء المعالجة' });
+                    validActions.push({ action: 'incident-resolve', label: 'حل', dangerous: true });
+                    validActions.push({ action: 'incident-false-positive', label: 'إيجابي كاذب', dangerous: true });
+                  } else if (statusKey === 'IN_PROGRESS') {
+                    validActions.push({ action: 'incident-resolve', label: 'حل', dangerous: true });
+                    validActions.push({ action: 'incident-false-positive', label: 'إيجابي كاذب', dangerous: true });
+                  }
+
+                  const isPending = saving !== null;
+
+                  return (
+                    <div key={inc.id} className="p-4 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] space-y-3">
+                      {/* Badge row */}
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${SEVERITY_CLASSES[severityKey] || SEVERITY_CLASSES.MEDIUM}`}>
+                          {severityKey}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${STATUS_CLASSES[statusKey] || ''}`}>
+                          {STATUS_LABELS[statusKey] || statusKey}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${isGlobal ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' : 'bg-teal-500/20 border-teal-500/30 text-teal-400'}`}>
+                          {isGlobal ? 'عام' : 'مرتبط بمستأجر'}
+                        </span>
+                      </div>
+
+                      {/* Title & summary */}
+                      <div>
+                        <p className="text-sm font-bold text-[var(--nc-foreground)]">{inc.title}</p>
+                        {inc.summary && <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-1 line-clamp-2">{inc.summary}</p>}
+                      </div>
+
+                      {/* Meta row */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-[var(--nc-foreground-muted)]">
+                        {inc.affectedService && <span>الخدمة: {inc.affectedService}</span>}
+                        <span>الكشف: {formatDate(inc.detectedAt)}</span>
+                        {inc.assignedToId && <span>المسؤول: {inc.assignedToId.slice(0, 8)}...</span>}
+                        <span>التصعيد: {ESCALATION_LABELS[escKey] || escKey}</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {validActions.map((btn) => (
+                          <button key={btn.action}
+                            onClick={() => {
+                              if (btn.action === 'incident-resolve' || btn.action === 'incident-false-positive') {
+                                setIncidentConfirm({ incidentId: inc.id, action: btn.action });
+                                setIncidentReason('');
+                              } else {
+                                incidentAction(inc.id, btn.action);
+                              }
+                            }}
+                            disabled={isPending}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${btn.dangerous ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20'}`}>
+                            {btn.label}
+                          </button>
+                        ))}
+
+                        {/* Assign */}
+                        <div className="flex items-center gap-1">
+                          <input type="text" value={assignInput[inc.id] || ''} onChange={(e) => setAssignInput({ ...assignInput, [inc.id]: e.target.value })}
+                            placeholder="UUID المسؤول..."
+                            className="w-24 rounded-lg bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-2 py-1 text-[9px] text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-50" disabled={isPending} />
+                          <button onClick={() => {
+                            const id = (assignInput[inc.id] || '').trim();
+                            if (!id || !/^[0-9a-f-]{36}$/i.test(id)) { setError('معرف المستخدم غير صالح.'); return; }
+                            incidentAction(inc.id, 'incident-assign', { assignedToId: id });
+                          }} disabled={isPending || !(assignInput[inc.id] || '').trim()}
+                            className="px-2 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                            تعيين
+                          </button>
+                        </div>
+
+                        {/* Escalate */}
+                        {statusKey !== 'RESOLVED' && statusKey !== 'FALSE_POSITIVE' && (
+                          <div className="flex items-center gap-1">
+                            <select value={escalateInput[inc.id] || ''} onChange={(e) => setEscalateInput({ ...escalateInput, [inc.id]: e.target.value })}
+                              className="rounded-lg bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] px-2 py-1 text-[9px] text-[var(--nc-foreground)] focus:outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-50" disabled={isPending}>
+                              <option value="">رفع التصعيد...</option>
+                              <option value="ON_CALL_OPERATOR">مشغل المناوبة</option>
+                              <option value="PLATFORM_OWNER">مالك المنصة</option>
+                              <option value="MANUAL_INTERVENTION">تدخل يدوي</option>
+                            </select>
+                            <button onClick={() => {
+                              const level = escalateInput[inc.id] || '';
+                              if (!level) { setError('اختر مستوى تصعيد.'); return; }
+                              incidentAction(inc.id, 'incident-escalate', { level });
+                            }} disabled={isPending || !(escalateInput[inc.id] || '')}
+                              className="px-2 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                              تصعيد
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </SmartCard>
 
           {/* Tasks / Approvals / Audit (unchanged) */}
