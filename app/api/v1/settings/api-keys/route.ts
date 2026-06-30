@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // R1 FIXED: Authentication + DB-backed RBAC + Masking + Encryption + Audit
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
@@ -10,7 +11,7 @@ import {
 } from '@/lib/api-auth-guard';
 import { encryptText } from '@/lib/crypto';
 import { writeAuditLog } from '@/lib/audit';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 const API_KEY_ADMIN_ROLES = ["ADMIN", "owner"] as const;
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: masked });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/settings/api-keys failed", error, 500);
   }
 }
 
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/settings/api-keys failed", error, 500);
   }
 }
 
@@ -134,6 +135,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'تم حذف المفتاح' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/settings/api-keys failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/settings/api-keys failed", error, 500);
   }
 }

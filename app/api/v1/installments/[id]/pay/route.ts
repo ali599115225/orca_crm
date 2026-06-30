@@ -1,10 +1,11 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/installments/[id]/pay/route.ts
 // Hardened: unconditional role check + audit. Role check no longer conditional on userId.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, hasDatabaseRole, forbiddenResponse, unauthorizedResponse } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { recordPayment } from "@/lib/domain/transaction-spine";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 const INSTALLMENT_PAY_ROLES = ["ADMIN", "SALES_MANAGER"] as const;
 
@@ -70,6 +71,6 @@ export async function POST(
       : error.message?.includes("exceeds")
       ? 422
       : 500;
-    return NextResponse.json({ error: publicError(ErrorCode.INTERNAL_ERROR, "POST /api/v1/installments/[id]/pay failed", error).messageAr }, { status });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/installments/[id]/pay failed", error);
   }
 }

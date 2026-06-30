@@ -1,7 +1,8 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/api-auth';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function DELETE(
   request: NextRequest,
@@ -31,6 +32,6 @@ export async function DELETE(
     }
     return NextResponse.json({ success: true, message: 'تم حذف الملف' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/documents/[id] failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/documents/[id] failed", error, 500);
   }
 }

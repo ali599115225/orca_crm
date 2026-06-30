@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/cron/billing/route.ts
 // ⏰ Cron Job - فحص الاشتراكات المنتهية يومياً
 // يُشغَّل تلقائياً عبر Vercel Cron أو Upstash QStash كل يوم في الفجر
@@ -8,7 +9,7 @@ import { sendAdminEmailAlert } from "@/lib/email";
 import { sendSMSNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -363,9 +364,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Cron Job Error:", error);
-    return NextResponse.json(
-      { success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/cron/billing failed", error).messageAr },
-      { status: 500 }
-    );
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/cron/billing failed", error, 500);
   }
 }

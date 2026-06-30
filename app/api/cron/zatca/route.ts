@@ -1,3 +1,4 @@
+import { httpErrorResponse } from "@/lib/http-error-response";
 // R3 FIXED: CRON_SECRET auth + rate limit + audit logging
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -5,7 +6,7 @@ import { computeNextRetryAt, isExpired } from '@/lib/zatca/queue';
 import { submitReporting, submitClearance } from '@/lib/zatca/api';
 import { rateLimit } from '@/lib/rate-limit';
 import { writeAuditLog } from '@/lib/audit';
-import { ErrorCode, publicError } from "@/lib/errors";
+import { ErrorCode } from "@/lib/errors";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -154,6 +155,6 @@ export async function GET(request: NextRequest) {
       }),
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: publicError(ErrorCode.INTERNAL_ERROR, "GET /api/cron/zatca failed", error).messageAr }, { status: 500 });
+    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/cron/zatca failed", error, 500);
   }
 }
