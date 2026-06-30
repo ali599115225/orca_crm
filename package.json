@@ -37,7 +37,7 @@
         "@tailwindcss/postcss": "^4.3.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
-        "@types/bcryptjs": "^2.4.6",
+        "@types/bcryptjs": "^3.0.0",
         "@types/node": "latest",
         "@types/pg": "^8.20.0",
         "@types/qrcode": "^1.5.6",
