@@ -1,18 +1,47 @@
-PHASE=P0_SECURITY_RBAC_PRODUCTION_SAFETY
-STATUS=PASS
-ROOT_CAUSE=Public errors generated request IDs but did not support reuse of a supplied safe request ID.
-ROOT_CAUSE_CONFIDENCE=HIGH
-EVIDENCE_FILES=lib/errors.ts; tests/public-errors.test.ts
-CHANGED_FILES=lib/errors.ts; tests/public-errors.test.ts
-DB_CHANGE_REQUIRED=NO
-PRODUCTION_WRITE_REQUIRED=NO
-PRODUCTION_WRITE_OCCURRED=NO
-TESTS_RUN=vitest focused seed/public-errors/rbac/tenant-isolation; npm run build
-TEST_RESULTS=38/38 focused tests PASS; response requestId matches server log metadata in test
-SECURITY_REGRESSION=NO
-TENANT_ISOLATION=NOT_APPLICABLE
-KNOWN_LIMITATIONS=Route-level extraction of request headers can pass requestId into publicError; existing routes that omit it still receive generated UUIDs.
-ROLLBACK_COMMAND=git revert 114d858
-COMMIT_HASH=114d858
-SAFE_TO_MERGE=YES
-SAFE_TO_DEPLOY=YES
+# P0_B3 — Request ID
+
+## Scope
+Implement correlation ID system for error tracking, ensuring each error response carries a unique, non-sequential ID that matches server-side logs.
+
+## Threat / Failure Mode
+- Sequential/predictable IDs used
+- Request ID not correlated between response and logs
+- Tenant secrets embedded in ID
+- No way to trace errors across systems
+
+## Implementation Evidence
+- `lib/errors.ts`:
+  - `createRequestId(requestId?)`: Accepts optional ID from platform (e.g., Vercel), validates format (8-128 chars, safe chars only), falls back to `randomUUID()`
+  - `publicError()` accepts `requestIdInput` parameter and includes it in response and logs
+  - ID format: UUID v4 or validated external ID
+  - Non-sequential, cryptographically random
+- Used in `lib/tenant-isolation.ts` for tenant violation errors
+- Some routes extract `x-correlation-id` or `x-request-id` headers (e.g., `app/api/v1/tours/route.ts`, `app/api/revenue-integrity/webhook/[provider]/route.ts`)
+
+## Test Evidence
+- `tests/public-errors.test.ts`:
+  - Test 2: "correlates response request id with server log metadata"
+  - Verifies `result.error.requestId === 'req-match-1'` and log contains `requestId=req-match-1`
+
+## Commands Run
+```bash
+node node_modules/vitest/vitest.mjs run tests/public-errors.test.ts
+# Result: 4/4 PASS (including request ID correlation test)
+```
+
+## Result
+**PASS**
+
+## Residual Risks
+- Not all routes extract request ID from headers yet (existing routes generate UUIDs)
+- Header extraction is opt-in per route; future work can standardize middleware
+
+## Commit Hash
+114d858
+
+## Quality Gates
+- REQUEST_ID_PRESENT=YES
+- SERVER_LOG_CORRELATION=PASS
+- ID_NON_SEQUENTIAL=YES
+- NO_TENANT_SECRETS_IN_ID=YES
+- TESTS_PASS=YES

@@ -1,18 +1,26 @@
-PHASE=P0_SECURITY_RBAC_PRODUCTION_SAFETY
-STATUS=PASS
-ROOT_CAUSE=Tenant isolation proof needed negative cross-tenant tests for spoofed params/body/role and forbidden response behavior.
-ROOT_CAUSE_CONFIDENCE=HIGH
-EVIDENCE_FILES=lib/tenant-isolation.ts; tests/tenant-isolation.test.ts; lib/api-auth-guard.ts; lib/domain/transaction-spine/validate-tenant.ts
-CHANGED_FILES=lib/tenant-isolation.ts; tests/tenant-isolation.test.ts; docs/reports/P0_B5_TENANT_ISOLATION.md
-DB_CHANGE_REQUIRED=NO
-PRODUCTION_WRITE_REQUIRED=NO
-PRODUCTION_WRITE_OCCURRED=NO
-TESTS_RUN=vitest focused seed/public-errors/rbac/tenant-isolation; npm run build
-TEST_RESULTS=38/38 focused tests PASS; cross-tenant read/write/route/query/body/role cases PASS
-SECURITY_REGRESSION=NO
-TENANT_ISOLATION=CROSS_TENANT_READ_BLOCKED; CROSS_TENANT_WRITE_BLOCKED; FORBIDDEN_RETURNS_403
-KNOWN_LIMITATIONS=Tests are isolated service-layer tests with mocks/pure helpers; no production or external database was used.
-ROLLBACK_COMMAND=git revert 114d858
-COMMIT_HASH=114d858
-SAFE_TO_MERGE=YES
-SAFE_TO_DEPLOY=YES
+# P0 B5 — Tenant Isolation
+
+## Scope
+إثبات منع القراءة والتحديث والحذف عبر حدود المستأجر.
+
+## Implementation Evidence
+- tenantId الموثوق مشتق من الجلسة.
+- تعارض route/query/body tenantId يُرفض.
+- قراءة Lease تخفي موارد المستأجر الآخر.
+- تحديث Task مقيد بـ `id + tenantId`.
+- حذف Document مقيد بـ `id + tenantId`.
+
+## Test Evidence
+- `tests/tenant-isolation.test.ts`: 11 PASS
+- `tests/p0-tenant-route-isolation.test.ts`: 5 PASS
+- Full suite: 627/627 PASS
+
+## Result
+**PASS**
+
+## Residual Risks
+عزل المستأجر ما زال موزعاً داخل عدد من Routes؛ توحيده معمارياً خارج نطاق P0.
+
+## Commits
+- `114d858`
+- `e6a0c39`
