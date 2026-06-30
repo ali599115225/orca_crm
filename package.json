@@ -8,6 +8,7 @@
         "env:upload": "node scripts/upload-env-to-vercel.js",
         "jwt:generate": "node -e \"console.log('JWT_SECRET=\\\"' + require('crypto').randomBytes(64).toString('hex') + '\\\"')\"",
         "test": "vitest run",
+        "test:sentinel": "vitest run tests/p2-sentinel-incidents.test.ts tests/p2-sentinel-command-center-incidents.test.ts tests/p2-sentinel-heartbeat-service.test.ts tests/p2-sentinel-cron-heartbeat.test.ts",
         "test:whatsapp": "vitest run tests/whatsapp/ tests/whatsapp-webhook-security.test.ts tests/whatsapp-persistence-foundation.test.ts"
     },
     "dependencies": {

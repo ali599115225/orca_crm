@@ -162,7 +162,7 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
 
     expect(vercelConfig.crons).toContainEqual({
       path: "/api/cron/sentinel-heartbeats",
-      schedule: "0 * * * *",
+      schedule: "0 9 * * *",
     });
   });
 });
