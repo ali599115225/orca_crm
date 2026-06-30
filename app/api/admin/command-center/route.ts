@@ -15,13 +15,17 @@ import {
   getOpenIncidents,
   getChatMessages,
   sendOwnerChatMessage,
+  getApprovalTTLMinutes,
+  isTaskExpired,
 } from "@/lib/sentinel/task-order";
 import { executeApprovedSaherAction } from "@/app/actions/saherAgent";
 import {
   AGENT_MANAGER_ROLES,
   agentErrorResponse,
   requireAgentAccess,
+  requirePlatformOwnerAccess,
 } from "@/lib/agents/access";
+import { writeSentinelAudit } from "@/lib/sentinel/audit";
 
 const OPERATING_MODES = new Set([
   "NORMAL_MODE",
@@ -68,6 +72,16 @@ export async function GET() {
     );
   }
 
+  const email = String(session.email || "");
+
+  writeSentinelAudit({
+    eventType: "SENTINEL_COMMAND",
+    decision: "Command center accessed",
+    reason: "Platform owner dashboard view",
+    source: "PLATFORM_OWNER",
+    correlationId: `access-${Date.now()}`,
+  }).catch(() => {});
+
   const [
     config,
     openTasks,
@@ -93,6 +107,7 @@ export async function GET() {
     openTasks: openTasks.length,
     pendingApprovals: pendingApprovals.length,
     openIncidents: incidents.length,
+    approvalTTLMinutes: getApprovalTTLMinutes(),
     data: {
       config,
       openTasks: stripExecutionPayload(openTasks),
@@ -143,6 +158,15 @@ export async function POST(request: NextRequest) {
         );
       }
       const updated = await updateOperatingMode(mode);
+      writeSentinelAudit({
+        eventType: "SENTINEL_MODE_CHANGE",
+        decision: `Operating mode set to ${mode}`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        source: "PLATFORM_OWNER",
+        beforeState: "previous",
+        afterState: mode,
+        correlationId: `mode-${Date.now()}`,
+      }).catch(() => {});
       return NextResponse.json({
         success: true,
         mode: updated.operatingMode,
@@ -158,6 +182,15 @@ export async function POST(request: NextRequest) {
         );
       }
       const updated = await updateDelegationLevel(level);
+      writeSentinelAudit({
+        eventType: "SENTINEL_DELEGATION_CHANGED",
+        decision: `Delegation level set to ${level}`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        source: "PLATFORM_OWNER",
+        beforeState: "previous",
+        afterState: level,
+        correlationId: `delegation-${Date.now()}`,
+      }).catch(() => {});
       return NextResponse.json({
         success: true,
         delegationLevel: updated.delegationLevel,
@@ -166,6 +199,15 @@ export async function POST(request: NextRequest) {
 
     if (action === "fallback-plan") {
       const updated = await updateFallbackPlan(body.active === true);
+      writeSentinelAudit({
+        eventType: "SENTINEL_FALLBACK_TOGGLED",
+        decision: `Fallback plan ${body.active === true ? "activated" : "deactivated"}`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        source: "PLATFORM_OWNER",
+        beforeState: "previous",
+        afterState: String(body.active === true),
+        correlationId: `fallback-${Date.now()}`,
+      }).catch(() => {});
       return NextResponse.json({
         success: true,
         fallbackPlanActive: updated.fallbackPlanActive,
@@ -181,6 +223,13 @@ export async function POST(request: NextRequest) {
         );
       }
       const updated = await updateDeepRepairWait(minutes);
+      writeSentinelAudit({
+        eventType: "SENTINEL_COMMAND",
+        decision: `Deep repair wait set to ${minutes} minutes`,
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        source: "PLATFORM_OWNER",
+        correlationId: `repair-wait-${Date.now()}`,
+      }).catch(() => {});
       return NextResponse.json({
         success: true,
         deepRepairWaitMinutes: updated.deepRepairWaitMinutes,
@@ -196,6 +245,13 @@ export async function POST(request: NextRequest) {
         );
       }
       const result = await sendOwnerChatMessage(message);
+      writeSentinelAudit({
+        eventType: "SENTINEL_COMMAND",
+        decision: "Chat message sent",
+        reason: `Platform owner action: ${String(session.email || "")}`,
+        source: "PLATFORM_OWNER",
+        correlationId: `chat-${Date.now()}`,
+      }).catch(() => {});
       return NextResponse.json({ success: true, message: result });
     }
   }
@@ -236,6 +292,45 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (isTaskExpired(task)) {
+        await prisma.sentinelTaskOrder.updateMany({
+          where: {
+            id: task.id,
+            tenantId: access.tenantId,
+            status: "WAITING_APPROVAL",
+          },
+          data: {
+            status: "CANCELLED",
+            completedAt: new Date(),
+          },
+        });
+        const requestId = `expired-${Date.now()}-${task.id.slice(0, 8)}`;
+        await writeAuditLog({
+          tenantId: access.tenantId,
+          userId: access.userId,
+          action: "SAHER_APPROVAL_EXPIRED",
+          tableName: "sentinel_task_orders",
+          recordId: task.id,
+          details: JSON.stringify({
+            requestId,
+            actor: access.userId,
+            taskId: task.id,
+            previousState: "WAITING_APPROVAL",
+            newState: "CANCELLED",
+            reason: "Approval TTL expired",
+            ttlMinutes: getApprovalTTLMinutes(),
+            createdAt: task.createdAt.toISOString(),
+          }),
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This approval request has expired.",
+          },
+          { status: 410 },
+        );
+      }
+
       if (action === "approve-task") {
         const result = await executeApprovedSaherAction(
           task.id,
@@ -248,6 +343,16 @@ export async function POST(request: NextRequest) {
           { status: result.success ? 200 : 400 },
         );
       }
+
+      const reason = String(body.reason || "").trim();
+      if (!reason || reason.length > 1000) {
+        return NextResponse.json(
+          { success: false, error: "A rejection reason is required (1-1000 characters)." },
+          { status: 400 },
+        );
+      }
+
+      const requestId = `reject-${Date.now()}-${task.id.slice(0, 8)}`;
 
       const rejected = await prisma.sentinelTaskOrder.updateMany({
         where: {
@@ -273,7 +378,15 @@ export async function POST(request: NextRequest) {
         action: "SAHER_APPROVAL_REJECTED",
         tableName: "sentinel_task_orders",
         recordId: task.id,
-        details: "Rejected by an authorized tenant manager.",
+        details: JSON.stringify({
+          requestId,
+          actor: access.userId,
+          taskId: task.id,
+          previousState: "WAITING_APPROVAL",
+          newState: "CANCELLED",
+          reason,
+          result: "rejected",
+        }),
       });
 
       return NextResponse.json({

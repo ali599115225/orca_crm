@@ -7,9 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 
-let healingAttempts = 0;
-const MAX_HEALING_ATTEMPTS = 3;
-
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
   if (!CRON_SECRET) {
@@ -50,58 +47,30 @@ export async function GET(request: NextRequest) {
       );
       report.recommendations.push("ترقية Neon DB أو تفعيل Connection Pooling.");
     }
-
-    // إعادة تعيين عداد المحاولات عند نجاح الاتصال
-    healingAttempts = 0;
   } catch (dbError: any) {
     report.dbStatus = "ERROR";
     report.dbLatencyMs = Date.now() - dbStart;
     report.anomalies.push(`🚨 فشل قاعدة البيانات: ${dbError.message}`);
-    healingAttempts++;
 
     // ===================================================
     // 2. Self-Healing: محاولة الإصلاح الذاتي
     // ===================================================
-    if (healingAttempts <= MAX_HEALING_ATTEMPTS) {
+    report.selfHealingApplied = true;
+    report.recommendations.push(
+      "🔧 محاولة إصلاح: إعادة تهيئة Connection Pool."
+    );
+
+    try {
+      // قطع جميع الاتصالات وإعادة الاتصال
+      await prisma.$disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await prisma.$connect();
+      await prisma.$queryRaw`SELECT 1`;
+
+      report.anomalies.push("✅ Self-Healing نجح: استُعيد الاتصال بقاعدة البيانات.");
       report.selfHealingApplied = true;
-      report.recommendations.push(
-        `🔧 محاولة إصلاح #${healingAttempts}/${MAX_HEALING_ATTEMPTS}: إعادة تهيئة Connection Pool.`
-      );
-
-      try {
-        // قطع جميع الاتصالات وإعادة الاتصال
-        await prisma.$disconnect();
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await prisma.$connect();
-        await prisma.$queryRaw`SELECT 1`;
-
-        report.anomalies.push("✅ Self-Healing نجح: استُعيد الاتصال بقاعدة البيانات.");
-        report.selfHealingApplied = true;
-        healingAttempts = 0;
-      } catch (retryError: any) {
-        report.anomalies.push(`❌ فشل الإصلاح الذاتي #${healingAttempts}: ${retryError.message}`);
-      }
-    }
-
-    // ===================================================
-    // 3. Failover: تفعيل النطاق الاحتياطي بعد 3 فشل
-    // ===================================================
-    if (healingAttempts > MAX_HEALING_ATTEMPTS) {
-      report.failoverTriggered = true;
-      report.anomalies.push(
-        "🆘 تم تجاوز حد المحاولات! الوكيل سند يُفعِّل النطاق الاحتياطي الآن."
-      );
-      report.recommendations.push(
-        "تفعيل Safe-Mode Fallback: orca-crm-one.vercel.app (Immutable Fallback Domain)"
-      );
-
-      // كتابة ملف الفشل لاستخدامه في الـ Middleware
-      // في Vercel يمكن استخدام KV Store بدلاً من الملفات
-      try {
-        await activateFailoverMode();
-      } catch (fErr: any) {
-        report.anomalies.push(`خطأ في تفعيل Failover: ${fErr.message}`);
-      }
+    } catch (retryError: any) {
+      report.anomalies.push(`❌ فشل الإصلاح الذاتي: ${retryError.message}`);
     }
   }
 
@@ -181,27 +150,4 @@ export async function GET(request: NextRequest) {
   } catch (_) {}
 
   return NextResponse.json({ success: true, report });
-}
-
-// ===================================================
-// تفعيل وضع الطوارئ Failover
-// ===================================================
-async function activateFailoverMode() {
-  // في Vercel: نستخدم Environment Variable أو نكتب في قاعدة البيانات
-  // هنا نسجل في جدول خاص أو نرسل Webhook
-  console.error("🆘 FAILOVER ACTIVATED - Redirecting to immutable fallback domain");
-
-  // يمكن إرسال Webhook لـ Slack أو Discord أو SMS هنا
-  const FAILOVER_WEBHOOK = process.env.FAILOVER_WEBHOOK_URL;
-  if (FAILOVER_WEBHOOK) {
-    await fetch(FAILOVER_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: "🆘 ORCA FAILOVER ACTIVATED - Database unreachable after 3 healing attempts",
-        severity: "CRITICAL",
-        timestamp: new Date().toISOString(),
-      }),
-    });
-  }
 }
