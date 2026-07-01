@@ -23,7 +23,9 @@ function getRawPrisma(): import("@prisma/client").PrismaClient {
   if (!_rawPrisma) {
     _rawPrisma = require("@/lib/prisma").rawPrisma;
   }
-  return _rawPrisma;
+  const cached = _rawPrisma;
+  if (!cached) throw new Error("rawPrisma unavailable");
+  return cached;
 }
 
 export const SYSTEM_CLIENT_CATEGORIES = {
