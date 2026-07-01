@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  SYSTEM_CLIENT_ALLOWLIST,
   SYSTEM_CLIENT_ALLOWLIST_MODULES,
   isAllowlistedSystemClient,
 } from "@/lib/system-prisma-boundary";
@@ -37,6 +38,11 @@ function collectRuntimeSourceFiles(): string[] {
 function fileImportsRawPrisma(filePath: string): boolean {
   const content = fs.readFileSync(filePath, "utf8");
   return /import\s+.*\brawPrisma\b.*from\s+["'].*prisma["']/.test(content);
+}
+
+function fileImportsExtendedPrisma(filePath: string): boolean {
+  const content = fs.readFileSync(filePath, "utf8");
+  return /import\s+\{[^}]*\bprisma\b[^}]*\}\s+from\s+["']@\/lib\/prisma["']/.test(content);
 }
 
 describe("R01 raw/system Prisma client boundary", () => {
@@ -94,5 +100,35 @@ describe("R01 raw/system Prisma client boundary", () => {
       return /createRawPrismaClient|new PrismaClient\s*\(/.test(content);
     });
     expect(creators).toEqual(["lib/prisma.ts"]);
+  });
+
+  it("api-auth-guard does not import rawPrisma or extended prisma", () => {
+    const guardPath = path.join(process.cwd(), "lib", "api-auth-guard.ts");
+    const content = fs.readFileSync(guardPath, "utf8");
+    expect(content).not.toMatch(/import\s+.*\brawPrisma\b/);
+    expect(content).not.toMatch(/import\s+\{[^}]*\bprisma\b[^}]*\}\s+from\s+["']@\/lib\/prisma["']/);
+  });
+
+  it("system-prisma-boundary does not export a generic Prisma client", () => {
+    const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+    const content = fs.readFileSync(boundaryPath, "utf8");
+    expect(content).not.toMatch(/export\s+(const|let|var)\s+rawPrisma\b/);
+    expect(content).not.toMatch(/export\s+(const|let|var)\s+systemPrisma\b/);
+    expect(content).not.toMatch(/export\s+(const|let|var)\s+prisma\b/);
+  });
+
+  it("system-prisma-boundary does not export unrestricted query callbacks", () => {
+    const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+    const content = fs.readFileSync(boundaryPath, "utf8");
+    expect(content).not.toMatch(/export\s+(async\s+)?function\s+\w*[Qq]uery\b/);
+    expect(content).not.toMatch(/export\s+(async\s+)?function\s+\w*[Ee]xecute\b/);
+    expect(content).not.toMatch(/export\s+(async\s+)?function\s+\w*[Rr]un\w*\b/);
+  });
+
+  it("every allowlist entry has a documented justification", () => {
+    for (const entry of SYSTEM_CLIENT_ALLOWLIST) {
+      expect(entry.justification).toBeTruthy();
+      expect(entry.justification.length).toBeGreaterThan(10);
+    }
   });
 });

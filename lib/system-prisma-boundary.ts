@@ -8,7 +8,23 @@
  * The raw client bypasses tenant middleware and must only be used where tenant
  * context is not yet available or where cross-tenant/infrastructure operations
  * are architecturally required.
+ *
+ * AUTH_BOOTSTRAP capabilities:
+ * This module also exports narrow, named functions for pre-context authentication
+ * operations. These encapsulate rawPrisma access and are the ONLY approved way for
+ * lib/api-auth-guard.ts to perform database lookups before tenant context is established.
+ *
+ * Approved AUTH_BOOTSTRAP consumers:
+ * - lib/api-auth-guard.ts (isSuperAdmin, hasDatabaseRole)
  */
+
+let _rawPrisma: import("@prisma/client").PrismaClient | null = null;
+function getRawPrisma(): import("@prisma/client").PrismaClient {
+  if (!_rawPrisma) {
+    _rawPrisma = require("@/lib/prisma").rawPrisma;
+  }
+  return _rawPrisma;
+}
 
 export const SYSTEM_CLIENT_CATEGORIES = {
   AUTH_BOOTSTRAP: "authentication bootstrap before tenant binding",
@@ -29,6 +45,12 @@ export interface SystemClientAllowlistEntry {
 }
 
 export const SYSTEM_CLIENT_ALLOWLIST: readonly SystemClientAllowlistEntry[] = [
+  {
+    module: "lib/system-prisma-boundary.ts",
+    category: SYSTEM_CLIENT_CATEGORIES.PRISMA_CORE,
+    justification:
+      "Encapsulates raw Prisma access and exports narrow AUTH_BOOTSTRAP capabilities for pre-context authentication lookups.",
+  },
   {
     module: "lib/prisma.ts",
     category: SYSTEM_CLIENT_CATEGORIES.PRISMA_CORE,
@@ -151,4 +173,60 @@ export const SYSTEM_CLIENT_ALLOWLIST_MODULES = SYSTEM_CLIENT_ALLOWLIST.map(
 
 export function isAllowlistedSystemClient(modulePath: string): boolean {
   return SYSTEM_CLIENT_ALLOWLIST_MODULES.includes(modulePath);
+}
+
+/**
+ * AUTH_BOOTSTRAP capabilities — narrow, named functions for pre-context authentication.
+ *
+ * These functions encapsulate rawPrisma access and are the ONLY approved way for
+ * lib/api-auth-guard.ts to perform database lookups before tenant context is established.
+ *
+ * Each function:
+ * - Uses minimal selects (only the fields needed)
+ * - Uses explicit userId/tenantId predicates
+ * - Returns null on not-found or error
+ * - Does NOT expose a generic Prisma client or unrestricted query callback
+ */
+
+export async function authBootstrapFindUserEmail(
+  userId: string,
+): Promise<{ email: string } | null> {
+  if (!userId) return null;
+  try {
+    return await getRawPrisma().user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function authBootstrapFindUserRole(
+  userId: string,
+  tenantId: string,
+): Promise<{ role: string } | null> {
+  if (!userId || !tenantId) return null;
+  try {
+    return await getRawPrisma().user.findFirst({
+      where: { id: userId, tenantId },
+      select: { role: true },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function authBootstrapFindTenantActive(
+  tenantId: string,
+): Promise<{ id: string } | null> {
+  if (!tenantId) return null;
+  try {
+    return await getRawPrisma().tenant.findFirst({
+      where: { id: tenantId, isActive: true },
+      select: { id: true },
+    });
+  } catch {
+    return null;
+  }
 }

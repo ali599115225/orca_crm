@@ -5,7 +5,11 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { httpErrorResponse } from '@/lib/http-error-response';
-import { prisma } from '@/lib/prisma';
+import {
+  authBootstrapFindUserEmail,
+  authBootstrapFindUserRole,
+  authBootstrapFindTenantActive,
+} from '@/lib/system-prisma-boundary';
 import { decrypt } from '@/lib/session';
 import { setTenantContext } from '@/lib/tenant-context';
 import {
@@ -101,10 +105,7 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
   if (!userId || SUPER_ADMIN_EMAILS.size === 0) return false;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
+    const user = await authBootstrapFindUserEmail(userId);
 
     return SUPER_ADMIN_EMAILS.has((user?.email ?? '').trim().toLowerCase());
   } catch {
@@ -124,20 +125,8 @@ export async function hasDatabaseRole(
 
   try {
     const [user, tenant] = await Promise.all([
-      prisma.user.findFirst({
-        where: {
-          id: session.userId,
-          tenantId: session.tenantId,
-        },
-        select: { role: true },
-      }),
-      prisma.tenant.findFirst({
-        where: {
-          id: session.tenantId,
-          isActive: true,
-        },
-        select: { id: true },
-      }),
+      authBootstrapFindUserRole(session.userId, session.tenantId),
+      authBootstrapFindTenantActive(session.tenantId),
     ]);
 
     return Boolean(
@@ -191,6 +180,9 @@ export async function requireDatabaseSession(
   // wrap its downstream operation, so setTenantContext is used here as a bridge.
   // Callers should migrate to runWithTenantContext where possible.
   setTenantContext({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
 
   return { session, error: null };
 }
