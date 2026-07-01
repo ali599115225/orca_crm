@@ -68,6 +68,7 @@ vi.mock("@/lib/whatsapp/connection-resolver", () => ({
 }));
 
 vi.mock("@/lib/tenant-context", () => ({
+  runWithTenantContext: tenantRunMock,
   tenantContext: {
     run: tenantRunMock,
   },
