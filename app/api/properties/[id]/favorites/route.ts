@@ -1,65 +1,134 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { rawPrisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  notFoundResponse,
+  requireDatabaseSession,
+  TENANT_ROLES,
+} from "@/lib/api-auth-guard";
+import { runWithTenantContext } from "@/lib/tenant-context";
+
+async function ensureTenantUnit(
+  propertyId: string,
+  tenantId: string,
+) {
+  return prisma.unit.findFirst({
+    where: {
+      id: propertyId,
+      project: { tenantId },
+    },
+    select: { id: true },
+  });
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) {
+    return auth.error;
+  }
+
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const userId = session.userId!;
+    const session = auth.session;
 
-    const existing = await rawPrisma.userFavorite.findUnique({
-      where: { userId_propertyId: { userId, propertyId: id } },
-    });
+    return await runWithTenantContext(
+      { tenantId: session.tenantId, userId: session.userId },
+      async () => {
+        const unit = await ensureTenantUnit(id, session.tenantId);
+        if (!unit) {
+          return notFoundResponse(request);
+        }
 
-    if (existing) {
-      await rawPrisma.userFavorite.delete({ where: { id: existing.id } });
-      return NextResponse.json({
-        success: true,
-        propertyId: id,
-        isFavorite: false,
-        message: 'تمت الإزالة من المفضلة.',
-      });
-    } else {
-      await rawPrisma.userFavorite.create({
-        data: { tenantId: session.tenantId, userId, propertyId: id },
-      });
-      return NextResponse.json({
-        success: true,
-        propertyId: id,
-        isFavorite: true,
-        message: 'تمت الإضافة إلى المفضلة.',
-      });
-    }
-  } catch (err) {
-    return NextResponse.json({ success: false, error: 'خطأ داخلي.' }, { status: 500 });
+        const existing = await prisma.userFavorite.findFirst({
+          where: {
+            tenantId: session.tenantId,
+            userId: session.userId,
+            propertyId: id,
+          },
+          select: { id: true },
+        });
+
+        if (existing) {
+          await prisma.userFavorite.deleteMany({
+            where: {
+              id: existing.id,
+              tenantId: session.tenantId,
+              userId: session.userId,
+              propertyId: id,
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            propertyId: id,
+            isFavorite: false,
+            message: "تمت الإزالة من المفضلة.",
+          });
+        }
+
+        await prisma.userFavorite.create({
+          data: {
+            tenantId: session.tenantId,
+            userId: session.userId,
+            propertyId: id,
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          propertyId: id,
+          isFavorite: true,
+          message: "تمت الإضافة إلى المفضلة.",
+        });
+      },
+    );
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "خطأ داخلي." },
+      { status: 500 },
+    );
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireDatabaseSession(request, TENANT_ROLES);
+  if (auth.error) {
+    return auth.error;
+  }
+
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const existing = await rawPrisma.userFavorite.findUnique({
-      where: { userId_propertyId: { userId: session.userId!, propertyId: id } },
-    });
+    const session = auth.session;
 
-    return NextResponse.json({ propertyId: id, isFavorite: !!existing });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: 'خطأ داخلي.' }, { status: 500 });
+    return await runWithTenantContext(
+      { tenantId: session.tenantId, userId: session.userId },
+      async () => {
+        const unit = await ensureTenantUnit(id, session.tenantId);
+        if (!unit) {
+          return notFoundResponse(request);
+        }
+
+        const existing = await prisma.userFavorite.findFirst({
+          where: {
+            tenantId: session.tenantId,
+            userId: session.userId,
+            propertyId: id,
+          },
+          select: { id: true },
+        });
+
+        return NextResponse.json({ propertyId: id, isFavorite: Boolean(existing) });
+      },
+    );
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "خطأ داخلي." },
+      { status: 500 },
+    );
   }
 }

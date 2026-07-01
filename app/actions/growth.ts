@@ -1,7 +1,7 @@
 // app/actions/growth.ts
 "use server";
 
-import { prisma, rawPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";

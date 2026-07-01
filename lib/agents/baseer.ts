@@ -1,5 +1,5 @@
 // lib/agents/baseer.ts
-import { prisma, rawPrisma } from "../prisma";
+import { prisma } from "../prisma";
 import { runWithTenantContext } from "../tenant-context";
 import {
   buildBaseerSystemPrompt,
