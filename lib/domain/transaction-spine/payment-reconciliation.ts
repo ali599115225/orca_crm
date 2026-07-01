@@ -225,8 +225,8 @@ export async function completePaymentTransaction(input: {
         },
       });
       if (remaining === 0) {
-        await tx.paymentPlan.update({
-          where: { id: payment.installment.paymentPlanId },
+        await tx.paymentPlan.updateMany({
+          where: { id: payment.installment.paymentPlanId, tenantId: input.tenantId },
           data: {
             status: PAYMENT_PLAN_STATUS.COMPLETED,
             completedAt: new Date(),
@@ -303,8 +303,8 @@ export async function completePaymentTransaction(input: {
       });
 
       const completedAt = new Date();
-      const completedPlan = await tx.paymentPlan.update({
-        where: { id: paymentPlan.id },
+      const completedPlanResult = await tx.paymentPlan.updateMany({
+        where: { id: paymentPlan.id, tenantId: input.tenantId },
         data: {
           status: PAYMENT_PLAN_STATUS.COMPLETED,
           completedAt,
@@ -315,8 +315,16 @@ export async function completePaymentTransaction(input: {
         },
       });
 
-      await tx.contract.update({
-        where: { id: contractId },
+      if (completedPlanResult.count === 0) {
+        throw new Error("Payment plan not found in this tenant.");
+      }
+
+      const completedPlan = await tx.paymentPlan.findFirstOrThrow({
+        where: { id: paymentPlan.id, tenantId: input.tenantId },
+      });
+
+      await tx.contract.updateMany({
+        where: { id: contractId, tenantId: input.tenantId },
         data: { version: { increment: 1 } },
       });
 

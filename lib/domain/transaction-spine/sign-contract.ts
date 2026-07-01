@@ -201,8 +201,8 @@ async function ensureSaleInvoiceAndInstallmentsInTx(
 
   const paymentPlanActivated = paymentPlan.status !== PAYMENT_PLAN_STATUS.ACTIVE;
 
-  await tx.paymentPlan.update({
-    where: { id: paymentPlan.id },
+  await tx.paymentPlan.updateMany({
+    where: { id: paymentPlan.id, tenantId: contract.tenantId },
     data: {
       status: PAYMENT_PLAN_STATUS.ACTIVE,
       activatedAt: paymentPlan.activatedAt || new Date(),

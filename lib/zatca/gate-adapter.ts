@@ -12,7 +12,6 @@
  *  - Legal state (invoice.zatcaStatus) only changes AFTER provider confirmation
  */
 import { writeAuditLog } from '@/lib/audit';
-import { rawPrisma } from '@/lib/prisma';
 import { SaudiTrustGateService } from '@/lib/saudi-trust-gate';
 import {
   buildIdempotencyKey,

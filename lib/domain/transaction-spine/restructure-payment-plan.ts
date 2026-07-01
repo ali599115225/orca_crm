@@ -383,8 +383,8 @@ export async function restructurePaymentPlan(
       }
 
       for (let index = 0; index < newAmounts.length; index += 1) {
-        await tx.installment.update({
-          where: { id: mutable[index].id },
+        await tx.installment.updateMany({
+          where: { id: mutable[index].id, tenantId },
           data: {
             amountSar: newAmounts[index],
             paymentStatus: INSTALLMENT_STATUS.PENDING,
@@ -423,8 +423,8 @@ export async function restructurePaymentPlan(
           ? PAYMENT_PLAN_STATUS.COMPLETED
           : PAYMENT_PLAN_STATUS.ACTIVE;
 
-      const paymentPlan = await tx.paymentPlan.update({
-        where: { id: contract.paymentPlan.id },
+      const paymentPlanUpdate = await tx.paymentPlan.updateMany({
+        where: { id: contract.paymentPlan.id, tenantId },
         data: {
           scheduleJson,
           installmentCount: activeInstallments.length,
@@ -436,8 +436,15 @@ export async function restructurePaymentPlan(
         },
       });
 
-      await tx.contract.update({
-        where: { id: contractId },
+      if (paymentPlanUpdate.count === 0) {
+        throw new Error("Payment plan not found in this tenant.");
+      }
+
+      const updatedPlanId = contract.paymentPlan.id;
+      const updatedPlanVersion = contract.paymentPlan.version + 1;
+
+      await tx.contract.updateMany({
+        where: { id: contractId, tenantId },
         data: { version: { increment: 1 } },
       });
 
@@ -459,19 +466,19 @@ export async function restructurePaymentPlan(
           tenantId,
           dealId: deal.passport.id,
           eventType: "payment_plan.restructured",
-          idempotencyKey: `payment-plan:${paymentPlan.id}:restructured:v${paymentPlan.version}`,
+          idempotencyKey: `payment-plan:${updatedPlanId}:restructured:v${updatedPlanVersion}`,
           correlationId,
           causationId: paymentEvent?.id || null,
           actorId: eventActorId,
           entityType: "payment_plan",
-          entityId: paymentPlan.id,
+          entityId: updatedPlanId,
           beforeState: {
             version: contract.paymentPlan.version,
             installmentCount: before.mutable.length,
             invoiceRemaining: before.invoiceRemaining,
           },
           afterState: {
-            version: paymentPlan.version,
+            version: updatedPlanVersion,
             installmentCount: activeInstallments.length,
             invoiceRemaining: afterPayment.invoiceRemaining,
           },
@@ -496,7 +503,7 @@ export async function restructurePaymentPlan(
           recordId: paymentResult.payment.id,
           details: JSON.stringify({
             contractId,
-            paymentPlanId: paymentPlan.id,
+            paymentPlanId: updatedPlanId,
             invoiceId: afterPayment.invoice.id,
             paymentTransactionId: paymentResult.payment.id,
             reason: reason.trim(),
@@ -524,7 +531,7 @@ export async function restructurePaymentPlan(
             eventType: "payment_plan.restructured",
             eventDataJson: JSON.stringify({
               contractId,
-              paymentPlanId: paymentPlan.id,
+              paymentPlanId: updatedPlanId,
               paymentTransactionId: paymentResult.payment.id,
               mode,
               prepaymentAmount: roundMoney(prepaymentAmount),
@@ -534,9 +541,13 @@ export async function restructurePaymentPlan(
         })
         .catch(() => {});
 
+      const updatedPaymentPlan = await tx.paymentPlan.findFirstOrThrow({
+        where: { id: updatedPlanId, tenantId },
+      });
+
       return {
         payment: paymentResult.payment,
-        paymentPlan,
+        paymentPlan: updatedPaymentPlan,
         installments: activeInstallments,
         idempotent: false,
       };

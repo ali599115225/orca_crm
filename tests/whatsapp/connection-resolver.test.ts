@@ -84,7 +84,7 @@ describe("WhatsApp connection resolver", () => {
     delete process.env.WHATSAPP_ACCESS_TOKEN;
     delete process.env.WHATSAPP_PHONE_NUMBER_ID;
     delete process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
-    process.env.NODE_ENV = originalNodeEnv;
+    (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
   });
 
   it("resolves an active tenant-owned connection", async () => {
@@ -174,7 +174,7 @@ describe("WhatsApp connection resolver", () => {
   it("rejects the bridge when NODE_ENV is production", async () => {
     setBridgeEnv();
     mockValidBridgePhoneRow();
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     await expect(
       resolveConnection("orca-test-tenant"),

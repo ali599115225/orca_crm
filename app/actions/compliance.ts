@@ -7,7 +7,7 @@ import { prisma, rawPrisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { ComplianceGateway, ComplianceResult } from "@/lib/compliance-gateway";
-import { tenantContext } from "@/lib/tenant-context";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { revalidatePath } from "next/cache";
 import { encryptText } from "@/lib/crypto";
 
@@ -22,7 +22,7 @@ export async function checkComplianceReadinessAction(lang: 'AR' | 'EN' = 'AR'): 
     const tenant = await getActiveTenant();
     
     // تشغيل الفحص داخل سياق المستأجر المعزول
-    const result = await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
+    const result = await runWithTenantContext({ tenantId: tenant.id, userId: session.userId as string }, async () => {
       return await ComplianceGateway.checkReadiness(tenant.id, lang);
     });
 
@@ -47,7 +47,7 @@ export async function updateTenantComplianceDetailsAction(data: {
 
     const tenant = await getActiveTenant();
 
-    await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
+    await runWithTenantContext({ tenantId: tenant.id, userId: session.userId as string }, async () => {
       await prisma.tenant.update({
         where: { id: tenant.id },
         data: {
@@ -76,7 +76,7 @@ export async function signComplianceDisclaimerAction() {
 
     const tenant = await getActiveTenant();
 
-    await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
+    await runWithTenantContext({ tenantId: tenant.id, userId: session.userId as string }, async () => {
       // نكتب مباشرة في سجل التدقيق التوقيع الرقمي المعتمد للـ CISO والـ ADMIN
       await rawPrisma.auditLog.create({
         data: {
@@ -120,7 +120,7 @@ export async function activateGovernmentConnectionAction() {
     await ComplianceGateway.enforceGuard(tenant.id, session.userId as string, "activateGovernmentConnectionAction");
 
     // إذا تم اجتياز البوابة، نقوم بتحديث حالة الدفع أو الربط بنجاح
-    await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
+    await runWithTenantContext({ tenantId: tenant.id, userId: session.userId as string }, async () => {
 
       // تسجيل الامتثال في سجل التدقيق
       await rawPrisma.auditLog.create({
@@ -196,7 +196,7 @@ export async function saveTenantCredentialsAction(data: {
     const encryptedApiKey = encryptText(data.apiKey.trim());
     const encryptedZatcaCredentials = encryptText(data.zatcaCredentials.trim());
 
-    await tenantContext.run({ tenantId: tenant.id, userId: session.userId as string }, async () => {
+    await runWithTenantContext({ tenantId: tenant.id, userId: session.userId as string }, async () => {
       await prisma.tenant.update({
         where: { id: tenant.id },
         data: {

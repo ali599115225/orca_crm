@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { tenantContext } from "@/lib/tenant-context";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { hashPhone } from "@/lib/privacy-mask";
 import { classifyWhatsAppLeadInternal } from "@/lib/server/internal";
 import { getWhatsAppControls } from "@/lib/whatsapp/connection-resolver";
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const outcome = await tenantContext.run(
+      const outcome = await runWithTenantContext(
         { tenantId: binding.tenantId },
         async () => {
           const messageOutcomes = await processMessages({

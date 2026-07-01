@@ -306,7 +306,7 @@ describe("P2 — Sentinel Operational State", () => {
         (c: any) => c[0]?.action === "SAHER_APPROVAL_REJECTED",
       );
       expect(call).toBeDefined();
-      const details = JSON.parse(call[0].details);
+      const details = JSON.parse(call![0].details);
       expect(details.actor).toBe("user-admin-1");
       expect(details.requestId).toMatch(/^reject-/);
       expect(details.taskId).toBe(FRESH_TASK.id);

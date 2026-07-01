@@ -1,6 +1,6 @@
 // lib/agents/sanad.ts
 import { prisma } from "../prisma";
-import { tenantContext } from "../tenant-context";
+import { runWithTenantContext } from "../tenant-context";
 import { sendAdminEmailAlert } from "../email";
 
 interface RecoveryResult<T> {
@@ -22,7 +22,7 @@ export async function runSanadRecovery<T>(
   maxRetries: number = 3,
   delayMs: number = 1000
 ): Promise<RecoveryResult<T>> {
-  return tenantContext.run({ tenantId, userId }, async (): Promise<RecoveryResult<T>> => {
+  return runWithTenantContext({ tenantId, userId }, async (): Promise<RecoveryResult<T>> => {
     let attempts = 0;
     let lastError = "";
 

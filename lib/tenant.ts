@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { prisma } from "./prisma";
 import { getSession } from "./session";
 import { cache } from "react";
-import { tenantContext } from "./tenant-context";
+import { setTenantContext } from "./tenant-context";
 
 export const getActiveTenant = cache(async function getActiveTenantInternal(hostOverride?: string) {
   const session = await getSession();
@@ -14,7 +14,10 @@ export const getActiveTenant = cache(async function getActiveTenantInternal(host
       where: { id: session.tenantId as string },
     });
     if (tenant && tenant.isActive) {
-      tenantContext.enterWith({ tenantId: tenant.id, userId: (session.userId as string) || undefined });
+      // @deprecated Transitional compatibility bridge — getActiveTenant cannot
+      // wrap its downstream operation, so setTenantContext is used here.
+      // Callers should migrate to runWithTenantContext where possible.
+      setTenantContext({ tenantId: tenant.id, userId: (session.userId as string) || undefined });
       return tenant;
     }
   }
@@ -55,7 +58,10 @@ export const getActiveTenant = cache(async function getActiveTenantInternal(host
   }
 
   if (session?.userId) {
-    tenantContext.enterWith({ tenantId: tenant.id, userId: session.userId as string });
+    // @deprecated Transitional compatibility bridge — getActiveTenant cannot
+    // wrap its downstream operation, so setTenantContext is used here.
+    // Callers should migrate to runWithTenantContext where possible.
+    setTenantContext({ tenantId: tenant.id, userId: session.userId as string });
   }
 
   return tenant;

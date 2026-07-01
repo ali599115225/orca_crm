@@ -1,6 +1,6 @@
 // lib/agents/baseer.ts
-import { prisma, rawPrisma } from "../prisma";
-import { tenantContext } from "../tenant-context";
+import { prisma } from "../prisma";
+import { runWithTenantContext } from "../tenant-context";
 import {
   buildBaseerSystemPrompt,
   type BaseerAIOutput,
@@ -145,7 +145,7 @@ export async function runBaseerStrategyReport(
   userId: string | undefined,
   companyName?: string
 ): Promise<StrategyReport> {
-  return tenantContext.run({ tenantId, userId }, async (): Promise<StrategyReport> => {
+  return runWithTenantContext({ tenantId, userId }, async (): Promise<StrategyReport> => {
     const now = new Date();
 
     // 1. جلب كافة العقود والأقساط التابعة للمستأجر

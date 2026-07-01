@@ -105,7 +105,7 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
     mocks.executeRawUnsafe
       .mockRejectedValueOnce(new Error("cleanup failed"))
       .mockResolvedValue(0);
-    mocks.queryRawUnsafe.mockResolvedValue([{ count: 0n }]);
+    mocks.queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
 
     const response = await retentionCron(cronRequest("/api/cron/retention"));
     const body = await response.json();
