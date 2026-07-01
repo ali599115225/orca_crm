@@ -9,7 +9,7 @@ const schema = readFileSync(
 );
 const migrationPath = join(
   root,
-  "prisma/migrations/20260620000202_whatsapp_p0_final_integrity/migration.sql",
+  "prisma/migrations/000000000000_baseline/migration.sql",
 );
 const migration = readFileSync(migrationPath, "utf8");
 
@@ -104,12 +104,9 @@ describe("WhatsApp final persistence integrity", () => {
     }
   });
 
-  it("refuses silent certificate data loss", () => {
-    expect(migration).toContain(
-      "WHATSAPP_CERTIFICATE_DATA_PRESENT",
-    );
-    expect(migration).toContain(
-      'DROP COLUMN IF EXISTS "certificate"',
-    );
+  it("no longer carries the removed certificate column", () => {
+    const phone = modelBlock("WhatsAppPhoneNumber");
+    expect(phone).not.toContain("certificate");
+    expect(migration).not.toContain("certificate");
   });
 });

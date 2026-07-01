@@ -135,7 +135,7 @@ describe("WhatsApp P0 architecture", () => {
 
     const migration =
       "prisma/migrations/" +
-      "20260620000202_whatsapp_p0_final_integrity/" +
+      "000000000000_baseline/" +
       "migration.sql";
 
     expect(existsSync(join(root, migration))).toBe(true);

@@ -18,11 +18,9 @@ describe("Phase 02 full closure architecture", () => {
     );
   });
 
-  it("uses one additive migration for the remaining Phase 02 schema", () => {
-    const migration = source(
-      "prisma/migrations/20260622130000_phase02_full_closure/migration.sql",
-    );
-    expect(migration).toContain('ADD COLUMN "causation_id" UUID');
+  it("uses the clean baseline migration for the Phase 02 schema", () => {
+    const migration = source("prisma/migrations/000000000000_baseline/migration.sql");
+    expect(migration).toContain('"causation_id" UUID');
     expect(migration).toContain(
       'CREATE UNIQUE INDEX "payment_transactions_tenant_idempotency_uq"',
     );
