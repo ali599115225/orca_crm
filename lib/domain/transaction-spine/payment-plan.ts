@@ -182,8 +182,8 @@ export async function ensureDefaultPaymentPlanInTx(
     throw new Error("Legacy contract payment plans are read-only.");
   }
 
-  const existing = await tx.paymentPlan.findUnique({
-    where: { contractId: contract.id },
+  const existing = await tx.paymentPlan.findFirst({
+    where: { contractId: contract.id, tenantId: contract.tenantId },
   });
   if (existing) return existing;
 
@@ -294,27 +294,34 @@ export async function configurePaymentPlan(input: ConfigurePaymentPlanInput) {
       customInstallments,
     });
 
-    const paymentPlan = await tx.paymentPlan.upsert({
-      where: { contractId },
-      create: {
-        tenantId,
-        contractId,
-        template,
-        status: PAYMENT_PLAN_STATUS.DRAFT,
-        totalAmount,
-        installmentCount: schedule.length,
-        scheduleJson: serializePaymentSchedule(schedule),
-      },
-      update: {
-        template,
-        status: PAYMENT_PLAN_STATUS.DRAFT,
-        totalAmount,
-        installmentCount: schedule.length,
-        scheduleJson: serializePaymentSchedule(schedule),
-        activatedAt: null,
-        completedAt: null,
-      },
+    const existingPlan = await tx.paymentPlan.findFirst({
+      where: { contractId, tenantId },
     });
+
+    const paymentPlan = existingPlan
+      ? await tx.paymentPlan.updateMany({
+          where: { id: existingPlan.id, tenantId },
+          data: {
+            template,
+            status: PAYMENT_PLAN_STATUS.DRAFT,
+            totalAmount,
+            installmentCount: schedule.length,
+            scheduleJson: serializePaymentSchedule(schedule),
+            activatedAt: null,
+            completedAt: null,
+          },
+        }).then(() => tx.paymentPlan.findFirstOrThrow({ where: { id: existingPlan.id, tenantId } }))
+      : await tx.paymentPlan.create({
+          data: {
+            tenantId,
+            contractId,
+            template,
+            status: PAYMENT_PLAN_STATUS.DRAFT,
+            totalAmount,
+            installmentCount: schedule.length,
+            scheduleJson: serializePaymentSchedule(schedule),
+          },
+        });
 
     await tx.auditLog.create({
       data: {

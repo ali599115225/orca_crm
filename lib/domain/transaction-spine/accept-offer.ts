@@ -77,10 +77,10 @@ async function releaseExpiredDraftContractInTx(
     });
   }
 
-  await tx.paymentPlan.deleteMany({ where: { contractId: contract.id } });
-  await tx.contract.delete({ where: { id: contract.id } });
-  await tx.unit.update({
-    where: { id: contract.unitId },
+  await tx.paymentPlan.deleteMany({ where: { contractId: contract.id, tenantId: contract.tenantId } });
+  await tx.contract.deleteMany({ where: { id: contract.id, tenantId: contract.tenantId } });
+  await tx.unit.updateMany({
+    where: { id: contract.unitId, project: { tenantId: contract.tenantId } },
     data: { status: UNIT_STATUS.AVAILABLE },
   });
 
@@ -205,8 +205,8 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         totalVolumeSar: Number(offer.price),
       });
 
-      const paymentPlan = await tx.paymentPlan.findUnique({
-        where: { contractId: contract.id },
+      const paymentPlan = await tx.paymentPlan.findFirst({
+        where: { contractId: contract.id, tenantId: contract.tenantId },
       });
       if (!paymentPlan) throw new Error("Default payment plan was not created.");
 
