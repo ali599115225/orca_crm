@@ -63,13 +63,33 @@
 
 ## 🟢 المرحلة 2 — مزامنة قاعدة البيانات
 
-- [ ] تأكيد أن `DATABASE_URL` في Vercel تشير لـ **Neon Main Branch** (وليس Dev Branch)
-- [ ] تشغيل Schema Sync يدوياً:
+> **إجراء قاعدة البيانات الوحيد المسموح**: `npx prisma migrate deploy`.
+> **ممنوع**: `prisma db push`، `prisma migrate reset`، `prisma db seed`، أو أي تعديل يدوي على قاعدة الإنتاج.
+
+- [ ] أخذ نسخة احتياطية كاملة من Neon Main Branch قبل التطبيق.
+- [ ] تأكيد أن `DATABASE_URL` و `DIRECT_URL` في Vercel يشيران لـ **Neon Main Branch** (وليس Dev Branch).
+- [ ] تشغيل Migration Deploy يدوياً:
   ```bash
-  # محلياً مع DATABASE_URL الإنتاج
-  npx prisma db push
+  # محلياً مع DATABASE_URL/DIRECT_URL الإنتاج
+  npx prisma migrate deploy
   ```
-- [ ] التحقق من الـ Tables في Neon Console بعد الـ Push
+- [ ] التحقق من حالة المigrations:
+  ```bash
+  npx prisma migrate status
+  ```
+- [ ] التحقق من عدم وجود drift:
+  ```bash
+  npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+  ```
+- [ ] التحقق من الـ Tables والـ Indexes في Neon Console بعد الـ Deploy.
+- [ ] تشغيل Health Checks (`/api/health/live`، `/api/health/ready`، `/api/health/deployment`).
+- [ ] مراقبة Vercel Logs لمدة 15 دقيقة بعد الـ Deploy للكشف عن أخطاء 500.
+
+### خطة تصعيد عند فشل التطبيق
+1. **لا تُعِد المحاولة** ولا تستخدم `db push`.
+2. افحص سجل الأخطاء في Vercel Logs وNeon Logs.
+3. إذا كان الخطأ في migration نفسها، أصلح `prisma/migrations/000000000000_baseline/migration.sql` محلياً، ثم اختبرها على قاعدة محلية فارغة.
+4. إذا لزم الأمر، استعد من النسخة الاحتياطية وأعد التطبيق بعد التصحيح.
 
 ---
 
