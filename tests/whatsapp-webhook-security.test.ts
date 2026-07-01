@@ -578,7 +578,7 @@ describe("WhatsApp webhook security and isolation", () => {
 
   it("quarantines test-bridge bound events when NODE_ENV is production", async () => {
     const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.ORCA_WHATSAPP_TEST_TENANT_ID = "tenant-1";
     process.env.WHATSAPP_PHONE_NUMBER_ID = "phone-1";
     process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = "waba-1";
@@ -611,7 +611,7 @@ describe("WhatsApp webhook security and isolation", () => {
       expect(body.status).toBe("quarantined");
       expect(prismaMock.whatsAppMessage.create).not.toHaveBeenCalled();
     } finally {
-      process.env.NODE_ENV = originalNodeEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
       delete process.env.ORCA_WHATSAPP_TEST_TENANT_ID;
       delete process.env.WHATSAPP_PHONE_NUMBER_ID;
       delete process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;

@@ -8,7 +8,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { describe, it, expect, vi, beforeEach, type SpyInstance } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockInstance } from "vitest";
 import { NextRequest } from "next/server";
 
 // ============================================================================
@@ -88,7 +88,7 @@ async function parseBody(res: Response): Promise<Record<string, unknown>> {
 // ============================================================================
 
 describe("requireDatabaseSession", () => {
-  let enterWithSpy: SpyInstance;
+  let enterWithSpy: MockInstance;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,7 +97,7 @@ describe("requireDatabaseSession", () => {
     enterWithSpy = vi.spyOn(tenantContext, "enterWith");
 
     // Default: no cookie, no Bearer header, no decrypt call
-    vi.mocked(cookies).mockResolvedValue(makeCookieStore());
+    vi.mocked(cookies).mockResolvedValue(makeCookieStore() as unknown as Awaited<ReturnType<typeof cookies>>);
     vi.mocked(decrypt).mockReset();
   });
 
