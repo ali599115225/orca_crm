@@ -44,10 +44,10 @@ function createExtendedPrismaClient() {
             model,
             operation,
             context,
-            failClosed: false,
+            failClosed: true,
           });
 
-          const result = await query(nextArgs);
+          const result = await query(nextArgs as typeof args);
 
           if (
             isTenantScopedWriteOperation(operation) &&
