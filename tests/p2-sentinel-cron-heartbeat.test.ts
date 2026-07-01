@@ -9,8 +9,8 @@ const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   tenantCount: vi.fn(),
   usageMeterCount: vi.fn(),
-  executeRawUnsafe: vi.fn(),
-  queryRawUnsafe: vi.fn(),
+  retentionExecuteRaw: vi.fn(),
+  retentionQueryRaw: vi.fn(),
   rateLimit: vi.fn(),
   sendAdminEmailAlert: vi.fn(),
   recordHeartbeat: vi.fn(),
@@ -33,8 +33,8 @@ vi.mock("@/lib/prisma", () => ({
     },
   },
   rawPrisma: {
-    $executeRawUnsafe: mocks.executeRawUnsafe,
-    $queryRawUnsafe: mocks.queryRawUnsafe,
+    $executeRaw: mocks.retentionExecuteRaw,
+    $queryRaw: mocks.retentionQueryRaw,
   },
 }));
 
@@ -102,10 +102,10 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
   });
 
   it("does not send CRON_RETENTION heartbeat when a retention operation fails", async () => {
-    mocks.executeRawUnsafe
+    mocks.retentionExecuteRaw
       .mockRejectedValueOnce(new Error("cleanup failed"))
       .mockResolvedValue(0);
-    mocks.queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
+    mocks.retentionQueryRaw.mockResolvedValue([{ count: BigInt(0) }]);
 
     const response = await retentionCron(cronRequest("/api/cron/retention"));
     const body = await response.json();
@@ -165,4 +165,16 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
       schedule: "0 9 * * *",
     });
   });
-});
+
+  it("uses parameterized retention queries", () => {
+    const source = readFileSync(
+      path.join(process.cwd(), "app/api/cron/retention/route.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("rawPrisma.$executeRaw`");
+    expect(source).toContain(
+      "rawPrisma.$queryRaw<Array<{ count: bigint }>>`",
+    );
+    expect(source).not.toMatch(/\$(?:execute|query)RawUnsafe/);
+  });});
