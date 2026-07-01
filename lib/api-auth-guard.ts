@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { httpErrorResponse } from '@/lib/http-error-response';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
-import { tenantContext } from '@/lib/tenant-context';
+import { setTenantContext } from '@/lib/tenant-context';
 import {
   ErrorCode,
   publicError,
@@ -187,10 +187,10 @@ export async function requireDatabaseSession(
   const roleOk = await hasDatabaseRole(session, allowedRoles);
   if (!roleOk) return { session: null, error: forbiddenResponse(request) };
 
-  tenantContext.enterWith({
-    tenantId: session.tenantId,
-    userId: session.userId,
-  });
+  // @deprecated Transitional compatibility bridge — requireDatabaseSession cannot
+  // wrap its downstream operation, so setTenantContext is used here as a bridge.
+  // Callers should migrate to runWithTenantContext where possible.
+  setTenantContext({
 
   return { session, error: null };
 }

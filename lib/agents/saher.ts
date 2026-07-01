@@ -1,6 +1,6 @@
 // lib/agents/saher.ts
 import { prisma } from "../prisma";
-import { tenantContext } from "../tenant-context";
+import { runWithTenantContext } from "../tenant-context";
 
 export interface CorrectionReport {
   status: 'COMPLIANT' | 'NON_COMPLIANT';
@@ -18,7 +18,7 @@ export async function runSaherComplianceCheck(
   data: any
 ): Promise<CorrectionReport> {
   // تغليف التنفيذ بسياق المستأجر لضمان العزل التام للمخزن الخلفي وقواعد البيانات
-  return tenantContext.run({ tenantId, userId }, async (): Promise<CorrectionReport> => {
+  return runWithTenantContext({ tenantId, userId }, async (): Promise<CorrectionReport> => {
     const errors: string[] = [];
     const recommendations: string[] = [];
 

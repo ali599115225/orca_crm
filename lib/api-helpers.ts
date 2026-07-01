@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
-import { tenantContext } from "@/lib/tenant-context";
+import { setTenantContext } from "@/lib/tenant-context";
 
 export async function getTenantAndUser(request: NextRequest) {
   let tenantId: string | null = null;
@@ -14,7 +14,10 @@ export async function getTenantAndUser(request: NextRequest) {
       userId = (session.userId as string) || (session as any).id || null;
       userRole = (session.role as string) || null;
       if (tenantId) {
-        tenantContext.enterWith({ tenantId, userId: userId || undefined });
+        // @deprecated Transitional compatibility bridge — getTenantAndUser cannot
+        // wrap its downstream operation, so setTenantContext is used here.
+        // Callers should migrate to runWithTenantContext where possible.
+        setTenantContext({ tenantId, userId: userId || undefined });
       }
     }
   } catch (e) {}
