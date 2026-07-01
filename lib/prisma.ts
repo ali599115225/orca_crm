@@ -3,6 +3,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { tenantContext } from "./tenant-context";
 import { redactPrismaArgs } from "./privacy-mask";
+import {
+  applyTenantIsolationToQuery,
+  isTenantScopedWriteOperation,
+} from "./tenant-prisma-enforcement";
 
 function createRawPrismaClient(): PrismaClient {
   const rawUrl = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/gi, "");
@@ -33,86 +37,26 @@ function createExtendedPrismaClient() {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          const context = tenantContext.getStore();
+          const context = tenantContext.getStore() ?? null;
           const tenantId = context?.tenantId;
           const userId = context?.userId;
+          const nextArgs = applyTenantIsolationToQuery(args, {
+            model,
+            operation,
+            context,
+            failClosed: false,
+          });
 
-          const modelsWithTenantId = [
-            "User",
-            "Project",
-            "Lead",
-            "LeadActivity",
-            "Task",
-            "Ticket",
-            "AgentSlot",
-            "UsageMeter",
-            "PayrollCommission",
-            "AgentTelemetryLog",
-            "AuditLog",
-            "AgentLease",
-            "Unit",
-            "Contract",
-            "Installment",
-            "RentalLease",
-            "Invoice",
-            "ZatcaDevice",
-            "ZatcaQueue",
-            "Receipt",
-            "GeneralLedger",
-            "Contact",
-            "Opportunity",
-            "Tour",
-            "Offer",
-            "MansourChat",
-            "PlatformConnection",
-            "FollowupSequence",
-            "AutomationWorkflow",
-            "TelemetryEvent",
-            "MaintenanceTicket",
-            "Account",
-            "AccountBalance",
-            "JournalEntry",
-            "PaymentTransaction",
-            "DealPassport",
-            "DealEvent",
-            "CommissionPayment",
-            "WhatsAppContact",
-            "WhatsAppMessage",
-            "EmailMessage",
-          ];
+          const result = await query(nextArgs);
 
-          const hasTenantIsolation = tenantId && modelsWithTenantId.includes(model);
-
-          if (hasTenantIsolation) {
-            const queryArgs = args as Record<string, Record<string, unknown>>;
-            if (!queryArgs.where && ["findMany", "findFirst", "findUnique", "count", "aggregate", "groupBy", "update", "delete", "upsert", "updateMany", "deleteMany"].includes(operation)) {
-              queryArgs.where = {};
-            }
-
-            if (["findMany", "findFirst", "findUnique", "count", "aggregate", "groupBy"].includes(operation)) {
-              (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
-            }
-            else if (operation === "create") {
-              (queryArgs.data as Record<string, unknown>).tenantId = tenantId;
-            } else if (operation === "update" || operation === "delete") {
-              (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
-            } else if (operation === "upsert") {
-              (queryArgs.create as Record<string, unknown>).tenantId = tenantId;
-              (queryArgs.update as Record<string, unknown>).tenantId = tenantId;
-              (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
-            } else if (operation === "createMany") {
-              if (Array.isArray(queryArgs.data)) {
-                (queryArgs as any).data = queryArgs.data.map((item: Record<string, unknown>) => ({ ...item, tenantId }));
-              }
-            } else if (operation === "updateMany" || operation === "deleteMany") {
-              (queryArgs.where as Record<string, unknown>).tenantId = tenantId;
-            }
-          }
-
-          const result = await query(args);
-
-          const isWrite = ["create", "update", "delete", "upsert", "createMany", "updateMany", "deleteMany"].includes(operation);
-          if (isWrite && model !== "AuditLog" && model !== "RateLimitEntry" && model !== "UserFavorite" && model !== "FailedLoginAttempt" && tenantId) {
+          if (
+            isTenantScopedWriteOperation(operation) &&
+            model !== "AuditLog" &&
+            model !== "RateLimitEntry" &&
+            model !== "UserFavorite" &&
+            model !== "FailedLoginAttempt" &&
+            tenantId
+          ) {
             (async () => {
               try {
                 let recordId = "unknown";
@@ -131,7 +75,7 @@ function createExtendedPrismaClient() {
                     action: operation.toUpperCase(),
                     tableName: model,
                     recordId,
-                    details: JSON.stringify({ args: redactPrismaArgs(args) }),
+                    details: JSON.stringify({ args: redactPrismaArgs(nextArgs) }),
                   },
                 });
               } catch (e) {
