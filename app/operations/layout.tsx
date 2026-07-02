@@ -7,6 +7,15 @@ import { getActiveTenant } from '@/lib/tenant';
 import { runWithTenantContext } from '@/lib/tenant-context';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
+type OperationsDiagnosticCode =
+  | 'OPERATIONS_SESSION_MISSING'
+  | 'OPERATIONS_TENANT_RESOLUTION_FAILED'
+  | 'OPERATIONS_TENANT_READY';
+
+function logOperationsDiagnostic(code: OperationsDiagnosticCode) {
+  console.info('[OperationsDiagnostics]', { code });
+}
+
 export const metadata = {
   title: 'لوحة التحكم - أوركا',
   description: 'نظام إدارة العمليات العقارية السحابية',
@@ -20,6 +29,7 @@ export default async function OperationsLayout({
   const session = await getSession();
 
   if (!session) {
+    logOperationsDiagnostic('OPERATIONS_SESSION_MISSING');
     redirect("/login");
   }
 
@@ -28,9 +38,10 @@ export default async function OperationsLayout({
   try {
     tenant = await getActiveTenant();
   } catch {
-    console.warn("[OperationsLayout] No active tenant — redirecting to login");
+    logOperationsDiagnostic('OPERATIONS_TENANT_RESOLUTION_FAILED');
     redirect("/login");
   }
+  logOperationsDiagnostic('OPERATIONS_TENANT_READY');
 
   // جلب بيانات المستخدم الحالي
   const user = await runWithTenantContext(
