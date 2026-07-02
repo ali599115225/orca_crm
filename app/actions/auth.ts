@@ -3,11 +3,14 @@
 import { createHash } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { cookies, headers } from 'next/headers';
-import { rawPrisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/session';
 import { checkRateLimit, clearRateLimit, rateLimit } from '@/lib/rate-limit';
-import { isConfiguredSuperAdminEmail } from '@/lib/api-auth-guard';
 import { ErrorCode, publicError } from '@/lib/errors';
+import {
+  authLoginFindUserByEmail,
+  tenantResolutionFindFirstActive,
+} from '@/lib/system-prisma-boundary';
+import { getConfiguredPrivilegedRole } from '@/lib/platform-identity';
 
 class SafeAuthError extends Error {
   constructor(readonly publicMessage: string) {
@@ -18,15 +21,6 @@ class SafeAuthError extends Error {
 
 function hashRateLimitIdentity(email: string): string {
   return createHash('sha256').update(email).digest('hex');
-}
-
-function configuredEmails(name: string): Set<string> {
-  return new Set(
-    (process.env[name] ?? '')
-      .split(',')
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean)
-  );
 }
 
 type LoginDiagnosticCode =
@@ -82,20 +76,14 @@ export async function loginAction(formData: FormData) {
       };
     }
 
-    const user = await rawPrisma.user.findUnique({
-      where: { email },
-      include: { tenant: true },
-    });
+    const user = await authLoginFindUserByEmail(email);
+    const privilegedRole = getConfiguredPrivilegedRole(user?.email);
 
     let passwordMatches = false;
     if (!user) {
       logLoginDiagnostic('LOGIN_USER_NOT_FOUND');
     } else if (!user.isActive) {
       logLoginDiagnostic('LOGIN_USER_INACTIVE');
-    } else if (!user.tenant) {
-      logLoginDiagnostic('LOGIN_TENANT_MISSING');
-    } else if (!user.tenant.isActive) {
-      logLoginDiagnostic('LOGIN_TENANT_INACTIVE');
     } else if (!user.passwordHash) {
       logLoginDiagnostic('LOGIN_PASSWORD_HASH_MISSING');
     } else {
@@ -105,11 +93,25 @@ export async function loginAction(formData: FormData) {
       }
     }
 
+    let sessionTenant = user?.tenant?.isActive ? user.tenant : null;
+    if (
+      user &&
+      user.isActive &&
+      passwordMatches &&
+      !sessionTenant &&
+      privilegedRole
+    ) {
+      sessionTenant = await tenantResolutionFindFirstActive();
+    }
+
+    if (user && user.isActive && passwordMatches && !sessionTenant) {
+      logLoginDiagnostic(user.tenant ? 'LOGIN_TENANT_INACTIVE' : 'LOGIN_TENANT_MISSING');
+    }
+
     const validCredentials = Boolean(
       user &&
       user.isActive &&
-      user.tenant &&
-      user.tenant.isActive &&
+      sessionTenant &&
       user.passwordHash &&
       passwordMatches
     );
@@ -140,11 +142,11 @@ export async function loginAction(formData: FormData) {
 
     await clearRateLimit(rateLimitKey);
 
-    if (!user || !user.tenant) {
+    if (!user || !sessionTenant) {
       throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
     }
 
-    if (!user || !user.tenant) {
+    if (!user || !sessionTenant) {
       throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
     }
 
@@ -176,23 +178,22 @@ export async function loginAction(formData: FormData) {
       'orca-crm',
     ]);
     const tenantHost = !mainSubdomains.has(currentSubdomain);
-    const superAdmin = isConfiguredSuperAdminEmail(user.email);
+    const privileged = Boolean(privilegedRole);
 
     if (
-      !superAdmin &&
+      !privileged &&
       tenantHost &&
-      user.tenant.subdomain !== currentSubdomain
+      sessionTenant.subdomain !== currentSubdomain
     ) {
       throw new SafeAuthError('غير مصرح لك بدخول هذه الشركة من هذا الرابط.');
     }
 
-    const architectEmails = configuredEmails('PLATFORM_ARCHITECT_EMAILS');
-    const platformArchitect = architectEmails.has(user.email.toLowerCase());
+    const platformArchitect = privilegedRole === 'PLATFORM_ARCHITECT';
     const token = await encrypt({
       userId: user.id,
-      tenantId: user.tenant.id,
-      tenantSubdomain: user.tenant.subdomain,
-      role: platformArchitect ? 'PLATFORM_ARCHITECT' : user.role,
+      tenantId: sessionTenant.id,
+      tenantSubdomain: sessionTenant.subdomain,
+      role: privilegedRole ?? user.role,
       name: user.name,
       email: user.email,
     });
@@ -218,7 +219,7 @@ export async function loginAction(formData: FormData) {
     });
 
     if (!platformArchitect) {
-      cookieStore.set('device_tenant_subdomain', user.tenant.subdomain, {
+      cookieStore.set('device_tenant_subdomain', sessionTenant.subdomain, {
         httpOnly: true,
         secure,
         sameSite: 'lax',
@@ -232,7 +233,7 @@ export async function loginAction(formData: FormData) {
     if (platformArchitect) {
       redirectUrl = '/operations?tab=monitor';
     } else if (customDomain && tenantHost) {
-      redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
+      redirectUrl = `https://${sessionTenant.subdomain}.orca.az-ez.pro/operations`;
     }
 
     logLoginDiagnostic('LOGIN_SUCCESS');

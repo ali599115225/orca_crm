@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
@@ -50,6 +50,10 @@ describe("Tenant resolution bootstrap boundary", () => {
     mocks.findFirstActive.mockResolvedValue(null);
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("resolves the session tenant before binding context", async () => {
     const tenant = {
       id: "tenant-a",
@@ -75,6 +79,110 @@ describe("Tenant resolution bootstrap boundary", () => {
     expect(mocks.findActiveBySubdomain).not.toHaveBeenCalled();
   });
 
+  it("does not fallback to another tenant for a normal session with an inactive session tenant", async () => {
+    mocks.getSession.mockResolvedValue({
+      tenantId: "tenant-inactive",
+      userId: "user-normal",
+      email: "normal@example.com",
+      role: "ADMIN",
+    });
+
+    mocks.findActiveById.mockResolvedValue(null);
+
+    await expect(getActiveTenant()).rejects.toThrow("TENANT_SESSION_INACTIVE");
+
+    expect(mocks.findActiveById).toHaveBeenCalledWith("tenant-inactive");
+    expect(mocks.findActiveBySubdomain).not.toHaveBeenCalled();
+    expect(mocks.findFirstActive).not.toHaveBeenCalled();
+    expect(mocks.setTenantContext).not.toHaveBeenCalled();
+  });
+
+  it("does not fallback to another tenant for a normal session without tenantId", async () => {
+    mocks.getSession.mockResolvedValue({
+      tenantId: null,
+      userId: "user-normal",
+      email: "normal@example.com",
+      role: "ADMIN",
+    });
+
+    await expect(getActiveTenant()).rejects.toThrow("TENANT_SESSION_NOT_FOUND");
+
+    expect(mocks.findActiveBySubdomain).not.toHaveBeenCalled();
+    expect(mocks.findFirstActive).not.toHaveBeenCalled();
+    expect(mocks.setTenantContext).not.toHaveBeenCalled();
+  });
+
+  it("resolves a Platform Architect from the active session tenant", async () => {
+    const tenant = {
+      id: "tenant-platform",
+      isActive: true,
+      companyName: "Platform Tenant",
+    };
+
+    mocks.getSession.mockResolvedValue({
+      tenantId: "tenant-platform",
+      userId: "user-platform",
+      email: "platform@example.com",
+      role: "PLATFORM_ARCHITECT",
+    });
+    mocks.findActiveById.mockResolvedValue(tenant);
+
+    await expect(getActiveTenant()).resolves.toBe(tenant);
+
+    expect(mocks.findFirstActive).not.toHaveBeenCalled();
+    expect(mocks.setTenantContext).toHaveBeenCalledWith({
+      tenantId: "tenant-platform",
+      userId: "user-platform",
+    });
+  });
+
+  it("allows a Platform Architect to fallback to a safe active tenant", async () => {
+    const tenant = {
+      id: "tenant-fallback",
+      isActive: true,
+      companyName: "Fallback Tenant",
+    };
+
+    mocks.getSession.mockResolvedValue({
+      tenantId: "tenant-inactive",
+      userId: "user-platform",
+      email: "platform@example.com",
+      role: "PLATFORM_ARCHITECT",
+    });
+    mocks.headers.mockResolvedValue({
+      get: vi.fn().mockReturnValue("orca.az-ez.pro"),
+    });
+    mocks.findActiveById.mockResolvedValue(null);
+    mocks.findActiveBySubdomain.mockResolvedValue(null);
+    mocks.findFirstActive.mockResolvedValue(tenant);
+
+    await expect(getActiveTenant()).resolves.toBe(tenant);
+
+    expect(mocks.findFirstActive).toHaveBeenCalledOnce();
+    expect(mocks.setTenantContext).toHaveBeenCalledWith({
+      tenantId: "tenant-fallback",
+      userId: "user-platform",
+    });
+  });
+
+  it("fails clearly when privileged fallback has no active tenant", async () => {
+    mocks.getSession.mockResolvedValue({
+      tenantId: "tenant-inactive",
+      userId: "user-platform",
+      email: "platform@example.com",
+      role: "PLATFORM_ARCHITECT",
+    });
+    mocks.findActiveById.mockResolvedValue(null);
+    mocks.findActiveBySubdomain.mockResolvedValue(null);
+    mocks.findFirstActive.mockResolvedValue(null);
+
+    await expect(getActiveTenant()).rejects.toThrow(
+      "TENANT_PRIVILEGED_FALLBACK_NOT_FOUND",
+    );
+
+    expect(mocks.setTenantContext).not.toHaveBeenCalled();
+  });
+
   it("resolves the host tenant before binding context", async () => {
     const tenant = {
       id: "tenant-b",
@@ -82,11 +190,7 @@ describe("Tenant resolution bootstrap boundary", () => {
       companyName: "Tenant B",
     };
 
-    mocks.getSession.mockResolvedValue({
-      tenantId: null,
-      userId: "user-b",
-      email: "user@example.com",
-    });
+    mocks.getSession.mockResolvedValue(null);
 
     mocks.headers.mockResolvedValue({
       get: vi.fn().mockReturnValue("acme.orca.az-ez.pro"),
@@ -97,10 +201,7 @@ describe("Tenant resolution bootstrap boundary", () => {
     await expect(getActiveTenant()).resolves.toBe(tenant);
 
     expect(mocks.findActiveBySubdomain).toHaveBeenCalledWith("acme");
-    expect(mocks.setTenantContext).toHaveBeenCalledWith({
-      tenantId: "tenant-b",
-      userId: "user-b",
-    });
+    expect(mocks.setTenantContext).not.toHaveBeenCalled();
   });
 
   it("does not use tenant-aware Prisma during tenant bootstrap", () => {

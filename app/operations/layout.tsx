@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
 import { runWithTenantContext } from '@/lib/tenant-context';
+import { isPrivilegedSessionPayload } from '@/lib/platform-identity';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 type OperationsDiagnosticCode =
@@ -14,6 +15,19 @@ type OperationsDiagnosticCode =
 
 function logOperationsDiagnostic(code: OperationsDiagnosticCode) {
   console.info('[OperationsDiagnostics]', { code });
+}
+
+function TenantUnavailableState() {
+  return (
+    <div dir="rtl" className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+      <main className="mx-auto max-w-2xl">
+        <h1 className="text-2xl font-semibold">تعذر فتح لوحة العمليات</h1>
+        <p className="mt-4 text-sm leading-7 text-slate-300">
+          لا يمكن فتح اللوحة حالياً. يرجى التواصل مع مسؤول النظام للتحقق من حالة المنشأة.
+        </p>
+      </main>
+    </div>
+  );
 }
 
 export const metadata = {
@@ -39,7 +53,7 @@ export default async function OperationsLayout({
     tenant = await getActiveTenant();
   } catch {
     logOperationsDiagnostic('OPERATIONS_TENANT_RESOLUTION_FAILED');
-    redirect("/login");
+    return <TenantUnavailableState />;
   }
   logOperationsDiagnostic('OPERATIONS_TENANT_READY');
 
@@ -56,7 +70,7 @@ export default async function OperationsLayout({
   );
   const userEmail = user?.email || "";
   const userName = user?.name || "";
-  const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
+  const isSuperAdmin = isPrivilegedSessionPayload(session);
 
   const rawCompanyName = tenant?.companyName || "";
   const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");

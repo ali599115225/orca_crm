@@ -22,6 +22,16 @@ describe("Operations tenant context scope", () => {
     expect(layout).toContain("tenantId: tenant.id");
   });
 
+  it("does not redirect authenticated tenant-resolution failures back to login", () => {
+    const layout = source("app/operations/layout.tsx");
+
+    expect(layout).toContain("function TenantUnavailableState()");
+    expect(layout).toContain("return <TenantUnavailableState />;");
+    expect(layout).toContain("isPrivilegedSessionPayload(session)");
+    expect(layout).not.toContain("ali.orca@outlook.sa");
+    expect(layout).not.toContain("elite.orca@outlook.sa");
+  });
+
   it("wraps all dashboard operations in tenant context", () => {
     const dashboard = source(
       "app/operations/dashboard/page.tsx",

@@ -415,6 +415,29 @@ export async function authBootstrapFindTenantActive(
     return null;
   }
 }
+
+export async function authLoginFindUserByEmail(email: string) {
+  if (!email) return null;
+
+  return getRawPrisma().user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      isActive: true,
+      passwordHash: true,
+      tenant: {
+        select: {
+          id: true,
+          isActive: true,
+          subdomain: true,
+        },
+      },
+    },
+  });
+}
 /**
  * TENANT_RESOLUTION capabilities.
  *
