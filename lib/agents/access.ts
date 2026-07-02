@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export const AGENT_MANAGER_ROLES = ["ADMIN", "SALES_MANAGER"] as const;
 export const AGENT_READ_ROLES = [
@@ -42,19 +43,23 @@ export async function requireAgentAccess(options?: {
     );
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      tenantId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      tenantId: true,
-      role: true,
-      email: true,
-    },
-  });
+  const user = await runWithTenantContext(
+    { tenantId, userId },
+    async () =>
+      await prisma.user.findFirst({
+        where: {
+          id: userId,
+          tenantId,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          role: true,
+          email: true,
+        },
+      }),
+  );
   if (!user) {
     throw new AgentAccessError(
       "AGENT_USER_NOT_FOUND",
@@ -82,7 +87,9 @@ export async function requireAgentAccess(options?: {
 
 export async function requirePlatformOwnerAccess() {
   const session = await getSession();
-  const email = String(session?.email || "").trim().toLowerCase();
+  const email = String(session?.email || "")
+    .trim()
+    .toLowerCase();
   const allowed = (process.env.SUPER_ADMIN_EMAILS || "")
     .split(",")
     .map((value) => value.trim().toLowerCase())

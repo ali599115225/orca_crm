@@ -6,15 +6,20 @@ import {
   requireAgentAccess,
 } from "@/lib/agents/access";
 import { getAgentDefinition } from "@/lib/agents/registry";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export async function GET() {
   try {
     const access = await requireAgentAccess({ roles: AGENT_READ_ROLES });
-    const agents = await prisma.agentSlot.findMany({
-      where: { tenantId: access.tenantId },
-      include: { usageMeter: true },
-      orderBy: { slotNumber: "asc" },
-    });
+    const agents = await runWithTenantContext(
+      { tenantId: access.tenantId, userId: access.userId },
+      async () =>
+        await prisma.agentSlot.findMany({
+          where: { tenantId: access.tenantId },
+          include: { usageMeter: true },
+          orderBy: { slotNumber: "asc" },
+        }),
+    );
 
     return NextResponse.json({
       success: true,
