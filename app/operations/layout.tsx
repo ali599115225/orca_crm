@@ -64,9 +64,9 @@ export default async function OperationsLayout({
       tenantId: tenant.id,
       userId: session.userId as string,
     },
-    () => {
+    async () => {
       logOperationsDiagnostic('OPERATIONS_PAGE_CONTEXT_ENTERED');
-      return prisma.user.findUnique({
+      return await prisma.user.findUnique({
         where: { id: session.userId as string },
       });
     },
