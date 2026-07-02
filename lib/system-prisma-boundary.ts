@@ -19,15 +19,10 @@
  */
 
 import { Prisma } from "@prisma/client";
+import { rawPrisma } from "@/lib/prisma";
 
-let _rawPrisma: import("@prisma/client").PrismaClient | null = null;
 function getRawPrisma(): import("@prisma/client").PrismaClient {
-  if (!_rawPrisma) {
-    _rawPrisma = require("@/lib/prisma").rawPrisma;
-  }
-  const cached = _rawPrisma;
-  if (!cached) throw new Error("rawPrisma unavailable");
-  return cached;
+  return rawPrisma;
 }
 
 export const SYSTEM_CLIENT_CATEGORIES = {
@@ -416,7 +411,7 @@ export async function authBootstrapFindTenantActive(
   }
 }
 
-export async function authLoginFindUserByEmail(email: string) {
+export async function authBootstrapFindUserByEmail(email: string) {
   if (!email) return null;
 
   return getRawPrisma().user.findUnique({
