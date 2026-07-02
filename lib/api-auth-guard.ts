@@ -17,6 +17,9 @@ import {
   publicError,
   type PublicErrorResponse,
 } from '@/lib/errors';
+import {
+  isConfiguredSuperAdminEmail as isConfiguredSuperAdminEmailFromEnv,
+} from '@/lib/platform-identity';
 
 export type SessionPayload = {
   userId: string;
@@ -90,24 +93,17 @@ export async function requireAuth(
   return null;
 }
 
-const SUPER_ADMIN_EMAILS = new Set(
-  (process.env.SUPER_ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean)
-);
-
 export function isConfiguredSuperAdminEmail(email: string): boolean {
-  return SUPER_ADMIN_EMAILS.has(email.trim().toLowerCase());
+  return isConfiguredSuperAdminEmailFromEnv(email);
 }
 
 export async function isSuperAdmin(userId: string): Promise<boolean> {
-  if (!userId || SUPER_ADMIN_EMAILS.size === 0) return false;
+  if (!userId) return false;
 
   try {
     const user = await authBootstrapFindUserEmail(userId);
 
-    return SUPER_ADMIN_EMAILS.has((user?.email ?? '').trim().toLowerCase());
+    return isConfiguredSuperAdminEmailFromEnv(user?.email);
   } catch {
     return false;
   }

@@ -10,20 +10,22 @@ describe("safe login runtime diagnostics", () => {
   const auth = source("app/actions/auth.ts");
   const session = source("lib/session.ts");
   const operationsLayout = source("app/operations/layout.tsx");
-  const combined = `${auth}\n${session}\n${operationsLayout}`;
+  const tenant = source("lib/tenant.ts");
+  const combined = `${auth}\n${session}\n${operationsLayout}\n${tenant}`;
 
   it("emits a fixed login diagnostic code for each credential failure branch", () => {
     expect(auth).toContain("logLoginDiagnostic('LOGIN_USER_NOT_FOUND')");
     expect(auth).toContain("logLoginDiagnostic('LOGIN_USER_INACTIVE')");
-    expect(auth).toContain("logLoginDiagnostic('LOGIN_TENANT_MISSING')");
-    expect(auth).toContain("logLoginDiagnostic('LOGIN_TENANT_INACTIVE')");
+    expect(auth).toContain("'LOGIN_TENANT_MISSING'");
+    expect(auth).toContain("'LOGIN_TENANT_INACTIVE'");
     expect(auth).toContain("logLoginDiagnostic('LOGIN_PASSWORD_HASH_MISSING')");
     expect(auth).toContain("logLoginDiagnostic('LOGIN_PASSWORD_INVALID')");
     expect(auth).toMatch(/if \(!user\) \{\s*logLoginDiagnostic\('LOGIN_USER_NOT_FOUND'\)/);
     expect(auth).toMatch(/else if \(!user\.isActive\) \{\s*logLoginDiagnostic\('LOGIN_USER_INACTIVE'\)/);
-    expect(auth).toMatch(/else if \(!user\.tenant\) \{\s*logLoginDiagnostic\('LOGIN_TENANT_MISSING'\)/);
-    expect(auth).toMatch(/else if \(!user\.tenant\.isActive\) \{\s*logLoginDiagnostic\('LOGIN_TENANT_INACTIVE'\)/);
     expect(auth).toMatch(/else if \(!user\.passwordHash\) \{\s*logLoginDiagnostic\('LOGIN_PASSWORD_HASH_MISSING'\)/);
+    expect(auth).toContain(
+      "logLoginDiagnostic(user.tenant ? 'LOGIN_TENANT_INACTIVE' : 'LOGIN_TENANT_MISSING')",
+    );
   });
 
   it("logs only safe cookie metadata when the session cookie is created", () => {
@@ -42,6 +44,8 @@ describe("safe login runtime diagnostics", () => {
     expect(operationsLayout).toContain("logOperationsDiagnostic('OPERATIONS_SESSION_MISSING')");
     expect(operationsLayout).toContain("logOperationsDiagnostic('OPERATIONS_TENANT_RESOLUTION_FAILED')");
     expect(operationsLayout).toContain("logOperationsDiagnostic('OPERATIONS_TENANT_READY')");
+    expect(combined).toContain("TENANT_RESOLVED_FROM_PRIVILEGED_FALLBACK");
+    expect(combined).toContain("TENANT_PRIVILEGED_FALLBACK_NOT_FOUND");
   });
 
   it("does not log sensitive runtime values from diagnostic console calls", () => {
