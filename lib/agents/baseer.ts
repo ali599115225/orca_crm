@@ -1,6 +1,6 @@
 // lib/agents/baseer.ts
 import { prisma } from "../prisma";
-import { runWithTenantContext } from "../tenant-context";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import {
   buildBaseerSystemPrompt,
   type BaseerAIOutput,

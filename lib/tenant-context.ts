@@ -5,7 +5,15 @@ export interface TenantContext {
   readonly userId?: string;
 }
 
-export const tenantContext = new AsyncLocalStorage<TenantContext>();
+const globalForTenantContext = globalThis as typeof globalThis & {
+  __orcaTenantContext?: AsyncLocalStorage<TenantContext>;
+};
+
+export const tenantContext =
+  globalForTenantContext.__orcaTenantContext ??
+  new AsyncLocalStorage<TenantContext>();
+
+globalForTenantContext.__orcaTenantContext = tenantContext;
 
 function validateTenantContext(context: TenantContext): void {
   if (

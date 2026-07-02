@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { getSession } from "./session";
 import { cache } from "react";
-import { setTenantContext } from "./tenant-context";
+import { setTenantContext } from "@/lib/tenant-context";
 import { isPrivilegedSessionPayload } from "./platform-identity";
 import {
   tenantResolutionFindActiveById,
