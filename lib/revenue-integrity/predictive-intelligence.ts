@@ -391,65 +391,65 @@ export function recommendAction(
 }
 
 async function loadOpenRisksForOpportunity(tenantId: string, opportunityId: string): Promise<RiskSignalRow[]> {
-  return rawPrisma.$queryRawUnsafe<RiskSignalRow[]>(`
+  return rawPrisma.$queryRaw<RiskSignalRow[]>`
     SELECT id, rule_code AS "ruleCode", severity, status, revenue_at_risk AS "revenueAtRisk",
            opportunity_id AS "opportunityId", invoice_id AS "invoiceId",
            subject_type AS "subjectType", subject_id AS "subjectId", metadata
     FROM revenue_risk_signals
-    WHERE tenant_id = $1::uuid
-      AND opportunity_id = $2::uuid
+    WHERE tenant_id = ${tenantId}::uuid
+      AND opportunity_id = ${opportunityId}::uuid
       AND status IN ('OPEN', 'ACKNOWLEDGED')
     ORDER BY
       CASE severity WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
       detected_at DESC
-  `, tenantId, opportunityId);
+  `;
 }
 
 async function loadAllOpenRisks(tenantId: string): Promise<RiskSignalRow[]> {
-  return rawPrisma.$queryRawUnsafe<RiskSignalRow[]>(`
+  return rawPrisma.$queryRaw<RiskSignalRow[]>`
     SELECT id, rule_code AS "ruleCode", severity, status, revenue_at_risk AS "revenueAtRisk",
            opportunity_id AS "opportunityId", invoice_id AS "invoiceId",
            subject_type AS "subjectType", subject_id AS "subjectId", metadata
     FROM revenue_risk_signals
-    WHERE tenant_id = $1::uuid
+    WHERE tenant_id = ${tenantId}::uuid
       AND status IN ('OPEN', 'ACKNOWLEDGED')
     ORDER BY
       CASE severity WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
       detected_at DESC
-  `, tenantId);
+  `;
 }
 
 async function loadOverdueInvoicesForOpportunity(tenantId: string, opportunityId: string): Promise<InvoiceRow[]> {
-  return rawPrisma.$queryRawUnsafe<InvoiceRow[]>(`
+  return rawPrisma.$queryRaw<InvoiceRow[]>`
     SELECT i.id, i.total_amount AS "totalAmount", i.due_date AS "dueDate",
            COALESCE(i.status::text, 'open') AS status, i.contract_id AS "contractId"
     FROM invoices i
-    WHERE i.tenant_id = $1::uuid
+    WHERE i.tenant_id = ${tenantId}::uuid
       AND i.due_date < NOW()
       AND LOWER(COALESCE(i.status::text, '')) NOT IN ('paid', 'cancelled', 'void')
       AND i.contract_id IN (
         SELECT c.id FROM contracts c
         JOIN offers f ON f.id = c.offer_id
-        WHERE f.linked_opportunity_id = $2::uuid
+        WHERE f.linked_opportunity_id = ${opportunityId}::uuid
       )
     ORDER BY i.due_date ASC
-  `, tenantId, opportunityId);
+  `;
 }
 
 async function loadAllOverdueInvoices(tenantId: string): Promise<InvoiceRow[]> {
-  return rawPrisma.$queryRawUnsafe<InvoiceRow[]>(`
+  return rawPrisma.$queryRaw<InvoiceRow[]>`
     SELECT i.id, i.total_amount AS "totalAmount", i.due_date AS "dueDate",
            COALESCE(i.status::text, 'open') AS status, i.contract_id AS "contractId"
     FROM invoices i
-    WHERE i.tenant_id = $1::uuid
+    WHERE i.tenant_id = ${tenantId}::uuid
       AND i.due_date < NOW()
       AND LOWER(COALESCE(i.status::text, '')) NOT IN ('paid', 'cancelled', 'void')
     ORDER BY i.due_date ASC
-  `, tenantId);
+  `;
 }
 
 async function loadOpenOpportunities(tenantId: string): Promise<OpportunityRow[]> {
-  return rawPrisma.$queryRawUnsafe<OpportunityRow[]>(`
+  return rawPrisma.$queryRaw<OpportunityRow[]>`
     SELECT
       o.id,
       COALESCE(o.status::text, '') AS status,
@@ -459,10 +459,10 @@ async function loadOpenOpportunities(tenantId: string): Promise<OpportunityRow[]
       (SELECT COUNT(*) FROM tours t WHERE t.tenant_id = o.tenant_id AND t.opportunity_id = o.id) AS "tourCount",
       (SELECT COUNT(*) FROM offers f WHERE f.tenant_id = o.tenant_id AND f.linked_opportunity_id = o.id) AS "offerCount"
     FROM opportunities o
-    WHERE o.tenant_id = $1::uuid
+    WHERE o.tenant_id = ${tenantId}::uuid
       AND UPPER(COALESCE(o.status::text, '')) NOT IN ('WON', 'LOST', 'CLOSED', 'CANCELLED')
     ORDER BY o.created_at ASC, o.id ASC
-  `, tenantId);
+  `;
 }
 
 async function loadLatestRadarRunInfo(tenantId: string): Promise<{ evaluatedRules: number; completedAt: Date | null }> {
@@ -589,7 +589,7 @@ export async function scoreOpportunityIntelligence(
   const window = windowKeyForNow();
 
   const [opportunityRows, radarInfo] = await Promise.all([
-    rawPrisma.$queryRawUnsafe<OpportunityRow[]>(`
+    rawPrisma.$queryRaw<OpportunityRow[]>`
       SELECT
         o.id,
         COALESCE(o.status::text, '') AS status,
@@ -599,8 +599,8 @@ export async function scoreOpportunityIntelligence(
         (SELECT COUNT(*) FROM tours t WHERE t.tenant_id = o.tenant_id AND t.opportunity_id = o.id) AS "tourCount",
         (SELECT COUNT(*) FROM offers f WHERE f.tenant_id = o.tenant_id AND f.linked_opportunity_id = o.id) AS "offerCount"
       FROM opportunities o
-      WHERE o.tenant_id = $1::uuid AND o.id = $2::uuid
-    `, tenantId, opportunityId),
+      WHERE o.tenant_id = ${tenantId}::uuid AND o.id = ${opportunityId}::uuid
+    `,
     loadLatestRadarRunInfo(tenantId),
   ]);
 
@@ -835,12 +835,12 @@ export async function scoreAllOpportunitiesIntelligence(
     invoicesByContract.set(invoice.contractId, list);
   }
 
-  const opportunityContracts = await rawPrisma.$queryRawUnsafe<Array<{ opportunityId: string; contractId: string }>>(`
+  const opportunityContracts = await rawPrisma.$queryRaw<Array<{ opportunityId: string; contractId: string }>>`
     SELECT f.linked_opportunity_id AS "opportunityId", c.id AS "contractId"
     FROM contracts c
     JOIN offers f ON f.id = c.offer_id
-    WHERE f.tenant_id = $1::uuid AND f.linked_opportunity_id IS NOT NULL
-  `, tenantId);
+    WHERE f.tenant_id = ${tenantId}::uuid AND f.linked_opportunity_id IS NOT NULL
+  `;
 
   const invoicesByOpportunity = new Map<string, InvoiceRow[]>();
   for (const mapping of opportunityContracts) {

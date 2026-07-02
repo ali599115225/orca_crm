@@ -73,8 +73,7 @@ describe("R01 raw/system Prisma client boundary", () => {
       (f) =>
         f.startsWith("app/api/") &&
         !f.includes("/cron/") &&
-        !f.includes("/auth/login/") &&
-        !f.includes("/db-init/"),
+        !f.includes("/auth/login/"),
     );
     expect(routeViolations).toEqual([]);
   });

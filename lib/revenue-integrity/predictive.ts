@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { rawPrisma } from "@/lib/prisma";
 import { appendRevenueEvent } from "./events";
 
@@ -25,9 +26,9 @@ function numberValue(value: unknown) {
 
 async function loadOpportunityRows(tenantId: string, labeledOnly: boolean): Promise<OpportunityRow[]> {
   const statusClause = labeledOnly
-    ? "AND UPPER(COALESCE(o.status::text,'')) IN ('WON','LOST')"
-    : "AND UPPER(COALESCE(o.status::text,'')) NOT IN ('WON','LOST','CLOSED','CANCELLED')";
-  return rawPrisma.$queryRawUnsafe<OpportunityRow[]>(`
+    ? Prisma.sql`AND UPPER(COALESCE(o.status::text,'')) IN ('WON','LOST')`
+    : Prisma.sql`AND UPPER(COALESCE(o.status::text,'')) NOT IN ('WON','LOST','CLOSED','CANCELLED')`;
+  return rawPrisma.$queryRaw<OpportunityRow[]>`
     SELECT
       o.id,
       COALESCE(o.status::text,'') AS status,
@@ -41,9 +42,9 @@ async function loadOpportunityRows(tenantId: string, labeledOnly: boolean): Prom
         SELECT c.id FROM contracts c JOIN offers f2 ON f2.id = c.offer_id WHERE f2.linked_opportunity_id = o.id
       ) AND i.due_date < NOW() AND LOWER(COALESCE(i.status::text,'')) NOT IN ('paid','cancelled','void')) AS overdue_invoice_count
     FROM opportunities o
-    WHERE o.tenant_id = $1::uuid ${statusClause}
+    WHERE o.tenant_id = ${tenantId}::uuid ${statusClause}
     ORDER BY o.created_at ASC, o.id ASC
-  `, tenantId);
+  `;
 }
 
 function toFeatures(row: OpportunityRow, now = Date.now()): FeatureVector {
