@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { rawPrisma } from "@/lib/prisma";
 import { appendRevenueEvent } from "./events";
 import type { RadarRunResult } from "./contracts";
@@ -20,12 +21,12 @@ export type DetectedRisk = {
 
 type CapabilityMap = Map<string, Set<string>>;
 
-async function queryRows<T = Record<string, unknown>>(sql: string, ...values: unknown[]): Promise<T[]> {
-  return rawPrisma.$queryRawUnsafe<T[]>(sql, ...values);
+async function queryRows<T = Record<string, unknown>>(query: Prisma.Sql): Promise<T[]> {
+  return rawPrisma.$queryRaw<T[]>(query);
 }
 
 async function loadCapabilities(): Promise<CapabilityMap> {
-  const rows = await queryRows<{ table_name: string; column_name: string }>(`
+  const rows = await queryRows<{ table_name: string; column_name: string }>(Prisma.sql`
     SELECT table_name, column_name
     FROM information_schema.columns
     WHERE table_schema = 'public'
@@ -159,14 +160,14 @@ export async function evaluateRevenueLeakRadar(
   };
 
   await evaluate("LEAD_UNASSIGNED", [["leads", "id", "tenant_id", "assigned_to", "created_at", "status"]], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT id, assigned_to, created_at
       FROM leads
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = ${tenantId}::uuid
         AND assigned_to IS NULL
         AND created_at < NOW() - INTERVAL '15 minutes'
         AND UPPER(COALESCE(status::text,'')) NOT IN ('WON','LOST','CLOSED','CANCELLED')
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "LEAD_UNASSIGNED", subjectType: "Lead", subjectId: row.id, severity: "CRITICAL",
       reasonAr: "عميل جديد بلا مسؤول بعد مهلة الإسناد.", reasonEn: "New lead remained unassigned beyond the assignment SLA.",
@@ -178,17 +179,17 @@ export async function evaluateRevenueLeakRadar(
     ["leads", "id", "tenant_id", "created_at", "status"],
     ["lead_activities", "lead_id", "created_at"],
   ], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT l.id, l.assigned_to, l.created_at
       FROM leads l
-      WHERE l.tenant_id = $1::uuid
+      WHERE l.tenant_id = ${tenantId}::uuid
         AND l.created_at < NOW() - INTERVAL '30 minutes'
         AND UPPER(COALESCE(l.status::text,'')) NOT IN ('WON','LOST','CLOSED','CANCELLED')
         AND NOT EXISTS (
           SELECT 1 FROM lead_activities a
           WHERE a.lead_id = l.id AND a.created_at > l.created_at
         )
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "FIRST_RESPONSE_BREACH", subjectType: "Lead", subjectId: row.id, severity: "CRITICAL",
       reasonAr: "تم تجاوز مهلة الرد الأول على العميل.", reasonEn: "First-response SLA was breached.",
@@ -200,19 +201,19 @@ export async function evaluateRevenueLeakRadar(
     ["opportunities", "id", "tenant_id", "status", "created_at"],
     ["revenue_next_actions", "tenant_id", "opportunity_id", "status", "due_at"],
   ], async () => {
-    const valueExpr = has(cap, "opportunities", "value") ? "COALESCE(o.value,0)" : "0";
-    const assignedExpr = has(cap, "opportunities", "assigned_to") ? "o.assigned_to" : "NULL::uuid";
-    const rows = await queryRows<any>(`
+    const valueExpr = has(cap, "opportunities", "value") ? Prisma.sql`COALESCE(o.value,0)` : Prisma.sql`0`;
+    const assignedExpr = has(cap, "opportunities", "assigned_to") ? Prisma.sql`o.assigned_to` : Prisma.sql`NULL::uuid`;
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT o.id, ${valueExpr} AS value, ${assignedExpr} AS assigned_to, o.created_at
       FROM opportunities o
-      WHERE o.tenant_id = $1::uuid
+      WHERE o.tenant_id = ${tenantId}::uuid
         AND UPPER(COALESCE(o.status::text,'')) NOT IN ('WON','LOST','CLOSED','CANCELLED')
         AND o.created_at < NOW() - INTERVAL '24 hours'
         AND NOT EXISTS (
           SELECT 1 FROM revenue_next_actions n
           WHERE n.tenant_id = o.tenant_id AND n.opportunity_id = o.id AND n.status = 'OPEN'
         )
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "NO_NEXT_ACTION", subjectType: "Opportunity", subjectId: row.id, opportunityId: row.id,
       severity: "CRITICAL", reasonAr: "فرصة مفتوحة بلا إجراء تالٍ وموعد واضح.",
@@ -222,15 +223,15 @@ export async function evaluateRevenueLeakRadar(
   });
 
   await evaluate("TOUR_WITHOUT_OUTCOME", [["tours", "id", "tenant_id", "start_at", "status"]], async () => {
-    const opportunityExpr = has(cap, "tours", "opportunity_id") ? "opportunity_id" : "NULL::uuid";
-    const assignedExpr = has(cap, "tours", "assigned_to") ? "assigned_to" : "NULL::uuid";
-    const rows = await queryRows<any>(`
+    const opportunityExpr = has(cap, "tours", "opportunity_id") ? Prisma.sql`opportunity_id` : Prisma.sql`NULL::uuid`;
+    const assignedExpr = has(cap, "tours", "assigned_to") ? Prisma.sql`assigned_to` : Prisma.sql`NULL::uuid`;
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT id, ${opportunityExpr} AS opportunity_id, ${assignedExpr} AS assigned_to, start_at, status
       FROM tours
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = ${tenantId}::uuid
         AND start_at < NOW() - INTERVAL '2 hours'
         AND UPPER(COALESCE(status::text,'')) IN ('SCHEDULED','PENDING','IN_PROGRESS')
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "TOUR_WITHOUT_OUTCOME", subjectType: "Tour", subjectId: row.id, opportunityId: row.opportunity_id,
       severity: "HIGH", reasonAr: "انتهى موعد الجولة دون تسجيل نتيجة.", reasonEn: "Tour time passed without a recorded outcome.",
@@ -242,10 +243,10 @@ export async function evaluateRevenueLeakRadar(
     ["tours", "id", "tenant_id", "opportunity_id", "start_at", "status"],
     ["offers", "id", "tenant_id", "linked_opportunity_id"],
   ], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT t.id, t.opportunity_id, t.assigned_to, t.start_at
       FROM tours t
-      WHERE t.tenant_id = $1::uuid
+      WHERE t.tenant_id = ${tenantId}::uuid
         AND t.opportunity_id IS NOT NULL
         AND t.start_at < NOW() - INTERVAL '24 hours'
         AND UPPER(COALESCE(t.status::text,'')) IN ('COMPLETED','VISITED','POSITIVE')
@@ -253,7 +254,7 @@ export async function evaluateRevenueLeakRadar(
           SELECT 1 FROM offers o
           WHERE o.tenant_id = t.tenant_id AND o.linked_opportunity_id = t.opportunity_id
         )
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "POSITIVE_TOUR_NO_OFFER", subjectType: "Tour", subjectId: row.id, opportunityId: row.opportunity_id,
       severity: "CRITICAL", reasonAr: "جولة إيجابية بلا عرض خلال المهلة.", reasonEn: "Positive tour has no offer within the required window.",
@@ -265,14 +266,14 @@ export async function evaluateRevenueLeakRadar(
     ["offers", "id", "tenant_id", "status", "price", "linked_opportunity_id", "created_at"],
     ["contracts", "offer_id", "tenant_id"],
   ], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT o.id, o.price, o.linked_opportunity_id, o.created_at
       FROM offers o
-      WHERE o.tenant_id = $1::uuid
+      WHERE o.tenant_id = ${tenantId}::uuid
         AND UPPER(COALESCE(o.status::text,'')) = 'ACCEPTED'
         AND o.created_at < NOW() - INTERVAL '2 hours'
         AND NOT EXISTS (SELECT 1 FROM contracts c WHERE c.tenant_id = o.tenant_id AND c.offer_id = o.id)
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "ACCEPTED_OFFER_NO_CONTRACT", subjectType: "Offer", subjectId: row.id,
       opportunityId: row.linked_opportunity_id, severity: "CRITICAL",
@@ -285,14 +286,14 @@ export async function evaluateRevenueLeakRadar(
     ["contracts", "id", "tenant_id", "status", "total_volume_sar", "signed_at"],
     ["invoices", "contract_id", "tenant_id"],
   ], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT c.id, c.total_volume_sar, c.signed_at
       FROM contracts c
-      WHERE c.tenant_id = $1::uuid
+      WHERE c.tenant_id = ${tenantId}::uuid
         AND UPPER(COALESCE(c.status::text,'')) = 'SIGNED'
         AND c.signed_at < NOW() - INTERVAL '2 hours'
         AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = c.tenant_id AND i.contract_id = c.id)
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "SIGNED_CONTRACT_NO_INVOICE", subjectType: "Contract", subjectId: row.id,
       severity: "CRITICAL", reasonAr: "عقد موقع بلا فاتورة.", reasonEn: "Signed contract has no invoice.",
@@ -301,13 +302,13 @@ export async function evaluateRevenueLeakRadar(
   });
 
   await evaluate("OVERDUE_INVOICE", [["invoices", "id", "tenant_id", "status", "due_date", "total_amount"]], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT id, total_amount, due_date, contract_id
       FROM invoices
-      WHERE tenant_id = $1::uuid
+      WHERE tenant_id = ${tenantId}::uuid
         AND due_date < NOW()
         AND LOWER(COALESCE(status::text,'')) NOT IN ('paid','cancelled','void')
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "OVERDUE_INVOICE", subjectType: "Invoice", subjectId: row.id, invoiceId: row.id,
       severity: "CRITICAL", reasonAr: "فاتورة متأخرة عن الاستحقاق.", reasonEn: "Invoice is overdue.",
@@ -316,13 +317,13 @@ export async function evaluateRevenueLeakRadar(
   });
 
   await evaluate("INVENTORY_CONFLICT", [["offers", "id", "tenant_id", "unit_id", "status", "price"]], async () => {
-    const rows = await queryRows<any>(`
+    const rows = await queryRows<any>(Prisma.sql`
       SELECT unit_id, COUNT(*) AS conflict_count, SUM(price) AS value_at_risk
       FROM offers
-      WHERE tenant_id = $1::uuid AND unit_id IS NOT NULL
+      WHERE tenant_id = ${tenantId}::uuid AND unit_id IS NOT NULL
         AND UPPER(COALESCE(status::text,'')) IN ('ACCEPTED','ACTIVE','RESERVED')
       GROUP BY unit_id HAVING COUNT(*) > 1
-    `, tenantId);
+    `);
     return rows.map((row) => ({
       ruleCode: "INVENTORY_CONFLICT", subjectType: "Unit", subjectId: row.unit_id,
       severity: "CRITICAL", reasonAr: "تعارض حجز أو عرض نشط على الوحدة نفسها.",
