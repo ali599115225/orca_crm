@@ -8,6 +8,7 @@ import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { getEnabledProviderCodes, isProviderEnabled } from "@/lib/payments/registry";
 import { initiatePayment } from "@/lib/payments/service";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 export async function initiateSubscriptionPaymentAction(
   plan: "basic" | "silver" | "gold" | "pro" | "professional" | "diamond",
@@ -18,6 +19,15 @@ export async function initiateSubscriptionPaymentAction(
     const session = await getSession();
     if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
     const verified = await assertServerActionRole(session, ["ADMIN", "owner"]);
+
+    if (isDedicatedCopyDeployment()) {
+      return {
+        success: false,
+        error:
+          "إدارة الاشتراكات غير متاحة في النسخة المستقلة. يرجى التواصل مع الإدارة.",
+        dedicatedCopyBlocked: true,
+      };
+    }
 
     const tenant = await getActiveTenant();
 
@@ -66,6 +76,15 @@ export async function initiateAddonPaymentAction(
     const session = await getSession();
     if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
     const verified = await assertServerActionRole(session, ["ADMIN", "owner"]);
+
+    if (isDedicatedCopyDeployment()) {
+      return {
+        success: false,
+        error:
+          "إدارة الاشتراكات غير متاحة في النسخة المستقلة. يرجى التواصل مع الإدارة.",
+        dedicatedCopyBlocked: true,
+      };
+    }
 
     const tenant = await getActiveTenant();
 

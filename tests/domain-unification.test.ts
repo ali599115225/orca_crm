@@ -162,6 +162,7 @@ describe("Domain Service Unification", () => {
       contract: { create: vi.fn().mockResolvedValue(contract) },
       lead: { update: vi.fn().mockResolvedValue({}) },
       paymentPlan: {
+        findFirst: vi.fn().mockResolvedValue(null),
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({ id: "plan-1" }),
       },

@@ -326,7 +326,7 @@ describe('Idempotency Source — Outbox Guarantees', () => {
 });
 
 describe('Authorization Source — Guard Quality', () => {
-  it('hasDatabaseRole verifies both user AND active tenant',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('Promise.all(['); expect(src).toContain('isActive: true'); });
+  it('hasDatabaseRole verifies both user AND active tenant',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('Promise.all(['); expect(src).toContain('authBootstrapFindTenantActive'); const boundarySrc=source('lib/system-prisma-boundary.ts'); expect(boundarySrc).toContain('isActive: true'); });
   it('requireAuth supports cookie AND Bearer token',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('session_token'); expect(src).toContain('Bearer '); });
   it('unauthorizedResponse returns HTTP 401',()=>{
   const guard = source('lib/api-auth-guard.ts');
@@ -342,7 +342,7 @@ describe('Authorization Source — Guard Quality', () => {
   expect(guard).toContain('httpErrorResponse(');
   expect(errors).toMatch(/case ErrorCode\.FORBIDDEN:[\s\S]*?return 403;/);
 });
-  it('isSuperAdmin checks env emails against DB',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('SUPER_ADMIN_EMAILS'); expect(src).toContain('user?.email'); });
+  it('isSuperAdmin checks env emails against DB',()=>{ const src=source('lib/api-auth-guard.ts'); expect(src).toContain('isConfiguredSuperAdminEmail'); expect(src).toContain('user?.email'); const platformSrc=source('lib/platform-identity.ts'); expect(platformSrc).toContain('SUPER_ADMIN_EMAILS'); });
 });
 
 describe('Audit Source — Coverage', () => {

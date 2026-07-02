@@ -11,6 +11,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { checkAndSuspendExpiredTenantsInternal } from "@/lib/server/internal";
 import { ErrorCode } from "@/lib/errors";
 import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 export async function GET(request: NextRequest) {
   const CRON_SECRET = process.env.CRON_SECRET;
@@ -25,6 +26,27 @@ export async function GET(request: NextRequest) {
   const rl = await rateLimit("cron:billing", 1, 300000);
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+  }
+
+  if (isDedicatedCopyDeployment()) {
+    try {
+      const heartbeat = await recordHeartbeat({
+        serviceId: "CRON_BILLING",
+        metadata: { mode: "DEDICATED_COPY", skipped: true },
+      });
+      if (!heartbeat.success) {
+        console.error("Cron heartbeat failed (DEDICATED_COPY):", heartbeat.error);
+      }
+    } catch (heartbeatError) {
+      console.error("Cron heartbeat failed (DEDICATED_COPY):", heartbeatError);
+    }
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      mode: "DEDICATED_COPY",
+      message:
+        "Subscription billing automation is disabled for dedicated deployments.",
+    });
   }
 
   try {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/api-auth';
 import { ErrorCode } from "@/lib/errors";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +50,11 @@ export async function POST(request: NextRequest) {
     let aiReply = "";
 
     if (lowerDesc.includes("باقة") || lowerDesc.includes("اشتراك") || lowerDesc.includes("دفع")) {
-      aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. بخصوص استفسارك عن ترقيات الاشتراكات والدفع، يمكنك التوجه إلى صفحة الإعدادات وتحديد باقة الاشتراك ودفعها بـ مدى أو فيزا أو STC Pay بشكل فوري وسيتم تفعيل حسابك وصلاحيات الموظفين تلقائياً خلال ثوانٍ معدودة.`;
+      if (isDedicatedCopyDeployment()) {
+        aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. النسخة التي تستخدمها تعمل بترخيص مستقل، وإدارة الترخيص تتم عبر الإدارة المباشرة أو عقد الترخيص. يرجى التواصل مع فريق الدعم الفني للإجابة على أي استفسارات تتعلق بالترخيص.`;
+      } else {
+        aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. بخصوص استفسارك عن ترقيات الاشتراكات والدفع، يمكنك التوجه إلى صفحة الإعدادات وتحديد باقة الاشتراك ودفعها بـ مدى أو فيزا أو STC Pay بشكل فوري وسيتم تفعيل حسابك وصلاحيات الموظفين تلقائياً خلال ثوانٍ معدودة.`;
+      }
     } else if (lowerDesc.includes("ربط") || lowerDesc.includes("نطاق") || lowerDesc.includes("دومين") || lowerDesc.includes("dns")) {
       aiReply = `مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لربط نطاقك المخصص المشتري من Hostinger أو غيرها، يرجى التوجه إلى لوحة إدارة DNS الخاصة بنطاقك وإضافة سجل CNAME يشير إلى: cname.vercel-dns.com، وبمجرد إتمام ذلك، تفضل بتحديث الإعدادات باللوحة وسيتم توجيه رابط المبيعات الخاص بك آلياً.`;
     } else if (lowerDesc.includes("خطأ") || lowerDesc.includes("مشكلة") || lowerDesc.includes("عطل") || lowerDesc.includes("توقف")) {

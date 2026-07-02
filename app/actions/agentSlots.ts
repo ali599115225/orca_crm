@@ -11,6 +11,7 @@ import {
   getAgentDefinition,
   normalizeAgentType,
 } from "@/lib/agents/registry";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 const PLAN_SLOT_LIMITS: Record<string, number> = {
   basic: 1,
@@ -22,6 +23,7 @@ const PLAN_SLOT_LIMITS: Record<string, number> = {
 };
 
 function planLimit(plan: string | null | undefined): number {
+  if (isDedicatedCopyDeployment()) return Number.MAX_SAFE_INTEGER;
   return PLAN_SLOT_LIMITS[(plan || "basic").toLowerCase()] ?? 1;
 }
 

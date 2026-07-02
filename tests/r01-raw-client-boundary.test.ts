@@ -83,9 +83,8 @@ describe("R01 raw/system Prisma client boundary", () => {
     const unused: string[] = [];
     for (const f of rawImportFiles) {
       const content = fs.readFileSync(path.join(root, f), "utf8");
-      const usagePattern = /rawPrisma\./g;
-      const matches = content.match(usagePattern);
-      if (!matches || matches.length === 0) {
+      const rawPrismaReferences = content.match(/\brawPrisma\b/g) ?? [];
+      if (rawPrismaReferences.length < 2) {
         unused.push(f);
       }
     }

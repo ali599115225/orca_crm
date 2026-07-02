@@ -25,12 +25,13 @@ vi.mock("@/lib/session", () => ({
 
 const mockUserFindFirst = vi.fn();
 const mockTenantFindFirst = vi.fn();
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const client = {
     user: { findFirst: (...args: unknown[]) => mockUserFindFirst(...args) },
     tenant: { findFirst: (...args: unknown[]) => mockTenantFindFirst(...args) },
-  },
-}));
+  };
+  return { rawPrisma: client, prisma: client };
+});
 
 // ============================================================================
 // Subject-under-test imports (after mocks)

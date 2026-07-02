@@ -328,6 +328,8 @@ describe("Offer Unit Integrity", () => {
       leadId: "lead-1",
       offerId: "offer-1",
       unitId: "unit-1",
+      totalVolumeSar: 500000,
+      vatType: "STANDARD",
       status: "PENDING_SIGNATURE",
       spineVersion: 2,
       legacyFinancial: false,
@@ -345,6 +347,7 @@ describe("Offer Unit Integrity", () => {
     });
 
     const events: any[] = [];
+    let paymentPlanCreated = false;
     const dealPassport: any = {
       id: "deal-1",
       tenantId: "tenant-1",
@@ -382,8 +385,15 @@ describe("Offer Unit Integrity", () => {
         create: vi.fn().mockResolvedValue(contract),
       },
       paymentPlan: {
+        findFirst: vi.fn().mockImplementation(async () => {
+          // Stateful: return null before create, return plan after create
+          return paymentPlanCreated ? paymentPlan : null;
+        }),
         findUnique: vi.fn().mockResolvedValue(paymentPlan),
-        create: vi.fn().mockResolvedValue(paymentPlan),
+        create: vi.fn().mockImplementation(async () => {
+          paymentPlanCreated = true;
+          return paymentPlan;
+        }),
       },
       opportunity: {
         update: vi.fn().mockResolvedValue({
@@ -529,6 +539,7 @@ describe("Offer Unit Integrity", () => {
         }),
       },
       paymentPlan: {
+        findFirst: vi.fn(),
         findUnique: vi.fn(),
         create: vi.fn(),
       },

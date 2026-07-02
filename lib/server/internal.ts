@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import { sendSMSNotification } from "@/lib/notifications";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 // ── Billing Agent (from app/actions/billingAgent.ts) ─────────────────────────
 
@@ -18,6 +19,13 @@ export async function handleSuccessfulPaymentInternal(
   plan: string,
   billingCycle: "MONTHLY" | "YEARLY"
 ) {
+  if (isDedicatedCopyDeployment()) {
+    return {
+      success: false,
+      error: "تفعيل اشتراكات SaaS غير متاح في النسخة المستقلة.",
+    };
+  }
+
   try {
     const now = new Date();
     const expiresAt = new Date();

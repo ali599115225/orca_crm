@@ -59,6 +59,8 @@ vi.mock("@/lib/prisma", () => ({
     leadActivity: { create: mocks.leadActivityCreate },
     sentinelTaskOrder: { findFirst: mocks.sentinelFindFirst, updateMany: mocks.sentinelUpdateMany },
     sentinelConfig: { findFirst: vi.fn() },
+    sentinelHeartbeat: { findMany: vi.fn().mockResolvedValue([]) },
+    sentinelIncident: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null) },
     $disconnect: vi.fn(),
     $connect: vi.fn(),
   },

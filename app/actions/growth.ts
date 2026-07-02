@@ -9,6 +9,7 @@ import { encryptText, decryptText } from "@/lib/crypto";
 import { hashPhone } from "@/lib/privacy-mask";
 import { authorizeAgentAccess } from "@/lib/licensing";
 import { assertAgentCanRun } from "@/lib/agents/guard";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 import {
   sanitizeAgentInput,
   detectInjectionPatterns,
@@ -411,7 +412,7 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
     }
 
     // Check MANSOUR plan limits (basic = max 10 messages/day)
-    if (tenant.subscriptionPlan === "basic") {
+    if (!isDedicatedCopyDeployment() && tenant.subscriptionPlan === "basic") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayChatsCount = await prisma.mansourChat.count({
@@ -876,6 +877,15 @@ export async function leaseAgentAction(data: {
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
     const tenant = await getActiveTenant();
+
+    if (isDedicatedCopyDeployment()) {
+      return {
+        success: false,
+        error:
+          "استئجار الوكلاء غير متاح في النسخة المستقلة. جميع الوكلاء مشمولون في الترخيص.",
+        dedicatedCopyBlocked: true,
+      };
+    }
 
     const requestedAgent = data.agentId.toUpperCase();
     

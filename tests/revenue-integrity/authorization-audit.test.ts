@@ -44,6 +44,8 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(),
   },
   rawPrisma: {
+    user: { findFirst: mockUserFindFirst, findUnique: mockUserFindUnique },
+    tenant: { findFirst: mockTenantFindFirst, findUnique: mockTenantFindUnique },
     auditLog: { create: mockAuditLogCreate },
   },
 }));
