@@ -4,6 +4,7 @@ import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
+import { runWithTenantContext } from '@/lib/tenant-context';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export const metadata = {
@@ -32,9 +33,16 @@ export default async function OperationsLayout({
   }
 
   // جلب بيانات المستخدم الحالي
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId as string }
-  });
+  const user = await runWithTenantContext(
+    {
+      tenantId: tenant.id,
+      userId: session.userId as string,
+    },
+    () =>
+      prisma.user.findUnique({
+        where: { id: session.userId as string },
+      }),
+  );
   const userEmail = user?.email || "";
   const userName = user?.name || "";
   const isSuperAdmin = userEmail === "ali.orca@outlook.sa" || userEmail === "elite.orca@outlook.sa";
