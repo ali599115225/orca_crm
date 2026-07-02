@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { requireTenantContext, runWithTenantContext } from "@/lib/tenant-context";
 
 function source(relativePath: string) {
   return fs.readFileSync(
@@ -46,5 +47,26 @@ describe("Operations tenant context scope", () => {
     expect(dashboard).toContain(
       "() => Promise.allSettled([",
     );
+  });
+
+  it("executes a lazy Prisma-like thenable inside the tenant context", async () => {
+    const layout = source("app/operations/layout.tsx");
+
+    expect(layout).toMatch(
+      /const user = await runWithTenantContext\([\s\S]*?async \(\) => \{[\s\S]*?return await prisma\.user\.findUnique\(/,
+    );
+
+    const lazyPrismaLike = {
+      then(resolve: (value: string) => void) {
+        resolve(requireTenantContext().tenantId);
+      },
+    } as unknown as PromiseLike<string>;
+
+    const result = await runWithTenantContext(
+      { tenantId: "tenant-lazy-prisma-test" },
+      async () => await lazyPrismaLike,
+    );
+
+    expect(result).toBe("tenant-lazy-prisma-test");
   });
 });
