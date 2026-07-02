@@ -415,3 +415,40 @@ export async function authBootstrapFindTenantActive(
     return null;
   }
 }
+/**
+ * TENANT_RESOLUTION capabilities.
+ *
+ * Resolves an active tenant before tenant-aware Prisma context exists.
+ * These functions do not expose a generic Prisma client.
+ */
+export async function tenantResolutionFindActiveById(tenantId: string) {
+  if (!tenantId) return null;
+
+  return getRawPrisma().tenant.findFirst({
+    where: {
+      id: tenantId,
+      isActive: true,
+    },
+  });
+}
+
+export async function tenantResolutionFindActiveBySubdomain(
+  subdomain: string,
+) {
+  if (!subdomain) return null;
+
+  return getRawPrisma().tenant.findFirst({
+    where: {
+      subdomain,
+      isActive: true,
+    },
+  });
+}
+
+export async function tenantResolutionFindFirstActive() {
+  return getRawPrisma().tenant.findFirst({
+    where: {
+      isActive: true,
+    },
+  });
+}
