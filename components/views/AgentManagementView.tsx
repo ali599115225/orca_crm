@@ -472,12 +472,14 @@ export default function AgentManagementView({
                 : "Full Dedicated License"
                             : planLabel}
           </span>
-          <Link
-            href="/operations/settings?tab=agents"
-            className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] transition hover:border-[var(--nc-accent-border)]"
-          >
-            {isArabic ? "إعدادات الاشتراك" : "Subscription Settings"}
-          </Link>
+          {!isDedicatedCopy && (
+            <Link
+              href="/operations/settings?tab=agents"
+              className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] transition hover:border-[var(--nc-accent-border)]"
+            >
+              {isArabic ? "إعدادات الاشتراك" : "Subscription Settings"}
+            </Link>
+          )}
         </div>
       </header>
 
@@ -894,7 +896,7 @@ export default function AgentManagementView({
         </div>
       )}
 
-      {selectedSubscription && (
+      {selectedSubscription && !isDedicatedCopy && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
           role="dialog"
