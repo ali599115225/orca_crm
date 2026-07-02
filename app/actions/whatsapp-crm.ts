@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
@@ -121,26 +122,37 @@ export async function createWhatsAppTaskAction(formData: FormData) {
 }
 
 // Phase J: Dashboard stats for WhatsApp
+// This helper is safe to call from both Server Components (inside an explicit
+// runWithTenantContext scope) and from Server Action wrappers.
+export async function fetchWhatsAppDashboardStats(tenantId: string) {
+  const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
+
+  return runWithTenantContext(
+    { tenantId },
+    async () => {
+      const [conversationsCount, newLeadsCount, unreadMessagesCount] = await Promise.all([
+        prisma.whatsAppContact.count({ where: { tenantId } }),
+        prisma.lead.count({
+          where: {
+            tenantId,
+            source: { in: ["WHATSAPP", "whatsapp"] },
+            createdAt: { gte: oneWeekAgo },
+          },
+        }),
+        prisma.whatsAppMessage.count({
+          where: { tenantId, direction: "inbound", readAt: null },
+        }),
+      ]);
+
+      return { success: true, conversationsCount, newLeadsCount, unreadMessagesCount };
+    },
+  );
+}
+
 export async function getWhatsAppDashboardStats() {
   try {
     const tenant = await getActiveTenant();
-    const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
-
-    const [conversationsCount, newLeadsCount, unreadMessagesCount] = await Promise.all([
-      prisma.whatsAppContact.count({ where: { tenantId: tenant.id } }),
-      prisma.lead.count({
-        where: {
-          tenantId: tenant.id,
-          source: { in: ["WHATSAPP", "whatsapp"] },
-          createdAt: { gte: oneWeekAgo },
-        },
-      }),
-      prisma.whatsAppMessage.count({
-        where: { tenantId: tenant.id, direction: "inbound", readAt: null },
-      }),
-    ]);
-
-    return { success: true, conversationsCount, newLeadsCount, unreadMessagesCount };
+    return fetchWhatsAppDashboardStats(tenant.id);
   } catch (error: any) {
     return { success: false, error: error.message, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 };
   }

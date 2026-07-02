@@ -11,7 +11,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 type OperationsDiagnosticCode =
   | 'OPERATIONS_SESSION_MISSING'
   | 'OPERATIONS_TENANT_RESOLUTION_FAILED'
-  | 'OPERATIONS_TENANT_READY';
+  | 'OPERATIONS_TENANT_READY'
+  | 'OPERATIONS_PAGE_CONTEXT_ENTERED';
 
 function logOperationsDiagnostic(code: OperationsDiagnosticCode) {
   console.info('[OperationsDiagnostics]', { code });
@@ -63,10 +64,12 @@ export default async function OperationsLayout({
       tenantId: tenant.id,
       userId: session.userId as string,
     },
-    () =>
-      prisma.user.findUnique({
+    () => {
+      logOperationsDiagnostic('OPERATIONS_PAGE_CONTEXT_ENTERED');
+      return prisma.user.findUnique({
         where: { id: session.userId as string },
-      }),
+      });
+    },
   );
   const userEmail = user?.email || "";
   const userName = user?.name || "";

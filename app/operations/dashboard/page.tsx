@@ -2,7 +2,7 @@ import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
 import { runWithTenantContext } from '@/lib/tenant-context';
-import { getWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
+import { fetchWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
 import DashboardView from './DashboardView';
 
 export const metadata = {
@@ -10,8 +10,18 @@ export const metadata = {
   description: 'مراقبة حية للمبيعات ومسار الصفقات وحجم مخزون الوحدات العقارية والتنبؤات الذكية',
 };
 
+type OperationsDashboardDiagnosticCode =
+  | 'OPERATIONS_DASHBOARD_CONTEXT_ENTERED'
+  | 'OPERATIONS_QUERY_SCOPE_COMPLETED';
+
+function logOperationsDashboardDiagnostic(code: OperationsDashboardDiagnosticCode) {
+  console.info('[OperationsDashboardDiagnostics]', { code });
+}
+
 export default async function DashboardPage() {
   const tenant = await getActiveTenant();
+
+  logOperationsDashboardDiagnostic('OPERATIONS_DASHBOARD_CONTEXT_ENTERED');
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -29,28 +39,30 @@ export default async function DashboardPage() {
   ] = await runWithTenantContext(
     { tenantId: tenant.id },
     () => Promise.allSettled([
-    prisma.lead.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
-    prisma.task.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
-    prisma.contract.aggregate({
-      where: { unit: { project: { tenantId: tenant.id } } },
-      _sum: { totalVolumeSar: true },
-      _count: { id: true },
-    }),
-    prisma.lead.groupBy({ by: ['source'], where: { tenantId: tenant.id }, _count: { id: true } }),
-    prisma.lead.findMany({
-      where: { tenantId: tenant.id }, take: 5, orderBy: { createdAt: 'desc' },
-      include: { project: { select: { name: true } } },
-    }),
-    prisma.task.findMany({
-      where: { tenantId: tenant.id }, take: 5, orderBy: { dueDate: 'asc' },
-      include: { lead: { select: { firstName: true, lastName: true } } },
-    }),
-    prisma.project.findMany({
-      where: { tenantId: tenant.id }, take: 4, orderBy: { createdAt: 'desc' },
-    }),
-    getWhatsAppDashboardStats(),
+      prisma.lead.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
+      prisma.task.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
+      prisma.contract.aggregate({
+        where: { unit: { project: { tenantId: tenant.id } } },
+        _sum: { totalVolumeSar: true },
+        _count: { id: true },
+      }),
+      prisma.lead.groupBy({ by: ['source'], where: { tenantId: tenant.id }, _count: { id: true } }),
+      prisma.lead.findMany({
+        where: { tenantId: tenant.id }, take: 5, orderBy: { createdAt: 'desc' },
+        include: { project: { select: { name: true } } },
+      }),
+      prisma.task.findMany({
+        where: { tenantId: tenant.id }, take: 5, orderBy: { dueDate: 'asc' },
+        include: { lead: { select: { firstName: true, lastName: true } } },
+      }),
+      prisma.project.findMany({
+        where: { tenantId: tenant.id }, take: 4, orderBy: { createdAt: 'desc' },
+      }),
+      fetchWhatsAppDashboardStats(tenant.id),
     ]),
   );
+
+  logOperationsDashboardDiagnostic('OPERATIONS_QUERY_SCOPE_COMPLETED');
 
   // Extract values from Promise.allSettled results
   const safeValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
@@ -63,7 +75,7 @@ export default async function DashboardPage() {
   const dbRecentLeadsValue = safeValue(dbRecentLeads, []);
   const dbRecentTasksValue = safeValue(dbRecentTasks, []);
   const dbProjectsValue = safeValue(dbProjects, []);
-  const whatsAppStatsValue = safeValue(whatsAppStatsResult, { success: false, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0, error: null });
+  const whatsAppStatsValue = safeValue(whatsAppStatsResult, { success: false, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 });
 
   const leadCountMap = new Map(leadGroupValue.map(l => [l.status, l._count.id]));
   const totalLeads = leadGroupValue.reduce((s, l) => s + l._count.id, 0);
