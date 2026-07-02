@@ -132,10 +132,7 @@ const developmentMode = normalizeLicenseMode(
 process.env.ORCA_LICENSE_MODE,
 );
 
-if (
-process.env.NODE_ENV !== "production" &&
-developmentMode === "DEDICATED_COPY"
-) {
+if (developmentMode === "DEDICATED_COPY") {
 cachedLicense = {
 mode: "DEDICATED_COPY",
 valid: true,
@@ -159,3 +156,5 @@ return resolveDeploymentLicense().mode;
 export function isDedicatedCopyDeployment(): boolean {
 return getDeploymentLicenseMode() === "DEDICATED_COPY";
 }
+
+
