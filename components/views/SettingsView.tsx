@@ -79,9 +79,12 @@ export default function SettingsView({
   );
 
   useEffect(() => {
-    setActiveSection(resolveSection(searchParams.get("tab")));
+    const resolved = resolveSection(searchParams.get("tab"));
+    setActiveSection(
+      isDedicatedCopy && resolved === "billing" ? "organization" : resolved,
+    );
     headerRef.current?.scrollIntoView({ block: "start" });
-  }, [searchParams]);
+  }, [isDedicatedCopy, searchParams]);
 
   const staffUsers = useMemo(
     () =>
@@ -124,6 +127,7 @@ export default function SettingsView({
           activeSection={activeSection}
           lang={lang}
           onChange={changeSection}
+          hideBilling={isDedicatedCopy}
         />
       </div>
 
@@ -185,34 +189,9 @@ export default function SettingsView({
           </div>
         )}
 
-        {activeSection === "billing" &&
-          (isDedicatedCopy ? (
-            <SmartCard className="p-6">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
-                    {isArabic
-                      ? "ترخيص نسخة كاملة"
-                      : "Full Dedicated License"}
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm text-[var(--nc-foreground-muted)]">
-                    {isArabic
-                      ? "هذه النسخة تشمل جميع الوكلاء والوظائف المرخصة، ولا تتطلب شراء وكلاء أو ترقية باقة."
-                      : "This deployment includes all licensed agents and features. No agent purchase or plan upgrade is required."}
-                  </p>
-                </div>
-                <span className="orca-status-badge orca-status-success">
-                  {isArabic ? "ترخيص نشط" : "License Active"}
-                </span>
-              </div>
-            </SmartCard>
-          ) : (
-            <SettingsBilling
-              tenant={tenant}
-              lang={lang}
-              isArabic={isArabic}
-            />
-          ))}
+        {!isDedicatedCopy && activeSection === "billing" && (
+          <SettingsBilling tenant={tenant} lang={lang} isArabic={isArabic} />
+        )}
 
         {activeSection === "ai" && (
           <div className="orca-settings-ai">

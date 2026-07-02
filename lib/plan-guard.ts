@@ -2,6 +2,7 @@
 // Centralized plan enforcement — single source of truth for limits and guarding
 import { prisma } from "./prisma";
 import type { PrismaClient } from "@prisma/client";
+import { getDeploymentLicenseMode } from "./deployment-license";
 
 // Transaction client type — derived from the extended prisma instance
 type PrismaTx = Parameters<Parameters<(typeof prisma)["$transaction"]>[0]>[0];
@@ -42,8 +43,20 @@ export const PLAN_LIMITS: Record<
   }
 > = {
   basic: { leads: 100, staff: 2, projects: 2, aiAgents: 1, whatsapp: false },
-  silver: { leads: 1000, staff: 10, projects: 10, aiAgents: 2, whatsapp: false },
-  gold: { leads: null, staff: null, projects: null, aiAgents: 5, whatsapp: true },
+  silver: {
+    leads: 1000,
+    staff: 10,
+    projects: 10,
+    aiAgents: 2,
+    whatsapp: false,
+  },
+  gold: {
+    leads: null,
+    staff: null,
+    projects: null,
+    aiAgents: 5,
+    whatsapp: true,
+  },
 };
 
 // ── Feature-to-table mapping for count queries ──
@@ -109,7 +122,7 @@ export function getPlanLimits(plan: string | null | undefined) {
 
 export function isFeatureAccessible(
   tenantPlan: string | null | undefined,
-  feature: GateFeature
+  feature: GateFeature,
 ): boolean {
   const p = normalizePlan(tenantPlan);
   return PLAN_LIMITS[p][feature] as boolean;
@@ -123,6 +136,8 @@ export async function assertPlanLimit(params: {
   feature: CountFeature;
   tx: PrismaTx;
 }): Promise<void> {
+  if (getDeploymentLicenseMode() === "DEDICATED_COPY") return;
+
   const db = params.tx;
 
   // 1. Lock the tenant row to serialize concurrent count checks
@@ -155,7 +170,9 @@ export async function assertPlanLimit(params: {
       current = await db.user.count({ where: { tenantId: params.tenantId } });
       break;
     case "projects":
-      current = await db.project.count({ where: { tenantId: params.tenantId } });
+      current = await db.project.count({
+        where: { tenantId: params.tenantId },
+      });
       break;
     case "aiAgents":
       current = await db.agentSlot.count({
@@ -199,6 +216,8 @@ export async function canUseFeature(params: {
   feature: GateFeature;
   tx?: PrismaTx;
 }): Promise<boolean> {
+  if (getDeploymentLicenseMode() === "DEDICATED_COPY") return true;
+
   const db = params.tx || prisma;
   const tenant = await db.tenant.findUnique({
     where: { id: params.tenantId },
