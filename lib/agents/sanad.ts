@@ -1,6 +1,6 @@
 // lib/agents/sanad.ts
 import { prisma } from "../prisma";
-import { runWithTenantContext } from "../tenant-context";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { sendAdminEmailAlert } from "../email";
 
 interface RecoveryResult<T> {

@@ -1,6 +1,6 @@
 // lib/agents/saher.ts
 import { prisma } from "../prisma";
-import { runWithTenantContext } from "../tenant-context";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export interface CorrectionReport {
   status: 'COMPLIANT' | 'NON_COMPLIANT';

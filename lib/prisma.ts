@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { tenantContext } from "./tenant-context";
+import { tenantContext } from "@/lib/tenant-context";
 import { redactPrismaArgs } from "./privacy-mask";
 import {
   applyTenantIsolationToQuery,
