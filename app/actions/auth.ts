@@ -29,6 +29,28 @@ function configuredEmails(name: string): Set<string> {
   );
 }
 
+type LoginDiagnosticCode =
+  | 'LOGIN_USER_NOT_FOUND'
+  | 'LOGIN_USER_INACTIVE'
+  | 'LOGIN_TENANT_MISSING'
+  | 'LOGIN_TENANT_INACTIVE'
+  | 'LOGIN_PASSWORD_HASH_MISSING'
+  | 'LOGIN_PASSWORD_INVALID'
+  | 'LOGIN_COOKIE_CREATED'
+  | 'LOGIN_SUCCESS';
+
+function logLoginDiagnostic(
+  code: LoginDiagnosticCode,
+  metadata?: {
+    secure: boolean;
+    sameSite: 'lax';
+    path: '/';
+    domainConfigured: boolean;
+  },
+) {
+  console.info('[LoginDiagnostics]', { code, ...metadata });
+}
+
 export async function loginAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
@@ -60,17 +82,36 @@ export async function loginAction(formData: FormData) {
       };
     }
 
-    const user = await rawPrisma.user.findFirst({
-      where: { email, isActive: true },
+    const user = await rawPrisma.user.findUnique({
+      where: { email },
       include: { tenant: true },
     });
 
+    let passwordMatches = false;
+    if (!user) {
+      logLoginDiagnostic('LOGIN_USER_NOT_FOUND');
+    } else if (!user.isActive) {
+      logLoginDiagnostic('LOGIN_USER_INACTIVE');
+    } else if (!user.tenant) {
+      logLoginDiagnostic('LOGIN_TENANT_MISSING');
+    } else if (!user.tenant.isActive) {
+      logLoginDiagnostic('LOGIN_TENANT_INACTIVE');
+    } else if (!user.passwordHash) {
+      logLoginDiagnostic('LOGIN_PASSWORD_HASH_MISSING');
+    } else {
+      passwordMatches = await bcrypt.compare(password, user.passwordHash);
+      if (!passwordMatches) {
+        logLoginDiagnostic('LOGIN_PASSWORD_INVALID');
+      }
+    }
+
     const validCredentials = Boolean(
       user &&
+      user.isActive &&
       user.tenant &&
       user.tenant.isActive &&
       user.passwordHash &&
-      (await bcrypt.compare(password, user.passwordHash))
+      passwordMatches
     );
 
     if (!validCredentials) {
@@ -169,6 +210,12 @@ export async function loginAction(formData: FormData) {
       maxAge: 60 * 60 * 12,
       domain: sharedDomain,
     });
+    logLoginDiagnostic('LOGIN_COOKIE_CREATED', {
+      secure,
+      sameSite: 'lax',
+      path: '/',
+      domainConfigured: Boolean(sharedDomain),
+    });
 
     if (!platformArchitect) {
       cookieStore.set('device_tenant_subdomain', user.tenant.subdomain, {
@@ -188,6 +235,7 @@ export async function loginAction(formData: FormData) {
       redirectUrl = `https://${user.tenant.subdomain}.orca.az-ez.pro/operations`;
     }
 
+    logLoginDiagnostic('LOGIN_SUCCESS');
     return { success: true, redirectUrl };
   } catch (error: unknown) {
     if (error instanceof SafeAuthError) {
