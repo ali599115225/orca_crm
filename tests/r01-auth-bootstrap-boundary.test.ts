@@ -25,11 +25,12 @@ describe("R01 auth bootstrap boundary", () => {
       expect(content).not.toMatch(/export\s+(async\s+)?function\s+\w*[Rr]un\b/);
     });
 
-    it("encapsulates rawPrisma access via lazy loading", () => {
+    it("encapsulates rawPrisma access inside the boundary", () => {
       const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
       const content = fs.readFileSync(boundaryPath, "utf8");
-      expect(content).toMatch(/rawPrisma/);
-      expect(content).toMatch(/prisma/);
+      expect(content).toContain('import { rawPrisma } from "@/lib/prisma";');
+      expect(content).not.toContain('require("@/lib/prisma").rawPrisma');
+      expect(content).not.toContain("rawPrisma unavailable");
     });
 
     it("is in the system client allowlist", () => {
@@ -54,6 +55,12 @@ describe("R01 auth bootstrap boundary", () => {
       const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
       const content = fs.readFileSync(boundaryPath, "utf8");
       expect(content).toMatch(/export\s+async\s+function\s+authBootstrapFindTenantActive\b/);
+    });
+
+    it("exports authBootstrapFindUserByEmail for login bootstrap", () => {
+      const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+      const content = fs.readFileSync(boundaryPath, "utf8");
+      expect(content).toMatch(/export\s+async\s+function\s+authBootstrapFindUserByEmail\b/);
     });
 
     it("authBootstrapFindUserEmail uses minimal select and explicit userId predicate", () => {
@@ -86,6 +93,40 @@ describe("R01 auth bootstrap boundary", () => {
       expect(fnBody).toMatch(/select:\s*\{\s*id:\s*true\s*\}/);
       expect(fnBody).toMatch(/id:\s*tenantId/);
       expect(fnBody).toMatch(/isActive:\s*true/);
+    });
+
+    it("authBootstrapFindUserByEmail selects only login fields and tenant activity", () => {
+      const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+      const content = fs.readFileSync(boundaryPath, "utf8");
+      const fnMatch = content.match(/export\s+async\s+function\s+authBootstrapFindUserByEmail[\s\S]*?^}/m);
+      expect(fnMatch).not.toBeNull();
+      const fnBody = fnMatch![0];
+      expect(fnBody).toMatch(/where:\s*\{\s*email\s*\}/);
+      expect(fnBody).toContain("passwordHash: true");
+      expect(fnBody).toContain("isActive: true");
+      expect(fnBody).toContain("tenant:");
+      expect(fnBody).toContain("subdomain: true");
+      expect(fnBody).not.toContain("findMany");
+      expect(fnBody).not.toContain("$queryRaw");
+      expect(fnBody).not.toContain("$executeRaw");
+    });
+  });
+
+  describe("login action uses the auth bootstrap boundary", () => {
+    it("does not import rawPrisma directly", () => {
+      const authPath = path.join(process.cwd(), "app", "actions", "auth.ts");
+      const content = fs.readFileSync(authPath, "utf8");
+      expect(content).not.toMatch(/import\s+.*\brawPrisma\b/);
+      expect(content).toContain("authBootstrapFindUserByEmail");
+    });
+
+    it("does not contain rawPrisma unavailable or tenant context failures", () => {
+      const authPath = path.join(process.cwd(), "app", "actions", "auth.ts");
+      const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+      const authContent = fs.readFileSync(authPath, "utf8");
+      const content = `${authContent}\n${fs.readFileSync(boundaryPath, "utf8")}`;
+      expect(content).not.toContain("rawPrisma unavailable");
+      expect(authContent).not.toContain("TENANT_CONTEXT_REQUIRED");
     });
   });
 

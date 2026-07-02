@@ -7,7 +7,7 @@ import { encrypt } from '@/lib/session';
 import { checkRateLimit, clearRateLimit, rateLimit } from '@/lib/rate-limit';
 import { ErrorCode, publicError } from '@/lib/errors';
 import {
-  authLoginFindUserByEmail,
+  authBootstrapFindUserByEmail,
   tenantResolutionFindFirstActive,
 } from '@/lib/system-prisma-boundary';
 import { getConfiguredPrivilegedRole } from '@/lib/platform-identity';
@@ -76,7 +76,7 @@ export async function loginAction(formData: FormData) {
       };
     }
 
-    const user = await authLoginFindUserByEmail(email);
+    const user = await authBootstrapFindUserByEmail(email);
     const privilegedRole = getConfiguredPrivilegedRole(user?.email);
 
     let passwordMatches = false;

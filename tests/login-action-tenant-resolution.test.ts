@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  authLoginFindUserByEmail: vi.fn(),
+  authBootstrapFindUserByEmail: vi.fn(),
   tenantResolutionFindFirstActive: vi.fn(),
   compare: vi.fn(),
   encrypt: vi.fn(),
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/system-prisma-boundary", () => ({
-  authLoginFindUserByEmail: mocks.authLoginFindUserByEmail,
+  authBootstrapFindUserByEmail: mocks.authBootstrapFindUserByEmail,
   tenantResolutionFindFirstActive: mocks.tenantResolutionFindFirstActive,
 }));
 
@@ -90,7 +90,7 @@ describe("loginAction tenant resolution", () => {
   });
 
   it("allows a normal user with an active tenant", async () => {
-    mocks.authLoginFindUserByEmail.mockResolvedValue(activeUser());
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(activeUser());
 
     const result = await loginAction(credentials());
 
@@ -108,7 +108,7 @@ describe("loginAction tenant resolution", () => {
   });
 
   it("rejects a normal user without tenant and does not fallback", async () => {
-    mocks.authLoginFindUserByEmail.mockResolvedValue(
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(
       activeUser({ tenant: null }),
     );
 
@@ -120,7 +120,7 @@ describe("loginAction tenant resolution", () => {
   });
 
   it("rejects a normal user with an inactive tenant and does not fallback", async () => {
-    mocks.authLoginFindUserByEmail.mockResolvedValue(
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(
       activeUser({ tenant: { ...activeTenant(), isActive: false } }),
     );
 
@@ -133,7 +133,7 @@ describe("loginAction tenant resolution", () => {
 
   it("allows a Platform Architect with an active tenant", async () => {
     vi.stubEnv("PLATFORM_ARCHITECT_EMAILS", "user@example.com");
-    mocks.authLoginFindUserByEmail.mockResolvedValue(activeUser());
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(activeUser());
 
     const result = await loginAction(credentials());
 
@@ -149,7 +149,7 @@ describe("loginAction tenant resolution", () => {
 
   it("allows a Platform Architect without linked tenant through privileged fallback", async () => {
     vi.stubEnv("PLATFORM_ARCHITECT_EMAILS", "user@example.com");
-    mocks.authLoginFindUserByEmail.mockResolvedValue(
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(
       activeUser({ tenant: null }),
     );
     mocks.tenantResolutionFindFirstActive.mockResolvedValue(
@@ -170,7 +170,7 @@ describe("loginAction tenant resolution", () => {
 
   it("does not create a cookie when privileged fallback has no active tenant", async () => {
     vi.stubEnv("PLATFORM_ARCHITECT_EMAILS", "user@example.com");
-    mocks.authLoginFindUserByEmail.mockResolvedValue(
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(
       activeUser({ tenant: null }),
     );
     mocks.tenantResolutionFindFirstActive.mockResolvedValue(null);
@@ -178,6 +178,20 @@ describe("loginAction tenant resolution", () => {
     const result = await loginAction(credentials());
 
     expect(result.success).toBe(false);
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid password before tenant fallback", async () => {
+    vi.stubEnv("PLATFORM_ARCHITECT_EMAILS", "user@example.com");
+    mocks.authBootstrapFindUserByEmail.mockResolvedValue(
+      activeUser({ tenant: null }),
+    );
+    mocks.compare.mockResolvedValue(false);
+
+    const result = await loginAction(credentials());
+
+    expect(result.success).toBe(false);
+    expect(mocks.tenantResolutionFindFirstActive).not.toHaveBeenCalled();
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
 });
