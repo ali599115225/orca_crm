@@ -1,6 +1,7 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
+import { runWithTenantContext } from '@/lib/tenant-context';
 import { getWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
 import DashboardView from './DashboardView';
 
@@ -25,7 +26,9 @@ export default async function DashboardPage() {
     dbRecentTasks,
     dbProjects,
     whatsAppStatsResult,
-  ] = await Promise.allSettled([
+  ] = await runWithTenantContext(
+    { tenantId: tenant.id },
+    () => Promise.allSettled([
     prisma.lead.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
     prisma.task.groupBy({ by: ['status'], where: { tenantId: tenant.id }, _count: { id: true } }),
     prisma.contract.aggregate({
@@ -46,7 +49,8 @@ export default async function DashboardPage() {
       where: { tenantId: tenant.id }, take: 4, orderBy: { createdAt: 'desc' },
     }),
     getWhatsAppDashboardStats(),
-  ]);
+    ]),
+  );
 
   // Extract values from Promise.allSettled results
   const safeValue = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
