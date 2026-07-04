@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { loginAction } from '@/app/actions/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useLanguage } from '@/app/context/AppContext';
+import { useLanguage, useTheme } from '@/app/context/AppContext';
 
 interface LoginClientProps {
   tenantName?: string;
@@ -20,18 +20,35 @@ function GlobeIcon({ className = 'h-5 w-5' }: { className?: string }) {
   );
 }
 
-function MailIcon() {
+function SunIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M20.2 15.2A8.2 8.2 0 0 1 8.8 3.8 8.3 8.3 0 1 0 20.2 15.2Z" />
+    </svg>
+  );
+}
+
+function MailIcon({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m4 7 8 6 8-6" />
     </svg>
   );
 }
 
-function LockIcon() {
+function LockIcon({ className = 'h-6 w-6' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
       <rect x="5" y="10" width="14" height="11" rx="2" />
       <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
     </svg>
@@ -70,8 +87,8 @@ function HelpIcon() {
 
 function OrcaMark() {
   return (
-    <div className="flex items-center gap-4" aria-label="ORCA Real Estate Platform">
-      <svg viewBox="0 0 64 76" className="h-[56px] w-[44px] shrink-0" fill="none" aria-hidden="true">
+    <div className="orca-brand flex items-center gap-3.5" aria-label="ORCA Real Estate Platform">
+      <svg viewBox="0 0 64 76" className="orca-brand-mark h-[56px] w-[44px] shrink-0" fill="none" aria-hidden="true">
         <path d="M31.7 4 48 16.4V55l-7.7 4.5V21L31.7 14 23 20.5V65l-8.8-5V29.5L6 35.8V67l25.7 5 26-5V42.5l-8.4-6.2V62L31.7 66.2V4Z" fill="url(#orcaGold)" />
         <path d="M31.7 19.5v39.7M14.2 55.2l9-5.2M49.3 54.7l8.4-5" stroke="#FFF" strokeOpacity=".28" strokeWidth="1.4" />
         <defs>
@@ -83,8 +100,8 @@ function OrcaMark() {
         </defs>
       </svg>
       <div className="leading-none">
-        <div className="text-[38px] font-light tracking-[0.16em] text-white">ORCA</div>
-        <div className="mt-1.5 text-[9px] font-semibold tracking-[0.26em] text-[var(--orca-brand-gold)]">REAL ESTATE PLATFORM</div>
+        <div className="orca-brand-word text-[38px] font-light tracking-[0.16em] text-white">ORCA</div>
+        <div className="orca-brand-tagline mt-1.5 text-[9px] font-semibold tracking-[0.26em] text-[var(--orca-brand-gold)]">REAL ESTATE PLATFORM</div>
       </div>
     </div>
   );
@@ -96,8 +113,17 @@ export default function LoginClient({
 }: LoginClientProps) {
   const router = useRouter();
   const { lang, toggleLang } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
 
   const isArabic = lang === 'AR';
+  const themeToggleLabel =
+    theme === 'dark'
+      ? isArabic
+        ? 'التبديل إلى الوضع الفاتح'
+        : 'Switch to light mode'
+      : isArabic
+        ? 'التبديل إلى الوضع الداكن'
+        : 'Switch to dark mode';
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -190,203 +216,469 @@ export default function LoginClient({
   return (
     <div
       dir="ltr"
-      className="relative min-h-screen overflow-hidden font-sans text-white bg-[var(--orca-ui-bg)]"
+      className="orca-login-root relative min-h-[100svh] overflow-x-hidden bg-[var(--orca-ui-bg)] font-sans text-[var(--orca-ui-text-primary)]"
     >
       <style dangerouslySetInnerHTML={{ __html: `
+        .orca-login-root {
+          --login-shell: #ffffff;
+          --login-card: rgba(255, 255, 255, .94);
+          --login-card-border: rgba(202, 151, 51, .68);
+          --login-card-shadow: inset 0 1px 0 rgba(255, 255, 255, .96), 0 20px 56px rgba(15, 38, 68, .12);
+          --login-field-bg: rgba(255, 255, 255, .9);
+          --login-field-border: rgba(93, 116, 146, .28);
+          --login-field-hover: rgba(65, 89, 121, .48);
+          --login-field-autofill: #ffffff;
+          --login-field-inset: inset 0 1px 0 rgba(15, 38, 68, .035);
+          --login-control-hover: rgba(15, 38, 68, .06);
+          --login-checkbox-bg: rgba(255, 255, 255, .92);
+          --login-checkbox-border: rgba(73, 94, 122, .58);
+          --login-footer-bg: rgba(255, 255, 255, .96);
+          --login-footer-border: rgba(15, 38, 68, .12);
+          --login-brand-text: #0a1f3a;
+          --login-focus-offset: #ffffff;
+          --login-alert-bg: rgba(254, 242, 242, .96);
+          --login-alert-border: rgba(220, 38, 38, .24);
+          --login-alert-text: #991b1b;
+          isolation: isolate;
+          color-scheme: light;
+        }
+
+        .dark .orca-login-root {
+          --login-shell: #07182d;
+          --login-card: rgba(7, 20, 39, .94);
+          --login-card-border: rgba(220, 174, 82, .76);
+          --login-card-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 24px 64px rgba(0, 0, 0, .24);
+          --login-field-bg: rgba(20, 37, 61, .78);
+          --login-field-border: rgba(122, 146, 176, .34);
+          --login-field-hover: rgba(177, 196, 220, .52);
+          --login-field-autofill: #14253d;
+          --login-field-inset: inset 0 1px 0 rgba(255, 255, 255, .018);
+          --login-control-hover: rgba(255, 255, 255, .05);
+          --login-checkbox-bg: rgba(255, 255, 255, .035);
+          --login-checkbox-border: rgba(166, 185, 209, .62);
+          --login-footer-bg: rgba(5, 18, 35, .96);
+          --login-footer-border: rgba(177, 195, 218, .18);
+          --login-brand-text: #ffffff;
+          --login-focus-offset: #07182d;
+          --login-alert-bg: rgba(69, 10, 10, .4);
+          --login-alert-border: rgba(252, 165, 165, .3);
+          --login-alert-text: #fee2e2;
+          color-scheme: dark;
+        }
+
         .orca-login-shell {
-          background:
-            radial-gradient(circle at 18% 34%, rgba(30, 66, 109, .14), transparent 28%),
-            #081A31;
+          position: absolute;
+          inset: 0;
+          z-index: -2;
+          background: var(--login-shell);
         }
-        .orca-login-backdrop {
-          object-position: right bottom;
-          filter: saturate(.98) contrast(1.03) brightness(.98);
+
+        .orca-login-visual {
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          overflow: hidden;
+          pointer-events: none;
         }
-        .orca-login-overlay {
-          background:
-            linear-gradient(90deg, #081A31 0%, rgba(8,26,49,.98) 30%, rgba(8,26,49,.62) 49%, rgba(8,26,49,.12) 72%, rgba(8,26,49,.02) 100%),
-            linear-gradient(180deg, rgba(8,26,49,.10) 0%, rgba(8,26,49,.02) 54%, rgba(8,26,49,.22) 100%);
+
+        .orca-login-scene {
+          position: absolute;
+          inset: 0 0 0 auto;
+          width: auto;
+          height: 100%;
+          max-width: none;
+          object-fit: contain;
+          object-position: right center;
         }
+
+        .orca-login-scene-light {
+          display: block;
+        }
+
+        .orca-login-scene-dark {
+          display: none;
+        }
+
+        .dark .orca-login-scene-light {
+          display: none;
+        }
+
+        .dark .orca-login-scene-dark {
+          display: block;
+        }
+
         @media (min-width: 1024px) {
-          .orca-login-backdrop {
-            position: fixed;
-            inset: auto 0 0 auto;
-            width: 72%;
-            height: calc(100vh - 1px);
-            object-fit: contain;
-            object-position: right bottom;
-            transform: none;
+          .orca-header-controls,
+          .orca-brand {
+            transform: translateY(16px);
           }
         }
-        @media (max-width: 1023px) {
-          .orca-login-backdrop {
-            object-fit: cover;
-            object-position: 70% center;
-            opacity: .46;
-          }
-          .orca-login-overlay {
-            background: linear-gradient(180deg, rgba(5,16,31,.88), rgba(5,16,31,.96));
-          }
-        }
-        .orca-login-grid {
-          background-image:
-            linear-gradient(rgba(255,255,255,.014) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
-          background-size: 42px 42px;
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,.4), transparent 82%);
-        }
+
         .orca-login-card {
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.018),
-            0 14px 34px rgba(0,0,0,.14);
+          border-color: var(--login-card-border);
+          background: var(--login-card);
+          box-shadow: var(--login-card-shadow);
         }
+
+        .orca-login-feedback {
+          height: 44px;
+        }
+
+        .orca-login-alert {
+          display: flex;
+          height: 100%;
+          align-items: center;
+          justify-content: center;
+          overflow-x: hidden;
+          overflow-y: auto;
+          border-color: var(--login-alert-border);
+          background: var(--login-alert-bg);
+          color: var(--login-alert-text);
+        }
+
+        .orca-field {
+          height: 62px;
+          border-color: var(--login-field-border);
+          background: var(--login-field-bg);
+          box-shadow: var(--login-field-inset);
+        }
+
+        .orca-field:hover {
+          border-color: var(--login-field-hover);
+        }
+
+        .orca-field:focus {
+          border-color: #d9ad55;
+          box-shadow: 0 0 0 3px rgba(217, 173, 85, .16);
+        }
+
         .orca-field:-webkit-autofill,
         .orca-field:-webkit-autofill:hover,
         .orca-field:-webkit-autofill:focus {
           -webkit-text-fill-color: var(--orca-ui-text-primary);
-          -webkit-box-shadow: 0 0 0 1000px var(--orca-ui-surface-muted) inset;
+          -webkit-box-shadow: 0 0 0 1000px var(--login-field-autofill) inset;
+          caret-color: var(--orca-ui-text-primary);
           transition: background-color 9999s ease-out;
         }
-        @media (max-width: 1023px) {
-          .orca-login-stage { min-height: auto !important; }
+
+        .orca-remember-control {
+          display: grid;
+          height: 20px;
+          width: 20px;
+          flex: 0 0 20px;
+          place-items: center;
+          border: 1px solid var(--login-checkbox-border);
+          border-radius: 4px;
+          background: var(--login-checkbox-bg);
+          transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
         }
-        @media (prefers-reduced-motion: no-preference) {
-          .orca-hero-image { animation: orcaHeroReveal .8s ease-out both; }
-          .orca-login-card { animation: orcaCardReveal .65s ease-out both; }
-          @keyframes orcaHeroReveal {
-            from { opacity: 0; transform: translateY(14px) scale(.985); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+
+        .orca-remember-control svg {
+          opacity: 0;
+          transform: scale(.72);
+          transition: opacity .16s ease, transform .16s ease;
+        }
+
+        .orca-remember-input:checked + .orca-remember-control {
+          border-color: #d9ad55;
+          background: #d9ad55;
+          color: #07182d;
+        }
+
+        .orca-remember-input:checked + .orca-remember-control svg {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .orca-remember-input:focus-visible + .orca-remember-control {
+          box-shadow: 0 0 0 3px rgba(217, 173, 85, .22);
+        }
+
+        .orca-submit {
+          height: 64px;
+          background: linear-gradient(90deg, #edc66d 0%, #d9ad55 48%, #e4ba61 100%);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26);
+        }
+
+        .orca-submit:not(:disabled):hover {
+          filter: brightness(1.055);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .3),
+            0 10px 24px rgba(213, 164, 69, .14);
+        }
+
+        .orca-submit:not(:disabled):active {
+          transform: translateY(1px);
+        }
+
+        .orca-language-switch,
+        .orca-theme-switch {
+          color: var(--login-brand-text);
+          --tw-ring-offset-color: var(--login-focus-offset);
+        }
+
+        .orca-language-switch:hover,
+        .orca-theme-switch:hover {
+          background: var(--login-control-hover);
+          color: var(--login-brand-text);
+        }
+
+        .orca-brand-word {
+          color: var(--login-brand-text);
+        }
+
+        .orca-password-toggle:hover {
+          background: var(--login-control-hover);
+        }
+
+        .orca-submit {
+          --tw-ring-offset-color: var(--login-focus-offset);
+        }
+
+        .orca-login-footer {
+          min-height: 82px;
+          border-color: var(--login-footer-border);
+          background: var(--login-footer-bg);
+        }
+
+        @media (min-width: 1024px) and (max-height: 760px) {
+          .orca-login-header {
+            height: 86px;
           }
-          @keyframes orcaCardReveal {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
+
+          .orca-login-stage {
+            padding-top: 10px;
+            padding-bottom: 10px;
+          }
+
+          .orca-login-card {
+            padding-top: 24px;
+            padding-bottom: 24px;
+          }
+
+          .orca-login-feedback {
+            height: 40px;
+          }
+
+          .orca-field {
+            height: 58px;
+          }
+
+          .orca-submit {
+            height: 60px;
+          }
+
+          .orca-login-footer {
+            min-height: 68px;
+          }
+
+        }
+
+        @media (max-width: 1023px) {
+          .orca-login-scene {
+            inset: auto 0 0;
+            width: 100%;
+            height: auto;
+            object-position: right bottom;
+          }
+
+          .orca-login-card {
+            background: var(--login-card);
+          }
+        }
+
+        @media (max-width: 639px) {
+          .orca-brand {
+            gap: 9px;
+          }
+
+          .orca-brand-mark {
+            height: 42px;
+            width: 34px;
+          }
+
+          .orca-brand-word {
+            font-size: 28px;
+          }
+
+          .orca-brand-tagline {
+            margin-top: 5px;
+            font-size: 6px;
+            letter-spacing: .22em;
+          }
+
+          .orca-login-feedback {
+            height: 58px;
+          }
+
+          .orca-field {
+            height: 58px;
+          }
+
+          .orca-submit {
+            height: 58px;
+          }
+
+          .orca-login-footer {
+            min-height: 0;
           }
         }
       `}} />
 
-      <div className="orca-login-shell absolute inset-0" aria-hidden="true" />
-      <img
-        src="/orca-login-hero.png"
-        alt=""
-        className="orca-login-backdrop pointer-events-none absolute inset-0 h-full w-full object-cover"
-        aria-hidden="true"
-        draggable={false}
-      />
-      <div className="orca-login-overlay pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div className="orca-login-grid pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
+      <div className="orca-login-shell" aria-hidden="true" />
+      <div className="orca-login-visual" aria-hidden="true">
+        <img
+          src="/orca-login-background-light.png"
+          alt=""
+          className="orca-login-scene orca-login-scene-light"
+          draggable={false}
+        />
+        <img
+          src="/orca-login-background-original.png"
+          alt=""
+          className="orca-login-scene orca-login-scene-dark"
+          draggable={false}
+        />
+      </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="flex h-[96px] shrink-0 items-center justify-between px-6 sm:px-10 lg:px-[50px]">
-          <button
-            type="button"
-            onClick={toggleLang}
-            aria-label={isArabic ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
-            className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
-          >
-            <GlobeIcon />
-            <span dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العربية' : 'English'}</span>
-            <svg viewBox="0 0 20 20" className="h-4 w-4 transition group-hover:translate-y-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <path d="m5 7.5 5 5 5-5" />
-            </svg>
-          </button>
+      <div className="relative z-10 flex min-h-[100svh] flex-col">
+        <header className="orca-login-header flex h-[112px] shrink-0 items-center justify-between px-5 sm:px-10 lg:px-[64px] xl:px-[78px]">
+          <div className="orca-header-controls flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleLang}
+              aria-label={isArabic ? 'تغيير اللغة إلى الإنجليزية' : 'Change language to Arabic'}
+              className="orca-language-switch group flex h-10 items-center gap-2.5 rounded-xl px-3 text-[15px] font-medium text-slate-200 transition-colors hover:bg-white/5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] focus-visible:ring-offset-2"
+            >
+              <GlobeIcon />
+              <span dir={isArabic ? 'rtl' : 'ltr'}>{isArabic ? 'العربية' : 'English'}</span>
+              <svg viewBox="0 0 20 20" className="h-4 w-4 transition-transform group-hover:translate-y-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="m5 7.5 5 5 5-5" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={themeToggleLabel}
+              title={themeToggleLabel}
+              className="orca-theme-switch inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] focus-visible:ring-offset-2"
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
 
           <OrcaMark />
         </header>
 
-        <main className="orca-login-stage flex min-h-0 flex-1 items-start px-6 pb-3 pt-2 sm:px-10 lg:px-[50px] lg:pt-0">
-          <div className="mx-auto grid w-full max-w-[1480px] grid-cols-1 items-center lg:grid-cols-[minmax(390px,480px)_1fr] lg:gap-12 xl:gap-16">
+        <main className="orca-login-stage flex min-h-0 flex-1 items-center px-5 py-5 sm:px-10 lg:px-[64px] xl:px-[78px]">
+          <div className="mx-auto grid w-full max-w-[1560px] grid-cols-1 items-center lg:grid-cols-[minmax(450px,525px)_minmax(0,1fr)] lg:gap-[clamp(48px,7vw,120px)]">
             <section
               aria-labelledby="login-heading"
               dir={isArabic ? 'rtl' : 'ltr'}
-              className="orca-login-card order-2 rounded-[22px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface)] px-6 pt-5 pb-7 backdrop-blur-[4px] sm:px-8 sm:pt-6 sm:pb-8 lg:order-1 lg:-translate-y-5 lg:px-[32px] lg:pt-[24px] lg:pb-[32px]"
+              className="orca-login-card w-full max-w-[525px] justify-self-center rounded-[28px] border px-6 py-8 sm:px-9 sm:py-8 lg:-translate-y-[18px] lg:justify-self-start"
             >
-              <div className="mx-auto max-w-[540px]">
-                <h1 id="login-heading" className="mb-5 text-center text-[28px] font-bold leading-tight tracking-[-0.01em] text-[var(--orca-ui-text-primary)] sm:text-[34px]">
+              <div className="mx-auto w-full max-w-[445px]">
+                <h1
+                  id="login-heading"
+                  className="text-center text-[32px] font-bold leading-tight tracking-[-0.015em] text-[var(--orca-ui-text-primary)] sm:text-[36px]"
+                >
                   {isArabic ? 'تسجيل الدخول' : 'Sign in'}
                 </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                  {error && (
+                <div className="orca-login-feedback mt-2" aria-live="polite" aria-atomic="true">
+                  {error ? (
                     <div
+                      id="login-error"
                       role="alert"
-                      aria-live="polite"
-                      className="rounded-2xl border border-red-300/35 bg-red-950/35 px-4 py-3 text-center text-sm font-semibold text-red-100"
+                      className="orca-login-alert rounded-[14px] border border-red-300/30 bg-red-950/40 px-4 text-center text-[13px] font-semibold leading-[1.45] text-red-100"
                     >
                       {error}
                     </div>
-                  )}
+                  ) : null}
+                </div>
 
-                  <div>
-                    <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
-                      {isArabic ? 'البريد الإلكتروني' : 'Email address'}
-                    </label>
-                    <div className="relative">
-                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
-                        <MailIcon />
-                      </span>
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        autoComplete="username"
-                        required
-                        dir="ltr"
-                        placeholder={isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
-                        className={`orca-field h-[54px] w-full rounded-[13px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface-muted)] text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition placeholder:text-[var(--orca-ui-text-muted)] hover:border-[var(--orca-ui-icon)] focus:border-[var(--orca-action-gold)] focus:ring-2 focus:ring-[var(--orca-action-gold)]/20 ${
-                          isArabic ? 'pr-[58px] pl-5 text-left' : 'pl-[58px] pr-5 text-left'
-                        }`}
-                      />
+                <form onSubmit={handleSubmit} noValidate>
+                  <div className="space-y-[18px]">
+                    <div>
+                      <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
+                        {isArabic ? 'البريد الإلكتروني' : 'Email address'}
+                      </label>
+                      <div className="relative">
+                        <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
+                          <MailIcon />
+                        </span>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          autoComplete="username"
+                          required
+                          dir="ltr"
+                          aria-describedby={error ? 'login-error' : undefined}
+                          placeholder={isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
+                          className={`orca-field w-full rounded-[14px] border text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition-colors placeholder:text-[var(--orca-ui-text-muted)] ${
+                            isArabic ? 'pr-[58px] pl-5 text-left' : 'pl-[58px] pr-5 text-left'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="password" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
+                        {isArabic ? 'كلمة المرور' : 'Password'}
+                      </label>
+                      <div className="relative">
+                        <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
+                          <LockIcon />
+                        </span>
+                        <input
+                          id="password"
+                          name="password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          required
+                          dir="ltr"
+                          aria-describedby={error ? 'login-error' : undefined}
+                          placeholder={isArabic ? 'أدخل كلمة المرور' : 'Enter your password'}
+                          className={`orca-field w-full rounded-[14px] border text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition-colors placeholder:text-[var(--orca-ui-text-muted)] ${
+                            isArabic ? 'pr-[58px] pl-[58px] text-right' : 'pl-[58px] pr-[58px] text-left'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((value) => !value)}
+                          aria-label={
+                            showPassword
+                              ? isArabic
+                                ? 'إخفاء كلمة المرور'
+                                : 'Hide password'
+                              : isArabic
+                                ? 'إظهار كلمة المرور'
+                                : 'Show password'
+                          }
+                          className={`orca-password-toggle absolute top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[var(--orca-ui-icon)] transition-colors hover:text-[var(--orca-action-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] ${
+                            isArabic ? 'left-4' : 'right-4'
+                          }`}
+                        >
+                          <EyeIcon hidden={!showPassword} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="password" className="mb-2 block text-[15px] font-medium text-[var(--orca-ui-text-secondary)]">
-                      {isArabic ? 'كلمة المرور' : 'Password'}
-                    </label>
-                    <div className="relative">
-                      <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--orca-ui-icon)] ${isArabic ? 'right-5' : 'left-5'}`}>
-                        <LockIcon />
-                      </span>
-                      <input
-                        id="password"
-                        name="password"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        required
-                        dir="ltr"
-                        placeholder={isArabic ? 'أدخل كلمة المرور' : 'Enter your password'}
-                        className={`orca-field h-[54px] w-full rounded-[13px] border border-[var(--orca-ui-border)] bg-[var(--orca-ui-surface-muted)] text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition placeholder:text-[var(--orca-ui-text-muted)] hover:border-[var(--orca-ui-icon)] focus:border-[var(--orca-action-gold)] focus:ring-2 focus:ring-[var(--orca-action-gold)]/20 ${
-                          isArabic ? 'pr-[58px] pl-[58px] text-right' : 'pl-[58px] pr-[58px] text-left'
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((value) => !value)}
-                        aria-label={
-                          showPassword
-                            ? isArabic
-                              ? 'إخفاء كلمة المرور'
-                              : 'Hide password'
-                            : isArabic
-                              ? 'إظهار كلمة المرور'
-                              : 'Show password'
-                        }
-                        className={`absolute top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[var(--orca-ui-icon)] transition hover:bg-[var(--orca-ui-surface-muted)] hover:text-[var(--orca-action-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] ${
-                          isArabic ? 'left-4' : 'right-4'
-                        }`}
-                      >
-                        <EyeIcon hidden={!showPassword} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4 pt-1 text-[14px]">
-                    <label className="flex cursor-pointer items-center gap-3 text-[var(--orca-ui-text-secondary)]">
+                  <div className="mt-5 flex min-h-6 items-center">
+                    <label className="inline-flex cursor-pointer items-center gap-3 text-[14px] text-[var(--orca-ui-text-secondary)] transition-colors hover:text-[var(--orca-ui-text-primary)]">
                       <input
                         type="checkbox"
                         name="remember"
-                        className="h-[18px] w-[18px] rounded border-[var(--orca-ui-border)] bg-transparent accent-[var(--orca-action-gold)]"
+                        className="orca-remember-input sr-only"
                       />
+                      <span className="orca-remember-control" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.3">
+                          <path d="m3.2 8.1 3 3.1 6.5-6.6" />
+                        </svg>
+                      </span>
                       <span>{isArabic ? 'تذكرني' : 'Remember me'}</span>
                     </label>
                   </div>
@@ -394,7 +686,8 @@ export default function LoginClient({
                   <button
                     type="submit"
                     disabled={loading || (retryAfter !== null && retryAfter > 0)}
-                    className="mt-2 h-[56px] w-full rounded-[13px] bg-[var(--orca-action-gold)] text-[17px] font-bold text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--orca-action-gold-hover)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--orca-ui-surface)]"
+                    aria-busy={loading}
+                    className="orca-submit mt-5 w-full rounded-[14px] text-[17px] font-bold text-[#07182d] transition-[filter,box-shadow,transform,opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55"
                   >
                     {loading
                       ? isArabic
@@ -411,45 +704,33 @@ export default function LoginClient({
 
                   <p className="sr-only">{tenantName}</p>
                 </form>
-
-                <div className="mt-6 text-center text-sm">
-                  <span className="text-[var(--orca-ui-text-secondary)]">
-                    {isArabic ? 'ليس لديك حساب؟' : "Don't have an account?"}
-                  </span>{' '}
-                  <Link
-                    href="/register"
-                    className="font-medium text-[var(--orca-action-gold)] transition hover:text-[var(--orca-action-gold-hover)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
-                  >
-                    {isArabic ? 'إنشاء حساب جديد' : 'Create new account'}
-                  </Link>
-                </div>
               </div>
             </section>
 
-            <div className="order-1 hidden min-h-[560px] lg:block" aria-hidden="true" />
+            <div className="hidden min-h-[440px] lg:block" aria-hidden="true" />
           </div>
         </main>
 
-        <footer className="relative z-20 mt-auto border-t border-[var(--orca-ui-divider)] bg-[var(--orca-ui-surface)] px-6 py-3 backdrop-blur-none sm:px-10 lg:px-[46px]">
-          <div className="mx-auto flex max-w-[1480px] flex-col-reverse items-center justify-between gap-4 text-[12px] text-[var(--orca-ui-text-secondary)] lg:flex-row">
+        <footer className="orca-login-footer relative z-20 mt-auto shrink-0 border-t px-5 py-4 sm:px-10 lg:px-[64px] xl:px-[78px]">
+          <div className="mx-auto flex h-full max-w-[1560px] flex-col-reverse items-center justify-between gap-4 text-[12px] text-[var(--orca-ui-text-secondary)] lg:flex-row">
             <nav aria-label={isArabic ? 'روابط السياسات والمساعدة' : 'Policy and help links'} className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
-              <Link href="/terms-and-conditions" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
+              <Link href="/terms-and-conditions" prefetch={false} className="flex items-center gap-2 transition-colors hover:text-[var(--orca-ui-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]">
                 <ShieldIcon />
                 <span>{isArabic ? 'الشروط والأحكام' : 'Terms and conditions'}</span>
               </Link>
               <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
-              <Link href="/privacy-policy" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
-                <LockIcon />
+              <Link href="/privacy-policy" prefetch={false} className="flex items-center gap-2 transition-colors hover:text-[var(--orca-ui-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]">
+                <LockIcon className="h-5 w-5" />
                 <span>{isArabic ? 'سياسة الخصوصية' : 'Privacy policy'}</span>
               </Link>
               <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
-              <Link href="/disclaimer" prefetch={false} className="flex items-center gap-2 transition hover:text-[var(--orca-ui-text-primary)]">
+              <Link href="/disclaimer" prefetch={false} className="flex items-center gap-2 transition-colors hover:text-[var(--orca-ui-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]">
                 <HelpIcon />
                 <span>{isArabic ? 'الأسئلة الشائعة' : 'Frequently asked questions'}</span>
               </Link>
               <span className="hidden h-5 w-px bg-[var(--orca-ui-divider)] sm:block" aria-hidden="true" />
               <span className="flex items-center gap-2">
-                <MailIcon />
+                <MailIcon className="h-5 w-5" />
                 <span>{isArabic ? 'تواصل معنا' : 'Contact us'}</span>
               </span>
             </nav>

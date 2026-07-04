@@ -308,11 +308,11 @@ describe("LOGIN-F01: Login Functional Closure", () => {
     });
   });
 
-  describe("13. Registration and forgot-password links", () => {
-    it("login client has registration link (source assertion)", async () => {
+  describe("13. Registration and forgot-password exclusions", () => {
+    it("login client does not expose a registration link (source assertion)", async () => {
       const fs = await import("node:fs");
       const source = fs.readFileSync("app/login/LoginClient.tsx", "utf8");
-      expect(source).toContain('/register');
+      expect(source).not.toMatch(/href\s*=\s*["']\/register["']/i);
     });
 
     it("forgot-password never routes to registration (source assertion)", async () => {
