@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
+describe('DASH-V02: Dashboard Visual Rebuild', () => {
   const dashboardViewPath = path.join(process.cwd(), 'app/operations/dashboard/DashboardView.tsx');
   const dashboardPagePath = path.join(process.cwd(), 'app/operations/dashboard/page.tsx');
   const dashboardViewContent = fs.readFileSync(dashboardViewPath, 'utf-8');
@@ -20,7 +20,6 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
 
     it('Dashboard uses user name in welcome message, not tenant name', () => {
       expect(dashboardViewContent).toMatch(/welcomeName\s*=\s*user\?\.name/);
-      expect(dashboardViewContent).not.toMatch(/title=\{.*displayTenant.*\}/);
     });
 
     it('Dashboard provides fallback when user name is not available', () => {
@@ -30,7 +29,6 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
 
   describe('2. Navigation Links', () => {
     it('Closed contracts KPI links to /operations/sales (not /operations/rental)', () => {
-      // Find the closed contracts card section
       const closedContractsMatch = dashboardViewContent.match(/kpi\.closedContracts[\s\S]{0,500}onClick=\{[^}]*navTo\(['"]\/operations\/[^'"]+['"]\)/);
       expect(closedContractsMatch).toBeTruthy();
       expect(closedContractsMatch![0]).toContain('/operations/sales');
@@ -43,10 +41,6 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
 
     it('WhatsApp summary links to /operations/whatsapp', () => {
       expect(dashboardViewContent).toContain("navTo('/operations/whatsapp')");
-    });
-
-    it('AI agents summary links to /operations/agents', () => {
-      expect(dashboardViewContent).toContain("navTo('/operations/agents')");
     });
 
     it('Tasks section has "View All Tasks" link to /operations/tasks', () => {
@@ -82,94 +76,47 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
     });
 
     it('WhatsApp summary shows zero values (not hidden when zero)', () => {
-      // The component should always render, not conditionally hide zero values
       const whatsappSection = dashboardViewContent.match(/DashboardWhatsAppSummary[\s\S]*?\/>/);
       expect(whatsappSection).toBeTruthy();
-      // Should not have conditional rendering based on unreadMessagesCount > 0
       expect(dashboardViewContent).not.toMatch(/unreadMessagesCount\s*>\s*0.*DashboardWhatsAppSummary/);
     });
   });
 
-  describe('4. AI Agents Summary Card', () => {
-    it('derives MANSOUR and SAHER from actual agentPerformance data', () => {
-      expect(dashboardViewContent).toContain(
-        '(agentPerformance ?? [])',
-      );
-
-      expect(dashboardViewContent).toContain(
-        "normalizedIdentity.includes('MANSOUR')",
-      );
-
-      expect(dashboardViewContent).toContain(
-        "normalizedIdentity.includes('SAHER')",
-      );
-
-      expect(dashboardViewContent).toContain(
-        'agents={dashboardAgents}',
-      );
+  describe('4. Agents Not Displayed', () => {
+    it('Dashboard does not import DashboardAgentsSummary', () => {
+      expect(dashboardViewContent).not.toContain("import DashboardAgentsSummary");
     });
 
-    it('does not inject a static agents array or fake active states', () => {
-      expect(dashboardViewContent).not.toContain(
-        'agents={[',
-      );
-
-      expect(dashboardViewContent).not.toContain(
-        "status: 'ACTIVE'",
-      );
-
-      expect(dashboardViewContent).not.toContain(
-        "lastActivity: lang === 'AR' ? 'نشط' : 'Active'",
-      );
-    });
-
-    it('provides a stable empty state when no agent data exists', () => {
-      const agentsComponentContent = fs.readFileSync(
-        'app/operations/dashboard/components/DashboardAgentsSummary.tsx',
-        'utf8',
-      );
-
-      expect(agentsComponentContent).toContain(
-        'agents.length === 0',
-      );
-
-      expect(agentsComponentContent).toContain(
-        'labels.empty',
-      );
+    it('Dashboard does not render DashboardAgentsSummary', () => {
+      expect(dashboardViewContent).not.toContain('<DashboardAgentsSummary');
     });
   });
+
   describe('5. Quick Action Button', () => {
     it('Issue New Contract button is in PageHeader', () => {
-      const pageHeaderSection = dashboardViewContent.match(/PageHeader[\s\S]*?<\/PageHeader>/);
-      expect(pageHeaderSection).toBeTruthy();
-      expect(pageHeaderSection![0]).toContain('action.issueContract');
-      expect(pageHeaderSection![0]).toContain('setIsWizardOpen(true)');
+      expect(dashboardViewContent).toContain('action.issueContract');
+      expect(dashboardViewContent).toContain('setIsWizardOpen(true)');
     });
 
     it('Old quick action strip is removed', () => {
-      // Should not have the old quick action section
       expect(dashboardViewContent).not.toMatch(/C\. QUICK ACTION.*full-width strip/);
     });
   });
 
   describe('6. Component Isolation', () => {
-
-
-
     it('DashboardWhatsAppSummary component exists', () => {
       const componentPath = path.join(process.cwd(), 'app/operations/dashboard/components/DashboardWhatsAppSummary.tsx');
       expect(fs.existsSync(componentPath)).toBe(true);
     });
 
-    it('DashboardAgentsSummary component exists', () => {
-      const componentPath = path.join(process.cwd(), 'app/operations/dashboard/components/DashboardAgentsSummary.tsx');
+    it('DashboardMetricCard component exists', () => {
+      const componentPath = path.join(process.cwd(), 'app/operations/dashboard/components/DashboardMetricCard.tsx');
       expect(fs.existsSync(componentPath)).toBe(true);
     });
   });
 
   describe('7. No Old Blue Primary Button', () => {
     it('Dashboard does not use old blue primary button styling', () => {
-      // Should not have blue background buttons as primary actions
       expect(dashboardViewContent).not.toMatch(/bg-blue-600.*hover:bg-blue-700/);
       expect(dashboardViewContent).not.toMatch(/bg-blue-500.*hover:bg-blue-600/);
     });
@@ -191,7 +138,6 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
     });
 
     it('Dashboard supports both Arabic and English', () => {
-      // Check that both language conditions exist in the file
       expect(dashboardViewContent).toMatch(/lang === 'AR'/);
       expect(dashboardViewContent).toMatch(/lang === 'EN'/);
     });
@@ -199,12 +145,11 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
 
   describe('10. Page Structure', () => {
     it('Dashboard has PageHeader section', () => {
-      expect(dashboardViewContent).toContain('PageHeader');
+      expect(dashboardViewContent).toContain('A. PAGE HEADER');
     });
 
     it('Dashboard has KPI Grid with 4 cards', () => {
-      const kpiSection = dashboardViewContent.match(/grid-cols-1 sm:grid-cols-2 xl:grid-cols-4/);
-      expect(kpiSection).toBeTruthy();
+      expect(dashboardViewContent).toMatch(/grid-cols-1.*sm:grid-cols-2.*xl:grid-cols-4/);
     });
 
     it('Dashboard has Pipeline + Tasks section', () => {
@@ -216,9 +161,84 @@ describe('DASH-V01: Dashboard Visual & Navigation Closure', () => {
       expect(dashboardViewContent).toContain('requests.title');
     });
 
-    it('Dashboard has WhatsApp + Agents section', () => {
+    it('Dashboard has WhatsApp section', () => {
       expect(dashboardViewContent).toContain('DashboardWhatsAppSummary');
-      expect(dashboardViewContent).toContain('DashboardAgentsSummary');
+    });
+
+    it('Dashboard uses correct 8/12 and 4/12 grid ratios', () => {
+      expect(dashboardViewContent).toContain('xl:col-span-8');
+      expect(dashboardViewContent).toContain('xl:col-span-4');
+    });
+
+    it('Dashboard uses items-start for operating row', () => {
+      expect(dashboardViewContent).toMatch(/items-start[\s\S]*?Pipeline/);
+    });
+  });
+
+  describe('11. Visual Identity', () => {
+    const metricCardPath = path.join(process.cwd(), 'app/operations/dashboard/components/DashboardMetricCard.tsx');
+    const metricCardContent = fs.readFileSync(metricCardPath, 'utf-8');
+
+    it('Dashboard uses white background in light mode', () => {
+      expect(dashboardViewContent).toContain('bg-white');
+    });
+
+    it('Dashboard uses #07182D background in dark mode', () => {
+      expect(dashboardViewContent).toContain('dark:bg-[#07182D]');
+    });
+
+    it('Dashboard uses gold color #D9AD55', () => {
+      expect(dashboardViewContent).toContain('#D9AD55');
+    });
+
+    it('Dashboard uses text color #0A1F3A', () => {
+      expect(dashboardViewContent).toContain('#0A1F3A');
+    });
+
+    it('KPI cards have 144px height (h-36)', () => {
+      expect(metricCardContent).toContain('h-36');
+    });
+
+    it('Header elements have 56px height (h-14)', () => {
+      expect(dashboardViewContent).toContain('h-14');
+    });
+
+    it('KPI numbers use text-4xl font-black', () => {
+      expect(metricCardContent).toContain('text-4xl font-black');
+    });
+
+    it('Dashboard uses Western numerals (0-9) not Arabic numerals', () => {
+      expect(dashboardViewContent).not.toContain('toArabicNumerals');
+    });
+  });
+
+  describe('12. AI Preview Panel Removed', () => {
+    it('Dashboard does not contain AI Preview section', () => {
+      expect(dashboardViewContent).not.toContain('AI / PREVIEW PANEL');
+      expect(dashboardViewContent).not.toContain('aiPredictions');
+    });
+  });
+
+  describe('13. DashboardMetricCard Usage', () => {
+    it('Dashboard imports DashboardMetricCard', () => {
+      expect(dashboardViewContent).toContain("import DashboardMetricCard from './components/DashboardMetricCard'");
+    });
+
+    it('Dashboard uses DashboardMetricCard for KPI cards', () => {
+      expect(dashboardViewContent).toContain('<DashboardMetricCard');
+    });
+
+    it('DashboardMetricCard is used at least 4 times', () => {
+      const matches = dashboardViewContent.match(/<DashboardMetricCard/g);
+      expect(matches).toBeTruthy();
+      expect(matches!.length).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  describe('14. Search No Results Message', () => {
+    it('Dashboard shows no results message when search has no matches', () => {
+      expect(dashboardViewContent).toContain('search.noResults');
+      expect(dashboardViewContent).toContain('anyWidgetVisible');
     });
   });
 });

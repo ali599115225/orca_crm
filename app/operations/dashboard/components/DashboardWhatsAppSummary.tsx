@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { SmartCard } from '@/components/ui/SmartCard';
 
 interface DashboardWhatsAppSummaryProps {
   conversationsCount: number;
@@ -53,9 +52,8 @@ export default function DashboardWhatsAppSummary({
   };
 
   return (
-    <SmartCard
-      elevation="default"
-      className="h-full min-h-[276px] cursor-pointer p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
+    <div
+      className="cursor-pointer rounded-xl border border-[#0A1F3A]/10 bg-white p-5 shadow-sm transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A]"
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"
@@ -89,6 +87,6 @@ export default function DashboardWhatsAppSummary({
           </div>
         ))}
       </div>
-    </SmartCard>
+    </div>
   );
 }

@@ -128,7 +128,6 @@ export default async function DashboardPage() {
       agentPerformance={[]}
       leadSources={leadSources}
       systemAlerts={systemAlerts}
-      aiPredictions={{ bestContactTimes: [], expectedToClose: [], projectsNeedingCampaign: [], agentsNeedingSupport: [] }}
       pipelineStages={pipelineStages}
       todayTasks={todayTasks}
       whatsAppStats={whatsAppStatsValue.success ? {
