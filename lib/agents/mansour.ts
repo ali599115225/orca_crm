@@ -252,3 +252,36 @@ ${contextBlock}
 تاريخ ووقت المحادثة: ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })} (توقيت الرياض)
 `;
 }
+
+export function buildMansourFallbackResponse(
+  message: string,
+  licenseMode: "SAAS" | "DEDICATED_COPY"
+): string {
+  const cleanMsg = message.trim().toLowerCase();
+  const isDedicated = licenseMode === "DEDICATED_COPY";
+
+  if (cleanMsg.includes("بروشور") || cleanMsg.includes("برشور") || cleanMsg.includes("كتالوج") || cleanMsg.includes("تفاصيل")) {
+    return `🤖 أهلاً بك يا فندم. يمكنني إرسال التفاصيل والمواصفات الكاملة. هل تفضل حجز موعد عرض توضيحي (ديمو) لمنصة ORCA لتشاهد بنفسك قدرات النظام؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("دفعة") || cleanMsg.includes("اقساط") || cleanMsg.includes("أقساط") || cleanMsg.includes("قسط") || cleanMsg.includes("سعر")) {
+    if (isDedicated) {
+      return `🤖 أهلاً بك! تختلف الأسعار وخطط السداد حسب المشروع والوحدة. زودني باسم المشروع أو الوحدة المطلوبة لأساعدك بخيارات السداد المناسبة أو أحوّل الطلب للمستشار المختص. - منصور`;
+    }
+    return `🤖 أهلاً بك! لدينا ثلاث باقات: الباقة الأساسية (Starter) بسعر 4,999 ر.س شهرياً، والباقة الاحترافية (Professional) بسعر 12,999 ر.س شهرياً، وباقة المؤسسات بسعر مخصص. ما حجم أعمالك العقارية لأرشح لك الأنسب؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("عرض") || cleanMsg.includes("تجربة") || cleanMsg.includes("ديمو")) {
+    return `🤖 بكل سرور! يسعدنا ترتيب عرض توضيحي (ديمو) لمنصة ORCA. هل تفضلون الأسبوع القادم؟ وما الوقت المناسب لكم؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("زاتكا") || cleanMsg.includes("ضريبة") || cleanMsg.includes("فاتورة")) {
+    return `🤖 نعم، منصة ORCA تدعم الفوترة الإلكترونية المتوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (زاتكا) بالكامل. النظام يُصدر فواتير إلكترونية معتمدة برمز QR وتوقيع إلكتروني. هل تود تفاصيل أكثر عن التكامل مع زاتكا؟ - منصور`;
+  }
+
+  if (isDedicated) {
+    return `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدك اليوم؟ هل لديك استفسار عن الميزات، المشاريع، أو تود حجز عرض توضيحي؟ - منصور`;
+  }
+
+  return `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدك اليوم؟ هل لديك استفسار عن الباقات، الميزات، أو تود حجز عرض توضيحي؟ - منصور`;
+}

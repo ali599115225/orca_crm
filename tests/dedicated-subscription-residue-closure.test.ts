@@ -62,7 +62,7 @@ vi.mock("next/cache", () => ({
 
 import { getPlanLimitInfoAction } from "@/app/actions/users";
 import { updateTenantPlanAction } from "@/app/actions/admin";
-import { buildMansourFallbackResponse } from "@/app/actions/growth";
+import { buildMansourFallbackResponse } from "@/lib/agents/mansour";
 import {
   buildMansourSystemPrompt,
   MANSOUR_SYSTEM_PROMPT,
