@@ -144,6 +144,7 @@ describe("loginAction tenant resolution", () => {
         role: "PLATFORM_ARCHITECT",
         tenantId: "tenant-active",
       }),
+      60 * 60 * 12,
     );
   });
 
@@ -165,6 +166,7 @@ describe("loginAction tenant resolution", () => {
         role: "PLATFORM_ARCHITECT",
         tenantId: "tenant-fallback",
       }),
+      60 * 60 * 12,
     );
   });
 

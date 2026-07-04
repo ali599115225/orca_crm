@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, rawPrisma } from "@/lib/prisma";
+import { rawPrisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { SignJWT } from "jose";
 import { rateLimit } from "@/lib/rate-limit";
 import { writeAuditLog } from "@/lib/audit";
+import {
+  DEFAULT_SESSION_MAX_AGE_SECONDS,
+  encrypt,
+} from "@/lib/session";
+import { authBootstrapFindTenantActive } from "@/lib/system-prisma-boundary";
 
 const jwtSecret = process.env.JWT_SECRET;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -14,7 +18,6 @@ export async function POST(request: NextRequest) {
     if (!jwtSecret) {
       return NextResponse.json({ error: "JWT_SECRET not configured" }, { status: 500 });
     }
-    const SECRET_KEY = new TextEncoder().encode(jwtSecret);
     const body = await request.json();
     const { email, password } = body;
 
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (!user.isActive) {
       return NextResponse.json(
-        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة، أو الحساب معطل." },
+        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." },
         { status: 401 }
       );
     }
@@ -111,6 +114,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const activeTenant = await authBootstrapFindTenantActive(user.tenantId);
+    if (!activeTenant) {
+      return NextResponse.json(
+        { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة." },
+        { status: 401 }
+      );
+    }
+
     await rawPrisma.failedLoginAttempt.deleteMany({
       where: { userId: user.id },
     });
@@ -124,17 +135,16 @@ export async function POST(request: NextRequest) {
       jwtRole = "Broker";
     }
 
-    const token = await new SignJWT({
-      user_id: user.id,
-      company_id: user.tenantId,
-      role: jwtRole,
-      tenantId: user.tenantId,
-      userId: user.id,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("12h")
-      .sign(SECRET_KEY);
+    const token = await encrypt(
+      {
+        user_id: user.id,
+        company_id: user.tenantId,
+        role: jwtRole,
+        tenantId: user.tenantId,
+        userId: user.id,
+      },
+      DEFAULT_SESSION_MAX_AGE_SECONDS,
+    );
 
     await writeAuditLog({
       tenantId: user.tenantId,
@@ -149,7 +159,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "تم تسجيل الدخول بنجاح",
       token,
-      expires_in: "12 hours",
+      expires_in: `${DEFAULT_SESSION_MAX_AGE_SECONDS / 3600} hours`,
       user: {
         id: user.id,
         name: user.name,

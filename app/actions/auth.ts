@@ -13,7 +13,7 @@ import {
 import { getConfiguredPrivilegedRole } from '@/lib/platform-identity';
 
 class SafeAuthError extends Error {
-  constructor(readonly publicMessage: string) {
+  constructor(readonly publicMessage: string, readonly publicMessageEn?: string) {
     super(publicMessage);
     this.name = 'SafeAuthError';
   }
@@ -48,11 +48,15 @@ function logLoginDiagnostic(
 export async function loginAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
+  const rememberMe = formData.get('remember') === 'on';
 
 
   try {
     if (!email || !password) {
-      throw new SafeAuthError('البريد الإلكتروني وكلمة المرور مطلوبان.');
+      throw new SafeAuthError(
+        'البريد الإلكتروني وكلمة المرور مطلوبان.',
+        'Email and password are required.',
+      );
     }
 
     const rateLimitKey = `login:${hashRateLimitIdentity(email)}`;
@@ -137,17 +141,19 @@ export async function loginAction(formData: FormData) {
         };
       }
 
-      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      throw new SafeAuthError(
+        'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+        'The email or password is incorrect.',
+      );
     }
 
     await clearRateLimit(rateLimitKey);
 
     if (!user || !sessionTenant) {
-      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-    }
-
-    if (!user || !sessionTenant) {
-      throw new SafeAuthError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      throw new SafeAuthError(
+        'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+        'The email or password is incorrect.',
+      );
     }
 
     const requestHeaders = await headers();
@@ -185,10 +191,14 @@ export async function loginAction(formData: FormData) {
       tenantHost &&
       sessionTenant.subdomain !== currentSubdomain
     ) {
-      throw new SafeAuthError('غير مصرح لك بدخول هذه الشركة من هذا الرابط.');
+      throw new SafeAuthError(
+        'غير مصرح لك بدخول هذه الشركة من هذا الرابط.',
+        'You are not authorized to access this company from this link.',
+      );
     }
 
     const platformArchitect = privilegedRole === 'PLATFORM_ARCHITECT';
+    const sessionMaxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 12;
     const token = await encrypt({
       userId: user.id,
       tenantId: sessionTenant.id,
@@ -196,7 +206,7 @@ export async function loginAction(formData: FormData) {
       role: privilegedRole ?? user.role,
       name: user.name,
       email: user.email,
-    });
+    }, sessionMaxAge);
 
     const cookieStore = await cookies();
     const customDomain =
@@ -208,7 +218,7 @@ export async function loginAction(formData: FormData) {
       secure,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 12,
+      maxAge: sessionMaxAge,
       domain: sharedDomain,
     });
     logLoginDiagnostic('LOGIN_COOKIE_CREATED', {
@@ -240,13 +250,18 @@ export async function loginAction(formData: FormData) {
     return { success: true, redirectUrl };
   } catch (error: unknown) {
     if (error instanceof SafeAuthError) {
-      return { success: false, error: error.publicMessage };
+      return {
+        success: false,
+        error: error.publicMessage,
+        errorEn: error.publicMessageEn,
+      };
     }
 
     publicError(ErrorCode.INTERNAL_ERROR, 'login action failed', error);
     return {
       success: false,
       error: 'تعذر تسجيل الدخول حالياً. حاول مرة أخرى لاحقاً.',
+      errorEn: 'Unable to sign in at this time. Please try again later.',
     };
   }
 }
@@ -270,9 +285,3 @@ export async function logoutAction() {
 
   return { success: true };
 }
-
-
-
-
-
-

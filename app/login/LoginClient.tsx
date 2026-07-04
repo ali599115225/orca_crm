@@ -164,8 +164,11 @@ export default function LoginClient({
             : `Too many login attempts. Try again in ${result.retryAfterSeconds} seconds.`,
         );
       } else {
+        const localizedError = isArabic
+          ? result.error
+          : result.errorEn || result.error;
         setError(
-          result.error ||
+          localizedError ||
             (isArabic
               ? 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.'
               : 'Unable to sign in. Check your email and password.'),
@@ -386,12 +389,6 @@ export default function LoginClient({
                       />
                       <span>{isArabic ? 'تذكرني' : 'Remember me'}</span>
                     </label>
-                    <button
-                      type="button"
-                      className="font-medium text-[var(--orca-action-gold)] transition hover:text-[var(--orca-action-gold-hover)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
-                    >
-                      {isArabic ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
-                    </button>
                   </div>
 
                   <button
@@ -414,6 +411,18 @@ export default function LoginClient({
 
                   <p className="sr-only">{tenantName}</p>
                 </form>
+
+                <div className="mt-6 text-center text-sm">
+                  <span className="text-[var(--orca-ui-text-secondary)]">
+                    {isArabic ? 'ليس لديك حساب؟' : "Don't have an account?"}
+                  </span>{' '}
+                  <Link
+                    href="/register"
+                    className="font-medium text-[var(--orca-action-gold)] transition hover:text-[var(--orca-action-gold-hover)] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--orca-action-gold)]"
+                  >
+                    {isArabic ? 'إنشاء حساب جديد' : 'Create new account'}
+                  </Link>
+                </div>
               </div>
             </section>
 

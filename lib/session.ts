@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const SESSION_DURATION = "12h";
+export const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 
 type SessionDiagnosticCode =
   | "SESSION_COOKIE_MISSING"
@@ -20,11 +20,14 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function encrypt(payload: Record<string, unknown>) {
+export async function encrypt(
+  payload: Record<string, unknown>,
+  maxAgeSeconds = DEFAULT_SESSION_MAX_AGE_SECONDS,
+) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(SESSION_DURATION)
+    .setExpirationTime(`${maxAgeSeconds}s`)
     .sign(getJwtSecret());
 }
 
