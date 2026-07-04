@@ -58,7 +58,7 @@ export default async function SettingsPage() {
       };
 
       const limit = PLAN_LEAD_LIMITS[dbTenant.subscriptionPlan] ?? 200;
-      const growthWarning = dbTenant._count.leads > limit * 0.8;
+      const growthWarning = licenseMode === "DEDICATED_COPY" ? false : dbTenant._count.leads > limit * 0.8;
 
       tenant = {
         companyName: dbTenant.companyName,

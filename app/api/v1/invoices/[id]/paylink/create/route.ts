@@ -16,7 +16,8 @@ import { redactPiiFromPayload } from '@/lib/privacy-mask';
 
 export const runtime = 'nodejs';
 
-const PROVIDER = 'paylink';
+const PROVIDER_METHOD = 'paylink';
+const PROVIDER_CODE = 'PAYLINK';
 const ALLOWED_PAYLINK_HOSTS = new Set([
   'restpilot.paylink.sa',
   'restapi.paylink.sa',
@@ -68,7 +69,7 @@ function appBaseUrl(): string | null {
 
 function providerReference(tenantId: string, invoiceId: string): string {
   return createHash('sha256')
-    .update(`${PROVIDER}:create:${tenantId}:${invoiceId}`)
+    .update(`${PROVIDER_METHOD}:create:${tenantId}:${invoiceId}`)
     .digest('hex');
 }
 
@@ -159,7 +160,7 @@ export async function POST(
 
     if (
       invoice.paymentUrl &&
-      invoice.gatewayProvider === PROVIDER &&
+      invoice.gatewayProvider === PROVIDER_METHOD &&
       invoice.gatewayStatus === 'pending'
     ) {
       return NextResponse.json({
@@ -175,12 +176,10 @@ export async function POST(
       return errorResponse(ErrorCode.VALIDATION_ERROR, 'Paylink invoice amount invalid');
     }
 
-    let claim = await prisma.paymentTransaction.findUnique({
+    let claim = await prisma.paymentTransaction.findFirst({
       where: {
-        provider_providerReference: {
-          provider: PROVIDER,
-          providerReference: reference,
-        },
+        provider: { in: [PROVIDER_CODE, PROVIDER_METHOD] },
+        providerReference: reference,
       },
     });
 
@@ -201,9 +200,9 @@ export async function POST(
             amount,
             netAmount: amount,
             currency: 'SAR',
-            method: PROVIDER,
+            method: PROVIDER_METHOD,
             status: 'INITIATING',
-            provider: PROVIDER,
+            provider: PROVIDER_CODE,
             providerReference: reference,
             idempotencyKey: reference,
             expectedAmountMinor,
@@ -216,12 +215,10 @@ export async function POST(
             ? (error as { code?: unknown }).code
             : null;
         if (code !== 'P2002') throw error;
-        claim = await prisma.paymentTransaction.findUnique({
+        claim = await prisma.paymentTransaction.findFirst({
           where: {
-            provider_providerReference: {
-              provider: PROVIDER,
-              providerReference: reference,
-            },
+            provider: { in: [PROVIDER_CODE, PROVIDER_METHOD] },
+            providerReference: reference,
           },
         });
       }
@@ -243,6 +240,8 @@ export async function POST(
     claimId = claim.id;
 
     const token = await authenticatePaylink(baseUrl);
+    const callbackUrl = new URL("/api/payment/callback", appUrl);
+    callbackUrl.searchParams.set("provider", "PAYLINK");
     const orderNumber = `ORCA-${invoice.invoicePrefix || 'INV'}-${invoice.invoiceNumber}`;
     const data = await providerRequest(`${baseUrl}/api/addInvoice`, {
       method: 'POST',
@@ -257,7 +256,7 @@ export async function POST(
         orderNumber,
         clientName: invoice.lease?.tenantName || invoice.contract?.buyerName || 'عميل',
         clientMobile: mobile,
-        callBackUrl: `${appUrl}/api/payment/callback`,
+        callBackUrl: callbackUrl.toString(),
         cancelUrl: `${appUrl}/operations/rental`,
         products: [
           {
@@ -294,7 +293,7 @@ export async function POST(
       await tx.invoice.updateMany({
         where: { id, tenantId, status: { not: 'paid' } },
         data: {
-          gatewayProvider: PROVIDER,
+          gatewayProvider: PROVIDER_METHOD,
           gatewayStatus: 'pending',
           paymentUrl,
         },

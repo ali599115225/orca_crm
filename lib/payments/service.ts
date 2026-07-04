@@ -6,6 +6,14 @@ import { getPaymentProvider, isProviderEnabled } from './registry';
 import { handleSuccessfulPaymentInternal } from "@/lib/server/internal";
 import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
+function providerSearchCondition(providerCode: string) {
+  const upper = providerCode.toUpperCase();
+  if (upper === 'PAYLINK') {
+    return { in: ['PAYLINK', 'paylink'] };
+  }
+  return upper;
+}
+
 const PLAN_PRICE_MINOR: Record<string, number> = {
   basic: 99_00,
   silver: 199_00,
@@ -59,7 +67,7 @@ export async function claimPaymentTransaction(
   providerReference: string,
 ): Promise<{ transaction: any; claimed: boolean; alreadyCompleted: boolean } | null> {
   const tx = await prisma.paymentTransaction.findFirst({
-    where: { provider: provider.toUpperCase(), providerReference },
+    where: { provider: providerSearchCondition(provider), providerReference },
   });
   if (!tx) return null;
 
@@ -201,7 +209,7 @@ export async function processPaymentCallback(input: {
   }
 
   const tx = await prisma.paymentTransaction.findFirst({
-    where: { provider: providerCode, providerReference },
+    where: { provider: providerSearchCondition(providerCode), providerReference },
   });
 
   if (!tx) {

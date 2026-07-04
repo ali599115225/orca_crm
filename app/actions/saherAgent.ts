@@ -48,6 +48,7 @@ import {
 } from "@/lib/privacy-mask";
 import { encryptText, decryptText } from "@/lib/crypto";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send-service";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 // ─── نموذج الطلب الوارد من واتساب ─────────────────────────────────────────
 export interface WhatsAppIncomingMessage {
@@ -237,6 +238,7 @@ export async function processSaherWhatsAppLeadAction(
       tenantName: tenant.companyName,
       tenantSubdomain: tenant.subdomain,
       subscriptionPlan: tenant.subscriptionPlan,
+      licenseMode: isDedicatedCopyDeployment() ? "DEDICATED_COPY" : "SAAS",
       availableAgents: availableAgents.map((a) => ({
         id: a.id,
         name: a.name,

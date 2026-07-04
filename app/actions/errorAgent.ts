@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePlatformOwnerAccess } from "@/lib/agents/access";
 import { sendAdminEmailAlert } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 /**
  * تقرير أداء وفحص النظام الشامل بواسطة الوكيل "ساهر"
@@ -73,7 +74,8 @@ export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport>
 
     if (openTicketsCount > 0) {
       anomalies.push(`📢 يوجد عدد ${openTicketsCount} تذاكر دعم فني مفتوحة ولم يتم حلها بعد.`);
-      recommendations.push("الدخول إلى صفحة 'مراقبة الدعم والاشتراكات' لمعالجة استفسارات العملاء.");
+      const supportPageName = isDedicatedCopyDeployment() ? "مراقبة الدعم الفني" : "مراقبة الدعم والاشتراكات";
+      recommendations.push(`الدخول إلى صفحة '${supportPageName}' لمعالجة استفسارات العملاء.`);
     }
   } catch (e) {
     anomalies.push("❌ تعذر الاستعلام عن تذاكر الدعم الفني.");
@@ -92,10 +94,16 @@ export async function saherTrackSystemErrorsAction(): Promise<DiagnosticsReport>
 
     if (activeTenantsWithWhatsApp.length > 0) {
       anomalies.push(`🔍 رصد عدد ${activeTenantsWithWhatsApp.length} شركات متصلة بالواتساب ولكن سعة وكلائها صفر.`);
-      recommendations.push("اقتراح ترقية باقة الوكلاء لهذه الشركات لزيادة سرعة استجابة المحادثات.");
+      const recommendation = isDedicatedCopyDeployment()
+        ? "مراجعة تهيئة سعة الوكلاء التشغيلية لهذه المنشآت."
+        : "اقتراح ترقية باقة الوكلاء لهذه الشركات لزيادة سرعة استجابة المحادثات.";
+      recommendations.push(recommendation);
     }
   } catch (e) {
-    anomalies.push("❌ تعذر فحص شذوذ حسابات المشتركين.");
+    const errorMsg = isDedicatedCopyDeployment()
+      ? "❌ تعذر فحص شذوذ حسابات المنشآت."
+      : "❌ تعذر فحص شذوذ حسابات المشتركين.";
+    anomalies.push(errorMsg);
   }
 
   // إذا لم يتم العثور على مشاكل

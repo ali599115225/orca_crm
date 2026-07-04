@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashEmail } from "@/lib/privacy-mask";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 const USER_ADMIN_ROLES = ["ADMIN", "owner"] as const;
 
@@ -243,12 +244,24 @@ export async function getPlanLimitInfoAction() {
     const session = await getSession();
     if (!session) return null;
     const tenant = await getActiveTenant();
-    const { getPlanLimits, normalizePlan } = await import("@/lib/plan-guard");
-    const plan = normalizePlan(tenant.subscriptionPlan);
-    const limits = getPlanLimits(plan);
     const currentUsers = await prisma.user.count({
       where: { tenantId: tenant.id, isActive: true },
     });
+
+    if (isDedicatedCopyDeployment()) {
+      return {
+        mode: "DEDICATED_COPY",
+        plan: null,
+        limits: null,
+        currentUsers,
+        staffLimit: null,
+        includedInLicense: true,
+      };
+    }
+
+    const { getPlanLimits, normalizePlan } = await import("@/lib/plan-guard");
+    const plan = normalizePlan(tenant.subscriptionPlan);
+    const limits = getPlanLimits(plan);
     return {
       plan,
       limits,

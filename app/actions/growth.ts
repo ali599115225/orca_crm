@@ -21,6 +21,39 @@ import {
   type MansourOutput,
 } from "@/lib/agents/mansour";
 
+export function buildMansourFallbackResponse(
+  message: string,
+  licenseMode: "SAAS" | "DEDICATED_COPY"
+): string {
+  const cleanMsg = message.trim().toLowerCase();
+  const isDedicated = licenseMode === "DEDICATED_COPY";
+
+  if (cleanMsg.includes("بروشور") || cleanMsg.includes("برشور") || cleanMsg.includes("كتالوج") || cleanMsg.includes("تفاصيل")) {
+    return `🤖 أهلاً بك يا فندم. يمكنني إرسال التفاصيل والمواصفات الكاملة. هل تفضل حجز موعد عرض توضيحي (ديمو) لمنصة ORCA لتشاهد بنفسك قدرات النظام؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("دفعة") || cleanMsg.includes("اقساط") || cleanMsg.includes("أقساط") || cleanMsg.includes("قسط") || cleanMsg.includes("سعر")) {
+    if (isDedicated) {
+      return `🤖 أهلاً بك! تختلف الأسعار وخطط السداد حسب المشروع والوحدة. زودني باسم المشروع أو الوحدة المطلوبة لأساعدك بخيارات السداد المناسبة أو أحوّل الطلب للمستشار المختص. - منصور`;
+    }
+    return `🤖 أهلاً بك! لدينا ثلاث باقات: الباقة الأساسية (Starter) بسعر 4,999 ر.س شهرياً، والباقة الاحترافية (Professional) بسعر 12,999 ر.س شهرياً، وباقة المؤسسات بسعر مخصص. ما حجم أعمالك العقارية لأرشح لك الأنسب؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("عرض") || cleanMsg.includes("تجربة") || cleanMsg.includes("ديمو")) {
+    return `🤖 بكل سرور! يسعدنا ترتيب عرض توضيحي (ديمو) لمنصة ORCA. هل تفضلون الأسبوع القادم؟ وما الوقت المناسب لكم؟ - منصور`;
+  }
+
+  if (cleanMsg.includes("زاتكا") || cleanMsg.includes("ضريبة") || cleanMsg.includes("فاتورة")) {
+    return `🤖 نعم، منصة ORCA تدعم الفوترة الإلكترونية المتوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (زاتكا) بالكامل. النظام يُصدر فواتير إلكترونية معتمدة برمز QR وتوقيع إلكتروني. هل تود تفاصيل أكثر عن التكامل مع زاتكا؟ - منصور`;
+  }
+
+  if (isDedicated) {
+    return `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدك اليوم؟ هل لديك استفسار عن الميزات، المشاريع، أو تود حجز عرض توضيحي؟ - منصور`;
+  }
+
+  return `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدك اليوم؟ هل لديك استفسار عن الباقات، الميزات، أو تود حجز عرض توضيحي؟ - منصور`;
+}
+
 // تكلفت الحملات التسويقية الافتراضية لكل مصدر إعلاني (ثابتة لأغراض حساب الاستعاضة والاستحواذ)
 const SOURCE_MARKETING_SPEND: Record<string, number> = {
   "Google Ads": 18500,
@@ -411,8 +444,10 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
       return { success: false, error: "الوكلاء الذكيون معطلون مؤقتًا.", isRestricted: true };
     }
 
+    const licenseMode = isDedicatedCopyDeployment() ? "DEDICATED_COPY" : "SAAS";
+
     // Check MANSOUR plan limits (basic = max 10 messages/day)
-    if (!isDedicatedCopyDeployment() && tenant.subscriptionPlan === "basic") {
+    if (licenseMode === "SAAS" && tenant.subscriptionPlan === "basic") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayChatsCount = await prisma.mansourChat.count({
@@ -455,6 +490,7 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
     const systemPrompt = buildMansourSystemPrompt({
       companyName: tenant.companyName,
       subscriptionPlan: tenant.subscriptionPlan,
+      licenseMode,
       previousMessages: undefined, // Chat history moved to user content (safer)
     });
 
@@ -520,18 +556,7 @@ export async function sendMansourMessageAction(chatId: string, messageText: stri
 
     // احتياطي: إذا فشل Gemini، استخدم الرد الافتراضي
     if (!replyText) {
-      const cleanMsg = messageText.trim().toLowerCase();
-      if (cleanMsg.includes("بروشور") || cleanMsg.includes("برشور") || cleanMsg.includes("كتالوج") || cleanMsg.includes("تفاصيل")) {
-        replyText = `🤖 أهلاً بك يا فندم. يمكنني إرسال التفاصيل والمواصفات الكاملة. هل تفضل حجز موعد عرض توضيحي (ديمو) لمنصة ORCA لتشاهد بنفسك قدرات النظام؟ - منصور`;
-      } else if (cleanMsg.includes("دفعة") || cleanMsg.includes("اقساط") || cleanMsg.includes("أقساط") || cleanMsg.includes("قسط") || cleanMsg.includes("سعر")) {
-        replyText = `🤖 أهلاً بك! لدينا ثلاث باقات: الباقة الأساسية (Starter) بسعر 4,999 ر.س شهرياً، والباقة الاحترافية (Professional) بسعر 12,999 ر.س شهرياً، وباقة المؤسسات بسعر مخصص. ما حجم أعمالك العقارية لأرشح لك الأنسب؟ - منصور`;
-      } else if (cleanMsg.includes("عرض") || cleanMsg.includes("تجربة") || cleanMsg.includes("ديمو")) {
-        replyText = `🤖 بكل سرور! يسعدنا ترتيب عرض توضيحي (ديمو) لمنصة ORCA. هل تفضلون الأسبوع القادم؟ وما الوقت المناسب لكم؟ - منصور`;
-      } else if (cleanMsg.includes("زاتكا") || cleanMsg.includes("ضريبة") || cleanMsg.includes("فاتورة")) {
-        replyText = `🤖 نعم، منصة ORCA تدعم الفوترة الإلكترونية المتوافقة مع متطلبات هيئة الزكاة والضريبة والجمارك (زاتكا) بالكامل. النظام يُصدر فواتير إلكترونية معتمدة برمز QR وتوقيع إلكتروني. هل تود تفاصيل أكثر عن التكامل مع زاتكا؟ - منصور`;
-      } else {
-        replyText = `🤖 أهلاً بك يا فندم. أشكرك على تواصلك مع منصة ORCA. كيف يمكنني مساعدتك اليوم؟ هل لديك استفسار عن الباقات، الميزات، أو تود حجز عرض توضيحي؟ - منصور`;
-      }
+      replyText = buildMansourFallbackResponse(messageText, licenseMode);
     }
 
     // تحديث بيانات تأهيل العميل إذا توفرت من Gemini

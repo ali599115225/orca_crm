@@ -13,10 +13,10 @@ export const SAHER_CORE_IDENTITY = `
 `.trim();
 
 /**
- * دستور التلقين الشامل للوكيل ساهر
- * يُرسَل كـ System Message في كل مكالمة API
+ * محتوى دستور ساهر المشترك بين SAAS و DEDICATED_COPY.
+ * لا يحتوي على عبارات خاصة بباقة SaaS؛ قسم السعة يُبنى ديناميكياً.
  */
-export const SAHER_SYSTEM_PROMPT = `
+const SAHER_SHARED_SYSTEM_PROMPT = `
 ═══════════════════════════════════════════════════════════════════
 🤖 وكيل ساهر — دستور العمل التشغيلي الصارم | إصدار 2.0
 منصة ORCA | النطاق: orca.az-ez.pro | السوق: المملكة العربية السعودية
@@ -34,7 +34,7 @@ export const SAHER_SYSTEM_PROMPT = `
 
 أنتَ مُخوَّل بمراقبة وتحليل الأحداث الحرجة الآتية:
 - **انهيار الجلسات** (Session Crashes): كشف الجلسات المنتهية أو التالفة وتسجيلها.
-- **تجاوز سعة الوكلاء** (Cap Lock Events): تنبيه عند محاولة تجاوز حدود الباقة.
+- **تجاوز سعة الوكلاء** (Cap Lock Events): تنبيه عند محاولة تجاوز السعة المسموحة.
 - **بطء قاعدة البيانات** (DB Latency): رصد زمن استجابة يتخطى 400ms وإصدار تنبيه.
 - **أخطاء صفحات الواجهة** (UI Errors): تسجيل أي استثناء برمجي يصل إليك.
 - **فشل الاتصال بالنطاق** (Domain Downtime): رصد عدم استجابة orca.az-ez.pro.
@@ -215,6 +215,38 @@ export const SAHER_SYSTEM_PROMPT = `
 `.trim();
 
 /**
+ * ملاحظة السعة الخاصة بوضع SAAS.
+ */
+const SAHER_SAAS_CAPACITY_PROMPT = `
+## ملاحظة السعة والباقة:
+- تنبيه عند محاولة تجاوز حدود الباقة.
+- الباقة الحالية: {subscriptionPlan}
+`.trim();
+
+/**
+ * ملاحظة السعة الخاصة بالنسخة المستقلة.
+ */
+const SAHER_DEDICATED_CAPACITY_PROMPT = `
+## ⚠️ ملاحظة وضع النشر المستقل:
+- المنصة تعمل بنسخة مستقلة مرخصة.
+- تنبيه عند محاولة تجاوز السعة التشغيلية.
+- لا تذكر الباقة أو اسم الخطة للعميل.
+- لا تقترح ترقية باقة أو تعرض أسعار اشتراك.
+`.trim();
+
+/**
+ * دستور ساهر الكامل المتوافق مع SAAS.
+ * يبقى متاحاً للمتصلين الآخرين الذين يعتمدون على النسخة الكاملة.
+ */
+export const SAHER_SYSTEM_PROMPT = `
+${SAHER_SHARED_SYSTEM_PROMPT}
+
+---
+
+${SAHER_SAAS_CAPACITY_PROMPT.replace("{subscriptionPlan}", "basic")}
+`.trim();
+
+/**
  * دالة بناء الـ System Prompt الكامل مع سياق المستأجر الحالي
  */
 export function buildSaherSystemPrompt(context: {
@@ -222,6 +254,7 @@ export function buildSaherSystemPrompt(context: {
   tenantName: string;
   tenantSubdomain: string;
   subscriptionPlan: string;
+  licenseMode?: string;
   availableAgents: Array<{ id: string; name: string; leadsCount: number }>;
 }): string {
   const agentsContext = context.availableAgents.length > 0
@@ -230,7 +263,19 @@ export function buildSaherSystemPrompt(context: {
         .join("\n")
     : "  - لا يوجد مستشارون متاحون حالياً";
 
-  return `${SAHER_SYSTEM_PROMPT}
+  const isDedicated = context.licenseMode === "DEDICATED_COPY";
+  const deploymentType = isDedicated
+    ? "نسخة مستقلة مرخصة (DEDICATED_COPY)"
+    : `الباقة: ${context.subscriptionPlan}`;
+  const capacitySection = isDedicated
+    ? SAHER_DEDICATED_CAPACITY_PROMPT
+    : SAHER_SAAS_CAPACITY_PROMPT.replace("{subscriptionPlan}", context.subscriptionPlan);
+
+  return `${SAHER_SHARED_SYSTEM_PROMPT}
+
+---
+
+${capacitySection}
 
 ---
 
@@ -239,7 +284,7 @@ export function buildSaherSystemPrompt(context: {
 - **اسم الشركة:** ${context.tenantName}
 - **معرف الشركة:** ${context.tenantId}
 - **النطاق الفرعي:** ${context.tenantSubdomain}
-- **الباقة:** ${context.subscriptionPlan}
+- **نوع النشر:** ${deploymentType}
 - **المستشارون المتاحون الآن للإسناد:**
 ${agentsContext}
 

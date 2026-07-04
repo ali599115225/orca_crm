@@ -92,7 +92,6 @@ export async function adminUpdateTenantPlanAction(
 
     if (
       !validIdentifier(tenantId) ||
-      !validPlan(plan) ||
       typeof isActive !== 'boolean'
     ) {
       return publicError(
@@ -108,6 +107,13 @@ export async function adminUpdateTenantPlanAction(
       });
       revalidatePath('/operations');
       return { success: true, planChangeSkipped: true, mode: "DEDICATED_COPY" };
+    }
+
+    if (!validPlan(plan)) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'adminUpdateTenantPlanAction validation failed'
+      );
     }
 
     await prisma.tenant.update({
@@ -204,7 +210,7 @@ export async function updateTenantPlanAction(
   try {
     await verifySuperAdmin();
 
-    if (!validIdentifier(tenantId) || !validPlan(plan)) {
+    if (!validIdentifier(tenantId)) {
       return publicError(
         ErrorCode.VALIDATION_ERROR,
         'updateTenantPlanAction validation failed'
@@ -217,6 +223,13 @@ export async function updateTenantPlanAction(
         dedicatedCopyBlocked: true,
         error: 'خطة SaaS غير قابلة للتعديل في النسخة المستقلة. جميع الميزات مشمولة في الترخيص.',
       };
+    }
+
+    if (!validPlan(plan)) {
+      return publicError(
+        ErrorCode.VALIDATION_ERROR,
+        'updateTenantPlanAction validation failed'
+      );
     }
 
     await prisma.tenant.update({
