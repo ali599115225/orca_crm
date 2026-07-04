@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
+import { MessageCircleMore } from "lucide-react";
+import InteractiveSurface from "@/components/ui/InteractiveSurface";
 
 interface DashboardWhatsAppSummaryProps {
   conversationsCount: number;
@@ -26,67 +28,55 @@ export default function DashboardWhatsAppSummary({
 }: DashboardWhatsAppSummaryProps) {
   const metrics = [
     {
-      key: 'conversations',
+      key: "conversations",
       label: labels.conversations,
       value: conversationsCount,
     },
     {
-      key: 'new-leads',
+      key: "new-leads",
       label: labels.newLeads,
       value: newLeadsCount,
     },
     {
-      key: 'unread',
+      key: "unread",
       label: labels.unread,
       value: unreadMessagesCount,
     },
   ];
 
-  const handleKeyDown = (
-    event: React.KeyboardEvent<HTMLDivElement>,
-  ) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClick();
-    }
-  };
-
   return (
-    <div
-      className="cursor-pointer rounded-xl border border-[#0A1F3A]/10 bg-white p-5 shadow-sm transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A]"
+    <InteractiveSurface
+      variant="card"
+      className="p-5 text-start"
       onClick={onClick}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
       aria-label={labels.title}
     >
       <div className="mb-5 flex items-center gap-2.5">
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-          <i
-            className="ph-fill ph-whatsapp-logo text-lg"
-            aria-hidden="true"
-          />
-        </div>
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#25D366]/10 text-[#25D366]">
+          <MessageCircleMore size={19} strokeWidth={2.2} aria-hidden="true" />
+        </span>
 
-        <h4 className="nc-heading-3">{labels.title}</h4>
+        <h4 className="text-lg font-bold text-[#0A1F3A] dark:text-white">
+          {labels.title}
+        </h4>
       </div>
 
       <div className="grid gap-3">
         {metrics.map((metric) => (
           <div
             key={metric.key}
-            className="flex min-h-[54px] items-center justify-between gap-4 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-3"
+            className="flex min-h-[54px] items-center justify-between gap-4 rounded-xl border border-[#0A1F3A]/10 bg-[#0A1F3A]/[0.02] px-4 py-3 dark:border-white/10 dark:bg-white/[0.025]"
           >
-            <span className="text-xs font-bold text-[var(--nc-text-dim)]">
+            <span className="text-xs font-bold text-[#0A1F3A]/65 dark:text-white/70">
               {metric.label}
             </span>
 
-            <strong className="text-xl font-black text-[var(--nc-text-primary)]">
+            <strong className="text-xl font-black text-[#0A1F3A] dark:text-white">
               {formatNumber(metric.value)}
             </strong>
           </div>
         ))}
       </div>
-    </div>
+    </InteractiveSurface>
   );
 }

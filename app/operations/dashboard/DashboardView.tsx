@@ -12,6 +12,16 @@ import type { DisplayLocale } from '@/lib/display';
 import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
 import DashboardWhatsAppSummary from './components/DashboardWhatsAppSummary';
 import DashboardMetricCard from './components/DashboardMetricCard';
+import InteractiveSurface from '@/components/ui/InteractiveSurface';
+import {
+  CalendarCheck2,
+  FileCheck2,
+  FilePlus2,
+  Handshake,
+  SendHorizontal,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 
 interface DashboardViewProps {
   user?: { name?: string | null };
@@ -220,9 +230,9 @@ export default function DashboardView({
             </div>
             <button
               onClick={() => setIsWizardOpen(true)}
-              className="flex h-14 items-center gap-2 rounded-lg bg-[#D9AD55] px-5 text-sm font-bold text-white transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2"
+              className="flex h-14 items-center gap-2 rounded-lg bg-[#D9AD55] px-5 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2"
             >
-              <i className="ph-fill ph-file-plus text-base" aria-hidden="true"></i>
+              <FilePlus2 size={18} strokeWidth={2.2} aria-hidden="true" />
               <span>{t('action.issueContract')}</span>
             </button>
           </div>
@@ -238,7 +248,7 @@ export default function DashboardView({
             title={t('kpi.totalLeads')}
             value={formatNum(totalLeadsCount)}
             description={t('kpi.totalLeads.desc')}
-            icon={<i className="ph-fill ph-users-three text-base" aria-hidden="true"></i>}
+            icon={<UsersRound size={18} strokeWidth={2.2} aria-hidden="true" />}
             onClick={() => navTo('/operations/leads')}
             ariaLabel={t('kpi.totalLeads')}
           />
@@ -249,7 +259,7 @@ export default function DashboardView({
             title={t('kpi.dailyTours')}
             value={formatNum(dailyToursCount)}
             description={t('kpi.dailyTours.desc')}
-            icon={<i className="ph-fill ph-calendar-check text-base" aria-hidden="true"></i>}
+            icon={<CalendarCheck2 size={18} strokeWidth={2.2} aria-hidden="true" />}
             onClick={() => navTo('/operations/tours')}
             ariaLabel={t('kpi.dailyTours')}
           />
@@ -260,7 +270,7 @@ export default function DashboardView({
             title={t('kpi.sentOffers')}
             value={formatNum(sentOffersCount)}
             description={t('kpi.sentOffers.desc')}
-            icon={<i className="ph-fill ph-paper-plane-tilt text-base" aria-hidden="true"></i>}
+            icon={<SendHorizontal size={18} strokeWidth={2.2} aria-hidden="true" />}
             onClick={() => navTo('/operations/offers')}
             ariaLabel={t('kpi.sentOffers')}
           />
@@ -271,7 +281,7 @@ export default function DashboardView({
             title={t('kpi.closedContracts')}
             value={formatNum(closedContractsCount)}
             description={t('kpi.closedContracts.desc')}
-            icon={<i className="ph-fill ph-file-lock text-base" aria-hidden="true"></i>}
+            icon={<FileCheck2 size={18} strokeWidth={2.2} aria-hidden="true" />}
             onClick={() => navTo('/operations/sales')}
             ariaLabel={t('kpi.closedContracts')}
           />
@@ -311,18 +321,12 @@ export default function DashboardView({
                   close: 'pipeline.close',
                 };
                 return (
-                  <div
+                  <InteractiveSurface
                     key={stage.key}
-                    className="cursor-pointer rounded-lg border border-[#0A1F3A]/10 bg-white p-4 text-center transition-colors hover:bg-[#EDC66D]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A]"
+                    variant="stage"
+                    className="p-4 text-center"
                     onClick={() => navTo('/operations/leads')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e: React.KeyboardEvent) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navTo('/operations/leads');
-                      }
-                    }}
+                    aria-label={t(stageKeyMap[stage.key] || stage.key)}
                   >
                     <p className="mb-2 text-xs font-bold text-[#0A1F3A]/70 dark:text-white/70">
                       {t(stageKeyMap[stage.key] || stage.key)}
@@ -339,7 +343,7 @@ export default function DashboardView({
                     <p className="mt-1 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                       {percent}%
                     </p>
-                  </div>
+                  </InteractiveSurface>
                 );
               })}
             </div>
@@ -397,13 +401,13 @@ export default function DashboardView({
                     <div className="mt-2 flex items-center gap-3 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                       {task.leadName && (
                         <span className="flex items-center gap-1">
-                          <i className="ph-bold ph-user text-xs" aria-hidden="true"></i>
+                          <UserRound size={13} aria-hidden="true" />
                           {task.leadName}
                         </span>
                       )}
                       {task.assignedName && (
                         <span className="flex items-center gap-1">
-                          <i className="ph-bold ph-handshake text-xs" aria-hidden="true"></i>
+                          <Handshake size={13} aria-hidden="true" />
                           {task.assignedName}
                         </span>
                       )}
@@ -452,18 +456,16 @@ export default function DashboardView({
             <div className="space-y-2">
               {filteredRecentLeads.map((lead) => {
                 return (
-                  <div
+                  <InteractiveSurface
                     key={lead.id}
-                    className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-[#0A1F3A]/10 bg-white p-3 transition-colors hover:bg-[#EDC66D]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A]"
+                    variant="row"
+                    className="flex items-center justify-between gap-4 p-3 text-start"
                     onClick={() => navTo(`/operations/leads/${lead.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e: React.KeyboardEvent) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navTo(`/operations/leads/${lead.id}`);
-                      }
-                    }}
+                    aria-label={displayPerson(
+                      `${lead.firstName} ${lead.lastName || ''}`,
+                      displayLocale,
+                      { route: '/operations/dashboard', entityId: lead.id },
+                    )}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#D9AD55]/10 text-sm font-bold text-[#D9AD55]">
@@ -499,7 +501,7 @@ export default function DashboardView({
                         </p>
                       )}
                     </div>
-                  </div>
+                  </InteractiveSurface>
                 );
               })}
               {filteredRecentLeads.length === 0 && (

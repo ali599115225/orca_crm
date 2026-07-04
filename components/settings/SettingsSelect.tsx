@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { ChevronDown } from "lucide-react";
 
 export interface SettingsSelectOption {
   value: string;
@@ -203,7 +204,7 @@ export default function SettingsSelect({
         {...rest}
       >
         <span className="truncate">{selected?.label ?? placeholder ?? ""}</span>
-        <i className="ph-bold ph-caret-down shrink-0 text-[10px] text-[var(--nc-foreground-muted)]" aria-hidden="true" />
+        <ChevronDown size={14} className="shrink-0 text-[var(--nc-foreground-muted)]" aria-hidden="true" />
       </button>
 
       {name && <input type="hidden" name={name} value={value} />}

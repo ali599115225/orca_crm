@@ -1,5 +1,3 @@
-// app/actions/contract.ts
-// Hardened: DB-backed role + tenant FK + audit on all mutations.
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -9,8 +7,7 @@ import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { issueContract } from "@/lib/domain/transaction-spine";
-
-// ─── Allowed roles for contract mutations ─────────────────────────────────────
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 const CONTRACT_WRITER_ROLES = ["ADMIN", "owner", "SALES_MANAGER"] as const;
 const CONTRACT_READER_ROLES = [
@@ -21,181 +18,302 @@ const CONTRACT_READER_ROLES = [
   "rental_manager",
 ] as const;
 
-export async function saveContractTermsAction(terms: string) {
+export type ContractWizardErrorCode =
+  | "AUTH_REQUIRED"
+  | "FORBIDDEN"
+  | "TENANT_CONTEXT_UNAVAILABLE"
+  | "CLIENT_REQUIRED"
+  | "PROPERTY_REQUIRED"
+  | "AMOUNT_INVALID"
+  | "DATA_LOAD_FAILED"
+  | "CONTRACT_ISSUE_FAILED";
+
+export type ContractTermsActionResult =
+  | { success: true; error?: undefined }
+  | { success: false; error: ContractWizardErrorCode };
+
+function errorCode(
+  error: unknown,
+  fallback: ContractWizardErrorCode,
+): ContractWizardErrorCode {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+
+  if (
+    message.includes("TENANT_CONTEXT") ||
+    message.includes("TENANT_SESSION") ||
+    message.includes("TENANT_HOST") ||
+    message.includes("TENANT_PRIVILEGED")
+  ) {
+    return "TENANT_CONTEXT_UNAVAILABLE";
+  }
+
+  if (
+    message === "FORBIDDEN" ||
+    message.includes("غير مصرح") ||
+    message.includes("صلاحية")
+  ) {
+    return "FORBIDDEN";
+  }
+
+  if (
+    message.includes("AUTH") ||
+    message.includes("تسجيل الدخول")
+  ) {
+    return "AUTH_REQUIRED";
+  }
+
+  return fallback;
+}
+
+export async function saveContractTermsAction(
+  terms: string,
+): Promise<ContractTermsActionResult> {
   try {
-    // Only ADMIN / owner may modify contract templates
     const session = await getSession();
-    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
-    const verified = await assertServerActionRole(session, ["ADMIN", "owner"]);
+    if (!session) {
+      return { success: false, error: "AUTH_REQUIRED" };
+    }
 
     const tenant = await getActiveTenant();
 
-    await prisma.tenant.update({
-      where: { id: tenant.id },
-      data: { contractTerms: terms },
-    });
+    return await runWithTenantContext(
+      {
+        tenantId: tenant.id,
+        userId: session.userId as string | undefined,
+      },
+      async () => {
+        const verified = await assertServerActionRole(
+          session,
+          ["ADMIN", "owner"],
+        );
 
-    await writeAuditLog({
-      tenantId: tenant.id,
-      userId: verified.userId,
-      action: "CONTRACT_TERMS_UPDATED",
-      tableName: "tenants",
-      recordId: tenant.id,
-      details: JSON.stringify({ length: terms.length }),
-    });
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { contractTerms: terms },
+        });
 
-    revalidatePath("/operations");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+        await writeAuditLog({
+          tenantId: tenant.id,
+          userId: verified.userId,
+          action: "CONTRACT_TERMS_UPDATED",
+          tableName: "tenants",
+          recordId: tenant.id,
+          details: JSON.stringify({ length: terms.length }),
+        });
+
+        revalidatePath("/operations");
+        return { success: true };
+      },
+    );
+  } catch (error: unknown) {
+    console.error("[ContractTerms] update failed", error);
+    return {
+      success: false,
+      error: errorCode(error, "CONTRACT_ISSUE_FAILED"),
+    };
   }
 }
 
-/**
- * جلب بيانات العملاء والوحدات الشاغرة المتاحة للتعاقد من قاعدة البيانات
- */
 export async function getContractWizardDataAction() {
   try {
     const session = await getSession();
-    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً.", clients: [], properties: [] };
-    await assertServerActionRole(session, CONTRACT_READER_ROLES);
+    if (!session) {
+      return {
+        success: false as const,
+        code: "AUTH_REQUIRED" as const,
+        clients: [],
+        properties: [],
+      };
+    }
 
     const tenant = await getActiveTenant();
 
-    // 1. جلب العملاء المستثمرين الفعليين (Leads)
-    const leads = await prisma.lead.findMany({
-      where: { tenantId: tenant.id },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
+    return await runWithTenantContext(
+      {
+        tenantId: tenant.id,
+        userId: session.userId as string | undefined,
       },
-      take: 100,
-    });
+      async () => {
+        await assertServerActionRole(session, CONTRACT_READER_ROLES);
 
-    // 2. جلب جهات الاتصال البديلة (Contacts) لشمولية الفهرس
-    const contacts = await prisma.contact.findMany({
-      where: { tenantId: tenant.id },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
+        const [leads, contacts, units] = await Promise.all([
+          prisma.lead.findMany({
+            where: { tenantId: tenant.id },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+            },
+            take: 100,
+          }),
+          prisma.contact.findMany({
+            where: { tenantId: tenant.id },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+            take: 100,
+          }),
+          prisma.unit.findMany({
+            where: {
+              project: { tenantId: tenant.id },
+            },
+            include: {
+              project: {
+                select: { name: true },
+              },
+              contract: {
+                select: { id: true },
+              },
+            },
+            orderBy: [
+              { project: { name: "asc" } },
+              { unitNumber: "asc" },
+            ],
+            take: 100,
+          }),
+        ]);
+
+        const clients = [
+          ...leads.map((lead) => ({
+            id: lead.id,
+            name: `${lead.firstName} ${lead.lastName || ""}`.trim(),
+            phone: lead.phone,
+            type: "lead" as const,
+          })),
+          ...contacts.map((contact) => ({
+            id: contact.id,
+            name: contact.name,
+            phone: contact.phone,
+            type: "contact" as const,
+          })),
+        ];
+
+        const properties = units
+          .filter((unit) => !unit.contract)
+          .map((unit) => ({
+            id: unit.id,
+            unitNumber: unit.unitNumber,
+            priceSar: Number(unit.priceSar),
+            projectName: unit.project?.name || "",
+          }));
+
+        return {
+          success: true as const,
+          clients,
+          properties,
+        };
       },
-      take: 100,
-    });
-
-    // دمج العملاء في مصفوفة موحدة
-    const clients = [
-      ...leads.map((l) => ({
-        id: l.id,
-        name: `${l.firstName} ${l.lastName || ""}`.trim(),
-        phone: l.phone,
-        type: "lead",
-      })),
-      ...contacts.map((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        type: "contact",
-      })),
-    ];
-
-    // 3. جلب الوحدات العقارية غير المرتبطة بعقود مسبقة
-    const units = await prisma.unit.findMany({
-      where: {
-        project: { tenantId: tenant.id },
-      },
-      include: {
-        project: {
-          select: { name: true },
-        },
-        contract: true,
-      },
-      orderBy: [
-        { project: { name: "asc" } },
-        { unitNumber: "asc" },
-      ],
-      take: 100,
-    });
-
-    const availableProperties = units
-      .filter((u) => !u.contract)
-      .map((u) => ({
-        id: u.id,
-        unitNumber: u.unitNumber,
-        priceSar: Number(u.priceSar),
-        status: u.status,
-        projectName: u.project?.name || "مشروع عام",
-      }));
-
+    );
+  } catch (error: unknown) {
+    console.error("[ContractWizard] data load failed", error);
     return {
-      success: true,
-      clients,
-      properties: availableProperties,
+      success: false as const,
+      code: errorCode(error, "DATA_LOAD_FAILED"),
+      clients: [],
+      properties: [],
     };
-  } catch (error: any) {
-    console.error("فشل جلب بيانات معالج العقود:", error);
-    return { success: false, error: error.message, clients: [], properties: [] };
   }
 }
 
-/**
- * إصدار عقد مبيعات حقيقي وربطه بالعميل والوحدة العقارية بشكل ذري وآمن
- */
 export async function issueContractActionDirect(data: {
   clientId: string;
   propertyId: string;
   amount: number;
 }) {
+  const clientId = String(data.clientId || "").trim();
+  const propertyId = String(data.propertyId || "").trim();
+  const amount = Number(data.amount);
+
+  if (!clientId) {
+    return {
+      success: false as const,
+      code: "CLIENT_REQUIRED" as const,
+    };
+  }
+
+  if (!propertyId) {
+    return {
+      success: false as const,
+      code: "PROPERTY_REQUIRED" as const,
+    };
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return {
+      success: false as const,
+      code: "AMOUNT_INVALID" as const,
+    };
+  }
+
   try {
-    // ── Auth: DB-backed role verification ────────────────────────────────────
     const session = await getSession();
-    if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
-    const verified = await assertServerActionRole(session, CONTRACT_WRITER_ROLES);
+    if (!session) {
+      return {
+        success: false as const,
+        code: "AUTH_REQUIRED" as const,
+      };
+    }
 
     const tenant = await getActiveTenant();
-    const { clientId, propertyId, amount } = data;
 
-    const contract = await issueContract({
-      tenantId: tenant.id,
-      userId: verified.userId,
-      clientId,
-      propertyId,
-      amount: Number(amount),
-    });
-
-    await writeAuditLog({
-      tenantId: tenant.id,
-      userId: verified.userId,
-      action: "CONTRACT_ISSUED",
-      tableName: "contracts",
-      recordId: contract.id,
-      details: JSON.stringify({
-        clientId,
-        propertyId,
-        amount,
-        buyerName: contract.buyerName,
-      }),
-    });
-
-    revalidatePath("/operations/dashboard");
-    revalidatePath("/operations/properties");
-
-    return {
-      success: true,
-      contract: {
-        id: contract.id,
-        buyerName: contract.buyerName,
-        buyerPhone: contract.buyerPhone,
-        totalVolumeSar: Number(contract.totalVolumeSar),
-        signedAt: contract.signedAt.toISOString(),
+    return await runWithTenantContext(
+      {
+        tenantId: tenant.id,
+        userId: session.userId as string | undefined,
       },
+      async () => {
+        const verified = await assertServerActionRole(
+          session,
+          CONTRACT_WRITER_ROLES,
+        );
+
+        const contract = await issueContract({
+          tenantId: tenant.id,
+          userId: verified.userId,
+          clientId,
+          propertyId,
+          amount,
+        });
+
+        await writeAuditLog({
+          tenantId: tenant.id,
+          userId: verified.userId,
+          action: "CONTRACT_ISSUED",
+          tableName: "contracts",
+          recordId: contract.id,
+          details: JSON.stringify({
+            clientId,
+            propertyId,
+            amount,
+            buyerName: contract.buyerName,
+          }),
+        });
+
+        revalidatePath("/operations/dashboard");
+        revalidatePath("/operations/properties");
+
+        return {
+          success: true as const,
+          contract: {
+            id: contract.id,
+            buyerName: contract.buyerName,
+            buyerPhone: contract.buyerPhone,
+            totalVolumeSar: Number(contract.totalVolumeSar),
+            signedAt: contract.signedAt.toISOString(),
+          },
+        };
+      },
+    );
+  } catch (error: unknown) {
+    console.error("[ContractWizard] issue failed", error);
+    return {
+      success: false as const,
+      code: errorCode(error, "CONTRACT_ISSUE_FAILED"),
     };
-  } catch (error: any) {
-    console.error("فشل إصدار العقد عبر الـ Server Action:", error);
-    return { success: false, error: error.message };
   }
 }
