@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (result.ok) {
       if (result.status === 'BUSINESS_PAYMENT_PENDING') {
         const businessUrl = new URL("/operations", request.url);
-        businessUrl.searchParams.set("info", encodeURIComponent("تم استلام عودة بوابة الدفع، ويجري التحقق من الدفعة."));
+        businessUrl.searchParams.set("info", "تم استلام عودة بوابة الدفع، ويجري التحقق من الدفعة.");
         return NextResponse.redirect(businessUrl);
       }
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     if (result.status === 'DEDICATED_BLOCKED') {
       const dedicatedUrl = new URL("/operations", request.url);
-      dedicatedUrl.searchParams.set("info", encodeURIComponent(result.error));
+      dedicatedUrl.searchParams.set("info", result.error);
       return NextResponse.redirect(dedicatedUrl);
     }
 
