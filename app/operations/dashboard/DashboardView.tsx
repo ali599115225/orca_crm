@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { useAuth } from '@/app/context/AuthContext';
-import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
+import { toArabicNumerals as toArabicNumeralsImport } from '@/lib/formatters';
 import ContractWizard from '@/components/features/ContractWizard';
 import { SmartCard } from '@/components/ui/SmartCard';
 import PageHeader from '@/components/ui/PageHeader';
@@ -13,8 +13,11 @@ import type { PipelineStage, TodayTask } from '@/app/actions/dashboard';
 import { displayPerson, displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 import { formatDisplayDate, formatDisplayTime } from '@/lib/display/dateTime';
+import DashboardWhatsAppSummary from './components/DashboardWhatsAppSummary';
+import DashboardAgentsSummary, { type DashboardAgentSummaryItem } from './components/DashboardAgentsSummary';
 
 interface DashboardViewProps {
+  user?: { name?: string | null };
   tenant?: { companyName: string; subdomain: string; subscriptionPlan: string; extraAgents: number; };
   stats?: { totalLeads?: number; activeBookings?: number; dailyTours?: number; sentOffers?: number; closedContracts?: number; closedSales?: number; totalProjects?: number; pendingTasks?: number; monthlySales?: number; };
   recentLeads?: Array<{ id: string; firstName: string; lastName: string | null; phone: string; status: string; city: string; createdAt: string; project?: { name: string } | null; }>;
@@ -50,8 +53,8 @@ function FlatRowBlock({ children, className = '', onClick }: { children: React.R
 }
 
 export default function DashboardView({
-  tenant, stats, recentLeads = [], aiPredictions,
-  pipelineStages = [], todayTasks = [], whatsAppStats,
+  user, tenant, stats, recentLeads = [], aiPredictions,
+  pipelineStages = [], todayTasks = [], whatsAppStats = { conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 },
   recentTasks, projects, agentPerformance, leadSources, systemAlerts,
 }: DashboardViewProps) {
   const { lang, t } = useApp();
@@ -61,7 +64,8 @@ export default function DashboardView({
   const [searchQuery, setSearchQuery] = useState('');
 
   const displayLocale: DisplayLocale = lang === 'EN' ? 'en' : 'ar';
-  const displayTenant = displayEntity(tenant?.companyName, 'company', displayLocale, { route: '/operations/dashboard' });
+  const displayName = displayPerson(user?.name || '', displayLocale, { route: '/operations/dashboard' });
+  const welcomeName = user?.name ? displayName : (lang === 'EN' ? 'User' : 'المستخدم');
 
   const getInitials = (firstName: string, lastName: string | null): string => {
     const fullName = `${firstName} ${lastName || ''}`.trim();
@@ -98,10 +102,68 @@ export default function DashboardView({
   const sentOffersCount = stats?.sentOffers ?? 0;
   const closedContractsCount = stats?.closedContracts ?? 0;
 
+  const dashboardAgents = (agentPerformance ?? [])
+    .reduce<DashboardAgentSummaryItem[]>((items, rawAgent) => {
+      const agent = (rawAgent ?? {}) as Record<string, unknown>;
+
+      const identity = String(
+        agent.code ??
+        agent.agentCode ??
+        agent.agentId ??
+        agent.agent ??
+        agent.key ??
+        agent.name ??
+        agent.agentName ??
+        '',
+      ).trim();
+
+      const normalizedIdentity = identity.toUpperCase();
+
+      const code: DashboardAgentSummaryItem['code'] | null =
+        normalizedIdentity.includes('MANSOUR') || identity.includes('منصور')
+          ? 'MANSOUR'
+          : normalizedIdentity.includes('SAHER') || identity.includes('ساهر')
+            ? 'SAHER'
+            : null;
+
+      if (!code || items.some((item) => item.code === code)) {
+        return items;
+      }
+
+      const statusValue =
+        agent.status ??
+        agent.state ??
+        agent.healthStatus ??
+        agent.runtimeStatus ??
+        null;
+
+      const activityValue =
+        agent.lastActivity ??
+        agent.lastRunAt ??
+        agent.lastActiveAt ??
+        agent.lastSeenAt ??
+        agent.updatedAt ??
+        null;
+
+      items.push({
+        code,
+        nameAr: code === 'MANSOUR' ? 'منصور' : 'ساهر',
+        nameEn: code === 'MANSOUR' ? 'Mansour' : 'Saher',
+        status: statusValue == null ? null : String(statusValue),
+        lastActivity: activityValue == null ? null : String(activityValue),
+      });
+
+      return items;
+    }, [])
+    .sort((left, right) => {
+      if (left.code === right.code) return 0;
+      return left.code === 'MANSOUR' ? -1 : 1;
+    });
+
   const handleWizardSuccess = () => router.refresh();
   const anyWidgetVisible = matchesSearch(
     t('kpi.totalLeads'), t('kpi.dailyTours'), t('kpi.sentOffers'), t('kpi.closedContracts'),
-    t('action.quick'), t('pipeline.title'), t('tasks.title'), t('requests.title'), t('ai.title'),
+    t('action.quick'), t('pipeline.title'), t('tasks.title'), t('requests.title'), t('agents.title'), t('tab.whatsapp'), t('ai.title'),
     ...todayTasks.map(t2 => t2.title),
     ...recentLeads.map(l => `${l.firstName} ${l.lastName || ''}`),
     ...pipelineStages.map(s2 => t('pipeline.' + s2.key)),
@@ -123,14 +185,23 @@ export default function DashboardView({
           ═══════════════════════════════════════ */}
       {matchesSearch(t('dash.welcome'), t('dash.welcomeDesc')) && (
         <PageHeader
-          title={`${t('dash.welcome')} ${displayTenant}`}
+          title={`${t('dash.welcome')} ${welcomeName}`}
           description={t('dash.welcomeDesc')}
         >
-          <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
-             <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-0.5 whitespace-nowrap">{t('dash.todayDate')}</p>
-              <p className="text-[var(--nc-accent-text)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
-                {formatDisplayDate(new Date())}
-             </p>
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2.5 text-center md:min-w-[170px] flex-shrink-0 max-h-[64px] flex flex-col justify-center rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)]">
+               <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-0.5 whitespace-nowrap">{t('dash.todayDate')}</p>
+                <p className="text-[var(--nc-accent-text)] font-bold text-sm md:text-base font-mono whitespace-nowrap">
+                  {formatDisplayDate(new Date())}
+               </p>
+            </div>
+            <button
+              onClick={() => setIsWizardOpen(true)}
+              className="nc-btn nc-btn-primary text-xs cursor-pointer flex-shrink-0 h-[52px] px-5"
+            >
+              <i className="ph-fill ph-file-plus text-sm"></i>
+              <span>{t('action.issueContract')}</span>
+            </button>
           </div>
         </PageHeader>
       )}
@@ -170,7 +241,7 @@ export default function DashboardView({
           </SmartCard>
         )}
         {matchesSearch(t('kpi.closedContracts')) && (
-          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/rental')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/rental'); } }} aria-label={t('kpi.closedContracts')}>
+          <SmartCard elevation="elevated" className="p-4 cursor-pointer" onClick={() => navTo('/operations/sales')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/sales'); } }} aria-label={t('kpi.closedContracts')}>
             <div className="flex items-start justify-between mb-1">
               <p className="text-[var(--nc-text-dim)] text-xs font-bold uppercase tracking-wider">{t('kpi.closedContracts')}</p>
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0"><i className="ph-fill ph-file-lock text-base"></i></div>
@@ -180,50 +251,6 @@ export default function DashboardView({
           </SmartCard>
         )}
       </div>
-
-      {/* KPI Row 2: WhatsApp KPIs — smaller, with Preview badge */}
-      {whatsAppStats && (matchesSearch(t('kpi.whatsappConvos')) || matchesSearch(t('kpi.whatsappNewLeads')) || matchesSearch(t('kpi.unreadMessages'))) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {matchesSearch(t('kpi.whatsappConvos')) && (
-            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.whatsappConvos')}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[var(--nc-text-dim)] text-xs font-bold">{t('kpi.whatsappConvos')}</span>
-              </div>
-              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.conversationsCount)}</h3>
-            </SmartCard>
-          )}
-          {matchesSearch(t('kpi.whatsappNewLeads')) && (
-            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.whatsappNewLeads')}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[var(--nc-text-dim)] text-xs font-bold">{t('kpi.whatsappNewLeads')}</span>
-              </div>
-              <h3 className="text-xl font-black text-[var(--nc-text-primary)]">{formatNum(whatsAppStats.newLeadsCount)}</h3>
-            </SmartCard>
-          )}
-          {whatsAppStats.unreadMessagesCount > 0 && matchesSearch(t('kpi.unreadMessages')) && (
-            <SmartCard elevation="elevated" className="p-3 cursor-pointer" onClick={() => navTo('/operations/whatsapp')} role="button" tabIndex={0} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navTo('/operations/whatsapp'); } }} aria-label={t('kpi.unreadMessages')}>
-              <span className="text-[var(--nc-text-dim)] text-xs font-bold block mb-1">{t('kpi.unreadMessages')}</span>
-              <h3 className="text-xl font-black text-amber-700 dark:text-amber-400">{formatNum(whatsAppStats.unreadMessagesCount)}</h3>
-            </SmartCard>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════
-          C. QUICK ACTION — full-width strip
-          ═══════════════════════════════════════ */}
-      {matchesSearch(t('action.quick'), t('action.issueContract')) && (
-        <SmartCard elevation="default" className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="text-sm font-bold text-[var(--nc-text-primary)] mb-0.5">{t('action.quick')}</h4>
-            <p className="text-[var(--nc-text-dim)] text-xs leading-relaxed max-w-lg">{t('action.quickDesc')}</p>
-          </div>
-          <button onClick={() => setIsWizardOpen(true)} className="nc-btn nc-btn-primary text-xs cursor-pointer flex-shrink-0">
-            <i className="ph-fill ph-file-plus text-sm"></i>
-            <span>{t('action.issueContract')}</span>
-          </button>
-        </SmartCard>
-      )}
 
       {/* ═══════════════════════════════════════
           D. OPERATING SECTION — Pipeline + Tasks
@@ -313,50 +340,156 @@ export default function DashboardView({
                 </div>
               )}
             </div>
+            <div className="mt-4 pt-4 border-t border-[var(--nc-border)]">
+              <button
+                onClick={() => navTo('/operations/tasks')}
+                className="text-xs font-medium text-[var(--nc-accent-text)] hover:underline cursor-pointer"
+              >
+                {t('tasks.viewAll')}
+              </button>
+            </div>
           </SmartCard>
         )}
 
       </div>
 
       {/* ═══════════════════════════════════════
-          E. RECENT REQUESTS
+          E. RECENT REQUESTS + WHATSAPP
           ═══════════════════════════════════════ */}
-      {matchesSearch(t('requests.title'), ...recentLeads.map(l => `${l.firstName} ${l.lastName || ''}`)) && (
-        <SmartCard elevation="default" className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="nc-heading-3">{t("requests.title")}</h4>
-              <p className="text-[var(--nc-text-dim)] text-xs mt-0.5">{t("requests.desc")}</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+        {matchesSearch(
+          t('requests.title'),
+          ...recentLeads.map((lead) => `${lead.firstName} ${lead.lastName || ''}`),
+        ) && (
+          <SmartCard elevation="default" className="xl:col-span-2 p-5 h-full">
+            <div className="mb-4">
+              <h4 className="nc-heading-3">{t('requests.title')}</h4>
+              <p className="mt-0.5 text-xs text-[var(--nc-text-dim)]">
+                {t('requests.desc')}
+              </p>
             </div>
-          </div>
-          <div className="space-y-2">
-            {recentLeads.slice(0, 5).map((lead) => {
-              if (searchActive && !matchesSearch(`${lead.firstName} ${lead.lastName || ''}`, lead.phone, lead.city, lead.status, lead.project?.name)) return null;
-              return (
-                <FlatRowBlock key={lead.id} className="p-3 flex items-center justify-between" onClick={() => navTo('/operations/leads')}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-foreground)] font-bold text-xs">{getInitials(lead.firstName, lead.lastName)}</div>
-                    <div>
-                      <h5 className="text-sm font-bold text-[var(--nc-text-primary)]">{displayPerson(`${lead.firstName} ${lead.lastName || ''}`, displayLocale, { route: '/operations/dashboard', entityId: lead.id })}</h5>
-                      <p className="text-xs text-[var(--nc-text-dim)] mt-0.5">{lead.phone} • {displayGeo(lead.city, 'city', displayLocale, { route: '/operations/dashboard' })}</p>
+
+            <div className="max-h-[360px] space-y-2 overflow-y-auto custom-scrollbar">
+              {recentLeads.slice(0, 5).map((lead) => {
+                if (
+                  searchActive &&
+                  !matchesSearch(
+                    `${lead.firstName} ${lead.lastName || ''}`,
+                    lead.phone,
+                    lead.city,
+                    lead.status,
+                    lead.project?.name,
+                  )
+                ) {
+                  return null;
+                }
+
+                return (
+                  <FlatRowBlock
+                    key={lead.id}
+                    className="min-h-[64px] p-3 flex items-center justify-between gap-4"
+                    onClick={() => navTo(`/operations/leads/${lead.id}`)}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nc-accent-soft)] text-xs font-bold text-[var(--nc-foreground)]">
+                        {getInitials(lead.firstName, lead.lastName)}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h5 className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                          {displayPerson(
+                            `${lead.firstName} ${lead.lastName || ''}`,
+                            displayLocale,
+                            {
+                              route: '/operations/dashboard',
+                              entityId: lead.id,
+                            },
+                          )}
+                        </h5>
+
+                        <p className="mt-0.5 truncate text-xs text-[var(--nc-text-dim)]">
+                          {lead.phone} •{' '}
+                          {displayGeo(
+                            lead.city,
+                            'city',
+                            displayLocale,
+                            { route: '/operations/dashboard' },
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">{displayEnum(lead.status, 'leadStatus', displayLocale)}</span>
-                    {lead.project && <p className="text-[10px] text-[var(--nc-text-dim)] mt-0.5 truncate max-w-[100px]">{displayEntity(lead.project.name, 'project', displayLocale, { route: '/operations/dashboard' })}</p>}
-                  </div>
-                </FlatRowBlock>
-              );
-            })}
-            {recentLeads.length === 0 && (
-              <div className="text-center py-8 text-[var(--nc-text-dim)] text-xs">{t('requests.empty')}</div>
-            )}
-          </div>
-        </SmartCard>
-      )}
+
+                    <div className="shrink-0 text-end">
+                      <span className="inline-block rounded bg-[var(--nc-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-foreground)]">
+                        {displayEnum(
+                          lead.status,
+                          'leadStatus',
+                          displayLocale,
+                        )}
+                      </span>
+
+                      <p className="mt-1 text-[10px] text-[var(--nc-text-dim)]">
+                        {formatDisplayDate(new Date(lead.createdAt))}
+                      </p>
+
+                      {lead.project && (
+                        <p className="mt-0.5 max-w-[140px] truncate text-[10px] text-[var(--nc-text-dim)]">
+                          {displayEntity(
+                            lead.project.name,
+                            'project',
+                            displayLocale,
+                            { route: '/operations/dashboard' },
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </FlatRowBlock>
+                );
+              })}
+
+              {recentLeads.length === 0 && (
+                <div className="grid min-h-[220px] place-items-center text-center text-xs text-[var(--nc-text-dim)]">
+                  {t('requests.empty')}
+                </div>
+              )}
+            </div>
+          </SmartCard>
+        )}
+
+        <div className="h-full xl:col-span-1">
+          <DashboardWhatsAppSummary
+            conversationsCount={whatsAppStats.conversationsCount}
+            newLeadsCount={whatsAppStats.newLeadsCount}
+            unreadMessagesCount={whatsAppStats.unreadMessagesCount}
+            onClick={() => navTo('/operations/whatsapp')}
+            labels={{
+              title: t('tab.whatsapp'),
+              conversations: t('kpi.whatsappConvos'),
+              newLeads: t('kpi.whatsappNewLeads'),
+              unread: t('kpi.unreadMessages'),
+            }}
+            formatNumber={formatNum}
+          />
+        </div>
+      </div>
 
       {/* ═══════════════════════════════════════
-          F. AI / PREVIEW PANEL — shown only when real data exists
+          F. AI AGENTS — ACTUAL DATA ONLY
+          ═══════════════════════════════════════ */}
+      <DashboardAgentsSummary
+        agents={dashboardAgents}
+        onClick={() => navTo('/operations/agents')}
+        labels={{
+          title: t('agents.title'),
+          viewAll: t('agents.viewAll'),
+          empty: t('agents.empty'),
+          statusUnavailable: t('agents.statusUnavailable'),
+          lastActivityUnavailable: t('agents.lastActivityUnavailable'),
+        }}
+        lang={lang}
+      />
+      {/* ═══════════════════════════════════════
+          G. AI / PREVIEW PANEL — shown only when real data exists
           ═══════════════════════════════════════ */}
       {aiPredictions && (
         (aiPredictions.bestContactTimes?.length > 0 || aiPredictions.expectedToClose?.length > 0 || aiPredictions.projectsNeedingCampaign?.length > 0) && matchesSearch(t('ai.title'), t('dash.previewLabel')) && (

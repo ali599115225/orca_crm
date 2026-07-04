@@ -4,6 +4,7 @@ import { getActiveTenant } from '@/lib/tenant';
 import { runWithTenantContext } from '@/lib/tenant-context';
 import { fetchWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
 import { isDedicatedCopyDeployment } from '@/lib/deployment-license';
+import { getSession } from '@/lib/session';
 import DashboardView from './DashboardView';
 
 export const metadata = {
@@ -20,7 +21,12 @@ function logOperationsDashboardDiagnostic(code: OperationsDashboardDiagnosticCod
 }
 
 export default async function DashboardPage() {
-  const tenant = await getActiveTenant();
+  const [session, tenant] = await Promise.all([
+    getSession(),
+    getActiveTenant(),
+  ]);
+
+  const userName = typeof session?.name === 'string' ? session.name : null;
 
   logOperationsDashboardDiagnostic('OPERATIONS_DASHBOARD_CONTEXT_ENTERED');
 
@@ -113,6 +119,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardView
+      user={{ name: userName }}
       tenant={{ companyName: tenant.companyName, subdomain: tenant.subdomain, subscriptionPlan: tenant.subscriptionPlan, extraAgents: tenant.extraAgents }}
       stats={{ totalLeads, activeBookings, closedSales: closedSalesLeads, totalProjects: activeProjectsCount, pendingTasks: pendingTasksCount, monthlySales, dailyTours: dailyToursCount, sentOffers: sentOffersCount, closedContracts: closedContractsCount }}
       recentLeads={recentLeads}

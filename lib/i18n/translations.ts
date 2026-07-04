@@ -115,6 +115,14 @@ export const dict: TranslationDict = {
   'tasks.priority.medium':      { ar: 'متوسطة',   en: 'Medium' },
   'tasks.priority.low':         { ar: 'منخفضة',   en: 'Low' },
   'tasks.empty':                { ar: 'لا توجد مهام مستحقة اليوم',  en: 'No tasks due today' },
+  'tasks.viewAll':              { ar: 'عرض جميع المهام', en: 'View all tasks' },
+
+  // ── Dashboard AI Agents ─────────────────────────
+  'agents.title':               { ar: 'الوكلاء الذكيون', en: 'AI Agents' },
+  'agents.viewAll':             { ar: 'عرض الكل', en: 'View all' },
+  'agents.empty':               { ar: 'لا توجد بيانات تشغيلية متاحة للوكلاء حالياً', en: 'No operational agent data is currently available' },
+  'agents.statusUnavailable':   { ar: 'الحالة غير متاحة', en: 'Status unavailable' },
+  'agents.lastActivityUnavailable': { ar: 'آخر نشاط غير متاح', en: 'Last activity unavailable' },
   'tasks.empty.sub':            { ar: 'جميع المهام منجزة في وقتها', en: 'All tasks are on schedule' },
 
   // ── Dashboard Recent Requests ───────────────────
