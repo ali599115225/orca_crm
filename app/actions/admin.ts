@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { isSuperAdmin } from '@/lib/api-auth-guard';
 import { ErrorCode, publicError } from '@/lib/errors';
+import { isDedicatedCopyDeployment } from '@/lib/deployment-license';
 
 class SuperAdminAuthorizationError extends Error {
   constructor() {
@@ -98,6 +99,15 @@ export async function adminUpdateTenantPlanAction(
         ErrorCode.VALIDATION_ERROR,
         'adminUpdateTenantPlanAction validation failed'
       );
+    }
+
+    if (isDedicatedCopyDeployment()) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { isActive },
+      });
+      revalidatePath('/operations');
+      return { success: true, planChangeSkipped: true, mode: "DEDICATED_COPY" };
     }
 
     await prisma.tenant.update({
@@ -199,6 +209,14 @@ export async function updateTenantPlanAction(
         ErrorCode.VALIDATION_ERROR,
         'updateTenantPlanAction validation failed'
       );
+    }
+
+    if (isDedicatedCopyDeployment()) {
+      return {
+        success: false,
+        dedicatedCopyBlocked: true,
+        error: 'خطة SaaS غير قابلة للتعديل في النسخة المستقلة. جميع الميزات مشمولة في الترخيص.',
+      };
     }
 
     await prisma.tenant.update({

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { PaymentProviderAdapter, PaymentVerificationResult } from './types';
 import { getPaymentProvider, isProviderEnabled } from './registry';
 import { handleSuccessfulPaymentInternal } from "@/lib/server/internal";
+import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
 const PLAN_PRICE_MINOR: Record<string, number> = {
   basic: 99_00,
@@ -174,8 +175,8 @@ export async function initiatePayment(input: {
 }
 
 export type PaymentCallbackResult =
-  | { ok: true; status: 'COMPLETED' | 'ALREADY_COMPLETED' }
-  | { ok: false; status: 'REJECTED' | 'PROCESSING' | 'FAILED'; error: string };
+  | { ok: true; status: 'COMPLETED' | 'ALREADY_COMPLETED' | 'BUSINESS_PAYMENT_PENDING' }
+  | { ok: false; status: 'REJECTED' | 'PROCESSING' | 'FAILED' | 'DEDICATED_BLOCKED'; error: string };
 
 export async function processPaymentCallback(input: {
   provider: string;
@@ -205,6 +206,21 @@ export async function processPaymentCallback(input: {
 
   if (!tx) {
     return { ok: false, status: 'REJECTED', error: 'Payment transaction not found' };
+  }
+
+  const isBusinessPayment =
+    Boolean(tx.invoiceId) || Boolean(tx.installmentId);
+
+  if (isBusinessPayment) {
+    return { ok: true, status: 'BUSINESS_PAYMENT_PENDING' };
+  }
+
+  if (isDedicatedCopyDeployment()) {
+    return {
+      ok: false,
+      status: 'DEDICATED_BLOCKED',
+      error: 'اشتراكات أوركا غير متاحة في النسخة المستقلة.',
+    };
   }
 
   let verification: PaymentVerificationResult;

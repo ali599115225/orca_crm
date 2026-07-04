@@ -74,9 +74,10 @@ export default function SettingsView({
   const isDedicatedCopy = tenant.licenseMode === "DEDICATED_COPY";
   const headerRef = useRef<HTMLDivElement>(null);
 
-  const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
-    resolveSection(searchParams.get("tab")),
-  );
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    const requested = resolveSection(searchParams.get("tab"));
+    return isDedicatedCopy && requested === "billing" ? "organization" : requested;
+  });
 
   useEffect(() => {
     const resolved = resolveSection(searchParams.get("tab"));
@@ -99,8 +100,9 @@ export default function SettingsView({
   );
 
   const changeSection = (section: SettingsSection) => {
-    setActiveSection(section);
-    router.replace("/operations/settings?tab=" + section, { scroll: false });
+    const target = isDedicatedCopy && section === "billing" ? "organization" : section;
+    setActiveSection(target);
+    router.replace("/operations/settings?tab=" + target, { scroll: false });
     requestAnimationFrame(() => {
       headerRef.current?.scrollIntoView({ block: "start" });
     });
@@ -116,9 +118,13 @@ export default function SettingsView({
           {isArabic ? "الإعدادات" : "Settings"}
         </h1>
         <p className="max-w-3xl text-sm text-[var(--nc-foreground-muted)]">
-          {isArabic
-            ? "إدارة بيانات المؤسسة والفريق والباقة والتكاملات والامتثال من مكان واحد."
-            : "Manage organization data, staff, billing, integrations, and compliance from one place."}
+          {isDedicatedCopy
+            ? isArabic
+              ? "إدارة بيانات المؤسسة والفريق والتكاملات والامتثال من مكان واحد."
+              : "Manage organization data, staff, integrations, and compliance from one place."
+            : isArabic
+              ? "إدارة بيانات المؤسسة والفريق والباقة والتكاملات والامتثال من مكان واحد."
+              : "Manage organization data, staff, billing, integrations, and compliance from one place."}
         </p>
       </header>
 

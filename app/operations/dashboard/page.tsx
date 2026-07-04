@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getActiveTenant } from '@/lib/tenant';
 import { runWithTenantContext } from '@/lib/tenant-context';
 import { fetchWhatsAppDashboardStats } from '@/app/actions/whatsapp-crm';
+import { isDedicatedCopyDeployment } from '@/lib/deployment-license';
 import DashboardView from './DashboardView';
 
 export const metadata = {
@@ -93,10 +94,11 @@ export default async function DashboardPage() {
   const projects = dbProjectsValue.map(p => ({ id: p.id, name: p.name, city: p.city, status: p.status, unitsTotal: p.unitsTotal, unitsSold: p.unitsSold, unitsBooked: p.unitsBooked, minPrice: p.minPrice ? Number(p.minPrice) : null }));
   const leadSources = sourceGroupValue.map(s => ({ source: s.source || 'أخرى', count: s._count.id })).sort((a, b) => b.count - a.count);
 
+  const dedicated = isDedicatedCopyDeployment();
   const systemAlerts: Array<{ id: string; type: 'warning' | 'info' | 'critical'; messageAr: string; messageEn: string; date: string }> = [];
   if (overdueTasksCount > 0) systemAlerts.push({ id: 'overdue_tasks', type: 'warning', messageAr: `يوجد ${overdueTasksCount} مهام متأخرة.`, messageEn: `${overdueTasksCount} overdue tasks.`, date: new Date().toISOString() });
-  if (tenant.growthWarning) systemAlerts.push({ id: 'growth_warning', type: 'warning', messageAr: 'تنبيه الاستهلاك: قارب استهلاك الموارد على تجاوز الحد.', messageEn: 'Resource warning: Usage nearing limit.', date: new Date().toISOString() });
-  if (tenant.paymentStatus === 'UNPAID') systemAlerts.push({ id: 'payment_unpaid', type: 'critical', messageAr: 'يرجى تسوية الفواتير المعلقة.', messageEn: 'Please settle outstanding invoices.', date: new Date().toISOString() });
+  if (!dedicated && tenant.growthWarning) systemAlerts.push({ id: 'growth_warning', type: 'warning', messageAr: 'تنبيه الاستهلاك: قارب استهلاك الموارد على تجاوز الحد.', messageEn: 'Resource warning: Usage nearing limit.', date: new Date().toISOString() });
+  if (!dedicated && tenant.paymentStatus === 'UNPAID') systemAlerts.push({ id: 'payment_unpaid', type: 'critical', messageAr: 'يرجى تسوية الفواتير المعلقة.', messageEn: 'Please settle outstanding invoices.', date: new Date().toISOString() });
 
   const dashboardTodayTasks = recentTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString());
   const dailyToursCount = dashboardTodayTasks.filter(t => ['زيارة', 'جولة', 'معاينة', 'visit', 'tour', 'viewing'].some(k => t.title.toLowerCase().includes(k))).length;
