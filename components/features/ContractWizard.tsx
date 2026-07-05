@@ -15,6 +15,8 @@ import {
 import type { ContractWizardErrorCode } from "@/app/actions/contract";
 import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import { displayEntity, displayPerson } from "@/lib/display";
+import type { DisplayLocale } from "@/lib/display";
 
 interface Client {
   id: string;
@@ -72,6 +74,7 @@ export default function ContractWizard({
 
   const direction = lang === "AR" ? "rtl" : "ltr";
   const locale = lang === "AR" ? "ar-SA" : "en-US";
+  const displayLocale: DisplayLocale = lang === "AR" ? "ar" : "en";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -121,16 +124,28 @@ export default function ContractWizard({
             : t("contractWizard.clientPlaceholder"),
         disabled: clients.length === 0,
       },
-      ...clients.map((client) => ({
-        value: client.id,
-        label: `${client.name} (${client.phone}) — ${t(
-          client.type === "lead"
-            ? "contractWizard.clientType.lead"
-            : "contractWizard.clientType.contact",
-        )}`,
-      })),
+      ...clients.map((client) => {
+        const displayedClientName = displayPerson(
+          client.name,
+          displayLocale,
+          {
+            route: "/operations/dashboard",
+            entityId: client.id,
+            fieldName: "clientName",
+          },
+        );
+
+        return {
+          value: client.id,
+          label: `${displayedClientName} (${client.phone}) — ${t(
+            client.type === "lead"
+              ? "contractWizard.clientType.lead"
+              : "contractWizard.clientType.contact",
+          )}`,
+        };
+      }),
     ],
-    [clients, t],
+    [clients, displayLocale, t],
   );
 
   const propertyOptions = useMemo(
@@ -143,16 +158,26 @@ export default function ContractWizard({
             : t("contractWizard.propertyPlaceholder"),
         disabled: properties.length === 0,
       },
-      ...properties.map((property) => ({
-        value: property.id,
-        label: `${property.projectName || t("contractWizard.generalProject")} — ${t(
-          "contractWizard.unit",
-        )} ${property.unitNumber} (${new Intl.NumberFormat(locale).format(
-          property.priceSar,
-        )} ${t("contractWizard.currency")})`,
-      })),
+      ...properties.map((property) => {
+        const displayedProjectName = property.projectName
+          ? displayEntity(property.projectName, "project", displayLocale, {
+              route: "/operations/dashboard",
+              entityId: property.id,
+              fieldName: "projectName",
+            })
+          : t("contractWizard.generalProject");
+
+        return {
+          value: property.id,
+          label: `${displayedProjectName} — ${t(
+            "contractWizard.unit",
+          )} ${property.unitNumber} (${new Intl.NumberFormat(locale).format(
+            property.priceSar,
+          )} ${t("contractWizard.currency")})`,
+        };
+      }),
     ],
-    [locale, properties, t],
+    [displayLocale, locale, properties, t],
   );
 
   const handlePropertyChange = (nextPropertyId: string) => {
