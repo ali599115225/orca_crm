@@ -18,6 +18,8 @@ import { LEAD_STATUS_VALUES, type LeadStatusValue } from "@/lib/leads/model";
 import { getLeadsAction, type GetLeadsResult, type LeadListRow, type LeadSortField } from "@/app/actions/leads";
 import { leadsCopy } from "@/app/operations/leads/leadsCopy";
 import LeadFormDialog from "@/app/operations/leads/LeadFormDialog";
+import SettingsSelect from "@/components/settings/SettingsSelect";
+import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
 
 const PAGE_SIZE = 10;
 
@@ -102,7 +104,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
     return name || (lead.phone || "").trim() || labels.notSpecified;
   };
 
-  const statusOptions = useMemo(
+  const statusOptions: SettingsSelectOption[] = useMemo(
     () =>
       LEAD_STATUS_VALUES.map((value) => ({
         value,
@@ -111,12 +113,24 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
     [displayLocale],
   );
 
+  const sortOptions: SettingsSelectOption[] = useMemo(
+    () => [
+      { value: "newest", label: labels.sortNewest },
+      { value: "oldest", label: labels.sortOldest },
+      { value: "score", label: labels.sortScore },
+      { value: "name", label: labels.sortName },
+    ],
+    [labels],
+  );
+
+  const allStatusesOption: SettingsSelectOption = useMemo(
+    () => ({ value: "ALL", label: labels.allStatuses }),
+    [labels],
+  );
+
   const openLead = (leadId: string) => {
     router.push(`/operations/leads/${leadId}`);
   };
-
-  const selectClass =
-    "min-h-[42px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-xs font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]";
 
   return (
     <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
@@ -167,43 +181,27 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <label className="sr-only" htmlFor="leads-status-filter">
-                {labels.statusFilter}
-              </label>
-              <select
-                id="leads-status-filter"
+              <SettingsSelect
+                aria-label={labels.statusFilter}
                 value={statusFilter}
-                onChange={(event) => {
-                  setStatusFilter(event.target.value as LeadStatusValue | "ALL");
+                onChange={(value) => {
+                  setStatusFilter(value as LeadStatusValue | "ALL");
                   setPage(1);
                 }}
-                className={selectClass}
-              >
-                <option value="ALL">{labels.allStatuses}</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                options={[allStatusesOption, ...statusOptions]}
+                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px]"
+              />
 
-              <label className="sr-only" htmlFor="leads-sort">
-                {labels.sortLabel}
-              </label>
-              <select
-                id="leads-sort"
+              <SettingsSelect
+                aria-label={labels.sortLabel}
                 value={sortOption}
-                onChange={(event) => {
-                  setSortOption(event.target.value as SortOption);
+                onChange={(value) => {
+                  setSortOption(value as SortOption);
                   setPage(1);
                 }}
-                className={selectClass}
-              >
-                <option value="newest">{labels.sortNewest}</option>
-                <option value="oldest">{labels.sortOldest}</option>
-                <option value="score">{labels.sortScore}</option>
-                <option value="name">{labels.sortName}</option>
-              </select>
+                options={sortOptions}
+                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px]"
+              />
 
               <button
                 type="button"
@@ -230,7 +228,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
               </div>
             ) : loadFailed ? (
-              <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)]">
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-4">
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loadError}</p>
                 <button
                   type="button"

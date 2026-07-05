@@ -10,7 +10,8 @@
  *  - Archive/restore with mandatory reason and audit trail
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockInstance } from "vitest";
+import { tenantContext, getTenantContext } from "@/lib/tenant-context";
 
 // ─── Prisma Mock ─────────────────────────────────────────────────────────────
 
@@ -511,5 +512,63 @@ describe("archiveLeadAction / restoreLeadAction", () => {
         data: expect.objectContaining({ action: "LEAD_RESTORED" }),
       }),
     );
+  });
+});
+
+// ─── Regression: tenant context bridge ─────────────────────────────────────
+
+describe("assertServerActionRole — tenant context initialization", () => {
+  let enterWithSpy: MockInstance;
+
+  beforeEach(() => {
+    enterWithSpy = vi.spyOn(tenantContext, "enterWith");
+  });
+
+  it("initializes tenant context on successful role-based auth", async () => {
+    const session = { userId: USER_ID, tenantId: TENANT_ID, role: "ADMIN" };
+    mockUserFindFirst.mockResolvedValue({ id: USER_ID, tenantId: TENANT_ID, role: "ADMIN" });
+    mockTenantFindFirst.mockResolvedValue(VALID_TENANT);
+
+    const { assertServerActionRole } = await import("@/lib/api-auth-guard");
+    await assertServerActionRole(session, ["ADMIN"]);
+
+    expect(enterWithSpy).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      userId: USER_ID,
+    });
+  });
+
+  it("does NOT initialize tenant context on UNAUTHORIZED", async () => {
+    const { assertServerActionRole } = await import("@/lib/api-auth-guard");
+    await expect(assertServerActionRole(null, [])).rejects.toThrow("UNAUTHORIZED");
+
+    expect(enterWithSpy).not.toHaveBeenCalled();
+  });
+
+  it("does NOT initialize tenant context on FORBIDDEN", async () => {
+    const session = { userId: USER_ID, tenantId: TENANT_ID, role: "READ_ONLY" };
+    mockUserFindFirst.mockResolvedValue({ id: USER_ID, tenantId: TENANT_ID, role: "READ_ONLY" });
+    mockTenantFindFirst.mockResolvedValue(VALID_TENANT);
+
+    const { assertServerActionRole } = await import("@/lib/api-auth-guard");
+    await expect(assertServerActionRole(session, ["ADMIN"])).rejects.toThrow("FORBIDDEN");
+
+    expect(enterWithSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Regression: getLeadsAction with empty tenant ──────────────────────────
+
+describe("getLeadsAction — empty tenant returns success", () => {
+  it("returns success=true and data=[] when tenant has no leads", async () => {
+    setupAuth("ADMIN");
+
+    const { getLeadsAction } = await import("@/app/actions/leads");
+    const result = await getLeadsAction({ page: 1, limit: 10 });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.code).toBeUndefined();
   });
 });

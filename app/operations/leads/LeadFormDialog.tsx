@@ -16,6 +16,8 @@ import {
 import { isLeadsManagerRole } from "@/lib/leads/model";
 import { FieldError } from "@/components/leads/helpers";
 import { localizeLeadError, type LeadsCopy } from "./leadsCopy";
+import SettingsSelect from "@/components/settings/SettingsSelect";
+import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
 
 export interface LeadFormInitial {
   id?: string;
@@ -320,38 +322,30 @@ export default function LeadFormDialog({
               <label className={labelClass} htmlFor="lead-project">
                 {labels.projectLabel}
               </label>
-              <select
-                id="lead-project"
+              <SettingsSelect
                 value={projectId}
-                onChange={(event) => setProjectId(event.target.value)}
-                className={inputClass}
-              >
-                <option value="">{labels.noProject}</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setProjectId}
+                options={[
+                  { value: "", label: labels.noProject },
+                  ...projects.map((p): SettingsSelectOption => ({ value: p.id, label: p.name })),
+                ]}
+                className="min-h-[44px] [&>button]:min-h-[44px]"
+              />
             </div>
             {mode === "create" && (
               <div>
                 <label className={labelClass} htmlFor="lead-assignee">
                   {labels.assigneeLabel}
                 </label>
-                <select
-                  id="lead-assignee"
+                <SettingsSelect
                   value={assignedTo}
-                  onChange={(event) => setAssignedTo(event.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">{labels.unassigned}</option>
-                  {assigneeOptions.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setAssignedTo}
+                  options={[
+                    { value: "", label: labels.unassigned },
+                    ...assigneeOptions.map((u): SettingsSelectOption => ({ value: u.id, label: u.name })),
+                  ]}
+                  className="min-h-[44px] [&>button]:min-h-[44px]"
+                />
               </div>
             )}
           </div>

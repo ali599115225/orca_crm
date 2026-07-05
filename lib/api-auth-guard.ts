@@ -198,6 +198,10 @@ export async function assertServerActionRole(
   }
 
   if (await isSuperAdmin(session.userId)) {
+    setTenantContext({
+      tenantId: session.tenantId,
+      userId: session.userId,
+    });
     return session;
   }
 
@@ -205,6 +209,10 @@ export async function assertServerActionRole(
     throw new Error('FORBIDDEN');
   }
 
+  setTenantContext({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
   return session;
 }
 /**
