@@ -561,7 +561,7 @@ describe("Offer Unit Integrity", () => {
     expect(result.paymentPlan).toMatchObject({ id: "plan-1" });
   });
 
-  it("uses the active /operations/leads page and LeadsWorkspace, not the inactive detail route", () => {
+  it("keeps the list page standalone and the offer/tour flows on the official detail route", () => {
     const root = process.cwd();
     const page = fs.readFileSync(
       path.join(root, "app/operations/leads/page.tsx"),
@@ -571,13 +571,18 @@ describe("Offer Unit Integrity", () => {
       path.join(root, "components/views/LeadsWorkspace.tsx"),
       "utf8",
     );
+    const engagement = fs.readFileSync(
+      path.join(root, "app/operations/leads/[id]/EngagementTabs.tsx"),
+      "utf8",
+    );
 
     expect(page).toContain("LeadsWorkspace");
-    expect(workspace).toContain("POST");
-    expect(workspace).toContain(
+    expect(workspace).not.toContain("LeadDetailClient");
+    expect(workspace).not.toContain("/api/v1/tours");
+    expect(engagement).toContain("POST");
+    expect(engagement).toContain(
       "/api/v1/opportunities/${selectedOpportunity.id}/offers",
     );
-    expect(workspace).toContain("/api/v1/tours");
-    expect(workspace).not.toContain("LeadDetailClient");
+    expect(engagement).toContain("/api/v1/tours");
   });
 });

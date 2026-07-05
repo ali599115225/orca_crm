@@ -1,437 +1,827 @@
 "use client";
 
-import { useState } from "react";
+// Official lead detail page. Tabs: overview, communication & activity,
+// tasks, tours, opportunities, offers, history. Status change, assignment,
+// edit, and archive are permission-gated (re-verified on the server).
+// `status` is the single source of truth; raw enums and raw server errors
+// are never rendered.
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { sendEmailAction } from "@/app/actions/email";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Archive,
+  ArchiveRestore,
+  Mail,
+  Pencil,
+  UserRound,
+  X,
+} from "lucide-react";
+import { useApp } from "@/app/context/AppContext";
 import { toast } from "@/app/context/ToastContext";
-import Opportunities from "@/components/views/tabs/Opportunities";
-import { formatDisplayDate, formatDisplayDateTime } from '@/lib/display/dateTime';
+import { sendEmailAction } from "@/app/actions/email";
+import {
+  archiveLeadAction,
+  assignLeadAction,
+  getAssignableUsersAction,
+  restoreLeadAction,
+  updateLeadStatusAction,
+  type AssignableUser,
+  type LeadDetailData,
+} from "@/app/actions/leads";
+import {
+  LEAD_STATUS_VALUES,
+  isLeadsManagerRole,
+  isLeadsWriterRole,
+  type LeadStatusValue,
+} from "@/lib/leads/model";
+import { displayEnum, displayGeo, displayPerson } from "@/lib/display";
+import type { DisplayLocale } from "@/lib/display";
+import { formatDisplayDate, formatDisplayDateTime } from "@/lib/display/dateTime";
+import { EmptyState, LeadStatusBadge, formatNumber } from "@/components/leads/helpers";
+import {
+  activityTypeLabel,
+  leadHistoryActionLabel,
+  leadsCopy,
+  localizeLeadError,
+  taskStatusLabel,
+} from "../leadsCopy";
+import LeadFormDialog from "../LeadFormDialog";
+import EngagementTabs, { type EngagementTab } from "./EngagementTabs";
 
-const STATUS_NAMES: Record<string, string> = {
-  NEW: "جديد", CONTACTED: "تم التواصل", QUALIFIED: "مؤهل",
-  VISIT_SCHEDULED: "مجدول للزيارة", VISITED: "تمت الزيارة",
-  OFFER_MADE: "تم العرض", RESERVED: "محجوز",
-  CONTRACT_SIGNED: "تم التوقيع", WON: "مكتمل", LOST: "ملغي",
-  OPEN: "مفتوح", NEGOTIATION: "تفاوض", CLOSED_WON: "مغلق مكتمل", CLOSED_LOST: "مغلق ملغي",
-  PENDING: "معلق", COMPLETED: "مكتمل", ACTIVE: "نشط", INACTIVE: "غير نشط",
-  SCHEDULED: "مجدول", CANCELLED: "ملغي", DRAFT: "مسودة", SENT: "مرسل", FAILED: "فشل",
-};
+type DetailTab =
+  | "overview"
+  | "communication"
+  | "tasks"
+  | "tours"
+  | "opportunities"
+  | "offers"
+  | "history";
 
-interface EmailMessage {
-  id: string;
-  to: string;
-  from: string;
-  subject: string;
-  status: string;
-  direction: string;
-  createdAt: string;
-  sentAt: string | null;
-  errorMessage: string | null;
+interface LeadDetailClientProps {
+  lead: LeadDetailData;
+  viewerRole: string;
+  viewerUserId: string;
 }
 
-interface LeadActivity {
-  id: string;
-  activityType: string;
-  description: string;
-  createdAt: string;
-  user?: { name: string } | null;
-}
-
-interface Lead {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  phone: string;
-  email: string | null;
-  city: string;
-  status: string;
-  source: string;
-  leadScore: number;
-  createdAt: string;
-  assignedUser?: { id: string; name: string; email: string } | null;
-  project?: { id: string; name: string } | null;
-  emailMessages: EmailMessage[];
-  leadActivities: LeadActivity[];
-}
-
-export default function LeadDetailClient({ lead }: { lead: Lead }) {
+export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: LeadDetailClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"info" | "email" | "activity" | "opportunities">("info");
+  const { lang } = useApp();
+  const isArabic = lang === "AR";
+  const displayLocale: DisplayLocale = isArabic ? "ar" : "en";
+  const labels = isArabic ? leadsCopy.ar : leadsCopy.en;
+  const direction: "rtl" | "ltr" = isArabic ? "rtl" : "ltr";
+  const langKey: "ar" | "en" = isArabic ? "ar" : "en";
+
+  const canWrite = isLeadsWriterRole(viewerRole);
+  const canManage = isLeadsManagerRole(viewerRole);
+
+  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveSaving, setArchiveSaving] = useState(false);
+  const [archiveError, setArchiveError] = useState("");
+  const [restoreSaving, setRestoreSaving] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailTo, setEmailTo] = useState(lead.email || "");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
 
-  const handleSendEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!canManage) return;
+    let cancelled = false;
+    void getAssignableUsersAction().then((users) => {
+      if (!cancelled) setAssignableUsers(users);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canManage]);
 
-    if (!emailTo || !emailSubject || !emailBody) {
-      toast.error("يرجى ملء جميع الحقول المطلوبة");
+  const leadName = `${lead.firstName} ${lead.lastName || ""}`.trim();
+
+  const tabs: Array<{ id: DetailTab; label: string; count?: number }> = [
+    { id: "overview", label: labels.overviewTab },
+    {
+      id: "communication",
+      label: labels.communicationTab,
+      count: lead.emailMessages.length + lead.leadActivities.length,
+    },
+    { id: "tasks", label: labels.tasks, count: lead.tasks.length },
+    { id: "tours", label: labels.tours, count: lead.tours.length },
+    { id: "opportunities", label: labels.opportunities, count: lead.opportunities.length },
+    {
+      id: "offers",
+      label: labels.offers,
+      count: lead.opportunities.reduce((sum, opportunity) => sum + opportunity.offers.length, 0),
+    },
+    { id: "history", label: labels.historyTab, count: lead.history.length },
+  ];
+
+  const statusOptions = useMemo(
+    () =>
+      LEAD_STATUS_VALUES.map((value) => ({
+        value,
+        label: displayEnum(value, "leadStatus", displayLocale),
+      })),
+    [displayLocale],
+  );
+
+  const timeline = useMemo(() => {
+    const emails = lead.emailMessages.map((message) => ({
+      kind: "email" as const,
+      id: `email-${message.id}`,
+      at: message.sentAt || message.createdAt,
+      message,
+    }));
+    const activities = lead.leadActivities.map((activity) => ({
+      kind: "activity" as const,
+      id: `activity-${activity.id}`,
+      at: activity.createdAt,
+      activity,
+    }));
+    return [...emails, ...activities].sort((a, b) => (a.at < b.at ? 1 : -1));
+  }, [lead.emailMessages, lead.leadActivities]);
+
+  const handleStatusChange = async (nextStatus: LeadStatusValue) => {
+    if (!canWrite || nextStatus === lead.status) return;
+    setStatusSaving(true);
+    const result = await updateLeadStatusAction(lead.id, nextStatus);
+    setStatusSaving(false);
+    if (!result.success) {
+      toast.error(localizeLeadError(result, langKey));
       return;
     }
+    toast.success(labels.statusUpdated);
+    router.refresh();
+  };
 
-    setIsSending(true);
+  const handleAssign = async (userId: string) => {
+    if (!canManage) return;
+    setAssignSaving(true);
+    const result = await assignLeadAction(lead.id, userId || null);
+    setAssignSaving(false);
+    if (!result.success) {
+      toast.error(localizeLeadError(result, langKey));
+      return;
+    }
+    toast.success(labels.assignUpdated);
+    router.refresh();
+  };
 
+  const handleArchive = async () => {
+    setArchiveError("");
+    if (!archiveReason.trim()) {
+      setArchiveError(labels.archiveReasonPlaceholder);
+      return;
+    }
+    setArchiveSaving(true);
+    const result = await archiveLeadAction(lead.id, archiveReason);
+    setArchiveSaving(false);
+    if (!result.success) {
+      setArchiveError(localizeLeadError(result, langKey));
+      return;
+    }
+    setShowArchiveDialog(false);
+    toast.success(labels.leadArchivedMsg);
+    router.refresh();
+  };
+
+  const handleRestore = async () => {
+    setRestoreSaving(true);
+    const result = await restoreLeadAction(lead.id);
+    setRestoreSaving(false);
+    if (!result.success) {
+      toast.error(localizeLeadError(result, langKey));
+      return;
+    }
+    toast.success(labels.leadRestoredMsg);
+    router.refresh();
+  };
+
+  const handleSendEmail = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!emailTo || !emailSubject || !emailBody) return;
+
+    setEmailSending(true);
     const formData = new FormData();
     formData.append("to", emailTo);
     formData.append("subject", emailSubject);
     formData.append("htmlBody", emailBody);
     formData.append("leadId", lead.id);
-
     const result = await sendEmailAction(formData);
-    setIsSending(false);
+    setEmailSending(false);
 
     if (result.success) {
-      toast.success("تم إرسال البريد بنجاح");
+      toast.success(labels.emailSent);
       setShowEmailModal(false);
       setEmailSubject("");
       setEmailBody("");
       router.refresh();
     } else {
-      toast.error(result.error || "فشل إرسال البريد");
+      toast.error(localizeLeadError({ code: "INTERNAL" }, langKey));
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      SENT: "bg-green-100 text-green-800",
-      FAILED: "bg-red-100 text-red-800",
-      PENDING: "bg-yellow-100 text-yellow-800",
-      DRAFT: "bg-gray-100 text-gray-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
-
-  const getLeadStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      NEW: "bg-blue-100 text-blue-800",
-      CONTACTED: "bg-purple-100 text-purple-800",
-      VISIT_SCHEDULED: "bg-indigo-100 text-indigo-800",
-      VISITED: "bg-cyan-100 text-cyan-800",
-      OFFER_MADE: "bg-orange-100 text-orange-800",
-      RESERVED: "bg-amber-100 text-amber-800",
-      CONTRACT_SIGNED: "bg-emerald-100 text-emerald-800",
-      WON: "bg-green-100 text-green-800",
-      LOST: "bg-red-100 text-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
+  const BackIcon = isArabic ? ArrowRight : ArrowLeft;
+  const infoCardClass =
+    "rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4";
+  const infoLabelClass = "text-xs text-[var(--nc-text-secondary)]";
+  const infoValueClass = "mt-1 text-sm font-semibold text-[var(--nc-text-primary)]";
+  const selectClass =
+    "min-h-[42px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-xs font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55] disabled:cursor-not-allowed disabled:opacity-60";
+  const inputClass =
+    "min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]";
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+    <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
+      <div className="mx-auto w-full max-w-[1200px] space-y-5">
+        {/* Header */}
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
           <button
+            type="button"
             onClick={() => router.push("/operations/leads")}
-            className="text-sm text-gray-600 hover:text-gray-900 mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
           >
-            ← العودة للعملاء
+            <BackIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            {labels.back}
           </button>
-          <h1 className="text-2xl font-bold">
-            {lead.firstName} {lead.lastName || ""}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {lead.phone} {lead.email ? `• ${lead.email}` : ""}
-          </p>
-        </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getLeadStatusBadge(lead.status)}`}>
-          {STATUS_NAMES[lead.status] || lead.status}
-        </span>
-      </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab("info")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "info"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            المعلومات
-          </button>
-          <button
-            onClick={() => setActiveTab("email")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "email"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            البريد ({lead.emailMessages.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("activity")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "activity"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            النشاط ({lead.leadActivities.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("opportunities")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "opportunities"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            الفرص
-          </button>
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="space-y-6">
-        {/* Info Tab */}
-        {activeTab === "info" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-lg">المعلومات الأساسية</h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-gray-500">الاسم:</span>{" "}
-                  <span className="font-medium">{lead.firstName} {lead.lastName || ""}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">الهاتف:</span>{" "}
-                  <span className="font-medium">{lead.phone}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">البريد:</span>{" "}
-                  <span className="font-medium">{lead.email || "—"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">المدينة:</span>{" "}
-                  <span className="font-medium">{lead.city}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">المصدر:</span>{" "}
-                  <span className="font-medium">{lead.source}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">التقييم:</span>{" "}
-                  <span className="font-medium">{lead.leadScore}/100</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">تاريخ الإنشاء:</span>{" "}
-                  <span className="font-medium">{formatDisplayDate(lead.createdAt)}</span>
-                </div>
+          <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="truncate text-2xl font-bold text-[var(--nc-text-primary)]">
+                  {leadName || lead.phone}
+                </h1>
+                <LeadStatusBadge status={lead.status} displayLocale={displayLocale} />
+                {lead.isArchived && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
+                    <Archive className="h-3 w-3" aria-hidden="true" />
+                    {labels.archivedBadge}
+                  </span>
+                )}
               </div>
+              <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+                <span dir="ltr">{lead.phone}</span>
+                {lead.email ? <span dir="ltr"> · {lead.email}</span> : null}
+              </p>
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-lg">التعيينات</h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-gray-500">المستشار:</span>{" "}
-                  <span className="font-medium">{lead.assignedUser?.name || "غير معين"}</span>
-                </div>
-                {lead.assignedUser && (
-                  <div>
-                    <span className="text-gray-500">بريد المستشار:</span>{" "}
-                    <span className="font-medium">{lead.assignedUser.email}</span>
-                  </div>
-                )}
-                <div>
-                  <span className="text-gray-500">المشروع:</span>{" "}
-                  <span className="font-medium">{lead.project?.name || "—"}</span>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {canWrite && !lead.isArchived && (
+                <>
+                  <label className="sr-only" htmlFor="lead-status-select">
+                    {labels.changeStatus}
+                  </label>
+                  <select
+                    id="lead-status-select"
+                    value={lead.status}
+                    disabled={statusSaving}
+                    onChange={(event) => void handleStatusChange(event.target.value as LeadStatusValue)}
+                    className={selectClass}
+                  >
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowEditDialog(true)}
+                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                    {labels.editAction}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(true)}
+                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                  >
+                    <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                    {labels.sendEmail}
+                  </button>
+                </>
+              )}
+
+              {canManage && !lead.isArchived && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchiveReason("");
+                    setArchiveError("");
+                    setShowArchiveDialog(true);
+                  }}
+                  className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                >
+                  <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                  {labels.archiveAction}
+                </button>
+              )}
+
+              {canManage && lead.isArchived && (
+                <button
+                  type="button"
+                  onClick={() => void handleRestore()}
+                  disabled={restoreSaving}
+                  className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-[#D9AD55] px-4 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
+                  {restoreSaving ? labels.saving : labels.restoreAction}
+                </button>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Email Tab */}
-        {activeTab === "email" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-lg">سجل البريد</h3>
+          {lead.isArchived && (
+            <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-800 dark:text-amber-200">
+              <p>{labels.archivedInfo}</p>
+              <p className="mt-1">
+                {lead.archivedByName ? `${labels.archivedBy}: ${lead.archivedByName}` : null}
+                {lead.archivedAt ? ` · ${formatDisplayDateTime(lead.archivedAt)}` : null}
+              </p>
+              {lead.archiveReason && (
+                <p className="mt-1">
+                  {labels.archiveReasonShown}: {lead.archiveReason}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Assignment row */}
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--nc-border)] pt-4">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-secondary)]">
+              <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+              {labels.assignAction}:
+            </span>
+            {canManage && !lead.isArchived ? (
+              <>
+                <label className="sr-only" htmlFor="lead-assign-select">
+                  {labels.assignAction}
+                </label>
+                <select
+                  id="lead-assign-select"
+                  value={lead.assignedTo || ""}
+                  disabled={assignSaving}
+                  onChange={(event) => void handleAssign(event.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">{labels.unassigned}</option>
+                  {assignableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span className="text-xs font-semibold text-[var(--nc-text-primary)]">
+                {lead.assignedUser
+                  ? displayPerson(lead.assignedUser.name, displayLocale, { route: "/operations/leads" })
+                  : labels.unassigned}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label={labels.title}>
+            {tabs.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={
+                    active
+                      ? "nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                      : "nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                  }
+                >
+                  {tab.label}
+                  {typeof tab.count === "number" && tab.count > 0
+                    ? ` (${formatNumber(tab.count, isArabic)})`
+                    : ""}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4">
+            {activeTab === "overview" && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className={infoCardClass}>
+                  <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.leadInfo}</h3>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className={infoLabelClass}>{labels.city}</p>
+                      <p className={infoValueClass}>
+                        {displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.source}</p>
+                      <p className={infoValueClass}>
+                        {displayEnum(lead.source, "leadSource", displayLocale)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.scoreLabel}</p>
+                      <p className={infoValueClass}>{formatNumber(lead.leadScore, isArabic)}/100</p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.registrationDate}</p>
+                      <p className={infoValueClass}>{formatDisplayDate(lead.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.lastContact}</p>
+                      <p className={infoValueClass}>
+                        {lead.lastContactedAt
+                          ? formatDisplayDate(lead.lastContactedAt)
+                          : labels.notSpecified}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.currentStatus}</p>
+                      <p className={infoValueClass}>
+                        {displayEnum(lead.status, "leadStatus", displayLocale)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={infoCardClass}>
+                  <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
+                    {labels.contactInfo}
+                  </h3>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <p className={infoLabelClass}>{labels.phoneLabel}</p>
+                      <p className={infoValueClass} dir="ltr">
+                        {lead.phone}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.emailLabel}</p>
+                      <p className={infoValueClass} dir="ltr">
+                        {lead.email || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.advisorInfo}</p>
+                      <p className={infoValueClass}>
+                        {lead.assignedUser
+                          ? displayPerson(lead.assignedUser.name, displayLocale, {
+                              route: "/operations/leads",
+                            })
+                          : labels.unassigned}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={infoLabelClass}>{labels.projectInfo}</p>
+                      <p className={infoValueClass}>{lead.project?.name || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "communication" && (
+              <div className="space-y-3">
+                {timeline.length === 0 ? (
+                  <EmptyState message={labels.noActivities} />
+                ) : (
+                  timeline.map((entry) => (
+                    <div key={entry.id} className={infoCardClass}>
+                      {entry.kind === "email" ? (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-2 text-xs font-bold text-[var(--nc-text-secondary)]">
+                              <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                              {entry.message.direction === "outbound"
+                                ? labels.emailDirectionOut
+                                : labels.emailDirectionIn}
+                            </p>
+                            <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                              {entry.message.subject}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-[var(--nc-text-secondary)]" dir="ltr">
+                              {entry.message.to}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                            {formatDisplayDateTime(entry.at)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                              {activityTypeLabel(entry.activity.activityType, langKey)}
+                              {entry.activity.userName
+                                ? ` · ${labels.activityBy} ${entry.activity.userName}`
+                                : ""}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-[var(--nc-text-primary)]">
+                              {entry.activity.description}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                            {formatDisplayDateTime(entry.at)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === "tasks" && (
+              <div className="space-y-3">
+                {lead.tasks.length === 0 ? (
+                  <EmptyState message={labels.noTasks} />
+                ) : (
+                  lead.tasks.map((task) => (
+                    <div key={task.id} className={infoCardClass}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                            {task.title}
+                          </p>
+                          {task.description && (
+                            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                              {task.description}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                            {labels.taskAssignee}:{" "}
+                            {task.assignedUserName
+                              ? displayPerson(task.assignedUserName, displayLocale, {
+                                  route: "/operations/leads",
+                                })
+                              : labels.unassigned}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+                          <span className="inline-flex min-h-[24px] items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 text-[11px] font-bold text-[var(--nc-text-primary)]">
+                            {taskStatusLabel(task.status, langKey)}
+                          </span>
+                          <span className="text-xs text-[var(--nc-text-secondary)]">
+                            {labels.taskDue}: {formatDisplayDate(task.dueDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {(activeTab === "tours" || activeTab === "offers" || activeTab === "opportunities") && (
+              <EngagementTabs
+                leadId={lead.id}
+                leadName={leadName || lead.phone}
+                activeTab={activeTab as EngagementTab}
+                labels={labels}
+                isArabic={isArabic}
+                direction={direction}
+                displayLocale={displayLocale}
+                canWrite={canWrite && !lead.isArchived}
+                onDataChanged={() => router.refresh()}
+              />
+            )}
+
+            {activeTab === "history" && (
+              <div className="space-y-3">
+                {lead.history.length === 0 ? (
+                  <EmptyState message={labels.noHistory} />
+                ) : (
+                  lead.history.map((entry) => (
+                    <div key={entry.id} className={infoCardClass}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[var(--nc-text-primary)]">
+                            {leadHistoryActionLabel(entry.action, langKey)}
+                          </p>
+                          {entry.userName && (
+                            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                              {labels.activityBy} {entry.userName}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                          {formatDisplayDateTime(entry.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Edit dialog (unified form) */}
+      {showEditDialog && (
+        <LeadFormDialog
+          mode="edit"
+          lang={langKey}
+          labels={labels}
+          direction={direction}
+          viewerRole={viewerRole}
+          viewerUserId={viewerUserId}
+          initial={{
+            id: lead.id,
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            phone: lead.phone,
+            email: lead.email,
+            city: lead.city,
+            source: lead.source,
+            projectId: lead.project?.id || null,
+          }}
+          onClose={() => setShowEditDialog(false)}
+          onSaved={() => {
+            setShowEditDialog(false);
+            toast.success(labels.leadUpdated);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* Archive dialog */}
+      {showArchiveDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="archive-lead-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !archiveSaving) setShowArchiveDialog(false);
+          }}
+        >
+          <div
+            dir={direction}
+            className="w-[calc(100vw-1.5rem)] max-w-md rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-5 text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="archive-lead-title" className="text-base font-bold">
+                {labels.archiveAction}: {leadName || lead.phone}
+              </h2>
               <button
-                onClick={() => setShowEmailModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                type="button"
+                onClick={() => setShowArchiveDialog(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+                aria-label={labels.cancel}
               >
-                إرسال بريد
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
-            {lead.emailMessages.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                لا توجد رسائل بريد مسجلة لهذا العميل
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="nc-table">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-3 text-right font-medium text-gray-700">التاريخ</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-700">الاتجاه</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-700">إلى</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-700">الموضوع</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-700">الحالة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lead.emailMessages.map((msg) => (
-                      <tr key={msg.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-600">
-                          {formatDisplayDateTime(msg.sentAt || msg.createdAt)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={msg.direction === "outbound" ? "text-blue-600" : "text-green-600"}>
-                            {msg.direction === "outbound" ? "صادر" : "وارد"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900">{msg.to}</td>
-                        <td className="px-4 py-3 text-gray-900 max-w-xs truncate">{msg.subject}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadge(msg.status)}`}>
-                            {STATUS_NAMES[msg.status] || msg.status}
-                          </span>
-                          {msg.status === "FAILED" && msg.errorMessage && (
-                            <span className="ml-2 text-xs text-red-600" title={msg.errorMessage}>
-                              ⚠️
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <label className="mb-1.5 mt-4 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="archive-reason">
+              {labels.archiveReasonLabel} *
+            </label>
+            <textarea
+              id="archive-reason"
+              value={archiveReason}
+              onChange={(event) => setArchiveReason(event.target.value)}
+              placeholder={labels.archiveReasonPlaceholder}
+              rows={3}
+              className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]"
+            />
+            {archiveError && (
+              <p className="mt-2 text-xs font-semibold text-red-500">{archiveError}</p>
             )}
-          </div>
-        )}
 
-        {/* Activity Tab */}
-        {activeTab === "activity" && (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">سجل النشاط</h3>
-            {lead.leadActivities.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                لا توجد أنشطة مسجلة لهذا العميل
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {lead.leadActivities.map((activity) => (
-                  <div key={activity.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                            {activity.activityType}
-                          </span>
-                          {activity.user && (
-                            <span className="text-xs text-gray-500">بواسطة {activity.user.name}</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-900 mt-2">{activity.description}</p>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {formatDisplayDateTime(activity.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Opportunities Tab */}
-        {activeTab === "opportunities" && (
-          <Opportunities
-            leadId={lead.id}
-            leadName={`${lead.firstName} ${lead.lastName || ""}`.trim()}
-          />
-        )}
-      </div>
-
-      {/* Send Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">إرسال بريد للعميل</h2>
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-
-              {!lead.email && (
-                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                  ⚠️ هذا العميل ليس لديه بريد إلكتروني مسجل. يمكنك إدخال بريد يدويًا.
-                </div>
-              )}
-
-              <form onSubmit={handleSendEmail} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">إلى *</label>
-                  <input
-                    type="email"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                    required
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    placeholder="recipient@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">الموضوع *</label>
-                  <input
-                    type="text"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    required
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    placeholder="موضوع البريد"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">محتوى البريد (HTML) *</label>
-                  <textarea
-                    value={emailBody}
-                    onChange={(e) => setEmailBody(e.target.value)}
-                    required
-                    rows={8}
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
-                    placeholder="<p>مرحباً،</p><p>هذا بريد من ORCA CRM.</p>"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    disabled={isSending}
-                    className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSending ? "جاري الإرسال..." : "إرسال البريد"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(false)}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              </form>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowArchiveDialog(false)}
+                disabled={archiveSaving}
+                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+              >
+                {labels.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleArchive()}
+                disabled={archiveSaving}
+                className="min-h-[42px] rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {archiveSaving ? labels.saving : labels.archiveConfirm}
+              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* Send email dialog */}
+      {showEmailModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="send-email-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !emailSending) setShowEmailModal(false);
+          }}
+        >
+          <form
+            onSubmit={handleSendEmail}
+            dir={direction}
+            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+              <h2 id="send-email-title" className="text-base font-bold">
+                {labels.sendEmail}: {leadName || lead.phone}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+                aria-label={labels.cancel}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-to">
+                  {labels.emailTo} *
+                </label>
+                <input
+                  id="email-to"
+                  type="email"
+                  dir="ltr"
+                  value={emailTo}
+                  onChange={(event) => setEmailTo(event.target.value)}
+                  required
+                  className={`${inputClass} text-left`}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-subject">
+                  {labels.emailSubject} *
+                </label>
+                <input
+                  id="email-subject"
+                  type="text"
+                  value={emailSubject}
+                  onChange={(event) => setEmailSubject(event.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-body">
+                  {labels.emailBody} *
+                </label>
+                <textarea
+                  id="email-body"
+                  value={emailBody}
+                  onChange={(event) => setEmailBody(event.target.value)}
+                  required
+                  rows={7}
+                  className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]"
+                />
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                disabled={emailSending}
+                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+              >
+                {labels.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={emailSending}
+                className="min-h-[42px] rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {emailSending ? labels.sending : labels.send}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
   );
 }

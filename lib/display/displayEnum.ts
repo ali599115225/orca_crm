@@ -4,9 +4,11 @@ const ENUM_MAPS: Record<EnumType, Record<string, { ar: string; en: string }>> = 
   leadStatus: {
     NEW: { ar: 'جديد', en: 'New' },
     CONTACTED: { ar: 'تم التواصل', en: 'Contacted' },
+    QUALIFIED: { ar: 'مؤهل', en: 'Qualified' },
     VISIT_SCHEDULED: { ar: 'مجدول', en: 'Scheduled' },
     VISITED: { ar: 'تمت الزيارة', en: 'Visited' },
     OFFER_MADE: { ar: 'أرسل العرض', en: 'Offered' },
+    NEGOTIATION: { ar: 'تفاوض', en: 'Negotiation' },
     RESERVED: { ar: 'محجوز', en: 'Reserved' },
     CONTRACT_SIGNED: { ar: 'موقّع', en: 'Signed' },
     WON: { ar: 'مكتمل', en: 'Won' },

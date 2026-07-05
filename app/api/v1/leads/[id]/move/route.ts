@@ -1,10 +1,14 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 // app/api/v1/leads/[id]/move/route.ts
+// Single official mapping (lib/leads/model): the ambiguous legacy "closed"
+// is rejected — callers must request WON or LOST explicitly. The legacy
+// `stage` column is no longer written; `status` is the source of truth.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
-import { LeadStatus } from "@prisma/client";
 import { ErrorCode } from "@/lib/errors";
+import { legacyStageToStatus } from "@/lib/leads/model";
+import type { LeadStatus } from "@prisma/client";
 
 export async function PATCH(
   request: NextRequest,
@@ -18,41 +22,24 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { toStage } = body;
+    const requested = String(body.toStage || body.status || "").trim();
 
-    if (!toStage) {
-      return NextResponse.json({ error: "المرحلة المستهدفة (toStage) مطلوبة." }, { status: 400 });
+    if (!requested) {
+      return NextResponse.json({ error: "الحالة المستهدفة مطلوبة." }, { status: 400 });
     }
 
-    // Map string stages to Prisma LeadStatus Enums to maintain compatibility
-    let statusEnum: LeadStatus = "NEW";
-    switch (toStage.toLowerCase()) {
-      case "new":
-        statusEnum = "NEW";
-        break;
-      case "contacted":
-        statusEnum = "CONTACTED";
-        break;
-      case "qualified":
-        statusEnum = "VISIT_SCHEDULED";
-        break;
-      case "tour scheduled":
-      case "tour_scheduled":
-        statusEnum = "VISIT_SCHEDULED";
-        break;
-      case "offer sent":
-      case "offer_sent":
-        statusEnum = "OFFER_MADE";
-        break;
-      case "negotiation":
-        statusEnum = "RESERVED";
-        break;
-      case "closed":
-        statusEnum = "CONTRACT_SIGNED";
-        break;
+    if (requested.toLowerCase() === "closed") {
+      return NextResponse.json(
+        { error: "قيمة (closed) غامضة؛ اطلب WON أو LOST صراحةً." },
+        { status: 400 },
+      );
     }
 
-    // Fetch the lead first to check existence and tenancy
+    const statusEnum = legacyStageToStatus(requested);
+    if (!statusEnum) {
+      return NextResponse.json({ error: "قيمة الحالة غير معتمدة." }, { status: 400 });
+    }
+
     const lead = await prisma.lead.findFirst({
       where: { id, tenantId },
     });
@@ -62,39 +49,34 @@ export async function PATCH(
     }
 
     const updatedLead = await prisma.lead.update({
-      where: { id },
+      where: { id, tenantId },
       data: {
-        stage: toStage,
-        status: statusEnum,
+        status: statusEnum as LeadStatus,
         updatedBy: userId || null,
-        auditLog: `${lead.auditLog || ""}\nMoved to stage ${toStage} at ${new Date().toISOString()}`.trim(),
       },
     });
 
-    // 1. Audit Log Entry
     await prisma.auditLog.create({
       data: {
         tenantId,
         userId: userId || null,
-        action: "MOVE_LEAD",
+        action: "LEAD_STATUS_UPDATED",
         tableName: "leads",
         recordId: lead.id,
-        details: `Moved lead ${lead.firstName} from ${lead.stage || "N/A"} to ${toStage}`,
+        details: JSON.stringify({ from: lead.status, to: statusEnum, via: "move-api" }),
       },
     });
 
-    // 2. Telemetry Log
     await prisma.telemetryEvent.create({
       data: {
         tenantId,
-        eventType: "lead.movedStage",
-        eventDataJson: JSON.stringify({ leadId: lead.id, fromStage: lead.stage, toStage }),
+        eventType: "lead.statusChanged",
+        eventDataJson: JSON.stringify({ leadId: lead.id, from: lead.status, to: statusEnum }),
         createdBy: userId || null,
       },
     });
 
-    // 3. Automation Alert: if lead becomes Hot (e.g. stage Closed or score high) trigger notification
-    if (lead.leadScore >= 75 || toStage.toLowerCase() === "negotiation") {
+    if (lead.leadScore >= 75 || statusEnum === "NEGOTIATION") {
       await prisma.agentTelemetryLog.create({
         data: {
           tenantId,

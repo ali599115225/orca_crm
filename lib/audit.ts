@@ -74,6 +74,9 @@ export type AuditAction =
   // ─── Leads ────────────────────────────────────────────────────────────────
   | "LEAD_STATUS_UPDATED"
   | "LEAD_DETAIL_READ"
+  | "LEAD_ASSIGNED"
+  | "LEAD_ARCHIVED"
+  | "LEAD_RESTORED"
   // ─── Projects ─────────────────────────────────────────────────────────────
   | "PROJECT_CREATED"
   | "PROJECT_UPDATED"

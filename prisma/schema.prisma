@@ -42,9 +42,11 @@ enum ProjectStatus {
 enum LeadStatus {
   NEW
   CONTACTED
+  QUALIFIED
   VISIT_SCHEDULED
   VISITED
   OFFER_MADE
+  NEGOTIATION
   RESERVED
   CONTRACT_SIGNED
   WON
@@ -96,6 +98,7 @@ model User {
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                 DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   leads                     Lead[]                     @relation("AssignedLeads")
+  archivedLeads             Lead[]                     @relation("ArchivedLeads")
   leadActivities            LeadActivity[]
   tasks                     Task[]
   assignedTours             Tour[]                     @relation("AssignedTours")
@@ -169,8 +172,14 @@ model Lead {
   createdBy       String?          @map("created_by") @db.Uuid
   updatedBy       String?          @map("updated_by") @db.Uuid
   auditLog        String?          @map("audit_log") @db.Text
+  isArchived      Boolean          @default(false) @map("is_archived")
+  archivedAt      DateTime?        @map("archived_at") @db.Timestamptz
+  archiveReason   String?          @map("archive_reason")
+  archivedById    String?          @map("archived_by_id") @db.Uuid
+  archivedBy      User?            @relation("ArchivedLeads", fields: [archivedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, phoneHash], map: "idx_leads_tenant_phone_hash")
+  @@index([tenantId, isArchived, status], map: "idx_leads_tenant_archived_status")
   @@map("leads")
 }
 

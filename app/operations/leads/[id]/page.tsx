@@ -1,30 +1,28 @@
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { getLeadDetailAction } from "@/app/actions/leads";
-import { notFound } from "next/navigation";
 import LeadDetailClient from "./LeadDetailClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetailPage({ params }: { params: { id: string } }) {
-  const result = await getLeadDetailAction(params.id);
+export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
 
-  if (!result.success || !result.lead) {
+  const { id } = await params;
+  const result = await getLeadDetailAction(id);
+
+  if (!result.success) {
     notFound();
   }
 
-  // Convert Date objects to ISO strings for client component
-  const lead = {
-    ...result.lead,
-    createdAt: result.lead.createdAt.toISOString(),
-    emailMessages: result.lead.emailMessages.map(msg => ({
-      ...msg,
-      createdAt: msg.createdAt.toISOString(),
-      sentAt: msg.sentAt?.toISOString() || null,
-    })),
-    leadActivities: result.lead.leadActivities.map(activity => ({
-      ...activity,
-      createdAt: activity.createdAt.toISOString(),
-    })),
-  };
-
-  return <LeadDetailClient lead={lead} />;
+  return (
+    <LeadDetailClient
+      lead={result.lead}
+      viewerRole={String(result.viewerRole || session.role || "")}
+      viewerUserId={String(session.userId || "")}
+    />
+  );
 }
