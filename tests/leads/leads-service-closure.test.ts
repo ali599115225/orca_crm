@@ -143,6 +143,13 @@ describe("Official lead status model", () => {
     ]);
   });
 
+  it("aligns lead access with the platform marketing lead-generation role", async () => {
+    const { LEADS_READER_ROLES, LEADS_WRITER_ROLES, LEAD_ASSIGNABLE_ROLES } = await import("@/lib/leads/model");
+    expect(LEADS_READER_ROLES).toContain("MARKETING");
+    expect(LEADS_WRITER_ROLES).toContain("MARKETING");
+    expect(LEAD_ASSIGNABLE_ROLES).toContain("MARKETING");
+  });
+
   it("maps legacy stage names to official statuses without inventing values", async () => {
     const { legacyStageToStatus } = await import("@/lib/leads/model");
     expect(legacyStageToStatus("Qualified")).toBe("QUALIFIED");
@@ -172,6 +179,32 @@ describe("getLeadsAction — tenant scoping, pagination, filters", () => {
     expect(result.code).toBe("UNAUTHORIZED");
     expect(result.data).toEqual([]);
     expect(mockLeadFindMany).not.toHaveBeenCalled();
+  });
+
+  it("does not execute the callback or Prisma reads when RBAC returns FORBIDDEN", async () => {
+    setupAuth("READ_ONLY");
+
+    const { getLeadsAction } = await import("@/app/actions/leads");
+    const result = await getLeadsAction({ page: 1, limit: 10 });
+
+    expect(result.success).toBe(false);
+    expect(result.code).toBe("FORBIDDEN");
+    expect(mockGetActiveTenant).not.toHaveBeenCalled();
+    expect(mockLeadFindMany).not.toHaveBeenCalled();
+  });
+
+  it("keeps tenant context available inside the callback that executes Prisma", async () => {
+    setupAuth("ADMIN");
+    mockLeadFindMany.mockImplementation(async () => {
+      expect(getTenantContext()).toEqual({ tenantId: TENANT_ID, userId: USER_ID });
+      return [];
+    });
+
+    const { getLeadsAction } = await import("@/app/actions/leads");
+    const result = await getLeadsAction({ page: 1, limit: 10 });
+
+    expect(result.success).toBe(true);
+    expect(mockLeadFindMany).toHaveBeenCalled();
   });
 
   it("scopes queries to the tenant, excludes archived, paginates on the server", async () => {
@@ -276,6 +309,23 @@ describe("updateLeadStatusAction — validation & guards", () => {
 
     expect(result.success).toBe(false);
     expect((result as any).code).toBe("FORBIDDEN");
+    expect(mockLeadUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not update another tenant's lead when the lookup misses", async () => {
+    setupAuth("ADMIN");
+    mockLeadFindFirst.mockResolvedValue(null);
+
+    const { updateLeadStatusAction } = await import("@/app/actions/leads");
+    const result = await updateLeadStatusAction("other-tenant-lead", "QUALIFIED");
+
+    expect(result.success).toBe(false);
+    expect((result as any).code).toBe("NOT_FOUND");
+    expect(mockLeadFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "other-tenant-lead", tenantId: TENANT_ID },
+      }),
+    );
     expect(mockLeadUpdate).not.toHaveBeenCalled();
   });
 });
@@ -392,6 +442,19 @@ describe("createManagedLeadAction — authorization, dedup, assignment", () => {
     );
   });
 
+  it("does not reject an authorized MARKETING user when creating a lead", async () => {
+    setupAuth("MARKETING");
+    mockLeadFindFirst.mockResolvedValue(null);
+    setupCreateTransaction();
+
+    const { createManagedLeadAction } = await import("@/app/actions/leads");
+    const result = await createManagedLeadAction(createForm());
+
+    expect(result.success).toBe(true);
+    expect(mockTransaction).toHaveBeenCalled();
+    expect(mockLeadCreate.mock.calls[0][0].data.createdBy).toBe(USER_ID);
+  });
+
   it("does not fail creation when the welcome SMS fails", async () => {
     setupAuth("SALES_EMPLOYEE");
     mockLeadFindFirst.mockResolvedValue(null);
@@ -403,6 +466,50 @@ describe("createManagedLeadAction — authorization, dedup, assignment", () => {
 
     expect(result.success).toBe(true);
     expect(mockSendSMS).toHaveBeenCalled();
+  });
+});
+
+// ─── Form loaders ───────────────────────────────────────────────────────────
+
+describe("getProjectsAction / getAssignableUsersAction — authorized loaders", () => {
+  it("returns tenant-scoped projects for an authorized MARKETING user", async () => {
+    setupAuth("MARKETING");
+    mockProjectFindMany.mockResolvedValue([
+      { id: "project-1", name: "Orca Tower", city: "Riyadh" },
+    ]);
+
+    const { getProjectsAction } = await import("@/app/actions/leads");
+    const result = await getProjectsAction();
+
+    expect(result).toEqual([{ id: "project-1", name: "Orca Tower", city: "Riyadh" }]);
+    expect(mockProjectFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: TENANT_ID },
+        select: { id: true, name: true, city: true },
+      }),
+    );
+  });
+
+  it("returns assignable user names for an authorized MARKETING user", async () => {
+    setupAuth("MARKETING");
+    mockUserFindMany.mockResolvedValue([
+      { id: USER_ID, name: "Maha Marketing", role: "MARKETING" },
+    ]);
+
+    const { getAssignableUsersAction } = await import("@/app/actions/leads");
+    const result = await getAssignableUsersAction();
+
+    expect(result).toEqual([{ id: USER_ID, name: "Maha Marketing", role: "MARKETING" }]);
+    expect(mockUserFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: TENANT_ID,
+          isActive: true,
+          role: { in: expect.arrayContaining(["MARKETING"]) },
+        }),
+        select: { id: true, name: true, role: true },
+      }),
+    );
   });
 });
 

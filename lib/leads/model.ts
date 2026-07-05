@@ -72,6 +72,7 @@ export const LEADS_READER_ROLES = [
   "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
+  "MARKETING",
   "rental_manager",
 ] as const;
 
@@ -80,11 +81,12 @@ export const LEADS_WRITER_ROLES = [
   "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
+  "MARKETING",
 ] as const;
 
 export const LEADS_MANAGER_ROLES = ["ADMIN", "owner", "SALES_MANAGER"] as const;
 
-export const LEAD_ASSIGNABLE_ROLES = ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"] as const;
+export const LEAD_ASSIGNABLE_ROLES = ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING"] as const;
 
 export function isLeadsManagerRole(role: string): boolean {
   return (LEADS_MANAGER_ROLES as readonly string[]).includes(role);

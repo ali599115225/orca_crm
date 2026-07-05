@@ -87,8 +87,9 @@ export default function LeadFormDialog({
         mode === "create" ? getAssignableUsersAction() : Promise.resolve([]),
       ]);
       if (cancelled) return;
-      setProjects(projectRows as ProjectOption[]);
-      setUsers(userRows);
+      const nextProjects = projectRows as ProjectOption[];
+      setProjects((current) => (nextProjects.length > 0 ? nextProjects : current));
+      setUsers((current) => (userRows.length > 0 ? userRows : current));
     })();
     return () => {
       cancelled = true;
@@ -190,8 +191,10 @@ export default function LeadFormDialog({
   };
 
   const inputClass =
-    "min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]";
-  const labelClass = "mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]";
+    "lead-form-field min-h-[44px] w-full rounded-lg border border-[#0A1F3A]/10 bg-white px-3 text-sm font-semibold text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white";
+  const selectClass =
+    "min-h-[44px] [&>button]:min-h-[44px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white";
+  const labelClass = "mb-1.5 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60";
 
   return (
     <div
@@ -206,16 +209,31 @@ export default function LeadFormDialog({
       <form
         onSubmit={handleSubmit}
         dir={direction}
-        className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+        className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-xl border border-[#0A1F3A]/10 bg-white text-[#0A1F3A] shadow-2xl dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white sm:w-full"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
-          <h2 id="lead-form-title" className="text-base font-bold text-[var(--nc-text-primary)]">
+        <style>{`
+          .lead-form-field:-webkit-autofill,
+          .lead-form-field:-webkit-autofill:hover,
+          .lead-form-field:-webkit-autofill:focus {
+            -webkit-text-fill-color: #0A1F3A;
+            box-shadow: 0 0 0 1000px #ffffff inset;
+            transition: background-color 9999s ease-out;
+          }
+          .dark .lead-form-field:-webkit-autofill,
+          .dark .lead-form-field:-webkit-autofill:hover,
+          .dark .lead-form-field:-webkit-autofill:focus {
+            -webkit-text-fill-color: #ffffff;
+            box-shadow: 0 0 0 1000px #0A1F3A inset;
+          }
+        `}</style>
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#0A1F3A]/10 px-5 py-4 dark:border-white/10">
+          <h2 id="lead-form-title" className="text-base font-bold text-[#0A1F3A] dark:text-white">
             {mode === "create" ? labels.formTitleCreate : labels.formTitleEdit}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0A1F3A]/10 bg-white text-[#0A1F3A]/60 transition-colors hover:text-[#0A1F3A] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60 dark:hover:text-white"
             aria-label={labels.cancel}
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -231,7 +249,7 @@ export default function LeadFormDialog({
                   type="button"
                   onClick={() => void handleRestoreDuplicate()}
                   disabled={restoring}
-                  className="mt-2 min-h-[36px] rounded-lg border border-[#D9AD55]/40 bg-[#D9AD55]/10 px-3 py-1.5 text-xs font-bold text-[var(--nc-text-primary)] transition-colors hover:bg-[#D9AD55]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 min-h-[36px] rounded-lg border border-[#D9AD55]/40 bg-[#D9AD55]/10 px-3 py-1.5 text-xs font-bold text-[#0A1F3A] transition-colors hover:bg-[#D9AD55]/20 disabled:cursor-not-allowed disabled:opacity-60 dark:text-white"
                 >
                   {restoring ? labels.saving : labels.restoreAndOpen}
                 </button>
@@ -329,7 +347,7 @@ export default function LeadFormDialog({
                   { value: "", label: labels.noProject },
                   ...projects.map((p): SettingsSelectOption => ({ value: p.id, label: p.name })),
                 ]}
-                className="min-h-[44px] [&>button]:min-h-[44px]"
+                className={selectClass}
               />
             </div>
             {mode === "create" && (
@@ -344,26 +362,26 @@ export default function LeadFormDialog({
                     { value: "", label: labels.unassigned },
                     ...assigneeOptions.map((u): SettingsSelectOption => ({ value: u.id, label: u.name })),
                   ]}
-                  className="min-h-[44px] [&>button]:min-h-[44px]"
+                  className={selectClass}
                 />
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-5 py-4 sm:flex-row sm:justify-end">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#0A1F3A]/10 bg-white px-5 py-4 dark:border-white/10 dark:bg-[#0A1F3A] sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+            className="nc-btn-ghost min-h-[42px] rounded-lg px-4 py-2 text-sm font-bold"
           >
             {labels.cancel}
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="min-h-[42px] rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-[42px] rounded-lg bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? labels.saving : labels.save}
           </button>

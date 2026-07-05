@@ -37,6 +37,45 @@ describe("Leads list page architecture", () => {
     expect(workspace).not.toMatch(/\.stage\b/);
     expect(workspace).not.toMatch(/\bstage\s*:/);
   });
+
+  it("LeadsWorkspace uses the central listbox select, not native select", () => {
+    const workspace = read("components/views/LeadsWorkspace.tsx");
+    expect(workspace).toContain("SettingsSelect");
+    expect(workspace).not.toMatch(/<select\b/i);
+  });
+
+  it("LeadFormDialog uses the central listbox select, not native select", () => {
+    const dialog = read("app/operations/leads/LeadFormDialog.tsx");
+    expect(dialog).toContain("SettingsSelect");
+    expect(dialog).not.toMatch(/<select\b/i);
+  });
+
+  it("LeadFormDialog preserves selected project and assignee options when loaders return empty", () => {
+    const dialog = read("app/operations/leads/LeadFormDialog.tsx");
+    expect(dialog).toContain("setProjects((current) => (nextProjects.length > 0 ? nextProjects : current))");
+    expect(dialog).toContain("setUsers((current) => (userRows.length > 0 ? userRows : current))");
+    expect(dialog).toContain('formData.set("projectId", projectId)');
+    expect(dialog).toContain('formData.set("assignedTo", assignedTo)');
+  });
+
+  it("empty leads state is compact and has no forced min-height", () => {
+    const workspace = read("components/views/LeadsWorkspace.tsx");
+    const emptyStateIndex = workspace.indexOf("labels.noLeads");
+    const emptyStateBlock = workspace.slice(
+      Math.max(0, workspace.lastIndexOf("<div", emptyStateIndex)),
+      workspace.indexOf("</div>", emptyStateIndex) + "</div>".length,
+    );
+    expect(emptyStateBlock).toContain("labels.noLeads");
+    expect(emptyStateBlock).not.toContain("min-h-[");
+  });
+
+  it("Arabic and English empty copy remain separated", () => {
+    const copy = read("app/operations/leads/leadsCopy.ts");
+    expect(copy).toContain('noLeads: "لا يوجد عملاء محتملون بعد"');
+    expect(copy).toContain('noLeads: "No leads yet"');
+    expect(copy).not.toMatch(/noLeads:\s*"[^"]*No leads yet[^"]*لا يوجد/);
+    expect(copy).not.toMatch(/noLeads:\s*"[^"]*لا يوجد[^"]*No leads yet/);
+  });
 });
 
 describe("Lead detail page architecture", () => {
@@ -69,6 +108,22 @@ describe("Lead detail page architecture", () => {
     expect(client).not.toContain("bg-blue-600");
     expect(client).not.toContain("text-blue-600");
     expect(client).not.toContain("border-blue-500");
+  });
+
+  it("detail client uses the central listbox select for status and assignment", () => {
+    const client = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    expect(client).toContain("SettingsSelect");
+    expect(client).not.toMatch(/<select\b/i);
+  });
+
+  it("official detail route owns tours, opportunities, offers, activity, and history", () => {
+    const detail = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    expect(detail).toContain('id: "tours"');
+    expect(detail).toContain('id: "opportunities"');
+    expect(detail).toContain('id: "offers"');
+    expect(detail).toContain('id: "communication"');
+    expect(detail).toContain('id: "history"');
+    expect(read("components/views/LeadsWorkspace.tsx")).not.toContain("EngagementTabs");
   });
 });
 
@@ -107,6 +162,14 @@ describe("Leads data layer — status is the single source of truth", () => {
     for (const file of ["app/actions/leads.ts", "lib/leads/service.ts", "app/api/v1/leads/route.ts"]) {
       expect(read(file), `${file} must not hardcode phone numbers`).not.toMatch(/\+9665\d{8}/);
     }
+  });
+
+  it("user-facing leads errors do not expose Prisma or stack traces", () => {
+    const actions = read("app/actions/leads.ts");
+    const copy = read("app/operations/leads/leadsCopy.ts");
+    expect(actions).toContain("تعذر تنفيذ العملية، حاول مرة أخرى.");
+    expect(copy).toContain("The operation could not be completed, please try again.");
+    expect(copy).not.toMatch(/Prisma|Stack Trace|Invalid `prisma/i);
   });
 
   it("the duplicated legacy leadActions module is gone", () => {
