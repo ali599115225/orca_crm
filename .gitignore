@@ -25,3 +25,6 @@ DESIGN_ARCHIVE.md
 env.txt
 scratch/
 _archive/
+.vercel/
+.env*
+!.env.example
