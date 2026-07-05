@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getLeadDetailAction } from "@/app/actions/leads";
-import LeadDetailClient from "./LeadDetailClient";
+import LeadDetailClient from "@/features/leads/components/LeadDetailClient";
 
 export const dynamic = "force-dynamic";
 

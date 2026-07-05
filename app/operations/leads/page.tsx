@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import LeadsWorkspace from "@/components/views/LeadsWorkspace";
+import LeadsWorkspace from "@/features/leads/components/LeadsWorkspace";
 
 export const dynamic = "force-dynamic";
 

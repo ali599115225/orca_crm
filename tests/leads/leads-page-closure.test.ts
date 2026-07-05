@@ -25,7 +25,7 @@ describe("Leads list page architecture", () => {
   });
 
   it("LeadsWorkspace is list-only: no embedded detail panel, navigates to [id]", () => {
-    const workspace = read("components/views/LeadsWorkspace.tsx");
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
     expect(workspace).not.toContain("LeadDetails");
     expect(workspace).toContain("/operations/leads/${");
     expect(workspace).toContain("getLeadsAction");
@@ -33,25 +33,25 @@ describe("Leads list page architecture", () => {
   });
 
   it("LeadsWorkspace never reads the legacy stage field", () => {
-    const workspace = read("components/views/LeadsWorkspace.tsx");
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
     expect(workspace).not.toMatch(/\.stage\b/);
     expect(workspace).not.toMatch(/\bstage\s*:/);
   });
 
   it("LeadsWorkspace uses the central listbox select, not native select", () => {
-    const workspace = read("components/views/LeadsWorkspace.tsx");
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
     expect(workspace).toContain("SettingsSelect");
     expect(workspace).not.toMatch(/<select\b/i);
   });
 
   it("LeadFormDialog uses the central listbox select, not native select", () => {
-    const dialog = read("app/operations/leads/LeadFormDialog.tsx");
+    const dialog = read("features/leads/components/LeadFormDialog.tsx");
     expect(dialog).toContain("SettingsSelect");
     expect(dialog).not.toMatch(/<select\b/i);
   });
 
   it("LeadFormDialog preserves selected project and assignee options when loaders return empty", () => {
-    const dialog = read("app/operations/leads/LeadFormDialog.tsx");
+    const dialog = read("features/leads/components/LeadFormDialog.tsx");
     expect(dialog).toContain("setProjects((current) => (nextProjects.length > 0 ? nextProjects : current))");
     expect(dialog).toContain("setUsers((current) => (userRows.length > 0 ? userRows : current))");
     expect(dialog).toContain('formData.set("projectId", projectId)');
@@ -59,7 +59,7 @@ describe("Leads list page architecture", () => {
   });
 
   it("empty leads state is compact and has no forced min-height", () => {
-    const workspace = read("components/views/LeadsWorkspace.tsx");
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
     const emptyStateIndex = workspace.indexOf("labels.noLeads");
     const emptyStateBlock = workspace.slice(
       Math.max(0, workspace.lastIndexOf("<div", emptyStateIndex)),
@@ -70,7 +70,7 @@ describe("Leads list page architecture", () => {
   });
 
   it("Arabic and English empty copy remain separated", () => {
-    const copy = read("app/operations/leads/leadsCopy.ts");
+    const copy = read("features/leads/copy/leadsCopy.ts");
     expect(copy).toContain('noLeads: "لا يوجد عملاء محتملون بعد"');
     expect(copy).toContain('noLeads: "No leads yet"');
     expect(copy).not.toMatch(/noLeads:\s*"[^"]*No leads yet[^"]*لا يوجد/);
@@ -87,7 +87,7 @@ describe("Lead detail page architecture", () => {
   });
 
   it("detail client offers status change, assignment, edit, archive — no hard delete", () => {
-    const client = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    const client = read("features/leads/components/LeadDetailClient.tsx");
     expect(client).toContain("updateLeadStatusAction");
     expect(client).toContain("assignLeadAction");
     expect(client).toContain("archiveLeadAction");
@@ -96,7 +96,7 @@ describe("Lead detail page architecture", () => {
   });
 
   it("engagement tabs link tours through offerId and never parse auditLog", () => {
-    const engagement = read("app/operations/leads/[id]/EngagementTabs.tsx");
+    const engagement = read("features/leads/components/EngagementTabs.tsx");
     expect(engagement).toContain("offerId");
     // No auditLog parsing or property access anywhere in the tours linkage.
     expect(engagement).not.toMatch(/JSON\.parse\([^)]*auditLog/);
@@ -104,26 +104,26 @@ describe("Lead detail page architecture", () => {
   });
 
   it("detail client does not use raw blue action styling", () => {
-    const client = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    const client = read("features/leads/components/LeadDetailClient.tsx");
     expect(client).not.toContain("bg-blue-600");
     expect(client).not.toContain("text-blue-600");
     expect(client).not.toContain("border-blue-500");
   });
 
   it("detail client uses the central listbox select for status and assignment", () => {
-    const client = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    const client = read("features/leads/components/LeadDetailClient.tsx");
     expect(client).toContain("SettingsSelect");
     expect(client).not.toMatch(/<select\b/i);
   });
 
   it("official detail route owns tours, opportunities, offers, activity, and history", () => {
-    const detail = read("app/operations/leads/[id]/LeadDetailClient.tsx");
+    const detail = read("features/leads/components/LeadDetailClient.tsx");
     expect(detail).toContain('id: "tours"');
     expect(detail).toContain('id: "opportunities"');
     expect(detail).toContain('id: "offers"');
     expect(detail).toContain('id: "communication"');
     expect(detail).toContain('id: "history"');
-    expect(read("components/views/LeadsWorkspace.tsx")).not.toContain("EngagementTabs");
+    expect(read("features/leads/components/LeadsWorkspace.tsx")).not.toContain("EngagementTabs");
   });
 });
 
@@ -166,7 +166,7 @@ describe("Leads data layer — status is the single source of truth", () => {
 
   it("user-facing leads errors do not expose Prisma or stack traces", () => {
     const actions = read("app/actions/leads.ts");
-    const copy = read("app/operations/leads/leadsCopy.ts");
+    const copy = read("features/leads/copy/leadsCopy.ts");
     expect(actions).toContain("تعذر تنفيذ العملية، حاول مرة أخرى.");
     expect(copy).toContain("The operation could not be completed, please try again.");
     expect(copy).not.toMatch(/Prisma|Stack Trace|Invalid `prisma/i);

@@ -38,16 +38,17 @@ import {
 import { displayEnum, displayGeo, displayPerson } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
 import { formatDisplayDate, formatDisplayDateTime } from "@/lib/display/dateTime";
-import { EmptyState, LeadStatusBadge, formatNumber } from "@/components/leads/helpers";
+import { formatNumber } from "@/components/leads/helpers";
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import {
   activityTypeLabel,
   leadHistoryActionLabel,
   leadsCopy,
   localizeLeadError,
   taskStatusLabel,
-} from "../leadsCopy";
-import LeadFormDialog from "../LeadFormDialog";
-import EngagementTabs, { type EngagementTab } from "./EngagementTabs";
+} from "@/features/leads/copy/leadsCopy";
+import LeadFormDialog from "@/features/leads/components/LeadFormDialog";
+import EngagementTabs, { type EngagementTab } from "@/features/leads/components/EngagementTabs";
 
 type DetailTab =
   | "overview"
@@ -130,6 +131,14 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
         label: displayEnum(value, "leadStatus", displayLocale),
       })),
     [displayLocale],
+  );
+
+  const assigneeOptions = useMemo(
+    () => [
+      { value: "", label: labels.unassigned },
+      ...assignableUsers.map((user) => ({ value: user.id, label: user.name })),
+    ],
+    [assignableUsers, labels.unassigned],
   );
 
   const timeline = useMemo(() => {
@@ -230,23 +239,32 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
 
   const BackIcon = isArabic ? ArrowRight : ArrowLeft;
   const infoCardClass =
-    "rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4";
-  const infoLabelClass = "text-xs text-[var(--nc-text-secondary)]";
-  const infoValueClass = "mt-1 text-sm font-semibold text-[var(--nc-text-primary)]";
+    "rounded-lg border border-[#0A1F3A]/10 bg-white p-4 dark:border-white/10 dark:bg-[#0A1F3A]";
+  const infoLabelClass = "text-xs text-[#0A1F3A]/60 dark:text-white/60";
+  const infoValueClass = "mt-1 text-sm font-semibold text-[#0A1F3A] dark:text-white";
   const selectClass =
-    "min-h-[42px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-xs font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55] disabled:cursor-not-allowed disabled:opacity-60";
+    "min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white";
   const inputClass =
-    "min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]";
+    "min-h-[44px] w-full rounded-lg border border-[#0A1F3A]/10 bg-white px-3 text-sm font-semibold text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white";
+  const renderEmptyState = (message: string) => (
+    <div className="rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-8 text-center dark:border-white/10 dark:bg-[#0A1F3A]">
+      <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{message}</p>
+    </div>
+  );
 
   return (
-    <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
-      <div className="mx-auto w-full max-w-[1200px] space-y-5">
+    <section
+      dir={direction}
+      className="min-h-full bg-white dark:bg-[#07182D]"
+      style={{ padding: "24px 32px 48px", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+    >
+      <div className="space-y-8">
         {/* Header */}
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm">
+        <div className="rounded-xl border border-[#0A1F3A]/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]">
           <button
             type="button"
             onClick={() => router.push("/operations/leads")}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A1F3A]/60 transition-colors hover:text-[#0A1F3A] dark:text-white/60 dark:hover:text-white"
           >
             <BackIcon className="h-3.5 w-3.5" aria-hidden="true" />
             {labels.back}
@@ -255,10 +273,12 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
           <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="truncate text-2xl font-bold text-[var(--nc-text-primary)]">
+                <h1 className="truncate text-3xl font-black text-[#0A1F3A] dark:text-white">
                   {leadName || lead.phone}
                 </h1>
-                <LeadStatusBadge status={lead.status} displayLocale={displayLocale} />
+                <span className="inline-block rounded bg-[#D9AD55]/10 px-2 py-1 text-xs font-bold text-[#D9AD55]">
+                  {displayEnum(lead.status, "leadStatus", displayLocale)}
+                </span>
                 {lead.isArchived && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
                     <Archive className="h-3 w-3" aria-hidden="true" />
@@ -266,7 +286,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+              <p className="mt-2 text-sm text-[#0A1F3A]/70 dark:text-white/70">
                 <span dir="ltr">{lead.phone}</span>
                 {lead.email ? <span dir="ltr"> · {lead.email}</span> : null}
               </p>
@@ -275,27 +295,19 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             <div className="flex flex-wrap items-center gap-2">
               {canWrite && !lead.isArchived && (
                 <>
-                  <label className="sr-only" htmlFor="lead-status-select">
-                    {labels.changeStatus}
-                  </label>
-                  <select
-                    id="lead-status-select"
+                  <SettingsSelect
+                    aria-label={labels.changeStatus}
                     value={lead.status}
                     disabled={statusSaving}
-                    onChange={(event) => void handleStatusChange(event.target.value as LeadStatusValue)}
+                    onChange={(value) => void handleStatusChange(value as LeadStatusValue)}
+                    options={statusOptions}
                     className={selectClass}
-                  >
-                    {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
 
                   <button
                     type="button"
                     onClick={() => setShowEditDialog(true)}
-                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3 text-xs font-bold"
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                     {labels.editAction}
@@ -304,7 +316,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   <button
                     type="button"
                     onClick={() => setShowEmailModal(true)}
-                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                    className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3 text-xs font-bold"
                   >
                     <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                     {labels.sendEmail}
@@ -320,7 +332,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     setArchiveError("");
                     setShowArchiveDialog(true);
                   }}
-                  className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                  className="nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3 text-xs font-bold"
                 >
                   <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                   {labels.archiveAction}
@@ -332,7 +344,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   type="button"
                   onClick={() => void handleRestore()}
                   disabled={restoreSaving}
-                  className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl bg-[#D9AD55] px-4 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex min-h-[42px] items-center gap-1.5 rounded-lg bg-[#D9AD55] px-4 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
                   {restoreSaving ? labels.saving : labels.restoreAction}
@@ -342,7 +354,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
           </div>
 
           {lead.isArchived && (
-            <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-800 dark:text-amber-200">
+            <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-800 dark:text-amber-200">
               <p>{labels.archivedInfo}</p>
               <p className="mt-1">
                 {lead.archivedByName ? `${labels.archivedBy}: ${lead.archivedByName}` : null}
@@ -357,33 +369,22 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
           )}
 
           {/* Assignment row */}
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--nc-border)] pt-4">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-secondary)]">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[#0A1F3A]/10 pt-4 dark:border-white/10">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60">
               <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
               {labels.assignAction}:
             </span>
             {canManage && !lead.isArchived ? (
-              <>
-                <label className="sr-only" htmlFor="lead-assign-select">
-                  {labels.assignAction}
-                </label>
-                <select
-                  id="lead-assign-select"
-                  value={lead.assignedTo || ""}
-                  disabled={assignSaving}
-                  onChange={(event) => void handleAssign(event.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">{labels.unassigned}</option>
-                  {assignableUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+              <SettingsSelect
+                aria-label={labels.assignAction}
+                value={lead.assignedTo || ""}
+                disabled={assignSaving}
+                onChange={(value) => void handleAssign(value)}
+                options={assigneeOptions}
+                className={selectClass}
+              />
             ) : (
-              <span className="text-xs font-semibold text-[var(--nc-text-primary)]">
+              <span className="text-xs font-semibold text-[#0A1F3A] dark:text-white">
                 {lead.assignedUser
                   ? displayPerson(lead.assignedUser.name, displayLocale, { route: "/operations/leads" })
                   : labels.unassigned}
@@ -393,7 +394,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
         </div>
 
         {/* Tabs */}
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+        <div className="rounded-xl border border-[#0A1F3A]/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]">
           <div className="flex flex-wrap gap-2" role="tablist" aria-label={labels.title}>
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
@@ -406,8 +407,8 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   onClick={() => setActiveTab(tab.id)}
                   className={
                     active
-                      ? "nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                      : "nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
+                      ? "min-h-[36px] rounded-lg bg-[#D9AD55] px-3 py-1.5 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2"
+                      : "nc-btn-ghost min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold"
                   }
                 >
                   {tab.label}
@@ -423,7 +424,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "overview" && (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className={infoCardClass}>
-                  <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">{labels.leadInfo}</h3>
+                  <h3 className="text-sm font-bold text-[#0A1F3A] dark:text-white">{labels.leadInfo}</h3>
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
                       <p className={infoLabelClass}>{labels.city}</p>
@@ -463,7 +464,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 </div>
 
                 <div className={infoCardClass}>
-                  <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
+                  <h3 className="text-sm font-bold text-[#0A1F3A] dark:text-white">
                     {labels.contactInfo}
                   </h3>
                   <div className="mt-3 space-y-3">
@@ -501,44 +502,44 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "communication" && (
               <div className="space-y-3">
                 {timeline.length === 0 ? (
-                  <EmptyState message={labels.noActivities} />
+                  renderEmptyState(labels.noActivities)
                 ) : (
                   timeline.map((entry) => (
                     <div key={entry.id} className={infoCardClass}>
                       {entry.kind === "email" ? (
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
-                            <p className="flex items-center gap-2 text-xs font-bold text-[var(--nc-text-secondary)]">
+                            <p className="flex items-center gap-2 text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60">
                               <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                               {entry.message.direction === "outbound"
                                 ? labels.emailDirectionOut
                                 : labels.emailDirectionIn}
                             </p>
-                            <p className="mt-1 truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                            <p className="mt-1 truncate text-sm font-bold text-[#0A1F3A] dark:text-white">
                               {entry.message.subject}
                             </p>
-                            <p className="mt-0.5 truncate text-xs text-[var(--nc-text-secondary)]" dir="ltr">
+                            <p className="mt-0.5 truncate text-xs text-[#0A1F3A]/60 dark:text-white/60" dir="ltr">
                               {entry.message.to}
                             </p>
                           </div>
-                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                          <span className="shrink-0 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                             {formatDisplayDateTime(entry.at)}
                           </span>
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                            <p className="text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60">
                               {activityTypeLabel(entry.activity.activityType, langKey)}
                               {entry.activity.userName
                                 ? ` · ${labels.activityBy} ${entry.activity.userName}`
                                 : ""}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-[var(--nc-text-primary)]">
+                            <p className="mt-1 text-sm font-semibold text-[#0A1F3A] dark:text-white">
                               {entry.activity.description}
                             </p>
                           </div>
-                          <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                          <span className="shrink-0 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                             {formatDisplayDateTime(entry.at)}
                           </span>
                         </div>
@@ -552,21 +553,21 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "tasks" && (
               <div className="space-y-3">
                 {lead.tasks.length === 0 ? (
-                  <EmptyState message={labels.noTasks} />
+                  renderEmptyState(labels.noTasks)
                 ) : (
                   lead.tasks.map((task) => (
                     <div key={task.id} className={infoCardClass}>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                          <p className="truncate text-sm font-bold text-[#0A1F3A] dark:text-white">
                             {task.title}
                           </p>
                           {task.description && (
-                            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                            <p className="mt-1 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                               {task.description}
                             </p>
                           )}
-                          <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                          <p className="mt-1 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                             {labels.taskAssignee}:{" "}
                             {task.assignedUserName
                               ? displayPerson(task.assignedUserName, displayLocale, {
@@ -576,10 +577,10 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
-                          <span className="inline-flex min-h-[24px] items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2.5 text-[11px] font-bold text-[var(--nc-text-primary)]">
+                          <span className="inline-flex min-h-[24px] items-center rounded-full border border-[#0A1F3A]/10 bg-white px-2.5 text-[11px] font-bold text-[#0A1F3A] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white">
                             {taskStatusLabel(task.status, langKey)}
                           </span>
-                          <span className="text-xs text-[var(--nc-text-secondary)]">
+                          <span className="text-xs text-[#0A1F3A]/60 dark:text-white/60">
                             {labels.taskDue}: {formatDisplayDate(task.dueDate)}
                           </span>
                         </div>
@@ -607,22 +608,22 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "history" && (
               <div className="space-y-3">
                 {lead.history.length === 0 ? (
-                  <EmptyState message={labels.noHistory} />
+                  renderEmptyState(labels.noHistory)
                 ) : (
                   lead.history.map((entry) => (
                     <div key={entry.id} className={infoCardClass}>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-[var(--nc-text-primary)]">
+                          <p className="text-sm font-bold text-[#0A1F3A] dark:text-white">
                             {leadHistoryActionLabel(entry.action, langKey)}
                           </p>
                           {entry.userName && (
-                            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                            <p className="mt-1 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                               {labels.activityBy} {entry.userName}
                             </p>
                           )}
                         </div>
-                        <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                        <span className="shrink-0 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                           {formatDisplayDateTime(entry.createdAt)}
                         </span>
                       </div>
@@ -676,7 +677,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
         >
           <div
             dir={direction}
-            className="w-[calc(100vw-1.5rem)] max-w-md rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-5 text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+            className="w-[calc(100vw-1.5rem)] max-w-md rounded-xl border border-[#0A1F3A]/10 bg-white p-5 text-[#0A1F3A] shadow-2xl dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white sm:w-full"
           >
             <div className="flex items-start justify-between gap-4">
               <h2 id="archive-lead-title" className="text-base font-bold">
@@ -685,14 +686,14 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
               <button
                 type="button"
                 onClick={() => setShowArchiveDialog(false)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0A1F3A]/10 bg-white text-[#0A1F3A]/60 transition-colors hover:text-[#0A1F3A] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60 dark:hover:text-white"
                 aria-label={labels.cancel}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
-            <label className="mb-1.5 mt-4 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="archive-reason">
+            <label className="mb-1.5 mt-4 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60" htmlFor="archive-reason">
               {labels.archiveReasonLabel} *
             </label>
             <textarea
@@ -701,7 +702,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
               onChange={(event) => setArchiveReason(event.target.value)}
               placeholder={labels.archiveReasonPlaceholder}
               rows={3}
-              className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]"
+              className="w-full rounded-lg border border-[#0A1F3A]/10 bg-white px-3 py-2 text-sm font-semibold text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white"
             />
             {archiveError && (
               <p className="mt-2 text-xs font-semibold text-red-500">{archiveError}</p>
@@ -712,7 +713,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 type="button"
                 onClick={() => setShowArchiveDialog(false)}
                 disabled={archiveSaving}
-                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+                className="nc-btn-ghost min-h-[42px] rounded-lg px-4 py-2 text-sm font-bold"
               >
                 {labels.cancel}
               </button>
@@ -720,7 +721,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 type="button"
                 onClick={() => void handleArchive()}
                 disabled={archiveSaving}
-                className="min-h-[42px] rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-[42px] rounded-lg bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {archiveSaving ? labels.saving : labels.archiveConfirm}
               </button>
@@ -743,16 +744,16 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
           <form
             onSubmit={handleSendEmail}
             dir={direction}
-            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+            className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-xl border border-[#0A1F3A]/10 bg-white text-[#0A1F3A] shadow-2xl dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white sm:w-full"
           >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#0A1F3A]/10 px-5 py-4 dark:border-white/10">
               <h2 id="send-email-title" className="text-base font-bold">
                 {labels.sendEmail}: {leadName || lead.phone}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowEmailModal(false)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0A1F3A]/10 bg-white text-[#0A1F3A]/60 transition-colors hover:text-[#0A1F3A] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60 dark:hover:text-white"
                 aria-label={labels.cancel}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -761,7 +762,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-to">
+                <label className="mb-1.5 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60" htmlFor="email-to">
                   {labels.emailTo} *
                 </label>
                 <input
@@ -775,7 +776,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-subject">
+                <label className="mb-1.5 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60" htmlFor="email-subject">
                   {labels.emailSubject} *
                 </label>
                 <input
@@ -788,7 +789,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-body">
+                <label className="mb-1.5 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60" htmlFor="email-body">
                   {labels.emailBody} *
                 </label>
                 <textarea
@@ -797,24 +798,24 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   onChange={(event) => setEmailBody(event.target.value)}
                   required
                   rows={7}
-                  className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55]"
+                  className="w-full rounded-lg border border-[#0A1F3A]/10 bg-white px-3 py-2 text-sm font-semibold text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white"
                 />
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-5 py-4 sm:flex-row sm:justify-end">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#0A1F3A]/10 bg-white px-5 py-4 dark:border-white/10 dark:bg-[#0A1F3A] sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setShowEmailModal(false)}
                 disabled={emailSending}
-                className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+                className="nc-btn-ghost min-h-[42px] rounded-lg px-4 py-2 text-sm font-bold"
               >
                 {labels.cancel}
               </button>
               <button
                 type="submit"
                 disabled={emailSending}
-                className="min-h-[42px] rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-[42px] rounded-lg bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {emailSending ? labels.sending : labels.send}
               </button>

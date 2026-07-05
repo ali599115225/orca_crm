@@ -32,7 +32,7 @@ import LeadOpportunitiesPanel from "@/components/leads/panels/LeadOpportunitiesP
 import CreateOpportunityDialog from "@/components/leads/dialogs/CreateOpportunityDialog";
 import CreateOfferDialog from "@/components/leads/dialogs/CreateOfferDialog";
 import ScheduleTourDialog from "@/components/leads/dialogs/ScheduleTourDialog";
-import type { LeadsCopy } from "../leadsCopy";
+import type { LeadsCopy } from "@/features/leads/copy/leadsCopy";
 
 export type EngagementTab = "tours" | "offers" | "opportunities";
 

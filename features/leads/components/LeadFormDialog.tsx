@@ -15,7 +15,7 @@ import {
 } from "@/app/actions/leads";
 import { isLeadsManagerRole } from "@/lib/leads/model";
 import { FieldError } from "@/components/leads/helpers";
-import { localizeLeadError, type LeadsCopy } from "./leadsCopy";
+import { localizeLeadError, type LeadsCopy } from "@/features/leads/copy/leadsCopy";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
 

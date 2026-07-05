@@ -12,12 +12,11 @@ import { useApp } from "@/app/context/AppContext";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
 import InteractiveSurface from "@/components/ui/InteractiveSurface";
-import LeadsKpis from "@/components/leads/LeadsKpis";
-import { formatNumber, formatDate, EmptyState, LeadStatusBadge, PaginationBar } from "@/components/leads/helpers";
+import { formatNumber, formatDate } from "@/components/leads/helpers";
 import { LEAD_STATUS_VALUES, type LeadStatusValue } from "@/lib/leads/model";
 import { getLeadsAction, type GetLeadsResult, type LeadListRow, type LeadSortField } from "@/app/actions/leads";
-import { leadsCopy } from "@/app/operations/leads/leadsCopy";
-import LeadFormDialog from "@/app/operations/leads/LeadFormDialog";
+import { leadsCopy } from "@/features/leads/copy/leadsCopy";
+import LeadFormDialog from "@/features/leads/components/LeadFormDialog";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
 
@@ -133,18 +132,22 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
   };
 
   return (
-    <section dir={direction} className="min-h-full px-4 pb-8 pt-8 lg:px-6">
-      <div className="mx-auto w-full max-w-[1500px] space-y-5">
+    <section
+      dir={direction}
+      className="min-h-full bg-white dark:bg-[#07182D]"
+      style={{ padding: "24px 32px 48px", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+    >
+      <div className="space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs text-[var(--nc-text-secondary)]">{labels.breadcrumb}</p>
-            <h1 className="mt-1 text-2xl font-bold text-[var(--nc-text-primary)]">{labels.title}</h1>
-            <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.subtitle}</p>
+            <p className="text-xs text-[#0A1F3A]/60 dark:text-white/60">{labels.breadcrumb}</p>
+            <h1 className="mt-1 text-3xl font-black text-[#0A1F3A] dark:text-white">{labels.title}</h1>
+            <p className="mt-2 text-sm text-[#0A1F3A]/70 dark:text-white/70">{labels.subtitle}</p>
           </div>
           <button
             type="button"
             onClick={() => setShowCreateDialog(true)}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D]"
+            className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-[#D9AD55] px-5 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             {labels.addLead}
@@ -152,22 +155,34 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
         </div>
 
         {kpis && (
-          <LeadsKpis
-            labels={labels}
-            totalLeads={kpis.total}
-            newLeads={kpis.newCount}
-            qualified={kpis.qualifiedCount}
-            conversion={kpis.conversion}
-            isArabic={isArabic}
-            formatNumber={formatNumber}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: labels.totalLeads, value: formatNumber(kpis.total, isArabic), note: labels.leadRegistry },
+              { label: labels.newLeads, value: formatNumber(kpis.newCount, isArabic), note: labels.thisWeek },
+              { label: labels.qualified, value: formatNumber(kpis.qualifiedCount, isArabic), note: labels.readyFollowUp },
+              { label: labels.conversion, value: `${formatNumber(kpis.conversion, isArabic)}%`, note: labels.closedRate },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="flex h-36 flex-col justify-between rounded-xl border border-[#0A1F3A]/10 bg-white p-5 text-start shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]"
+              >
+                <p className="text-xs font-bold uppercase tracking-wider text-[#0A1F3A]/70 dark:text-white/70">
+                  {item.label}
+                </p>
+                <strong className="text-4xl font-black text-[#0A1F3A] dark:text-white">
+                  {item.value}
+                </strong>
+                <p className="text-xs text-[#0A1F3A]/65 dark:text-white/70">{item.note}</p>
+              </div>
+            ))}
+          </div>
         )}
 
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
+        <div className="rounded-xl border border-[#0A1F3A]/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search
-                className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--nc-text-secondary)] ${isArabic ? "right-3" : "left-3"}`}
+                className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#0A1F3A]/60 dark:text-white/60 ${isArabic ? "right-3" : "left-3"}`}
                 aria-hidden="true"
               />
               <input
@@ -176,7 +191,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder={labels.searchPlaceholder}
                 aria-label={labels.searchPlaceholder}
-                className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#D9AD55] ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
+                className={`min-h-[44px] w-full rounded-lg border border-[#0A1F3A]/10 bg-white text-sm font-semibold text-[#0A1F3A] outline-none transition-colors placeholder:text-[#0A1F3A]/50 focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white dark:placeholder:text-white/50 ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
               />
             </div>
 
@@ -189,7 +204,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={[allStatusesOption, ...statusOptions]}
-                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px]"
+                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white"
               />
 
               <SettingsSelect
@@ -200,7 +215,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={sortOptions}
-                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px]"
+                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white"
               />
 
               <button
@@ -212,8 +227,8 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 aria-pressed={showArchived}
                 className={
                   showArchived
-                    ? "inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border border-[#D9AD55]/50 bg-[#D9AD55]/15 px-3 text-xs font-bold text-[var(--nc-text-primary)]"
-                    : "nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 text-xs font-bold"
+                    ? "inline-flex min-h-[42px] items-center gap-1.5 rounded-lg border border-[#D9AD55]/50 bg-[#D9AD55]/15 px-3 text-xs font-bold text-[#0A1F3A] dark:text-white"
+                    : "nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3 text-xs font-bold"
                 }
               >
                 <Archive className="h-3.5 w-3.5" aria-hidden="true" />
@@ -224,27 +239,29 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
 
           <div className="mt-4">
             {loading ? (
-              <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)]">
-                <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-8 dark:border-white/10 dark:bg-[#0A1F3A]">
+                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.loading}</p>
               </div>
             ) : loadFailed ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-4">
-                <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loadError}</p>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-6 dark:border-white/10 dark:bg-[#0A1F3A]">
+                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.loadError}</p>
                 <button
                   type="button"
                   onClick={() => void loadLeads()}
-                  className="nc-btn-ghost inline-flex min-h-[40px] items-center gap-2 rounded-xl px-4 text-xs font-bold"
+                  className="nc-btn-ghost inline-flex min-h-[40px] items-center gap-2 rounded-lg px-4 text-xs font-bold"
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {labels.retry}
                 </button>
               </div>
             ) : rows.length === 0 ? (
-              <EmptyState message={labels.noLeads} />
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-8 text-center dark:border-white/10 dark:bg-[#0A1F3A]">
+                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.noLeads}</p>
+              </div>
             ) : (
               <>
                 <div
-                  className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] gap-3 px-4 pb-2 text-xs font-bold text-[var(--nc-text-secondary)] md:grid"
+                  className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] gap-3 px-4 pb-2 text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60 md:grid"
                   aria-hidden="true"
                 >
                   <span>{labels.lead}</span>
@@ -262,46 +279,48 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         variant="row"
                         onClick={() => openLead(lead.id)}
                         aria-label={`${labels.lead}: ${leadDisplayName(lead)}`}
-                        className="!bg-[var(--nc-surface-soft)] !border-[var(--nc-border)] px-4 py-3 text-start"
+                        className="!border-[#0A1F3A]/10 !bg-white px-4 py-3 text-start dark:!border-white/10 dark:!bg-[#0A1F3A]"
                       >
                         <span className="grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] md:gap-3">
                           <span className="min-w-0">
                             <span className="flex items-center gap-2">
-                              <span className="block truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                              <span className="block truncate text-sm font-bold text-[#0A1F3A] dark:text-white">
                                 {leadDisplayName(lead)}
                               </span>
                               {lead.isArchived && (
-                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-text-secondary)]">
+                                <span className="inline-flex shrink-0 items-center rounded-full border border-[#0A1F3A]/10 bg-white px-2 py-0.5 text-[10px] font-bold text-[#0A1F3A]/60 dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60">
                                   {labels.archivedBadge}
                                 </span>
                               )}
                             </span>
-                            <span className="mt-0.5 block truncate text-xs text-[var(--nc-text-secondary)]" dir="ltr">
+                            <span className="mt-0.5 block truncate text-xs text-[#0A1F3A]/60 dark:text-white/60" dir="ltr">
                               {lead.phone}
                             </span>
                           </span>
 
                           <span className="min-w-0">
-                            <LeadStatusBadge status={lead.status} displayLocale={displayLocale} />
+                            <span className="inline-block rounded bg-[#D9AD55]/10 px-2 py-1 text-xs font-bold text-[#D9AD55]">
+                              {displayEnum(lead.status, "leadStatus", displayLocale)}
+                            </span>
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)]">
+                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
                             {displayEnum(lead.source, "leadSource", displayLocale)}
                             {" · "}
                             {displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)]">
+                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
                             {lead.assignedUserName
                               ? displayPerson(lead.assignedUserName, displayLocale, { route: "/operations/leads" })
                               : labels.unassigned}
                           </span>
 
-                          <span className="text-center text-xs font-bold text-[var(--nc-text-primary)]">
+                          <span className="text-center text-xs font-bold text-[#0A1F3A] dark:text-white">
                             {formatNumber(lead.leadScore, isArabic)}
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)]">
+                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
                             {formatDate(lead.createdAt, isArabic, labels.notSpecified)}
                           </span>
                         </span>
@@ -310,20 +329,38 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   ))}
                 </ul>
 
-                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--nc-text-secondary)]">
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#0A1F3A]/60 dark:text-white/60">
                   <span>
                     {formatNumber(result?.total || 0, isArabic)} {labels.resultsCount}
                   </span>
                 </div>
 
-                <PaginationBar
-                  page={page}
-                  totalPages={result?.totalPages || 1}
-                  labels={labels}
-                  isArabic={isArabic}
-                  onPrevious={() => setPage((value) => Math.max(1, value - 1))}
-                  onNext={() => setPage((value) => Math.min(result?.totalPages || 1, value + 1))}
-                />
+                {(result?.totalPages || 1) > 1 && (
+                  <div className="mt-4 flex flex-col gap-3 border-t border-[#0A1F3A]/10 pt-4 text-sm text-[#0A1F3A]/60 dark:border-white/10 dark:text-white/60 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
+                      {formatNumber(result?.totalPages || 1, isArabic)}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={page <= 1}
+                        onClick={() => setPage((value) => Math.max(1, value - 1))}
+                        className="nc-btn-ghost min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {labels.previous}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={page >= (result?.totalPages || 1)}
+                        onClick={() => setPage((value) => Math.min(result?.totalPages || 1, value + 1))}
+                        className="min-h-[36px] rounded-lg bg-[#D9AD55] px-3 py-1.5 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {labels.next}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
