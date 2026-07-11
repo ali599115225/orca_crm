@@ -1,0 +1,125 @@
+export const dashboardCopy = {
+  AR: {
+    welcome: "مرحبًا",
+    fallbackUser: "المستخدم",
+    description: "ملخص موثوق لحركة المبيعات والعمليات اليومية.",
+    today: "اليوم",
+    issueContract: "إصدار عقد جديد",
+    activeLeads: "العملاء النشطون",
+    activeLeadsDescription: "العملاء غير المؤرشفين",
+    todayTours: "جولات اليوم",
+    todayToursDescription: "الجولات غير الملغاة اليوم",
+    activeOffers: "العروض النشطة",
+    activeOffersDescription: "عروض سارية قيد الانتظار",
+    signedContracts: "العقود الموقعة",
+    signedContractsDescription: "العقود الموقعة هذا الشهر",
+    dataUnavailable: "تعذر تحميل البيانات",
+    retry: "إعادة المحاولة",
+    pipelineTitle: "مسار الصفقات",
+    pipelineDescription: "تقدم الصفقات من الفرصة حتى الإغلاق اعتمادًا على السجلات الفعلية.",
+    live: "مباشر",
+    opportunity: "فرصة",
+    tour: "جولة",
+    offer: "عرض",
+    contract: "عقد",
+    closed: "مغلق",
+    noActiveDeals: "لا توجد صفقات ضمن المسار حاليًا.",
+    operationsTitle: "مركز العمليات اليومية",
+    operationsDescription: "المهام والعملاء وواتساب في مساحة تشغيل واحدة.",
+    tasks: "المهام العاجلة",
+    recentLeads: "أحدث العملاء",
+    whatsapp: "واتساب",
+    viewAllTasks: "عرض جميع المهام",
+    viewAllLeads: "عرض جميع العملاء",
+    openWhatsapp: "فتح واتساب",
+    noTasks: "لا توجد مهام متأخرة أو مستحقة اليوم.",
+    noLeads: "لا يوجد عملاء حديثون.",
+    noSearchResults: "لا توجد نتائج مطابقة ضمن المعاينة الحالية.",
+    searchLabel: "نتائج البحث",
+    overdue: "متأخرة",
+    high: "عالية",
+    medium: "متوسطة",
+    low: "منخفضة",
+    conversations: "المحادثات",
+    newWhatsappLeads: "عملاء جدد خلال 7 أيام",
+    unreadMessages: "رسائل غير مقروءة",
+    loading: "جارٍ تحميل لوحة التحكم",
+    fatalErrorTitle: "تعذر فتح لوحة التحكم",
+    fatalErrorDescription: "حدث خطأ غير متوقع. أعد المحاولة دون فقدان أي بيانات.",
+  },
+  EN: {
+    welcome: "Welcome",
+    fallbackUser: "User",
+    description: "A trusted snapshot of sales movement and daily operations.",
+    today: "Today",
+    issueContract: "Issue new contract",
+    activeLeads: "Active leads",
+    activeLeadsDescription: "Non-archived leads",
+    todayTours: "Today's tours",
+    todayToursDescription: "Non-cancelled tours today",
+    activeOffers: "Active offers",
+    activeOffersDescription: "Valid pending offers",
+    signedContracts: "Signed contracts",
+    signedContractsDescription: "Contracts signed this month",
+    dataUnavailable: "Data could not be loaded",
+    retry: "Try again",
+    pipelineTitle: "Deal pipeline",
+    pipelineDescription: "Deal progress from opportunity to closure, based on real records.",
+    live: "Live",
+    opportunity: "Opportunity",
+    tour: "Tour",
+    offer: "Offer",
+    contract: "Contract",
+    closed: "Closed",
+    noActiveDeals: "There are no deals in the pipeline right now.",
+    operationsTitle: "Daily operations center",
+    operationsDescription: "Tasks, leads, and WhatsApp in one operational workspace.",
+    tasks: "Urgent tasks",
+    recentLeads: "Recent leads",
+    whatsapp: "WhatsApp",
+    viewAllTasks: "View all tasks",
+    viewAllLeads: "View all leads",
+    openWhatsapp: "Open WhatsApp",
+    noTasks: "There are no overdue tasks or tasks due today.",
+    noLeads: "There are no recent leads.",
+    noSearchResults: "No matching results in the current preview.",
+    searchLabel: "Search results",
+    overdue: "Overdue",
+    high: "High",
+    medium: "Medium",
+    low: "Low",
+    conversations: "Conversations",
+    newWhatsappLeads: "New leads in 7 days",
+    unreadMessages: "Unread messages",
+    loading: "Loading dashboard",
+    fatalErrorTitle: "Dashboard could not be opened",
+    fatalErrorDescription: "An unexpected error occurred. Retry without losing any data.",
+  },
+} as const;
+
+const dashboardSystemTaskTitles = [
+  { ar: "متابعة عرض السعر", en: "Follow up on price offer" },
+  { ar: "إرسال كتيب المشروع", en: "Send project brochure" },
+  { ar: "متابعة العرض المقدم", en: "Follow up on submitted offer" },
+  { ar: "متابعة", en: "Follow-up" },
+] as const;
+
+function normalizeDashboardTaskTitle(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+export function localizeDashboardTaskTitle(
+  title: string,
+  locale: "ar" | "en",
+): string {
+  const normalizedTitle = normalizeDashboardTaskTitle(title);
+  const match = dashboardSystemTaskTitles.find(
+    (entry) =>
+      normalizeDashboardTaskTitle(entry.ar) === normalizedTitle ||
+      normalizeDashboardTaskTitle(entry.en) === normalizedTitle,
+  );
+
+  return match ? match[locale] : title;
+}
+
+export type DashboardCopy = (typeof dashboardCopy)[keyof typeof dashboardCopy];
