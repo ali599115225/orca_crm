@@ -34,6 +34,7 @@ export const dict: TranslationDict = {
   // ── Sidebar Items ───────────────────────────────
   'nav.dashboard':              { ar: 'لوحة التحكم',            en: 'Dashboard' },
   'nav.leads':                  { ar: 'العملاء المحتملون',       en: 'Leads' },
+  'nav.opportunities':          { ar: 'الفرص',                  en: 'Opportunities' },
   'nav.revenue_integrity':      { ar: 'سلامة الإيراد',           en: 'Revenue Integrity' },
   'nav.offers':                 { ar: 'العروض العقارية',         en: 'Offers' },
   'nav.tours':                  { ar: 'الجولات العقارية',        en: 'Tours' },

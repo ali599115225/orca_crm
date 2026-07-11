@@ -404,7 +404,7 @@ export default function ToursView() {
       setTours([]);
       setStats({ today: 0, upcoming: 0, completed: 0, needsFollowUp: 0 });
       setSelectedTourId(null);
-      setError(err?.message || labels.loadingFailed);
+      setError(labels.loadingFailed);
     } finally {
       setLoading(false);
     }
@@ -454,7 +454,11 @@ export default function ToursView() {
       const result = await scheduleTourActionDirect({ userName, phone, datetime, location });
 
       if (!result?.success) {
-        toast.error(result?.error || labels.scheduleFailed);
+        toast.error(
+          result && "error" in result && typeof result.error === "string"
+            ? result.error
+            : labels.scheduleFailed,
+        );
         return;
       }
 
@@ -463,7 +467,7 @@ export default function ToursView() {
       setScheduleForm(INITIAL_SCHEDULE_FORM);
       await loadTours();
     } catch (err: any) {
-      toast.error(err?.message || labels.scheduleError);
+      toast.error(labels.scheduleError);
     } finally {
       setScheduleSaving(false);
     }

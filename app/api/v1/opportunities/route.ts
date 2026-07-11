@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import {
   runWithDatabaseSession,
   TENANT_ROLES,
-  TENANT_WRITE_ROLES,
+  SALES_WRITE_ROLES,
 } from "@/lib/api-auth-guard";
 import { createOpportunity } from "@/lib/domain/transaction-spine";
 import { writeAuditLog } from "@/lib/audit";
+import { ErrorCode } from "@/lib/errors";
+import { httpErrorResponse } from "@/lib/http-error-response";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,11 +36,11 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ success: true, data: opportunities });
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "تعذر تحميل الفرص.";
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 },
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        "GET /api/v1/opportunities failed",
+        error,
       );
     }
   });
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return runWithDatabaseSession(
     request,
-    TENANT_WRITE_ROLES,
+    SALES_WRITE_ROLES,
     async (session) => {
       try {
         const body = await request.json();
@@ -130,12 +132,16 @@ export async function POST(request: NextRequest) {
           { status: 201 },
         );
       } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "تعذر إنشاء الفرصة.";
-        const status = /not found/i.test(message) ? 404 : 400;
-        return NextResponse.json(
-          { success: false, error: message },
-          { status },
+        const message = error instanceof Error ? error.message.toLowerCase() : "";
+        const code = /not found|غير موجود/.test(message)
+          ? ErrorCode.NOT_FOUND
+          : ErrorCode.INTERNAL_ERROR;
+
+        return httpErrorResponse(
+          request,
+          code,
+          "POST /api/v1/opportunities failed",
+          error,
         );
       }
     },

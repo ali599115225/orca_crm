@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import HelpdeskView from "@/components/views/HelpdeskView";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +13,14 @@ export default async function HelpdeskPage() {
     const tenant = await getActiveTenant();
     tenantName = tenant.companyName || "ORCA";
 
-    const tickets = await prisma.ticket.findMany({
-      where: { tenantId: tenant.id },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-    });
+    const tickets = await runWithTenantContext(
+      { tenantId: tenant.id },
+      () => prisma.ticket.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { updatedAt: "desc" },
+        take: 50,
+      }),
+    );
 
     initialTickets = tickets.map((ticket) => ({
       id: ticket.id,

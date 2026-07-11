@@ -134,6 +134,7 @@ function isUnsafeFallbackValue(value: unknown): boolean {
     'unknown city',
     'unknown company',
     'no data available',
+    'not specified',
     'شخص غير محدد',
     'مسؤول غير محدد',
     'حالة غير معروفة',
@@ -510,7 +511,11 @@ export default function OffersView() {
       });
 
       if (!result?.success) {
-        toast.error(result?.error || t('تعذر حجز موعد الزيارة.', 'Unable to schedule the visit.'));
+        toast.error(
+          result && "error" in result && typeof result.error === "string"
+            ? result.error
+            : t('تعذر حجز موعد الزيارة.', 'Unable to schedule the visit.'),
+        );
         return;
       }
 
@@ -518,7 +523,7 @@ export default function OffersView() {
       setIsVisitOpen(false);
       setVisitForm(INITIAL_VISIT_FORM);
     } catch (err: any) {
-      toast.error(err?.message || t('حدث خطأ أثناء حجز موعد الزيارة.', 'An error occurred while scheduling the visit.'));
+      toast.error(t('حدث خطأ أثناء حجز موعد الزيارة.', 'An error occurred while scheduling the visit.'));
     } finally {
       setVisitSaving(false);
     }

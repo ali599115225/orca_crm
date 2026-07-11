@@ -1,72 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
+import {
+  ACCOUNTING_WRITE_ROLES,
+  TENANT_ROLES,
+  runWithDatabaseSession,
+} from '@/lib/api-auth-guard';
 import { reverseJournalEntry } from '@/lib/accounting';
-
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload?.tenantId) return payload;
-  }
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload?.tenantId) return payload;
-  }
-  return null;
-}
+import { ErrorCode } from '@/lib/errors';
+import { httpErrorResponse } from '@/lib/http-error-response';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
-
-  try {
-    const { id } = await params;
-    const tenantId = session.tenantId as string;
-
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id, tenantId },
-      include: {
-        lines: {
-          include: { account: { select: { code: true, nameAr: true, nameEn: true } } },
+  return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
+    try {
+      const { id } = await params;
+      const entry = await prisma.journalEntry.findFirst({
+        where: { id, tenantId: session.tenantId },
+        include: {
+          lines: {
+            include: {
+              account: { select: { code: true, nameAr: true, nameEn: true } },
+            },
+          },
+          reversedBy: true,
+          reversals: true,
         },
-        reversedBy: true,
-        reversals: true,
-      },
-    });
+      });
 
-    if (!entry) {
-      return NextResponse.json({ success: false, error: 'القيد غير موجود' }, { status: 404 });
+      if (!entry) {
+        return NextResponse.json(
+          { success: false, error: 'القيد غير موجود' },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({ success: true, entry });
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        'GET /api/v1/accounting/journal-entries/:id failed',
+        error,
+      );
     }
-
-    return NextResponse.json({ success: true, entry });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+  });
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+  return runWithDatabaseSession(request, ACCOUNTING_WRITE_ROLES, async (session) => {
+    try {
+      const { id } = await params;
+      const body = await request.json();
+      const reason =
+        typeof body.reason === 'string' && body.reason.trim()
+          ? body.reason.trim()
+          : 'عكس يدوي';
 
-  try {
-    const { id } = await params;
-    const tenantId = session.tenantId as string;
-    const body = await request.json();
+      const entry = await prisma.journalEntry.findFirst({
+        where: { id, tenantId: session.tenantId },
+        select: { id: true },
+      });
+      if (!entry) {
+        return NextResponse.json(
+          { success: false, error: 'القيد غير موجود' },
+          { status: 404 },
+        );
+      }
 
-    const reversal = await reverseJournalEntry(id, tenantId, body.reason || 'عكس يدوي');
-    return NextResponse.json({ success: true, reversal });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+      const reversal = await reverseJournalEntry(id, session.tenantId, reason);
+      return NextResponse.json({ success: true, reversal });
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        'POST /api/v1/accounting/journal-entries/:id failed',
+        error,
+      );
+    }
+  });
 }

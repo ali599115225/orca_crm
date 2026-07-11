@@ -220,13 +220,13 @@ export default function SalesContractsPanel({ locale }: { locale: Locale }) {
                     role="button"
                     tabIndex={0}
                     onClick={() =>
-                      router.push(`/operations/sales/contracts/${contract.id}`)
+                      router.push(`/operations/rental/sales/contracts/${contract.id}`)
                     }
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         router.push(
-                          `/operations/sales/contracts/${contract.id}`,
+                          `/operations/rental/sales/contracts/${contract.id}`,
                         );
                       }
                     }}

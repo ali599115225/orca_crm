@@ -1,6 +1,6 @@
 'use client';
 import { toast } from '@/app/context/ToastContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 import { displayPerson, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
@@ -96,12 +96,8 @@ interface EventLog {
   note?: string;
 }
 
-// ─── Initial Mock Data ──────────────────────────────────────────────────────
-const initialLeases: Lease[] = [
-  { id: 'L-1001', unit: 'A-101', tenant: 'محمد العلي', start: '2026-01-01', end: '2026-12-31', rent: 12000, currency: 'SAR', status: 'active', deposit: 3000, financialRef: null },
-  { id: 'L-1002', unit: 'B-201', tenant: 'سارة الأحمد', start: '2025-07-01', end: '2026-06-30', rent: 45000, currency: 'SAR', status: 'expired', deposit: 5000, financialRef: 'FS-3001' },
-  { id: 'L-1003', unit: 'C-301', tenant: 'شركة النخبة', start: '2026-03-01', end: '2027-02-28', rent: 25000, currency: 'SAR', status: 'active', deposit: 5000, financialRef: null }
-];
+// ─── Initial Data ───────────────────────────────────────────────────────────
+const initialLeases: Lease[] = [];
 
 const initialInvoices: Invoice[] = []; // Loaded from API
 
@@ -114,6 +110,26 @@ const INVOICES_PAGE_SIZE = 8;
 
 
 type RentalLocale = DisplayLocale;
+type ActivePane =
+  | 'dashboard'
+  | 'leases'
+  | 'sales'
+  | 'invoices'
+  | 'reconciliation'
+  | 'settlements';
+
+const ACTIVE_PANES = new Set<ActivePane>([
+  'dashboard',
+  'leases',
+  'sales',
+  'invoices',
+  'reconciliation',
+  'settlements',
+]);
+
+function isActivePane(value: string | null): value is ActivePane {
+  return Boolean(value && ACTIVE_PANES.has(value as ActivePane));
+}
 
 function textFor(locale: RentalLocale, ar: string, en: string): string {
   return locale === 'ar' ? ar : en;
@@ -260,9 +276,14 @@ export default function RentalPage() {
   const displayLocale: RentalLocale = isRTL ? 'ar' : 'en';
   const L = (ar: string, en: string) => textFor(displayLocale, ar, en);
   const [mounted, setMounted] = useState(false);
-  const [activePane, setActivePane] = useState<'dashboard' | 'leases' | 'sales' | 'invoices' | 'reconciliation' | 'settlements'>('leases');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedPane = searchParams.get('pane');
+  const initialPane: ActivePane = isActivePane(requestedPane)
+    ? requestedPane
+    : 'leases';
+  const [activePane, setActivePane] = useState<ActivePane>(initialPane);
 
   // Core entities state
   const [leases, setLeases] = useState<Lease[]>(initialLeases);
@@ -319,6 +340,23 @@ export default function RentalPage() {
 
   const [enableCompliance, setEnableCompliance] = useState(false);
 
+  const changePane = (pane: ActivePane) => {
+    startTransition(() => setActivePane(pane));
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (pane === 'leases') {
+      params.delete('pane');
+    } else {
+      params.set('pane', pane);
+    }
+
+    const query = params.toString();
+    router.replace(
+      query ? `/operations/rental?${query}` : '/operations/rental',
+      { scroll: false },
+    );
+  };
+
   // Details sub-tabs controller
   const [detailActiveTab, setDetailActiveTab] = useState('summary');
   const [detailTabPages, setDetailTabPages] = useState<Record<string, number>>({});
@@ -348,12 +386,27 @@ export default function RentalPage() {
           fetch('/api/v1/leases/'),
           fetch('/api/v1/invoices/'),
         ]);
-        if (leasesRes.ok) { const json = await leasesRes.json(); if (json.success) setLeases(json.leases); }
-        if (invoicesRes.ok) { const json = await invoicesRes.json(); if (json.success) setInvoices(json.invoices); }
+        if (!leasesRes.ok || !invoicesRes.ok) {
+          throw new Error('RENTAL_DATA_LOAD_FAILED');
+        }
+
+        const [leasesJson, invoicesJson] = await Promise.all([
+          leasesRes.json(),
+          invoicesRes.json(),
+        ]);
+
+        if (!leasesJson.success || !invoicesJson.success) {
+          throw new Error('RENTAL_DATA_LOAD_FAILED');
+        }
+
+        setLeases(Array.isArray(leasesJson.leases) ? leasesJson.leases : []);
+        setInvoices(Array.isArray(invoicesJson.invoices) ? invoicesJson.invoices : []);
         addTelemetryEvent('api.data_loaded', { leases: true, invoices: true });
-      } catch (err: any) {
-        setFetchError(err.message);
-        addTelemetryEvent('api.error', { error: err.message });
+      } catch (err: unknown) {
+        setLeases([]);
+        setInvoices([]);
+        setFetchError(L('تعذر تحميل بيانات العقود والفواتير.', 'Unable to load contracts and invoices.'));
+        addTelemetryEvent('api.error', { error: 'RENTAL_DATA_LOAD_FAILED' });
       } finally {
         setIsLoading(false);
       }
@@ -366,6 +419,12 @@ export default function RentalPage() {
     // Generate an idempotency key initially
     setPayIdempotencyKey('idemp-' + Math.floor(100000 + Math.random() * 900000));
   }, []);
+
+  useEffect(() => {
+    const pane = searchParams.get('pane');
+    const nextPane: ActivePane = isActivePane(pane) ? pane : 'leases';
+    setActivePane((current) => (current === nextPane ? current : nextPane));
+  }, [searchParams]);
 
   // early return moved to the bottom of the component to prevent uninitialized ReferenceErrors
 
@@ -670,7 +729,7 @@ export default function RentalPage() {
   const invoiceRangeStart = filteredInvoices.length === 0 ? 0 : normalizedInvoicePage * INVOICES_PAGE_SIZE + 1;
   const invoiceRangeEnd = Math.min((normalizedInvoicePage + 1) * INVOICES_PAGE_SIZE, filteredInvoices.length);
 
-  const selectedLeaseInvoices = selectedLease ? invoices.filter(i => i.contractId === selectedLease.id) : [];
+  const selectedLeaseInvoices = selectedLease ? invoices.filter(i => i.leaseId === selectedLease.id) : [];
   const selectedLeaseInvoiceIds = new Set(selectedLeaseInvoices.map(i => i.id));
   const selectedLeasePayments = selectedLease ? payments.filter(p => selectedLeaseInvoiceIds.has(p.invoiceId)) : [];
   const selectedLeaseDocuments = selectedLease ? [
@@ -1023,7 +1082,7 @@ export default function RentalPage() {
           <button
             key={t.id}
             type="button"
-            onClick={() => startTransition(() => setActivePane(t.id as any))}
+            onClick={() => changePane(t.id as ActivePane)}
             className={`h-10 shrink-0 rounded-xl border px-4 text-sm font-semibold transition-colors flex items-center gap-1.5 ${
               activePane === t.id
                 ? 'border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
@@ -1837,7 +1896,7 @@ export default function RentalPage() {
       >
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-foreground)] text-xs font-semibold">
           <i className="ph-bold ph-file-text"></i>
-          {isLoading ? L('جاري التحميل...', 'Loading...') : L(`${formatNumberValue(leases.length, displayLocale)} عقد نشط`, `${formatNumberValue(leases.length, displayLocale)} active leases`)}
+          {isLoading ? L('جاري التحميل...', 'Loading...') : L(`${formatNumberValue(activeLeases.length, displayLocale)} عقد نشط`, `${formatNumberValue(activeLeases.length, displayLocale)} active leases`)}
         </div>
       </PageHeader>
 

@@ -33,27 +33,27 @@ describe("Operations tenant context scope", () => {
     expect(layout).not.toContain("elite.orca@outlook.sa");
   });
 
-  it("wraps all dashboard operations in tenant context", () => {
-    const dashboard = source(
-      "app/operations/dashboard/page.tsx",
-    );
-
-    expect(dashboard).toContain(
-      "import { runWithTenantContext } from '@/lib/tenant-context';",
-    );
-    expect(dashboard).toContain(
-      "] = await runWithTenantContext(",
-    );
-    expect(dashboard).toContain(
-      "() => Promise.allSettled([",
-    );
-  });
-
+  it("wraps all dashboard operations in tenant context", () => {
+    const dashboard = source(
+      "features/dashboard/server/getDashboardReadModel.ts",
+    );
+
+    expect(dashboard).toContain(
+      'import { runWithTenantContext } from "@/lib/tenant-context";',
+    );
+    expect(dashboard).toContain(
+      "return runWithTenantContext({ tenantId }, async () => {",
+    );
+    expect(dashboard).toContain(
+      "] = await Promise.all([",
+    );
+  });
+
   it("executes a lazy Prisma-like thenable inside the tenant context", async () => {
     const layout = source("app/operations/layout.tsx");
 
     expect(layout).toMatch(
-      /const user = await runWithTenantContext\([\s\S]*?async \(\) => \{[\s\S]*?return await prisma\.user\.findUnique\(/,
+      /const user = await runWithTenantContext\([\s\S]*?async \(\) => \{[\s\S]*?return await prisma\.user\.findFirst\(/,
     );
 
     const lazyPrismaLike = {

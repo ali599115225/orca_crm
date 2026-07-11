@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import { runWithDatabaseSession, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { PAYMENT_STATUS } from "@/lib/domain/transaction-spine";
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { tenantId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
-    }
-
-    const { id } = await params;
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
+    try {
+      const tenantId = session.tenantId;
+      const { id } = await params;
 
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId },
@@ -399,11 +396,14 @@ export async function GET(
       amendments,
       documents: [],
     };
-
-    return NextResponse.json({ success: true, data });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "تعذر جلب تفاصيل عقد البيع.";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+      return NextResponse.json({ success: true, data });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "تعذر جلب تفاصيل عقد البيع.";
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 },
+      );
+    }
+  });
 }

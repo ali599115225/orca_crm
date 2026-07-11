@@ -1,218 +1,249 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
+import {
+  FINANCE_WRITE_ROLES,
+  TENANT_ROLES,
+  runWithDatabaseSession,
+} from "@/lib/api-auth-guard";
+import { ErrorCode } from "@/lib/errors";
+import { httpErrorResponse } from "@/lib/http-error-response";
 import { calculateVat, validateVatInput } from "@/lib/vat/engine";
-import { buildQrPayload, encodeQrCode, generateQrImage, formatInvoiceLabel } from "@/lib/zatca/qr";
-
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session_token")?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload?.tenantId) return payload;
-  }
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const payload = await decrypt(authHeader.substring(7));
-    if (payload?.tenantId) return payload;
-  }
-  return null;
-}
+import type { VatType } from "@/lib/vat/types";
+import {
+  buildQrPayload,
+  encodeQrCode,
+  generateQrImage,
+  formatInvoiceLabel,
+} from "@/lib/zatca/qr";
 
 export async function GET(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const leaseId = searchParams.get("leaseId")?.trim() || "";
+      const status = searchParams.get("status")?.trim() || "";
+      const type = searchParams.get("type")?.trim() || "";
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const leaseId = searchParams.get("leaseId") || "";
-    const status = searchParams.get("status") || "";
-    const type = searchParams.get("type") || "";
+      const where: Record<string, unknown> = { tenantId: session.tenantId };
+      if (leaseId) where.leaseId = leaseId;
+      if (status) where.status = status;
+      if (type === "SALE" || type === "RENTAL") where.type = type;
 
-    const where: any = { tenantId: session.tenantId as string };
-    if (leaseId) where.leaseId = leaseId;
-    if (status) where.status = status;
-    if (type === "SALE" || type === "RENTAL") where.type = type;
-
-    const invoices = await prisma.invoice.findMany({
-      where,
-      include: {
-        lease: { select: { unitName: true, tenantName: true } },
-        contract: {
-          select: {
-            id: true,
-            buyerName: true,
-            unit: {
-              select: {
-                unitNumber: true,
-                project: { select: { name: true } },
+      const invoices = await prisma.invoice.findMany({
+        where,
+        include: {
+          lease: { select: { unitName: true, tenantName: true } },
+          contract: {
+            select: {
+              id: true,
+              buyerName: true,
+              unit: {
+                select: {
+                  unitNumber: true,
+                  project: { select: { name: true } },
+                },
               },
             },
           },
-        },
-        installments: {
-          orderBy: [{ dueDate: "asc" }, { installmentNumber: "asc" }],
-          select: {
-            id: true,
-            amountSar: true,
-            paymentStatus: true,
-            installmentNumber: true,
-            dueDate: true,
+          installments: {
+            orderBy: [{ dueDate: "asc" }, { installmentNumber: "asc" }],
+            select: {
+              id: true,
+              amountSar: true,
+              paymentStatus: true,
+              installmentNumber: true,
+              dueDate: true,
+            },
           },
         },
-      },
-      orderBy: { invoiceNumber: "desc" },
-    });
+        orderBy: { invoiceNumber: "desc" },
+      });
 
-    const list = invoices.map((inv) => ({
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      invoicePrefix: inv.invoicePrefix,
-      invoiceLabel: formatInvoiceLabel(inv.invoicePrefix, inv.issueDate.getFullYear(), inv.invoiceNumber),
-      zatcaUuid: inv.zatcaUuid,
-      customerName: inv.lease?.tenantName || inv.contract?.buyerName || "",
-      unitName:
-        inv.lease?.unitName ||
-        (inv.contract?.unit
-          ? `${inv.contract.unit.project.name} · ${inv.contract.unit.unitNumber}`
-          : null),
-      type: inv.type,
-      contractId: inv.contractId || null,
-      leaseId: inv.leaseId || null,
-      subtotal: Number(inv.subtotal),
-      vatRate: Number(inv.vatRate),
-      vatAmount: Number(inv.vatAmount),
-      totalAmount: Number(inv.totalAmount),
-      status: inv.status,
-      issueDate: inv.issueDate.toISOString().split("T")[0],
-      dueDate: inv.dueDate.toISOString().split("T")[0],
-      due: inv.dueDate.toISOString().split("T")[0],
-      qrCode: inv.qrCode,
-      qrImage: inv.qrImage,
-      installments: inv.installments.map((inst) => ({
-        id: inst.id,
-        installmentNumber: inst.installmentNumber,
-        amountSar: Number(inst.amountSar),
-        dueDate: inst.dueDate.toISOString().split("T")[0],
-        paymentStatus: inst.paymentStatus,
-      })),
-    }));
+      const list = invoices.map((invoice) => ({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        invoicePrefix: invoice.invoicePrefix,
+        invoiceLabel: formatInvoiceLabel(
+          invoice.invoicePrefix,
+          invoice.issueDate.getFullYear(),
+          invoice.invoiceNumber,
+        ),
+        zatcaUuid: invoice.zatcaUuid,
+        customerName: invoice.lease?.tenantName || invoice.contract?.buyerName || "",
+        unitName:
+          invoice.lease?.unitName ||
+          (invoice.contract?.unit
+            ? `${invoice.contract.unit.project.name} · ${invoice.contract.unit.unitNumber}`
+            : null),
+        type: invoice.type,
+        contractId: invoice.contractId || null,
+        leaseId: invoice.leaseId || null,
+        subtotal: Number(invoice.subtotal),
+        vatRate: Number(invoice.vatRate),
+        vatAmount: Number(invoice.vatAmount),
+        totalAmount: Number(invoice.totalAmount),
+        status: invoice.status,
+        issueDate: invoice.issueDate.toISOString().split("T")[0],
+        dueDate: invoice.dueDate.toISOString().split("T")[0],
+        due: invoice.dueDate.toISOString().split("T")[0],
+        qrCode: invoice.qrCode,
+        qrImage: invoice.qrImage,
+        installments: invoice.installments.map((installment) => ({
+          id: installment.id,
+          installmentNumber: installment.installmentNumber,
+          amountSar: Number(installment.amountSar),
+          dueDate: installment.dueDate.toISOString().split("T")[0],
+          paymentStatus: installment.paymentStatus,
+        })),
+      }));
 
-    return NextResponse.json({ success: true, invoices: list });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "تعذر جلب الفواتير.";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+      return NextResponse.json({ success: true, invoices: list });
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        "GET /api/v1/invoices failed",
+        error,
+      );
+    }
+  });
 }
 
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
+  return runWithDatabaseSession(request, FINANCE_WRITE_ROLES, async (session) => {
+    try {
+      const body = await request.json();
+      const leaseId = typeof body.leaseId === "string" ? body.leaseId.trim() : "";
+      const subtotal = Number(body.subtotal);
+      const vatType = typeof body.vatType === "string" ? body.vatType : "STANDARD";
+      const dueDate = new Date(body.dueDate);
 
-  try {
-    const body = await request.json();
-    const { leaseId, subtotal, vatType, dueDate } = body;
-    if (!leaseId || !subtotal || !dueDate) {
-      return NextResponse.json({ success: false, error: "الحقول leaseId, subtotal, dueDate إلزامية" }, { status: 400 });
-    }
+      if (!leaseId || !Number.isFinite(subtotal) || Number.isNaN(dueDate.getTime())) {
+        return NextResponse.json(
+          { success: false, error: "الحقول leaseId, subtotal, dueDate إلزامية ويجب أن تكون صالحة" },
+          { status: 400 },
+        );
+      }
 
-    const validationError = validateVatInput(parseFloat(subtotal), vatType || "STANDARD");
-    if (validationError) return NextResponse.json({ success: false, error: validationError }, { status: 400 });
+      const validationError = validateVatInput(subtotal, vatType);
+      if (validationError) {
+        return NextResponse.json(
+          { success: false, error: validationError },
+          { status: 400 },
+        );
+      }
 
-    const lease = await prisma.rentalLease.findFirst({
-      where: { id: leaseId, tenantId: session.tenantId as string },
-      include: { tenant: true },
-    });
-    if (!lease) return NextResponse.json({ success: false, error: "عقد الإيجار غير موجود" }, { status: 404 });
-
-    const tenant = lease.tenant;
-    const subtotalNum = parseFloat(subtotal);
-    const vatBreakdown = calculateVat(subtotalNum, (vatType || "STANDARD") as any);
-    const qrPayload = buildQrPayload({
-      sellerName: tenant.companyName,
-      vatNumber: tenant.vatNumber || "",
-      total: vatBreakdown.totalAmount,
-      vatTotal: vatBreakdown.vatAmount,
-    });
-    const qrCode = encodeQrCode(qrPayload);
-    const qrImage = await generateQrImage(qrCode);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const counter = await tx.tenant.update({
-        where: { id: tenant.id },
-        data: { nextInvoiceNumber: { increment: 1 } },
+      const lease = await prisma.rentalLease.findFirst({
+        where: { id: leaseId, tenantId: session.tenantId },
+        include: { tenant: true },
       });
-      const invoice = await tx.invoice.create({
-        data: {
-          tenantId: session.tenantId as string,
-          type: "RENTAL",
-          leaseId,
-          contractId: null,
-          invoiceNumber: counter.nextInvoiceNumber - 1,
-          invoicePrefix: tenant.invoicePrefix || "INV",
-          dueDate: new Date(dueDate),
-          subtotal: vatBreakdown.subtotal,
-          vatRate: vatBreakdown.vatRate,
-          vatAmount: vatBreakdown.vatAmount,
-          totalAmount: vatBreakdown.totalAmount,
-          qrPayload: JSON.stringify(qrPayload),
-          qrCode,
-          qrImage,
-          status: "unpaid",
+
+      if (!lease) {
+        return NextResponse.json(
+          { success: false, error: "عقد الإيجار غير موجود" },
+          { status: 404 },
+        );
+      }
+
+      const tenant = lease.tenant;
+      const vatBreakdown = calculateVat(subtotal, vatType as VatType);
+      const qrPayload = buildQrPayload({
+        sellerName: tenant.companyName,
+        vatNumber: tenant.vatNumber || "",
+        total: vatBreakdown.totalAmount,
+        vatTotal: vatBreakdown.vatAmount,
+      });
+      const qrCode = encodeQrCode(qrPayload);
+      const qrImage = await generateQrImage(qrCode);
+
+      const result = await prisma.$transaction(async (tx) => {
+        const counter = await tx.tenant.update({
+          where: { id: tenant.id },
+          data: { nextInvoiceNumber: { increment: 1 } },
+        });
+
+        const invoice = await tx.invoice.create({
+          data: {
+            tenantId: session.tenantId,
+            type: "RENTAL",
+            leaseId,
+            contractId: null,
+            invoiceNumber: counter.nextInvoiceNumber - 1,
+            invoicePrefix: tenant.invoicePrefix || "INV",
+            dueDate,
+            subtotal: vatBreakdown.subtotal,
+            vatRate: vatBreakdown.vatRate,
+            vatAmount: vatBreakdown.vatAmount,
+            totalAmount: vatBreakdown.totalAmount,
+            qrPayload: JSON.stringify(qrPayload),
+            qrCode,
+            qrImage,
+            status: "unpaid",
+          },
+          include: { lease: { select: { unitName: true, tenantName: true } } },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            tenantId: session.tenantId,
+            userId: session.userId,
+            action: "CREATE_RENTAL_INVOICE",
+            tableName: "invoices",
+            recordId: invoice.id,
+            details: JSON.stringify({ leaseId, totalAmount: vatBreakdown.totalAmount }),
+          },
+        });
+
+        return { invoice, tenant };
+      });
+
+      const invoice = result.invoice;
+      return NextResponse.json(
+        {
+          success: true,
+          invoice: {
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            invoicePrefix: invoice.invoicePrefix,
+            invoiceLabel: formatInvoiceLabel(
+              invoice.invoicePrefix,
+              invoice.issueDate.getFullYear(),
+              invoice.invoiceNumber,
+            ),
+            zatcaUuid: invoice.zatcaUuid,
+            issueDate: invoice.issueDate.toISOString().split("T")[0],
+            dueDate: invoice.dueDate.toISOString().split("T")[0],
+            due: invoice.dueDate.toISOString().split("T")[0],
+            sellerName: result.tenant.companyName,
+            sellerVat: result.tenant.vatNumber || "",
+            sellerCr: result.tenant.commercialRegistry || "",
+            sellerAddress: result.tenant.nationalAddress || "",
+            customerName: invoice.lease?.tenantName || "",
+            subtotal: Number(invoice.subtotal),
+            vatRate: Number(invoice.vatRate),
+            vatAmount: Number(invoice.vatAmount),
+            totalAmount: Number(invoice.totalAmount),
+            qrPayload: JSON.parse(invoice.qrPayload || "{}"),
+            qrCode: invoice.qrCode,
+            qrImage: invoice.qrImage,
+            zatcaStatus: invoice.zatcaStatus,
+            status: invoice.status,
+            type: invoice.type,
+            leaseId: invoice.leaseId,
+            contractId: null,
+            unitName: invoice.lease?.unitName || null,
+            installments: [],
+          },
         },
-        include: { lease: { select: { unitName: true, tenantName: true } } },
-      });
-      return { invoice, tenant };
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        tenantId: session.tenantId as string,
-        userId: (session as any).userId || null,
-        action: "CREATE_RENTAL_INVOICE",
-        tableName: "invoices",
-        recordId: result.invoice.id,
-        details: JSON.stringify({ leaseId, totalAmount: vatBreakdown.totalAmount }),
-      },
-    }).catch(() => {});
-
-    const inv = result.invoice;
-    return NextResponse.json({
-      success: true,
-      invoice: {
-        id: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        invoicePrefix: inv.invoicePrefix,
-        invoiceLabel: formatInvoiceLabel(inv.invoicePrefix, inv.issueDate.getFullYear(), inv.invoiceNumber),
-        zatcaUuid: inv.zatcaUuid,
-        issueDate: inv.issueDate.toISOString().split("T")[0],
-        dueDate: inv.dueDate.toISOString().split("T")[0],
-        due: inv.dueDate.toISOString().split("T")[0],
-        sellerName: result.tenant.companyName,
-        sellerVat: result.tenant.vatNumber || "",
-        sellerCr: result.tenant.commercialRegistry || "",
-        sellerAddress: result.tenant.nationalAddress || "",
-        customerName: inv.lease?.tenantName || "",
-        subtotal: Number(inv.subtotal),
-        vatRate: Number(inv.vatRate),
-        vatAmount: Number(inv.vatAmount),
-        totalAmount: Number(inv.totalAmount),
-        qrPayload: JSON.parse(inv.qrPayload || "{}"),
-        qrCode: inv.qrCode,
-        qrImage: inv.qrImage,
-        zatcaStatus: inv.zatcaStatus,
-        status: inv.status,
-        type: inv.type,
-        leaseId: inv.leaseId,
-        contractId: null,
-        unitName: inv.lease?.unitName || null,
-        installments: [],
-      },
-    }, { status: 201 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "تعذر إنشاء الفاتورة.";
-    console.error("[POST /api/v1/invoices]", error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+        { status: 201 },
+      );
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        "POST /api/v1/invoices failed",
+        error,
+      );
+    }
+  });
 }

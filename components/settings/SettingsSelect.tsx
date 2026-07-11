@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 export interface SettingsSelectOption {
   value: string;
@@ -71,7 +71,12 @@ export default function SettingsSelect({
 }: SettingsSelectProps) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    direction: "ltr" | "rtl";
+  } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const baseId = useId();
@@ -88,11 +93,19 @@ export default function SettingsSelect({
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUpward =
       placement === "auto" && spaceBelow < estimatedListHeight && rect.top > estimatedListHeight;
+    const preferredMinimum = Math.min(220, Math.max(0, window.innerWidth - 8));
+    const width = Math.min(
+      Math.max(rect.width, preferredMinimum),
+      Math.max(0, window.innerWidth - 8),
+    );
+    const direction =
+      window.getComputedStyle(button).direction === "rtl" ? "rtl" : "ltr";
 
     setPosition({
       top: openUpward ? Math.max(rect.top - estimatedListHeight - 4, 4) : rect.bottom + 4,
-      left: Math.max(4, Math.min(rect.left, window.innerWidth - rect.width - 4)),
-      width: rect.width,
+      left: Math.max(4, Math.min(rect.left, window.innerWidth - width - 4)),
+      width,
+      direction,
     });
   }
 
@@ -216,6 +229,7 @@ export default function SettingsSelect({
             ref={listRef}
             id={listboxId}
             role="listbox"
+            dir={position.direction}
             style={{ position: "fixed", top: position.top, left: position.left, width: position.width }}
             className="z-[200] max-h-60 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl"
           >
@@ -228,17 +242,18 @@ export default function SettingsSelect({
                 aria-disabled={option.disabled || undefined}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => selectOption(index)}
-                className={`cursor-pointer truncate px-4 py-2 text-sm transition-colors ${mono ? "font-mono" : ""} ${
+                className={`flex cursor-pointer items-center justify-between gap-2 px-4 py-2 text-start text-sm transition-colors ${mono ? "font-mono" : ""} ${
                   option.disabled
                     ? "cursor-not-allowed text-[var(--nc-foreground-muted)] opacity-50"
-                    : option.value === value
-                      ? "bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
-                      : index === activeIndex
-                        ? "bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]"
-                        : "text-[var(--nc-foreground)] hover:bg-[var(--nc-surface-strong)]"
+                    : option.value === value || index === activeIndex
+                      ? "bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]"
+                      : "text-[var(--nc-foreground)] hover:bg-[var(--nc-surface-strong)]"
                 }`}
               >
-                {option.label}
+                <span className="truncate">{option.label}</span>
+                {option.value === value && (
+                  <Check size={14} className="shrink-0" aria-hidden="true" />
+                )}
               </div>
             ))}
           </div>,

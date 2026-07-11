@@ -302,7 +302,7 @@ describe("D. AgentManagementView — dedicated UI guards", () => {
   });
 
   it("Subscription Settings link is guarded by !isDedicatedCopy", () => {
-    expect(source).toMatch(/!isDedicatedCopy[\s\S]*?operations\/settings\?tab=agents/);
+    expect(source).toMatch(/!isDedicatedCopy[\s\S]*?operations\/settings\?tab=ai/);
   });
 
   it("subscription modal render is guarded by !isDedicatedCopy for defense in depth", () => {
@@ -318,7 +318,7 @@ describe("D. AgentManagementView — dedicated UI guards", () => {
   });
 
   it("SaaS code preserved: subscription settings href still exists in source", () => {
-    expect(source).toContain('/operations/settings?tab=agents');
+    expect(source).toContain('/operations/settings?tab=ai');
   });
 
   it("SaaS code preserved: 'Subscribe Now' button text still exists in source", () => {

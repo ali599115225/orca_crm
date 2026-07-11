@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../app/context/AppContext';
 import SovereignHeader from '../../app/components/SovereignHeader';
 import SovereignSidebar from '../../app/components/SovereignSidebar';
+import { AuthProvider } from '../../app/context/AuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export default function DashboardLayout({
   const isRTL = lang === 'AR';
 
   return (
+    <AuthProvider initialRole={user?.role}>
     <div
       className="h-screen w-full overflow-hidden flex bg-[var(--nc-bg)] font-sans"
       dir={isRTL ? 'rtl' : 'ltr'}
@@ -66,5 +68,6 @@ export default function DashboardLayout({
 
       </main>
     </div>
+    </AuthProvider>
   );
 }

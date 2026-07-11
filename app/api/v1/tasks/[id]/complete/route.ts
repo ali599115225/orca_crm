@@ -30,7 +30,7 @@ export async function PATCH(
         }
 
         const updatedTask = await prisma.task.update({
-          where: { id: task.id },
+          where: { id: task.id, tenantId: session.tenantId },
           data: {
             status: "COMPLETED",
             updatedBy: session.userId,
@@ -61,3 +61,4 @@ export async function PATCH(
     },
   );
 }
+

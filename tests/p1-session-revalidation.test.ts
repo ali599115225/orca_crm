@@ -23,15 +23,16 @@ vi.mock("@/lib/session", () => ({
   decrypt: vi.fn(),
 }));
 
-const mockUserFindFirst = vi.fn();
-const mockTenantFindFirst = vi.fn();
-vi.mock("@/lib/prisma", () => {
-  const client = {
-    user: { findFirst: (...args: unknown[]) => mockUserFindFirst(...args) },
-    tenant: { findFirst: (...args: unknown[]) => mockTenantFindFirst(...args) },
-  };
-  return { rawPrisma: client, prisma: client };
-});
+const boundaryMocks = vi.hoisted(() => ({
+  userEmail: vi.fn(),
+  userRole: vi.fn(),
+  tenantActive: vi.fn(),
+}));
+vi.mock("@/lib/system-prisma-boundary", () => ({
+  authBootstrapFindUserEmail: boundaryMocks.userEmail,
+  authBootstrapFindUserRole: boundaryMocks.userRole,
+  authBootstrapFindTenantActive: boundaryMocks.tenantActive,
+}));
 
 // ============================================================================
 // Subject-under-test imports (after mocks)
@@ -93,8 +94,8 @@ describe("requireDatabaseSession", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserFindFirst.mockReset();
-    mockTenantFindFirst.mockReset();
+    boundaryMocks.userRole.mockReset();
+    boundaryMocks.tenantActive.mockReset();
     enterWithSpy = vi.spyOn(tenantContext, "enterWith");
 
     // Default: no cookie, no Bearer header, no decrypt call
@@ -116,8 +117,8 @@ describe("requireDatabaseSession", () => {
     expect(body).toHaveProperty("code", "UNAUTHORIZED");
     expect(body).toHaveProperty("requestId", "p1-revalidation-test");
     // DB queries should NOT be reached when there is no JWT
-    expect(mockUserFindFirst).not.toHaveBeenCalled();
-    expect(mockTenantFindFirst).not.toHaveBeenCalled();
+    expect(boundaryMocks.userRole).not.toHaveBeenCalled();
+    expect(boundaryMocks.tenantActive).not.toHaveBeenCalled();
   });
 
   it("returns 401 when the JWT is invalid (decrypt returns null)", async () => {
@@ -128,7 +129,7 @@ describe("requireDatabaseSession", () => {
     expect(result.session).toBeNull();
     expect(result.error!.status).toBe(401);
     // DB queries must not run on an invalid JWT
-    expect(mockUserFindFirst).not.toHaveBeenCalled();
+    expect(boundaryMocks.userRole).not.toHaveBeenCalled();
   });
 
   // --------------------------------------------------------------------------
@@ -136,15 +137,16 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("returns 403 when the user has been deleted from the database", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue(null);   // user deleted
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" }); // tenant still exists
+    boundaryMocks.userRole.mockResolvedValue(null);   // user deleted
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" }); // tenant still exists
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
     expect(result.session).toBeNull();
     expect(result.error!.status).toBe(403);
-    expect(mockUserFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: VALID_SESSION.userId, tenantId: VALID_SESSION.tenantId } }),
+    expect(boundaryMocks.userRole).toHaveBeenCalledWith(
+      VALID_SESSION.userId,
+      VALID_SESSION.tenantId,
     );
   });
 
@@ -153,15 +155,15 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("returns 403 when the tenant is inactive", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ADMIN" });
-    mockTenantFindFirst.mockResolvedValue(null); // inactive or missing
+    boundaryMocks.userRole.mockResolvedValue({ role: "ADMIN" });
+    boundaryMocks.tenantActive.mockResolvedValue(null); // inactive or missing
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
     expect(result.session).toBeNull();
     expect(result.error!.status).toBe(403);
-    expect(mockTenantFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: VALID_SESSION.tenantId, isActive: true } }),
+    expect(boundaryMocks.tenantActive).toHaveBeenCalledWith(
+      VALID_SESSION.tenantId,
     );
   });
 
@@ -170,8 +172,8 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("returns 403 when the database role is not in allowedRoles", async () => {
     vi.mocked(decrypt).mockResolvedValue(LOW_ROLE_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ROBOT" }); // role not in any Prisma enum
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ROBOT" }); // role not in any Prisma enum
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
@@ -187,8 +189,8 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("returns session when user, tenant, and role all pass", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ADMIN" });
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ADMIN" });
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
@@ -202,8 +204,8 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("rejects when JWT claims ADMIN but DB has a non-enum role", async () => {
     vi.mocked(decrypt).mockResolvedValue({ ...VALID_SESSION, role: "ADMIN" }); // JWT claims ADMIN
-    mockUserFindFirst.mockResolvedValue({ role: "ROBOT" }); // DB returns unrecognised role
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ROBOT" }); // DB returns unrecognised role
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
@@ -213,8 +215,8 @@ describe("requireDatabaseSession", () => {
 
   it("succeeds when JWT says READ_ONLY but DB says ADMIN", async () => {
     vi.mocked(decrypt).mockResolvedValue({ ...LOW_ROLE_SESSION, role: "READ_ONLY" }); // JWT claims low
-    mockUserFindFirst.mockResolvedValue({ role: "ADMIN" }); // DB reality
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ADMIN" }); // DB reality
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     const result = await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
 
@@ -227,8 +229,8 @@ describe("requireDatabaseSession", () => {
   // --------------------------------------------------------------------------
   it("calls tenantContext.enterWith on success", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ADMIN" });
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ADMIN" });
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     enterWithSpy.mockClear();
     await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
@@ -251,8 +253,8 @@ describe("requireDatabaseSession", () => {
 
   it("does NOT call tenantContext.enterWith on deleted user", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue(null);
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue(null);
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     enterWithSpy.mockClear();
     await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
@@ -261,8 +263,8 @@ describe("requireDatabaseSession", () => {
 
   it("does NOT call tenantContext.enterWith on inactive tenant", async () => {
     vi.mocked(decrypt).mockResolvedValue(VALID_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ADMIN" });
-    mockTenantFindFirst.mockResolvedValue(null);
+    boundaryMocks.userRole.mockResolvedValue({ role: "ADMIN" });
+    boundaryMocks.tenantActive.mockResolvedValue(null);
 
     enterWithSpy.mockClear();
     await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
@@ -271,8 +273,8 @@ describe("requireDatabaseSession", () => {
 
   it("does NOT call tenantContext.enterWith on insufficient role", async () => {
     vi.mocked(decrypt).mockResolvedValue(LOW_ROLE_SESSION);
-    mockUserFindFirst.mockResolvedValue({ role: "ROBOT" }); // unrecognised role
-    mockTenantFindFirst.mockResolvedValue({ id: "tenant-active-1" });
+    boundaryMocks.userRole.mockResolvedValue({ role: "ROBOT" }); // unrecognised role
+    boundaryMocks.tenantActive.mockResolvedValue({ id: "tenant-active-1" });
 
     enterWithSpy.mockClear();
     await requireDatabaseSession(makeRequest("Bearer valid.jwt.here"), ALLOWED);
@@ -302,11 +304,13 @@ function readRoute(relativePath: string): string[] {
 const HANDLER_RE = /^export async function (GET|POST|PUT|DELETE)\s*\(/;
 
 describe("Route-wiring regression: tasks", () => {
-  const FILE = "app/api/tasks/route.ts";
+  const FILE = "app/api/v1/tasks/route.ts";
   const source = readRoute(FILE);
+  const content = source.join("\n");
 
-  it("imports requireDatabaseSession from api-auth-guard", () => {
-    expect(source.some((l) => l.includes('requireDatabaseSession') && l.includes('api-auth-guard'))).toBe(true);
+  it("imports runWithDatabaseSession from api-auth-guard", () => {
+    expect(content).toContain("runWithDatabaseSession");
+    expect(content).toContain('from "@/lib/api-auth-guard"');
   });
 
   it("does NOT define authenticateRequest", () => {
@@ -321,12 +325,12 @@ describe("Route-wiring regression: tasks", () => {
     expect(source.some((l) => l.includes('from "next/headers"'))).toBe(false);
   });
 
-  it("every handler calls requireDatabaseSession", () => {
+  it("every handler calls runWithDatabaseSession", () => {
     const handlers = source.filter((l) => HANDLER_RE.test(l));
-    expect(handlers.length).toBeGreaterThanOrEqual(4); // GET, POST, PUT, DELETE
+    expect(handlers.length).toBe(2); // GET, POST
 
-    const requireCalls = source.filter((l) => l.includes("requireDatabaseSession(request"));
-    expect(requireCalls.length).toBe(handlers.length);
+    const guardedCalls = source.filter((l) => l.includes("runWithDatabaseSession("));
+    expect(guardedCalls.length).toBe(handlers.length);
   });
 });
 
@@ -391,9 +395,11 @@ describe("Route-wiring regression: projects (by id)", () => {
 describe("Route-wiring regression: properties (collection)", () => {
   const FILE = "app/api/properties/route.ts";
   const source = readRoute(FILE);
+  const content = source.join("\n");
 
-  it("imports requireDatabaseSession", () => {
-    expect(source.some((l) => l.includes('requireDatabaseSession') && l.includes('api-auth-guard'))).toBe(true);
+  it("imports runWithDatabaseSession", () => {
+    expect(content).toContain("runWithDatabaseSession");
+    expect(content).toContain('from "@/lib/api-auth-guard"');
   });
 
   it("does NOT define authenticateRequest", () => {
@@ -408,12 +414,12 @@ describe("Route-wiring regression: properties (collection)", () => {
     expect(source.some((l) => l.includes('from "next/headers"'))).toBe(false);
   });
 
-  it("every handler calls requireDatabaseSession", () => {
+  it("every handler calls runWithDatabaseSession", () => {
     const handlers = source.filter((l) => HANDLER_RE.test(l));
     expect(handlers.length).toBeGreaterThanOrEqual(2); // GET, POST
 
-    const requireCalls = source.filter((l) => l.includes("requireDatabaseSession(request"));
-    expect(requireCalls.length).toBe(handlers.length);
+    const guardedCalls = source.filter((l) => l.includes("runWithDatabaseSession("));
+    expect(guardedCalls.length).toBe(handlers.length);
   });
 });
 
@@ -451,7 +457,7 @@ describe("Route-wiring regression: properties (by id)", () => {
  */
 describe("Cross-file regression: no stale authenticateRequest or old imports", () => {
   const FILES = [
-    "app/api/tasks/route.ts",
+    "app/api/v1/tasks/route.ts",
     "app/api/projects/route.ts",
     "app/api/projects/[id]/route.ts",
     "app/api/properties/route.ts",
@@ -461,14 +467,10 @@ describe("Cross-file regression: no stale authenticateRequest or old imports", (
   for (const file of FILES) {
     it(`${file} is free of stale patterns`, () => {
       const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
-      // No top-level async function authenticateRequest
       expect(source).not.toMatch(/^\s*async function authenticateRequest\s*\(/m);
-      // No direct decrypt import from session
       expect(source).not.toContain('from "@/lib/session"');
-      // No direct cookies import from next/headers (unless it's next/headers itself in test)
       expect(source).not.toContain('from "next/headers"');
-      // Must import from api-auth-guard
-      expect(source).toContain("requireDatabaseSession");
+      expect(source).toMatch(/requireDatabaseSession|runWithDatabaseSession/);
     });
   }
 });
@@ -487,11 +489,9 @@ describe("TENANT_ROLES shared constant", () => {
     expect(new Set(TENANT_ROLES).size).toBe(TENANT_ROLES.length);
   });
 
-  it("is the same reference used by every route handler", () => {
-    // All five route files import { requireDatabaseSession, TENANT_ROLES }
-    // and call requireDatabaseSession(request, TENANT_ROLES)
+  it("uses shared role constants in every guarded route", () => {
     const FILES = [
-      "app/api/tasks/route.ts",
+      "app/api/v1/tasks/route.ts",
       "app/api/projects/route.ts",
       "app/api/projects/[id]/route.ts",
       "app/api/properties/route.ts",
@@ -501,8 +501,13 @@ describe("TENANT_ROLES shared constant", () => {
     for (const file of FILES) {
       const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
       expect(source).toContain("TENANT_ROLES");
-      // No file-local role constants remain
       expect(source).not.toMatch(/const \w+_ROLES = \[/);
     }
+
+    const tasks = fs.readFileSync(
+      path.join(process.cwd(), "app/api/v1/tasks/route.ts"),
+      "utf8",
+    );
+    expect(tasks).toContain("TENANT_WRITE_ROLES");
   });
 });

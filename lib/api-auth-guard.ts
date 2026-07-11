@@ -154,6 +154,11 @@ export const TENANT_WRITE_ROLES = [
   "SALES_EMPLOYEE",
 ] as const satisfies readonly string[];
 
+export const FINANCE_WRITE_ROLES = ["ADMIN", "SALES_MANAGER"] as const satisfies readonly string[];
+export const CONTRACT_WRITE_ROLES = FINANCE_WRITE_ROLES;
+export const ACCOUNTING_WRITE_ROLES = ["ADMIN"] as const satisfies readonly string[];
+export const SALES_WRITE_ROLES = TENANT_WRITE_ROLES;
+
 export async function runWithDatabaseSession(
   request: NextRequest,
   allowedRoles: readonly string[],

@@ -568,11 +568,11 @@ describe("Offer Unit Integrity", () => {
       "utf8",
     );
     const workspace = fs.readFileSync(
-      path.join(root, "components/views/LeadsWorkspace.tsx"),
+      path.join(root, "features/leads/components/LeadsWorkspace.tsx"),
       "utf8",
     );
     const engagement = fs.readFileSync(
-      path.join(root, "app/operations/leads/[id]/EngagementTabs.tsx"),
+      path.join(root, "features/leads/components/EngagementTabs.tsx"),
       "utf8",
     );
 

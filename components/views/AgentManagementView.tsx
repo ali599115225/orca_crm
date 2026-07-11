@@ -465,16 +465,14 @@ export default function AgentManagementView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 text-xs font-bold text-[var(--nc-foreground)]">
-            {isDedicatedCopy
-              ? isArabic
-                ? "ترخيص نسخة كاملة"
-                : "Full Dedicated License"
-                            : planLabel}
-          </span>
+          {!isDedicatedCopy && (
+            <span className="rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 text-xs font-bold text-[var(--nc-foreground)]">
+              {planLabel}
+            </span>
+          )}
           {!isDedicatedCopy && (
             <Link
-              href="/operations/settings?tab=agents"
+              href="/operations/settings?tab=ai"
               className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-2 text-xs font-bold text-[var(--nc-foreground)] transition hover:border-[var(--nc-accent-border)]"
             >
               {isArabic ? "إعدادات الاشتراك" : "Subscription Settings"}

@@ -70,7 +70,7 @@ describe("Phase 02 full closure architecture", () => {
     const tourStatus = source("app/api/v1/tours/[id]/status/route.ts");
     expect(opportunities).toContain("createOpportunity");
     expect(opportunities).toContain("runWithDatabaseSession");
-    expect(opportunities).toContain("TENANT_WRITE_ROLES");
+    expect(opportunities).toContain("SALES_WRITE_ROLES");
     expect(tours).toContain("scheduleTour");
     expect(tours).toContain("runWithDatabaseSession");
     expect(tours).toContain("TENANT_WRITE_ROLES");

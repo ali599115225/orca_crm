@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone } from "@/lib/privacy-mask";
 import { scheduleTour } from "@/lib/domain/transaction-spine";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export type TourListItem = {
   id: string;
@@ -95,6 +96,7 @@ export async function getToursAction(
 ): Promise<GetToursActionResult> {
   try {
     const tenant = await getActiveTenant();
+    return await runWithTenantContext({ tenantId: tenant.id }, async () => {
     const safePage = sanitizePage(page);
     const safeLimit = sanitizeLimit(limit);
     const skip = (safePage - 1) * safeLimit;
@@ -230,9 +232,10 @@ export async function getToursAction(
         },
       },
     };
+    });
   } catch (error: any) {
     console.error("فشل جلب الجولات العقارية:", error);
-    return { success: false, error: error?.message || "تعذر تحميل الجولات العقارية" };
+    return { success: false, error: "تعذر تحميل الجولات العقارية" };
   }
 }
 
@@ -253,6 +256,7 @@ export async function scheduleTourActionDirect(data: {
     const tenant = await getActiveTenant();
     tenantIdForLog = tenant.id;
 
+    return await runWithTenantContext({ tenantId: tenant.id }, async () => {
     const propertyId = String(data.propertyId || "").trim();
     const locationInput = String(data.location || "").trim();
     const userName = String(data.userName || "").trim();
@@ -349,12 +353,13 @@ export async function scheduleTourActionDirect(data: {
         reminder: "سيظهر الموعد ضمن قائمة الجولات العقارية.",
       },
     };
+    });
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: tenantIdForLog, error }).catch(() => {});
       return { success: false, error: error.message, code: error.code };
     }
     console.error("فشل جدولة الجولة عبر Server Action:", error);
-    return { success: false, error: error?.message || "تعذر جدولة الجولة" };
+    return { success: false, error: "تعذر جدولة الجولة" };
   }
 }

@@ -56,6 +56,7 @@ const menuData: MenuSection[] = [
     titleKey: "sidebar.properties",
     items: [
       { labelKey: "nav.properties", icon: Home,            path: "/operations/properties", tab: "properties" },
+      { labelKey: "nav.rental",     icon: Receipt,         path: "/operations/rental",     tab: "rental" },
       { labelKey: "nav.calculator", icon: Calculator,      path: "/operations/calculator", tab: "calculator" },
     ],
   },
@@ -219,4 +220,3 @@ export default function SovereignSidebar({ onLinkClick, tenant, companyName, isS
     </aside>
   );
 }
-

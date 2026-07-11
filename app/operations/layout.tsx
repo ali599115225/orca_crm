@@ -66,8 +66,12 @@ export default async function OperationsLayout({
     },
     async () => {
       logOperationsDiagnostic('OPERATIONS_PAGE_CONTEXT_ENTERED');
-      return await prisma.user.findUnique({
-        where: { id: session.userId as string },
+      return await prisma.user.findFirst({
+        where: {
+          id: session.userId as string,
+          tenantId: tenant.id,
+          isActive: true,
+        },
       });
     },
   );
@@ -77,7 +81,7 @@ export default async function OperationsLayout({
 
   const rawCompanyName = tenant?.companyName || "";
   const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");
-  const userRoleKey = session.role as string || "READ_ONLY";
+  const userRoleKey = isSuperAdmin ? "SUPER_ADMIN" : String(user?.role || "READ_ONLY");
 
   return (
     <DashboardLayout

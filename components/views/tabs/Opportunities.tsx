@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { SmartCard } from "@/components/ui/SmartCard";
 import { useApp } from "@/app/context/AppContext";
+import { useAuth } from "@/app/context/AuthContext";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { MoneyCell } from "@/components/ui/orca-table/cells/MoneyCell";
 import { DateCell } from "@/components/ui/orca-table/cells/DateCell";
@@ -22,6 +23,8 @@ interface OpportunitiesProps {
 
 export default function Opportunities({ leadId: fixedLeadId, leadName }: OpportunitiesProps = {}) {
   const { t, lang } = useApp();
+  const { hasPermission } = useAuth();
+  const canCreateOpportunity = hasPermission("CREATE_OPPORTUNITY");
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -31,7 +34,51 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => { try { setLoading(true); const [oppRes, leadRes, unitsRes] = await Promise.all([fetch("/api/v1/opportunities"), fetch("/api/v1/leads"), fetch("/api/v1/properties")]); const oppJson = await oppRes.json(); const leadJson = await leadRes.json(); const unitsJson = await unitsRes.json(); if (oppJson.success) setOpportunities(oppJson.data); if (leadJson.success) setLeads(leadJson.data); if (unitsJson.data) setUnits(unitsJson.data.map((u: any) => ({ id: u.id, unitNumber: u.sku, priceSar: u.price, status: u.status, project: { name: u.project } }))); } catch (e) { console.error(e); } finally { setLoading(false); } };
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [oppRes, leadRes, unitsRes] = await Promise.all([
+        fetch("/api/v1/opportunities"),
+        fetch("/api/v1/leads"),
+        fetch("/api/v1/properties"),
+      ]);
+
+      if (!oppRes.ok || !leadRes.ok || !unitsRes.ok) {
+        throw new Error("OPPORTUNITIES_LOAD_FAILED");
+      }
+
+      const [oppJson, leadJson, unitsJson] = await Promise.all([
+        oppRes.json(),
+        leadRes.json(),
+        unitsRes.json(),
+      ]);
+
+      setOpportunities(Array.isArray(oppJson.data) ? oppJson.data : []);
+      setLeads(Array.isArray(leadJson.data) ? leadJson.data : []);
+      setUnits(
+        Array.isArray(unitsJson.data)
+          ? unitsJson.data.map((unit: any) => ({
+              id: unit.id,
+              unitNumber: unit.sku,
+              priceSar: unit.price,
+              status: unit.status,
+              project: { name: unit.project },
+            }))
+          : [],
+      );
+    } catch (loadError) {
+      console.error("Failed to load opportunities", loadError);
+      setOpportunities([]);
+      setLeads([]);
+      setUnits([]);
+      setError(lang === "EN" ? "Unable to load opportunities." : "تعذر تحميل الفرص.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { loadData(); }, []);
 
   const handleCreateOpportunity = async (e: React.FormEvent) => {
@@ -60,8 +107,7 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || (lang === "EN" ? "Failed to create opportunity" : "فشل إنشاء الفرصة"));
+        throw new Error("OPPORTUNITY_CREATE_FAILED");
       }
 
       // Reset form and close modal
@@ -73,9 +119,9 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
 
       // Reload data to show new opportunity
       await loadData();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || (lang === "EN" ? "An error occurred" : "حدث خطأ"));
+    } catch (createError) {
+      console.error("Failed to create opportunity", createError);
+      setError(lang === "EN" ? "Failed to create opportunity." : "تعذر إنشاء الفرصة.");
     } finally {
       setBtnLoading(false);
     }
@@ -106,15 +152,19 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
       <div className="tab-pane space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm">{t("opps.listTitle")}</h3>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold text-sm transition-all"
-          >
-            {lang === "EN" ? "Create Opportunity" : "إنشاء فرصة"}
-          </button>
+          {canCreateOpportunity && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] text-white rounded font-bold text-sm transition-all"
+            >
+              {lang === "EN" ? "Create Opportunity" : "إنشاء فرصة"}
+            </button>
+          )}
         </div>
 
-        {loading ? (
+        {error && !showModal ? (
+          <div className="py-12 text-center text-red-600 dark:text-red-400 font-medium text-sm">{error}</div>
+        ) : loading ? (
           <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.loading")}</div>
         ) : filteredOpportunities.length === 0 ? (
           <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.noData")}</div>
@@ -128,7 +178,7 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
         )}
 
         {/* Create Opportunity Modal */}
-        {showModal && (
+        {showModal && canCreateOpportunity && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
@@ -255,6 +305,7 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
   return (
     <div className="tab-pane space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {canCreateOpportunity && (
         <SmartCard className="p-4">
           <div><h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("opps.createTitle")}</h3>
             <form onSubmit={handleCreateOpportunity} className="space-y-3.5 text-xs">
@@ -268,9 +319,12 @@ export default function Opportunities({ leadId: fixedLeadId, leadName }: Opportu
           </div>
           {aiPrice !== null && (<div className="bg-indigo-950/20 border border-indigo-900/30 rounded-xl p-3.5 mt-4 text-xs space-y-2"><div className="flex justify-between items-center text-indigo-400 font-bold"><span>{t("opps.aiSuggested")}</span><span className="font-en text-sm text-[var(--nc-foreground)]">{aiPrice.toLocaleString()} ر.س</span></div><p className="text-[var(--nc-text-dim)] font-medium leading-relaxed text-xs">{aiRationale}</p></div>)}
         </SmartCard>
-        <SmartCard className="lg:col-span-2 p-4">
+        )}
+        <SmartCard className={`${canCreateOpportunity ? "lg:col-span-2" : "lg:col-span-3"} p-4`}>
           <h3 className="text-[var(--nc-foreground)] font-bold text-sm mb-4">{t("opps.listTitle")}</h3>
-          {loading ? (
+          {error ? (
+            <div className="py-12 text-center text-red-600 dark:text-red-400 font-medium text-sm">{error}</div>
+          ) : loading ? (
             <div className="py-12 text-center text-[var(--nc-text-dim)] font-medium text-xs">{t("opps.loading")}</div>
           ) : (
             <DataTable

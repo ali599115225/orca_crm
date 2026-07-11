@@ -1,84 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
-import { postJournalEntry, reverseJournalEntry } from '@/lib/accounting';
+import {
+  ACCOUNTING_WRITE_ROLES,
+  TENANT_ROLES,
+  runWithDatabaseSession,
+} from '@/lib/api-auth-guard';
+import { postJournalEntry } from '@/lib/accounting';
+import { ErrorCode } from '@/lib/errors';
+import { httpErrorResponse } from '@/lib/http-error-response';
 
-async function authenticateRequest(request: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload?.tenantId) return payload;
+interface JournalLineInput {
+  accountId: string;
+  debit: number;
+  credit: number;
+  description?: string;
+}
+
+function parseLine(value: unknown): JournalLineInput | null {
+  if (!value || typeof value !== 'object') return null;
+  const input = value as Record<string, unknown>;
+  const accountId = typeof input.accountId === 'string' ? input.accountId.trim() : '';
+  const debit = Number(input.debit || 0);
+  const credit = Number(input.credit || 0);
+  const description =
+    typeof input.description === 'string' ? input.description.trim() : undefined;
+
+  if (
+    !accountId ||
+    !Number.isFinite(debit) ||
+    !Number.isFinite(credit) ||
+    debit < 0 ||
+    credit < 0 ||
+    (debit === 0 && credit === 0) ||
+    (debit > 0 && credit > 0)
+  ) {
+    return null;
   }
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const payload = await decrypt(token);
-    if (payload?.tenantId) return payload;
-  }
-  return null;
+
+  return { accountId, debit, credit, description };
 }
 
 export async function GET(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+  return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const source = searchParams.get('source')?.trim() || undefined;
+      const status = searchParams.get('status')?.trim() || undefined;
 
-  try {
-    const tenantId = session.tenantId as string;
-    const { searchParams } = new URL(request.url);
-    const source = searchParams.get('source') || undefined;
-    const status = searchParams.get('status') || undefined;
+      const where: Record<string, unknown> = { tenantId: session.tenantId };
+      if (source) where.source = source;
+      if (status) where.status = status;
 
-    const where: any = { tenantId };
-    if (source) where.source = source;
-    if (status) where.status = status;
-
-    const entries = await prisma.journalEntry.findMany({
-      where,
-      include: {
-        lines: {
-          include: { account: { select: { code: true, nameAr: true } } },
+      const entries = await prisma.journalEntry.findMany({
+        where,
+        include: {
+          lines: {
+            include: { account: { select: { code: true, nameAr: true } } },
+          },
         },
-      },
-      orderBy: { entryNumber: 'desc' },
-      take: 100,
-    });
+        orderBy: { entryNumber: 'desc' },
+        take: 100,
+      });
 
-    return NextResponse.json({ success: true, entries });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+      return NextResponse.json({ success: true, entries });
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        'GET /api/v1/accounting/journal-entries failed',
+        error,
+      );
+    }
+  });
 }
 
 export async function POST(request: NextRequest) {
-  const session = await authenticateRequest(request);
-  if (!session) return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+  return runWithDatabaseSession(request, ACCOUNTING_WRITE_ROLES, async (session) => {
+    try {
+      const body = await request.json();
+      const description =
+        typeof body.description === 'string' ? body.description.trim() : '';
+      const source = typeof body.source === 'string' ? body.source.trim() : 'MANUAL';
+      const sourceId =
+        typeof body.sourceId === 'string' ? body.sourceId.trim() : undefined;
+      const lines: JournalLineInput[] = Array.isArray(body.lines)
+        ? (body.lines as unknown[])
+            .map(parseLine)
+            .filter((line): line is JournalLineInput => line !== null)
+        : [];
 
-  try {
-    const tenantId = session.tenantId as string;
-    const body = await request.json();
-    const { description, source, sourceId, lines } = body;
+      if (!description || lines.length < 2 || lines.length !== body.lines?.length) {
+        return NextResponse.json(
+          { success: false, error: 'مطلوب وصف وسطران محاسبيان صالحان على الأقل.' },
+          { status: 400 },
+        );
+      }
 
-    if (!description || !lines || lines.length < 2) {
-      return NextResponse.json({ success: false, error: 'مطلوب: وصف وسطرين على الأقل' }, { status: 400 });
+      const totalDebit = lines.reduce((sum, line) => sum + line.debit, 0);
+      const totalCredit = lines.reduce((sum, line) => sum + line.credit, 0);
+      if (Math.abs(totalDebit - totalCredit) > 0.01) {
+        return NextResponse.json(
+          { success: false, error: 'القيد غير متوازن: إجمالي المدين يجب أن يساوي إجمالي الدائن.' },
+          { status: 400 },
+        );
+      }
+
+      const entry = await postJournalEntry({
+        tenantId: session.tenantId,
+        description,
+        source,
+        sourceId,
+        lines,
+      });
+
+      return NextResponse.json({ success: true, entry }, { status: 201 });
+    } catch (error: unknown) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        'POST /api/v1/accounting/journal-entries failed',
+        error,
+      );
     }
-
-    const entry = await postJournalEntry({
-      tenantId,
-      description,
-      source: source || 'MANUAL',
-      sourceId,
-      lines: lines.map((l: any) => ({
-        accountId: l.accountId,
-        debit: parseFloat(l.debit) || 0,
-        credit: parseFloat(l.credit) || 0,
-        description: l.description,
-      })),
-    });
-
-    return NextResponse.json({ success: true, entry }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+  });
 }

@@ -162,24 +162,12 @@ export default function SettingsView({
                 <dd className="font-en">{tenant.subdomain}</dd>
               </div>
 
-              <div className="orca-info-tile">
-                <dt>
-                  {isDedicatedCopy
-                    ? isArabic
-                      ? "نوع الترخيص"
-                      : "License Type"
-                    : isArabic
-                      ? "الباقة الحالية"
-                      : "Current Plan"}
-                </dt>
-                <dd>
-                  {isDedicatedCopy
-                    ? isArabic
-                      ? "نسخة كاملة مستقلة"
-                      : "Full Dedicated Copy"
-                    : displayPlan(tenant.subscriptionPlan, isArabic)}
-                </dd>
-              </div>
+              {!isDedicatedCopy && (
+                <div className="orca-info-tile">
+                  <dt>{isArabic ? "الباقة الحالية" : "Current Plan"}</dt>
+                  <dd>{displayPlan(tenant.subscriptionPlan, isArabic)}</dd>
+                </div>
+              )}
             </dl>
           </SmartCard>
         )}

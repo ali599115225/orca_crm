@@ -190,6 +190,22 @@ function money(value: number, locale: Locale) {
   }).format(value || 0);
 }
 
+function remainingBalanceLabel(
+  hasInvoice: boolean,
+  value: number,
+  locale: Locale,
+) {
+  if (!hasInvoice) {
+    return text(
+      locale,
+      "بانتظار إصدار الفاتورة",
+      "Awaiting invoice issuance",
+    );
+  }
+
+  return money(value, locale);
+}
+
 function shortDate(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
@@ -226,17 +242,32 @@ function statusLabel(status: string, locale: Locale) {
     FAILED: ["فشل", "Failed"],
     PENDING: ["معلق", "Pending"],
     PROCESSING: ["قيد المعالجة", "Processing"],
+    DRAFT: ["مسودة", "Draft"],
+    ACTIVE: ["نشطة", "Active"],
+    CANCELLED: ["ملغاة", "Cancelled"],
   };
   const item = map[status] || [status, status];
   return locale === "ar" ? item[0] : item[1];
 }
 
 function timelineActionLabel(action: string, locale: Locale): string {
+  const normalizedAction = action
+    .trim()
+    .replace(/[\s.-]+/g, "_")
+    .toUpperCase();
+
   const map: Record<string, [string, string]> = {
     SIGN_CONTRACT: ["توقيع العقد", "Contract signed"],
     CREATE_CONTRACT: ["إنشاء العقد", "Contract created"],
+    CREATE_DRAFT_CONTRACT: ["إنشاء مسودة العقد", "Draft contract created"],
+    CREATE_CONTRACT_DRAFT: ["إنشاء مسودة العقد", "Draft contract created"],
+    ISSUE_CONTRACT: ["إصدار العقد", "Contract issued"],
+    CONTRACT_ISSUED: ["إصدار العقد", "Contract issued"],
     CREATE_INVOICE: ["إنشاء الفاتورة", "Invoice created"],
+    CREATE_RENTAL_INVOICE: ["إنشاء فاتورة إيجار", "Rental invoice created"],
     CREATE_INSTALLMENTS: ["إنشاء الأقساط", "Installments created"],
+    CONFIGURE_PAYMENT_PLAN: ["إعداد خطة الدفع", "Payment plan configured"],
+    ACTIVATE_PAYMENT_PLAN: ["تفعيل خطة الدفع", "Payment plan activated"],
     RECORD_PAYMENT: ["تسجيل دفعة", "Payment recorded"],
     CREATE_NGENIUS_INSTALLMENT_PAYMENT: ["بدء دفع القسط", "Installment payment initiated"],
     NGENIUS_PAYMENT_RECEIVED: ["استلام دفعة N-Genius", "N-Genius payment received"],
@@ -247,9 +278,10 @@ function timelineActionLabel(action: string, locale: Locale): string {
     UPDATE_INVOICE: ["تحديث الفاتورة", "Invoice updated"],
     CANCEL_CONTRACT: ["إلغاء العقد", "Contract cancelled"],
   };
-  const item = map[action];
+  const item = map[normalizedAction];
   if (item) return locale === "ar" ? item[0] : item[1];
-  return action.replace(/_/g, " ").toLowerCase();
+
+  return normalizedAction.replace(/_/g, " ").toLowerCase();
 }
 
 function formatAmendmentType(type: string, locale: Locale): string {
@@ -663,7 +695,7 @@ export default function SalesContractWorkspace({
         <div className="flex items-start gap-3">
           <button
             type="button"
-            onClick={() => router.push("/operations/rental")}
+            onClick={() => router.push("/operations/rental?pane=sales")}
             className="mt-0.5 rounded-xl border border-[var(--nc-glass-border)] p-2 text-[var(--nc-text-secondary)]"
             aria-label={L("العودة", "Back")}
           >
@@ -753,7 +785,11 @@ export default function SalesContractWorkspace({
           ],
           [
             L("المتبقي", "Remaining"),
-            money(contract.financials.remainingBalance, locale),
+            remainingBalanceLabel(
+              Boolean(contract.invoice),
+              contract.financials.remainingBalance,
+              locale,
+            ),
           ],
           [
             L("القسط القادم", "Next installment"),

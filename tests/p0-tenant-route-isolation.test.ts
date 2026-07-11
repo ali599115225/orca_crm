@@ -15,6 +15,31 @@ vi.mock("@/lib/api-auth", () => ({
   authenticateRequest: mocks.authenticateRequest,
 }));
 
+vi.mock("@/lib/api-auth-guard", () => ({
+  requireDatabaseSession: vi.fn(async () => ({
+    session: {
+      userId: "user-a",
+      tenantId: "tenant-a",
+      role: "ADMIN",
+    },
+    error: null,
+  })),
+  runWithDatabaseSession: async (
+    _request: NextRequest,
+    _allowedRoles: readonly string[],
+    operation: (
+      session: { userId: string; tenantId: string; role: string },
+    ) => Promise<unknown> | unknown,
+  ) =>
+    operation({
+      userId: "user-a",
+      tenantId: "tenant-a",
+      role: "ADMIN",
+    }),
+  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+  TENANT_WRITE_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"],
+  FINANCE_WRITE_ROLES: ["ADMIN", "SALES_MANAGER"],
+}));
 vi.mock("@/lib/api-helpers", () => ({
   getTenantAndUser: mocks.getTenantAndUser,
 }));

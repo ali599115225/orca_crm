@@ -24,7 +24,7 @@ const conversation = read("lib/revenue-integrity/conversation-to-action.ts");
 describe("Revenue Integrity final closure", () => {
   it("uses a database-backed role boundary and exposes server capabilities", () => {
     expect(auth).toContain("assertServerActionRole");
-    expect(auth).toContain("rawPrisma.user.findFirst");
+    expect(auth).toContain("prisma.user.findFirst");
     expect(auth).toContain("capabilitiesForRole");
     expect(page).toContain("auth.capabilities");
   });

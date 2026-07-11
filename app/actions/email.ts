@@ -18,6 +18,17 @@ const EMAIL_SENDER_ROLES = [
   "rental_manager",
 ] as const;
 
+function publicEmailError(value: unknown): string {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized.includes("resend_api_key") || normalized.includes("api key")) {
+    return "تعذر إرسال البريد لأن خدمة البريد غير مهيأة.";
+  }
+  if (normalized.includes("rate") || normalized.includes("limit")) {
+    return "تعذر إرسال البريد مؤقتًا بسبب حد الخدمة. حاول لاحقًا.";
+  }
+  return "تعذر إرسال البريد، حاول مرة أخرى.";
+}
+
 export async function sendEmailAction(formData: FormData) {
   try {
     // ── Auth: session + role required before sending external email ──────────
@@ -44,7 +55,27 @@ export async function sendEmailAction(formData: FormData) {
 
         const from = process.env.EMAIL_FROM || "ORCA <onboarding@resend.dev>";
 
-        // Create EmailMessage record first with PENDING status
+        if (leadId) {
+          const lead = await prisma.lead.findFirst({
+            where: { id: leadId, tenantId: tenant.id },
+            select: { id: true },
+          });
+          if (!lead) {
+            return { success: false, error: "العميل غير موجود." };
+          }
+        }
+
+        if (contactId) {
+          const contact = await prisma.contact.findFirst({
+            where: { id: contactId, tenantId: tenant.id },
+            select: { id: true },
+          });
+          if (!contact) {
+            return { success: false, error: "جهة الاتصال غير موجودة." };
+          }
+        }
+
+        // Persist only after lead/contact ownership has been verified.
         const emailMessage = await prisma.emailMessage.create({
           data: {
             tenantId: tenant.id,
@@ -86,24 +117,17 @@ export async function sendEmailAction(formData: FormData) {
             },
           });
 
-          // Create LeadActivity if leadId exists
+          // Create LeadActivity after the lead ownership check above.
           if (leadId) {
-            // Verify lead belongs to this tenant
-            const lead = await prisma.lead.findFirst({
-              where: { id: leadId, tenantId: tenant.id },
+            await prisma.leadActivity.create({
+              data: {
+                tenantId: tenant.id,
+                leadId,
+                userId: verified.userId || null,
+                activityType: "EMAIL_SENT",
+                description: `أرسل بريد إلى ${to} — الموضوع: ${subject}`,
+              },
             });
-
-            if (lead) {
-              await prisma.leadActivity.create({
-                data: {
-                  tenantId: tenant.id,
-                  leadId,
-                  userId: verified.userId || null,
-                  activityType: "EMAIL_SENT",
-                  description: `أرسل بريد إلى ${to} — الموضوع: ${subject}`,
-                },
-              });
-            }
           }
 
           revalidatePath("/operations/email");
@@ -125,14 +149,14 @@ export async function sendEmailAction(formData: FormData) {
           return {
             success: false,
             emailId: emailMessage.id,
-            error: result.error || "فشل إرسال البريد",
+            error: publicEmailError(result.error),
           };
         }
       },
     );
-  } catch (error: any) {
-    console.error("[Email Action] Error:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error("[Email Action] Error:", error);
+    return { success: false, error: publicEmailError(error) };
   }
 }
 
@@ -164,9 +188,9 @@ export async function getEmailMessagesAction(limit = 50) {
         return { success: true, messages };
       },
     );
-  } catch (error: any) {
-    console.error("[Email Action] Get messages error:", error.message);
-    return { success: false, error: error.message, messages: [] };
+  } catch (error: unknown) {
+    console.error("[Email Action] Get messages error:", error);
+    return { success: false, error: publicEmailError(error), messages: [] };
   }
 }
 
@@ -203,8 +227,8 @@ export async function getLeadEmailMessagesAction(leadId: string) {
         return { success: true, messages };
       },
     );
-  } catch (error: any) {
-    console.error("[Email Action] Get lead messages error:", error.message);
-    return { success: false, error: error.message, messages: [] };
+  } catch (error: unknown) {
+    console.error("[Email Action] Get lead messages error:", error);
+    return { success: false, error: publicEmailError(error), messages: [] };
   }
 }

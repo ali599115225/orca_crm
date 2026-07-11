@@ -1,10 +1,11 @@
-import SalesContractWorkspace from "@/components/sales/SalesContractWorkspace";
+import { redirect } from "next/navigation";
 
-export default async function SalesContractPage({
+export default async function LegacySalesContractDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <SalesContractWorkspace contractId={id} />;
+
+  redirect(`/operations/rental/sales/contracts/${id}`);
 }

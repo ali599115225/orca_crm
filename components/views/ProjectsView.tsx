@@ -762,7 +762,7 @@ export default function ProjectsView() {
 
         {activeTab === 'documents' && (
           <div className="space-y-3">
-            {hasPermission('manage_projects') && (
+            {hasPermission('UPLOAD_DOC') && (
               <button
                 type="button"
                 className="nc-btn-ghost min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold"
@@ -860,7 +860,7 @@ export default function ProjectsView() {
           <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.pageSubtitle}</p>
         </div>
 
-        {hasPermission('manage_projects') && (
+        {hasPermission('CREATE_PROJECT') && (
           <button
             type="button"
             className="nc-btn-primary min-h-[44px] rounded-xl px-4 py-2 text-sm font-semibold"

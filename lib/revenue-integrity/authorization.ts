@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/session";
 import { getActiveTenant } from "@/lib/tenant";
-import { rawPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import {
   assertServerActionRole,
   isSuperAdmin,
@@ -145,7 +145,7 @@ export async function requireRevenuePermission(
     ? "SUPER_ADMIN"
     : String(
         (
-          await rawPrisma.user.findFirst({
+          await prisma.user.findFirst({
             where: {
               id: String(verified.userId),
               tenantId: String(tenant.id),

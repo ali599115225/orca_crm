@@ -21,8 +21,14 @@ import { NextRequest, NextResponse } from "next/server";
 // ============================================================================
 
 const mocks = vi.hoisted(() => ({
-  requireDatabaseSession: vi.fn<
-    () => Promise<{ session: { userId: string; tenantId: string; role: string } | null; error: NextResponse | null }>
+  requireDatabaseSession: vi.fn<
+    (
+      request?: NextRequest,
+      allowedRoles?: readonly string[],
+    ) => Promise<{
+      session: { userId: string; tenantId: string; role: string } | null;
+      error: NextResponse | null;
+    }>
   >(),
   leaseFindFirst: vi.fn(),
   leaseUpdate: vi.fn(),
@@ -34,9 +40,23 @@ const mocks = vi.hoisted(() => ({
   isExpired: vi.fn(),
 }));
 
-vi.mock("@/lib/api-auth-guard", () => ({
-  requireDatabaseSession: mocks.requireDatabaseSession,
-  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+vi.mock("@/lib/api-auth-guard", () => ({
+  requireDatabaseSession: mocks.requireDatabaseSession,
+  runWithDatabaseSession: async (
+    request: NextRequest,
+    allowedRoles: readonly string[],
+    operation: (
+      session: { userId: string; tenantId: string; role: string },
+    ) => Promise<NextResponse> | NextResponse,
+  ) => {
+    const auth = await mocks.requireDatabaseSession(request, allowedRoles);
+    if (auth.error || !auth.session) {
+      return auth.error ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return operation(auth.session);
+  },
+  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+  FINANCE_WRITE_ROLES: ["ADMIN", "SALES_MANAGER"],
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -340,7 +360,7 @@ describe("P1-B tenant mutation hardening", () => {
 });
 
 // ============================================================================
-// Regression: route files import requireDatabaseSession + TENANT_ROLES
+// Regression: route files use the centralized database-session guard
 // and no longer import authenticateRequest / decrypt / cookies / next/headers
 // ============================================================================
 
@@ -355,12 +375,16 @@ describe("Import regression: leases route", () => {
   const FILE = "app/api/v1/leases/route.ts";
   const source = readRoute(FILE);
 
-  it("imports requireDatabaseSession from api-auth-guard", () => {
-    expect(source.some((l) => l.includes("requireDatabaseSession") && l.includes("api-auth-guard"))).toBe(true);
-  });
-
-  it("imports TENANT_ROLES from api-auth-guard", () => {
-    expect(source.some((l) => l.includes("TENANT_ROLES") && l.includes("api-auth-guard"))).toBe(true);
+  it("imports runWithDatabaseSession from api-auth-guard", () => {
+    const content = source.join("\n");
+    expect(content).toContain("runWithDatabaseSession");
+    expect(content).toContain('from "@/lib/api-auth-guard"');
+  });
+
+  it("imports the read and finance role sets from api-auth-guard", () => {
+    const content = source.join("\n");
+    expect(content).toContain("TENANT_ROLES");
+    expect(content).toContain("FINANCE_WRITE_ROLES");
   });
 
   it("no longer imports authenticateRequest", () => {
@@ -375,12 +399,12 @@ describe("Import regression: leases route", () => {
     expect(source.some((l) => l.includes('from "next/headers"'))).toBe(false);
   });
 
-  it("every handler calls requireDatabaseSession", () => {
-    const handlers = source.filter((l) => HANDLER_RE.test(l));
-    expect(handlers.length).toBeGreaterThanOrEqual(3); // GET, POST, PUT
-
-    const requireCalls = source.filter((l) => l.includes("requireDatabaseSession(request"));
-    expect(requireCalls.length).toBe(handlers.length);
+  it("every handler runs inside runWithDatabaseSession", () => {
+    const handlers = source.filter((l) => HANDLER_RE.test(l));
+    expect(handlers.length).toBeGreaterThanOrEqual(3); // GET, POST, PUT
+
+    const guardCalls = source.filter((l) => l.includes("runWithDatabaseSession(request"));
+    expect(guardCalls.length).toBe(handlers.length);
   });
 });
 
