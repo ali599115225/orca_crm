@@ -156,6 +156,7 @@ import {
   analyzeConversationToAction,
   approveActionSuggestion,
   executeActionSuggestion,
+  linkActionSuggestionLead,
   rejectActionSuggestion,
 } from "@/lib/revenue-integrity/conversation-to-action";
 import { scheduleTour } from "@/lib/domain/transaction-spine";
@@ -348,5 +349,81 @@ describe("Conversation-to-Action", () => {
       (s) => String(s.sourceId).startsWith("src-cross-"),
     );
     expect(createdSuggestions.length).toBe(0);
+  });
+
+  it("12. approved FOLLOW_UP without a lead does not execute and stays APPROVED", async () => {
+    const suggestion = await createSuggestion({ text: "شكرًا لكم على التواصل" });
+    expect(suggestion.actionType).toBe("FOLLOW_UP");
+    await approveActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+
+    await expect(
+      executeActionSuggestion(TENANT_A, ACTOR, suggestion.id),
+    ).rejects.toThrow("LEAD_LINK_REQUIRED");
+
+    const fresh = store.suggestions.find((s) => s.id === suggestion.id)!;
+    expect(fresh.status).toBe("APPROVED");
+    expect(store.tasks.length).toBe(0);
+  });
+
+  it("13. linking a same-tenant lead succeeds and records one linked event", async () => {
+    store.leads.push({ id: "lead-link", tenantId: TENANT_A, assignedTo: ACTOR });
+    const suggestion = await createSuggestion({ text: "شكرًا لكم على التواصل" });
+    await approveActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+
+    const linked = await linkActionSuggestionLead(TENANT_A, ACTOR, suggestion.id, "lead-link");
+    expect(linked.leadId).toBe("lead-link");
+    expect(linked.status).toBe("APPROVED");
+
+    const linkEvents = store.events.filter((e) => e.eventType === "ACTION_SUGGESTION_LEAD_LINKED");
+    expect(linkEvents.length).toBe(1);
+
+    // إعادة الربط بنفس العميل لا تنشئ حدثًا مكررًا ولا اقتراحًا جديدًا
+    await linkActionSuggestionLead(TENANT_A, ACTOR, suggestion.id, "lead-link");
+    expect(store.events.filter((e) => e.eventType === "ACTION_SUGGESTION_LEAD_LINKED").length).toBe(1);
+    expect(store.suggestions.length).toBe(1);
+  });
+
+  it("14. linking a cross-tenant lead is rejected", async () => {
+    store.leads.push({ id: "lead-foreign", tenantId: TENANT_B, assignedTo: ACTOR });
+    const suggestion = await createSuggestion({ text: "شكرًا لكم على التواصل" });
+    await approveActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+
+    await expect(
+      linkActionSuggestionLead(TENANT_A, ACTOR, suggestion.id, "lead-foreign"),
+    ).rejects.toThrow("CROSS_TENANT_LEAD_ACCESS_DENIED");
+
+    const fresh = store.suggestions.find((s) => s.id === suggestion.id)!;
+    expect(fresh.leadId ?? null).toBeNull();
+  });
+
+  it("15. execution succeeds after linking a lead", async () => {
+    store.leads.push({ id: "lead-exec", tenantId: TENANT_A, assignedTo: ACTOR });
+    const suggestion = await createSuggestion({ text: "شكرًا لكم على التواصل" });
+    await approveActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+    await linkActionSuggestionLead(TENANT_A, ACTOR, suggestion.id, "lead-exec");
+
+    const executed = await executeActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+    expect(executed.status).toBe("EXECUTED");
+    expect((executed.executionResult as any).kind).toBe("TASK");
+    expect(store.tasks.length).toBe(1);
+    expect(store.tasks[0].tenantId).toBe(TENANT_A);
+    expect(store.tasks[0].leadId).toBe("lead-exec");
+  });
+
+  it("16. a legacy FAILED lead-required suggestion is healed by linking", async () => {
+    store.leads.push({ id: "lead-heal", tenantId: TENANT_A, assignedTo: ACTOR });
+    const suggestion = await createSuggestion({ text: "شكرًا لكم على التواصل" });
+    await approveActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+
+    // حالة قديمة قبل الإصلاح: فشل التنفيذ بسبب غياب العميل
+    const stored = store.suggestions.find((s) => s.id === suggestion.id)!;
+    stored.status = "FAILED";
+    stored.executionResult = { error: "LEAD_ID_REQUIRED_FOR_TASK" };
+
+    const healed = await linkActionSuggestionLead(TENANT_A, ACTOR, suggestion.id, "lead-heal");
+    expect(healed.status).toBe("APPROVED");
+
+    const executed = await executeActionSuggestion(TENANT_A, ACTOR, suggestion.id);
+    expect(executed.status).toBe("EXECUTED");
   });
 });

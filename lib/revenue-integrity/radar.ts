@@ -332,21 +332,6 @@ export async function evaluateRevenueLeakRadar(
     }));
   });
 
-  evaluatedRules.push("COMPLIANCE_BLOCK");
-  const requiredProviders = ["ZATCA", "EJAR", "PAYLINK", "NGENIUS", "RESEND", "SIGNATURE"];
-  const connections = await rawPrisma.revenueProviderConnection.findMany({ where: { tenantId } });
-  const byProvider = new Map<string, any>(connections.map((item: any) => [String(item.provider), item] as [string, any]));
-  for (const provider of requiredProviders) {
-    const connection = byProvider.get(provider);
-    if (!connection || connection.status !== "CONNECTED") {
-      detected.push({
-        ruleCode: "COMPLIANCE_BLOCK", subjectType: "Provider", subjectId: provider, severity: provider === "ZATCA" ? "HIGH" : "MEDIUM",
-        reasonAr: `بوابة ${provider} غير جاهزة إنتاجياً.`, reasonEn: `${provider} production trust gate is not ready.`,
-        revenueAtRisk: 0, dueAt: null, metadata: { status: connection?.status || "NOT_CONFIGURED", lastError: connection?.lastError || null },
-      });
-    }
-  }
-
   const activeFingerprints: string[] = [];
   for (const risk of detected) {
     activeFingerprints.push(fingerprint(risk));
@@ -367,6 +352,22 @@ export async function evaluateRevenueLeakRadar(
       tenantId, actorId, aggregateType: "RevenueRiskSignal", aggregateId: signal.id,
       eventType: "REVENUE_RISK_AUTO_RESOLVED", idempotencyKey: `risk-auto-resolved:${signal.id}:${updated.updatedAt.toISOString()}`,
       before: signal, after: updated, metadata: { ruleCode: signal.ruleCode },
+    });
+    resolved += 1;
+  }
+
+  const legacyComplianceSignals = await rawPrisma.revenueRiskSignal.findMany({
+    where: { tenantId, ruleCode: "COMPLIANCE_BLOCK", status: { in: ["OPEN", "ACKNOWLEDGED"] } },
+  });
+  for (const signal of legacyComplianceSignals) {
+    const updated = await rawPrisma.revenueRiskSignal.update({
+      where: { id: signal.id },
+      data: { status: "RESOLVED", resolvedAt: new Date(), resolvedBy: actorId, resolutionReason: "LEGACY_GLOBAL_PROVIDER_CHECK_RETIRED" },
+    });
+    await appendRevenueEvent({
+      tenantId, actorId, aggregateType: "RevenueRiskSignal", aggregateId: signal.id,
+      eventType: "REVENUE_RISK_AUTO_RESOLVED", idempotencyKey: `legacy-compliance-retired:${tenantId}:${signal.id}:LEGACY_GLOBAL_PROVIDER_CHECK_RETIRED`,
+      before: signal, after: updated, metadata: { ruleCode: "COMPLIANCE_BLOCK", reason: "LEGACY_GLOBAL_PROVIDER_CHECK_RETIRED" },
     });
     resolved += 1;
   }

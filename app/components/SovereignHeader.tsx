@@ -63,11 +63,24 @@ function HeaderBreadcrumbs() {
     '/operations/email': 'tab.email', '/operations/campaigns': 'tab.campaigns',
   };
 
+  const normalizedPathname =
+    pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const matchedRoute = Object.keys(routeKeyMap)
+    .sort((a, b) => b.length - a.length)
+    .find(
+      (route) =>
+        normalizedPathname === route ||
+        normalizedPathname.startsWith(`${route}/`),
+    );
+
   let activeKey = 'header.overview';
-  if (pathname === '/operations' && tab) {
+  if (normalizedPathname === '/operations' && tab) {
     activeKey = tabKeyMap[tab] || 'header.overview';
   } else {
-    activeKey = routeKeyMap[pathname] || tabKeyMap[tab || 'analytics'] || 'header.overview';
+    activeKey =
+      (matchedRoute ? routeKeyMap[matchedRoute] : undefined) ||
+      tabKeyMap[tab || 'analytics'] ||
+      'header.overview';
   }
 
   return (

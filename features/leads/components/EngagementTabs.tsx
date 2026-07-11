@@ -46,6 +46,7 @@ interface EngagementTabsProps {
   displayLocale: DisplayLocale;
   canWrite: boolean;
   onDataChanged?: () => void;
+  onNavigate?: (path: string) => void;
 }
 
 export default function EngagementTabs({
@@ -58,6 +59,7 @@ export default function EngagementTabs({
   displayLocale,
   canWrite,
   onDataChanged,
+  onNavigate,
 }: EngagementTabsProps) {
   // The shared panels/dialogs take a LeadItem; only the display name is
   // consumed. The deprecated `stage` field is intentionally left empty.
@@ -87,6 +89,12 @@ export default function EngagementTabs({
   const [toursLoading, setToursLoading] = useState(false);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [unitsError, setUnitsError] = useState<string | null>(null);
+  const [opportunitiesError, setOpportunitiesError] = useState<string | null>(null);
+  const [offersError, setOffersError] = useState<string | null>(null);
+  const [toursError, setToursError] = useState<string | null>(null);
+  const [offerActionError, setOfferActionError] = useState<string | null>(null);
+  const [tourActionError, setTourActionError] = useState<string | null>(null);
+  const [updatingTourId, setUpdatingTourId] = useState<string | null>(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showTourModal, setShowTourModal] = useState(false);
@@ -142,41 +150,62 @@ export default function EngagementTabs({
   const loadOpportunities = useCallback(async () => {
     try {
       setOpportunitiesLoading(true);
-      const res = await fetch("/api/v1/opportunities");
+      setOpportunitiesError(null);
+      const res = await fetch(
+        `/api/v1/opportunities?leadId=${encodeURIComponent(leadId)}`,
+      );
       const json = await res.json();
-      setOpportunities(json.success && Array.isArray(json.data) ? json.data : []);
-    } catch {
+      if (!res.ok || !json.success || !Array.isArray(json.data)) {
+        throw new Error(labels.loadError);
+      }
+      setOpportunities(json.data);
+    } catch (error: unknown) {
       setOpportunities([]);
+      setOpportunitiesError(labels.loadError);
     } finally {
       setOpportunitiesLoading(false);
     }
-  }, []);
+  }, [leadId, labels.loadError]);
 
   const loadOffers = useCallback(async () => {
     try {
       setOffersLoading(true);
-      const res = await fetch("/api/v1/offers");
+      setOffersError(null);
+      const res = await fetch(
+        `/api/v1/offers?leadId=${encodeURIComponent(leadId)}`,
+      );
       const json = await res.json();
-      setOffers(json.success && Array.isArray(json.data) ? json.data : []);
-    } catch {
+      if (!res.ok || !json.success || !Array.isArray(json.data)) {
+        throw new Error(labels.loadError);
+      }
+      setOffers(json.data);
+    } catch (error: unknown) {
       setOffers([]);
+      setOffersError(labels.loadError);
     } finally {
       setOffersLoading(false);
     }
-  }, []);
+  }, [leadId, labels.loadError]);
 
   const loadTours = useCallback(async () => {
     try {
       setToursLoading(true);
-      const res = await fetch("/api/v1/tours");
+      setToursError(null);
+      const res = await fetch(
+        `/api/v1/tours?leadId=${encodeURIComponent(leadId)}`,
+      );
       const json = await res.json();
-      setTours(json.success && Array.isArray(json.data) ? json.data : []);
-    } catch {
+      if (!res.ok || !json.success || !Array.isArray(json.data)) {
+        throw new Error(labels.loadError);
+      }
+      setTours(json.data);
+    } catch (error: unknown) {
       setTours([]);
+      setToursError(labels.loadError);
     } finally {
       setToursLoading(false);
     }
-  }, []);
+  }, [leadId, labels.loadError]);
 
   const loadUnits = useCallback(async () => {
     try {
@@ -325,7 +354,7 @@ export default function EngagementTabs({
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || labels.opportunityCreateFailed);
+        throw new Error(labels.opportunityCreateFailed);
       }
 
       setShowOpportunityModal(false);
@@ -333,7 +362,7 @@ export default function EngagementTabs({
       await Promise.all([loadOpportunities(), loadUnits()]);
       onDataChanged?.();
     } catch (error: any) {
-      setOpportunityErrors({ form: error?.message || labels.opportunityCreateFailed });
+      setOpportunityErrors({ form: labels.opportunityCreateFailed });
     } finally {
       setOpportunitySaving(false);
     }
@@ -393,7 +422,7 @@ export default function EngagementTabs({
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || labels.offerCreateFailed);
+        throw new Error(labels.offerCreateFailed);
       }
 
       setShowOfferModal(false);
@@ -401,7 +430,7 @@ export default function EngagementTabs({
       await Promise.all([loadOffers(), loadOpportunities()]);
       onDataChanged?.();
     } catch (error: any) {
-      setOfferErrors({ form: error?.message || labels.offerCreateFailed });
+      setOfferErrors({ form: labels.offerCreateFailed });
     } finally {
       setOfferSaving(false);
     }
@@ -412,15 +441,18 @@ export default function EngagementTabs({
 
     try {
       setAcceptingOfferId(offer.id);
-      const res = await fetch(`/api/v1/offers/${offer.id}/accept`, { method: "POST" });
+      setOfferActionError(null);
+      const res = await fetch(`/api/v1/offers/${offer.id}/accept`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || labels.offerCreateFailed);
+        throw new Error(labels.offerCreateFailed);
       }
       await Promise.all([loadOffers(), loadOpportunities(), loadTours()]);
       onDataChanged?.();
-    } catch {
-      // Non-blocking: the panel state simply stays unchanged.
+    } catch (error: unknown) {
+      setOfferActionError(labels.offerCreateFailed);
     } finally {
       setAcceptingOfferId(null);
     }
@@ -482,7 +514,7 @@ export default function EngagementTabs({
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || labels.tourCreateFailed);
+        throw new Error(labels.tourCreateFailed);
       }
 
       setShowTourModal(false);
@@ -490,26 +522,73 @@ export default function EngagementTabs({
       await Promise.all([loadTours(), loadOffers()]);
       onDataChanged?.();
     } catch (error: any) {
-      setTourErrors({ form: error?.message || labels.tourCreateFailed });
+      setTourErrors({ form: labels.tourCreateFailed });
     } finally {
       setTourSaving(false);
     }
   };
 
+  const handleUpdateTourStatus = async (
+    tour: Tour,
+    status: "COMPLETED" | "CANCELLED" | "NO_SHOW" | "FOLLOW_UP",
+  ) => {
+    if (!canWrite || updatingTourId) return;
+
+    try {
+      setUpdatingTourId(tour.id);
+      setTourActionError(null);
+      const res = await fetch(`/api/v1/tours/${tour.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(labels.tourCreateFailed);
+      }
+      await loadTours();
+      onDataChanged?.();
+    } catch (error: unknown) {
+      setTourActionError(labels.tourCreateFailed);
+    } finally {
+      setUpdatingTourId(null);
+    }
+  };
+
   return (
-    <div>
+    <div className="min-w-0">
       {activeTab === "tours" && (
         <LeadToursPanel
           labels={labels}
           selectedLead={leadItem}
           toursLoading={toursLoading}
+          loadError={toursError}
+          actionError={tourActionError}
           selectedLeadTours={leadTours}
           units={units}
           isArabic={isArabic}
+          displayLocale={displayLocale}
+          canWrite={canWrite}
+          updatingTourId={updatingTourId}
+          handleUpdateTourStatus={handleUpdateTourStatus}
           leadDisplayName={leadDisplayName}
           unitDisplayLabel={unitDisplayLabel}
           formatDate={formatDate}
           formatDisplayTime={formatDisplayTime}
+          openTourPage={(tourId) =>
+            onNavigate?.(
+              `/operations/tours?tourId=${encodeURIComponent(
+                tourId,
+              )}&leadId=${encodeURIComponent(leadId)}`,
+            )
+          }
+          openUnitPage={(unitId) =>
+            onNavigate?.(
+              `/operations/properties?unitId=${encodeURIComponent(
+                unitId,
+              )}&leadId=${encodeURIComponent(leadId)}`,
+            )
+          }
         />
       )}
 
@@ -518,11 +597,14 @@ export default function EngagementTabs({
           labels={labels}
           selectedLead={leadItem}
           offersLoading={offersLoading}
+          loadError={offersError}
+          actionError={offerActionError}
           selectedLeadOffers={leadOffers}
           opportunities={opportunities}
           units={units}
-          offerableOpportunities={canWrite ? offerableOpportunities : []}
+          offerableOpportunities={offerableOpportunities}
           isArabic={isArabic}
+          canWrite={canWrite}
           acceptingOfferId={acceptingOfferId}
           openOfferModal={openOfferModal}
           openTourModal={openTourModal}
@@ -530,6 +612,20 @@ export default function EngagementTabs({
           leadDisplayName={leadDisplayName}
           unitDisplayLabel={unitDisplayLabel}
           formatCurrency={formatCurrency}
+          openOfferPage={(offerId) =>
+            onNavigate?.(
+              `/operations/offers?offerId=${encodeURIComponent(
+                offerId,
+              )}&leadId=${encodeURIComponent(leadId)}`,
+            )
+          }
+          openUnitPage={(unitId) =>
+            onNavigate?.(
+              `/operations/properties?unitId=${encodeURIComponent(
+                unitId,
+              )}&leadId=${encodeURIComponent(leadId)}`,
+            )
+          }
         />
       )}
 
@@ -538,16 +634,25 @@ export default function EngagementTabs({
           labels={labels}
           selectedLead={leadItem}
           opportunitiesLoading={opportunitiesLoading}
+          loadError={opportunitiesError}
           selectedLeadOpportunities={leadOpportunities}
           units={units}
           isArabic={isArabic}
           displayLocale={displayLocale}
-          openOpportunityModal={canWrite ? openOpportunityModal : () => {}}
+          canWrite={canWrite}
+          openOpportunityModal={openOpportunityModal}
           leadDisplayName={leadDisplayName}
           unitDisplayLabel={unitDisplayLabel}
           formatCurrency={formatCurrency}
           formatNumber={formatNumber}
           formatDate={formatDate}
+          openUnitPage={(unitId) =>
+            onNavigate?.(
+              `/operations/properties?unitId=${encodeURIComponent(
+                unitId,
+              )}&leadId=${encodeURIComponent(leadId)}`,
+            )
+          }
         />
       )}
 

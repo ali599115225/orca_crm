@@ -6,16 +6,12 @@ const wizardSource = fs.readFileSync(
   "components/features/ContractWizard.tsx",
   "utf8",
 );
-const dashboardSource = fs.readFileSync(
-  "app/operations/dashboard/DashboardView.tsx",
+const wizardVisualSource = fs.readFileSync(
+  "components/features/contractWizardVisual.ts",
   "utf8",
 );
-const metricSource = fs.readFileSync(
-  "app/operations/dashboard/components/DashboardMetricCard.tsx",
-  "utf8",
-);
-const whatsappSource = fs.readFileSync(
-  "app/operations/dashboard/components/DashboardWhatsAppSummary.tsx",
+const translations = fs.readFileSync(
+  "lib/i18n/translations.ts",
   "utf8",
 );
 
@@ -34,25 +30,47 @@ describe("contract and dashboard architecture", () => {
     expect(actionSource).toContain("TENANT_CONTEXT_UNAVAILABLE");
   });
 
-  it("contains no hardcoded Arabic interface copy in ContractWizard", () => {
+  it("contains no hardcoded Arabic interface copy or local hex theme values", () => {
     expect(wizardSource).not.toMatch(/[\u0600-\u06FF]/);
     expect(wizardSource).not.toContain('dir="rtl"');
     expect(wizardSource).toContain("const { lang, t } = useApp()");
+    expect(`${wizardSource}\n${wizardVisualSource}`).not.toMatch(
+      /#[0-9a-fA-F]{3,8}/,
+    );
   });
 
-  it("uses one interaction primitive for all dashboard click surfaces", () => {
-    expect(dashboardSource).toContain("<InteractiveSurface");
-    expect(metricSource).toContain("<InteractiveSurface");
-    expect(whatsappSource).toContain("<InteractiveSurface");
-    expect(dashboardSource).not.toContain('role="button"');
-    expect(metricSource).not.toContain('role="button"');
-    expect(whatsappSource).not.toContain('role="button"');
+  it("uses a genuine progressive flow instead of a decorative stepper", () => {
+    expect(wizardSource).toContain("type WizardStep = 0 | 1 | 2");
+    expect(wizardSource).toContain("const goNext = () =>");
+    expect(wizardSource).toContain("const goBack = () =>");
+    expect(wizardSource).toContain("currentStep === 0");
+    expect(wizardSource).toContain("currentStep === 1");
+    expect(wizardSource).toContain("currentStep === 2");
+    expect(wizardSource).toContain("selectedClient");
+    expect(wizardSource).toContain("selectedProperty");
   });
 
-  it("removes icon-font dependencies from rebuilt dashboard surfaces", () => {
-    expect(dashboardSource).not.toContain("ph-fill");
-    expect(dashboardSource).not.toContain("ph-bold");
-    expect(metricSource).not.toContain("ph-");
-    expect(whatsappSource).not.toContain("ph-");
+  it("keeps destructive submission behind the final review step", () => {
+    const submitIndex = wizardSource.indexOf('type="submit"');
+    const reviewIndex = wizardSource.indexOf("currentStep === 2");
+
+    expect(reviewIndex).toBeGreaterThan(-1);
+    expect(submitIndex).toBeGreaterThan(reviewIndex);
+    expect(wizardSource).toContain("currentStep !== 2 || !canReview");
+  });
+
+  it("supports modal keyboard handling and focus restoration", () => {
+    expect(wizardSource).toContain('event.key === "Escape"');
+    expect(wizardSource).toContain('aria-modal="true"');
+    expect(wizardSource).toContain("previousFocusRef.current?.focus()");
+    expect(wizardSource).toContain('tabIndex={-1}');
+  });
+
+  it("uses accurate issuance wording rather than approval wording", () => {
+    expect(translations).toContain(
+      "'contractWizard.submit':             { ar: 'إصدار العقد', en: 'Issue Contract' }",
+    );
+    expect(translations).not.toContain("Issue and Approve Contract");
+    expect(translations).not.toContain("إصدار وتعميد العقد");
   });
 });

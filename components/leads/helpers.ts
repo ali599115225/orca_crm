@@ -3,6 +3,7 @@ import { displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
 import { formatDisplayDate } from "@/lib/display/dateTime";
 import type { Copy } from "./types";
+import { leadStatusTone, leadVisual } from "@/features/leads/visual";
 
 export const PIPELINE_STAGES = [
   "New",
@@ -80,12 +81,11 @@ export function EmptyState({ message }: { message: string }) {
   return React.createElement(
     "div",
     {
-      className:
-        "flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 py-6 text-center",
+      className: `${leadVisual.emptyState} flex min-h-[96px] items-center justify-center`,
     },
     React.createElement(
       "p",
-      { className: "text-sm font-medium text-[var(--nc-text-secondary)]" },
+      { className: "text-sm font-medium leading-6 text-[var(--nc-text-secondary)]" },
       message
     )
   );
@@ -113,8 +113,7 @@ export function LeadStatusBadge({
   return React.createElement(
     "span",
     {
-      className:
-        "inline-flex min-h-[28px] min-w-[96px] items-center justify-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-semibold text-[var(--nc-text-primary)]",
+      className: `inline-flex min-h-7 min-w-[96px] items-center justify-center rounded-full border px-3 text-xs font-bold ${leadStatusTone(status)}`,
     },
     label
   );
@@ -164,7 +163,7 @@ export function PaginationBar({
           disabled: page <= 1,
           onClick: onPrevious,
           className:
-            "nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50",
+            leadVisual.secondaryButton,
         },
         labels.previous
       ),
@@ -175,7 +174,7 @@ export function PaginationBar({
           disabled: page >= totalPages,
           onClick: onNext,
           className:
-            "nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50",
+            leadVisual.compactPrimaryButton,
         },
         labels.next
       )

@@ -7,7 +7,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, RotateCcw, Archive } from "lucide-react";
+import {
+  Archive,
+  BadgeCheck,
+  Plus,
+  RotateCcw,
+  Search,
+  TrendingUp,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
@@ -19,8 +28,9 @@ import { leadsCopy } from "@/features/leads/copy/leadsCopy";
 import LeadFormDialog from "@/features/leads/components/LeadFormDialog";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
+import { leadStatusTone, leadVisual } from "@/features/leads/visual";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 type SortOption = "newest" | "oldest" | "score" | "name";
 
@@ -132,22 +142,18 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
   };
 
   return (
-    <section
-      dir={direction}
-      className="min-h-full bg-white dark:bg-[#07182D]"
-      style={{ padding: "24px 32px 48px", maxWidth: 1600, margin: "0 auto", width: "100%" }}
-    >
-      <div className="space-y-8">
+    <section dir={direction} className={leadVisual.page}>
+      <div className={leadVisual.pageStack}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs text-[#0A1F3A]/60 dark:text-white/60">{labels.breadcrumb}</p>
-            <h1 className="mt-1 text-3xl font-black text-[#0A1F3A] dark:text-white">{labels.title}</h1>
-            <p className="mt-2 text-sm text-[#0A1F3A]/70 dark:text-white/70">{labels.subtitle}</p>
+            <p className={leadVisual.pageEyebrow}>{labels.breadcrumb}</p>
+            <h1 className={leadVisual.pageTitle}>{labels.title}</h1>
+            <p className={leadVisual.pageDescription}>{labels.subtitle}</p>
           </div>
           <button
             type="button"
             onClick={() => setShowCreateDialog(true)}
-            className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-[#D9AD55] px-5 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2"
+            className={leadVisual.primaryButton}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             {labels.addLead}
@@ -157,32 +163,59 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
         {kpis && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { label: labels.totalLeads, value: formatNumber(kpis.total, isArabic), note: labels.leadRegistry },
-              { label: labels.newLeads, value: formatNumber(kpis.newCount, isArabic), note: labels.thisWeek },
-              { label: labels.qualified, value: formatNumber(kpis.qualifiedCount, isArabic), note: labels.readyFollowUp },
-              { label: labels.conversion, value: `${formatNumber(kpis.conversion, isArabic)}%`, note: labels.closedRate },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="flex h-36 flex-col justify-between rounded-xl border border-[#0A1F3A]/10 bg-white p-5 text-start shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]"
-              >
-                <p className="text-xs font-bold uppercase tracking-wider text-[#0A1F3A]/70 dark:text-white/70">
-                  {item.label}
-                </p>
-                <strong className="text-4xl font-black text-[#0A1F3A] dark:text-white">
-                  {item.value}
-                </strong>
-                <p className="text-xs text-[#0A1F3A]/65 dark:text-white/70">{item.note}</p>
-              </div>
-            ))}
+              {
+                label: labels.totalLeads,
+                value: formatNumber(kpis.total, isArabic),
+                note: labels.leadRegistry,
+                icon: UsersRound,
+              },
+              {
+                label: labels.newLeads,
+                value: formatNumber(kpis.newCount, isArabic),
+                note: labels.thisWeek,
+                icon: UserPlus,
+              },
+              {
+                label: labels.qualified,
+                value: formatNumber(kpis.qualifiedCount, isArabic),
+                note: labels.readyFollowUp,
+                icon: BadgeCheck,
+              },
+              {
+                label: labels.conversion,
+                value: `${formatNumber(kpis.conversion, isArabic)}%`,
+                note: labels.closedRate,
+                icon: TrendingUp,
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className={leadVisual.metricCard}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className={leadVisual.label}>{item.label}</p>
+                      <strong className="mt-3 block text-3xl font-extrabold tabular-nums tracking-tight text-[var(--nc-text-primary)]">
+                        {item.value}
+                      </strong>
+                    </div>
+                    <span className={leadVisual.metricIconTile}>
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <p className="mt-4 text-xs font-medium leading-5 text-[var(--nc-text-secondary)]">
+                    {item.note}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        <div className="rounded-xl border border-[#0A1F3A]/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0A1F3A]">
+        <div className={`${leadVisual.panel} p-4 sm:p-5`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search
-                className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#0A1F3A]/60 dark:text-white/60 ${isArabic ? "right-3" : "left-3"}`}
+                className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--nc-text-secondary)] ${isArabic ? "right-3" : "left-3"}`}
                 aria-hidden="true"
               />
               <input
@@ -191,7 +224,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder={labels.searchPlaceholder}
                 aria-label={labels.searchPlaceholder}
-                className={`min-h-[44px] w-full rounded-lg border border-[#0A1F3A]/10 bg-white text-sm font-semibold text-[#0A1F3A] outline-none transition-colors placeholder:text-[#0A1F3A]/50 focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white dark:placeholder:text-white/50 ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
+                className={`${leadVisual.input} ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
               />
             </div>
 
@@ -204,7 +237,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={[allStatusesOption, ...statusOptions]}
-                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white"
+                className={leadVisual.select}
               />
 
               <SettingsSelect
@@ -215,7 +248,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={sortOptions}
-                className="min-h-[42px] text-xs font-semibold [&>button]:min-h-[42px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white"
+                className={leadVisual.select}
               />
 
               <button
@@ -227,8 +260,8 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 aria-pressed={showArchived}
                 className={
                   showArchived
-                    ? "inline-flex min-h-[42px] items-center gap-1.5 rounded-lg border border-[#D9AD55]/50 bg-[#D9AD55]/15 px-3 text-xs font-bold text-[#0A1F3A] dark:text-white"
-                    : "nc-btn-ghost inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3 text-xs font-bold"
+                    ? `${leadVisual.secondaryButton} border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent-text)]`
+                    : leadVisual.secondaryButton
                 }
               >
                 <Archive className="h-3.5 w-3.5" aria-hidden="true" />
@@ -239,29 +272,29 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
 
           <div className="mt-4">
             {loading ? (
-              <div className="flex items-center justify-center rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-8 dark:border-white/10 dark:bg-[#0A1F3A]">
-                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.loading}</p>
+              <div className={leadVisual.emptyState}>
+                <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
               </div>
             ) : loadFailed ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-6 dark:border-white/10 dark:bg-[#0A1F3A]">
-                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.loadError}</p>
+              <div className={`${leadVisual.emptyState} flex flex-col items-center gap-3`}>
+                <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loadError}</p>
                 <button
                   type="button"
                   onClick={() => void loadLeads()}
-                  className="nc-btn-ghost inline-flex min-h-[40px] items-center gap-2 rounded-lg px-4 text-xs font-bold"
+                  className={leadVisual.secondaryButton}
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {labels.retry}
                 </button>
               </div>
             ) : rows.length === 0 ? (
-              <div className="flex items-center justify-center rounded-lg border border-dashed border-[#0A1F3A]/10 bg-white px-4 py-8 text-center dark:border-white/10 dark:bg-[#0A1F3A]">
-                <p className="text-sm font-medium text-[#0A1F3A]/60 dark:text-white/60">{labels.noLeads}</p>
+              <div className={leadVisual.emptyState}>
+                <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.noLeads}</p>
               </div>
             ) : (
               <>
                 <div
-                  className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] gap-3 px-4 pb-2 text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60 md:grid"
+                  className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] gap-3 px-4 pb-2 text-center text-xs font-semibold text-[var(--nc-text-secondary)] md:grid"
                   aria-hidden="true"
                 >
                   <span>{labels.lead}</span>
@@ -279,48 +312,52 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         variant="row"
                         onClick={() => openLead(lead.id)}
                         aria-label={`${labels.lead}: ${leadDisplayName(lead)}`}
-                        className="!border-[#0A1F3A]/10 !bg-white px-4 py-3 text-start dark:!border-white/10 dark:!bg-[#0A1F3A]"
+                        className={`${leadVisual.interactiveRow} px-4 py-3 text-start`}
                       >
-                        <span className="grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] md:gap-3">
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-2">
-                              <span className="block truncate text-sm font-bold text-[#0A1F3A] dark:text-white">
-                                {leadDisplayName(lead)}
+                        <span className="grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] md:gap-3 md:text-center">
+                          <span className="min-w-0 md:text-center">
+                            <span className="flex items-center gap-2 md:justify-center">
+                              <span className="block min-w-0 truncate text-sm font-bold text-[var(--nc-text-primary)]">
+                                <bdi dir="auto">{leadDisplayName(lead)}</bdi>
                               </span>
                               {lead.isArchived && (
-                                <span className="inline-flex shrink-0 items-center rounded-full border border-[#0A1F3A]/10 bg-white px-2 py-0.5 text-[10px] font-bold text-[#0A1F3A]/60 dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60">
+                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-text-secondary)]">
                                   {labels.archivedBadge}
                                 </span>
                               )}
                             </span>
-                            <span className="mt-0.5 block truncate text-xs text-[#0A1F3A]/60 dark:text-white/60" dir="ltr">
-                              {lead.phone}
+                            <span className="mt-1 block truncate text-start text-xs font-medium text-[var(--nc-text-secondary)] md:text-center">
+                              <bdi dir="ltr" className="inline-block tabular-nums">{lead.phone}</bdi>
                             </span>
                           </span>
 
-                          <span className="min-w-0">
-                            <span className="inline-block rounded bg-[#D9AD55]/10 px-2 py-1 text-xs font-bold text-[#D9AD55]">
+                          <span className="min-w-0 md:flex md:justify-center">
+                            <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold ${leadStatusTone(lead.status)}`}>
                               {displayEnum(lead.status, "leadStatus", displayLocale)}
                             </span>
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
-                            {displayEnum(lead.source, "leadSource", displayLocale)}
-                            {" · "}
-                            {displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}
+                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
+                            <bdi dir="auto">{displayEnum(lead.source, "leadSource", displayLocale)}</bdi>
+                            <span aria-hidden="true"> · </span>
+                            <bdi dir="auto">
+                              {displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}
+                            </bdi>
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
-                            {lead.assignedUserName
-                              ? displayPerson(lead.assignedUserName, displayLocale, { route: "/operations/leads" })
-                              : labels.unassigned}
+                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
+                            <bdi dir="auto">
+                              {lead.assignedUserName
+                                ? displayPerson(lead.assignedUserName, displayLocale, { route: "/operations/leads" })
+                                : labels.unassigned}
+                            </bdi>
                           </span>
 
-                          <span className="text-center text-xs font-bold text-[#0A1F3A] dark:text-white">
+                          <span className="text-center text-xs font-bold tabular-nums text-[var(--nc-text-primary)]">
                             {formatNumber(lead.leadScore, isArabic)}
                           </span>
 
-                          <span className="min-w-0 truncate text-xs font-semibold text-[#0A1F3A]/60 dark:text-white/60">
+                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
                             {formatDate(lead.createdAt, isArabic, labels.notSpecified)}
                           </span>
                         </span>
@@ -329,14 +366,14 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   ))}
                 </ul>
 
-                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#0A1F3A]/60 dark:text-white/60">
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs font-medium text-[var(--nc-text-secondary)]">
                   <span>
                     {formatNumber(result?.total || 0, isArabic)} {labels.resultsCount}
                   </span>
                 </div>
 
                 {(result?.totalPages || 1) > 1 && (
-                  <div className="mt-4 flex flex-col gap-3 border-t border-[#0A1F3A]/10 pt-4 text-sm text-[#0A1F3A]/60 dark:border-white/10 dark:text-white/60 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mt-4 flex flex-col gap-3 border-t border-[var(--nc-border)] pt-4 text-sm font-medium text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
                     <span>
                       {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
                       {formatNumber(result?.totalPages || 1, isArabic)}
@@ -346,7 +383,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         type="button"
                         disabled={page <= 1}
                         onClick={() => setPage((value) => Math.max(1, value - 1))}
-                        className="nc-btn-ghost min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                        className={leadVisual.secondaryButton}
                       >
                         {labels.previous}
                       </button>
@@ -354,7 +391,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         type="button"
                         disabled={page >= (result?.totalPages || 1)}
                         onClick={() => setPage((value) => Math.min(result?.totalPages || 1, value + 1))}
-                        className="min-h-[36px] rounded-lg bg-[#D9AD55] px-3 py-1.5 text-xs font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={leadVisual.compactPrimaryButton}
                       >
                         {labels.next}
                       </button>

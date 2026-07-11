@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   FileSignature,
   LoaderCircle,
+  RotateCcw,
   X,
 } from "lucide-react";
 import {
@@ -17,6 +21,7 @@ import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import { displayEntity, displayPerson } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
+import { contractWizardVisual } from "./contractWizardVisual";
 
 interface Client {
   id: string;
@@ -38,6 +43,8 @@ interface ContractWizardProps {
   onSuccess?: () => void;
 }
 
+type WizardStep = 0 | 1 | 2;
+
 const errorTranslationKey: Record<ContractWizardErrorCode, string> = {
   AUTH_REQUIRED: "contractWizard.error.authRequired",
   FORBIDDEN: "contractWizard.error.forbidden",
@@ -48,6 +55,54 @@ const errorTranslationKey: Record<ContractWizardErrorCode, string> = {
   DATA_LOAD_FAILED: "contractWizard.error.dataLoad",
   CONTRACT_ISSUE_FAILED: "contractWizard.error.issueFailed",
 };
+
+const blockingLoadErrors: ContractWizardErrorCode[] = [
+  "AUTH_REQUIRED",
+  "FORBIDDEN",
+  "TENANT_CONTEXT_UNAVAILABLE",
+  "DATA_LOAD_FAILED",
+];
+
+const BIDI_ISOLATE_START = "\u2068";
+const BIDI_ISOLATE_END = "\u2069";
+
+function isolateBidi(value: string | number): string {
+  return `${BIDI_ISOLATE_START}${String(value)}${BIDI_ISOLATE_END}`;
+}
+
+function normalizeNumericInput(value: string): string {
+  const arabicIndic = "\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669";
+  const easternArabicIndic = "\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9";
+
+  const normalized = Array.from(value)
+    .map((character) => {
+      const arabicIndex = arabicIndic.indexOf(character);
+      if (arabicIndex >= 0) return String(arabicIndex);
+
+      const easternIndex = easternArabicIndic.indexOf(character);
+      if (easternIndex >= 0) return String(easternIndex);
+
+      return character;
+    })
+    .join("")
+    .replace(/[\u066c,\s]/g, "")
+    .replace(/\u066b/g, ".")
+    .replace(/[^0-9.]/g, "");
+
+  const [whole, ...fractionParts] = normalized.split(".");
+  return fractionParts.length > 0
+    ? `${whole}.${fractionParts.join("")}`
+    : whole;
+}
+
+function hasUsableProjectLabel(value: string): boolean {
+  const normalized = value.trim().toLocaleLowerCase();
+  return Boolean(
+    normalized &&
+      normalized !== "not specified" &&
+      normalized !== "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f",
+  );
+}
 
 export function contractWizardErrorKey(
   code: ContractWizardErrorCode,
@@ -61,11 +116,16 @@ export default function ContractWizard({
   onSuccess,
 }: ContractWizardProps) {
   const { lang, t } = useApp();
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   const [clients, setClients] = useState<Client[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [clientId, setClientId] = useState("");
   const [propertyId, setPropertyId] = useState("");
   const [amount, setAmount] = useState("");
+  const [currentStep, setCurrentStep] = useState<WizardStep>(0);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorCode, setErrorCode] =
@@ -75,6 +135,7 @@ export default function ContractWizard({
   const direction = lang === "AR" ? "rtl" : "ltr";
   const locale = lang === "AR" ? "ar-SA" : "en-US";
   const displayLocale: DisplayLocale = lang === "AR" ? "ar" : "en";
+  const isArabic = lang === "AR";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -86,6 +147,7 @@ export default function ContractWizard({
     setClientId("");
     setPropertyId("");
     setAmount("");
+    setCurrentStep(0);
     setErrorCode(null);
     setIsSuccess(false);
     setIsLoadingData(true);
@@ -97,6 +159,7 @@ export default function ContractWizard({
         if (result.success) {
           setClients(result.clients);
           setProperties(result.properties);
+          setErrorCode(null);
           return;
         }
 
@@ -112,7 +175,42 @@ export default function ContractWizard({
     return () => {
       active = false;
     };
+  }, [isOpen, loadAttempt]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialogRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus();
+    };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, isSubmitting, onClose]);
 
   const clientOptions = useMemo(
     () => [
@@ -135,13 +233,21 @@ export default function ContractWizard({
           },
         );
 
+        const clientTypeLabel = t(
+          client.type === "lead"
+            ? "contractWizard.clientType.lead"
+            : "contractWizard.clientType.contact",
+        );
+
         return {
           value: client.id,
-          label: `${displayedClientName} (${client.phone}) — ${t(
-            client.type === "lead"
-              ? "contractWizard.clientType.lead"
-              : "contractWizard.clientType.contact",
-          )}`,
+          label: [
+            displayedClientName,
+            client.phone,
+            clientTypeLabel,
+          ]
+            .map(isolateBidi)
+            .join(" · "),
         };
       }),
     ],
@@ -165,20 +271,70 @@ export default function ContractWizard({
               entityId: property.id,
               fieldName: "projectName",
             })
-          : t("contractWizard.generalProject");
+          : "";
+
+        const unitLabel = `${t("contractWizard.unit")} ${property.unitNumber}`;
+        const priceLabel = `${new Intl.NumberFormat(locale).format(
+          property.priceSar,
+        )} ${t("contractWizard.currency")}`;
 
         return {
           value: property.id,
-          label: `${displayedProjectName} — ${t(
-            "contractWizard.unit",
-          )} ${property.unitNumber} (${new Intl.NumberFormat(locale).format(
-            property.priceSar,
-          )} ${t("contractWizard.currency")})`,
+          label: [
+            ...(hasUsableProjectLabel(displayedProjectName)
+              ? [displayedProjectName]
+              : []),
+            unitLabel,
+            priceLabel,
+          ]
+            .map(isolateBidi)
+            .join(" · "),
         };
       }),
     ],
     [displayLocale, locale, properties, t],
   );
+
+  const selectedClient = useMemo(
+    () => clients.find((client) => client.id === clientId) ?? null,
+    [clientId, clients],
+  );
+
+  const selectedProperty = useMemo(
+    () => properties.find((property) => property.id === propertyId) ?? null,
+    [properties, propertyId],
+  );
+
+  const selectedProjectDisplay = useMemo(() => {
+    if (!selectedProperty?.projectName) return "";
+
+    const displayed = displayEntity(
+      selectedProperty.projectName,
+      "project",
+      displayLocale,
+      {
+        route: "/operations/dashboard",
+        entityId: selectedProperty.id,
+        fieldName: "projectName",
+      },
+    );
+
+    return hasUsableProjectLabel(displayed) ? displayed : "";
+  }, [displayLocale, selectedProperty]);
+
+  const numericAmount = Number(amount);
+  const amountIsValid =
+    Boolean(amount) && Number.isFinite(numericAmount) && numericAmount > 0;
+  const canReview = Boolean(clientId && propertyId && amountIsValid);
+  const loadIsBlocked =
+    Boolean(errorCode) &&
+    blockingLoadErrors.includes(errorCode as ContractWizardErrorCode) &&
+    clients.length === 0 &&
+    properties.length === 0;
+
+  const handleClose = () => {
+    if (!isSubmitting) onClose();
+  };
 
   const handlePropertyChange = (nextPropertyId: string) => {
     setPropertyId(nextPropertyId);
@@ -186,19 +342,24 @@ export default function ContractWizard({
       (property) => property.id === nextPropertyId,
     );
     setAmount(selected ? String(selected.priceSar) : "");
-  };
-
-  const handleClose = () => {
-    if (!isSubmitting) onClose();
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
     setErrorCode(null);
-    setIsSuccess(false);
+  };
 
-    if (!clientId) {
-      setErrorCode("CLIENT_REQUIRED");
+  const goBack = () => {
+    setErrorCode(null);
+    setCurrentStep((step) => Math.max(0, step - 1) as WizardStep);
+  };
+
+  const goNext = () => {
+    setErrorCode(null);
+
+    if (currentStep === 0) {
+      if (!clientId) {
+        setErrorCode("CLIENT_REQUIRED");
+        return;
+      }
+
+      setCurrentStep(1);
       return;
     }
 
@@ -207,8 +368,27 @@ export default function ContractWizard({
       return;
     }
 
-    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    if (!amountIsValid) {
       setErrorCode("AMOUNT_INVALID");
+      return;
+    }
+
+    setCurrentStep(2);
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorCode(null);
+    setIsSuccess(false);
+
+    if (currentStep !== 2 || !canReview) {
+      setErrorCode(
+        !clientId
+          ? "CLIENT_REQUIRED"
+          : !propertyId
+            ? "PROPERTY_REQUIRED"
+            : "AMOUNT_INVALID",
+      );
       return;
     }
 
@@ -218,7 +398,7 @@ export default function ContractWizard({
       const result = await issueContractActionDirect({
         clientId,
         propertyId,
-        amount: Number(amount),
+        amount: numericAmount,
       });
 
       if (!result.success) {
@@ -227,9 +407,6 @@ export default function ContractWizard({
       }
 
       setIsSuccess(true);
-      setClientId("");
-      setPropertyId("");
-      setAmount("");
       onSuccess?.();
 
       window.setTimeout(() => {
@@ -244,57 +421,49 @@ export default function ContractWizard({
 
   if (!isOpen) return null;
 
-  const stepIndex = !clientId ? 0 : !propertyId ? 1 : 2;
   const steps = [
-    {
-      key: "client",
-      label: t("contractWizard.step.client"),
-      done: Boolean(clientId),
-    },
-    {
-      key: "property",
-      label: t("contractWizard.step.property"),
-      done: Boolean(propertyId),
-    },
-    {
-      key: "amount",
-      label: t("contractWizard.step.amount"),
-      done: Boolean(amount) && Number(amount) > 0,
-    },
-  ];
+    { key: "client", label: t("contractWizard.step.client") },
+    { key: "property", label: t("contractWizard.step.property") },
+    { key: "review", label: t("contractWizard.step.review") },
+  ] as const;
+
+  const NextIcon = isArabic ? ChevronLeft : ChevronRight;
+  const BackIcon = isArabic ? ChevronRight : ChevronLeft;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#07182D]/80 p-4 backdrop-blur-md"
+      className={contractWizardVisual.overlay}
       dir={direction}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) handleClose();
+      }}
     >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        onClick={handleClose}
-        aria-label={t("contractWizard.close")}
-      />
-
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="contract-wizard-title"
-        className="relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#0A1F3A]/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0B1729]"
+        aria-describedby="contract-wizard-description"
+        tabIndex={-1}
+        className={contractWizardVisual.dialog}
       >
-        <header className="mb-5 flex items-center justify-between border-b border-[#0A1F3A]/10 pb-4 dark:border-white/10">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D9AD55]/10 text-[#D9AD55]">
+        <header className={contractWizardVisual.header}>
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={contractWizardVisual.iconTile}>
               <FileSignature size={21} strokeWidth={2.2} aria-hidden="true" />
             </span>
 
-            <div>
-              <h3
+            <div className="min-w-0">
+              <h2
                 id="contract-wizard-title"
-                className="text-base font-extrabold text-[#0A1F3A] dark:text-white"
+                className={contractWizardVisual.title}
               >
                 {t("contractWizard.title")}
-              </h3>
-              <p className="mt-1 text-xs text-[#0A1F3A]/65 dark:text-white/65">
+              </h2>
+              <p
+                id="contract-wizard-description"
+                className={contractWizardVisual.subtitle}
+              >
                 {t("contractWizard.subtitle")}
               </p>
             </div>
@@ -304,62 +473,53 @@ export default function ContractWizard({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#0A1F3A]/10 text-[#0A1F3A]/65 transition-colors hover:border-[#D9AD55]/50 hover:bg-[#D9AD55]/10 hover:text-[#0A1F3A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] disabled:opacity-50 dark:border-white/10 dark:text-white/65 dark:hover:text-white"
+            className={contractWizardVisual.closeButton}
             aria-label={t("contractWizard.close")}
           >
             <X size={18} aria-hidden="true" />
           </button>
         </header>
 
-        <div className="mb-5 flex items-center justify-between">
-          {steps.map((step, index) => (
-            <React.Fragment key={step.key}>
-              <div className="flex items-center gap-2">
-                <span
-                  className={[
-                    "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold transition-colors",
-                    step.done
-                      ? "border-[#D9AD55] bg-[#D9AD55] text-[#07182D]"
-                      : index === stepIndex
-                        ? "border-[#D9AD55] bg-[#D9AD55]/10 text-[#D9AD55]"
-                        : "border-[#0A1F3A]/15 text-[#0A1F3A]/45 dark:border-white/15 dark:text-white/45",
-                  ].join(" ")}
-                >
-                  {step.done ? "✓" : index + 1}
-                </span>
+        <ol
+          className={contractWizardVisual.stepList}
+          aria-label={t("contractWizard.stepperLabel")}
+        >
+          {steps.map((step, index) => {
+            const isCurrent = index === currentStep;
+            const isComplete = index < currentStep;
 
-                <span
-                  className={[
-                    "text-xs font-bold",
-                    index === stepIndex
-                      ? "text-[#D9AD55]"
-                      : step.done
-                        ? "text-[#0A1F3A] dark:text-white"
-                        : "text-[#0A1F3A]/50 dark:text-white/50",
-                  ].join(" ")}
-                >
+            return (
+              <li
+                key={step.key}
+                aria-current={isCurrent ? "step" : undefined}
+                className={[
+                  contractWizardVisual.step,
+                  isCurrent
+                    ? contractWizardVisual.stepCurrent
+                    : isComplete
+                      ? contractWizardVisual.stepComplete
+                      : contractWizardVisual.stepPending,
+                ].join(" ")}
+              >
+                <span className={contractWizardVisual.stepNumber}>
+                  {isComplete ? (
+                    <Check size={14} aria-hidden="true" />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <span className="truncate text-xs font-bold sm:text-sm">
                   {step.label}
                 </span>
-              </div>
-
-              {index < steps.length - 1 && (
-                <span
-                  className={[
-                    "mx-3 h-px flex-1",
-                    index < stepIndex
-                      ? "bg-[#D9AD55]"
-                      : "bg-[#0A1F3A]/10 dark:bg-white/10",
-                  ].join(" ")}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ol>
 
         {errorCode && (
           <div
             role="alert"
-            className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-300"
+            className="mb-4 flex items-start gap-2 rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-xs font-semibold text-red-700 dark:text-red-300"
           >
             <AlertTriangle
               size={16}
@@ -370,119 +530,246 @@ export default function ContractWizard({
           </div>
         )}
 
-        {isSuccess && (
+        {isSuccess ? (
           <div
             role="status"
-            className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+            className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-6 text-center text-emerald-700 dark:text-emerald-300"
           >
-            <CheckCircle2
-              size={16}
-              className="mt-0.5 shrink-0"
-              aria-hidden="true"
-            />
-            <span>{t("contractWizard.success")}</span>
+            <CheckCircle2 size={30} aria-hidden="true" />
+            <p className="text-sm font-bold">{t("contractWizard.success")}</p>
           </div>
-        )}
-
-        {isLoadingData ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-12">
+        ) : isLoadingData ? (
+          <div
+            className="flex min-h-56 flex-col items-center justify-center gap-3"
+            role="status"
+            aria-live="polite"
+          >
             <LoaderCircle
               size={30}
-              className="animate-spin text-[#D9AD55]"
+              className="animate-spin text-[var(--nc-accent)]"
               aria-hidden="true"
             />
-            <p className="text-sm text-[#0A1F3A]/65 dark:text-white/65">
+            <p className="text-sm text-[var(--nc-text-secondary)]">
               {t("contractWizard.loadingData")}
             </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#0A1F3A]/70 dark:text-white/70">
-                {t("contractWizard.clientLabel")}
-              </label>
-              <SettingsSelect
-                className="w-full"
-                placement="bottom"
-                value={clientId}
-                onChange={setClientId}
-                disabled={isSubmitting}
-                options={clientOptions}
-                aria-label={t("contractWizard.clientLabel")}
-              />
-            </div>
+        ) : loadIsBlocked ? (
+          <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center">
+            <AlertTriangle
+              size={28}
+              className="text-red-600 dark:text-red-300"
+              aria-hidden="true"
+            />
+            <p className="max-w-md text-sm text-[var(--nc-text-secondary)]">
+              {t(contractWizardErrorKey(errorCode as ContractWizardErrorCode))}
+            </p>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#0A1F3A]/70 dark:text-white/70">
-                {t("contractWizard.propertyLabel")}
-              </label>
-              <SettingsSelect
-                className="w-full"
-                placement="bottom"
-                value={propertyId}
-                onChange={handlePropertyChange}
-                disabled={isSubmitting}
-                options={propertyOptions}
-                aria-label={t("contractWizard.propertyLabel")}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#0A1F3A]/70 dark:text-white/70">
-                {t("contractWizard.amountLabel")}
-              </label>
-
-              <div className="relative">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder={t("contractWizard.amountPlaceholder")}
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  disabled={isSubmitting}
-                  className="w-full rounded-xl border border-[#0A1F3A]/10 bg-[#0A1F3A]/[0.025] px-4 py-3 ps-16 text-start text-sm text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.025] dark:text-white"
-                />
-                <span className="absolute start-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#0A1F3A]/50 dark:text-white/50">
-                  {t("contractWizard.currency")}
-                </span>
-              </div>
-
-              <p className="text-xs leading-5 text-[#0A1F3A]/55 dark:text-white/55">
-                {t("contractWizard.amountHint")}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#D9AD55] bg-[#D9AD55] px-5 py-3 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-[#0B1729]"
-              >
-                {isSubmitting ? (
-                  <>
-                    <LoaderCircle
-                      size={16}
-                      className="animate-spin"
-                      aria-hidden="true"
-                    />
-                    <span>{t("contractWizard.submitting")}</span>
-                  </>
-                ) : (
-                  <>
-                    <FileSignature size={17} aria-hidden="true" />
-                    <span>{t("contractWizard.submit")}</span>
-                  </>
-                )}
-              </button>
-
+            {errorCode === "DATA_LOAD_FAILED" ||
+            errorCode === "TENANT_CONTEXT_UNAVAILABLE" ? (
               <button
                 type="button"
-                onClick={handleClose}
-                disabled={isSubmitting}
-                className="rounded-xl border border-[#0A1F3A]/10 px-5 py-3 text-sm font-bold text-[#0A1F3A]/70 transition-colors hover:border-[#D9AD55]/50 hover:bg-[#D9AD55]/10 hover:text-[#0A1F3A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] disabled:opacity-50 dark:border-white/10 dark:text-white/70 dark:hover:text-white"
+                className={contractWizardVisual.secondaryButton}
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
               >
-                {t("contractWizard.cancel")}
+                <RotateCcw size={16} aria-hidden="true" />
+                {t("contractWizard.retryData")}
               </button>
+            ) : null}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {currentStep === 0 && (
+              <div className="space-y-2">
+                <label className={contractWizardVisual.label}>
+                  {t("contractWizard.clientLabel")}
+                </label>
+                <SettingsSelect
+                  className="w-full"
+                  placement="bottom"
+                  value={clientId}
+                  onChange={(value) => {
+                    setClientId(value);
+                    setErrorCode(null);
+                  }}
+                  disabled={isSubmitting}
+                  options={clientOptions}
+                  aria-label={t("contractWizard.clientLabel")}
+                />
+              </div>
+            )}
+
+            {currentStep === 1 && (
+              <>
+                <div className="space-y-2">
+                  <label className={contractWizardVisual.label}>
+                    {t("contractWizard.propertyLabel")}
+                  </label>
+                  <SettingsSelect
+                    className="w-full"
+                    placement="bottom"
+                    value={propertyId}
+                    onChange={handlePropertyChange}
+                    disabled={isSubmitting}
+                    options={propertyOptions}
+                    aria-label={t("contractWizard.propertyLabel")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="contract-wizard-amount"
+                    className={contractWizardVisual.label}
+                  >
+                    {t("contractWizard.amountLabel")}
+                  </label>
+
+                  <div className="relative">
+                    <input
+                      id="contract-wizard-amount"
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      lang="en-US"
+                      autoComplete="off"
+                      placeholder={t("contractWizard.amountPlaceholder")}
+                      value={amount}
+                      onChange={(event) => {
+                        setAmount(normalizeNumericInput(event.target.value));
+                        setErrorCode(null);
+                      }}
+                      disabled={isSubmitting}
+                      className={`${contractWizardVisual.field} ps-16 font-mono tabular-nums`}
+                    />
+                    <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--nc-text-dim)]">
+                      {t("contractWizard.currency")}
+                    </span>
+                  </div>
+
+                  <p className={contractWizardVisual.helper}>
+                    {t("contractWizard.amountHint")}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {currentStep === 2 && selectedClient && selectedProperty && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-base font-black text-[var(--nc-text-primary)]">
+                    {t("contractWizard.reviewTitle")}
+                  </h3>
+                  <p className={contractWizardVisual.subtitle}>
+                    {t("contractWizard.reviewDescription")}
+                  </p>
+                </div>
+
+                <dl className={contractWizardVisual.reviewPanel}>
+                  <div className="flex flex-col gap-1 border-b border-[var(--nc-glass-border)] py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                    <dt className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                      {t("contractWizard.reviewClient")}
+                    </dt>
+                    <dd className="text-sm font-bold text-[var(--nc-text-primary)]">
+                      <bdi dir="auto">
+                        {displayPerson(selectedClient.name, displayLocale, {
+                          route: "/operations/dashboard",
+                          entityId: selectedClient.id,
+                          fieldName: "clientName",
+                        })}
+                      </bdi>
+                    </dd>
+                  </div>
+
+                  <div className="flex flex-col gap-1 border-b border-[var(--nc-glass-border)] py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <dt className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                      {t("contractWizard.reviewProperty")}
+                    </dt>
+                    <dd className="text-sm font-bold text-[var(--nc-text-primary)]">
+                      <bdi dir="auto">
+                        {[
+                          ...(selectedProjectDisplay
+                            ? [selectedProjectDisplay]
+                            : []),
+                          `${t("contractWizard.unit")} ${selectedProperty.unitNumber}`,
+                        ].join(" — ")}
+                      </bdi>
+                    </dd>
+                  </div>
+
+                  <div className="flex flex-col gap-1 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <dt className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                      {t("contractWizard.reviewAmount")}
+                    </dt>
+                    <dd className="text-lg font-black text-[var(--nc-text-primary)]">
+                      <bdi dir="ltr" className="font-mono tabular-nums">
+                        {new Intl.NumberFormat(locale).format(numericAmount)}{" "}
+                        {t("contractWizard.currency")}
+                      </bdi>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[var(--nc-glass-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                {currentStep === 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    className={contractWizardVisual.secondaryButton}
+                  >
+                    {t("contractWizard.cancel")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    disabled={isSubmitting}
+                    className={contractWizardVisual.secondaryButton}
+                  >
+                    <BackIcon size={16} aria-hidden="true" />
+                    {t("contractWizard.back")}
+                  </button>
+                )}
+              </div>
+
+              {currentStep < 2 ? (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={
+                    isSubmitting ||
+                    (currentStep === 0 ? !clientId : !canReview)
+                  }
+                  className={contractWizardVisual.primaryButton}
+                >
+                  {t("contractWizard.next")}
+                  <NextIcon size={16} aria-hidden="true" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !canReview}
+                  className={contractWizardVisual.primaryButton}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoaderCircle
+                        size={16}
+                        className="animate-spin"
+                        aria-hidden="true"
+                      />
+                      <span>{t("contractWizard.submitting")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileSignature size={17} aria-hidden="true" />
+                      <span>{t("contractWizard.submit")}</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         )}

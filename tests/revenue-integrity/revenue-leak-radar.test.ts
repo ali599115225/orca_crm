@@ -53,4 +53,17 @@ describe("Revenue Leak Radar closure contract", () => {
     const tenantUses = actions.match(/auth\.tenantId/g) ?? [];
     expect(tenantUses.length).toBeGreaterThanOrEqual(3);
   });
+
+  it("does not contain requiredProviders or global provider compliance logic", () => {
+    expect(radar).not.toContain("requiredProviders");
+    expect(radar).not.toContain('evaluatedRules.push("COMPLIANCE_BLOCK")');
+    expect(radar).not.toContain("revenueProviderConnection.findMany");
+  });
+
+  it("auto-resolves legacy COMPLIANCE_BLOCK signals with tenant isolation", () => {
+    expect(radar).toContain('ruleCode: "COMPLIANCE_BLOCK"');
+    expect(radar).toContain("LEGACY_GLOBAL_PROVIDER_CHECK_RETIRED");
+    expect(radar).toMatch(/legacy-compliance-retired:\$\{tenantId\}:\$\{signal\.id\}:LEGACY_GLOBAL_PROVIDER_CHECK_RETIRED/);
+    expect(radar).toContain("REVENUE_RISK_AUTO_RESOLVED");
+  });
 });

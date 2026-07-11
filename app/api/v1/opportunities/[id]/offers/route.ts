@@ -1,52 +1,108 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
-// app/api/v1/opportunities/[id]/offers/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import {
+  runWithDatabaseSession,
+  TENANT_WRITE_ROLES,
+} from "@/lib/api-auth-guard";
 import { createOffer } from "@/lib/domain/transaction-spine";
 import { ErrorCode } from "@/lib/errors";
+import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const { id } = await params;
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
-    }
+  return runWithDatabaseSession(
+    request,
+    TENANT_WRITE_ROLES,
+    async (session) => {
+      try {
+        const { id } = await params;
 
-    const opportunity = await prisma.opportunity.findFirst({
-      where: { id, tenantId },
-    });
+        const opportunity = await prisma.opportunity.findFirst({
+          where: { id, tenantId: session.tenantId },
+          select: {
+            id: true,
+            leadId: true,
+            unitId: true,
+            value: true,
+          },
+        });
 
-    if (!opportunity) {
-      return NextResponse.json({ error: "الفرصة البيعية غير موجودة." }, { status: 404 });
-    }
+        if (!opportunity) {
+          return NextResponse.json(
+            { success: false, error: "الفرصة البيعية غير موجودة." },
+            { status: 404 },
+          );
+        }
 
-    const body = await request.json();
-    const { price, validUntil } = body;
+        const body = await request.json();
+        const { price, validUntil } = body;
 
-    if (!opportunity.unitId) {
-      return NextResponse.json({ error: "الوحدة العقارية مطلوبة لإنشاء العرض." }, { status: 400 });
-    }
+        if (!opportunity.unitId) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "الوحدة العقارية مطلوبة لإنشاء العرض.",
+            },
+            { status: 400 },
+          );
+        }
 
-    const offerPrice = price ? Number(price) : Number(opportunity.value);
-    const validityDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        const offerPrice = price ? Number(price) : Number(opportunity.value);
+        if (!Number.isFinite(offerPrice) || offerPrice <= 0) {
+          return NextResponse.json(
+            { success: false, error: "سعر العرض غير صالح." },
+            { status: 400 },
+          );
+        }
 
-    const offer = await createOffer({
-      tenantId,
-      userId: userId || "",
-      opportunityId: id,
-      unitId: opportunity.unitId,
-      price: offerPrice,
-      validUntil: validityDate,
-      documentUrl: `https://orca.az-ez.pro/documents/offer_${id}.pdf`,
-    });
+        const validityDate = validUntil
+          ? new Date(validUntil)
+          : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        if (Number.isNaN(validityDate.getTime())) {
+          return NextResponse.json(
+            { success: false, error: "تاريخ صلاحية العرض غير صالح." },
+            { status: 400 },
+          );
+        }
 
-    return NextResponse.json({ success: true, data: offer }, { status: 201 });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/opportunities/[id]/offers failed", error, 500);
-  }
+        const offer = await createOffer({
+          tenantId: session.tenantId,
+          userId: session.userId,
+          opportunityId: opportunity.id,
+          unitId: opportunity.unitId,
+          price: offerPrice,
+          validUntil: validityDate,
+        });
+
+        await writeAuditLog({
+          tenantId: session.tenantId,
+          userId: session.userId,
+          action: "LEAD_OFFER_CREATED",
+          tableName: "leads",
+          recordId: opportunity.leadId,
+          details: JSON.stringify({
+            opportunityId: opportunity.id,
+            offerId: offer.id,
+            unitId: opportunity.unitId,
+          }),
+        });
+
+        return NextResponse.json(
+          { success: true, data: offer },
+          { status: 201 },
+        );
+      } catch (error: unknown) {
+        return httpErrorResponse(
+          request,
+          ErrorCode.INTERNAL_ERROR,
+          "POST /api/v1/opportunities/[id]/offers failed",
+          error,
+          500,
+        );
+      }
+    },
+  );
 }

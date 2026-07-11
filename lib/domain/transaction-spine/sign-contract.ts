@@ -352,7 +352,7 @@ export async function signContract(input: SignContractInput) {
       if (contract.leadId) {
         await tx.lead.update({
           where: { id: contract.leadId },
-          data: { status: "CONTRACT_SIGNED", stage: "Closed", updatedBy: userId },
+          data: { status: "CONTRACT_SIGNED", updatedBy: userId },
         });
       }
 

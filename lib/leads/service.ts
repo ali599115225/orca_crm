@@ -6,7 +6,6 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
-import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
 import { hashPhone, hashEmail, normalizePhone } from "@/lib/privacy-mask";
 import {
@@ -59,7 +58,7 @@ export type CreateLeadResult = { success: true; leadId: string } | LeadActionFai
  *   (archived duplicates are surfaced so the UI can offer restore)
  * - manual assignment only (no findFirst auto-assignment); employees may
  *   only self-assign, managers may assign any active sales user
- * - plan limit inside the transaction
+ * - dedicated deployment: no subscription-count gate in the creation path
  * - notifications fully decoupled from the transaction (never fail creation)
  */
 export async function createLeadCore(params: {
@@ -100,6 +99,21 @@ export async function createLeadCore(params: {
     );
   }
 
+  let projectId: string | null = null;
+  if (input.projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: input.projectId, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!project) {
+      return leadFailure(
+        "VALIDATION",
+        "المشروع المحدد غير موجود أو لا يتبع هذه المنشأة.",
+      );
+    }
+    projectId = project.id;
+  }
+
   let assignedTo: string | null = null;
   if (input.assignedTo) {
     if (!actor) {
@@ -123,43 +137,33 @@ export async function createLeadCore(params: {
     assignedTo = targetUser.id;
   }
 
-  let lead;
-  try {
-    lead = await prisma.$transaction(async (tx) => {
-      await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
-      return tx.lead.create({
-        data: {
-          tenantId: tenant.id,
-          firstName: input.firstName,
-          lastName: input.lastName,
-          phone: input.phone,
-          phoneHash,
-          email: input.email,
-          emailHash: input.email ? hashEmail(input.email, tenant.id) : null,
-          city: input.city || "غير محدد",
-          source: input.source || "DIRECT",
-          status: "NEW",
-          projectId: input.projectId || null,
-          assignedTo,
-          createdBy: actor?.userId || null,
-          updatedBy: actor?.userId || null,
-        },
-        select: {
-          id: true,
-          firstName: true,
-          phone: true,
-          source: true,
-          assignedUser: { select: { id: true, name: true, phone: true } },
-        },
-      });
-    });
-  } catch (error) {
-    if (error instanceof PlanLimitError) {
-      logPlanBlockedAttempt({ tenantId: tenant.id, error }).catch(() => {});
-      return leadFailure("PLAN_LIMIT", error.message);
-    }
-    throw error;
-  }
+  const lead = await prisma.$transaction(async (tx) =>
+    tx.lead.create({
+      data: {
+        tenantId: tenant.id,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        phone: input.phone,
+        phoneHash,
+        email: input.email,
+        emailHash: input.email ? hashEmail(input.email, tenant.id) : null,
+        city: input.city || "غير محدد",
+        source: input.source || "DIRECT",
+        status: "NEW",
+        projectId,
+        assignedTo,
+        createdBy: actor?.userId || null,
+        updatedBy: actor?.userId || null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        phone: true,
+        source: true,
+        assignedUser: { select: { id: true, name: true, phone: true } },
+      },
+    }),
+  );
 
   await writeAuditLog({
     tenantId: tenant.id,

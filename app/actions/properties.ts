@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { issueContract } from "@/lib/domain/transaction-spine";
+import { getSession } from "@/lib/session";
+import { assertServerActionRole } from "@/lib/api-auth-guard";
+import { CONTRACT_WRITER_ROLES } from "@/lib/auth/contract-access-policy";
 
 /**
  * جلب العقارات والوحدات التابعة للشركاء والمشاريع الخاصة بالمنشأة الحالية
@@ -139,26 +142,49 @@ export async function bookUnitActionDirect(data: {
   bookingDate: string;
 }) {
   try {
+    const session = await getSession();
+
+    if (!session) {
+      return { success: false, error: "AUTH_REQUIRED" };
+    }
+
+    const verified = await assertServerActionRole(
+      session,
+      CONTRACT_WRITER_ROLES,
+    );
+
     const tenant = await getActiveTenant();
-    const session = await import("@/lib/session").then(m => m.getSession());
-    const userId = session?.userId || "";
+
+    if (tenant.id !== verified.tenantId) {
+      throw new Error("FORBIDDEN");
+    }
 
     const contract = await issueContract({
-      tenantId: tenant.id,
-      userId: userId as string,
+      tenantId: verified.tenantId,
+      userId: verified.userId,
       clientId: data.clientId,
       propertyId: data.unitId,
       amount: Number(data.offerPrice),
     });
 
     revalidatePath("/operations/properties");
-    return { success: true, contractId: contract.id };
-  } catch (error: any) {
+
+    return {
+      success: true,
+      contractId: contract.id,
+    };
+  } catch (error: unknown) {
     console.error("فشل إتمام حجز الوحدة والعقد:", error);
-    return { success: false, error: error.message };
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "CONTRACT_ISSUE_FAILED",
+    };
   }
 }
-
 /**
  * توثيق محضر معاينة وتسليم الوحدة (Handover) وحفظ البيانات في الحقل المخصص بجدول Unit
  */

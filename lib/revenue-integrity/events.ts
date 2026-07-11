@@ -16,65 +16,112 @@ export type RevenueEventInput = {
   topic?: string;
 };
 
-export async function appendRevenueEvent(input: RevenueEventInput) {
+type RevenueEventClient = {
+  revenueDomainEvent: {
+    findFirst: (args: unknown) => Promise<any>;
+    create: (args: unknown) => Promise<any>;
+  };
+  revenueAuditEntry: {
+    create: (args: unknown) => Promise<any>;
+  };
+  revenueOutboxMessage: {
+    create: (args: unknown) => Promise<any>;
+  };
+};
+
+async function appendRevenueEventWithClient(
+  client: RevenueEventClient,
+  input: RevenueEventInput,
+) {
   const correlationId = input.correlationId || randomUUID();
+  const existing = await client.revenueDomainEvent.findFirst({
+    where: {
+      tenantId: input.tenantId,
+      idempotencyKey: input.idempotencyKey,
+    },
+  });
 
-  return rawPrisma.$transaction(async (tx: any) => {
-    const existing = await tx.revenueDomainEvent.findFirst({
-      where: { tenantId: input.tenantId, idempotencyKey: input.idempotencyKey },
-    });
-    if (existing) return existing;
+  if (existing) return existing;
 
-    const event = await tx.revenueDomainEvent.create({
-      data: {
+  const event = await client.revenueDomainEvent.create({
+    data: {
+      tenantId: input.tenantId,
+      actorId: input.actorId || null,
+      aggregateType: input.aggregateType,
+      aggregateId: input.aggregateId,
+      eventType: input.eventType,
+      correlationId,
+      causationId: input.causationId || null,
+      idempotencyKey: input.idempotencyKey,
+      beforeData:
+        input.before === undefined
+          ? undefined
+          : (input.before as any),
+      afterData:
+        input.after === undefined
+          ? undefined
+          : (input.after as any),
+      metadata: (input.metadata || {}) as any,
+    },
+  });
+
+  await client.revenueAuditEntry.create({
+    data: {
+      tenantId: input.tenantId,
+      actorId: input.actorId || null,
+      action: input.eventType,
+      resourceType: input.aggregateType,
+      resourceId: input.aggregateId,
+      correlationId,
+      beforeData:
+        input.before === undefined
+          ? undefined
+          : (input.before as any),
+      afterData:
+        input.after === undefined
+          ? undefined
+          : (input.after as any),
+    },
+  });
+
+  await client.revenueOutboxMessage.create({
+    data: {
+      tenantId: input.tenantId,
+      eventId: event.id,
+      topic:
+        input.topic ||
+        `internal.${input.eventType.toLowerCase()}`,
+      payload: {
+        eventId: event.id,
         tenantId: input.tenantId,
-        actorId: input.actorId || null,
         aggregateType: input.aggregateType,
         aggregateId: input.aggregateId,
         eventType: input.eventType,
         correlationId,
-        causationId: input.causationId || null,
-        idempotencyKey: input.idempotencyKey,
-        beforeData: input.before === undefined ? undefined : (input.before as any),
-        afterData: input.after === undefined ? undefined : (input.after as any),
-        metadata: (input.metadata || {}) as any,
-      },
-    });
-
-    await tx.revenueAuditEntry.create({
-      data: {
-        tenantId: input.tenantId,
-        actorId: input.actorId || null,
-        action: input.eventType,
-        resourceType: input.aggregateType,
-        resourceId: input.aggregateId,
-        correlationId,
-        beforeData: input.before === undefined ? undefined : (input.before as any),
-        afterData: input.after === undefined ? undefined : (input.after as any),
-      },
-    });
-
-    await tx.revenueOutboxMessage.create({
-      data: {
-        tenantId: input.tenantId,
-        eventId: event.id,
-        topic: input.topic || `internal.${input.eventType.toLowerCase()}`,
-        payload: {
-          eventId: event.id,
-          tenantId: input.tenantId,
-          aggregateType: input.aggregateType,
-          aggregateId: input.aggregateId,
-          eventType: input.eventType,
-          correlationId,
-          occurredAt: event.occurredAt.toISOString(),
-          after: input.after ?? null,
-          metadata: input.metadata || {},
-        } as any,
-      },
-    });
-
-    return event;
+        occurredAt: event.occurredAt.toISOString(),
+        after: input.after ?? null,
+        metadata: input.metadata || {},
+      } as any,
+    },
   });
+
+  return event;
+}
+
+export async function appendRevenueEvent(
+  input: RevenueEventInput,
+  transactionClient?: RevenueEventClient,
+) {
+  if (transactionClient) {
+    return appendRevenueEventWithClient(
+      transactionClient,
+      input,
+    );
+  }
+
+  return rawPrisma.$transaction((tx: any) =>
+    appendRevenueEventWithClient(tx, input),
+  );
 }
 
 async function dispatchOutboxMessage(message: any) {
@@ -82,10 +129,16 @@ async function dispatchOutboxMessage(message: any) {
 
   const url = process.env.REVENUE_EVENT_SINK_URL;
   const secret = process.env.REVENUE_EVENT_SINK_SECRET;
-  if (!url || !secret) throw new Error("REVENUE_EVENT_SINK_NOT_CONFIGURED");
+
+  if (!url || !secret) {
+    throw new Error("REVENUE_EVENT_SINK_NOT_CONFIGURED");
+  }
 
   const body = JSON.stringify(message.payload);
-  const signature = createHmac("sha256", secret).update(body).digest("hex");
+  const signature = createHmac("sha256", secret)
+    .update(body)
+    .digest("hex");
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -102,18 +155,27 @@ async function dispatchOutboxMessage(message: any) {
   }
 }
 
-export async function processRevenueOutbox(limit = 50) {
+export async function processRevenueOutbox(
+  limit = 50,
+  tenantId?: string,
+) {
   const batchSize = Math.min(Math.max(limit, 1), 200);
-  const messages = await rawPrisma.revenueOutboxMessage.findMany({
-    where: {
-      status: { in: ["PENDING", "RETRY"] },
-      nextAttemptAt: { lte: new Date() },
-    },
-    orderBy: { createdAt: "asc" },
-    take: batchSize,
-  });
+  const messages =
+    await rawPrisma.revenueOutboxMessage.findMany({
+      where: {
+        ...(tenantId ? { tenantId } : {}),
+        status: { in: ["PENDING", "RETRY"] },
+        nextAttemptAt: { lte: new Date() },
+      },
+      orderBy: { createdAt: "asc" },
+      take: batchSize,
+    });
 
-  const result = { delivered: 0, retry: 0, deadLetter: 0 };
+  const result = {
+    delivered: 0,
+    retry: 0,
+    deadLetter: 0,
+  };
 
   for (const message of messages) {
     try {
@@ -132,15 +194,22 @@ export async function processRevenueOutbox(limit = 50) {
       const attempts = message.attempts + 1;
       const dead = attempts >= 8;
       const delayMinutes = Math.min(2 ** attempts, 360);
+
       await rawPrisma.revenueOutboxMessage.update({
         where: { id: message.id },
         data: {
           status: dead ? "DEAD_LETTER" : "RETRY",
           attempts,
-          lastError: error instanceof Error ? error.message.slice(0, 2000) : "UNKNOWN_OUTBOX_ERROR",
-          nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000),
+          lastError:
+            error instanceof Error
+              ? error.message.slice(0, 2000)
+              : "UNKNOWN_OUTBOX_ERROR",
+          nextAttemptAt: new Date(
+            Date.now() + delayMinutes * 60_000,
+          ),
         },
       });
+
       if (dead) result.deadLetter += 1;
       else result.retry += 1;
     }

@@ -69,7 +69,7 @@ export async function _createContractInTx(
   if (data.leadId) {
     await tx.lead.update({
       where: { id: data.leadId },
-      data: { status: "RESERVED", stage: "Contract" },
+      data: { status: "RESERVED" },
     });
   }
 

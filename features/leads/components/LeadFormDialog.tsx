@@ -18,6 +18,7 @@ import { FieldError } from "@/components/leads/helpers";
 import { localizeLeadError, type LeadsCopy } from "@/features/leads/copy/leadsCopy";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
+import { leadVisual } from "@/features/leads/visual";
 
 export interface LeadFormInitial {
   id?: string;
@@ -190,15 +191,13 @@ export default function LeadFormDialog({
     }
   };
 
-  const inputClass =
-    "lead-form-field min-h-[44px] w-full rounded-lg border border-[#0A1F3A]/10 bg-white px-3 text-sm font-semibold text-[#0A1F3A] outline-none transition-colors focus:border-[#D9AD55] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white";
-  const selectClass =
-    "min-h-[44px] [&>button]:min-h-[44px] [&>button]:rounded-lg [&>button]:border-[#0A1F3A]/10 [&>button]:bg-white [&>button]:text-[#0A1F3A] dark:[&>button]:border-white/10 dark:[&>button]:bg-[#0A1F3A] dark:[&>button]:text-white";
-  const labelClass = "mb-1.5 block text-xs font-bold text-[#0A1F3A]/60 dark:text-white/60";
+  const inputClass = `lead-form-field ${leadVisual.input}`;
+  const selectClass = `${leadVisual.select} w-full`;
+  const labelClass = `mb-1.5 block ${leadVisual.label}`;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+      className={leadVisual.modalOverlay}
       role="dialog"
       aria-modal="true"
       aria-labelledby="lead-form-title"
@@ -209,38 +208,38 @@ export default function LeadFormDialog({
       <form
         onSubmit={handleSubmit}
         dir={direction}
-        className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-xl border border-[#0A1F3A]/10 bg-white text-[#0A1F3A] shadow-2xl dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white sm:w-full"
+        className={leadVisual.modal}
       >
         <style>{`
           .lead-form-field:-webkit-autofill,
           .lead-form-field:-webkit-autofill:hover,
           .lead-form-field:-webkit-autofill:focus {
-            -webkit-text-fill-color: #0A1F3A;
-            box-shadow: 0 0 0 1000px #ffffff inset;
+            -webkit-text-fill-color: var(--nc-text-primary);
+            box-shadow: 0 0 0 1000px var(--nc-surface-solid) inset;
             transition: background-color 9999s ease-out;
           }
           .dark .lead-form-field:-webkit-autofill,
           .dark .lead-form-field:-webkit-autofill:hover,
           .dark .lead-form-field:-webkit-autofill:focus {
-            -webkit-text-fill-color: #ffffff;
-            box-shadow: 0 0 0 1000px #0A1F3A inset;
+            -webkit-text-fill-color: var(--nc-text-primary);
+            box-shadow: 0 0 0 1000px var(--nc-surface-solid) inset;
           }
         `}</style>
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#0A1F3A]/10 px-5 py-4 dark:border-white/10">
-          <h2 id="lead-form-title" className="text-base font-bold text-[#0A1F3A] dark:text-white">
+        <div className={leadVisual.modalHeader}>
+          <h2 id="lead-form-title" className="text-base font-bold text-[var(--nc-text-primary)]">
             {mode === "create" ? labels.formTitleCreate : labels.formTitleEdit}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0A1F3A]/10 bg-white text-[#0A1F3A]/60 transition-colors hover:text-[#0A1F3A] dark:border-white/10 dark:bg-[#0A1F3A] dark:text-white/60 dark:hover:text-white"
+            className={leadVisual.closeButton}
             aria-label={labels.cancel}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className={leadVisual.modalBody}>
           {formError && (
             <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
               <p>{formError}</p>
@@ -249,7 +248,7 @@ export default function LeadFormDialog({
                   type="button"
                   onClick={() => void handleRestoreDuplicate()}
                   disabled={restoring}
-                  className="mt-2 min-h-[36px] rounded-lg border border-[#D9AD55]/40 bg-[#D9AD55]/10 px-3 py-1.5 text-xs font-bold text-[#0A1F3A] transition-colors hover:bg-[#D9AD55]/20 disabled:cursor-not-allowed disabled:opacity-60 dark:text-white"
+                  className={leadVisual.secondaryButton}
                 >
                   {restoring ? labels.saving : labels.restoreAndOpen}
                 </button>
@@ -369,19 +368,19 @@ export default function LeadFormDialog({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-[#0A1F3A]/10 bg-white px-5 py-4 dark:border-white/10 dark:bg-[#0A1F3A] sm:flex-row sm:justify-end">
+        <div className={leadVisual.modalFooter}>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="nc-btn-ghost min-h-[42px] rounded-lg px-4 py-2 text-sm font-bold"
+            className={leadVisual.secondaryButton}
           >
             {labels.cancel}
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="min-h-[42px] rounded-lg bg-[#D9AD55] px-5 py-2 text-sm font-bold text-[#07182D] transition-colors hover:bg-[#EDC66D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D9AD55] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className={leadVisual.primaryButton}
           >
             {saving ? labels.saving : labels.save}
           </button>

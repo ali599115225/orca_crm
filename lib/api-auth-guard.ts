@@ -11,7 +11,7 @@ import {
   authBootstrapFindTenantActive,
 } from '@/lib/system-prisma-boundary';
 import { decrypt } from '@/lib/session';
-import { setTenantContext } from '@/lib/tenant-context';
+import { runWithTenantContext, setTenantContext } from '@/lib/tenant-context';
 import {
   ErrorCode,
   publicError,
@@ -147,6 +147,27 @@ export const TENANT_ROLES = [
   "MARKETING",
   "READ_ONLY",
 ] as const satisfies readonly string[];
+
+export const TENANT_WRITE_ROLES = [
+  "ADMIN",
+  "SALES_MANAGER",
+  "SALES_EMPLOYEE",
+] as const satisfies readonly string[];
+
+export async function runWithDatabaseSession(
+  request: NextRequest,
+  allowedRoles: readonly string[],
+  operation: (session: SessionPayload) => Promise<NextResponse> | NextResponse,
+): Promise<NextResponse> {
+  const auth = await requireDatabaseSession(request, allowedRoles);
+  if (auth.error) return auth.error;
+
+  const session = auth.session;
+  return await runWithTenantContext(
+    { tenantId: session.tenantId, userId: session.userId },
+    () => operation(session),
+  );
+}
 
 export type DatabaseSessionResult =
   | { session: SessionPayload; error: null }

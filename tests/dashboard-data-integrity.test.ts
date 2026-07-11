@@ -1,89 +1,105 @@
-import { describe, expect, it } from 'vitest';
-import fs from 'node:fs';
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
 
+const root = process.cwd();
+const featureRoot = path.join(root, "features/dashboard");
+
+const route = fs.readFileSync(
+  path.join(root, "app/operations/dashboard/DashboardView.tsx"),
+  "utf8",
+);
 const view = fs.readFileSync(
-  'app/operations/dashboard/DashboardView.tsx',
-  'utf8',
+  path.join(featureRoot, "components/DashboardView.tsx"),
+  "utf8",
+);
+const operations = fs.readFileSync(
+  path.join(featureRoot, "components/DailyOperationsCenter.tsx"),
+  "utf8",
+);
+const pipeline = fs.readFileSync(
+  path.join(featureRoot, "components/DealSpineSnapshot.tsx"),
+  "utf8",
 );
 
-describe('DASH-V02 data integrity', () => {
-  it('keeps WhatsApp visible with zero defaults', () => {
+function allFeatureSources(): string {
+  const files: string[] = [];
+
+  const walk = (directory: string) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(target);
+      } else if (/\.(ts|tsx)$/.test(entry.name)) {
+        files.push(fs.readFileSync(target, "utf8"));
+      }
+    }
+  };
+
+  walk(featureRoot);
+  return files.join("\n");
+}
+
+describe("Dashboard V3 data integrity boundary", () => {
+  it("keeps the route thin and delegates runtime ownership to the feature", () => {
+    expect(route).toContain(
+      'export { default } from "@/features/dashboard/components/DashboardView"',
+    );
+    expect(route).not.toContain("whatsAppStats");
+  });
+
+  it("keeps KPI, transaction spine, and daily operations isolated", () => {
+    expect(view).toContain("<DashboardKpiGrid");
+    expect(view).toContain("<DealSpineSnapshot");
+    expect(view).toContain("<DailyOperationsCenter");
+  });
+
+  it("keeps WhatsApp inside the unified operations center", () => {
+    expect(operations).toContain(
+      '"tasks" | "recentLeads" | "whatsapp"',
+    );
+    expect(operations).toContain('role="tablist"');
+    expect(operations).toContain('role="tabpanel"');
+    expect(operations).not.toContain("xl:col-span-8");
+    expect(operations).not.toContain("xl:col-span-4");
+  });
+
+  it("keeps the dashboard structure stable while search filters operations only", () => {
     expect(view).toContain(
-      'whatsAppStats = { conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 }',
+      'window.addEventListener("search-change"',
+    );
+    expect(operations).toContain("normalizedSearch");
+    expect(operations).toContain("whatsappMatchesSearch");
+    expect(view).not.toContain("pipelineVisible");
+    expect(view).not.toContain("anyWidgetVisible");
+  });
+
+  it("calculates pipeline percentages from the complete pipeline total", () => {
+    expect(pipeline).toContain(
+      "stage.count / pipeline.data.total",
+    );
+    expect(pipeline).not.toContain("filteredPipelineStages");
+  });
+
+  it("preserves explicit empty and error states", () => {
+    const source = allFeatureSources();
+
+    expect(source).toMatch(/kind\s*=\s*["']error["']/);
+    expect(source).toMatch(/kind\s*=\s*["']empty["']/);
+    expect(source).not.toContain(
+      "whatsAppStats = { conversationsCount: 0",
     );
   });
 
-  it('uses the approved requests and WhatsApp grid (8/12 and 4/12)', () => {
-    expect(view).toContain('xl:grid-cols-12');
-    expect(view).toContain('xl:col-span-8');
-    expect(view).toContain('xl:col-span-4');
-  });
+  it("does not restore agents, AI preview, or dashboard pagination", () => {
+    const source = allFeatureSources();
 
-  it('uses centralized translations', () => {
-    expect(view).toContain("t('tasks.viewAll')");
-    expect(view).toContain("t('dash.welcome')");
-    expect(view).toContain("t('kpi.totalLeads')");
-    expect(view).toContain("t('pipeline.title')");
-  });
-
-  it('uses items-start for operating row', () => {
-    expect(view).toMatch(/items-start[\s\S]*?Pipeline/);
-  });
-
-  it('does not display agents summary', () => {
-    expect(view).not.toContain('DashboardAgentsSummary');
-    expect(view).not.toContain('agents={dashboardAgents}');
-  });
-
-  it('does not contain AI Preview section', () => {
-    expect(view).not.toContain('AI / PREVIEW PANEL');
-    expect(view).not.toContain('aiPredictions');
-  });
-
-  it('uses DashboardMetricCard for KPI cards', () => {
-    expect(view).toContain("import DashboardMetricCard from './components/DashboardMetricCard'");
-    expect(view).toContain('<DashboardMetricCard');
-  });
-
-  it('shows no results message when search has no matches', () => {
-    expect(view).toContain('search.noResults');
-    expect(view).toContain('anyWidgetVisible');
-  });
-
-  it('search visibility follows filtered section data', () => {
-    expect(view).toContain('const pipelineVisible =');
-    expect(view).toContain('const tasksVisible =');
-    expect(view).toContain('const requestsVisible =');
-    expect(view).toContain('const whatsappVisible =');
-  });
-
-  it('keeps recent requests visible for matching lead details', () => {
-    expect(view).toContain('filteredRecentLeads.length > 0');
-    expect(view).toContain('{requestsVisible && (');
-  });
-
-  it('includes WhatsApp labels in search visibility', () => {
-    expect(view).toContain("t('tab.whatsapp')");
-    expect(view).toContain("t('kpi.whatsappConvos')");
-    expect(view).toContain("t('kpi.whatsappNewLeads')");
-    expect(view).toContain("t('kpi.unreadMessages')");
-    expect(view).toContain('whatsappVisible');
-  });
-
-  it('hides the requests and WhatsApp row when neither matches', () => {
-    expect(view).toContain(
-      '{(requestsVisible || whatsappVisible) && (',
-    );
-    expect(view).toContain('{whatsappVisible && (');
-    expect(view).toContain('!anyWidgetVisible');
-  });
-
-  it('calculates pipeline percentages from the complete pipeline', () => {
-    expect(view).toContain(
-      'const total = pipelineStages.reduce',
-    );
-    expect(view).not.toContain(
-      'const total = filteredPipelineStages.reduce',
-    );
+    expect(source).not.toContain("DashboardAgentsSummary");
+    expect(source).not.toContain("AI / PREVIEW PANEL");
+    expect(source).not.toContain("aiPredictions");
+    expect(source).not.toContain("DashboardPager");
+    expect(source).not.toContain("tasksPage");
+    expect(source).not.toContain("requestsPage");
   });
 });

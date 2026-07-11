@@ -382,11 +382,67 @@ export async function getLeadDetailAction(leadId: string) {
         return leadFailure("NOT_FOUND", "العميل غير موجود أو لا يتبع هذه المنشأة.");
       }
 
+      const opportunityIds = lead.opportunities.map((opportunity) => opportunity.id);
+      const offerIds = lead.opportunities.flatMap((opportunity) =>
+        opportunity.offers.map((offer) => offer.id),
+      );
+      const tourIds = lead.tours.map((tour) => tour.id);
+      const taskIds = lead.tasks.map((task) => task.id);
+      const contractIds = (
+        await prisma.contract.findMany({
+          where: { tenantId: tenant.id, leadId },
+          select: { id: true },
+        })
+      ).map((contract) => contract.id);
+
+      const historyScopes: Prisma.AuditLogWhereInput[] = [
+        { tableName: "leads", recordId: leadId },
+      ];
+      if (opportunityIds.length) {
+        historyScopes.push({
+          tableName: "opportunities",
+          recordId: { in: opportunityIds },
+        });
+      }
+      if (offerIds.length) {
+        historyScopes.push({
+          tableName: "offers",
+          recordId: { in: offerIds },
+        });
+      }
+      if (tourIds.length) {
+        historyScopes.push({
+          tableName: "tours",
+          recordId: { in: tourIds },
+        });
+      }
+      if (taskIds.length) {
+        historyScopes.push({
+          tableName: "tasks",
+          recordId: { in: taskIds },
+        });
+      }
+      if (contractIds.length) {
+        historyScopes.push({
+          tableName: "contracts",
+          recordId: { in: contractIds },
+        });
+      }
+
       const history = await prisma.auditLog.findMany({
-        where: { tenantId: tenant.id, tableName: "leads", recordId: leadId },
+        where: {
+          tenantId: tenant.id,
+          OR: historyScopes,
+        },
         orderBy: { createdAt: "desc" },
-        take: 50,
-        select: { id: true, action: true, details: true, createdAt: true, userId: true },
+        take: 100,
+        select: {
+          id: true,
+          action: true,
+          details: true,
+          createdAt: true,
+          userId: true,
+        },
       });
 
       const historyUserIds = Array.from(
@@ -677,7 +733,21 @@ export async function updateLeadAction(
       if (input.city !== undefined) data.city = input.city.trim() || "غير محدد";
       if (input.source !== undefined) data.source = input.source.trim() || "DIRECT";
       if (input.projectId !== undefined) {
-        data.project = input.projectId ? { connect: { id: input.projectId } } : { disconnect: true };
+        if (input.projectId) {
+          const project = await prisma.project.findFirst({
+            where: { id: input.projectId, tenantId: tenant.id },
+            select: { id: true },
+          });
+          if (!project) {
+            return leadFailure(
+              "VALIDATION",
+              "المشروع المحدد غير موجود أو لا يتبع هذه المنشأة.",
+            );
+          }
+          data.project = { connect: { id: project.id } };
+        } else {
+          data.project = { disconnect: true };
+        }
       }
 
       if (input.phone !== undefined) {
@@ -876,6 +946,85 @@ export async function restoreLeadAction(leadId: string): Promise<LeadMutationRes
       revalidatePath("/operations/leads");
       revalidatePath(`/operations/leads/${leadId}`);
       return { success: true as const };
+      },
+    );
+  } catch (error) {
+    return mapCaughtError(error);
+  }
+}
+
+// ── WhatsApp communication activity ──────────────────────────────────────────
+
+export type LeadWhatsAppActivityMode = "SENT" | "OPENED";
+
+export async function recordLeadWhatsAppActivityAction(
+  leadId: string,
+  mode: LeadWhatsAppActivityMode,
+  message: string,
+): Promise<LeadMutationResult> {
+  try {
+    const session = await getSession();
+    if (!session) throw new Error("UNAUTHORIZED");
+    const verified = await assertServerActionRole(session, LEADS_WRITER_ROLES);
+
+    return await runWithTenantContext(
+      tenantContextFromSession(session),
+      async () => {
+        const tenant = await getActiveTenant();
+        const lead = await prisma.lead.findFirst({
+          where: { id: leadId, tenantId: tenant.id },
+          select: { id: true, phone: true },
+        });
+
+        if (!lead) {
+          return leadFailure(
+            "NOT_FOUND",
+            "العميل غير موجود أو لا يتبع هذه المنشأة.",
+          );
+        }
+
+        const trimmedMessage = String(message || "").trim();
+        if (!trimmedMessage) {
+          return leadFailure("VALIDATION", "نص رسالة واتساب مطلوب.");
+        }
+
+        const preview =
+          trimmedMessage.length > 160
+            ? `${trimmedMessage.slice(0, 157)}...`
+            : trimmedMessage;
+        const action =
+          mode === "SENT" ? "LEAD_WHATSAPP_SENT" : "LEAD_WHATSAPP_OPENED";
+        const description =
+          mode === "SENT"
+            ? `تم إرسال رسالة واتساب إلى ${lead.phone}: ${preview}`
+            : `تم فتح محادثة واتساب مع ${lead.phone}: ${preview}`;
+
+        await prisma.leadActivity.create({
+          data: {
+            tenantId: tenant.id,
+            leadId,
+            userId: verified.userId,
+            activityType: "WHATSAPP",
+            description,
+          },
+        });
+
+        await writeAuditLog({
+          tenantId: tenant.id,
+          userId: verified.userId,
+          action,
+          tableName: "leads",
+          recordId: leadId,
+          details: JSON.stringify({
+            mode,
+            phone: lead.phone,
+            messageLength: trimmedMessage.length,
+          }),
+        });
+
+        revalidatePath(`/operations/leads/${leadId}`);
+        revalidatePath("/operations/whatsapp");
+        return { success: true as const };
       },
     );
   } catch (error) {

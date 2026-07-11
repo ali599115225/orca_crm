@@ -1,47 +1,79 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
-// app/api/v1/contacts/[id]/notes/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import {
+  runWithDatabaseSession,
+  TENANT_WRITE_ROLES,
+} from "@/lib/api-auth-guard";
 import { ErrorCode } from "@/lib/errors";
+import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const { id } = await params;
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId) {
-      return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
-    }
+  return runWithDatabaseSession(
+    request,
+    TENANT_WRITE_ROLES,
+    async (session) => {
+      try {
+        const { id } = await params;
+        const body = await request.json();
+        const note = String(body.note || "").trim();
 
-    const body = await request.json();
-    const { note } = body;
+        if (!note) {
+          return NextResponse.json(
+            { success: false, error: "محتوى الملاحظة مطلوب." },
+            { status: 400 },
+          );
+        }
 
-    if (!note) {
-      return NextResponse.json({ error: "محتوى الملاحظة مطلوب." }, { status: 400 });
-    }
+        const contact = await prisma.contact.findFirst({
+          where: { id, tenantId: session.tenantId },
+        });
 
-    const contact = await prisma.contact.findFirst({
-      where: { id, tenantId },
-    });
+        if (!contact) {
+          return NextResponse.json(
+            { success: false, error: "جهة الاتصال غير موجودة." },
+            { status: 404 },
+          );
+        }
 
-    if (!contact) {
-      return NextResponse.json({ error: "جهة الاتصال غير موجودة." }, { status: 404 });
-    }
+        const now = new Date().toISOString();
+        const updatedContact = await prisma.contact.update({
+          where: { id: contact.id },
+          data: {
+            notes: `${contact.notes || ""}\n[Note at ${now}]: ${note}`.trim(),
+            updatedBy: session.userId,
+            auditLog:
+              `${contact.auditLog || ""}\nAdded note at ${now}`.trim(),
+          },
+        });
 
-    const updatedContact = await prisma.contact.update({
-      where: { id },
-      data: {
-        notes: `${contact.notes || ""}\n[Note at ${new Date().toISOString()}]: ${note}`.trim(),
-        updatedBy: userId || null,
-        auditLog: `${contact.auditLog || ""}\nAdded note at ${new Date().toISOString()}`.trim(),
-      },
-    });
+        if (contact.leadId) {
+          await writeAuditLog({
+            tenantId: session.tenantId,
+            userId: session.userId,
+            action: "LEAD_CONTACT_NOTE_ADDED",
+            tableName: "leads",
+            recordId: contact.leadId,
+            details: JSON.stringify({ contactId: contact.id }),
+          });
+        }
 
-    return NextResponse.json({ success: true, data: updatedContact });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/contacts/[id]/notes failed", error, 500);
-  }
+        return NextResponse.json({
+          success: true,
+          data: updatedContact,
+        });
+      } catch (error: unknown) {
+        return httpErrorResponse(
+          request,
+          ErrorCode.INTERNAL_ERROR,
+          "POST /api/v1/contacts/[id]/notes failed",
+          error,
+          500,
+        );
+      }
+    },
+  );
 }

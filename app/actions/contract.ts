@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { issueContract } from "@/lib/domain/transaction-spine";
 import { runWithTenantContext } from "@/lib/tenant-context";
 
-const CONTRACT_WRITER_ROLES = ["ADMIN", "owner", "SALES_MANAGER"] as const;
+import { CONTRACT_WRITER_ROLES } from "@/lib/auth/contract-access-policy";
 const CONTRACT_READER_ROLES = [
   "ADMIN",
   "owner",

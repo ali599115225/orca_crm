@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getTenantAndUser } from "@/lib/api-helpers";
+import { requireDatabaseSession } from "@/lib/api-auth-guard";
+import { CONTRACT_WRITER_ROLES } from "@/lib/auth/contract-access-policy";
 import { issueContract } from "@/lib/domain/transaction-spine";
 
 export async function GET(request: NextRequest) {
   try {
-    const { tenantId } = await getTenantAndUser(request);
-    if (!tenantId) return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
+    const auth = await requireDatabaseSession(request, CONTRACT_WRITER_ROLES);
+    if (auth.error) return auth.error;
+    const { tenantId } = auth.session;
 
     const [leads, contacts, units] = await Promise.all([
       prisma.lead.findMany({
@@ -60,8 +62,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId, userId } = await getTenantAndUser(request);
-    if (!tenantId || !userId) return NextResponse.json({ error: "غير مصرح بالوصول." }, { status: 401 });
+    const auth = await requireDatabaseSession(request, CONTRACT_WRITER_ROLES);
+    if (auth.error) return auth.error;
+    const { tenantId, userId } = auth.session;
     const body = await request.json();
     const { clientId, propertyId, amount } = body;
 

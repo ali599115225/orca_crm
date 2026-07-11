@@ -78,6 +78,11 @@ export interface LeadsExtraCopy {
   scoreLabel: string;
   activityBy: string;
   detailLoadFailed: string;
+  forbiddenTitle: string;
+  forbiddenDescription: string;
+  returnToDashboard: string;
+  routeErrorTitle: string;
+  routeErrorDescription: string;
 }
 
 export type LeadsCopy = Copy & LeadsExtraCopy;
@@ -252,6 +257,11 @@ export const leadsCopy: Record<"ar" | "en", LeadsCopy> = {
     scoreLabel: "التقييم",
     activityBy: "بواسطة",
     detailLoadFailed: "تعذر تحميل بيانات العميل",
+    forbiddenTitle: "الوصول غير مسموح",
+    forbiddenDescription: "لا تملك صلاحية عرض صفحة العملاء المحتملين. راجع مدير النظام إذا كنت تحتاج هذا الوصول.",
+    returnToDashboard: "العودة إلى لوحة التحكم",
+    routeErrorTitle: "تعذر فتح صفحة العملاء",
+    routeErrorDescription: "حدث خطأ غير متوقع أثناء تحميل الصفحة. أعد المحاولة دون فقد بياناتك.",
   },
   en: {
     breadcrumb: "Operations / Leads",
@@ -422,6 +432,11 @@ export const leadsCopy: Record<"ar" | "en", LeadsCopy> = {
     scoreLabel: "Score",
     activityBy: "by",
     detailLoadFailed: "Failed to load lead data",
+    forbiddenTitle: "Access denied",
+    forbiddenDescription: "You do not have permission to view Leads. Contact an administrator if you need access.",
+    returnToDashboard: "Back to dashboard",
+    routeErrorTitle: "Leads could not be opened",
+    routeErrorDescription: "An unexpected error occurred while loading this page. Retry without losing your data.",
   },
 };
 
@@ -438,6 +453,25 @@ export function leadHistoryActionLabel(action: string, lang: "ar" | "en"): strin
     LEAD_ARCHIVED: { ar: "أرشفة العميل", en: "Lead archived" },
     LEAD_RESTORED: { ar: "استعادة العميل", en: "Lead restored" },
     LEAD_DETAIL_READ: { ar: "اطلاع على الملف", en: "Profile viewed" },
+    LEAD_OPPORTUNITY_CREATED: { ar: "إنشاء فرصة", en: "Opportunity created" },
+    LEAD_OFFER_CREATED: { ar: "إنشاء عرض", en: "Offer created" },
+    LEAD_OFFER_ACCEPTED: { ar: "قبول العرض", en: "Offer accepted" },
+    LEAD_TOUR_SCHEDULED: { ar: "جدولة جولة", en: "Tour scheduled" },
+    LEAD_TOUR_STATUS_UPDATED: { ar: "تحديث حالة الجولة", en: "Tour status updated" },
+    LEAD_TASK_CREATED: { ar: "إنشاء مهمة", en: "Task created" },
+    LEAD_TASK_COMPLETED: { ar: "إكمال مهمة", en: "Task completed" },
+    LEAD_CONTACT_CREATED: { ar: "إضافة جهة اتصال", en: "Contact created" },
+    LEAD_CONTACT_NOTE_ADDED: { ar: "إضافة ملاحظة تواصل", en: "Contact note added" },
+    LEAD_WHATSAPP_SENT: { ar: "إرسال رسالة واتساب", en: "WhatsApp message sent" },
+    LEAD_WHATSAPP_OPENED: { ar: "فتح محادثة واتساب", en: "WhatsApp conversation opened" },
+    CREATE_OFFER: { ar: "إنشاء عرض", en: "Offer created" },
+    ACCEPT_OFFER_RESERVE_UNIT: { ar: "قبول العرض وحجز الوحدة", en: "Offer accepted and unit reserved" },
+    ACCEPT_OFFER_CREATE_DRAFT_CONTRACT: { ar: "إنشاء عقد مبدئي", en: "Draft contract created" },
+    CREATE_DRAFT_CONTRACT: { ar: "إنشاء عقد مبدئي", en: "Draft contract created" },
+    EXPIRE_DRAFT_CONTRACT: { ar: "انتهاء العقد المبدئي", en: "Draft contract expired" },
+    CANCEL_DRAFT_CONTRACT: { ar: "إلغاء العقد المبدئي", en: "Draft contract cancelled" },
+    SIGN_CONTRACT: { ar: "توقيع العقد", en: "Contract signed" },
+    ACTIVATE_SALE_FINANCIALS: { ar: "تفعيل البيانات المالية", en: "Sale financials activated" },
   };
   const entry = map[action];
   if (entry) return entry[lang];
@@ -450,6 +484,8 @@ export function taskStatusLabel(status: string, lang: "ar" | "en"): string {
     PENDING: { ar: "معلقة", en: "Pending" },
     COMPLETED: { ar: "مكتملة", en: "Completed" },
     OVERDUE: { ar: "متأخرة", en: "Overdue" },
+    IN_PROGRESS: { ar: "قيد التنفيذ", en: "In progress" },
+    CANCELLED: { ar: "ملغاة", en: "Cancelled" },
   };
   const entry = map[status];
   if (entry) return entry[lang];
@@ -489,7 +525,7 @@ export function localizeLeadError(
     VALIDATION: "تحقق من الحقول المدخلة.",
     DUPLICATE_ACTIVE: "هذا الرقم مسجل مسبقًا لعميل قائم.",
     DUPLICATE_ARCHIVED: "هذا الرقم يعود لعميل مؤرشف — يمكن استعادته.",
-    PLAN_LIMIT: "وصلت لحد الباقة الحالية لعدد العملاء.",
+    PLAN_LIMIT: "تعذر إنشاء العميل بسبب قيد تشغيلي.",
     INTERNAL: "تعذر تنفيذ العملية، حاول مرة أخرى.",
   };
   const en: Record<string, string> = {
@@ -499,7 +535,7 @@ export function localizeLeadError(
     VALIDATION: "Please review the entered fields.",
     DUPLICATE_ACTIVE: "This phone number already belongs to an existing lead.",
     DUPLICATE_ARCHIVED: "This phone number belongs to an archived lead — it can be restored.",
-    PLAN_LIMIT: "You reached the current plan limit for leads.",
+    PLAN_LIMIT: "The lead could not be created because of an operational restriction.",
     INTERNAL: "The operation could not be completed, please try again.",
   };
 
@@ -519,4 +555,121 @@ export function localizeLeadError(
     return table[code];
   }
   return table.INTERNAL;
+}
+
+/** Localized opportunity statuses — raw workflow values never reach the UI. */
+export function opportunityStatusLabel(status: string, lang: "ar" | "en"): string {
+  const map: Record<string, { ar: string; en: string }> = {
+    OPEN: { ar: "مفتوحة", en: "Open" },
+    QUALIFIED: { ar: "مؤهلة", en: "Qualified" },
+    PROPOSAL: { ar: "عرض مبدئي", en: "Proposal" },
+    OFFERED: { ar: "تم تقديم عرض", en: "Offered" },
+    NEGOTIATION: { ar: "تفاوض", en: "Negotiation" },
+    WON: { ar: "ناجحة", en: "Won" },
+    CLOSED_WON: { ar: "مغلقة بنجاح", en: "Closed won" },
+    LOST: { ar: "مفقودة", en: "Lost" },
+    CLOSED_LOST: { ar: "مغلقة دون نجاح", en: "Closed lost" },
+    CANCELLED: { ar: "ملغاة", en: "Cancelled" },
+  };
+  const entry = map[String(status || "").toUpperCase()];
+  if (entry) return entry[lang];
+  return lang === "ar" ? "غير محددة" : "Not specified";
+}
+
+/**
+ * Email-provider failures are categorized and localized. Provider payloads,
+ * environment-variable names, credentials, and raw technical messages are
+ * never rendered.
+ */
+export function localizeEmailProviderError(
+  value: unknown,
+  lang: "ar" | "en",
+): string {
+  const message = String(value || "").replace(/\s+/g, " ").trim();
+  const keyIssue =
+    /resend_api_key|api[_ -]?key|missing.*key|unauthorized|forbidden|\b401\b|\b403\b/i.test(
+      message,
+    ) ||
+    /خدمة البريد غير مهيأة|مفتاح مزود البريد/i.test(message);
+  const senderIssue =
+    /domain|sender|from.*verified|verification/i.test(message) ||
+    /عنوان المرسل|النطاق غير موثق/i.test(message);
+  const testModeIssue =
+    /testing|test mode|only send|recipient/i.test(message) ||
+    /وضع الاختبار|لا يسمح بهذا المستلم/i.test(message);
+  const invalidAddress =
+    /invalid.*email|email.*invalid/i.test(message) ||
+    /عنوان البريد الإلكتروني غير صالح/i.test(message);
+  const rateIssue =
+    /rate|too many|\b429\b/i.test(message) ||
+    /تجاوز حد إرسال البريد/i.test(message);
+
+  if (lang === "ar") {
+    if (keyIssue) return "خدمة البريد غير مهيأة حاليًا. تواصل مع مسؤول النظام.";
+    if (senderIssue) return "تعذر الإرسال لأن عنوان المرسل غير موثق.";
+    if (testModeIssue) return "خدمة البريد في وضع الاختبار ولا تسمح بهذا المستلم.";
+    if (invalidAddress) return "عنوان البريد الإلكتروني غير صالح.";
+    if (rateIssue) return "تم تجاوز حد الإرسال مؤقتًا. حاول لاحقًا.";
+    return "تعذر إرسال البريد من مزود الخدمة.";
+  }
+
+  if (keyIssue) return "Email is not configured. Contact an administrator.";
+  if (senderIssue) return "The message could not be sent because the sender is not verified.";
+  if (testModeIssue) return "Email is in test mode and cannot send to this recipient.";
+  if (invalidAddress) return "The email address is invalid.";
+  if (rateIssue) return "The email sending limit was reached. Try again later.";
+  return "The email provider could not send the message.";
+}
+
+/** Localize only platform-generated task titles; user-authored titles remain unchanged. */
+export function localizeSystemLeadTaskTitle(
+  title: string,
+  lang: "ar" | "en",
+): string {
+  const raw = String(title || "").trim();
+  const arabicMatch = raw.match(/^تواصل ترحيبي مع العميل:\s*(.*)$/i);
+  const englishMatch = raw.match(/^Welcome follow-up with (?:the )?lead:\s*(.*)$/i);
+  const name = arabicMatch?.[1] || englishMatch?.[1];
+
+  if (!name) return raw;
+  return lang === "ar"
+    ? `تواصل ترحيبي مع العميل: ${name}`
+    : `Welcome follow-up with lead: ${name}`;
+}
+
+/** Localize known platform activity descriptions without altering user notes. */
+export function localizeSystemLeadActivityDescription(
+  description: string,
+  lang: "ar" | "en",
+): string {
+  const raw = String(description || "").trim();
+
+  const emailAr = raw.match(/^أرسل بريد إلى (.+?) — الموضوع:\s*(.+)$/);
+  const emailEn = raw.match(/^Email sent to (.+?) — subject:\s*(.+)$/i);
+  const email = emailAr || emailEn;
+  if (email) {
+    return lang === "ar"
+      ? `تم إرسال بريد إلى ${email[1]} — الموضوع: ${email[2]}`
+      : `Email sent to ${email[1]} — subject: ${email[2]}`;
+  }
+
+  const sentWhatsAppAr = raw.match(/^تم إرسال رسالة واتساب إلى (.+?):\s*(.+)$/);
+  const sentWhatsAppEn = raw.match(/^WhatsApp message sent to (.+?):\s*(.+)$/i);
+  const sentWhatsApp = sentWhatsAppAr || sentWhatsAppEn;
+  if (sentWhatsApp) {
+    return lang === "ar"
+      ? `تم إرسال رسالة واتساب إلى ${sentWhatsApp[1]}: ${sentWhatsApp[2]}`
+      : `WhatsApp message sent to ${sentWhatsApp[1]}: ${sentWhatsApp[2]}`;
+  }
+
+  const openedWhatsAppAr = raw.match(/^تم فتح محادثة واتساب مع (.+?):\s*(.+)$/);
+  const openedWhatsAppEn = raw.match(/^WhatsApp conversation opened with (.+?):\s*(.+)$/i);
+  const openedWhatsApp = openedWhatsAppAr || openedWhatsAppEn;
+  if (openedWhatsApp) {
+    return lang === "ar"
+      ? `تم فتح محادثة واتساب مع ${openedWhatsApp[1]}: ${openedWhatsApp[2]}`
+      : `WhatsApp conversation opened with ${openedWhatsApp[1]}: ${openedWhatsApp[2]}`;
+  }
+
+  return raw;
 }

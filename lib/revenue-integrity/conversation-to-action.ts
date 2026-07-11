@@ -358,7 +358,7 @@ export async function approveActionSuggestion(tenantId: string, actorId: string,
       tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
       eventType: "ACTION_SUGGESTION_APPROVED", idempotencyKey: `suggestion-approved:${suggestion.id}`,
       before: suggestion, after: updated,
-    });
+    }, tx);
     return updated;
   });
 
@@ -387,11 +387,105 @@ export async function rejectActionSuggestion(tenantId: string, actorId: string, 
       tenantId, actorId, aggregateType: "RevenueActionSuggestion", aggregateId: suggestion.id,
       eventType: "ACTION_SUGGESTION_REJECTED", idempotencyKey: `suggestion-rejected:${suggestion.id}`,
       before: suggestion, after: updated,
-    });
+    }, tx);
     return updated;
   });
 
   return rejected;
+}
+
+/** Action types that cannot execute without a linked lead. */
+export const LEAD_REQUIRED_ACTION_TYPES = [
+  "FOLLOW_UP",
+  "COLLECTION_FOLLOW_UP",
+  "CREATE_TASK",
+  "SCHEDULE_TOUR",
+] as const;
+
+function resolvedSuggestionLeadId(suggestion: any): string | null {
+  const entities = (suggestion.extractedEntities || {}) as Record<string, unknown>;
+  const leadId = suggestion.leadId || entities.leadId;
+  return leadId ? String(leadId) : null;
+}
+
+export function suggestionRequiresLeadLink(suggestion: {
+  actionType: string;
+  leadId?: string | null;
+  extractedEntities?: unknown;
+}): boolean {
+  return (
+    (LEAD_REQUIRED_ACTION_TYPES as readonly string[]).includes(
+      suggestion.actionType,
+    ) && !resolvedSuggestionLeadId(suggestion)
+  );
+}
+
+function isLeadLinkRecoverableFailure(suggestion: any): boolean {
+  const error =
+    suggestion.executionResult &&
+    typeof suggestion.executionResult.error === "string"
+      ? suggestion.executionResult.error
+      : "";
+  return error.includes("LEAD_ID_REQUIRED");
+}
+
+export async function linkActionSuggestionLead(
+  tenantId: string,
+  actorId: string,
+  suggestionId: string,
+  leadId: string,
+) {
+  const normalizedLeadId = String(leadId || "").trim();
+  if (!normalizedLeadId) throw new Error("LEAD_ID_REQUIRED_FOR_LINK");
+
+  const suggestion = await rawPrisma.revenueActionSuggestion.findFirst({
+    where: { id: suggestionId, tenantId },
+  });
+  if (!suggestion) throw new Error("SUGGESTION_NOT_FOUND");
+
+  if (suggestion.status === "EXECUTED") throw new Error("CANNOT_LINK_EXECUTED");
+  if (suggestion.status === "REJECTED") throw new Error("CANNOT_LINK_REJECTED");
+  if (
+    suggestion.status === "FAILED" &&
+    !isLeadLinkRecoverableFailure(suggestion)
+  ) {
+    throw new Error("CANNOT_LINK_FAILED");
+  }
+
+  const lead = await rawPrisma.lead.findFirst({
+    where: { id: normalizedLeadId, tenantId },
+  });
+  if (!lead) throw new Error("CROSS_TENANT_LEAD_ACCESS_DENIED");
+
+  if (suggestion.leadId === lead.id && suggestion.status !== "FAILED") {
+    return suggestion;
+  }
+
+  const healsFailure = suggestion.status === "FAILED";
+
+  return rawPrisma.$transaction(async (tx: any) => {
+    const updated = await tx.revenueActionSuggestion.update({
+      where: { id: suggestion.id },
+      data: {
+        leadId: lead.id,
+        ...(healsFailure
+          ? { status: "APPROVED", executionResult: null as any }
+          : {}),
+      },
+    });
+    await appendRevenueEvent({
+      tenantId,
+      actorId,
+      aggregateType: "RevenueActionSuggestion",
+      aggregateId: suggestion.id,
+      eventType: "ACTION_SUGGESTION_LEAD_LINKED",
+      idempotencyKey: `suggestion-lead-linked:${suggestion.id}:${lead.id}`,
+      before: suggestion,
+      after: updated,
+      metadata: { leadId: lead.id, healedFailure: healsFailure },
+    }, tx);
+    return updated;
+  });
 }
 
 export async function executeActionSuggestion(tenantId: string, actorId: string, suggestionId: string) {
@@ -403,6 +497,12 @@ export async function executeActionSuggestion(tenantId: string, actorId: string,
   if (suggestion.status === "EXECUTED") return suggestion;
   if (suggestion.status === "FAILED") return suggestion;
   if (suggestion.status !== "APPROVED") throw new Error("CANNOT_EXECUTE_NOT_APPROVED");
+
+  // Precondition, not an execution failure: the suggestion stays APPROVED and
+  // executable after the operator links a lead.
+  if (suggestionRequiresLeadLink(suggestion)) {
+    throw new Error("LEAD_LINK_REQUIRED");
+  }
 
   let executionResult: Record<string, unknown>;
   let finalStatus: "EXECUTED" | "FAILED";
@@ -428,7 +528,7 @@ export async function executeActionSuggestion(tenantId: string, actorId: string,
       eventType, idempotencyKey: `suggestion-executed:${suggestion.id}`,
       before: suggestion, after: updated,
       metadata: { executionResult },
-    });
+    }, tx);
     return updated;
   });
 

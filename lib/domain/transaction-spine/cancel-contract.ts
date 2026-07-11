@@ -107,7 +107,7 @@ export async function cancelDraftContract(input: CancelContractInput) {
       if (contract.leadId) {
         await tx.lead.updateMany({
           where: { id: contract.leadId, tenantId, status: "RESERVED" },
-          data: { status: "CONTACTED", stage: "Open", updatedBy: userId },
+          data: { status: "CONTACTED", updatedBy: userId },
         });
       }
 

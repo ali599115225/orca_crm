@@ -22,6 +22,9 @@ describe("Leads list page architecture", () => {
     const page = read("app/operations/leads/page.tsx");
     expect(page).toContain("LeadsWorkspace");
     expect(page).toContain("getSession");
+    expect(page).toContain("assertServerActionRole");
+    expect(page).toContain("LEADS_READER_ROLES");
+    expect(page).toContain('state="forbidden"');
   });
 
   it("LeadsWorkspace is list-only: no embedded detail panel, navigates to [id]", () => {
@@ -78,12 +81,33 @@ describe("Leads list page architecture", () => {
   });
 });
 
+describe("Leads route-state closure", () => {
+  it("owns loading, error, and forbidden states without changing the global shell", () => {
+    expect(fs.existsSync(path.join(root, "app/operations/leads/loading.tsx"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "app/operations/leads/error.tsx"))).toBe(true);
+
+    const loading = read("app/operations/leads/loading.tsx");
+    const error = read("app/operations/leads/error.tsx");
+    const state = read("features/leads/components/LeadsRouteState.tsx");
+
+    expect(loading).toContain('aria-busy="true"');
+    expect(error).toContain('state="error"');
+    expect(error).toContain("reset");
+    expect(state).toContain('"forbidden" | "error"');
+    expect(state).toContain("leadsCopy");
+    expect(state).not.toContain("SovereignHeader");
+  });
+});
+
 describe("Lead detail page architecture", () => {
   it("detail page is server-guarded and renders the official client", () => {
     const page = read("app/operations/leads/[id]/page.tsx");
     expect(page).toContain("getLeadDetailAction");
     expect(page).toContain("getSession");
     expect(page).toContain("LeadDetailClient");
+    expect(page).toContain('result.code === "FORBIDDEN"');
+    expect(page).toContain('result.code === "NOT_FOUND"');
+    expect(page).toContain("LEADS_DETAIL_LOAD_FAILED");
   });
 
   it("detail client offers status change, assignment, edit, archive — no hard delete", () => {
@@ -124,6 +148,19 @@ describe("Lead detail page architecture", () => {
     expect(detail).toContain('id: "communication"');
     expect(detail).toContain('id: "history"');
     expect(read("features/leads/components/LeadsWorkspace.tsx")).not.toContain("EngagementTabs");
+  });
+  it("localizes system task titles, activity descriptions, provider errors, and opportunity statuses", () => {
+    const detail = read("features/leads/components/LeadDetailClient.tsx");
+    const copy = read("features/leads/copy/leadsCopy.ts");
+    const opportunities = read("components/leads/panels/LeadOpportunitiesPanel.tsx");
+
+    expect(detail).toContain("localizeSystemLeadTaskTitle(task.title, langKey)");
+    expect(detail).toContain("localizeSystemLeadActivityDescription(");
+    expect(detail).toContain("localizeEmailProviderError(");
+    expect(copy).toContain("export function opportunityStatusLabel");
+    expect(copy).toContain('OPEN: { ar: "مفتوحة", en: "Open" }');
+    expect(opportunities).toContain("opportunityStatusLabel(");
+    expect(opportunities).not.toContain("|| opportunity.status");
   });
 });
 
@@ -174,5 +211,40 @@ describe("Leads data layer — status is the single source of truth", () => {
 
   it("the duplicated legacy leadActions module is gone", () => {
     expect(fs.existsSync(path.join(root, "app/actions/leadActions.ts"))).toBe(false);
+  });
+});
+
+describe("Leads direction and navigation closure", () => {
+  it("isolates phone and email values without changing the page direction", () => {
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
+    const detail = read("features/leads/components/LeadDetailClient.tsx");
+
+    expect(workspace).toContain('<bdi dir="ltr"');
+    expect(workspace).not.toContain('className="mt-0.5 block truncate text-xs');
+    expect(detail).toContain('<bdi dir="ltr" className="tabular-nums">{lead.phone}</bdi>');
+    expect(detail).toContain('<bdi dir="ltr">{lead.email}</bdi>');
+  });
+
+  it("nested lead routes resolve to the Leads breadcrumb", () => {
+    const header = read("app/components/SovereignHeader.tsx");
+
+    expect(header).toContain('normalizedPathname.startsWith(`${route}/`)');
+    expect(header).toContain("matchedRoute");
+  });
+
+  it("portaled settings listboxes inherit the trigger direction", () => {
+    const select = read("components/settings/SettingsSelect.tsx");
+
+    expect(select).toContain("window.getComputedStyle(button).direction");
+    expect(select).toContain("dir={position.direction}");
+    expect(select).toContain("text-start");
+  });
+
+  it("offer empty states are consolidated and do not use the generic primary color", () => {
+    const offers = read("components/leads/panels/LeadOffersPanel.tsx");
+
+    expect(offers).toContain("const emptyMessage");
+    expect(offers).not.toContain("nc-btn-primary");
+    expect(offers).not.toContain("border-amber-500/25");
   });
 });

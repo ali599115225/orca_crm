@@ -12,6 +12,7 @@ import {
   analyzeConversationToAction,
   approveActionSuggestion,
   executeActionSuggestion,
+  linkActionSuggestionLead,
   rejectActionSuggestion,
 } from "@/lib/revenue-integrity/conversation-to-action";
 import {
@@ -39,9 +40,65 @@ type ActionResult<T = unknown> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "UNKNOWN_REVENUE_INTEGRITY_ERROR";
+function publicRevenueErrorCode(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "UNKNOWN_REVENUE_INTEGRITY_ERROR";
+
+  if (
+    message === "AUTHENTICATION_REQUIRED" ||
+    message === "UNAUTHORIZED"
+  ) {
+    return "AUTH_REQUIRED";
+  }
+
+  if (
+    message.startsWith("FORBIDDEN") ||
+    message.includes("CROSS_TENANT")
+  ) {
+    return "FORBIDDEN";
+  }
+
+  if (message.includes("NOT_FOUND")) {
+    return "NOT_FOUND";
+  }
+
+  if (
+    message === "LEAD_LINK_REQUIRED" ||
+    message.includes("LEAD_ID_REQUIRED")
+  ) {
+    return "LEAD_LINK_REQUIRED";
+  }
+
+  if (
+    message.includes("PROVIDER") ||
+    message.includes("RESEND") ||
+    message.includes("PAYLINK") ||
+    message.includes("NGENIUS") ||
+    message.includes("ZATCA") ||
+    message.includes("EJAR") ||
+    message.includes("SIGNATURE") ||
+    message.includes("_HTTP_") ||
+    message.includes("EVENT_SINK")
+  ) {
+    return "PROVIDER_CONNECTION_FAILED";
+  }
+
+  if (message.startsWith("EXECUTION_FAILED")) {
+    return "EXECUTION_FAILED";
+  }
+
+  if (
+    message.includes("REQUIRED") ||
+    message.includes("INVALID_") ||
+    message.includes("CANNOT_") ||
+    message.includes("UNSUPPORTED_")
+  ) {
+    return "VALIDATION_ERROR";
+  }
+
+  return "REVENUE_OPERATION_FAILED";
 }
 
 function refresh() {
@@ -54,10 +111,16 @@ export async function getRevenueIntegrityDashboardAction(): Promise<ActionResult
     const auth = await requireRevenuePermission("revenue.risk.read");
     return {
       success: true,
-      data: await loadRevenueIntegrityDashboard(auth.tenantId),
+      data: await loadRevenueIntegrityDashboard(
+        auth.tenantId,
+        auth.capabilities,
+      ),
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -73,7 +136,10 @@ export async function runRevenueRadarAction(): Promise<ActionResult> {
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -88,9 +154,15 @@ export async function acknowledgeRevenueRiskAction(
       String(riskId),
     );
     refresh();
-    return { success: true, data: { id: data.id, status: data.status } };
+    return {
+      success: true,
+      data: { id: data.id, status: data.status },
+    };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -101,7 +173,9 @@ export async function resolveRevenueRiskAction(
   try {
     const auth = await requireRevenuePermission("revenue.risk.manage");
     const normalizedReason = String(reason || "").trim();
-    if (normalizedReason.length < 3) throw new Error("RESOLUTION_REASON_REQUIRED");
+    if (normalizedReason.length < 3) {
+      throw new Error("RESOLUTION_REASON_REQUIRED");
+    }
     const data = await resolveRevenueRisk(
       auth.tenantId,
       auth.userId,
@@ -109,9 +183,15 @@ export async function resolveRevenueRiskAction(
       normalizedReason,
     );
     refresh();
-    return { success: true, data: { id: data.id, status: data.status } };
+    return {
+      success: true,
+      data: { id: data.id, status: data.status },
+    };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -128,8 +208,14 @@ export async function analyzeConversationAction(input: {
     const auth = await requireRevenuePermission("revenue.action.read");
     const text = String(input.text || "").trim();
     const sourceId = String(input.sourceId || "").trim();
-    if (text.length < 3) throw new Error("CONVERSATION_TEXT_REQUIRED");
-    if (!sourceId) throw new Error("SOURCE_ID_REQUIRED");
+
+    if (text.length < 3) {
+      throw new Error("CONVERSATION_TEXT_REQUIRED");
+    }
+
+    if (!sourceId) {
+      throw new Error("SOURCE_ID_REQUIRED");
+    }
 
     const data = await analyzeConversationToAction({
       tenantId: auth.tenantId,
@@ -142,7 +228,9 @@ export async function analyzeConversationAction(input: {
       unitId: input.unitId || undefined,
       contactId: input.contactId || undefined,
     });
+
     refresh();
+
     return {
       success: true,
       data: {
@@ -153,7 +241,10 @@ export async function analyzeConversationAction(input: {
       },
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -161,7 +252,9 @@ export async function approveRevenueSuggestionAction(
   suggestionId: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.action.approve");
+    const auth = await requireRevenuePermission(
+      "revenue.action.approve",
+    );
     const data = await approveActionSuggestion(
       auth.tenantId,
       auth.userId,
@@ -173,7 +266,10 @@ export async function approveRevenueSuggestionAction(
       data: { id: data.id, status: data.status },
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -182,22 +278,84 @@ export async function rejectRevenueSuggestionAction(
   reason: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.action.approve");
+    const auth = await requireRevenuePermission(
+      "revenue.action.approve",
+    );
     const normalizedReason = String(reason || "").trim();
-    if (normalizedReason.length < 3) throw new Error("REJECTION_REASON_REQUIRED");
+
+    if (normalizedReason.length < 3) {
+      throw new Error("REJECTION_REASON_REQUIRED");
+    }
+
     const data = await rejectActionSuggestion(
       auth.tenantId,
       auth.userId,
       String(suggestionId),
       normalizedReason,
     );
+
     refresh();
+
     return {
       success: true,
       data: { id: data.id, status: data.status },
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
+  }
+}
+
+export async function linkRevenueSuggestionLeadAction(
+  suggestionId: string,
+  leadId: string,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission(
+      "revenue.action.approve",
+    );
+    const data = await linkActionSuggestionLead(
+      auth.tenantId,
+      auth.userId,
+      String(suggestionId),
+      String(leadId),
+    );
+    refresh();
+    return {
+      success: true,
+      data: { id: data.id, status: data.status, leadId: data.leadId },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
+  }
+}
+
+export async function listRevenueLinkableLeadsAction(): Promise<ActionResult> {
+  try {
+    const auth = await requireRevenuePermission("revenue.action.read");
+    const leads = await rawPrisma.lead.findMany({
+      where: { tenantId: auth.tenantId, isArchived: false },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, firstName: true, lastName: true },
+    });
+    return {
+      success: true,
+      data: leads.map((lead: any) => ({
+        id: lead.id,
+        name: [lead.firstName, lead.lastName].filter(Boolean).join(" "),
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -205,7 +363,9 @@ export async function executeRevenueSuggestionAction(
   suggestionId: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.action.approve");
+    const auth = await requireRevenuePermission(
+      "revenue.action.approve",
+    );
     const data = await executeActionSuggestion(
       auth.tenantId,
       auth.userId,
@@ -217,10 +377,12 @@ export async function executeRevenueSuggestionAction(
       data: { id: data.id, status: data.status },
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
-
 
 export async function getRevenueTrustStateAction(): Promise<ActionResult> {
   try {
@@ -229,9 +391,15 @@ export async function getRevenueTrustStateAction(): Promise<ActionResult> {
       listProviderConnections(auth.tenantId),
       listProviderApplications(auth.tenantId),
     ]);
-    return { success: true, data: { providers, applications } };
+    return {
+      success: true,
+      data: { providers, applications },
+    };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -242,7 +410,9 @@ export async function saveRevenueProviderAction(input: {
   isDefault?: boolean;
 }): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.trust.manage");
+    const auth = await requireRevenuePermission(
+      "revenue.trust.manage",
+    );
     const data = await saveProviderConnection({
       tenantId: auth.tenantId,
       actorId: auth.userId,
@@ -254,10 +424,12 @@ export async function saveRevenueProviderAction(input: {
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
-
 
 export async function submitRevenueProviderApplicationAction(input: {
   provider: string;
@@ -266,7 +438,9 @@ export async function submitRevenueProviderApplicationAction(input: {
   notes?: string;
 }): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.trust.manage");
+    const auth = await requireRevenuePermission(
+      "revenue.trust.manage",
+    );
     const data = await submitProviderApplication({
       tenantId: auth.tenantId,
       actorId: auth.userId,
@@ -278,7 +452,10 @@ export async function submitRevenueProviderApplicationAction(input: {
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -286,7 +463,9 @@ export async function testRevenueProviderAction(
   provider: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.trust.manage");
+    const auth = await requireRevenuePermission(
+      "revenue.trust.manage",
+    );
     const data = await testProviderConnection(
       auth.tenantId,
       auth.userId,
@@ -296,7 +475,10 @@ export async function testRevenueProviderAction(
     return { success: true, data };
   } catch (error) {
     refresh();
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -304,7 +486,9 @@ export async function disconnectRevenueProviderAction(
   provider: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.trust.manage");
+    const auth = await requireRevenuePermission(
+      "revenue.trust.manage",
+    );
     const data = await disconnectProviderConnection(
       auth.tenantId,
       auth.userId,
@@ -313,7 +497,10 @@ export async function disconnectRevenueProviderAction(
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -321,8 +508,13 @@ export async function trainRevenuePredictiveModelAction(
   minimumRows = 30,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.predictive.manage");
-    const safeMinimum = Math.min(Math.max(Number(minimumRows) || 30, 20), 10_000);
+    const auth = await requireRevenuePermission(
+      "revenue.predictive.manage",
+    );
+    const safeMinimum = Math.min(
+      Math.max(Number(minimumRows) || 30, 20),
+      10_000,
+    );
     const data = await trainPredictiveModel(
       auth.tenantId,
       auth.userId,
@@ -331,29 +523,48 @@ export async function trainRevenuePredictiveModelAction(
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
 export async function scoreRevenueOpportunitiesAction(): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.predictive.manage");
-    const data = await scoreOpenOpportunities(auth.tenantId, auth.userId);
+    const auth = await requireRevenuePermission(
+      "revenue.predictive.manage",
+    );
+    const data = await scoreOpenOpportunities(
+      auth.tenantId,
+      auth.userId,
+    );
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
 export async function processRevenueOutboxAction(): Promise<ActionResult> {
   try {
-    await requireRevenuePermission("revenue.audit.read");
-    const data = await processRevenueOutbox(100);
+    const auth = await requireRevenuePermission(
+      "revenue.trust.manage",
+    );
+    const data = await processRevenueOutbox(
+      100,
+      auth.tenantId,
+    );
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -363,17 +574,28 @@ export async function getRevenueAuditProofAction(
   try {
     const auth = await requireRevenuePermission("revenue.audit.read");
     const id = String(correlationId || "").trim();
-    if (!id) throw new Error("CORRELATION_ID_REQUIRED");
+
+    if (!id) {
+      throw new Error("CORRELATION_ID_REQUIRED");
+    }
+
     const [events, audits] = await Promise.all([
       rawPrisma.revenueDomainEvent.findMany({
-        where: { tenantId: auth.tenantId, correlationId: id },
+        where: {
+          tenantId: auth.tenantId,
+          correlationId: id,
+        },
         orderBy: { occurredAt: "asc" },
       }),
       rawPrisma.revenueAuditEntry.findMany({
-        where: { tenantId: auth.tenantId, correlationId: id },
+        where: {
+          tenantId: auth.tenantId,
+          correlationId: id,
+        },
         orderBy: { createdAt: "asc" },
       }),
     ]);
+
     return {
       success: true,
       data: {
@@ -389,7 +611,10 @@ export async function getRevenueAuditProofAction(
       },
     };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -397,25 +622,46 @@ export async function scoreOpportunityIntelligenceAction(
   opportunityId: string,
 ): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.predictive.manage");
+    const auth = await requireRevenuePermission(
+      "revenue.predictive.manage",
+    );
     const id = String(opportunityId || "").trim();
-    if (!id) throw new Error("OPPORTUNITY_ID_REQUIRED");
-    const data = await scoreOpportunityIntelligence(auth.tenantId, auth.userId, id);
+
+    if (!id) {
+      throw new Error("OPPORTUNITY_ID_REQUIRED");
+    }
+
+    const data = await scoreOpportunityIntelligence(
+      auth.tenantId,
+      auth.userId,
+      id,
+    );
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
 export async function scoreAllIntelligenceAction(): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.predictive.manage");
-    const data = await scoreAllOpportunitiesIntelligence(auth.tenantId, auth.userId);
+    const auth = await requireRevenuePermission(
+      "revenue.predictive.manage",
+    );
+    const data = await scoreAllOpportunitiesIntelligence(
+      auth.tenantId,
+      auth.userId,
+    );
     refresh();
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }
 
@@ -427,18 +673,31 @@ export async function getIntelligenceScoresAction(options?: {
   pageSize?: number;
 }): Promise<ActionResult> {
   try {
-    const auth = await requireRevenuePermission("revenue.predictive.read");
-    const pageSize = Math.min(Math.max(Number(options?.pageSize || 5), 1), 20);
+    const auth = await requireRevenuePermission(
+      "revenue.predictive.read",
+    );
+    const pageSize = Math.min(
+      Math.max(Number(options?.pageSize || 5), 1),
+      20,
+    );
     const page = Math.max(1, Number(options?.page || 1));
-    const data = await loadIntelligenceScores(auth.tenantId, {
-      category: options?.category,
-      entityType: options?.entityType,
-      entityId: options?.entityId,
-      page,
-      pageSize,
-    });
+
+    const data = await loadIntelligenceScores(
+      auth.tenantId,
+      {
+        category: options?.category,
+        entityType: options?.entityType,
+        entityId: options?.entityId,
+        page,
+        pageSize,
+      },
+    );
+
     return { success: true, data };
   } catch (error) {
-    return { success: false, error: errorMessage(error) };
+    return {
+      success: false,
+      error: publicRevenueErrorCode(error),
+    };
   }
 }

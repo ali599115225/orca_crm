@@ -1,8 +1,10 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import type { Copy, LeadItem, OpportunityForm, OpportunityFormErrors, UnitOption } from "../types";
 import { FieldError } from "../helpers";
+import { leadVisual } from "@/features/leads/visual";
 
 interface CreateOpportunityDialogProps {
   labels: Copy;
@@ -59,7 +61,7 @@ export default function CreateOpportunityDialog({
 }: CreateOpportunityDialogProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4"
+      className={leadVisual.modalOverlay}
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-opportunity-title"
@@ -72,9 +74,9 @@ export default function CreateOpportunityDialog({
       <form
         onSubmit={handleCreateOpportunity}
         dir={direction}
-        className="flex max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full"
+        className={leadVisual.modal}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4">
+        <div className={leadVisual.modalHeader}>
           <div className="min-w-0">
             <h2 id="create-opportunity-title" className="text-base font-bold text-[var(--nc-text-primary)]">
               {labels.createOpportunity}
@@ -86,15 +88,15 @@ export default function CreateOpportunityDialog({
           <button
             type="button"
             onClick={closeOpportunityModal}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] text-lg leading-none text-[var(--nc-text-secondary)] transition-colors hover:text-[var(--nc-text-primary)]"
+            className={leadVisual.closeButton}
             aria-label={labels.cancel}
           >
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <div className="mb-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3">
+        <div className={leadVisual.modalBody}>
+          <div className={`${leadVisual.softPanel} mb-4 px-4 py-3`}>
             <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">
               {labels.opportunityLead}
             </p>
@@ -111,7 +113,7 @@ export default function CreateOpportunityDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+              <label className={`mb-1.5 block ${leadVisual.label}`}>
                 {labels.opportunityValue}
               </label>
               <input
@@ -123,17 +125,18 @@ export default function CreateOpportunityDialog({
                   setOpportunityForm((form) => ({ ...form, value: event.target.value }));
                   setOpportunityErrors((errors) => ({ ...errors, value: undefined, form: undefined }));
                 }}
-                className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+                dir="ltr"
+                className={`${leadVisual.input} text-left`}
                 inputMode="numeric"
               />
               <FieldError message={opportunityErrors.value} />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+              <label className={`mb-1.5 block ${leadVisual.label}`}>
                 {labels.opportunityProbability}
               </label>
-              <div className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 focus-within:border-[#C8A45D]">
+              <div className="flex min-h-11 items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 focus-within:border-[var(--nc-accent)] focus-within:ring-2 focus-within:ring-[var(--nc-accent-soft)]">
                 <input
                   type="range"
                   min="1"
@@ -143,7 +146,7 @@ export default function CreateOpportunityDialog({
                     setOpportunityForm((form) => ({ ...form, probability: event.target.value }));
                     setOpportunityErrors((errors) => ({ ...errors, probability: undefined, form: undefined }));
                   }}
-                  className="min-w-0 flex-1 accent-[#C8A45D]"
+                  className="min-w-0 flex-1 accent-[var(--nc-accent)]"
                 />
                 <span className="w-12 text-center text-sm font-bold text-[var(--nc-text-primary)]">
                   {formatNumber(opportunityForm.probability, isArabic)}%
@@ -154,7 +157,7 @@ export default function CreateOpportunityDialog({
           </div>
 
           <div className="mt-4">
-            <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+            <label className={`mb-1.5 block ${leadVisual.label}`}>
               {labels.opportunityCloseDate}
             </label>
             <input
@@ -169,7 +172,7 @@ export default function CreateOpportunityDialog({
                 setOpportunityForm((form) => ({ ...form, closeDate, closeDateText }));
                 setOpportunityErrors((errors) => ({ ...errors, closeDate: undefined, form: undefined }));
               }}
-              className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-left text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors focus:border-[#C8A45D]"
+              className={`${leadVisual.input} text-left`}
               inputMode="numeric"
               pattern="\d{2}-\d{2}-\d{4}"
             />
@@ -177,13 +180,13 @@ export default function CreateOpportunityDialog({
           </div>
 
           <div className="mt-4">
-            <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+            <label className={`mb-1.5 block ${leadVisual.label}`}>
               {labels.opportunityUnit}
             </label>
             <button
               type="button"
               onClick={() => setUnitSelectOpen((open) => !open)}
-              className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition-colors hover:border-[#C8A45D]"
+              className={`${leadVisual.input} flex min-h-12 items-center justify-between gap-3 text-start`}
               aria-expanded={unitSelectOpen}
               aria-busy={unitsLoading}
             >
@@ -194,14 +197,15 @@ export default function CreateOpportunityDialog({
                   ? `${unitDisplayLabel(selectedUnit)} (${formatCurrency(selectedUnit.priceSar, isArabic)})`
                   : labels.opportunityUnitPlaceholder}
               </span>
-              <span className="shrink-0 text-[var(--nc-text-secondary)]" aria-hidden="true">
-                {unitSelectOpen ? "^" : "v"}
-              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-[var(--nc-text-secondary)] transition-transform ${unitSelectOpen ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
             </button>
             <FieldError message={opportunityErrors.unitId} />
 
             {unitSelectOpen && (
-              <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-1 shadow-lg">
+              <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-1.5 shadow-xl">
                 {unitsLoading ? (
                   <div className="px-3 py-3 text-sm font-semibold text-[var(--nc-text-secondary)]">
                     {labels.unitsLoading}
@@ -226,15 +230,18 @@ export default function CreateOpportunityDialog({
                       }}
                       className={
                         opportunityForm.unitId === unit.id
-                          ? "flex w-full items-center justify-between gap-3 rounded-lg bg-[#C8A45D]/15 px-3 py-2 text-start text-sm font-bold text-[var(--nc-text-primary)]"
+                          ? "flex w-full items-center justify-between gap-3 rounded-lg bg-[var(--nc-surface-strong)] px-3 py-2 text-start text-sm font-bold text-[var(--nc-text-primary)]"
                           : "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-start text-sm font-semibold text-[var(--nc-text-primary)] transition-colors hover:bg-[var(--nc-surface-soft)]"
                       }
                     >
                       <span className="min-w-0 truncate">
                         {unitDisplayLabel(unit)}
                       </span>
-                      <span className="shrink-0 text-xs text-[var(--nc-text-secondary)]">
+                      <span className="flex shrink-0 items-center gap-2 text-xs text-[var(--nc-text-secondary)]">
                         {formatCurrency(unit.priceSar, isArabic)}
+                        {opportunityForm.unitId === unit.id ? (
+                          <Check className="h-4 w-4 text-[var(--nc-accent)]" aria-hidden="true" />
+                        ) : null}
                       </span>
                     </button>
                   ))
@@ -248,14 +255,14 @@ export default function CreateOpportunityDialog({
           <button
             type="button"
             onClick={closeOpportunityModal}
-            className="nc-btn-ghost min-h-[42px] rounded-xl px-4 py-2 text-sm font-bold"
+            className={leadVisual.secondaryButton}
           >
             {labels.cancel}
           </button>
           <button
             type="submit"
             disabled={opportunitySaving || unitsLoading || !hasValidSelectedUnit}
-            className="min-h-[42px] rounded-xl bg-[#C8A45D] px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-[#B89245] disabled:cursor-not-allowed disabled:opacity-60"
+            className={leadVisual.primaryButton}
           >
             {opportunitySaving ? labels.savingOpportunity : labels.saveOpportunity}
           </button>

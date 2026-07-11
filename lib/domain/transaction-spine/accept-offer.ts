@@ -73,7 +73,7 @@ async function releaseExpiredDraftContractInTx(
         tenantId: contract.tenantId,
         status: "RESERVED",
       },
-      data: { status: "CONTACTED", stage: "Open" },
+      data: { status: "CONTACTED" },
     });
   }
 

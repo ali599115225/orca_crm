@@ -85,7 +85,7 @@ export async function updateTourStatus(input: UpdateTourStatusInput) {
 
         await tx.lead.updateMany({
           where: { id: tour.leadId, tenantId },
-          data: { status: "VISITED", stage: "Negotiation", updatedBy: userId },
+          data: { status: "VISITED", updatedBy: userId },
         });
       }
 
