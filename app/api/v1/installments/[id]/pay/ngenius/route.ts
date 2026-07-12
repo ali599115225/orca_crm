@@ -2,12 +2,7 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  requireAuth,
-  hasDatabaseRole,
-  unauthorizedResponse,
-  forbiddenResponse,
-} from "@/lib/api-auth-guard";
+import { runWithDatabaseSession } from "@/lib/api-auth-guard";
 import { ngeniusProvider } from "@/lib/payments/providers/ngenius";
 import {
   CONTRACT_STATUS,
@@ -27,15 +22,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const session = await requireAuth(request);
-    if (!session) return unauthorizedResponse(request);
-    const allowed = await hasDatabaseRole(session, NGENIUS_ALLOWED_ROLES);
-    if (!allowed) return forbiddenResponse(request);
-
-    const tenantId = session.tenantId;
-    const userId = session.userId;
-    const { id } = await params;
+  return runWithDatabaseSession(
+    request,
+    NGENIUS_ALLOWED_ROLES,
+    async (session) => {
+      try {
+        const tenantId = session.tenantId;
+        const userId = session.userId;
+        const { id } = await params;
 
     const installment = await prisma.installment.findFirst({
       where: { id, tenantId },
@@ -153,7 +147,7 @@ export async function POST(
         amountMinorUnits: amountMinor,
         currency: "SAR",
         description: `ORCA installment ${installment.installmentNumber}`,
-        callbackUrl: `${appUrl}/operations/sales/contracts/${installment.contract.id}?payment=return&transactionId=${encodeURIComponent(transaction.id)}`,
+        callbackUrl: `${appUrl}/operations/rental/sales/contracts/${installment.contract.id}?payment=return&transactionId=${encodeURIComponent(transaction.id)}`,
         metadata: {
           internalTransactionId: transaction.id,
           installmentId: installment.id,
@@ -209,8 +203,14 @@ export async function POST(
       });
       throw error;
     }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "فشل إنشاء رابط الدفع.";
-    return NextResponse.json({ success: false, error: message }, { status: 503 });
-  }
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "فشل إنشاء رابط الدفع.";
+        return NextResponse.json(
+          { success: false, error: message },
+          { status: 503 },
+        );
+      }
+    },
+  );
 }
