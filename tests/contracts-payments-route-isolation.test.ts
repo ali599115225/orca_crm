@@ -36,7 +36,7 @@ describe("contracts and payments route isolation", () => {
 
     expect(isolatedPage).toContain("SalesContractWorkspace");
     expect(workspace).toContain(
-      'router.push("/operations/rental?pane=sales")',
+      'router.push("/operations/rental/sales")',
     );
   });
 });

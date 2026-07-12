@@ -19,7 +19,10 @@ describe("ORCA clean baseline phase-one regression gates", () => {
   });
 
   it("does not ship fake leases and uses the rental invoice relation", () => {
-    const rental = read("app/operations/rental/page.tsx");
+    const rentalPage = read("app/operations/rental/page.tsx");
+    const rental = read("components/contracts-payments/ContractsPaymentsCenter.tsx");
+
+    expect(rentalPage).toContain("<ContractsPaymentsCenter");
 
     expect(rental).toContain("const initialLeases: Lease[] = [];");
     expect(rental).not.toContain("محمد العلي");

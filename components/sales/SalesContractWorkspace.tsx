@@ -23,6 +23,9 @@ import {
   REALTIME_SYNC_EVENT,
   shouldInvalidateFromSync,
 } from "@/lib/realtime/client-runtime";
+import FinancialLifecycleProgress, {
+  type FinancialLifecycleStage,
+} from "@/components/contracts-payments/FinancialLifecycleProgress";
 
 type Locale = "ar" | "en";
 type Tab = "overview" | "payment-plan" | "installments" | "payments" | "amendments" | "documents" | "timeline";
@@ -686,6 +689,122 @@ export default function SalesContractWorkspace({
     contract.paymentPlan?.status === "ACTIVE" &&
     contract.financials.remainingBalance > 0;
 
+  const contractSigned = contract.status === "SIGNED";
+  const hasPaymentPlan = Boolean(contract.paymentPlan);
+  const hasInstallments = contract.installments.length > 0;
+  const hasInvoice = Boolean(contract.invoice);
+  const isFinanciallyPaid =
+    contract.financials.remainingBalance <= 0 &&
+    contract.financials.totalPaid > 0;
+  const isFinanciallyClosed =
+    isFinanciallyPaid &&
+    (String(contract.invoice?.status || "").toLowerCase() === "paid" ||
+      contract.paymentPlan?.status === "COMPLETED");
+
+  const contractLifecycleStages: FinancialLifecycleStage[] = [
+    {
+      id: "contract",
+      label: L("العقد", "Contract"),
+      state: contractSigned ? "complete" : "current",
+      hint: statusLabel(contract.status, locale),
+    },
+    {
+      id: "payment-plan",
+      label: L("خطة الدفع", "Payment plan"),
+      state: hasPaymentPlan
+        ? contract.paymentPlan?.status === "COMPLETED"
+          ? "complete"
+          : "current"
+        : contractSigned
+          ? "current"
+          : "pending",
+      hint: contract.paymentPlan
+        ? statusLabel(contract.paymentPlan.status, locale)
+        : L("غير مهيأة", "Not configured"),
+    },
+    {
+      id: "installments",
+      label: L("الأقساط", "Installments"),
+      state: hasInstallments
+        ? contract.summary.remainingInstallmentCount > 0
+          ? "current"
+          : "complete"
+        : hasPaymentPlan
+          ? "current"
+          : "pending",
+      hint: hasInstallments
+        ? L(
+            `${contract.summary.remainingInstallmentCount} متبقية`,
+            `${contract.summary.remainingInstallmentCount} remaining`,
+          )
+        : L("لم تُنشأ", "Not created"),
+    },
+    {
+      id: "invoice",
+      label: L("الفاتورة", "Invoice"),
+      state: hasInvoice
+        ? String(contract.invoice?.status || "").toLowerCase() === "paid"
+          ? "complete"
+          : "current"
+        : hasInstallments
+          ? "current"
+          : "pending",
+      hint: contract.invoice
+        ? `${contract.invoice.invoicePrefix}-${contract.invoice.invoiceNumber}`
+        : L("لم تصدر", "Not issued"),
+    },
+    {
+      id: "payments",
+      label: L("المدفوعات", "Payments"),
+      state: isFinanciallyPaid
+        ? "complete"
+        : hasInvoice
+          ? contract.summary.overdueInstallmentCount > 0
+            ? "blocked"
+            : "current"
+          : "pending",
+      hint: L(
+        `${contract.financials.collectionPercent}% محصل`,
+        `${contract.financials.collectionPercent}% collected`,
+      ),
+    },
+    {
+      id: "close",
+      label: L("الإغلاق", "Close"),
+      state: isFinanciallyClosed
+        ? "complete"
+        : isFinanciallyPaid
+          ? "current"
+          : "pending",
+      hint: isFinanciallyClosed
+        ? L("مغلق ماليًا", "Financially closed")
+        : L("بانتظار اكتمال التحصيل", "Awaiting collection"),
+    },
+  ];
+
+  const contractLifecycleNextAction = contract.legacyFinancial
+    ? L("العقد تاريخي للعرض فقط", "Legacy contract is read-only")
+    : !contractSigned
+      ? L("إكمال توقيع العقد", "Complete contract signing")
+      : !hasPaymentPlan
+        ? L("تهيئة خطة الدفع", "Configure payment plan")
+        : !hasInstallments
+          ? L("إنشاء جدول الأقساط", "Create installment schedule")
+          : !hasInvoice
+            ? L("إصدار الفاتورة", "Issue invoice")
+            : contract.financials.remainingBalance > 0
+              ? nextInstallment
+                ? L(
+                    `تحصيل القسط ${nextInstallment.installmentNumber}`,
+                    `Collect installment ${nextInstallment.installmentNumber}`,
+                  )
+                : L("مراجعة الرصيد المتبقي", "Review remaining balance")
+              : isFinanciallyClosed
+                ? L("اكتمل الإغلاق المالي", "Financial close completed")
+                : isFinanciallyPaid
+                  ? L("مراجعة إقفال الفاتورة والخطة", "Review invoice and plan close")
+                  : L("مراجعة الإغلاق المالي", "Review financial close");
+
   return (
     <main
       dir={locale === "ar" ? "rtl" : "ltr"}
@@ -695,7 +814,7 @@ export default function SalesContractWorkspace({
         <div className="flex items-start gap-3">
           <button
             type="button"
-            onClick={() => router.push("/operations/rental?pane=sales")}
+            onClick={() => router.push("/operations/rental/sales")}
             className="mt-0.5 rounded-xl border border-[var(--nc-glass-border)] p-2 text-[var(--nc-text-secondary)]"
             aria-label={L("العودة", "Back")}
           >
@@ -773,10 +892,18 @@ export default function SalesContractWorkspace({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {[
           [
-            L("إجمالي العقد", "Contract total"),
+            L("صافي العقد", "Contract subtotal"),
+            money(contract.invoice?.subtotal || contract.totalVolumeSar, locale),
+          ],
+          [
+            L("ضريبة القيمة المضافة", "VAT"),
+            money(contract.invoice?.vatAmount || 0, locale),
+          ],
+          [
+            L("إجمالي الفاتورة", "Invoice total"),
             money(contract.invoice?.totalAmount || contract.totalVolumeSar, locale),
           ],
           [
@@ -795,7 +922,9 @@ export default function SalesContractWorkspace({
             L("القسط القادم", "Next installment"),
             nextInstallment
               ? `${money(nextInstallment.remainingAmount, locale)} · ${shortDate(nextInstallment.dueDate)}`
-              : "—",
+              : isFinanciallyClosed
+                ? L("مغلق ماليًا", "Financially closed")
+                : "—",
           ],
         ].map(([label, value]) => (
           <div
@@ -811,6 +940,13 @@ export default function SalesContractWorkspace({
           </div>
         ))}
       </div>
+
+      <FinancialLifecycleProgress
+        locale={locale}
+        title={L("مسار العقد المالي", "Contract financial progress")}
+        nextAction={contractLifecycleNextAction}
+        stages={contractLifecycleStages}
+      />
 
       <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-2">
         {([
@@ -1162,19 +1298,89 @@ export default function SalesContractWorkspace({
                     <td>{money(item.remainingAmount, locale)}</td>
                     <td>{statusLabel(item.paymentStatus, locale)}</td>
                     <td>
-                      {!contract.legacyFinancial &&
-                      COLLECTIBLE.has(item.paymentStatus) &&
-                      item.remainingAmount > 0 ? (
+                      {contract.legacyFinancial ? (
+                        <span
+                          title={L(
+                            "العقد التاريخي للعرض فقط ولا يقبل دفعات جديدة.",
+                            "Legacy contract is read-only and cannot accept new payments.",
+                          )}
+                          className="inline-flex rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-[var(--nc-text-dim)]"
+                        >
+                          {L("للعرض فقط", "Read-only")}
+                        </span>
+                      ) : contract.status !== "SIGNED" ? (
+                        <span
+                          title={L(
+                            "يجب توقيع العقد قبل تحصيل أي قسط.",
+                            "The contract must be signed before collecting an installment.",
+                          )}
+                          className="inline-flex rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 text-[10px] font-bold text-amber-300"
+                        >
+                          {L("بانتظار التوقيع", "Awaiting signature")}
+                        </span>
+                      ) : !contract.invoice ? (
+                        <span
+                          title={L(
+                            "يجب إصدار وربط فاتورة البيع قبل تحصيل القسط.",
+                            "A sales invoice must be issued and linked before collecting the installment.",
+                          )}
+                          className="inline-flex rounded-lg border border-sky-500/25 bg-sky-500/10 px-2.5 py-1.5 text-[10px] font-bold text-sky-300"
+                        >
+                          {L("بانتظار الفاتورة", "Awaiting invoice")}
+                        </span>
+                      ) : item.paymentStatus === "Cancelled" ? (
+                        <span
+                          title={L(
+                            contract.paymentPlan?.status === "COMPLETED"
+                              ? "أُلغي هذا القسط بعد اكتمال السداد أو التسوية المالية."
+                              : "أُلغي هذا القسط ضمن تحديث أو إعادة هيكلة خطة الدفع.",
+                            contract.paymentPlan?.status === "COMPLETED"
+                              ? "This installment was cancelled after financial settlement or full collection."
+                              : "This installment was cancelled by a payment-plan update or restructure.",
+                          )}
+                          className="inline-flex rounded-lg border border-slate-500/25 bg-slate-500/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-300"
+                        >
+                          {contract.paymentPlan?.status === "COMPLETED"
+                            ? L("ملغي بعد التسوية", "Cancelled after settlement")
+                            : L("ملغي بالخطة", "Cancelled by plan")}
+                        </span>
+                      ) : item.remainingAmount <= 0 ||
+                        item.paymentStatus === "Paid" ? (
+                        <span className="inline-flex rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-bold text-emerald-300">
+                          {L("مدفوع", "Paid")}
+                        </span>
+                      ) : COLLECTIBLE.has(item.paymentStatus) ? (
                         <button
                           type="button"
                           onClick={() => void payInstallment(item)}
                           disabled={busy !== ""}
-                          className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-[11px] font-black text-emerald-300 disabled:opacity-40"
+                          title={L(
+                            "إنشاء رابط دفع آمن لهذا القسط عبر N-Genius.",
+                            "Create a secure N-Genius payment link for this installment.",
+                          )}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-[11px] font-black text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {L("دفع", "Pay")}
+                          {busy === `pay:${item.id}` ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              {L("جارٍ التحويل", "Redirecting")}
+                            </>
+                          ) : item.paymentStatus === "Partial" ? (
+                            L("استكمال الدفع", "Complete payment")
+                          ) : (
+                            L("دفع القسط", "Pay installment")
+                          )}
                         </button>
                       ) : (
-                        "—"
+                        <span
+                          title={L(
+                            `حالة القسط الحالية: ${statusLabel(item.paymentStatus, locale)}`,
+                            `Current installment status: ${statusLabel(item.paymentStatus, locale)}`,
+                          )}
+                          className="inline-flex rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-[var(--nc-text-dim)]"
+                        >
+                          {L("غير متاح", "Unavailable")}
+                        </span>
                       )}
                     </td>
                   </tr>
