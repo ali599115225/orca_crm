@@ -468,7 +468,10 @@ export default function DailyOperationsCenter({
   };
 
   return (
-    <section className={`${dashboardVisual.sectionPanel} p-5 sm:p-6`}>
+    <section
+      className={`${dashboardVisual.sectionPanel} flex h-full min-h-[390px] max-h-[430px] flex-col p-5 sm:p-6`}
+      data-dashboard-card="operations"
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
           <span className={dashboardVisual.iconTile}>
@@ -532,7 +535,7 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="pt-5"
+        className="min-h-0 flex-1 overflow-y-auto pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tabpanel"
         id={`dashboard-panel-${activeTab}`}
         aria-labelledby={`dashboard-tab-${activeTab}`}

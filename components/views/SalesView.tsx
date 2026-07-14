@@ -1,196 +1,143 @@
-// components/views/SalesView.tsx
-'use client';
-import React, { useCallback, useEffect, useState } from 'react';
-import PageHeader from '@/components/ui/PageHeader';
-import LayoutContainer from '@/components/ui/LayoutContainer';
-import { SmartCard } from '@/components/ui/SmartCard';
-import { getSalesPerformanceAction, SalesRepKPI } from '@/app/actions/sales';
-import { useApp } from '@/app/context/AppContext';
-import { toArabicNumerals } from '@/lib/formatters';
-import { displayPerson } from '@/lib/display';
+"use client";
+
+import React, { useCallback, useEffect, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import LayoutContainer from "@/components/ui/LayoutContainer";
+import { SmartCard } from "@/components/ui/SmartCard";
+import {
+  getSalesPerformanceAction,
+  SalesRepKPI,
+} from "@/app/actions/sales";
+import { useApp } from "@/app/context/AppContext";
+import { displayPerson } from "@/lib/display";
 import {
   REALTIME_SYNC_EVENT,
   shouldInvalidateFromSync,
-} from '@/lib/realtime/client-runtime';
+} from "@/lib/realtime/client-runtime";
 
-const TRANSLATIONS = {
+const COPY = {
   AR: {
-    tag: "تحليلات المبيعات ونسبة التحويل لعام ٢٠٢٦ 📊",
-    title: "تحليل وتقييم أداء فريق المبيعات (KPIs)",
-    desc: "تتبع جودة خدمة المستشارين العقاريين، سرعة الاستجابة، ونسب إغلاق الحجوزات بنظام المبيعات الموحد.",
-    card1_title: "إجمالي عملاء المبيعات",
-    card1_sub: "عميل مسند للقسم",
-    card2_title: "حجوزات نشطة",
-    card2_sub: "عربونات مسجلة",
-    card3_title: "العقود الموقعة",
-    card3_sub: "إغلاق ناجح",
-    card4_title: "معدل التحويل (CR)",
-    card4_sub: "نسبة ممتازة",
-    tableTitle: "لوحة تميز فريق المبيعات (Leaderboard)",
-    tableSub: "مرتبة تنازلياً حسب تحقيق الهدف الفردي",
-    tableRank: "رتبة",
-    tableRep: "المستشار العقاري",
-    tableLeads: "العملاء",
-    tableResponse: "سرعة الرد",
-    tableCr: "معدل التحويل",
-    tableDeals: "حجوزات / عقود",
-    tableTarget: "تحقيق الهدف",
-    loading: "جاري حساب وتحليل مؤشرات الأداء...",
-    noData: "لا يوجد بيانات مبيعات مسجلة حالياً.",
-    loadErrorTitle: "تعذر تحميل بيانات المبيعات",
-    loadErrorDescription: "لم نتمكن من جلب مؤشرات أداء فريق المبيعات. تحقق من الاتصال ثم أعد المحاولة.",
+    title: "أداء فريق المبيعات",
+    description: "مؤشرات تشغيلية فعلية مبنية على العملاء المسندين والحجوزات والإغلاقات وأوقات التواصل المسجلة.",
+    badge: "بيانات تشغيلية",
+    leads: "العملاء المسندون",
+    bookings: "الحجوزات",
+    contracts: "الإغلاقات",
+    conversion: "معدل التحويل",
+    leaderboard: "ترتيب فريق المبيعات",
+    rank: "الترتيب",
+    rep: "المستشار",
+    response: "متوسط الاستجابة",
+    deals: "حجوزات / إغلاقات",
+    performance: "مؤشر الأداء",
+    noResponse: "غير متاح",
+    minute: "دقيقة",
+    noData: "لا توجد بيانات مبيعات مسجلة حاليًا.",
+    loading: "جاري تحميل مؤشرات المبيعات...",
+    errorTitle: "تعذر تحميل أداء المبيعات",
+    errorDescription: "لم يتم جلب المؤشرات التشغيلية الحالية.",
     retry: "إعادة المحاولة",
-    staleDataWarning: "تعذر تحديث البيانات لحظياً. المعروض هو آخر بيانات تم تحميلها.",
-    bookingSuffix: " حجز",
-    contractSuffix: " عقد",
-    leadSuffix: " عميل"
   },
   EN: {
-    tag: "Sales Performance & Conversion Audit 2026 📊",
-    title: "Sales Team Performance & KPIs Leaderboard",
-    desc: "Track real estate consultant performance, response latencies, and conversion ratios.",
-    card1_title: "Total Assigned Leads",
-    card1_sub: "Assigned leads to department",
-    card2_title: "Active Reservations",
-    card2_sub: "Deposits registered",
-    card3_title: "Final Sales Contracts",
-    card3_sub: "Successful closure",
-    card4_title: "Avg Conversion Rate (CR)",
-    card4_sub: "Excellent ratio",
-    tableTitle: "Sales Representatives Leaderboard",
-    tableSub: "Ranked by monthly target achievement",
-    tableRank: "Rank",
-    tableRep: "Consultant",
-    tableLeads: "Leads",
-    tableResponse: "Response Time",
-    tableCr: "Conv. Rate",
-    tableDeals: "Reservations / Contracts",
-    tableTarget: "KPI Target",
-    loading: "Calculating performance metrics...",
-    noData: "No sales data found.",
-    loadErrorTitle: "Unable to load sales data",
-    loadErrorDescription: "Sales performance metrics could not be retrieved. Check the connection and try again.",
+    title: "Sales Team Performance",
+    description: "Operational metrics based on assigned leads, reservations, closures, and recorded contact times.",
+    badge: "Operational data",
+    leads: "Assigned leads",
+    bookings: "Reservations",
+    contracts: "Closures",
+    conversion: "Conversion rate",
+    leaderboard: "Sales team ranking",
+    rank: "Rank",
+    rep: "Consultant",
+    response: "Average response",
+    deals: "Reservations / Closures",
+    performance: "Performance score",
+    noResponse: "Unavailable",
+    minute: "min",
+    noData: "No sales data is currently recorded.",
+    loading: "Loading sales metrics...",
+    errorTitle: "Unable to load sales performance",
+    errorDescription: "The current operational metrics could not be retrieved.",
     retry: "Try again",
-    staleDataWarning: "Live refresh failed. The page is showing the most recently loaded data.",
-    bookingSuffix: " res.",
-    contractSuffix: " contr.",
-    leadSuffix: " leads"
-  }
+  },
 };
 
 export default function SalesView() {
   const { lang } = useApp();
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
-  const isArabic = lang === 'AR';
-  const dir = isArabic ? 'rtl' : 'ltr';
-  const displayLocale = isArabic ? 'ar' : 'en';
-
-  const containsArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
-  const looksTechnical = (value: string) => {
-    const v = value.trim();
-    return (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
-      /^[0-9a-f]{8,24}$/i.test(v) ||
-      /\b(?:demo|mock|stress|trial|تجريبي)\b/i.test(v)
-    );
-  };
-  const safeDisplayText = (value: unknown, fallback = isArabic ? 'غير محدد' : 'Not specified') => {
-    const text = String(value ?? '').trim();
-    if (!text || looksTechnical(text)) return fallback;
-    if (!isArabic && containsArabic(text)) return fallback;
-    return text;
-  };
-  const formatNumber = (value: string | number) => (isArabic ? toArabicNumerals(value) : String(value));
-  const displayRepName = (name: unknown) => {
-    const raw = String(name ?? '').trim();
-    const displayed = displayPerson(raw, displayLocale, { route: '/operations/sales' });
-    return safeDisplayText(displayed, isArabic ? 'مستشار غير محدد' : 'Not specified');
-  };
-  const formatMetric = (value: unknown) => safeDisplayText(isArabic ? toArabicNumerals(String(value ?? '')) : String(value ?? ''), isArabic ? 'غير محدد' : 'Not specified');
-
-  const [salesReps, setSalesReps] = useState<SalesRepKPI[]>([]);
+  const isArabic = lang === "AR";
+  const t = COPY[lang] || COPY.AR;
+  const [rows, setRows] = useState<SalesRepKPI[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const loadPerformance = useCallback(async (showLoading = false) => {
-    if (showLoading) {
-      setLoading(true);
-      setLoadError(false);
-    }
-
+  const load = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setFailed(false);
     try {
-      const data = await getSalesPerformanceAction();
-      setSalesReps(data);
-      setLoadError(false);
-    } catch (err) {
-      console.error("Failed to load sales data", err);
-      setLoadError(true);
+      setRows(await getSalesPerformanceAction());
+    } catch {
+      setFailed(true);
     } finally {
       if (showLoading) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadPerformance(true);
-  }, [loadPerformance]);
+    void load(true);
+  }, [load]);
 
   useEffect(() => {
-    const onRealtimeSync = (event: Event) => {
+    const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail;
       if (shouldInvalidateFromSync(detail, "deals")) {
-        void loadPerformance(false);
+        void load(false);
       }
     };
 
-    window.addEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
-    return () =>
-      window.removeEventListener(REALTIME_SYNC_EVENT, onRealtimeSync);
-  }, [loadPerformance]);
+    window.addEventListener(REALTIME_SYNC_EVENT, handler);
+    return () => window.removeEventListener(REALTIME_SYNC_EVENT, handler);
+  }, [load]);
 
-  const formatPercentage = (val: string | number): string => {
-    let raw = val.toString().replace(/%/g, '');
-    return `${isArabic ? toArabicNumerals(raw) : raw}${isArabic ? "٪" : "%"}`;
-  };
+  const number = (value: number, digits = 0) =>
+    new Intl.NumberFormat(isArabic ? "ar-SA" : "en-US", {
+      maximumFractionDigits: digits,
+      minimumFractionDigits: digits,
+    }).format(value);
 
-  const totalLeads = salesReps.reduce((sum, r) => sum + r.leadsCount, 0);
-  const totalBookings = salesReps.reduce((sum, r) => sum + r.bookings, 0);
-  const totalContracts = salesReps.reduce((sum, r) => sum + r.contracts, 0);
-  const totalDeals = totalBookings + totalContracts;
-  const avgCR = totalLeads > 0 ? ((totalDeals / totalLeads) * 100).toFixed(1) : "0.0";
+  const totalLeads = rows.reduce((sum, row) => sum + row.leadsCount, 0);
+  const totalBookings = rows.reduce((sum, row) => sum + row.bookings, 0);
+  const totalContracts = rows.reduce((sum, row) => sum + row.contracts, 0);
+  const totalConverted = totalBookings + totalContracts;
+  const conversion =
+    totalLeads > 0 ? (totalConverted / totalLeads) * 100 : 0;
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
-        <div className="w-10 h-10 border-4 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm text-[var(--nc-foreground-muted)] font-medium">{t.loading}</p>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--nc-accent-border)] border-t-transparent" />
+        <p className="text-sm font-bold text-[var(--nc-text-secondary)]">
+          {t.loading}
+        </p>
       </div>
     );
   }
 
-  if (loadError && salesReps.length === 0) {
+  if (failed && rows.length === 0) {
     return (
-      <div
-        className="flex min-h-[50vh] items-center justify-center p-6 text-center"
-        dir={dir}
-        role="alert"
-        aria-live="assertive"
-      >
-        <SmartCard className="w-full max-w-xl p-8">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500">
-            <i className="ph-bold ph-warning-circle text-2xl" aria-hidden="true"></i>
-          </div>
-          <h2 className="text-xl font-black text-[var(--nc-text-primary)]">
-            {t.loadErrorTitle}
+      <div className="flex min-h-[50vh] items-center justify-center p-6" dir={isArabic ? "rtl" : "ltr"}>
+        <SmartCard className="w-full max-w-xl p-8 text-center">
+          <i className="ph-bold ph-warning-circle text-3xl text-amber-500" />
+          <h2 className="mt-4 text-lg font-black text-[var(--nc-text-primary)]">
+            {t.errorTitle}
           </h2>
-          <p className="mt-3 text-sm leading-7 text-[var(--nc-text-dim)]">
-            {t.loadErrorDescription}
+          <p className="mt-2 text-sm text-[var(--nc-text-secondary)]">
+            {t.errorDescription}
           </p>
           <button
             type="button"
-            onClick={() => void loadPerformance(true)}
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-5 py-2.5 text-sm font-bold text-white"
+            onClick={() => void load(true)}
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[var(--nc-accent)] px-5 text-sm font-bold text-slate-950"
           >
-            <i className="ph-bold ph-arrow-clockwise" aria-hidden="true"></i>
             {t.retry}
           </button>
         </SmartCard>
@@ -199,227 +146,127 @@ export default function SalesView() {
   }
 
   return (
-    <div className="nc-page nc-stack p-6" dir={dir}>
-
-      {loadError && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-[var(--nc-text-primary)]"
-        >
-          <div className="flex items-center gap-2">
-            <i className="ph-bold ph-warning-circle text-amber-500" aria-hidden="true"></i>
-            <span>{t.staleDataWarning}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadPerformance(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-bold text-amber-600"
-          >
-            <i className="ph-bold ph-arrow-clockwise" aria-hidden="true"></i>
-            {t.retry}
-          </button>
-        </div>
-      )}
-
-      {/* Header */}
-      <PageHeader title={t.title} description={t.desc}>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-accent)] text-xs font-semibold">
-          <i className="ph-bold ph-trend-up"></i> {t.tag}
-        </div>
+    <div className="nc-page nc-stack orca-container orca-sales-final pb-10" dir={isArabic ? "rtl" : "ltr"}>
+      <PageHeader
+        title={t.title}
+        description={t.description}
+        eyebrow={
+          isArabic
+            ? "العميل → الاستجابة → الحجز → الإغلاق"
+            : "Lead → response → reservation → closure"
+        }
+        workspace
+      >
+        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--nc-accent)]">
+          <i className="ph-bold ph-trend-up" />
+          {t.badge}
+        </span>
       </PageHeader>
 
       <LayoutContainer
+        workspace
         kpis={
           <>
-            <SmartCard elevation="elevated" className="p-3">
-              <div className="flex items-start mb-3">
-                <div className="flex-1">
-                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card1_title}</p>
-                  <h3 className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(totalLeads)}</h3>
+            {[
+              [t.leads, number(totalLeads), "ph-users"],
+              [t.bookings, number(totalBookings), "ph-calendar-check"],
+              [t.contracts, number(totalContracts), "ph-file-text"],
+              [t.conversion, `${number(conversion, 1)}%`, "ph-percent"],
+            ].map(([label, value, icon]) => (
+              <SmartCard key={label} elevation="elevated" className="orca-workspace-metric p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)]">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-xl font-black text-[var(--nc-text-primary)]">
+                      {value}
+                    </p>
+                  </div>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">
+                    <i className={`ph-bold ${icon}`} />
+                  </span>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-[var(--nc-accent-soft)] flex items-center justify-center text-[var(--nc-accent)]">
-                  <i className="ph-bold ph-users text-base"></i>
-                </div>
-              </div>
-              <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card1_sub}</span>
-            </SmartCard>
-            <SmartCard elevation="elevated" className="p-3">
-              <div className="flex items-start mb-3">
-                <div className="flex-1">
-                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card2_title}</p>
-                  <h3 className="text-xl font-black text-amber-500">{formatNumber(totalBookings)}</h3>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-                  <i className="ph-bold ph-clock text-base"></i>
-                </div>
-              </div>
-              <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card2_sub}</span>
-            </SmartCard>
-            <SmartCard elevation="elevated" className="p-3">
-              <div className="flex items-start mb-3">
-                <div className="flex-1">
-                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card3_title}</p>
-                  <h3 className="text-xl font-black text-emerald-500">{formatNumber(totalContracts)}</h3>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                  <i className="ph-bold ph-check-circle text-base"></i>
-                </div>
-              </div>
-              <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card3_sub}</span>
-            </SmartCard>
-            <SmartCard elevation="elevated" className="p-3">
-              <div className="flex items-start mb-3">
-                <div className="flex-1">
-                  <p className="text-[var(--nc-text-dim)] text-[10px] font-bold uppercase tracking-wider mb-0.5">{t.card4_title}</p>
-                  <h3 className="text-xl font-black text-indigo-500 font-en">{formatPercentage(avgCR)}</h3>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <i className="ph-bold ph-chart-line-up text-base"></i>
-                </div>
-              </div>
-              <span className="text-[9px] text-[var(--nc-text-dim)]">{t.card4_sub}</span>
-            </SmartCard>
+              </SmartCard>
+            ))}
           </>
         }
-        actions={
-          <SmartCard elevation="default" className="p-4 space-y-4 h-full flex flex-col">
-            <div className="border-b border-[var(--nc-glass-border)] pb-3">
-              <h4 className="nc-heading-3 flex items-center gap-2">
-                <i className="ph-bold ph-ranking text-[var(--nc-accent)]"></i>
-                {isArabic ? 'مؤشرات فريق المبيعات' : 'Sales Team KPIs'}
-              </h4>
-              <p className="text-[10px] text-[var(--nc-text-dim)] mt-1">{t.tableSub}</p>
-            </div>
-            <div className="space-y-3 flex-grow pt-2">
-              {salesReps[0] && (
-                <div className="bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] rounded-xl p-3 space-y-1">
-                  <p className="text-[9px] text-[var(--nc-accent)] font-bold uppercase tracking-wide">
-                    {isArabic ? 'المركز الأول' : 'Top Performer'}
-                  </p>
-                  <p className="text-sm font-bold text-[var(--nc-text-primary)]">{displayRepName(salesReps[0].name)}</p>
-                  <p className="text-[10px] text-[var(--nc-text-dim)]">
-                    CR: <span className="font-bold text-[var(--nc-accent)] font-en">{formatPercentage(salesReps[0].conversionRate)}</span>
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 text-center">
-                  <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'فريق المبيعات' : 'Sales Team'}</p>
-                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(salesReps.length)}</p>
-                </div>
-                <div className="p-3 text-center">
-                  <p className="text-[9px] text-[var(--nc-text-dim)] font-bold">{isArabic ? 'إجمالي الصفقات' : 'Total Deals'}</p>
-                  <p className="text-xl font-black text-[var(--nc-text-primary)] font-en">{formatNumber(totalDeals)}</p>
-                </div>
-              </div>
-            </div>
-          </SmartCard>
-        }
-        insights={
-          <SmartCard elevation="default" className="p-4 space-y-3 h-full flex flex-col">
-            <div className="border-b border-[var(--nc-glass-border)] pb-3">
-              <h4 className="nc-heading-3 flex items-center gap-2">
-                <i className="ph-bold ph-chart-bar text-[var(--nc-accent)]"></i>
-                {isArabic ? 'توزيع الأداء' : 'Performance Breakdown'}
-              </h4>
-            </div>
-            <div className="space-y-3 flex-grow pt-1">
-              {salesReps.slice(0, 5).map((rep, idx) => (
-                <div key={rep.id} className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-[var(--nc-text-primary)] truncate max-w-[60%]">{displayRepName(rep.name)}</span>
-                    <span className="text-[9px] font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.targetAchieved)}</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        rep.targetAchieved >= 90 ? 'bg-emerald-500' :
-                        rep.targetAchieved >= 50 ? 'bg-amber-500' : 'bg-[var(--nc-accent)]'
-                      }`}
-                      style={{ width: `${Math.min(rep.targetAchieved, 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SmartCard>
-        }
         details={
-          <SmartCard className="overflow-hidden">
-            <div className="p-4 border-b border-[var(--nc-glass-border)] flex justify-between items-center">
-              <h4 className="nc-heading-3 flex items-center gap-2">
-                <i className="ph-bold ph-medal text-amber-500"></i>
-                {t.tableTitle}
-              </h4>
-              <span className="text-[10px] text-[var(--nc-text-dim)]">{formatNumber(salesReps.length)} {isArabic ? 'مستشار' : 'consultants'}</span>
+          <SmartCard className="orca-workspace-panel overflow-hidden">
+            <div className="border-b border-[var(--nc-border)] px-5 py-4">
+              <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
+                {t.leaderboard}
+              </h2>
             </div>
 
-            {salesReps.length === 0 ? (
-              <div className="p-8 text-center text-[var(--nc-text-dim)] text-sm">
+            {rows.length === 0 ? (
+              <p className="p-8 text-center text-sm text-[var(--nc-text-secondary)]">
                 {t.noData}
-              </div>
+              </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="nc-table">
-                  <thead>
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="bg-[var(--nc-surface)] text-[10px] uppercase tracking-wider text-[var(--nc-text-dim)]">
                     <tr>
-                      <th className="text-center w-12">{t.tableRank}</th>
-                      <th>{t.tableRep}</th>
-                      <th className="text-center">{t.tableLeads}</th>
-                      <th className="text-center">{t.tableResponse}</th>
-                      <th className="text-center">{t.tableCr}</th>
-                      <th className="text-center">{t.tableDeals}</th>
-                      <th className="w-56">{t.tableTarget}</th>
+                      <th className="px-4 py-3 text-center">{t.rank}</th>
+                      <th className="px-4 py-3 text-start">{t.rep}</th>
+                      <th className="px-4 py-3 text-center">{t.leads}</th>
+                      <th className="px-4 py-3 text-center">{t.response}</th>
+                      <th className="px-4 py-3 text-center">{t.conversion}</th>
+                      <th className="px-4 py-3 text-center">{t.deals}</th>
+                      <th className="px-4 py-3 text-center">{t.performance}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {salesReps.map((rep, idx) => {
-                      const rank = idx + 1;
-                      return (
-                        <tr key={rep.id} className="nc-hover-glow cursor-pointer">
-                          <td className="text-center">
-                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-[10px] ${
-                              rank === 1 ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
-                              rank === 2 ? 'bg-[var(--nc-surface-strong)] text-[var(--nc-text-dim)] border border-[var(--nc-glass-border)]' :
-                              rank === 3 ? 'bg-[var(--nc-accent-soft)] text-[var(--nc-accent)] border border-[var(--nc-accent-border)]' :
-                              'bg-[var(--nc-surface-strong)] text-[var(--nc-text-dim)]'
-                            }`}>
-                              {formatNumber(rank)}
-                            </span>
-                          </td>
-                          <td>
-                            <p className="font-bold text-[var(--nc-text-primary)] text-xs">{displayRepName(rep.name)}</p>
-                            <span className="text-[9px] text-[var(--nc-text-dim)] block">{safeDisplayText(rep.email, isArabic ? 'غير محدد' : 'Not specified')}</span>
-                          </td>
-                          <td className="text-center text-xs font-en">{formatNumber(rep.leadsCount)}{t.leadSuffix}</td>
-                          <td className="text-center text-xs">{formatMetric(rep.responseTime)}</td>
-                          <td className="text-center font-bold text-[var(--nc-accent)] font-en">{formatPercentage(rep.conversionRate)}</td>
-                          <td className="text-center text-xs font-en">
-                            <span className="text-amber-500 font-semibold">{formatNumber(rep.bookings)}{t.bookingSuffix}</span>
-                            <span className="text-[var(--nc-text-dim)] mx-1">/</span>
-                            <span className="text-emerald-500 font-semibold">{formatNumber(rep.contracts)}{t.contractSuffix}</span>
-                          </td>
-                          <td>
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between text-[9px] text-[var(--nc-text-dim)]">
-                                <span>{isArabic ? 'الإنجاز:' : 'Achieved:'}</span>
-                                <span className="font-en font-bold">{formatPercentage(rep.targetAchieved)}</span>
-                              </div>
-                              <div className="h-1.5 w-full bg-[var(--nc-surface-strong)] rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${
-                                    rep.targetAchieved >= 90 ? 'bg-emerald-500' :
-                                    rep.targetAchieved >= 50 ? 'bg-amber-500' : 'bg-[var(--nc-accent)]'
-                                  }`}
-                                  style={{ width: `${Math.min(Number(rep.targetAchieved) || 0, 100)}%` }}
-                                ></div>
-                              </div>
+                    {rows.map((row, index) => (
+                      <tr
+                        key={row.id}
+                        className="border-t border-[var(--nc-border)] text-[var(--nc-text-primary)]"
+                      >
+                        <td className="px-4 py-3 text-center font-black">
+                          {number(index + 1)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <strong className="block">
+                            {displayPerson(
+                              row.name,
+                              isArabic ? "ar" : "en",
+                              { route: "/operations/sales" },
+                            )}
+                          </strong>
+                          <span className="text-[10px] text-[var(--nc-text-dim)]">
+                            {row.email}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {number(row.leadsCount)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {row.responseMinutes === null
+                            ? t.noResponse
+                            : `${number(row.responseMinutes)} ${t.minute}`}
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold text-[var(--nc-accent)]">
+                          {number(row.conversionRate, 1)}%
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {number(row.bookings)} / {number(row.contracts)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="mx-auto w-28">
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--nc-surface)]">
+                              <div
+                                className="h-full rounded-full bg-[var(--nc-accent)]"
+                                style={{ width: `${row.performanceScore}%` }}
+                              />
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <p className="mt-1 text-center text-[10px] font-bold text-[var(--nc-text-secondary)]">
+                              {number(row.performanceScore)}%
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -427,7 +274,6 @@ export default function SalesView() {
           </SmartCard>
         }
       />
-
     </div>
   );
 }

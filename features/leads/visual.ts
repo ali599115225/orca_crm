@@ -2,64 +2,76 @@ import type { LeadStatusValue } from "@/lib/leads/model";
 
 export const leadVisual = {
   page:
-    "min-h-full bg-[var(--nc-bg)] px-4 py-6 text-[var(--nc-text-primary)] sm:px-6 lg:px-8 lg:py-8",
-  pageStack: "mx-auto w-full max-w-[1600px] space-y-6",
+    "nc-page nc-stack orca-container pb-4 text-[var(--nc-text-primary)]",
+  pageStack: "nc-stack",
+  workspaceHero: "orca-workspace-hero",
+  detailHero: "orca-workspace-hero !block",
+  workspaceMetrics: "orca-workspace-metrics",
+  workspacePanel:
+    "orca-workspace-panel flex min-w-0 flex-col overflow-hidden",
+  workspaceToolbar:
+    "orca-workspace-toolbar shrink-0 border-b border-[var(--nc-border)]",
+  workspacePagination:
+    "orca-workspace-pagination shrink-0 border-t border-[var(--nc-border)]",
+  workspaceTabs:
+    "flex min-h-[60px] flex-nowrap items-center gap-2 overflow-x-auto border-b border-[var(--nc-border)] px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
   panel:
-    "rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] shadow-sm",
+    "orca-workspace-panel",
   softPanel:
-    "rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)]",
+    "rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)]",
   card:
-    "rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] shadow-sm",
+    "rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]",
   metricCard:
-    "group flex min-h-32 flex-col justify-between rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-5 text-start shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:shadow-md focus:outline-none focus-visible:border-[var(--nc-accent-border)] focus-visible:bg-[var(--nc-accent-soft)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
+    "orca-workspace-metric min-h-[96px]",
   interactiveRow:
-    "!rounded-xl !border-[var(--nc-glass-border)] !bg-[var(--nc-surface-solid)] !shadow-sm transition duration-200 hover:!border-[var(--nc-accent-border)] hover:!bg-[var(--nc-accent-soft)] hover:!shadow-md focus-visible:!border-[var(--nc-accent-border)] focus-visible:!bg-[var(--nc-accent-soft)] focus-visible:!ring-2 focus-visible:!ring-[var(--nc-accent)]",
-  pageEyebrow: "text-xs font-semibold text-[var(--nc-accent-text)]",
+    "!min-h-[64px] !rounded-xl !border-[var(--nc-border)] !bg-[var(--nc-surface-strong)] transition-colors duration-150 hover:!border-[var(--nc-accent-border)] hover:!bg-[var(--nc-accent-soft)] focus-visible:!border-[var(--nc-accent-border)] focus-visible:!bg-[var(--nc-accent-soft)] focus-visible:!ring-2 focus-visible:!ring-[var(--nc-accent)]",
+  pageEyebrow: "text-xs font-bold text-[var(--nc-accent)]",
   pageTitle:
-    "mt-1 text-2xl font-extrabold tracking-[-0.02em] text-[var(--nc-text-primary)] sm:text-3xl",
+    "mt-1 text-2xl font-black tracking-[-0.02em] text-[var(--nc-text-primary)]",
   pageDescription:
-    "mt-2 max-w-3xl text-sm font-medium leading-6 text-[var(--nc-text-secondary)]",
-  sectionTitle: "text-sm font-bold text-[var(--nc-text-primary)]",
-  label: "text-xs font-semibold leading-5 text-[var(--nc-text-secondary)]",
+    "mt-1 max-w-3xl text-sm leading-6 text-[var(--nc-text-secondary)]",
+  sectionTitle: "text-sm font-black text-[var(--nc-text-primary)]",
+  label: "text-xs font-bold leading-5 text-[var(--nc-text-secondary)]",
   value: "mt-1 text-sm font-bold leading-5 text-[var(--nc-text-primary)]",
-  meta: "text-xs font-medium leading-5 text-[var(--nc-text-dim)]",
+  meta: "text-xs leading-5 text-[var(--nc-text-dim)]",
   input:
-    "min-h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
+    "min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-semibold text-[var(--nc-text-primary)] outline-none transition placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent-border)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
   textarea:
-    "w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 text-sm font-semibold leading-6 text-[var(--nc-text-primary)] outline-none transition placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
+    "w-full resize-none overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 text-sm font-semibold leading-6 text-[var(--nc-text-primary)] outline-none transition placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent-border)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
   select:
-    "min-h-11 rounded-xl border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-sm font-semibold text-[var(--nc-text-primary)]",
+    "min-h-[44px] rounded-xl border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-sm font-semibold text-[var(--nc-text-primary)]",
   primaryButton:
-    "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 text-sm font-bold text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--nc-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
+    "nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 text-xs font-black text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--nc-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
   secondaryButton:
-    "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-xs font-bold text-[var(--nc-text-primary)] transition hover:bg-[var(--nc-surface-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
+    "nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50",
   ghostButton:
-    "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold text-[var(--nc-text-secondary)] transition hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
+    "nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50",
   dangerGhostButton:
-    "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold text-red-600 transition hover:bg-red-500/10 dark:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-rose-500/30 px-3 text-xs font-bold text-rose-700 transition hover:bg-rose-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300",
   compactPrimaryButton:
-    "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[var(--nc-accent)] px-3 text-xs font-bold text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--nc-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
+    "nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-[var(--nc-accent)] px-3 text-xs font-black text-[var(--orca-ui-on-primary)] transition hover:bg-[var(--nc-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-50",
   iconTile:
     "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)]",
   metricIconTile:
-    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)] transition-colors duration-200 group-hover:border-[var(--nc-accent-border)] group-hover:bg-[var(--nc-accent-soft)] group-hover:text-[var(--nc-accent)] group-focus-visible:border-[var(--nc-accent-border)] group-focus-visible:bg-[var(--nc-accent-soft)] group-focus-visible:text-[var(--nc-accent)]",
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)] transition hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] group-hover:text-[var(--nc-accent)]",
   modalOverlay:
-    "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-4",
+    "fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-4",
   modal:
     "flex max-h-[88vh] w-[calc(100vw-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)] shadow-2xl sm:w-full",
   modalHeader:
-    "flex shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4",
-  modalBody: "min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4",
+    "flex min-h-[72px] shrink-0 items-start justify-between gap-4 border-b border-[var(--nc-border)] px-5 py-4",
+  modalBody:
+    "min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
   modalFooter:
-    "flex shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-4 sm:flex-row sm:justify-end",
+    "flex min-h-[68px] shrink-0 flex-col-reverse gap-2 border-t border-[var(--nc-border)] px-5 py-3 sm:flex-row sm:justify-end",
   closeButton:
-    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-secondary)] transition hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
+    "nc-btn nc-btn-ghost inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-[var(--nc-border)] text-[var(--nc-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
   tab:
-    "shrink-0 min-h-9 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[var(--nc-text-secondary)] transition hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
+    "shrink-0 min-h-[44px] rounded-xl border border-transparent px-3 text-xs font-bold text-[var(--nc-text-secondary)] transition hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
   activeTab:
-    "shrink-0 min-h-9 rounded-xl border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1.5 text-xs font-bold text-[var(--nc-accent-text)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
+    "shrink-0 min-h-[44px] rounded-xl border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 text-xs font-black text-[var(--nc-accent-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-soft)]",
   emptyState:
-    "rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-6 text-center text-sm font-medium text-[var(--nc-text-secondary)]",
+    "flex min-h-[156px] items-center justify-center rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-5 text-center text-sm font-medium text-[var(--nc-text-secondary)]",
 } as const;
 
 const statusTone: Record<LeadStatusValue, string> = {

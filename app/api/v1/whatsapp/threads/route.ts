@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { prisma } from '@/lib/prisma';
 import { ErrorCode } from "@/lib/errors";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,34 +14,47 @@ export async function GET(request: NextRequest) {
 
     const tenantId = session.tenantId as string;
 
-    const contacts = await (prisma as any).whatsAppContact.findMany({
-      where: { tenantId },
-      orderBy: { lastMessageAt: 'desc' },
-      take: 50,
-    });
-
-    const chats = await Promise.all(
-      contacts.map(async (c: any) => {
-        const messages = await (prisma as any).whatsAppMessage.findMany({
-          where: { tenantId, phone: c.phone },
-          orderBy: { createdAt: 'asc' },
+    const chats = await runWithTenantContext(
+      { tenantId },
+      async () => {
+        const contacts = await (prisma as any).whatsAppContact.findMany({
+          where: { tenantId },
+          orderBy: { lastMessageAt: "desc" },
           take: 50,
         });
-        const lastMsg = messages[messages.length - 1];
-        return {
-          id: c.id,
-          contactName: c.name || c.phone,
-          contactPhone: c.phone,
-          lastMessage: lastMsg?.messageText?.substring(0, 100) || '',
-          time: lastMsg?.createdAt?.toISOString() || c.lastMessageAt?.toISOString() || '',
-          unread: false,
-          messages: messages.map((m: any) => ({
-            sender: m.direction === 'inbound' ? 'client' : 'agent',
-            text: m.messageText || '',
-            time: m.createdAt?.toISOString() || '',
-          })),
-        };
-      })
+
+        return Promise.all(
+          contacts.map(async (contact: any) => {
+            const messages = await (prisma as any).whatsAppMessage.findMany({
+              where: { tenantId, phone: contact.phone },
+              orderBy: { createdAt: "asc" },
+              take: 50,
+            });
+            const lastMessage = messages[messages.length - 1];
+
+            return {
+              id: contact.id,
+              contactName: contact.name || contact.phone,
+              contactPhone: contact.phone,
+              lastMessage:
+                lastMessage?.messageText?.substring(0, 100) || "",
+              time:
+                lastMessage?.createdAt?.toISOString() ||
+                contact.lastMessageAt?.toISOString() ||
+                "",
+              unread: false,
+              messages: messages.map((storedMessage: any) => ({
+                sender:
+                  storedMessage.direction === "inbound"
+                    ? "client"
+                    : "agent",
+                text: storedMessage.messageText || "",
+                time: storedMessage.createdAt?.toISOString() || "",
+              })),
+            };
+          }),
+        );
+      },
     );
 
     return NextResponse.json({ success: true, data: chats });

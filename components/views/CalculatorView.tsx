@@ -1,616 +1,259 @@
-// components/views/CalculatorView.tsx
-'use client';
-import React, { useState } from 'react';
+"use client";
 
-import PageHeader from '@/components/ui/PageHeader';
-import LayoutContainer from '@/components/ui/LayoutContainer';
-import { SmartCard } from '@/components/ui/SmartCard';
-import { useApp } from '@/app/context/AppContext';
-import { toArabicNumerals as toArabicNumeralsImport, formatCurrency as formatCurrencyImport } from '@/lib/formatters';
+import React, { useMemo, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import LayoutContainer from "@/components/ui/LayoutContainer";
+import { SmartCard } from "@/components/ui/SmartCard";
+import { useApp } from "@/app/context/AppContext";
 
-// البنوك السعودية ونسب الأرباح الرسمية وعروضها الحصرية لعام 2026
-const BANK_DATA: Record<string, { name: string; nameEn: string; apr: number; promo: string; promoEn: string }> = {
-  alrajhi: { 
-    name: 'مصرف الراجحي', 
-    nameEn: 'Al Rajhi Bank',
-    apr: 3.90, 
-    promo: 'عرض التمويل المرن بهامش ربح تنافسي مع دعم الإسكان',
-    promoEn: 'Flexible financing program with competitive profit rates and housing support.'
-  },
-  snb: { 
-    name: 'البنك الأهلي السعودي (SNB)', 
-    nameEn: 'Saudi National Bank (SNB)',
-    apr: 4.10, 
-    promo: 'خصم خاص 0.25% لموظفي القطاع الحكومي المعتمد',
-    promoEn: 'Special 0.25% discount for approved government sector employees.'
-  },
-  riyad: { 
-    name: 'بنك الرياض', 
-    nameEn: 'Riyad Bank',
-    apr: 4.20, 
-    promo: 'برنامج الإعفاء المبتدئ وإمكانية دمج الدعم السكني بالكامل',
-    promoEn: 'Exemption program with options to fully integrate Sakani support.'
-  },
-  alinma: { 
-    name: 'مصرف الإنماء', 
-    nameEn: 'Alinma Bank',
-    apr: 3.85, 
-    promo: 'منتج الإجارة المرنة والاعتماد الفوري لفلل الخارطة',
-    promoEn: 'Flexible Ijarah product with immediate approvals for off-plan villas.'
-  },
-  sab: { 
-    name: 'البنك السعودي الأول (SAB)', 
-    nameEn: 'Saudi Awwal Bank (SAB)',
-    apr: 4.30, 
-    promo: 'بدون رسوم إدارية وعروض حصرية على الفلل الصديقة للبيئة',
-    promoEn: 'Zero admin fees and exclusive rates on eco-friendly green villas.'
-  },
-  albilad: { 
-    name: 'بنك البلاد', 
-    nameEn: 'Bank Albilad',
-    apr: 4.05, 
-    promo: 'التمويل العقاري بدون دفعة أولى للمستفيدين المؤهلين لسكني',
-    promoEn: 'Zero down payment mortgage options for qualified Sakani beneficiaries.'
-  },
-  bsf: { 
-    name: 'البنك السعودي الفرنسي (BSF)', 
-    nameEn: 'Banque Saudi Fransi (BSF)',
-    apr: 4.45, 
-    promo: 'الحصول على تمويل إضافي شخصي وعقاري بالتزامن',
-    promoEn: 'Combined personal and home finance offerings with quick processing.'
-  },
-  anb: { 
-    name: 'البنك العربي الوطني (ANB)', 
-    nameEn: 'Arab National Bank (ANB)',
-    apr: 4.50, 
-    promo: 'تأمين تعاوني كامل ضد العجز أو الأضرار الهيكلية مجاناً',
-    promoEn: 'Comprehensive cooperative insurance against structural damages free of charge.'
-  },
-  aljazira: { 
-    name: 'بنك الجزيرة', 
-    nameEn: 'Bank AlJazira',
-    apr: 4.15, 
-    promo: 'تمويل ملاك الصف الثاني لشراء الوحدات السكنية الجاهزة',
-    promoEn: 'Second-tier home financing for ready-to-move-in residential units.'
-  },
-  saib: { 
-    name: 'البنك السعودي للاستثمار (SAIB)', 
-    nameEn: 'Saudi Investment Bank (SAIB)',
-    apr: 4.35, 
-    promo: 'عروض حصرية للعملاء المحولين مع إسقاط الدفعة الأولى',
-    promoEn: 'Exclusive salary transfer options with zero downpayment waivers.'
-  },
-};
-
-// جهات العمل والحد الأقصى للاستقطاع المتوافق معها SAMA DSR
-const EMPLOYER_TYPES: Record<string, { label: string; labelEn: string; maxDsr: number }> = {
-  gov_civil: { label: 'حكومي - مدني', labelEn: 'Government - Civil', maxDsr: 55 },
-  gov_military: { label: 'حكومي - عسكري', labelEn: 'Government - Military', maxDsr: 55 },
-  private: { label: 'قطاع خاص معتمد', labelEn: 'Approved Private Sector', maxDsr: 50 },
-  retired: { label: 'متقاعد', labelEn: 'Retiree', maxDsr: 60 },
-  freelance: { label: 'أعمال حرة / مستقل (وثيقة العمل الحر)', labelEn: 'Freelance / Self-Employed', maxDsr: 45 },
-};
-
-const TRANSLATIONS = {
+const COPY = {
   AR: {
-    tag: 'محاكاة التمويل المتقدمة للبنوك السعودية لعام 2026 🇸🇦',
-    title: 'حاسبة التمويل العقاري الشاملة (الخيارات المتقدمة)',
-    desc: 'لوحة استشارية تفصيلية لحساب الالتزامات القائمة، عروض الخصومات الحصرية للمطور، وفحص متطلبات الـ DSR الموحدة لحوكمة الائتمان ومطابقة لوائح SAMA',
-    inputsTitle: 'بيانات الحسبة والخيارات المتقدمة',
-    priceLabel: 'سعر العقار العقدي (ر.س) *',
-    downpaymentLabel: 'الدفعة الأولى المقدمة (ر.س) *',
-    birthdayLabel: 'تاريخ ميلاد العميل (بالتفصيل) *',
-    salaryLabel: 'الراتب الشهري الموثق (ر.س) *',
-    employerLabel: 'جهة العمل والقطاع الوظيفي *',
-    commitmentsLabel: 'التزامات شخصية / بطاقات ائتمانية شهرياً (ر.س) ⚠️',
-    tenureLabel: 'مدة التمويل المطلوبة (سنوات) *',
-    salaryTransferLabel: 'تفعيل خيار (تحويل الراتب للبنك الممول)',
-    developerOfferLabel: 'تطبيق العرض الحصري للمطور (-٠.٥٠٪)',
-    sakaniLabel: 'العميل مستحق للدعم السكني المحدث (سكني)',
-    ageTitle: 'عمر العميل الحالي المقدر',
-    ageYears: 'سنة',
-    ageMonths: 'شهر',
-    ageDays: 'يوم',
-    birthYearLabel: 'سنة الميلاد:',
-    installmentBeforeSupport: 'القسط الشهري قبل الدعم',
-    effectiveApr: 'هامش الربح الفعلي:',
-    netInstallmentTitle: 'صافي القسط بعد الدعم السكني',
-    netInstallmentSub: 'صافي بعد الدعم',
-    sakaniSupportActive: 'خصم دعم سكني شهري بقيمة',
-    sakaniSupportInactive: 'لا يوجد دعم سكني نشط',
-    developerDiscountActive: 'خصم الشراكة المطور الحصري (-٠.٥٠٪) مفعل',
-    salaryTransferActive: 'معدل تفضيلي لتحويل الراتب مطبق',
-    activePromoTitle: 'العرض والمزايا النشطة لـ',
-    promoDeveloperIntegrated: 'تم دمج وتطبيق الخصم الحصري الخاص بمشروعكم السكني بمعدل (-٠.٥٠٪) لمشروعكم السكني بنجاح!',
-    samaComplianceTitle: 'فحص مطابقة لوائح مؤسسة النقد للبنوك السعودية (SAMA DSR)',
-    propertyPriceCol: 'سعر العقار المستهدف:',
-    downpaymentCol: 'الدفعة الأولى المدفوعة:',
-    commitmentsCol: 'الالتزامات السابقة القائمة:',
-    totalCostCol: 'إجمالي تكلفة العقار بتمويل البنك:',
-    dsrLabel: 'نسبة الاستقطاع الكلي (DSR):',
-    samaCeiling: 'سقف ساما',
-    compliantMsg: 'الحسبة متوافقة تماماً مع ضوابط البنك المركزي السعودي (SAMA).',
-    nonCompliantMsg: '⚠️ تعذر المطابقة! إجمالي الالتزامات يتجاوز حد الاستقطاع المسموح به لهذا القطاع.',
-    matrixTitle: 'مفارقة حية لأقساط البنوك السعودية وعروضها الحصرية',
-    matrixSub: 'اختر البنك لتطبيق الحسبة فوراً',
-    bankSelected: '✔ تم الاختيار',
-    bankSelectDetails: 'عرض التفاصيل ←',
-    netMonthlyInstallmentLabel: 'صافي قسط شهري مقدر',
-    tenYears: '١٠ سنوات',
-    fifteenYears: '١٥ سنة',
-    twentyYears: '٢٠ سنة',
-    twentyFiveYears: '٢٥ سنة'
+    title: "حاسبة التمويل العقاري",
+    description: "محاكاة مالية محايدة تعتمد بالكامل على القيم التي يدخلها المستخدم دون نسب أو عروض منسوبة إلى مزود خارجي.",
+    badge: "أداة تقديرية",
+    inputs: "مدخلات التمويل",
+    propertyPrice: "سعر العقار",
+    downPayment: "الدفعة الأولى",
+    annualRate: "نسبة الربح السنوية المدخلة",
+    years: "مدة التمويل بالسنوات",
+    salary: "الدخل الشهري",
+    commitments: "الالتزامات الشهرية الحالية",
+    dsrLimit: "حد الاستقطاع الاسترشادي",
+    financedAmount: "مبلغ التمويل",
+    monthlyPayment: "القسط الشهري المقدر",
+    totalFinanceCost: "تكلفة التمويل المقدرة",
+    totalPaid: "إجمالي المبلغ المدفوع",
+    dsr: "نسبة الاستقطاع المقدرة",
+    availablePayment: "القسط المتاح وفق الحد المدخل",
+    compliant: "الحسبة ضمن الحد الذي أدخله المستخدم",
+    nonCompliant: "الحسبة تتجاوز الحد الذي أدخله المستخدم",
+    noteTitle: "تنبيه مهني",
+    note: "هذه نتيجة تقديرية وليست عرضًا ائتمانيًا أو موافقة تمويل. النسبة والرسوم وحدود الاستقطاع يحددها العميل أو الجهة الممولة ويجب التحقق منها مباشرة.",
+    sar: "ر.س",
+    percent: "٪",
   },
   EN: {
-    tag: 'Advanced Mortgage Simulation for Saudi Banks 2026 🇸🇦',
-    title: 'Comprehensive Housing Finance Calculator (Advanced Options)',
-    desc: 'Detailed advisory dashboard calculating outstanding liabilities, developer discounts, and unified SAMA DSR checks for credit governance',
-    inputsTitle: 'Calculation Data & Advanced Options',
-    priceLabel: 'Contractual Property Price (SAR) *',
-    downpaymentLabel: 'Down Payment Paid (SAR) *',
-    birthdayLabel: 'Customer Birth Date (Details) *',
-    salaryLabel: 'Verified Monthly Salary (SAR) *',
-    employerLabel: 'Employer Type & Job Sector *',
-    commitmentsLabel: 'Total Monthly Pre-existing Liabilities (SAR) ⚠️',
-    tenureLabel: 'Requested Financing Tenure (Years) *',
-    salaryTransferLabel: 'Enable Salary Transfer to Financer',
-    developerOfferLabel: 'Apply Developer Exclusive Discount (-0.50%)',
-    sakaniLabel: 'Customer Eligible for Sakani Support',
-    ageTitle: 'Current Customer Age',
-    ageYears: 'years',
-    ageMonths: 'months',
-    ageDays: 'days',
-    birthYearLabel: 'Birth Year:',
-    installmentBeforeSupport: 'Monthly Installment Before Support',
-    effectiveApr: 'Effective Profit Rate:',
-    netInstallmentTitle: 'Net Monthly Installment after Sakani Support',
-    netInstallmentSub: 'Net After Support',
-    sakaniSupportActive: 'Sakani support discount of',
-    sakaniSupportInactive: 'No active Sakani support',
-    developerDiscountActive: 'Developer partner discount (-0.50%) active',
-    salaryTransferActive: 'Preferential salary transfer rate applied',
-    activePromoTitle: 'Active Promo & Benefits for',
-    promoDeveloperIntegrated: 'Exclusive developer discount (-0.50%) has been successfully integrated for your project!',
-    samaComplianceTitle: 'SAMA DSR Central Bank Compliance Audit',
-    propertyPriceCol: 'Target Property Price:',
-    downpaymentCol: 'Down Payment Paid:',
-    commitmentsCol: 'Outstanding Liabilities:',
-    totalCostCol: 'Total Property Cost with Financing:',
-    dsrLabel: 'Debt Service Ratio (DSR):',
-    samaCeiling: 'SAMA Limit',
-    compliantMsg: 'Calculations fully compliant with SAMA central bank rules.',
-    nonCompliantMsg: '⚠️ Out of Compliance! DSR exceeds the allowed central bank threshold for this sector.',
-    matrixTitle: 'Live Saudi Banks Comparison Matrix',
-    matrixSub: 'Select a bank to recalculate instantly',
-    bankSelected: '✔ Selected',
-    bankSelectDetails: 'Recalculate →',
-    netMonthlyInstallmentLabel: 'Est. Net Monthly Installment',
-    tenYears: '10 Years',
-    fifteenYears: '15 Years',
-    twentyYears: '20 Years',
-    twentyFiveYears: '25 Years'
-  }
+    title: "Mortgage Finance Calculator",
+    description: "A provider-neutral simulation based entirely on user-entered values, with no attributed lender rates or promotions.",
+    badge: "Estimate only",
+    inputs: "Finance inputs",
+    propertyPrice: "Property price",
+    downPayment: "Down payment",
+    annualRate: "User-entered annual profit rate",
+    years: "Finance term in years",
+    salary: "Monthly income",
+    commitments: "Existing monthly commitments",
+    dsrLimit: "Advisory deduction limit",
+    financedAmount: "Finance amount",
+    monthlyPayment: "Estimated monthly payment",
+    totalFinanceCost: "Estimated finance cost",
+    totalPaid: "Estimated total paid",
+    dsr: "Estimated deduction ratio",
+    availablePayment: "Available payment under entered limit",
+    compliant: "The estimate is within the user-entered limit",
+    nonCompliant: "The estimate exceeds the user-entered limit",
+    noteTitle: "Professional notice",
+    note: "This is an estimate, not a credit offer or approval. Rates, fees, and deduction limits must be entered and verified with the relevant financing provider.",
+    sar: "SAR",
+    percent: "%",
+  },
 };
 
+const clamp = (value: number, min = 0) =>
+  Number.isFinite(value) ? Math.max(min, value) : min;
+
 export default function CalculatorView() {
-  const { theme, lang } = useApp();
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.AR;
-  const isArabic = lang === 'AR';
-  const dir = isArabic ? 'rtl' : 'ltr';
+  const { lang } = useApp();
+  const isArabic = lang === "AR";
+  const t = COPY[lang] || COPY.AR;
 
-  const [propertyPrice, setPropertyPrice] = useState<number>(1200000); // 1.2 مليون ر.س
-  const [salary, setSalary] = useState<number>(15000); // 15 ألف ر.س
-  const [downPayment, setDownPayment] = useState<number>(120000); // 10% دفعة أولى
-  const [years, setYears] = useState<number>(20); // مدة التمويل
-  const [selectedBank, setSelectedBank] = useState<string>('alrajhi');
-  const [employer, setEmployer] = useState<string>('gov_civil');
-  const [hasSakani, setHasSakani] = useState<boolean>(true);
+  const [propertyPrice, setPropertyPrice] = useState(1_000_000);
+  const [downPayment, setDownPayment] = useState(100_000);
+  const [annualRate, setAnnualRate] = useState(4.5);
+  const [years, setYears] = useState(20);
+  const [salary, setSalary] = useState(15_000);
+  const [commitments, setCommitments] = useState(0);
+  const [dsrLimit, setDsrLimit] = useState(55);
 
-  // خيارات متقدمة
-  const [existingCommitments, setExistingCommitments] = useState<number>(0); // التزامات شهرية قائمة
-  const [salaryTransfer, setSalaryTransfer] = useState<boolean>(true); // تحويل الراتب للبنك
-  const [developerOffer, setDeveloperOffer] = useState<boolean>(false); // تفعيل العرض الخاص لشركتكم
+  const result = useMemo(() => {
+    const principal = clamp(propertyPrice - downPayment);
+    const months = Math.max(1, Math.round(clamp(years, 1) * 12));
+    const monthlyRate = clamp(annualRate) / 100 / 12;
 
-  // تاريخ الميلاد
-  const [birthDay, setBirthDay] = useState<number>(1);
-  const [birthMonth, setBirthMonth] = useState<number>(1);
-  const [birthYear, setBirthYear] = useState<number>(1995);
+    const monthlyPayment =
+      monthlyRate === 0
+        ? principal / months
+        : principal *
+          ((monthlyRate * Math.pow(1 + monthlyRate, months)) /
+            (Math.pow(1 + monthlyRate, months) - 1));
 
-  // دالة تحويل الأرقام إلى الأرقام العربية الشرقية حسب اللغة النشطة
-  const toArabicNumerals = (num: string | number | undefined | null): string => {
-    if (!isArabic) return num?.toString() ?? "";
-    return toArabicNumeralsImport(num);
-  };
+    const totalInstallments = monthlyPayment * months;
+    const totalFinanceCost = Math.max(0, totalInstallments - principal);
+    const totalPaid = downPayment + totalInstallments;
+    const dsr =
+      salary > 0 ? ((monthlyPayment + commitments) / salary) * 100 : 0;
+    const availablePayment = Math.max(
+      0,
+      salary * (clamp(dsrLimit) / 100) - commitments,
+    );
 
-  // تنسيق العملة ديناميكياً حسب اللغة النشطة
-  const formatCurrency = (val: number): string => {
-    return formatCurrencyImport(val, isArabic ? 'AR' : 'EN');
-  };
+    return {
+      principal,
+      monthlyPayment,
+      totalFinanceCost,
+      totalPaid,
+      dsr,
+      availablePayment,
+      compliant: salary > 0 && dsr <= dsrLimit,
+    };
+  }, [
+    propertyPrice,
+    downPayment,
+    annualRate,
+    years,
+    salary,
+    commitments,
+    dsrLimit,
+  ]);
 
-  // حساب العمر
-  const calculateAgeDetails = () => {
-    const today = new Date();
-    const birthDate = new Date(birthYear, birthMonth - 1, birthDay);
-    let ageYears = today.getFullYear() - birthDate.getFullYear();
-    let ageMonths = today.getMonth() - birthDate.getMonth();
-    let ageDays = today.getDate() - birthDate.getDate();
+  const number = (value: number, digits = 0) =>
+    new Intl.NumberFormat(isArabic ? "ar-SA" : "en-US", {
+      maximumFractionDigits: digits,
+      minimumFractionDigits: digits,
+    }).format(value);
 
-    if (ageMonths < 0 || (ageMonths === 0 && ageDays < 0)) {
-      ageYears--;
-      ageMonths += 12;
-    }
-    if (ageDays < 0) {
-      const prevMonthLastDate = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-      ageDays += prevMonthLastDate;
-      ageMonths--;
-    }
-    return { years: ageYears, months: ageMonths, days: ageDays };
-  };
+  const money = (value: number) => `${number(value)} ${t.sar}`;
 
-  const ageDetails = calculateAgeDetails();
-
-  // حساب ضوابط التمويل والاستقطاع لجهة العمل والبنك المختار
-  const bank = BANK_DATA[selectedBank] || BANK_DATA.alrajhi;
-  const employerConfig = EMPLOYER_TYPES[employer] || EMPLOYER_TYPES.gov_civil;
-  
-  // الالتزام بالـ DSR كحد أقصى متوافق مع لوائح ساما
-  const maxDsrLimit = employerConfig.maxDsr;
-
-  // حساب نسبة الربح الفعلية بناءً على الخيارات المتقدمة
-  let finalApr = bank.apr;
-  if (!salaryTransfer) finalApr += 0.75; 
-  if (developerOffer) finalApr -= 0.50; 
-
-  // حساب قسط التمويل للبنك المختار
-  const loanRequired = Math.max(0, propertyPrice - downPayment);
-  const totalProfitPercentage = (finalApr / 100) * years;
-  const totalProfit = loanRequired * totalProfitPercentage;
-  const totalLoanWithProfit = loanRequired + totalProfit;
-  const totalMonths = years * 12;
-  const monthlyInstallmentRaw = totalMonths > 0 ? totalLoanWithProfit / totalMonths : 0;
-
-  // الدعم السكني المقدر
-  const monthlySakaniSupport = hasSakani && salary <= 15000 ? 500 : hasSakani ? 350 : 0;
-  const netMonthlyInstallment = Math.max(0, monthlyInstallmentRaw - monthlySakaniSupport);
-
-  // إجمالي الاستقطاع الكلي DSR شهرياً
-  const totalMonthlyCommitments = monthlyInstallmentRaw + existingCommitments;
-  const actualDsrPercentage = salary > 0 ? (totalMonthlyCommitments / salary) * 100 : 0;
-  const isCompliant = actualDsrPercentage <= maxDsrLimit;
-
-  // إجمالي تكلفة العقار
-  const totalPropertyCost = totalLoanWithProfit + downPayment;
+  const field = (
+    label: string,
+    value: number,
+    setter: (value: number) => void,
+    step = 1,
+    min = 0,
+  ) => (
+    <label className="space-y-2">
+      <span className="block text-xs font-bold text-[var(--nc-text-secondary)]">
+        {label}
+      </span>
+      <input
+        type="number"
+        min={min}
+        step={step}
+        value={value}
+        onChange={(event) => setter(Number(event.target.value))}
+        className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-bold text-[var(--nc-text-primary)] outline-none transition focus:border-[var(--nc-accent)]"
+      />
+    </label>
+  );
 
   return (
-    <div className="nc-page nc-stack" dir={dir}>
-      
-      {/* Header */}
-      <PageHeader title={t.title} description={t.desc} />
+    <div className="nc-page nc-stack orca-container orca-calculator-final pb-10" dir={isArabic ? "rtl" : "ltr"}>
+      <PageHeader
+        title={t.title}
+        description={t.description}
+        eyebrow={
+          isArabic
+            ? "القيمة → التمويل → القسط → الاستقطاع"
+            : "Value → finance → payment → deduction"
+        }
+        workspace
+      >
+        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--nc-accent)]">
+          <i className="ph-bold ph-calculator" aria-hidden="true" />
+          {t.badge}
+        </span>
+      </PageHeader>
 
       <LayoutContainer
-        actions={
-          /* Left Side: Inputs Panel */
-          <SmartCard className="p-6 shadow-sm space-y-6">
-            <h3 className="text-[var(--nc-foreground)] font-bold text-base border-b border-[var(--nc-border)] pb-3">
-              {t.inputsTitle}
-            </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.priceLabel}</label>
-              <input 
-                type="number" 
-                value={propertyPrice} 
-                onChange={(e) => setPropertyPrice(Number(e.target.value))}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              />
-            </div>
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.downpaymentLabel}</label>
-              <input 
-                type="number" 
-                value={downPayment} 
-                onChange={(e) => setDownPayment(Number(e.target.value))}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.salaryLabel}</label>
-              <input 
-                type="number" 
-                value={salary} 
-                onChange={(e) => setSalary(Number(e.target.value))}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              />
-            </div>
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.employerLabel}</label>
-              <select 
-                value={employer} 
-                onChange={(e) => setEmployer(e.target.value)}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              >
-                {Object.entries(EMPLOYER_TYPES).map(([k, v]) => (
-                  <option key={k} value={k}>{isArabic ? v.label : v.labelEn}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.commitmentsLabel}</label>
-              <input 
-                type="number" 
-                value={existingCommitments} 
-                onChange={(e) => setExistingCommitments(Number(e.target.value))}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              />
-            </div>
-            <div>
-              <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-2">{t.tenureLabel}</label>
-              <select 
-                value={years} 
-                onChange={(e) => setYears(Number(e.target.value))}
-                className="w-full rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-4 py-3 text-sm text-[var(--nc-text-primary)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)]"
-              >
-                <option value={10}>{t.tenYears}</option>
-                <option value={15}>{t.fifteenYears}</option>
-                <option value={20}>{t.twentyYears}</option>
-                <option value={25}>{t.twentyFiveYears}</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Birthday inputs */}
-          <div>
-            <label className="block text-[var(--nc-text-dim)] font-medium text-xs mb-3">{t.birthdayLabel}</label>
-            <div className="grid grid-cols-3 gap-3">
-              <select 
-                value={birthDay} 
-                onChange={(e) => setBirthDay(Number(e.target.value))}
-                className="rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2.5 text-xs text-[var(--nc-text-primary)] font-bold focus:outline-none"
-              >
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                  <option key={d} value={d}>{toArabicNumerals(d)}</option>
-                ))}
-              </select>
-              <select 
-                value={birthMonth} 
-                onChange={(e) => setBirthMonth(Number(e.target.value))}
-                className="rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2.5 text-xs text-[var(--nc-text-primary)] font-bold focus:outline-none"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <option key={m} value={m}>{toArabicNumerals(m)}</option>
-                ))}
-              </select>
-              <select 
-                value={birthYear} 
-                onChange={(e) => setBirthYear(Number(e.target.value))}
-                className="rounded-xl bg-[var(--nc-surface-solid)] border border-[var(--nc-glass-border)] px-3 py-2.5 text-xs text-[var(--nc-text-primary)] font-bold focus:outline-none"
-              >
-                {Array.from({ length: 50 }, (_, i) => 2006 - i).map(y => (
-                  <option key={y} value={y}>{toArabicNumerals(y)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Dynamic Checklist Switches */}
-          <div className="space-y-3 pt-3 border-t border-[var(--nc-border)]">
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
-              <input 
-                type="checkbox" 
-                checked={salaryTransfer}
-                onChange={(e) => setSalaryTransfer(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
-              />
-              <span>{t.salaryTransferLabel}</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
-              <input 
-                type="checkbox" 
-                checked={developerOffer}
-                onChange={(e) => setDeveloperOffer(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
-              />
-              <span>{t.developerOfferLabel}</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer text-sm text-[var(--nc-foreground-muted)] font-medium select-none">
-              <input 
-                type="checkbox" 
-                checked={hasSakani}
-                onChange={(e) => setHasSakani(e.target.checked)}
-                className="w-4 h-4 rounded text-[var(--nc-text-secondary)] focus:ring-[var(--nc-accent-border)] border-[var(--nc-border)] bg-transparent"
-              />
-              <span>{t.sakaniLabel}</span>
-            </label>
-          </div>
-        </SmartCard>
-        }
-        insights={
-          /* Right Side: Results & SAMA Check Panel */
-          <div className="space-y-6">
-
-          {/* Card 1: Main installment results */}
-          <SmartCard className="p-6 shadow-sm relative overflow-hidden flex flex-col gap-5">
-            <div className="absolute top-0 right-0 w-36 h-36 bg-[var(--nc-accent-soft)] rounded-full blur-[50px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
-            
-            <div className="relative z-10 flex justify-between items-start">
-              <div>
-                <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-1">{t.installmentBeforeSupport}</p>
-                <h4 className="text-lg font-bold text-[var(--nc-text-dim)] font-medium line-through opacity-70 font-en">
-                  {formatCurrency(monthlyInstallmentRaw)}
-                </h4>
-              </div>
-              <div className="text-right">
-                <p className="text-[var(--nc-text-dim)] font-medium text-[10px]">{t.effectiveApr}</p>
-                <span className="bg-[var(--nc-accent-soft)] border border-[var(--nc-accent-border)] text-[var(--nc-text-secondary)] text-xs font-bold px-2 py-0.5 rounded-md font-en">
-                  {toArabicNumerals(finalApr.toFixed(2))}%
-                </span>
-              </div>
-            </div>
-
-            <div className="relative z-10">
-              <p className="text-[var(--nc-text-dim)] font-medium text-xs mb-1">{t.netInstallmentTitle}</p>
-              <h2 className="text-3xl font-black text-[var(--nc-text-secondary)] font-en">
-                {formatCurrency(netMonthlyInstallment)}
-                <span className="text-xs text-[var(--nc-text-dim)] font-medium block mt-1 font-sans">{t.netInstallmentSub}</span>
-              </h2>
-            </div>
-
-            <div className="relative z-10 border-t border-[var(--nc-border)] pt-4 space-y-2 text-xs">
-              <div className="flex justify-between items-center text-[var(--nc-foreground-muted)] font-medium">
-                <span>{t.ageTitle}:</span>
-                <span className="font-bold text-[var(--nc-foreground)] font-en">
-                  {toArabicNumerals(ageDetails.years)} {t.ageYears}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[var(--nc-foreground-muted)] font-medium">
-                <span>{isArabic ? "الدعم السكني المقدر:" : "Est. Sakani Support:"}</span>
-                <span className={`font-bold font-en ${hasSakani ? 'text-[var(--nc-text-secondary)]' : 'text-[var(--nc-foreground-muted)] font-medium'}`}>
-                  {hasSakani ? `${t.sakaniSupportActive} ${formatCurrency(monthlySakaniSupport)}` : t.sakaniSupportInactive}
-                </span>
-              </div>
-              {developerOffer && (
-                <div className="flex items-center gap-1.5 text-[var(--nc-text-secondary)] font-semibold">
-                  <i className="ph-fill ph-sparkle text-sm"></i>
-                  <span>{t.developerDiscountActive}</span>
-                </div>
-              )}
-            </div>
-          </SmartCard>
-
-          {/* Card 2: SAMA DSR limits compliance audit box */}
-          <SmartCard className="p-5 shadow-sm space-y-3">
-            <h4 className="text-[var(--nc-foreground)] font-bold text-sm border-b border-[var(--nc-border)] pb-2 flex items-center gap-2">
-              <i className="ph-bold ph-shield-check text-[var(--nc-text-secondary)]"></i>
-              {t.samaComplianceTitle}
-            </h4>
-
-            <div className="space-y-1.5 text-xs text-[var(--nc-text-dim)] font-medium">
-              <div className="flex justify-between">
-                <span>{t.propertyPriceCol}</span>
-                <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(propertyPrice)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{t.downpaymentCol}</span>
-                <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(downPayment)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{t.commitmentsCol}</span>
-                <span className="font-bold text-[var(--nc-text-primary)] font-bold font-en">{formatCurrency(existingCommitments)}</span>
-              </div>
-              <div className="flex justify-between border-t border-[var(--nc-border)] pt-2 mt-1">
-                <span>{t.totalCostCol}</span>
-                <span className="font-bold text-[var(--nc-foreground)] font-bold font-en">{formatCurrency(totalPropertyCost)}</span>
-              </div>
-
-              {/* DSR Indicator progress bar */}
-              <div className="space-y-1.5 pt-2 border-t border-[var(--nc-border)]">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold">{t.dsrLabel}</span>
-                  <span className={`font-bold font-en text-sm ${isCompliant ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {toArabicNumerals(actualDsrPercentage.toFixed(1))}% / {toArabicNumerals(maxDsrLimit)}% ({t.samaCeiling})
+        workspace
+        kpis={
+          <>
+            {[
+              [t.financedAmount, money(result.principal), "ph-bank"],
+              [t.monthlyPayment, money(result.monthlyPayment), "ph-calendar-check"],
+              [t.totalFinanceCost, money(result.totalFinanceCost), "ph-chart-line-up"],
+              [t.dsr, `${number(result.dsr, 1)}${t.percent}`, "ph-percent"],
+            ].map(([label, value, icon]) => (
+              <SmartCard key={label} elevation="elevated" className="orca-workspace-metric p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)]">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-xl font-black text-[var(--nc-text-primary)]">
+                      {value}
+                    </p>
+                  </div>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">
+                    <i className={`ph-bold ${icon}`} aria-hidden="true" />
                   </span>
                 </div>
-                <div className="h-2 w-full bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      actualDsrPercentage > maxDsrLimit 
-                        ? 'bg-rose-500' 
-                        : actualDsrPercentage > 45 
-                        ? 'bg-amber-500' 
-                        : 'bg-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min(100, actualDsrPercentage)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Compliance message badge */}
-            <div className={`p-2.5 rounded-lg border text-[11px] font-semibold leading-relaxed flex items-start gap-2 ${
-              isCompliant 
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-            }`}>
-              <i className={`ph-bold ${isCompliant ? 'ph-check-circle' : 'ph-warning-octagon'} text-base shrink-0`}></i>
-              <span>{isCompliant ? t.compliantMsg : t.nonCompliantMsg}</span>
+              </SmartCard>
+            ))}
+          </>
+        }
+        actions={
+          <SmartCard className="orca-workspace-panel p-5">
+            <h2 className="mb-5 text-sm font-black text-[var(--nc-text-primary)]">
+              {t.inputs}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {field(t.propertyPrice, propertyPrice, setPropertyPrice, 1000)}
+              {field(t.downPayment, downPayment, setDownPayment, 1000)}
+              {field(t.annualRate, annualRate, setAnnualRate, 0.01)}
+              {field(t.years, years, setYears, 1, 1)}
+              {field(t.salary, salary, setSalary, 100)}
+              {field(t.commitments, commitments, setCommitments, 100)}
+              {field(t.dsrLimit, dsrLimit, setDsrLimit, 1)}
             </div>
           </SmartCard>
+        }
+        insights={
+          <div className="space-y-4">
+            <SmartCard className="orca-workspace-panel p-5">
+              <div className="space-y-4">
+                {[
+                  [t.totalPaid, money(result.totalPaid)],
+                  [t.availablePayment, money(result.availablePayment)],
+                  [t.dsr, `${number(result.dsr, 1)}${t.percent}`],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between gap-4 border-b border-[var(--nc-border)] pb-3 last:border-0 last:pb-0"
+                  >
+                    <span className="text-xs font-bold text-[var(--nc-text-secondary)]">
+                      {label}
+                    </span>
+                    <span className="text-sm font-black text-[var(--nc-text-primary)]">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${
+                  result.compliant
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-600"
+                }`}
+              >
+                {result.compliant ? t.compliant : t.nonCompliant}
+              </div>
+            </SmartCard>
+
+            <SmartCard className="orca-workspace-panel p-5">
+              <h3 className="flex items-center gap-2 text-sm font-black text-[var(--nc-text-primary)]">
+                <i className="ph-bold ph-info" aria-hidden="true" />
+                {t.noteTitle}
+              </h3>
+              <p className="mt-3 text-xs leading-6 text-[var(--nc-text-secondary)]">
+                {t.note}
+              </p>
+            </SmartCard>
           </div>
         }
       />
-
-      {/* Comparison Matrix Table */}
-      <SmartCard className="shadow-sm overflow-hidden mt-2">
-        <div className="px-5 py-3 border-b border-[var(--nc-border)] bg-[var(--nc-surface)]">
-          <h3 className="text-[var(--nc-foreground)] font-bold text-sm">{t.matrixTitle}</h3>
-          <p className="text-[11px] text-[var(--nc-text-dim)] font-medium mt-0.5">{t.matrixSub}</p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-start">
-            <thead className="bg-[var(--nc-surface-solid)] text-[var(--nc-text-dim)] border-b border-[var(--nc-border)]">
-              <tr>
-                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'البنك السعودي' : 'Saudi Bank'}</th>
-                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'النسبة الإرشادية (APR)' : 'Base APR'}</th>
-                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'العرض والمميزات' : 'Promo Offer'}</th>
-                <th className="py-2.5 px-4 font-semibold text-start">{t.netMonthlyInstallmentLabel}</th>
-                <th className="py-2.5 px-4 font-semibold text-start">{isArabic ? 'الإجراء' : 'Action'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(BANK_DATA).map(([key, data]) => {
-                const isActive = selectedBank === key;
-                
-                // Recalculating dynamically for matrix view
-                let bankApr = data.apr;
-                if (!salaryTransfer) bankApr += 0.75; 
-                if (developerOffer) bankApr -= 0.50; 
-                
-                const bProfit = loanRequired * ((bankApr / 100) * years);
-                const bInstallment = totalMonths > 0 ? (loanRequired + bProfit) / totalMonths : 0;
-                const bNetInstallment = Math.max(0, bInstallment - monthlySakaniSupport);
-
-                return (
-                  <tr 
-                    key={key} 
-                    onClick={() => setSelectedBank(key)}
-                    className={`border-b border-[var(--nc-border)] hover:bg-[var(--nc-surface-solid)] transition-colors cursor-pointer ${isActive ? 'bg-[var(--nc-accent-soft)]/10' : ''}`}
-                  >
-                    <td className="py-3 px-4 font-bold text-[var(--nc-text-primary)]">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-transparent'}`}></div>
-                        {isArabic ? data.name : data.nameEn}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-en font-semibold">{toArabicNumerals(bankApr.toFixed(2))}%</td>
-                    <td className="py-3 px-4 text-[11px] max-w-xs truncate text-[var(--nc-text-secondary)]" title={isArabic ? data.promo : data.promoEn}>
-                      {isArabic ? data.promo : data.promoEn}
-                    </td>
-                    <td className="py-3 px-4 font-en font-black text-[var(--nc-text-primary)]">{formatCurrency(bNetInstallment)}</td>
-                    <td className="py-3 px-4 whitespace-nowrap align-middle">
-                      <span className={`inline-block text-[11px] font-bold transition-all px-3 py-1.5 rounded-md border ${
-                        isActive 
-                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' 
-                          : 'bg-transparent text-[var(--nc-text-dim)] border-[var(--nc-border)] hover:bg-[var(--nc-surface-solid)] hover:text-[var(--nc-text-primary)]'
-                      }`}>
-                        {isActive ? t.bankSelected : t.bankSelectDetails}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </SmartCard>
-
     </div>
   );
 }

@@ -1,133 +1,100 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
 const {
-  mockIsDedicatedCopy,
   mockSession,
-  mockTenant,
   mockWriteAuditLog,
   prismaMock,
 } = vi.hoisted(() => {
-  const mockIsDedicatedCopy = vi.fn();
   const mockSession = vi.fn();
-  const mockTenant = vi.fn();
   const mockWriteAuditLog = vi.fn();
   const prismaMock = {
-    ticket: { create: vi.fn(), update: vi.fn() },
+    ticket: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
   };
-  return { mockIsDedicatedCopy, mockSession, mockTenant, mockWriteAuditLog, prismaMock };
+  return { mockSession, mockWriteAuditLog, prismaMock };
 });
 
-vi.mock("@/lib/deployment-license", () => ({
-  isDedicatedCopyDeployment: () => mockIsDedicatedCopy(),
-}));
-
 vi.mock("@/lib/session", () => ({ getSession: () => mockSession() }));
-vi.mock("@/lib/tenant", () => ({ getActiveTenant: () => mockTenant() }));
 vi.mock("@/lib/api-auth-guard", () => ({
-  assertServerActionRole: vi.fn(async () => ({ userId: "user-1", role: "ADMIN" })),
+  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+  assertServerActionRole: vi.fn(async (session: any) => session),
 }));
 vi.mock("@/lib/audit", () => ({
-  writeAuditLog: (...a: any[]) => mockWriteAuditLog(...a),
+  writeAuditLog: (...args: any[]) => mockWriteAuditLog(...args),
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
+vi.mock("@/lib/tenant-context", () => ({
+  runWithTenantContext: (_ctx: any, operation: () => unknown) => operation(),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { createTicketAction } from "@/app/actions/helpdesk";
 
-const DEFAULT_SESSION = { userId: "user-1", tenantId: "tenant-1" };
-const DEFAULT_TENANT = {
-  id: "tenant-1",
-  companyName: "Test Co",
-  subscriptionPlan: "basic",
-  subdomain: "test",
+const SESSION = {
+  userId: "user-1",
+  tenantId: "tenant-1",
+  role: "ADMIN",
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockSession.mockResolvedValue(DEFAULT_SESSION);
-  mockTenant.mockResolvedValue(DEFAULT_TENANT);
-  prismaMock.ticket.create.mockResolvedValue({ id: "ticket-1" });
-  prismaMock.ticket.update.mockImplementation(({ data }: any) => Promise.resolve({ id: "ticket-1", ...data }));
+  mockSession.mockResolvedValue(SESSION);
+  prismaMock.ticket.create.mockResolvedValue({
+    id: "ticket-1",
+    title: "استفسار",
+    description: "أحتاج إلى مساعدة فنية",
+    status: "OPEN",
+    aiResponse: null,
+    createdAt: new Date("2026-07-13T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-13T00:00:00.000Z"),
+  });
+  mockWriteAuditLog.mockResolvedValue(undefined);
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+describe("helpdesk ticket creation", () => {
+  it("creates a real open ticket without fabricating an AI response", async () => {
+    const formData = new FormData();
+    formData.set("title", "استفسار");
+    formData.set("description", "أحتاج إلى مساعدة فنية");
 
-describe("helpdesk — DEDICATED_COPY", () => {
-  it("DEDICATED_COPY reply does NOT contain مدى", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد ترقية باقة");
+    const result = await createTicketAction(formData);
 
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
-
-    expect(aiReply).not.toContain("مدى");
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    expect(result.ticket.aiResponse).toBeNull();
+    expect(prismaMock.ticket.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: "tenant-1",
+        status: "OPEN",
+        aiResponse: null,
+      }),
+    });
   });
 
-  it("DEDICATED_COPY reply does NOT contain فيزا", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد ترقية باقة");
+  it("does not claim payment, DNS, escalation, or provider success", async () => {
+    const formData = new FormData();
+    formData.set("title", "مشكلة في الاشتراك");
+    formData.set("description", "أريد ترقية باقة وربط نطاق والدفع");
 
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
+    const result = await createTicketAction(formData);
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    const response = result.ticket.aiResponse || "";
 
-    expect(aiReply).not.toContain("فيزا");
-  });
-
-  it("DEDICATED_COPY reply does NOT contain STC Pay", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد ترقية باقة");
-
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
-
-    expect(aiReply).not.toContain("STC Pay");
-  });
-
-  it("DEDICATED_COPY reply does NOT contain ترقية", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد ترقية باقة");
-
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
-
-    expect(aiReply).not.toContain("ترقية");
-  });
-
-  it("DEDICATED_COPY reply references independent license", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد معلومات عن الاشتراك والدفع");
-
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
-
-    expect(aiReply).toContain("ترخيص مستقل");
-  });
-
-  it("SaaS reply contains payment methods", async () => {
-    mockIsDedicatedCopy.mockReturnValue(false);
-    const fd = new FormData();
-    fd.set("title", "استفسار");
-    fd.set("description", "أريد ترقية باقة");
-
-    const result = await createTicketAction(fd);
-    const aiReply = (result as any).ticket?.aiResponse || "";
-
-    expect(aiReply).toContain("مدى");
-    expect(aiReply).toContain("فيزا");
-    expect(aiReply).toContain("STC Pay");
+    expect(response).toBe("");
+    expect(response).not.toContain("مدى");
+    expect(response).not.toContain("فيزا");
+    expect(response).not.toContain("STC Pay");
+    expect(response).not.toContain("cname.vercel-dns.com");
+    expect(response).not.toContain("تم إرسال تنبيه");
   });
 });

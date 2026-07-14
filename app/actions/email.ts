@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { assertServerActionRole } from "@/lib/api-auth-guard";
-import { sendEmail } from "@/lib/email";
+import {
+  EMAIL_PROVIDER_INVALID,
+  EMAIL_PROVIDER_NOT_CONFIGURED,
+  getTenantEmailProviderSummary,
+  sendEmail,
+} from "@/lib/email";
 import { revalidatePath } from "next/cache";
 import { runWithTenantContext } from "@/lib/tenant-context";
 
@@ -18,48 +23,108 @@ const EMAIL_SENDER_ROLES = [
   "rental_manager",
 ] as const;
 
+const PROVIDER_NOT_CONFIGURED_MESSAGE =
+  "لم يتم ربط مزود بريد بهذه المنشأة. يمكنك إعداد مزود البريد من صفحة التكاملات قبل الإرسال.";
+
+const PROVIDER_INVALID_MESSAGE =
+  "إعدادات مزود البريد المرتبط غير مكتملة أو تعذر فك بيانات الاعتماد. راجع إعدادات التكاملات.";
+
 function publicEmailError(value: unknown): string {
   const normalized = String(value || "").toLowerCase();
-  if (normalized.includes("resend_api_key") || normalized.includes("api key")) {
-    return "تعذر إرسال البريد لأن خدمة البريد غير مهيأة.";
+
+  if (
+    value === EMAIL_PROVIDER_NOT_CONFIGURED ||
+    normalized.includes("email_provider_not_configured")
+  ) {
+    return PROVIDER_NOT_CONFIGURED_MESSAGE;
   }
+
+  if (
+    value === EMAIL_PROVIDER_INVALID ||
+    normalized.includes("email_provider_invalid")
+  ) {
+    return PROVIDER_INVALID_MESSAGE;
+  }
+
+  if (normalized.includes("smtp_auth_failed")) {
+    return "تعذر التحقق من بيانات حساب البريد. راجع اسم المستخدم وكلمة المرور أو App Password من إعدادات التكاملات.";
+  }
+
+  if (
+    normalized.includes("smtp_tls_failed") ||
+    normalized.includes("smtp_starttls")
+  ) {
+    return "تعذر إنشاء اتصال مشفر بخادم البريد. راجع نوع التشفير والمنفذ.";
+  }
+
+  if (
+    normalized.includes("smtp_timeout") ||
+    normalized.includes("smtp_connection_failed")
+  ) {
+    return "تعذر الاتصال بخادم البريد. راجع اسم الخادم والمنفذ ثم اختبر الاتصال من صفحة التكاملات.";
+  }
+
+  if (
+    normalized.includes("smtp_host_not_allowed") ||
+    normalized.includes("smtp_host_invalid")
+  ) {
+    return "عنوان خادم البريد غير صالح أو غير مسموح بالاتصال به.";
+  }
+
+  if (normalized.includes("email_address_invalid")) {
+    return "أحد عناوين البريد المدخلة غير صالح.";
+  }
+
   if (normalized.includes("rate") || normalized.includes("limit")) {
     return "تعذر إرسال البريد مؤقتًا بسبب حد الخدمة. حاول لاحقًا.";
   }
+
   return "تعذر إرسال البريد، حاول مرة أخرى.";
 }
 
 export async function sendEmailAction(formData: FormData) {
   try {
-    // ── Auth: session + role required before sending external email ──────────
     const session = await getSession();
     if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
-    const verified = await assertServerActionRole(session, EMAIL_SENDER_ROLES);
+
+    const verified = await assertServerActionRole(
+      session,
+      EMAIL_SENDER_ROLES,
+    );
     const tenant = await getActiveTenant();
 
     return runWithTenantContext(
-      { tenantId: tenant.id, userId: verified.userId as string | undefined },
+      {
+        tenantId: tenant.id,
+        userId: verified.userId as string | undefined,
+      },
       async () => {
-        const to = formData.get("to") as string;
-        const cc = formData.get("cc") as string | null;
-        const bcc = formData.get("bcc") as string | null;
-        const subject = formData.get("subject") as string;
-        const htmlBody = formData.get("htmlBody") as string | null;
-        const textBody = formData.get("textBody") as string | null;
-        const leadId = formData.get("leadId") as string | null;
-        const contactId = formData.get("contactId") as string | null;
+        const to = String(formData.get("to") || "").trim();
+        const cc = String(formData.get("cc") || "").trim() || null;
+        const bcc = String(formData.get("bcc") || "").trim() || null;
+        const subject = String(formData.get("subject") || "").trim();
+        const htmlBody =
+          String(formData.get("htmlBody") || "").trim() || null;
+        const textBody =
+          String(formData.get("textBody") || "").trim() || null;
+        const leadId =
+          String(formData.get("leadId") || "").trim() || null;
+        const contactId =
+          String(formData.get("contactId") || "").trim() || null;
 
         if (!to || !subject) {
-          return { success: false, error: "الحقول المطلوبة: to, subject" };
+          return {
+            success: false,
+            error: "الحقول المطلوبة: to, subject",
+          };
         }
-
-        const from = process.env.EMAIL_FROM || "ORCA <onboarding@resend.dev>";
 
         if (leadId) {
           const lead = await prisma.lead.findFirst({
             where: { id: leadId, tenantId: tenant.id },
             select: { id: true },
           });
+
           if (!lead) {
             return { success: false, error: "العميل غير موجود." };
           }
@@ -70,34 +135,48 @@ export async function sendEmailAction(formData: FormData) {
             where: { id: contactId, tenantId: tenant.id },
             select: { id: true },
           });
+
           if (!contact) {
-            return { success: false, error: "جهة الاتصال غير موجودة." };
+            return {
+              success: false,
+              error: "جهة الاتصال غير موجودة.",
+            };
           }
         }
 
-        // Persist only after lead/contact ownership has been verified.
+        const provider = await getTenantEmailProviderSummary(tenant.id);
         const emailMessage = await prisma.emailMessage.create({
           data: {
             tenantId: tenant.id,
-            leadId: leadId || null,
-            contactId: contactId || null,
+            leadId,
+            contactId,
             userId: verified.userId || null,
             direction: "outbound",
-            provider: "resend",
-            from,
+            provider: provider.provider || "UNCONFIGURED",
+            from: provider.fromEmail || "",
             to,
-            cc: cc || null,
-            bcc: bcc || null,
+            cc,
+            bcc,
             subject,
-            htmlBody: htmlBody || null,
-            textBody: textBody || null,
-            status: "PENDING",
+            htmlBody,
+            textBody,
+            status: provider.configured ? "PENDING" : "DRAFT",
           },
         });
 
-        // Send email via Resend
+        if (!provider.configured) {
+          revalidatePath("/operations/email");
+          return {
+            success: false,
+            draftSaved: true,
+            emailId: emailMessage.id,
+            code: provider.reason,
+            error: publicEmailError(provider.reason),
+          };
+        }
+
         const result = await sendEmail({
-          from,
+          tenantId: tenant.id,
           to,
           cc: cc || undefined,
           bcc: bcc || undefined,
@@ -106,18 +185,23 @@ export async function sendEmailAction(formData: FormData) {
           textBody: textBody || undefined,
         });
 
-        // Update EmailMessage status based on result
         if (result.success) {
           await prisma.emailMessage.update({
-            where: { id: emailMessage.id },
+            where: {
+              id: emailMessage.id,
+              tenantId: tenant.id,
+            },
             data: {
               status: "SENT",
+              provider:
+                result.provider || provider.provider || "EMAIL_PROVIDER",
+              from: result.fromEmail || provider.fromEmail || "",
               providerMessageId: result.providerMessageId,
               sentAt: new Date(),
+              errorMessage: null,
             },
           });
 
-          // Create LeadActivity after the lead ownership check above.
           if (leadId) {
             await prisma.leadActivity.create({
               data: {
@@ -136,27 +220,58 @@ export async function sendEmailAction(formData: FormData) {
             emailId: emailMessage.id,
             providerMessageId: result.providerMessageId,
           };
-        } else {
-          // Update status to FAILED
+        }
+
+        if (
+          result.code === EMAIL_PROVIDER_NOT_CONFIGURED ||
+          result.code === EMAIL_PROVIDER_INVALID
+        ) {
           await prisma.emailMessage.update({
-            where: { id: emailMessage.id },
+            where: {
+              id: emailMessage.id,
+              tenantId: tenant.id,
+            },
             data: {
-              status: "FAILED",
-              errorMessage: result.error || "فشل إرسال البريد",
+              status: "DRAFT",
+              errorMessage: null,
             },
           });
 
+          revalidatePath("/operations/email");
           return {
             success: false,
+            draftSaved: true,
             emailId: emailMessage.id,
-            error: publicEmailError(result.error),
+            code: result.code,
+            error: publicEmailError(result.code),
           };
         }
+
+        await prisma.emailMessage.update({
+          where: {
+            id: emailMessage.id,
+            tenantId: tenant.id,
+          },
+          data: {
+            status: "FAILED",
+            errorMessage: result.error || "فشل إرسال البريد",
+          },
+        });
+
+        revalidatePath("/operations/email");
+        return {
+          success: false,
+          emailId: emailMessage.id,
+          error: publicEmailError(result.error),
+        };
       },
     );
   } catch (error: unknown) {
     console.error("[Email Action] Error:", error);
-    return { success: false, error: publicEmailError(error) };
+    return {
+      success: false,
+      error: publicEmailError(error),
+    };
   }
 }
 

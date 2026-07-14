@@ -13,8 +13,7 @@ import { dashboardCopy } from "../copy/dashboardCopy";
 import { dashboardVisual } from "../visual";
 import DashboardHeader from "./DashboardHeader";
 import DashboardKpiGrid from "./DashboardKpiGrid";
-import DealSpineSnapshot from "./DealSpineSnapshot";
-import DailyOperationsCenter from "./DailyOperationsCenter";
+import AgentDecisionCenter from "./AgentDecisionCenter";
 
 interface DashboardViewProps {
   user: { name: string | null };
@@ -31,6 +30,7 @@ export default function DashboardView({
   const router = useRouter();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const isArabic = lang !== "EN";
   const locale: DisplayLocale = isArabic ? "ar" : "en";
@@ -65,22 +65,20 @@ export default function DashboardView({
           generatedAt={model.generatedAt}
           canIssueContract={capabilities.canIssueContract}
           onIssueContract={() => setIsWizardOpen(true)}
+          onAskOrca={() => setIsAssistantOpen(true)}
+          onRefresh={refresh}
         />
 
         <DashboardKpiGrid kpis={model.kpis} copy={copy} />
 
-        <DealSpineSnapshot
-          pipeline={model.pipeline}
-          copy={copy}
-          onRetry={refresh}
-        />
-
-        <DailyOperationsCenter
-          operations={model.operations}
+        <AgentDecisionCenter
+          model={model}
           copy={copy}
           locale={locale}
           isArabic={isArabic}
           searchQuery={searchQuery}
+          isAssistantOpen={isAssistantOpen}
+          onCloseAssistant={() => setIsAssistantOpen(false)}
           onRetry={refresh}
         />
       </div>

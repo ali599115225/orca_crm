@@ -10,6 +10,7 @@ import SettingsBilling from "@/components/settings/SettingsBilling";
 import SettingsStaff from "@/components/settings/SettingsStaff";
 import SettingsCompliance from "@/components/settings/SettingsCompliance";
 import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsHub";
+import AdvertisingPlatformIntegrations from "@/components/settings/AdvertisingPlatformIntegrations";
 import SettingsAIProviders from "@/components/settings/SettingsAIProviders";
 import { SmartCard } from "@/components/ui/SmartCard";
 
@@ -39,6 +40,7 @@ const VALID_SECTIONS: SettingsSection[] = [
   "billing",
   "ai",
   "integrations",
+  "advertising",
   "compliance",
 ];
 
@@ -110,25 +112,32 @@ export default function SettingsView({
 
   return (
     <main
-      className="orca-settings-final mx-auto w-full max-w-[1440px] space-y-6 px-4 py-4 md:px-8 md:py-6"
+      className="orca-settings-final nc-page nc-stack orca-container pb-10"
       dir={isArabic ? "rtl" : "ltr"}
     >
-      <header ref={headerRef} className="space-y-2">
-        <h1 className="text-2xl font-black text-[var(--nc-foreground)]">
+      <header ref={headerRef} className="orca-workspace-hero">
+        <div>
+          <p className="text-xs font-bold text-[var(--nc-accent)]">
+            {isArabic
+              ? "المؤسسة → الفريق → التكاملات → الامتثال"
+              : "Organization → staff → integrations → compliance"}
+          </p>
+          <h1 className="mt-1 text-2xl font-black text-[var(--nc-foreground)]">
           {isArabic ? "الإعدادات" : "Settings"}
         </h1>
-        <p className="max-w-3xl text-sm text-[var(--nc-foreground-muted)]">
+        <p className="max-w-3xl text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
           {isDedicatedCopy
             ? isArabic
-              ? "إدارة بيانات المؤسسة والفريق والتكاملات والامتثال من مكان واحد."
-              : "Manage organization data, staff, integrations, and compliance from one place."
+              ? "إدارة بيانات المؤسسة والفريق والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
+              : "Manage organization data, staff, integrations, advertising, and compliance from one place."
             : isArabic
-              ? "إدارة بيانات المؤسسة والفريق والباقة والتكاملات والامتثال من مكان واحد."
-              : "Manage organization data, staff, billing, integrations, and compliance from one place."}
+              ? "إدارة بيانات المؤسسة والفريق والباقة والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
+              : "Manage organization data, staff, billing, integrations, advertising, and compliance from one place."}
         </p>
+        </div>
       </header>
 
-      <div className="sticky top-0 z-20 bg-[var(--nc-surface-solid)] py-1">
+      <div className="orca-settings-nav-shell">
         <SettingsNavigation
           activeSection={activeSection}
           lang={lang}
@@ -137,9 +146,9 @@ export default function SettingsView({
         />
       </div>
 
-      <section className="orca-settings-content w-full min-w-0">
+      <section className="orca-settings-content orca-settings-section-shell w-full min-w-0 space-y-5">
         {activeSection === "organization" && (
-          <SmartCard className="p-6">
+          <SmartCard className="orca-workspace-panel p-6">
             <div className="mb-6">
               <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
                 {isArabic ? "بيانات المؤسسة" : "Organization Details"}
@@ -151,7 +160,7 @@ export default function SettingsView({
               </p>
             </div>
 
-            <dl className="grid gap-4 md:grid-cols-3">
+            <dl className="orca-settings-info-grid">
               <div className="orca-info-tile">
                 <dt>{isArabic ? "اسم المنشأة" : "Company Name"}</dt>
                 <dd>{tenant.companyName}</dd>
@@ -173,7 +182,7 @@ export default function SettingsView({
         )}
 
         {activeSection === "staff" && (
-          <div className="orca-settings-staff">
+          <div className="orca-settings-section orca-settings-staff">
             <SettingsStaff
               tenant={tenant}
               users={staffUsers}
@@ -188,7 +197,7 @@ export default function SettingsView({
         )}
 
         {activeSection === "ai" && (
-          <div className="orca-settings-ai">
+          <div className="orca-settings-section orca-settings-ai">
             <SettingsAIProviders />
           </div>
         )}
@@ -199,8 +208,14 @@ export default function SettingsView({
           </div>
         )}
 
+        {activeSection === "advertising" && (
+          <div className="orca-settings-section orca-settings-advertising">
+            <AdvertisingPlatformIntegrations lang={lang} />
+          </div>
+        )}
+
         {activeSection === "compliance" && (
-          <div className="orca-settings-compliance">
+          <div className="orca-settings-section orca-settings-compliance">
             <SettingsCompliance lang={lang} isArabic={isArabic} />
           </div>
         )}

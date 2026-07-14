@@ -1,7 +1,7 @@
 "use client";
 
 export type SettingsSection =
-  "organization" | "staff" | "billing" | "ai" | "integrations" | "compliance";
+  "organization" | "staff" | "billing" | "ai" | "integrations" | "advertising" | "compliance";
 
 interface SettingsNavigationProps {
   activeSection: SettingsSection;
@@ -47,6 +47,12 @@ const ITEMS: Array<{
     en: "Integrations",
   },
   {
+    id: "advertising",
+    icon: "ph-megaphone",
+    ar: "الحملات الإعلانية",
+    en: "Advertising",
+  },
+  {
     id: "compliance",
     icon: "ph-shield-check",
     ar: "الامتثال الحكومي",
@@ -65,19 +71,19 @@ export default function SettingsNavigation({
   return (
     <nav
       aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}
-      className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-2"
+      className="orca-settings-tabs"
     >
-      <div className="flex gap-1.5 overflow-x-auto">
+      <div className="orca-settings-tabs-track">
         {ITEMS.filter((item) => !(hideBilling && item.id === "billing")).map(
           (item) => {
             const active = item.id === activeSection;
 
             const buttonClassName = [
-              "flex min-w-max shrink-0 items-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold transition-colors",
+              "orca-settings-tab flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition-all duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)]",
               active
-                ? "border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
-                : "border border-transparent text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]",
+                ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)] shadow-sm"
+                : "border-transparent text-[var(--nc-foreground-secondary)] hover:border-[var(--nc-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-foreground)]",
             ].join(" ");
 
             return (

@@ -4,7 +4,10 @@ export const REVENUE_PROVIDERS = [
   "PAYLINK",
   "NGENIUS",
   "RESEND",
+  "SMTP",
+  "DIALOG360",
   "SIGNATURE",
+  "CUSTOM_PAYMENT",
 ] as const;
 
 export type RevenueProvider = (typeof REVENUE_PROVIDERS)[number];

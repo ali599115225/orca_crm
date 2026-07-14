@@ -66,6 +66,9 @@ const REQUIRED_TENANT_MODEL_VALUES = [
   "RevenuePrediction",
   "RevenueIntelligenceScore",
   "RevenuePredictiveRun",
+  "MarketingCampaign",
+  "MarketingCampaignChannel",
+  "Document",
 ] as const;
 
 const OPTIONAL_TENANT_MODEL_VALUES = [
@@ -87,7 +90,7 @@ export type TenantModelPolicyName = RequiredTenantModel | OptionalTenantModel;
 const REQUIRED_TENANT_MODEL_SET = new Set<string>(REQUIRED_TENANT_MODELS);
 const OPTIONAL_TENANT_MODEL_SET = new Set<string>(OPTIONAL_TENANT_MODELS);
 
-if (REQUIRED_TENANT_MODELS.length !== 67) {
+if (REQUIRED_TENANT_MODELS.length !== 70) {
   throw new Error(`Invalid required tenant model registry size: ${REQUIRED_TENANT_MODELS.length}`);
 }
 

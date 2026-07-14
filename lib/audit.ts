@@ -92,12 +92,24 @@ export type AuditAction =
   | "PROJECT_CREATED"
   | "PROJECT_UPDATED"
   | "UNIT_STATUS_TOGGLED"
+  | "TOUR_SCHEDULED_FROM_BOARD"
+  | "TOUR_RESCHEDULED"
+  | "OFFER_CREATED"
+  | "OFFER_STATUS_UPDATED"
+  | "OFFER_TOUR_SCHEDULED"
+  | "PROPERTY_UNIT_CREATED"
+  | "PROPERTY_UNIT_UPDATED"
+  | "PROPERTY_UNIT_DELETED"
   // ─── Tasks ────────────────────────────────────────────────────────────────
   | "TASK_CREATED"
+  | "TASK_UPDATED"
+  | "TASK_COMPLETED"
   | "TASK_STATUS_CHANGED"
   // ─── Helpdesk ─────────────────────────────────────────────────────────────
   | "TICKET_CREATED"
   | "TICKET_CLOSED"
+  | "TICKET_REOPENED"
+  | "TICKET_REPLIED"
   // ─── Settings ─────────────────────────────────────────────────────────────
   | "SETTINGS_UPDATED"
   | "WHATSAPP_CONNECTION_TOGGLED";

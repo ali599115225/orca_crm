@@ -23,16 +23,31 @@ const prismaMock = vi.hoisted(() => ({
   whatsAppPhoneNumber: {
     findFirst: vi.fn(),
   },
+  revenueProviderConnection: {
+    findUnique: vi.fn(),
+  },
 }));
 
 const decryptTokenMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
+  rawPrisma: {
+    revenueProviderConnection:
+      prismaMock.revenueProviderConnection,
+  },
 }));
 
 vi.mock("@/lib/whatsapp/credential-service", () => ({
   decryptToken: decryptTokenMock,
+}));
+
+vi.mock("@/lib/revenue-integrity/trust-gates", () => ({
+  decryptProviderCredentials: vi.fn(() => ({
+    apiKey: "dialog-api-key",
+    displayPhoneNumber: "966500000000",
+    webhookSecret: "123456789012345678901234",
+  })),
 }));
 
 import {
@@ -71,6 +86,7 @@ describe("WhatsApp connection resolver", () => {
     prismaMock.whatsAppConnection.findUnique.mockResolvedValue(null);
     prismaMock.whatsAppCredential.findFirst.mockResolvedValue(null);
     prismaMock.whatsAppPhoneNumber.findFirst.mockResolvedValue(null);
+    prismaMock.revenueProviderConnection.findUnique.mockResolvedValue(null);
     decryptTokenMock.mockReturnValue("decrypted-token");
 
     delete process.env.ORCA_WHATSAPP_TEST_TENANT_ID;
@@ -107,13 +123,34 @@ describe("WhatsApp connection resolver", () => {
       wabaId: "waba-1",
     });
 
-    await expect(resolveConnection("tenant-1")).resolves.toEqual({
+    await expect(resolveConnection("tenant-1")).resolves.toMatchObject({
+      provider: "META",
       source: "tenant-connection",
       tenantId: "tenant-1",
       connectionId: "connection-1",
       phoneNumberId: "phone-number-1",
       wabaId: "waba-1",
       accessToken: "decrypted-token",
+    });
+  });
+
+  it("resolves a connected 360dialog provider by tenant", async () => {
+    prismaMock.revenueProviderConnection.findUnique.mockResolvedValue({
+      id: "dialog-connection",
+      status: "CONNECTED",
+      baseUrl: "https://waba-v2.360dialog.io",
+      encryptedCredentials: "encrypted",
+      isDefault: true,
+      lastSuccessAt: new Date(),
+    });
+
+    await expect(resolveConnection("tenant-1")).resolves.toMatchObject({
+      provider: "DIALOG360",
+      source: "360dialog",
+      tenantId: "tenant-1",
+      connectionId: "dialog-connection",
+      phoneNumberId: "966500000000",
+      accessToken: "dialog-api-key",
     });
   });
 

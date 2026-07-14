@@ -147,7 +147,7 @@ export default function SettingsBilling({
   };
 
   return (
-    <div className="space-y-6" dir={isArabic ? "rtl" : "ltr"}>
+    <div className="orca-settings-section orca-settings-billing-section" dir={isArabic ? "rtl" : "ltr"}>
       {error && (
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-300">
           {error}
@@ -160,7 +160,7 @@ export default function SettingsBilling({
         </div>
       )}
 
-      <SmartCard className="p-6">
+      <SmartCard className="orca-workspace-panel p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold text-[var(--nc-foreground-muted)]">
@@ -200,8 +200,8 @@ export default function SettingsBilling({
                 key={plan.id}
                 className={
                   isCurrent
-                    ? "flex min-h-[360px] flex-col justify-between border-[var(--nc-accent-border)] p-6"
-                    : "flex min-h-[360px] flex-col justify-between p-6"
+                    ? "orca-settings-card orca-settings-plan-card flex flex-col justify-between border-[var(--nc-accent-border)] p-6"
+                    : "orca-settings-card orca-settings-plan-card flex flex-col justify-between p-6"
                 }
               >
                 <div>

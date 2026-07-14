@@ -138,10 +138,11 @@ describe("WhatsApp actions — connection status and chat list", () => {
     );
   });
 
-  it("returns an empty list with a warning when no valid source exists", async () => {
+  it("keeps tenant history available with a warning when no provider is connected", async () => {
     getActiveTenantMock.mockResolvedValue(OTHER_TENANT);
     getConnectionStatusMock.mockResolvedValue({
       configured: false,
+      provider: "none",
       source: "none",
       status: "disconnected",
     });
@@ -154,7 +155,11 @@ describe("WhatsApp actions — connection status and chat list", () => {
       provider: "none",
     });
     expect(result.warning).toBeTruthy();
-    expect(prismaMock.whatsAppContact.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.whatsAppContact.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: OTHER_TENANT.id, archived: false },
+      }),
+    );
   });
 
   it("never queries another tenant's contacts under the test bridge", async () => {

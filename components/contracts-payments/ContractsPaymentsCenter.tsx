@@ -1004,7 +1004,7 @@ export default function ContractsPaymentsCenter({
 
   // Main operational panes rendered inside the shared contracts-and-payments shell.
   const detailsContent = (
-    <div className="space-y-4">
+    <div className="orca-contracts-container space-y-4">
 
       {isPending ? (
         <div className="py-20 flex flex-col items-center justify-center gap-2">
@@ -1016,10 +1016,10 @@ export default function ContractsPaymentsCenter({
           
           {/* ── Pane 1: Leases (Master-Detail) ── */}
           {activePane === 'leases' && (
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="orca-master-detail">
               
               {/* Leases List (Master) */}
-              <div className="h-fit w-full lg:w-[45%] bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up">
+              <div className="orca-master-pane h-fit w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up">
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 bg-[var(--nc-surface-solid)]">
                   <span className="text-sm font-bold text-white">{L('قائمة عقود الإيجار', 'Leases list')}</span>
                   <div className="flex gap-2">
@@ -1098,7 +1098,7 @@ export default function ContractsPaymentsCenter({
                               className={`cursor-pointer transition-colors ${
                                 isSelected
                                   ? '!bg-[var(--nc-accent-soft)] border-r-[3px] border-r-[var(--nc-accent)]'
-                                  : 'hover:bg-[var(--nc-surface-soft)]'
+                                  : 'orca-data-row'
                               }`}
                             >
                               <td>
@@ -1153,19 +1153,19 @@ export default function ContractsPaymentsCenter({
               </div>
 
               {/* Lease Detail Panel (Detail) */}
-              <div className="h-fit flex-1 w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="p-5 max-h-[560px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="orca-detail-pane h-fit w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="p-5">
                 {!selectedLease ? (
                   <div className="flex items-start gap-3 rounded-xl border border-dashed border-white/10 bg-[var(--nc-surface)]/50 px-4 py-5 text-right text-[var(--nc-text-dim)] text-xs">
                     <Landmark size={20} className="mt-0.5 shrink-0 text-[var(--nc-text-dim)]" />
                     <span>{L('اختر عقدًا من القائمة لعرض تفاصيله.', 'Select a lease from the list to view details.')}</span>
                   </div>
                 ) : (
-                  <div className="space-y-4 text-right">
+                  <div className="space-y-4 text-center">
                     
                     {/* Detail Panel Header */}
                     <div className="space-y-3 border-b border-white/5 pb-4">
-                      <div className="flex flex-col items-start gap-1.5">
+                      <div className="flex flex-col items-center gap-1.5 text-center">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-base font-black text-white">
                             {getLeaseDisplayNumber(selectedLease, displayLocale)}
@@ -1184,7 +1184,7 @@ export default function ContractsPaymentsCenter({
                       </div>
 
                       {/* Contextual Actions (only inside detail panel!) */}
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center justify-center gap-1.5">
                         <button
                           onClick={() => {
                              if (!isAllowed('CREATE_INVOICE')) {
@@ -1221,7 +1221,7 @@ export default function ContractsPaymentsCenter({
                     </div>
 
                     {/* Sub-tabs list */}
-                    <div className="flex flex-wrap gap-1.5 border-b border-white/5 pb-2">
+                    <div className="orca-workspace-tabs flex flex-wrap justify-center gap-1.5 border-b border-white/5 pb-2">
                       {[
                         { id: 'summary', name: L('الملخص', 'Summary') },
                         { id: 'invoices', name: L('الفواتير', 'Invoices') },
@@ -1235,8 +1235,8 @@ export default function ContractsPaymentsCenter({
                           onClick={() => setDetailActiveTab(tab.id)}
                           className={`min-h-[28px] whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
                             detailActiveTab === tab.id 
-                              ? 'bg-[var(--nc-op-blue)] text-white shadow-sm' 
-                              : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:text-white'
+                              ? 'border border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
+                              : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:border-[var(--orca-action-gold)] hover:bg-[var(--orca-action-gold-soft)] hover:text-[var(--orca-action-gold)]'
                           }`}
                         >
                           {tab.name}
@@ -1258,7 +1258,7 @@ export default function ContractsPaymentsCenter({
                             compact
                           />
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="orca-auto-grid">
                             <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">{L('تاريخ صلاحية العقد', 'Lease term')}</span>
                               <span className="font-bold text-white mt-1.5 block">
@@ -1275,7 +1275,7 @@ export default function ContractsPaymentsCenter({
                             </div>
                           </div>
 
-                          <div className="text-[11px] text-[var(--nc-text-dim)] flex items-center gap-1 pt-2 font-mono">
+                          <div className="text-[11px] text-[var(--nc-text-dim)] flex flex-wrap items-center justify-center gap-1 pt-2 font-mono text-center">
                             <span>{L('المرجع المالي للتسوية:', 'Settlement reference:')}</span>
                             <span className="text-cyan-400 font-bold">{selectedLease.financialRef ? safeDisplayValue(selectedLease.financialRef, displayLocale) : L('لا توجد تسويات جارية لهذا العقد حالياً', 'No active settlement for this lease')}</span>
                           </div>

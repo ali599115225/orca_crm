@@ -262,12 +262,12 @@ export default function SettingsAIProviders() {
   }, [activeDefinition]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="orca-settings-section orca-settings-ai-section">
+      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
         <h2 className="text-lg font-black text-[var(--nc-foreground)]">
           {L("إعدادات الذكاء الاصطناعي", "AI Settings")}
         </h2>
-        <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
+        <p className="mt-1 text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
           {L(
             "إدارة مزودي الذكاء الاصطناعي وتعيين الوكلاء والنماذج البديلة.",
             "Manage AI providers and assign agents and fallback models.",
@@ -275,13 +275,13 @@ export default function SettingsAIProviders() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="orca-settings-provider-grid">
         {PROVIDERS.map((p) => (
           <button
             key={p.id}
             type="button"
             onClick={() => openProvider(p.id)}
-            className={`flex h-16 flex-col items-center justify-center gap-1.5 rounded-2xl border transition-colors ${
+            className={`orca-settings-provider-card flex flex-col items-center justify-center gap-2 rounded-2xl border transition-colors ${
               selectedProvider === p.id
                 ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
                 : "border-[var(--nc-border)] bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
@@ -293,7 +293,7 @@ export default function SettingsAIProviders() {
         ))}
       </div>
 
-      <SmartCard className="overflow-hidden">
+      <SmartCard className="orca-workspace-panel overflow-hidden">
         <div className="border-b border-[var(--nc-border)] p-5">
           <h3 className="text-lg font-bold text-[var(--nc-foreground)]">
             {L("تعيين مزود ونموذج لكل وكيل", "Assign Provider & Model per Agent")}
@@ -437,7 +437,7 @@ export default function SettingsAIProviders() {
                               })
                             }
                             required
-                            className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                            className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                           />
                         </div>
                       ))}

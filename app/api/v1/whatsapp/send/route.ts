@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/api-auth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send-service";
 import { ErrorCode } from "@/lib/errors";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export async function POST(request: NextRequest) {
   const session = await authenticateRequest(request);
@@ -19,7 +20,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing to or message" }, { status: 400 });
     }
 
-    const result = await sendWhatsAppMessage(session.tenantId, to, message);
+    const result = await runWithTenantContext(
+      { tenantId: session.tenantId },
+      () => sendWhatsAppMessage(session.tenantId, to, message),
+    );
 
     return NextResponse.json({
       success: result.success,

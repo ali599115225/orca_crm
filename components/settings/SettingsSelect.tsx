@@ -211,7 +211,7 @@ export default function SettingsSelect({
         disabled={disabled}
         onClick={() => (open ? closeList() : openList())}
         onKeyDown={handleKeyDown}
-        className={`flex h-10 items-center justify-between gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-start text-sm text-[var(--nc-foreground)] outline-none transition-colors focus:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`flex h-11 items-center justify-between gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-start text-sm text-[var(--nc-foreground)] outline-none transition-colors focus:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-50 ${
           mono ? "font-mono" : ""
         } ${className || ""}`}
         {...rest}

@@ -266,6 +266,8 @@ model Tenant {
   followupSequences         FollowupSequence[]
   mansourChats              MansourChat[]
   platformConnections       PlatformConnection[]
+  marketingCampaigns        MarketingCampaign[]        @relation("TenantMarketingCampaigns")
+  marketingCampaignChannels MarketingCampaignChannel[] @relation("TenantMarketingCampaignChannels")
   agentLeases               AgentLease[]
   units                     Unit[]
   contracts                 Contract[]
@@ -304,6 +306,7 @@ model Tenant {
   revenueIntelligenceScores RevenueIntelligenceScore[]
   governmentOutboxEntries   GovernmentOutbox[]
   sentinelIncidents         SentinelIncident[]
+  documents                 Document[]
 
   @@map("tenants")
 }
@@ -755,9 +758,16 @@ model PlatformConnection {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   platform        String
   accountId       String   @map("account_id")
-  encryptedApiKey String?  @map("encrypted_api_key") @db.Text
-  status          String   @default("DISCONNECTED")
-  leadTone        String   @default("PROFESSIONAL")
+  encryptedApiKey      String?   @map("encrypted_api_key") @db.Text
+  displayName          String?   @map("display_name")
+  connectionMode       String    @default("API") @map("connection_mode")
+  baseUrl              String?   @map("base_url")
+  encryptedCredentials String?   @map("encrypted_credentials") @db.Text
+  providerConfig       Json?     @map("provider_config")
+  lastTestedAt         DateTime? @map("last_tested_at") @db.Timestamptz
+  lastError            String?   @map("last_error") @db.Text
+  status               String    @default("DISCONNECTED")
+  leadTone             String    @default("PROFESSIONAL")
   autoWelcomeMsg  String   @default("") @map("auto_welcome_msg") @db.Text
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -2194,3 +2204,79 @@ model RevenuePredictiveRun {
 }
 
 // ORCA_REVENUE_INTEGRITY_SCHEMA_END
+
+model MarketingCampaign {
+  id           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String                     @map("tenant_id") @db.Uuid
+  tenant       Tenant                     @relation("TenantMarketingCampaigns", fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById  String                     @map("created_by_id") @db.Uuid
+  name         String
+  objective    String
+  budgetKind   String                     @default("DAILY") @map("budget_kind")
+  budgetAmount Decimal                    @map("budget_amount") @db.Decimal(14, 2)
+  currency     String                     @default("SAR")
+  audience     Json
+  creative     Json
+  tracking     Json?
+  startAt      DateTime?                  @map("start_at") @db.Timestamptz
+  endAt        DateTime?                  @map("end_at") @db.Timestamptz
+  status       String                     @default("DRAFT")
+  version      Int                        @default(1)
+  createdAt    DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  channels     MarketingCampaignChannel[] @relation("MarketingCampaignChannels")
+
+  @@unique([tenantId, id], name: "uq_marketing_campaign_tenant_id")
+  @@index([tenantId, status], map: "idx_marketing_campaigns_tenant_status")
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_marketing_campaigns_tenant_created")
+  @@map("marketing_campaigns")
+}
+
+model MarketingCampaignChannel {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  tenant             Tenant            @relation("TenantMarketingCampaignChannels", fields: [tenantId], references: [id], onDelete: Cascade)
+  campaignId         String            @map("campaign_id") @db.Uuid
+  campaign           MarketingCampaign @relation("MarketingCampaignChannels", fields: [tenantId, campaignId], references: [tenantId, id], onDelete: Cascade)
+  provider           String
+  connectionId       String?           @map("connection_id") @db.Uuid
+  providerCampaignId String?           @map("provider_campaign_id")
+  status             String            @default("DRAFT")
+  remoteUrl          String?           @map("remote_url") @db.Text
+  providerOptions    Json?             @map("provider_options")
+  lastErrorCode      String?           @map("last_error_code")
+  lastSyncedAt       DateTime?         @map("last_synced_at") @db.Timestamptz
+  publishedAt        DateTime?         @map("published_at") @db.Timestamptz
+  pausedAt           DateTime?         @map("paused_at") @db.Timestamptz
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, campaignId, provider], name: "uq_marketing_campaign_channel_provider")
+  @@index([tenantId, provider, status], map: "idx_marketing_channels_tenant_provider_status")
+  @@index([tenantId, providerCampaignId], map: "idx_marketing_channels_provider_campaign")
+  @@map("marketing_campaign_channels")
+}
+
+model Document {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId        String?  @map("owner_id") @db.Uuid
+  ownerName      String   @map("owner_name")
+  name           String
+  type           String
+  status         String   @default("READY")
+  mimeType       String   @map("mime_type")
+  extension      String
+  size           Int
+  content        Bytes
+  checksumSha256 String   @map("checksum_sha256")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, createdAt], map: "idx_documents_tenant_created_at")
+  @@index([tenantId, type, status], map: "idx_documents_tenant_type_status")
+  @@index([tenantId, ownerName], map: "idx_documents_tenant_owner_name")
+  @@index([tenantId, checksumSha256], map: "idx_documents_tenant_checksum")
+  @@map("documents")
+}

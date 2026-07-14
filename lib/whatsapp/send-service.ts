@@ -6,6 +6,7 @@ import { hashPhone } from "@/lib/privacy-mask";
 import {
   resolveConnection,
   WhatsAppResolveError,
+  type ResolvedConnection,
 } from "./connection-resolver";
 
 export type SendErrorCode =
@@ -32,28 +33,24 @@ export class WhatsAppSendError extends Error {
 export interface SendResult {
   success: boolean;
   status: "pending" | "failed";
+  provider?: "META" | "DIALOG360";
   messageId?: string;
   metaMessageId?: string | null;
   errorCode?: SendErrorCode;
   error?: string;
 }
 
+const META_API_BASE = "https://graph.facebook.com/v25.0";
+
 interface PreparedOutbound {
   normalizedPhone: string;
   phoneHash: string;
-  phoneNumberId: string;
-  accessToken: string;
+  connection: ResolvedConnection;
 }
-
-const META_API_BASE = "https://graph.facebook.com/v25.0";
 
 function normalizePhone(phone: string): string {
   let digits = String(phone ?? "").replace(/\D/g, "");
-
-  while (digits.startsWith("00")) {
-    digits = digits.slice(2);
-  }
-
+  while (digits.startsWith("00")) digits = digits.slice(2);
   return digits.length >= 10 && digits.length <= 15 ? digits : "";
 }
 
@@ -68,12 +65,12 @@ function sanitizeErrorMessage(value: unknown): string {
   return message.trim().slice(0, 500) || "WHATSAPP_SEND_FAILED";
 }
 
-function isTemplateRequired(metaError: unknown): boolean {
-  if (!metaError || typeof metaError !== "object") {
+function isTemplateRequired(providerError: unknown): boolean {
+  if (!providerError || typeof providerError !== "object") {
     return false;
   }
 
-  const error = metaError as {
+  const error = providerError as {
     code?: string | number;
     error_subcode?: string | number;
     message?: string;
@@ -87,11 +84,12 @@ function isTemplateRequired(metaError: unknown): boolean {
     code === "131047" ||
     subcode === "131047" ||
     (message.includes("24") && message.includes("hour")) ||
-    message.includes("outside the allowed window")
+    message.includes("outside the allowed window") ||
+    message.includes("template")
   );
 }
 
-async function readMetaResponse(
+async function readProviderResponse(
   response: Response,
 ): Promise<Record<string, any>> {
   try {
@@ -121,13 +119,11 @@ async function prepareOutbound(
   to: string,
 ): Promise<PreparedOutbound> {
   const normalizedPhone = normalizePhone(to);
-
   if (!normalizedPhone) {
     throw new WhatsAppSendError("WHATSAPP_INVALID_PHONE");
   }
 
   const phoneHash = hashPhone(tenantId, normalizedPhone);
-
   const optedOut = await prisma.whatsAppOptOut.findUnique({
     where: {
       tenantId_phoneHash: {
@@ -142,7 +138,9 @@ async function prepareOutbound(
     throw new WhatsAppSendError("WHATSAPP_OPTED_OUT");
   }
 
-  const resolved = await resolveConnection(tenantId);
+  const connection = await resolveConnection(tenantId);
+  const provider =
+    connection.provider === "DIALOG360" ? "360dialog" : "meta";
 
   await prisma.whatsAppContact.upsert({
     where: {
@@ -155,11 +153,12 @@ async function prepareOutbound(
       tenantId,
       phone: normalizedPhone,
       phoneHash,
-      provider: "meta",
+      provider,
       lastMessageAt: new Date(),
     },
     update: {
       phone: normalizedPhone,
+      provider,
       lastMessageAt: new Date(),
     },
   });
@@ -167,8 +166,42 @@ async function prepareOutbound(
   return {
     normalizedPhone,
     phoneHash,
-    phoneNumberId: resolved.phoneNumberId,
-    accessToken: resolved.accessToken,
+    connection,
+  };
+}
+
+function requestForConnection(
+  prepared: PreparedOutbound,
+  payload: Record<string, unknown>,
+): { url: string; init: RequestInit } {
+  if (prepared.connection.provider === "DIALOG360") {
+    return {
+      url: `${prepared.connection.apiBaseUrl}/messages`,
+      init: {
+        method: "POST",
+        headers: {
+          "D360-API-KEY": prepared.connection.accessToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20_000),
+      } satisfies RequestInit,
+    };
+  }
+
+  return {
+    url: `${prepared.connection.apiBaseUrl || META_API_BASE}/${encodeURIComponent(
+      prepared.connection.phoneNumberId,
+    )}/messages`,
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${prepared.connection.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20_000),
+    } satisfies RequestInit,
   };
 }
 
@@ -180,6 +213,10 @@ async function sendPreparedPayload(params: {
   payload: Record<string, unknown>;
 }): Promise<SendResult> {
   const messageId = randomUUID();
+  const storageProvider =
+    params.prepared.connection.provider === "DIALOG360"
+      ? "360dialog"
+      : "meta";
 
   await prisma.whatsAppMessage.create({
     data: {
@@ -188,7 +225,7 @@ async function sendPreparedPayload(params: {
       phone: params.prepared.normalizedPhone,
       phoneHash: params.prepared.phoneHash,
       direction: "outbound",
-      provider: "meta",
+      provider: storageProvider,
       messageText: params.messageText,
       messageType: params.messageType,
       status: "pending",
@@ -196,29 +233,22 @@ async function sendPreparedPayload(params: {
   });
 
   try {
-    const response = await fetch(
-      `${META_API_BASE}/${encodeURIComponent(params.prepared.phoneNumberId)}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${params.prepared.accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(params.payload),
-      },
+    const request = requestForConnection(
+      params.prepared,
+      params.payload,
     );
-
-    const payload = await readMetaResponse(response);
-    const metaMessageId =
+    const response = await fetch(request.url, request.init);
+    const payload = await readProviderResponse(response);
+    const providerMessageId =
       typeof payload.messages?.[0]?.id === "string"
         ? payload.messages[0].id
         : null;
 
-    if (response.ok && metaMessageId) {
+    if (response.ok && providerMessageId) {
       await prisma.whatsAppMessage.update({
         where: { id: messageId },
         data: {
-          metaMessageId,
+          metaMessageId: providerMessageId,
           status: "pending",
         },
       });
@@ -226,8 +256,9 @@ async function sendPreparedPayload(params: {
       return {
         success: true,
         status: "pending",
+        provider: params.prepared.connection.provider,
         messageId,
-        metaMessageId,
+        metaMessageId: providerMessageId,
       };
     }
 
@@ -236,12 +267,15 @@ async function sendPreparedPayload(params: {
     return {
       success: false,
       status: "failed",
+      provider: params.prepared.connection.provider,
       messageId,
-      metaMessageId,
-      errorCode: isTemplateRequired(payload.error)
+      metaMessageId: providerMessageId,
+      errorCode: isTemplateRequired(payload.error || payload)
         ? "WHATSAPP_TEMPLATE_REQUIRED"
         : "WHATSAPP_SEND_FAILED",
-      error: sanitizeErrorMessage(payload.error?.message),
+      error: sanitizeErrorMessage(
+        payload.error?.message || payload.message,
+      ),
     };
   } catch (error) {
     await markMessageFailed(messageId);
@@ -249,6 +283,7 @@ async function sendPreparedPayload(params: {
     return {
       success: false,
       status: "failed",
+      provider: params.prepared.connection.provider,
       messageId,
       errorCode: "WHATSAPP_SEND_FAILED",
       error: sanitizeErrorMessage(error),
@@ -290,7 +325,6 @@ export async function sendWhatsAppMessage(
 ): Promise<SendResult> {
   try {
     const normalizedText = String(text ?? "").trim();
-
     if (!normalizedText) {
       throw new WhatsAppSendError(
         "WHATSAPP_SEND_FAILED",
@@ -331,20 +365,18 @@ export async function sendWhatsAppTemplate(params: {
   try {
     const templateName = String(params.templateName ?? "").trim();
     const languageCode = String(params.languageCode ?? "ar").trim();
-    const templateParameters = (params.parameters ?? []).map((value) =>
-      String(value ?? "").trim(),
+    const templateParameters = (params.parameters ?? []).map(
+      (value) => String(value ?? "").trim(),
     );
 
     if (!/^[a-z0-9_]+$/.test(templateName)) {
       throw new WhatsAppSendError("WHATSAPP_INVALID_TEMPLATE");
     }
-
     if (!languageCode) {
       throw new WhatsAppSendError("WHATSAPP_INVALID_TEMPLATE");
     }
 
     const prepared = await prepareOutbound(params.tenantId, params.to);
-
     const components =
       templateParameters.length > 0
         ? [
@@ -370,9 +402,7 @@ export async function sendWhatsAppTemplate(params: {
         type: "template",
         template: {
           name: templateName,
-          language: {
-            code: languageCode,
-          },
+          language: { code: languageCode },
           ...(components ? { components } : {}),
         },
       },

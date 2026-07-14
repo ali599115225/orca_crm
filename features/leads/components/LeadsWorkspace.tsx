@@ -144,7 +144,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
   return (
     <section dir={direction} className={leadVisual.page}>
       <div className={leadVisual.pageStack}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <header className={leadVisual.workspaceHero}>
           <div>
             <p className={leadVisual.pageEyebrow}>{labels.breadcrumb}</p>
             <h1 className={leadVisual.pageTitle}>{labels.title}</h1>
@@ -158,10 +158,10 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
             <Plus className="h-4 w-4" aria-hidden="true" />
             {labels.addLead}
           </button>
-        </div>
+        </header>
 
         {kpis && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={leadVisual.workspaceMetrics}>
             {[
               {
                 label: labels.totalLeads,
@@ -194,7 +194,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className={leadVisual.label}>{item.label}</p>
-                      <strong className="mt-3 block text-3xl font-extrabold tabular-nums tracking-tight text-[var(--nc-text-primary)]">
+                      <strong className="mt-3 block text-2xl font-black tabular-nums tracking-tight text-[var(--nc-text-primary)]">
                         {item.value}
                       </strong>
                     </div>
@@ -211,8 +211,12 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
           </div>
         )}
 
-        <div className={`${leadVisual.panel} p-4 sm:p-5`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div
+          className={`${leadVisual.workspacePanel} lg:h-[560px]`}
+          data-operational-list-card
+        >
+          <div className={`${leadVisual.workspaceToolbar} p-3`}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search
                 className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--nc-text-secondary)] ${isArabic ? "right-3" : "left-3"}`}
@@ -268,9 +272,10 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 {labels.showArchived}
               </button>
             </div>
+            </div>
           </div>
 
-          <div className="mt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loading ? (
               <div className={leadVisual.emptyState}>
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
@@ -373,7 +378,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 </div>
 
                 {(result?.totalPages || 1) > 1 && (
-                  <div className="mt-4 flex flex-col gap-3 border-t border-[var(--nc-border)] pt-4 text-sm font-medium text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+                  <div className={`${leadVisual.workspacePagination} mt-4 flex min-h-[56px] flex-col gap-3 px-1 pt-3 text-sm font-medium text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between`}>
                     <span>
                       {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
                       {formatNumber(result?.totalPages || 1, isArabic)}

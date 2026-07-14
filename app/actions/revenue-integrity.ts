@@ -35,6 +35,7 @@ import {
 import { processRevenueOutbox } from "@/lib/revenue-integrity/events";
 import { loadRevenueIntegrityDashboard } from "@/lib/revenue-integrity/queries";
 import type { ProviderCredentials } from "@/lib/revenue-integrity/contracts";
+import { testEmailProviderConnection } from "@/lib/email";
 
 type ActionResult<T = unknown> =
   | { success: true; data: T }
@@ -74,6 +75,8 @@ function publicRevenueErrorCode(error: unknown): string {
   if (
     message.includes("PROVIDER") ||
     message.includes("RESEND") ||
+    message.includes("SMTP") ||
+    message.includes("DIALOG360") ||
     message.includes("PAYLINK") ||
     message.includes("NGENIUS") ||
     message.includes("ZATCA") ||
@@ -466,10 +469,78 @@ export async function testRevenueProviderAction(
     const auth = await requireRevenuePermission(
       "revenue.trust.manage",
     );
+    const normalizedProvider = String(provider || "").trim().toUpperCase();
+
+    if (normalizedProvider === "SMTP") {
+      const connection =
+        await rawPrisma.revenueProviderConnection.findUnique({
+          where: {
+            tenantId_provider: {
+              tenantId: auth.tenantId,
+              provider: "SMTP",
+            },
+          },
+          select: {
+            id: true,
+            encryptedCredentials: true,
+          },
+        });
+
+      if (!connection) {
+        throw new Error("SMTP_PROVIDER_CONNECTION_NOT_FOUND");
+      }
+
+      const testedAt = new Date();
+      const testResult = await testEmailProviderConnection({
+        provider: "SMTP",
+        encryptedCredentials: connection.encryptedCredentials,
+      });
+
+      const data =
+        await rawPrisma.revenueProviderConnection.update({
+          where: { id: connection.id },
+          data: testResult.success
+            ? {
+                status: "CONNECTED",
+                lastTestedAt: testedAt,
+                lastSuccessAt: testedAt,
+                lastError: null,
+                updatedBy: auth.userId,
+              }
+            : {
+                status: "ERROR",
+                lastTestedAt: testedAt,
+                lastError:
+                  testResult.error || "SMTP_CONNECTION_FAILED",
+                updatedBy: auth.userId,
+              },
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+            isDefault: true,
+            lastTestedAt: true,
+            lastSuccessAt: true,
+            lastError: true,
+          },
+        });
+
+      refresh();
+
+      if (!testResult.success) {
+        return {
+          success: false,
+          error: "PROVIDER_CONNECTION_FAILED",
+        };
+      }
+
+      return { success: true, data };
+    }
+
     const data = await testProviderConnection(
       auth.tenantId,
       auth.userId,
-      String(provider),
+      normalizedProvider,
     );
     refresh();
     return { success: true, data };

@@ -69,7 +69,8 @@ describe("N-Genius provider", () => {
 
     const authCall = fetchMock.mock.calls[0];
     expect(authCall[0]).toContain("/identity/auth/access-token");
-    expect(authCall[1].headers.Authorization).toBe("Bearer ngenius-sandbox-key");
+    expect(authCall[1].headers.Authorization).toBe("Basic ngenius-sandbox-key");
+    expect(authCall[1]).not.toHaveProperty("body");
     expect(authCall[1].headers["Content-Type"]).toBe("application/vnd.ni-identity.v1+json");
 
     const orderCall = fetchMock.mock.calls[1];

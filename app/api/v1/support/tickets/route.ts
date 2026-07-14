@@ -1,75 +1,125 @@
-import { httpErrorResponse } from "@/lib/http-error-response";
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
+import { NextRequest, NextResponse } from "next/server";
+
+import {
+  runWithDatabaseSession,
+  TENANT_ROLES,
+} from "@/lib/api-auth-guard";
+import { writeAuditLog } from "@/lib/audit";
 import { ErrorCode } from "@/lib/errors";
-import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
+import { httpErrorResponse } from "@/lib/http-error-response";
+import { prisma } from "@/lib/prisma";
+
+const HELPDESK_WRITE_ROLES = [
+  "ADMIN",
+  "SALES_MANAGER",
+  "SALES_EMPLOYEE",
+  "MARKETING",
+] as const;
+
+function cleanText(value: unknown, maxLength: number) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function serializeTicket(ticket: {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  aiResponse: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: ticket.id,
+    title: ticket.title,
+    description: ticket.description,
+    status: ticket.status,
+    aiResponse: ticket.aiResponse,
+    createdAt: ticket.createdAt.toISOString(),
+    updatedAt: ticket.updatedAt.toISOString(),
+  };
+}
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+  return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
+    try {
+      const tickets = await prisma.ticket.findMany({
+        where: { tenantId: session.tenantId },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+        take: 200,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: tickets.map(serializeTicket),
+      });
+    } catch (error) {
+      return httpErrorResponse(
+        request,
+        ErrorCode.INTERNAL_ERROR,
+        "GET /api/v1/support/tickets failed",
+        error,
+        500,
+      );
     }
-
-    const tickets = await prisma.ticket.findMany({
-      where: { tenantId: session.tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json({ success: true, data: tickets });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/support/tickets failed", error, 500);
-  }
+  });
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
+  return runWithDatabaseSession(
+    request,
+    HELPDESK_WRITE_ROLES,
+    async (session) => {
+      try {
+        const body = await request.json();
+        const title = cleanText(body.title, 160);
+        const description = cleanText(body.description, 5000);
 
-    const body = await request.json();
-    const { title, description } = body;
+        if (title.length < 3 || description.length < 5) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "عنوان التذكرة وتفاصيلها مطلوبة.",
+            },
+            { status: 400 },
+          );
+        }
 
-    if (!title || !description) {
-      return NextResponse.json({ success: false, error: 'Title and description are required' }, { status: 400 });
-    }
+        const ticket = await prisma.ticket.create({
+          data: {
+            tenantId: session.tenantId,
+            title,
+            description,
+            status: "OPEN",
+            aiResponse: null,
+          },
+        });
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        tenantId: session.tenantId,
-        title,
-        description,
-        status: 'OPEN',
+        await writeAuditLog({
+          tenantId: session.tenantId,
+          userId: session.userId,
+          action: "TICKET_CREATED",
+          tableName: "tickets",
+          recordId: ticket.id,
+          details: JSON.stringify({ title }),
+        });
+
+        return NextResponse.json(
+          {
+            success: true,
+            data: serializeTicket(ticket),
+          },
+          { status: 201 },
+        );
+      } catch (error) {
+        return httpErrorResponse(
+          request,
+          ErrorCode.INTERNAL_ERROR,
+          "POST /api/v1/support/tickets failed",
+          error,
+          500,
+        );
       }
-    });
-
-    const lowerDesc = description.toLowerCase();
-    let aiReply = "";
-
-    if (lowerDesc.includes("باقة") || lowerDesc.includes("اشتراك") || lowerDesc.includes("دفع")) {
-      if (isDedicatedCopyDeployment()) {
-        aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. النسخة التي تستخدمها تعمل بترخيص مستقل، وإدارة الترخيص تتم عبر الإدارة المباشرة أو عقد الترخيص. يرجى التواصل مع فريق الدعم الفني للإجابة على أي استفسارات تتعلق بالترخيص.`;
-      } else {
-        aiReply = `مرحباً بك شريكنا، أنا مساعد الدعم الفني الذكي لمنصة أوركا. بخصوص استفسارك عن ترقيات الاشتراكات والدفع، يمكنك التوجه إلى صفحة الإعدادات وتحديد باقة الاشتراك ودفعها بـ مدى أو فيزا أو STC Pay بشكل فوري وسيتم تفعيل حسابك وصلاحيات الموظفين تلقائياً خلال ثوانٍ معدودة.`;
-      }
-    } else if (lowerDesc.includes("ربط") || lowerDesc.includes("نطاق") || lowerDesc.includes("دومين") || lowerDesc.includes("dns")) {
-      aiReply = `مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لربط نطاقك المخصص المشتري من Hostinger أو غيرها، يرجى التوجه إلى لوحة إدارة DNS الخاصة بنطاقك وإضافة سجل CNAME يشير إلى: cname.vercel-dns.com، وبمجرد إتمام ذلك، تفضل بتحديث الإعدادات باللوحة وسيتم توجيه رابط المبيعات الخاص بك آلياً.`;
-    } else if (lowerDesc.includes("خطأ") || lowerDesc.includes("مشكلة") || lowerDesc.includes("عطل") || lowerDesc.includes("توقف")) {
-      aiReply = `تم رصد إشعار بوجود عطل محتمل بخصوص "${title}". لقد قمت بتسجيل التفاصيل وتصنيف التذكرة كأولوية حرجة، وتم إرسال تنبيه مباشر إلى فريق التطوير للتدخل الفوري.`;
-    } else {
-      aiReply = `مرحباً بك، أنا مساعد الدعم الفني الذكي لمنصة أوركا. لقد تسلمت تذكرتك بنجاح بخصوص موضوع "${title}". تفاصيل استفسارك قيد المعالجة الآن وسيتم توفير إجابة تقنية مفصلة خلال دقائق قليلة.`;
-    }
-
-    const updated = await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: { aiResponse: aiReply }
-    });
-
-    return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "POST /api/v1/support/tickets failed", error, 500);
-  }
+    },
+  );
 }

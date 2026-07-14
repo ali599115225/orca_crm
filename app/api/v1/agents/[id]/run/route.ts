@@ -12,6 +12,24 @@ import { assertAgentCanRun } from "@/lib/agents/guard";
 import { runSaherTelemetryScanAction } from "@/app/actions/saherAgent";
 import { writeAuditLog } from "@/lib/audit";
 
+async function writeRuntimeLog(params: {
+  tenantId: string;
+  agentId: string;
+  actionType: string;
+  message: string;
+  severity: "Info" | "Warning" | "Critical";
+}) {
+  await prisma.agentTelemetryLog.create({
+    data: {
+      tenantId: params.tenantId,
+      agentId: params.agentId,
+      actionType: params.actionType,
+      logMessageAr: params.message,
+      severity: params.severity,
+    },
+  });
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -67,11 +85,18 @@ export async function POST(
           actionType: "EXECUTION",
         });
         if (!runtime.allowed) {
+          await writeRuntimeLog({
+            tenantId: access.tenantId,
+            agentId: slot.id,
+            actionType: "MANUAL_RUN_BLOCKED",
+            message: "تم منع التشغيل المباشر بواسطة سياسة التشغيل الحالية.",
+            severity: "Warning",
+          });
           return NextResponse.json(
             {
               success: false,
               code: "AGENT_RUNTIME_BLOCKED",
-              error: runtime.reason || "Agent runtime is blocked.",
+              error: "Agent runtime is blocked.",
             },
             { status: 409 },
           );
@@ -98,54 +123,92 @@ export async function POST(
         }
 
         if (definition.manualRun !== "SAHER_TELEMETRY") {
-          await prisma.agentTelemetryLog.create({
-            data: {
-              tenantId: access.tenantId,
-              agentId: slot.agentType,
-              actionType: "MANUAL_RUN_SKIPPED",
-              logMessageAr:
-                "الوكيل يعمل تلقائياً ولا يدعم التنفيذ اليدوي المباشر.",
-              severity: "Info",
-            },
+          await writeRuntimeLog({
+            tenantId: access.tenantId,
+            agentId: slot.id,
+            actionType: "MANUAL_RUN_UNAVAILABLE",
+            message: "هذا الوكيل يعمل تلقائيًا ولا يدعم التشغيل اليدوي المباشر.",
+            severity: "Info",
           });
           return NextResponse.json({
             success: true,
             executed: false,
-            agentId: id,
-            agentType: slot.agentType,
-            message:
-              "Agent is automatic and does not support direct manual execution.",
+            message: "Automatic agent; direct manual execution is unavailable.",
           });
         }
 
-        const result = await runSaherTelemetryScanAction();
-        if (!result.success) {
+        await writeRuntimeLog({
+          tenantId: access.tenantId,
+          agentId: slot.id,
+          actionType: "MANUAL_RUN_STARTED",
+          message: "بدأ التشغيل اليدوي للوكيل.",
+          severity: "Info",
+        });
+
+        try {
+          const result = await runSaherTelemetryScanAction();
+          if (!result.success) {
+            await writeRuntimeLog({
+              tenantId: access.tenantId,
+              agentId: slot.id,
+              actionType: "MANUAL_RUN_FAILED",
+              message: "فشل آخر تشغيل للوكيل. راجع إعدادات التشغيل وحالة الخدمات.",
+              severity: "Critical",
+            });
+            return NextResponse.json(
+              {
+                success: false,
+                code: "AGENT_RUN_FAILED",
+                error: "Agent run failed.",
+              },
+              { status: 502 },
+            );
+          }
+
+          await writeRuntimeLog({
+            tenantId: access.tenantId,
+            agentId: slot.id,
+            actionType: "MANUAL_RUN_SUCCEEDED",
+            message: "اكتمل تشغيل الوكيل بنجاح.",
+            severity: "Info",
+          });
+
+          await writeAuditLog({
+            tenantId: access.tenantId,
+            userId: access.userId,
+            action: "AGENT_MANUAL_RUN",
+            tableName: "agent_slots",
+            recordId: slot.id,
+            details: JSON.stringify({ agentType: slot.agentType }),
+          });
+
+          return NextResponse.json({
+            success: true,
+            executed: true,
+            summary: {
+              status: "COMPLETED",
+              issueCount: Array.isArray((result.report as { issues?: unknown[] })?.issues)
+                ? (result.report as { issues: unknown[] }).issues.length
+                : 0,
+            },
+          });
+        } catch {
+          await writeRuntimeLog({
+            tenantId: access.tenantId,
+            agentId: slot.id,
+            actionType: "MANUAL_RUN_FAILED",
+            message: "فشل آخر تشغيل للوكيل بسبب تعذر إكمال العملية.",
+            severity: "Critical",
+          });
           return NextResponse.json(
             {
               success: false,
               code: "AGENT_RUN_FAILED",
-              error: result.error || "Agent run failed.",
+              error: "Agent run failed.",
             },
-            { status: 500 },
+            { status: 502 },
           );
         }
-
-        await writeAuditLog({
-          tenantId: access.tenantId,
-          userId: access.userId,
-          action: "AGENT_MANUAL_RUN",
-          tableName: "agent_slots",
-          recordId: slot.id,
-          details: JSON.stringify({ agentType: slot.agentType }),
-        });
-
-        return NextResponse.json({
-          success: true,
-          executed: true,
-          agentId: id,
-          agentType: slot.agentType,
-          report: result.report,
-        });
       },
     );
   } catch (error) {

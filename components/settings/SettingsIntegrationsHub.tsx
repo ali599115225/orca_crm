@@ -22,7 +22,10 @@ type ProviderId =
   | "HYPERPAY"
   | "PAYTABS"
   | "NGENIUS"
+  | "CUSTOM_PAYMENT"
   | "RESEND"
+  | "SMTP"
+  | "DIALOG360"
   | "SIGNATURE"
   | "WHATSAPP";
 
@@ -37,6 +40,7 @@ type ProviderState = {
   lastSuccessAt: string | null;
   lastError: string | null;
   hasWebhookSecret: boolean;
+  webhookToken: string | null;
 };
 
 type ApplicationState = {
@@ -55,6 +59,7 @@ type FieldDefinition = {
   en: string;
   secret?: boolean;
   required?: boolean;
+  placeholder?: string;
 };
 
 // Presentational-only grouping for the filter tabs/capability chips below.
@@ -75,12 +80,45 @@ type ProviderDefinition = {
 const PROVIDERS: ProviderDefinition[] = [
   {
     id: "WHATSAPP",
-    name: "WhatsApp Business API",
-    ar: "واتساب للأعمال",
-    en: "WhatsApp Business API",
+    name: "Meta WhatsApp Cloud",
+    ar: "ربط مباشر مع Meta عبر التسجيل المضمن",
+    en: "Direct Meta connection through Embedded Signup",
     category: "MESSAGING",
     icon: "ph-whatsapp-logo",
     fields: [],
+  },
+  {
+    id: "DIALOG360",
+    name: "360dialog",
+    ar: "مزود واتساب متخصص بمفتاح مستقل لكل رقم",
+    en: "Specialized WhatsApp provider with a per-number API key",
+    category: "MESSAGING",
+    icon: "ph-chats-circle",
+    defaultBaseUrl: "https://waba-v2.360dialog.io",
+    fields: [
+      {
+        key: "apiKey",
+        ar: "مفتاح D360 API",
+        en: "D360 API key",
+        secret: true,
+        required: true,
+      },
+      {
+        key: "displayPhoneNumber",
+        ar: "رقم واتساب الدولي",
+        en: "International WhatsApp number",
+        required: true,
+        placeholder: "9665XXXXXXXX",
+      },
+      {
+        key: "webhookSecret",
+        ar: "سر Webhook",
+        en: "Webhook secret",
+        secret: true,
+        required: true,
+        placeholder: "24+ characters",
+      },
+    ],
   },
   {
     id: "PAYLINK",
@@ -139,6 +177,15 @@ const PROVIDERS: ProviderDefinition[] = [
     ],
   },
   {
+    id: "CUSTOM_PAYMENT",
+    name: "Other payment provider",
+    ar: "مزود دفع آخر — تكامل API أو رابط دفع خارجي",
+    en: "Custom API integration or external payment link",
+    category: "PAYMENTS",
+    icon: "ph-plugs-connected",
+    fields: [],
+  },
+  {
     id: "NGENIUS",
     name: "N-Genius",
     ar: "بوابة الدفع من Network International",
@@ -150,6 +197,68 @@ const PROVIDERS: ProviderDefinition[] = [
       { key: "outletId", ar: "معرف المنفذ", en: "Outlet ID", required: true },
       { key: "apiKey", ar: "مفتاح الخدمة", en: "Service API key", secret: true, required: true },
       { key: "webhookSecret", ar: "سر Webhook", en: "Webhook secret", secret: true },
+    ],
+  },
+  {
+    id: "SMTP",
+    name: "Generic SMTP",
+    ar: "إرسال البريد عبر خادم المنشأة الحالي",
+    en: "Send mail through the organization’s current server",
+    category: "EMAIL",
+    icon: "ph-envelope-open",
+    fields: [
+      {
+        key: "host",
+        ar: "خادم SMTP",
+        en: "SMTP host",
+        required: true,
+        placeholder: "smtp.example.com",
+      },
+      {
+        key: "port",
+        ar: "المنفذ",
+        en: "Port",
+        required: true,
+        placeholder: "587",
+      },
+      {
+        key: "security",
+        ar: "نوع التشفير",
+        en: "Transport security",
+        required: true,
+      },
+      {
+        key: "username",
+        ar: "اسم المستخدم",
+        en: "Username",
+        required: true,
+        placeholder: "user@example.com",
+      },
+      {
+        key: "password",
+        ar: "كلمة المرور أو App Password",
+        en: "Password or app password",
+        secret: true,
+        required: true,
+      },
+      {
+        key: "fromEmail",
+        ar: "عنوان المرسل",
+        en: "From address",
+        required: true,
+        placeholder: "user@example.com",
+      },
+      {
+        key: "fromName",
+        ar: "اسم المرسل",
+        en: "From name",
+      },
+      {
+        key: "replyTo",
+        ar: "عنوان الرد",
+        en: "Reply-to address",
+        placeholder: "support@example.com",
+      },
     ],
   },
   {
@@ -238,6 +347,14 @@ function statusTier(status: string | undefined): number {
 export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" }) {
   const isArabic = lang === "AR";
   const L = (ar: string, en: string) => (isArabic ? ar : en);
+  const providerDisplayName = (provider: (typeof PROVIDERS)[number]) =>
+    provider.id === "CUSTOM_PAYMENT"
+      ? L("مزود دفع آخر", "Other payment provider")
+      : provider.id === "SMTP"
+        ? L("SMTP عام", "Generic SMTP")
+        : provider.id === "WHATSAPP"
+          ? L("Meta WhatsApp Cloud", "Meta WhatsApp Cloud")
+          : provider.name;
   const [activeProvider, setActiveProvider] = useState<ProviderId>("PAYLINK");
   const [mode, setMode] = useState<"CONNECT" | "REQUEST">("CONNECT");
   const [providers, setProviders] = useState<ProviderState[]>([]);
@@ -259,8 +376,11 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<"ALL" | ProviderCategory>("ALL");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showRequiredErrors, setShowRequiredErrors] = useState(false);
+  const [browserOrigin, setBrowserOrigin] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const autoOpenHandledRef = useRef(false);
 
   const definition = PROVIDERS.find((item) => item.id === activeProvider)!;
   const connection = providers.find((item) => item.provider === activeProvider);
@@ -287,16 +407,57 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
   }, []);
 
   useEffect(() => {
+    if (autoOpenHandledRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("open") !== "1") return;
+
+    const requested = params.get("provider");
+    const provider = PROVIDERS.find((item) => item.id === requested);
+    if (!provider) return;
+
+    autoOpenHandledRef.current = true;
+    setCategoryFilter(provider.category);
+    setActiveProvider(provider.id);
+    setMode("CONNECT");
+    setDrawerOpen(true);
+  }, []);
+
+  useEffect(() => {
     if (!CATEGORY_FILTERS.some((filter) => filter.id === categoryFilter)) {
       setCategoryFilter("ALL");
     }
   }, [categoryFilter]);
 
   useEffect(() => {
-    setForm({});
+    setForm(
+      activeProvider === "SMTP"
+        ? {
+            port: "587",
+            security: "STARTTLS",
+          }
+        : activeProvider === "CUSTOM_PAYMENT"
+          ? {
+            integrationMode: "API",
+            authHeaderName: "Authorization",
+            authScheme: "BEARER",
+            requestTemplate:
+              '{"amount":{"value":"{{amountMinor}}","currency":"{{currency}}"},"callbackUrl":"{{callbackUrl}}","description":"{{description}}","metadata":"{{metadata}}"}',
+            responseReferencePath: "id",
+            responseRedirectUrlPath: "paymentUrl",
+            responseStatusPath: "status",
+            responseAmountPath: "amount.value",
+            responseCurrencyPath: "amount.currency",
+            paidStatuses: "PAID,COMPLETED,CAPTURED",
+            webhookSignatureHeader: "x-webhook-signature",
+            webhookReferencePath: "id",
+          }
+          : {},
+    );
     setBaseUrl(connection?.baseUrl || definition.defaultBaseUrl || "");
     setIsDefault(Boolean(connection?.isDefault));
     setNotice(null);
+    setShowRequiredErrors(false);
   }, [activeProvider, connection?.id]);
 
   function run(
@@ -307,7 +468,16 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     startTransition(async () => {
       const result = await task();
       if (!result.success) {
-        setNotice({ type: "error", text: result.error || L("تعذر التنفيذ.", "Operation failed.") });
+        const fallback = L("تعذر التنفيذ.", "Operation failed.");
+        const errorText =
+          result.error === "PROVIDER_CONNECTION_FAILED" &&
+          activeProvider === "SMTP"
+            ? L(
+                "تعذر الاتصال بخادم SMTP. راجع الخادم والمنفذ والتشفير وبيانات الدخول ثم أعد الاختبار.",
+                "Could not connect to the SMTP server. Review the host, port, encryption, and credentials, then test again.",
+              )
+            : result.error || fallback;
+        setNotice({ type: "error", text: errorText });
         return;
       }
       setNotice({ type: "success", text: successText });
@@ -323,26 +493,113 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     });
   }
 
-  const missingRequired = useMemo(
-    () => definition.fields.some((field) => field.required && !String(form[field.key] || "").trim()),
-    [definition, form],
-  );
+  const customPaymentMode = String(form.integrationMode || "API").toUpperCase();
+
+  const missingRequired = useMemo(() => {
+    if (activeProvider === "CUSTOM_PAYMENT") {
+      const requiredKeys =
+        customPaymentMode === "PAYMENT_LINK"
+          ? ["providerName", "integrationMode", "paymentLinkUrl"]
+          : [
+              "providerName",
+              "integrationMode",
+              "authHeaderName",
+              "authScheme",
+              "credential",
+              "createPaymentPath",
+              "verifyPaymentPath",
+              "requestTemplate",
+              "responseReferencePath",
+              "responseRedirectUrlPath",
+              "responseStatusPath",
+              "responseAmountPath",
+              "responseCurrencyPath",
+              "paidStatuses",
+              "webhookSecret",
+              "webhookSignatureHeader",
+              "webhookReferencePath",
+            ];
+
+      return (
+        requiredKeys.some((key) => !String(form[key] || "").trim()) ||
+        (customPaymentMode === "API" && !baseUrl.trim())
+      );
+    }
+
+    if (activeProvider === "SMTP") {
+      const port = Number.parseInt(String(form.port || ""), 10);
+      return (
+        definition.fields.some(
+          (field) =>
+            field.required && !String(form[field.key] || "").trim(),
+        ) ||
+        !Number.isInteger(port) ||
+        port < 1 ||
+        port > 65_535 ||
+        !["TLS", "STARTTLS"].includes(
+          String(form.security || "").toUpperCase(),
+        )
+      );
+    }
+
+    return definition.fields.some(
+      (field) => field.required && !String(form[field.key] || "").trim(),
+    );
+  }, [activeProvider, customPaymentMode, definition, form, baseUrl]);
 
   function submitConnection(event: FormEvent) {
     event.preventDefault();
-    if (missingRequired) return;
+    if (missingRequired) {
+      setShowRequiredErrors(true);
+      return;
+    }
+    setShowRequiredErrors(false);
 
-    const credentials = Object.fromEntries(
-      definition.fields
-        .map((field) => [field.key, String(form[field.key] || "").trim()])
-        .filter(([, value]) => value),
-    );
+    const credentials =
+      activeProvider === "CUSTOM_PAYMENT"
+        ? Object.fromEntries(
+            (
+              customPaymentMode === "PAYMENT_LINK"
+                ? ["providerName", "integrationMode", "paymentLinkUrl"]
+                : [
+                    "providerName",
+                    "integrationMode",
+                    "authHeaderName",
+                    "authScheme",
+                    "credential",
+                    "createPaymentPath",
+                    "verifyPaymentPath",
+                    "requestTemplate",
+                    "responseReferencePath",
+                    "responseRedirectUrlPath",
+                    "responseStatusPath",
+                    "responseAmountPath",
+                    "responseCurrencyPath",
+                    "paidStatuses",
+                    "webhookSecret",
+                    "webhookSignatureHeader",
+                    "webhookReferencePath",
+                  ]
+            )
+              .map((key) => [key, String(form[key] || "").trim()])
+              .filter(([, value]) => value),
+          )
+        : Object.fromEntries(
+            definition.fields
+              .map((field) => [field.key, String(form[field.key] || "").trim()])
+              .filter(([, value]) => value),
+          );
 
     run(
       () =>
         saveRevenueProviderAction({
           provider: activeProvider,
-          baseUrl: baseUrl.trim() || null,
+          baseUrl:
+            activeProvider === "SMTP" ||
+            (activeProvider === "CUSTOM_PAYMENT" &&
+              customPaymentMode === "PAYMENT_LINK")
+              ? null
+              : baseUrl.trim() || null,
           credentials,
           isDefault,
         }),
@@ -374,6 +631,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
     setActiveProvider(providerId);
     setMode("CONNECT");
+    setShowRequiredErrors(false);
     setDrawerOpen(true);
   }
 
@@ -401,6 +659,10 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     if (isDirty) return;
     closeDrawer();
   }
+
+  useEffect(() => {
+    setBrowserOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -463,8 +725,10 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     <>
       <div className="flex flex-col gap-4 border-b border-[var(--nc-border)] pb-5 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="text-base font-black text-[var(--nc-foreground)]">{definition.name}</h3>
-          <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
+          <h3 className="text-base font-black text-[var(--nc-foreground)]">
+            {providerDisplayName(definition)}
+          </h3>
+          <p className="mt-1 text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
             {isArabic ? definition.ar : definition.en}
           </p>
         </div>
@@ -478,22 +742,26 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
         </div>
       </div>
 
-      <div className="mt-5 inline-flex rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-1">
-        <button
-          type="button"
-          onClick={() => setMode("CONNECT")}
-          className={`rounded-lg px-4 h-9 text-xs font-black ${mode === "CONNECT" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
-        >
-          {L("لدي حساب", "I have an account")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("REQUEST")}
-          className={`rounded-lg px-4 h-9 text-xs font-black ${mode === "REQUEST" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
-        >
-          {L("لا أملك حسابًا", "I need an account")}
-        </button>
-      </div>
+      {activeProvider !== "CUSTOM_PAYMENT" &&
+      activeProvider !== "SMTP" &&
+      activeProvider !== "DIALOG360" ? (
+        <div className="mt-5 inline-flex rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-1">
+          <button
+            type="button"
+            onClick={() => setMode("CONNECT")}
+            className={`rounded-lg px-4 h-9 text-xs font-black ${mode === "CONNECT" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
+          >
+            {L("لدي حساب", "I have an account")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("REQUEST")}
+            className={`rounded-lg px-4 h-9 text-xs font-black ${mode === "REQUEST" ? "bg-[var(--nc-accent)] text-slate-950" : "text-[var(--nc-foreground-muted)]"}`}
+          >
+            {L("لا أملك حسابًا", "I need an account")}
+          </button>
+        </div>
+      ) : null}
 
       {notice ? (
         <div
@@ -511,8 +779,8 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
   );
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="orca-settings-section orca-settings-integrations-section">
+      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
         <h2 className="text-lg font-black text-[var(--nc-foreground)]">
           {L("التكاملات والامتثال", "Integrations & Compliance")}
         </h2>
@@ -554,10 +822,10 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
             key={filter.id}
             type="button"
             onClick={() => setCategoryFilter(filter.id)}
-            className={`shrink-0 rounded-full border px-4 h-9 text-xs font-black transition-colors ${
+            className={`h-11 shrink-0 rounded-xl border px-4 text-xs font-black transition-colors ${
               categoryFilter === filter.id
                 ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
-                : "border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]"
+                : "border-[var(--nc-border)] text-[var(--nc-foreground-secondary)] hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"
             }`}
           >
             {L(filter.ar, filter.en)}
@@ -565,8 +833,8 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1200px]:grid-cols-4 min-[1440px]:grid-cols-5">
-        {visibleProviders.map((provider) => {
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {visibleProviders.map((provider, providerIndex) => {
           const state = providers.find((item) => item.provider === provider.id);
           const isWhatsApp = provider.id === "WHATSAPP";
           const hasWebhook = provider.fields.some((field) => field.key === "webhookSecret");
@@ -575,10 +843,12 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
           return (
             <div
               key={provider.id}
-              className="flex min-h-[190px] flex-col rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-colors hover:border-[var(--nc-accent-border)]"
+              className={`orca-settings-card flex min-h-[230px] flex-col rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)] ${visibleProviders.length % 3 === 1 && providerIndex === visibleProviders.length - 1 ? "md:col-span-2 xl:col-span-3" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <h3 className="min-w-0 truncate text-base font-black text-[var(--nc-foreground)]">{provider.name}</h3>
+                <h3 className="min-w-0 truncate text-base font-black text-[var(--nc-foreground)]">
+                  {providerDisplayName(provider)}
+                </h3>
                 {!isWhatsApp && (
                   <span
                     className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-black ${badgeClass(
@@ -608,6 +878,11 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                     Webhook
                   </span>
                 )}
+                {provider.id === "CUSTOM_PAYMENT" && (
+                  <span className="rounded-full border border-[var(--nc-border)] px-2 py-0.5 text-xs font-bold text-[var(--nc-foreground-muted)]">
+                    API / Link
+                  </span>
+                )}
               </div>
 
               {!isWhatsApp && (
@@ -620,7 +895,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
               )}
 
               <div className="mt-auto pt-2">
-                <SettingsButton variant="primary" onClick={() => openProvider(provider.id)}>
+                <SettingsButton className="w-[132px] justify-center" variant="primary" onClick={() => openProvider(provider.id)}>
                   {isWhatsApp
                     ? L("إدارة واتساب", "Manage WhatsApp")
                     : state?.status === "CONNECTED"
@@ -635,20 +910,20 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
 
       {drawerOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex">
+          <div className="fixed inset-x-0 bottom-0 top-[88px] z-[100] flex">
             <div
               onClick={handleOverlayClick}
               className="absolute inset-0 bg-black/60"
             />
 
             <div
-              className={`absolute inset-y-0 left-0 z-[110] flex w-screen flex-col bg-[var(--nc-surface-solid)] shadow-2xl ${
-                activeProvider === "WHATSAPP" ? "sm:w-[640px]" : "sm:w-[min(720px,100vw)]"
+              className={`absolute inset-y-4 left-4 z-[110] flex w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl ${
+                activeProvider === "WHATSAPP" ? "sm:w-[640px]" : "sm:w-[min(720px,calc(100vw-2rem))]"
               }`}
             >
               <div className="flex shrink-0 items-center justify-between border-b border-[var(--nc-border)] p-5">
                 <h2 ref={titleRef} tabIndex={-1} className="text-lg font-black text-[var(--nc-foreground)] outline-none">
-                  {definition.name}
+                  {providerDisplayName(definition)}
                 </h2>
                 <SettingsButton variant="icon" onClick={closeDrawer} aria-label={L("إغلاق", "Close")}>
                   ×
@@ -656,50 +931,343 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
               </div>
 
               {activeProvider === "WHATSAPP" ? (
-                <div className="min-w-0 flex-1 overflow-y-auto p-6">
+                <div className="min-w-0 flex-1 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <WhatsAppIntegrationSettings lang={lang} />
                 </div>
               ) : mode === "CONNECT" ? (
                 <form onSubmit={submitConnection} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
+                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <SmartCard className="p-5">
                       {statusBlock}
 
                       <div className="mt-6 space-y-4">
-                        <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                          {L("عنوان بيئة المزود", "Provider base URL")}
-                          <input
-                            value={baseUrl}
-                            onChange={(event) => setBaseUrl(event.target.value)}
-                            className="mt-2 h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
-                            placeholder={definition.defaultBaseUrl || "https://"}
-                            dir="ltr"
-                          />
-                        </label>
-
-                        <div className="grid gap-4">
-                          {definition.fields.map((field) => (
-                            <label key={field.key} className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                              {isArabic ? field.ar : field.en}
-                              {field.required ? " *" : ""}
+                        {activeProvider === "CUSTOM_PAYMENT" ? (
+                          <>
+                            <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                              {L("اسم مزود الدفع", "Payment provider name")} *
                               <input
-                                type={field.secret ? "password" : "text"}
-                                value={form[field.key] || ""}
+                                required
+                                value={form.providerName || ""}
                                 onChange={(event) =>
-                                  setForm((current) => ({ ...current, [field.key]: event.target.value }))
+                                  setForm((current) => ({ ...current, providerName: event.target.value }))
                                 }
-                                autoComplete="off"
-                                className="mt-2 h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
-                                dir="ltr"
+                                className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
                               />
-                              {field.required && !String(form[field.key] || "").trim() && (
-                                <span className="mt-1 block text-[11px] font-bold text-rose-500">
-                                  {L("هذا الحقل مطلوب.", "This field is required.")}
-                                </span>
-                              )}
                             </label>
-                          ))}
-                        </div>
+
+                            <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                              {L("طريقة الربط", "Integration method")} *
+                              <select
+                                required
+                                value={form.integrationMode || "API"}
+                                onChange={(event) =>
+                                  setForm((current) => ({ ...current, integrationMode: event.target.value }))
+                                }
+                                className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                              >
+                                <option value="API">{L("تكامل API", "API integration")}</option>
+                                <option value="PAYMENT_LINK">{L("رابط دفع خارجي", "External payment link")}</option>
+                              </select>
+                            </label>
+
+                            {customPaymentMode === "PAYMENT_LINK" ? (
+                              <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                {L("رابط الدفع الآمن", "Secure payment link")} *
+                                <input
+                                  required
+                                  type="url"
+                                  value={form.paymentLinkUrl || ""}
+                                  onChange={(event) =>
+                                    setForm((current) => ({ ...current, paymentLinkUrl: event.target.value }))
+                                  }
+                                  placeholder="https://"
+                                  dir="ltr"
+                                  className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                />
+                              </label>
+                            ) : (
+                              <>
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("عنوان API الأساسي", "API base URL")} *
+                                  <input
+                                    required
+                                    type="url"
+                                    value={baseUrl}
+                                    onChange={(event) => setBaseUrl(event.target.value)}
+                                    placeholder="https://"
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("اسم ترويسة المصادقة", "Authentication header")} *
+                                  <input
+                                    required
+                                    value={form.authHeaderName || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({ ...current, authHeaderName: event.target.value }))
+                                    }
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("نوع المصادقة", "Authentication scheme")} *
+                                  <select
+                                    required
+                                    value={form.authScheme || "BEARER"}
+                                    onChange={(event) =>
+                                      setForm((current) => ({ ...current, authScheme: event.target.value }))
+                                    }
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  >
+                                    <option value="BEARER">Bearer</option>
+                                    <option value="BASIC">Basic</option>
+                                    <option value="API_KEY">API Key</option>
+                                  </select>
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("مفتاح أو رمز المصادقة", "Authentication credential")} *
+                                  <input
+                                    required
+                                    type="password"
+                                    value={form.credential || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({ ...current, credential: event.target.value }))
+                                    }
+                                    autoComplete="off"
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("مسار إنشاء رابط الدفع", "Create-payment path")} *
+                                  <input
+                                    required
+                                    value={form.createPaymentPath || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({ ...current, createPaymentPath: event.target.value }))
+                                    }
+                                    placeholder="/payments"
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("مسار التحقق من حالة الدفع", "Payment-status path")} *
+                                  <input
+                                    required
+                                    value={form.verifyPaymentPath || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({ ...current, verifyPaymentPath: event.target.value }))
+                                    }
+                                    placeholder="/payments/{reference}"
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("قالب طلب JSON", "JSON request template")} *
+                                  <textarea
+                                    required
+                                    rows={6}
+                                    value={form.requestTemplate || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({
+                                        ...current,
+                                        requestTemplate: event.target.value,
+                                      }))
+                                    }
+                                    dir="ltr"
+                                    className="mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 font-mono text-xs text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                {[
+                                  ["responseReferencePath", L("مسار مرجع العملية في الاستجابة", "Response reference path")],
+                                  ["responseRedirectUrlPath", L("مسار رابط الدفع في الاستجابة", "Response payment URL path")],
+                                  ["responseStatusPath", L("مسار حالة الدفع في الاستجابة", "Response status path")],
+                                  ["responseAmountPath", L("مسار المبلغ بوحداته الصغرى", "Response minor-amount path")],
+                                  ["responseCurrencyPath", L("مسار العملة في الاستجابة", "Response currency path")],
+                                  ["paidStatuses", L("حالات النجاح مفصولة بفاصلة", "Paid statuses, comma-separated")],
+                                  ["webhookSignatureHeader", L("اسم ترويسة توقيع Webhook", "Webhook signature header")],
+                                  ["webhookReferencePath", L("مسار مرجع العملية داخل Webhook", "Webhook reference path")],
+                                ].map(([key, label]) => (
+                                  <label
+                                    key={key}
+                                    className="block text-xs font-bold text-[var(--nc-foreground-muted)]"
+                                  >
+                                    {label} *
+                                    <input
+                                      required
+                                      value={form[key] || ""}
+                                      onChange={(event) =>
+                                        setForm((current) => ({
+                                          ...current,
+                                          [key]: event.target.value,
+                                        }))
+                                      }
+                                      dir="ltr"
+                                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                    />
+                                  </label>
+                                ))}
+
+                                <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {L("سر توقيع Webhook", "Webhook signing secret")} *
+                                  <input
+                                    required
+                                    type="password"
+                                    value={form.webhookSecret || ""}
+                                    onChange={(event) =>
+                                      setForm((current) => ({
+                                        ...current,
+                                        webhookSecret: event.target.value,
+                                      }))
+                                    }
+                                    autoComplete="off"
+                                    dir="ltr"
+                                    className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
+                                  />
+                                </label>
+
+                                {connection?.webhookToken ? (
+                                  <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-xs text-[var(--nc-foreground-muted)]">
+                                    <div className="font-bold">
+                                      {L("مسار Webhook", "Webhook path")}
+                                    </div>
+                                    <code className="mt-1 block break-all" dir="ltr">
+                                      /api/payments/custom/webhook/{connection.id}
+                                    </code>
+                                  </div>
+                                ) : null}
+
+
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {activeProvider !== "SMTP" ? (
+                              <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                {L("عنوان بيئة المزود", "Provider base URL")}
+                                <input
+                                  value={baseUrl}
+                                  onChange={(event) => setBaseUrl(event.target.value)}
+                                  className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                  placeholder={definition.defaultBaseUrl || "https://"}
+                                  dir="ltr"
+                                />
+                              </label>
+                            ) : (
+                              <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 p-3 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                                {L(
+                                  "استخدم بيانات صندوق بريد المنشأة من مزودها الحالي. يوصى بالمنفذ 587 مع STARTTLS أو 465 مع TLS. تبقى البيانات مشفرة داخل نطاق المنشأة، ولا يسمح بعناوين الخوادم المحلية أو الخاصة.",
+                                  "Use the organization mailbox credentials from its current provider. Port 587 with STARTTLS or 465 with TLS is recommended. Credentials remain encrypted within the tenant scope, and local or private server addresses are not allowed.",
+                                )}
+                              </div>
+                            )}
+
+                            <div className="grid gap-4">
+                              {definition.fields.map((field) => (
+                                <label key={field.key} className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
+                                  {isArabic ? field.ar : field.en}
+                                  {field.required ? " *" : ""}
+                                  {field.key === "security" ? (
+                                    <select
+                                      value={form[field.key] || "STARTTLS"}
+                                      onChange={(event) =>
+                                        setForm((current) => ({
+                                          ...current,
+                                          [field.key]: event.target.value,
+                                          ...(field.key === "security"
+                                            ? {
+                                                port:
+                                                  event.target.value === "TLS"
+                                                    ? "465"
+                                                    : "587",
+                                              }
+                                            : {}),
+                                        }))
+                                      }
+                                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                      dir="ltr"
+                                    >
+                                      <option value="STARTTLS">STARTTLS — 587</option>
+                                      <option value="TLS">TLS — 465</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type={
+                                        field.secret
+                                          ? "password"
+                                          : field.key === "port"
+                                            ? "number"
+                                            : field.key === "fromEmail" ||
+                                                field.key === "replyTo"
+                                              ? "email"
+                                              : "text"
+                                      }
+                                      min={field.key === "port" ? 1 : undefined}
+                                      max={field.key === "port" ? 65535 : undefined}
+                                      value={form[field.key] || ""}
+                                      onChange={(event) =>
+                                        setForm((current) => ({
+                                          ...current,
+                                          [field.key]: event.target.value,
+                                        }))
+                                      }
+                                      autoComplete="off"
+                                      placeholder={
+                                         activeProvider === "DIALOG360" &&
+                                         field.key === "webhookSecret"
+                                           ? L("24 حرفًا على الأقل", "24+ characters")
+                                           : field.placeholder
+                                       }
+                                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                      dir="ltr"
+                                    />
+                                  )}
+                                  {showRequiredErrors &&
+                                    field.required &&
+                                    !String(form[field.key] || "").trim() && (
+                                    <span className="mt-1 block text-[11px] font-bold text-rose-500">
+                                      {L("هذا الحقل مطلوب.", "This field is required.")}
+                                    </span>
+                                  )}
+                                </label>
+                              ))}
+                            </div>
+
+                            {activeProvider === "DIALOG360" ? (
+                              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-[var(--nc-foreground-muted)]">
+                                <p className="font-black text-[var(--nc-foreground)]">
+                                  {L("إعداد Webhook", "Webhook setup")}
+                                </p>
+                                <p className="mt-1 leading-6">
+                                  {L(
+                                    "بعد حفظ الاتصال، استخدم الرابط الظاهر أدناه في 360dialog وأرسل السر المحفوظ داخل الترويسة X-ORCA-Webhook-Secret.",
+                                    "After saving, use the URL below in 360dialog and send the stored secret in the X-ORCA-Webhook-Secret header.",
+                                  )}
+                                </p>
+                                {connection?.id ? (
+                                  <code
+                                    dir="ltr"
+                                    className="mt-2 block break-all rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2 text-[11px]"
+                                  >
+                                    {`${browserOrigin}/api/whatsapp/webhook/360dialog/${connection.webhookToken}`}
+                                  </code>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </>
+                        )}
 
                         <label className="flex items-center gap-3 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-xs font-bold text-[var(--nc-foreground)]">
                           <input
@@ -731,7 +1299,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                             >
                               <div>
                                 <div className="text-xs font-bold text-[var(--nc-foreground)]">
-                                  {String(application.companyData?.companyName || definition.name)}
+                                  {String(application.companyData?.companyName || providerDisplayName(definition))}
                                 </div>
                                 <div className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
                                   {application.submittedAt || "—"}
@@ -748,7 +1316,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                   </div>
 
                   <div className="flex shrink-0 flex-wrap gap-2 border-t border-[var(--nc-border)] p-4">
-                    <SettingsButton variant="primary" type="submit" disabled={pending || missingRequired}>
+                    <SettingsButton variant="primary" type="submit" disabled={pending}>
                       {connection?.id ? L("تدوير بيانات الاعتماد", "Rotate credentials") : L("حفظ مشفر", "Save encrypted")}
                     </SettingsButton>
                     <SettingsButton
@@ -757,11 +1325,15 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                       onClick={() =>
                         run(
                           () => testRevenueProviderAction(activeProvider),
-                          L("نجح اختبار الاتصال وتم اعتماد الحالة متصل.", "Connection test passed and status is now connected."),
+                          activeProvider === "CUSTOM_PAYMENT"
+                            ? L("تم التحقق من اكتمال وصحة إعداد المزود.", "Provider configuration validated.")
+                            : L("نجح اختبار الاتصال وتم اعتماد الحالة متصل.", "Connection test passed and status is now connected."),
                         )
                       }
                     >
-                      {L("اختبار الاتصال", "Test connection")}
+                      {activeProvider === "CUSTOM_PAYMENT"
+                        ? L("التحقق من الإعداد", "Validate configuration")
+                        : L("اختبار الاتصال", "Test connection")}
                     </SettingsButton>
                     <SettingsButton
                       variant="danger"
@@ -779,7 +1351,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                 </form>
               ) : (
                 <form onSubmit={submitApplication} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6">
+                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <SmartCard className="p-5">
                       {statusBlock}
 
@@ -801,7 +1373,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                                 onChange={(event) =>
                                   setCompany((current) => ({ ...current, [key]: event.target.value }))
                                 }
-                                className="mt-2 h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                               />
                             </label>
                           ))}

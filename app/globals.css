@@ -1122,3 +1122,647 @@ html { scroll-behavior: smooth; }
   }
 }
 /* ORCA_SETTINGS_AGENTS_FINAL_THEME_END */
+
+
+/* ORCA VISUAL IDENTITY FOUNDATION — CONTRACTS WORKSPACE STANDARD */
+:root {
+  --orca-workspace-radius: 28px;
+  --orca-workspace-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+}
+
+/* The page scroll owns vertical movement. Tabs and cards must not create nested page scrolls. */
+.tab-pane,
+.tab-area {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+  resize: none !important;
+}
+
+.orca-workspace-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  border-radius: var(--orca-workspace-radius);
+  background: var(--nc-surface-strong);
+  padding: 1.25rem;
+  box-shadow: var(--orca-workspace-shadow);
+}
+
+.orca-workspace-hero::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 7rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--nc-accent-soft), transparent);
+  opacity: 0.5;
+}
+
+.orca-workspace-hero > * {
+  position: relative;
+}
+
+.orca-workspace-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.orca-workspace-metric {
+  min-width: 0;
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--nc-surface-solid) 82%, transparent);
+  padding: 1rem;
+}
+
+.orca-workspace-note {
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: var(--nc-surface-soft);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.orca-workspace-panel {
+  width: 100%;
+  border: 1px solid var(--nc-border);
+  border-radius: var(--orca-workspace-radius);
+  background: var(--nc-surface-strong);
+}
+
+.orca-workspace-toolbar {
+  border-bottom: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+  padding: 0.75rem;
+}
+
+.orca-workspace-pagination {
+  border-top: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+}
+
+.orca-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.68);
+  padding: 0.75rem;
+  backdrop-filter: blur(6px);
+}
+
+.orca-dialog {
+  display: flex;
+  width: 100%;
+  max-height: calc(100dvh - 1.5rem);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  border-radius: var(--orca-workspace-radius);
+  background: var(--nc-surface-solid);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.48);
+}
+
+.orca-dialog-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+  padding: 1rem 1.25rem;
+}
+
+.orca-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
+}
+
+.orca-dialog-close {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--nc-border);
+  border-radius: 0.75rem;
+  color: var(--nc-text-secondary);
+  transition: 160ms ease;
+}
+
+.orca-dialog-close:hover {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+  color: var(--nc-text-primary);
+}
+
+.orca-form-textarea {
+  min-height: 6rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  resize: none !important;
+}
+
+@media (min-width: 640px) {
+  .orca-workspace-hero { padding: 1.5rem; }
+  .orca-workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .orca-dialog-overlay { padding: 1.5rem; }
+  .orca-dialog { max-height: calc(100dvh - 3rem); }
+}
+
+@media (min-width: 1280px) {
+  .orca-workspace-hero {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .orca-workspace-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+
+/* ORCA VISUAL DENSITY & INTERACTION SYSTEM — container-aware, centered, no dead space */
+.orca-container,
+.orca-contracts-container {
+  container-type: inline-size;
+  container-name: orca-workspace;
+}
+
+.orca-workspace-hero {
+  align-items: center;
+  text-align: center;
+}
+
+.orca-workspace-hero > div:last-child,
+.orca-contract-header > div:last-child {
+  justify-content: center;
+}
+
+.orca-workspace-metrics,
+.orca-contract-kpis,
+.orca-auto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 0.75rem;
+}
+
+.orca-workspace-metric,
+.orca-contract-shell-metric,
+.orca-contract-kpi,
+.orca-summary-card,
+.orca-mini-metric,
+.orca-info-cell {
+  min-width: 0;
+  text-align: center;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.orca-workspace-metric:hover,
+.orca-contract-shell-metric:hover,
+.orca-contract-kpi:hover,
+.orca-summary-card:hover,
+.orca-mini-metric:hover,
+.orca-info-cell:hover {
+  border-color: var(--nc-accent) !important;
+  background: var(--nc-accent-soft) !important;
+  color: var(--nc-accent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--nc-accent) 14%, transparent);
+  transform: translateY(-1px);
+}
+
+.orca-workspace-panel {
+  width: 100%;
+  container-type: inline-size;
+  container-name: orca-panel;
+}
+
+.orca-workspace-panel table th,
+.orca-workspace-panel table td,
+[data-contracts-payments-shell] table th,
+[data-contracts-payments-shell] table td {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.orca-workspace-toolbar input,
+.orca-workspace-toolbar button,
+.orca-workspace-toolbar [role="combobox"] {
+  text-align: center;
+}
+
+.orca-data-row {
+  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.orca-data-row:hover,
+.orca-data-row:focus-visible,
+.orca-data-row.is-selected {
+  background: var(--nc-accent-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--nc-accent-border);
+}
+
+.orca-data-row:hover td,
+.orca-data-row:hover strong,
+.orca-data-row:focus-visible td,
+.orca-data-row:focus-visible strong,
+.orca-data-row.is-selected td,
+.orca-data-row.is-selected strong {
+  color: var(--nc-accent) !important;
+}
+
+.orca-workspace-detail {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  align-items: stretch;
+  gap: 0.875rem;
+}
+
+.orca-workspace-detail > * {
+  min-width: 0;
+  height: 100%;
+}
+
+.orca-detail-header,
+.orca-detail-full {
+  grid-column: 1 / -1;
+  height: auto;
+}
+
+.orca-detail-header,
+.orca-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.orca-detail-header > div,
+.orca-detail-title > div {
+  text-align: center;
+}
+
+.orca-detail-header > span,
+.orca-detail-title > span {
+  margin-inline: auto;
+}
+
+.orca-detail-primary,
+.orca-detail-secondary,
+.orca-summary-card,
+.orca-auto-grid > *,
+.orca-mini-metric,
+.orca-info-cell {
+  border: 1px solid var(--nc-border);
+  border-radius: 0.875rem;
+}
+
+.orca-info-cell {
+  display: flex;
+  min-height: 4.75rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.75rem;
+}
+
+.orca-info-cell > span {
+  color: var(--nc-text-secondary);
+  font-size: 0.75rem;
+}
+
+.orca-info-cell > strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.orca-mini-metric {
+  display: flex;
+  min-height: 6.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+}
+
+.orca-mini-metric svg { color: var(--nc-accent); }
+.orca-mini-metric strong { font-size: 1.125rem; }
+.orca-mini-metric span { color: var(--nc-text-secondary); }
+
+.orca-workspace-tabs {
+  justify-content: center;
+  overflow: visible;
+  scrollbar-width: none;
+}
+
+.orca-workspace-tabs::-webkit-scrollbar { display: none; }
+
+.orca-workspace-tabs button,
+.orca-dialog button,
+.orca-contract-header button,
+[data-contracts-payments-shell] button {
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.orca-workspace-tabs button:hover,
+.orca-workspace-tabs button:focus-visible,
+.orca-dialog button:hover:not(:disabled),
+.orca-dialog button:focus-visible,
+.orca-contract-header button:hover:not(:disabled),
+.orca-contract-header button:focus-visible,
+[data-contracts-payments-shell] button:hover:not(:disabled),
+[data-contracts-payments-shell] button:focus-visible {
+  border-color: var(--nc-accent) !important;
+  background: var(--nc-accent-soft) !important;
+  color: var(--nc-accent) !important;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--nc-accent) 14%, transparent);
+}
+
+.orca-lifecycle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
+  gap: 0.5rem;
+}
+
+.orca-lifecycle-stage {
+  min-height: 4.5rem;
+}
+
+.orca-lifecycle-stage > span {
+  max-width: 100% !important;
+  text-align: center;
+}
+
+.orca-master-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.orca-master-pane,
+.orca-detail-pane { min-width: 0; }
+
+.orca-detail-pane table th,
+.orca-detail-pane table td,
+.orca-master-pane table th,
+.orca-master-pane table td { text-align: center !important; }
+
+.orca-summary-card,
+.orca-auto-grid > * {
+  display: flex;
+  min-height: 5.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.orca-contract-kpi {
+  display: flex;
+  min-height: 6rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+}
+
+.orca-contract-kpi strong {
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+@container orca-workspace (min-width: 1000px) {
+  .orca-master-detail {
+    grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.28fr);
+  }
+}
+
+@container orca-panel (min-width: 760px) {
+  .orca-workspace-detail {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .orca-workspace-tabs button {
+    flex: 1 1 9rem;
+    justify-content: center;
+  }
+}
+
+
+/* ORCA FINAL UI HIERARCHY CONTRACT */
+.orca-workspace-hero {
+  align-items: flex-start !important;
+  text-align: start !important;
+  gap: 1.25rem;
+}
+
+.orca-workspace-hero > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.orca-workspace-hero > div:last-child:not(:first-child) {
+  flex: 0 0 auto;
+  justify-content: flex-end !important;
+}
+
+.orca-workspace-metrics > * {
+  min-height: 98px;
+  height: 100%;
+}
+
+.orca-workspace-panel {
+  overflow: hidden;
+}
+
+.orca-marketing-final .orca-workspace-panel,
+.orca-sales-final .orca-workspace-panel,
+.orca-campaigns-final .orca-workspace-panel,
+.orca-calculator-final .orca-workspace-panel {
+  background: var(--nc-surface-strong);
+}
+
+.orca-marketing-final table tbody tr,
+.orca-sales-final table tbody tr {
+  height: 52px;
+}
+
+.orca-settings-final {
+  container-type: inline-size;
+}
+
+.orca-settings-nav-shell {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.orca-settings-tabs {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: var(--nc-surface-strong);
+  padding: 0.5rem;
+}
+
+.orca-settings-tabs-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.orca-settings-tab {
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.orca-settings-section-shell {
+  min-height: 360px;
+}
+
+.orca-settings-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.orca-settings-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 1rem;
+}
+
+.orca-settings-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.orca-settings-card {
+  min-width: 0;
+  min-height: 220px;
+  height: 100%;
+}
+
+.orca-settings-card > :last-child {
+  margin-top: auto;
+}
+
+.orca-settings-plan-card {
+  min-height: 360px;
+}
+
+.orca-settings-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 0.75rem;
+}
+
+.orca-settings-provider-card {
+  min-height: 92px;
+  width: 100%;
+}
+
+.orca-settings-final input:not([type="checkbox"]):not([type="radio"]),
+.orca-settings-final select {
+  min-height: 44px !important;
+  height: 44px !important;
+}
+
+.orca-settings-final textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+.orca-settings-final table thead tr {
+  height: 48px;
+}
+
+.orca-settings-final table tbody tr {
+  min-height: 64px;
+}
+
+.orca-settings-final [role="status"] {
+  position: relative;
+  z-index: 1;
+}
+
+.nc-btn,
+.nc-btn-primary,
+.nc-btn-ghost {
+  min-height: 44px;
+}
+
+@media (min-width: 768px) {
+  .orca-settings-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orca-settings-advertising-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1180px) {
+  .orca-settings-integrations-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .orca-settings-advertising-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .orca-settings-advertising-grid > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .orca-settings-tabs {
+    overflow: visible;
+  }
+
+  .orca-settings-tabs-track {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .orca-settings-tabs-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .orca-settings-tab {
+    width: auto;
+    min-width: max-content;
+  }
+}

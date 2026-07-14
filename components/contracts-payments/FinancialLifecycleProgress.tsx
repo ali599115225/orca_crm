@@ -60,16 +60,16 @@ export default function FinancialLifecycleProgress({
         </p>
       </div>
 
-      <div className="mt-3 flex min-w-max items-stretch gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {stages.map((stage, index) => {
+      <div className="orca-lifecycle-grid mt-3">
+        {stages.map((stage) => {
           const Icon = stateIcon[stage.state];
           return (
-            <div key={stage.id} className="flex items-center gap-1">
+            <div key={stage.id} className="min-w-0">
               <div
-                className={`min-w-[118px] rounded-xl border px-3 py-2 ${stateClass[stage.state]}`}
+                className={`orca-lifecycle-stage rounded-xl border px-3 py-2 text-center ${stateClass[stage.state]}`}
                 title={stage.hint}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5">
                   <Icon size={13} />
                   <span className="text-[10px] font-black">{stage.label}</span>
                 </div>
@@ -79,11 +79,6 @@ export default function FinancialLifecycleProgress({
                   </span>
                 )}
               </div>
-              {index < stages.length - 1 && (
-                <span className="px-0.5 text-[10px] text-[var(--nc-text-disabled)]">
-                  {isArabic ? '←' : '→'}
-                </span>
-              )}
             </div>
           );
         })}

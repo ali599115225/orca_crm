@@ -1,18 +1,16 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Check, Clock, Eye, MessageSquare, PlusCircle, UserPlus } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Archive, Check, ChevronLeft, ChevronRight, Clock, MessageSquare, Plus, PlusCircle, RefreshCw, Search, Send, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
-import { archiveChatAction, assignChatAction, getWhatsAppChatsAction, sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
-import { getTenantUsersAction } from "@/app/actions/users";
+import { archiveChatAction, assignChatAction, getWhatsAppAssigneesAction, getWhatsAppChatsAction, sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
 import { useNotify } from "@/app/context/UIBusContext";
-import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
-import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import { toArabicNumerals } from "@/lib/formatters";
-import { formatDisplayDateTime } from '@/lib/display/dateTime';
 
 interface Message {
   id?: string;
@@ -130,6 +128,8 @@ const TEXT = {
     archiveError: "تعذرت أرشفة المحادثة",
     newChatTitle: "محادثة جديدة",
     newChatPhone: "رقم الجوال",
+    newChatCustomerSearch: "ابحث عن عميل محفوظ (اختياري)",
+    newChatCustomerHint: "يمكنك اختيار عميل محفوظ أو إدخال رقم خارجي يدويًا.",
     newChatCountry: "رمز الدولة",
     invalidPhone: "أدخل رقمًا محليًا صحيحًا دون 0 في البداية.",
     newChatErrorTitle: "تعذر بدء المحادثة",
@@ -138,6 +138,23 @@ const TEXT = {
     newChatSend: "بدء المحادثة",
     newChatCancel: "إلغاء",
     sentSuccess: "تم قبول الرسالة",
+    providerMeta: "Meta Cloud",
+    provider360: "360dialog",
+    configureMeta: "ربط Meta",
+    configure360: "ربط 360dialog",
+    flow: "العمليات ← المراسلات ← واتساب",
+    refresh: "تحديث",
+    manageConnection: "إدارة الربط",
+    creatingTask: "جاري إنشاء المهمة…",
+    loadingTeam: "جاري تحميل فريق العمل…",
+    noTeam: "لا يوجد موظفون نشطون للإسناد.",
+    matching: "النتائج المطابقة",
+    pagePrevious: "السابق",
+    pageNext: "التالي",
+    backToConversations: "العودة إلى المحادثات",
+    noConversations: "لا توجد محادثات مطابقة.",
+    connection: "حالة الاتصال",
+    messagesCount: "الرسائل",
   },
   EN: {
     title: "WhatsApp",
@@ -207,6 +224,8 @@ const TEXT = {
     archiveError: "Failed to archive conversation",
     newChatTitle: "New conversation",
     newChatPhone: "Mobile number",
+    newChatCustomerSearch: "Search saved customer (optional)",
+    newChatCustomerHint: "Choose a saved customer or enter an external number manually.",
     newChatCountry: "Country code",
     invalidPhone: "Enter a valid local number without a leading 0.",
     newChatErrorTitle: "Could not start conversation",
@@ -215,6 +234,23 @@ const TEXT = {
     newChatSend: "Start conversation",
     newChatCancel: "Cancel",
     sentSuccess: "Message accepted",
+    providerMeta: "Meta Cloud",
+    provider360: "360dialog",
+    configureMeta: "Connect Meta",
+    configure360: "Connect 360dialog",
+    flow: "Operations ← Messaging ← WhatsApp",
+    refresh: "Refresh",
+    manageConnection: "Manage connection",
+    creatingTask: "Creating task…",
+    loadingTeam: "Loading team…",
+    noTeam: "No active team members are available for assignment.",
+    matching: "Matching results",
+    pagePrevious: "Previous",
+    pageNext: "Next",
+    backToConversations: "Back to conversations",
+    noConversations: "No matching conversations.",
+    connection: "Connection status",
+    messagesCount: "Messages",
   },
 };
 
@@ -259,13 +295,22 @@ function isValidLocalPhone(countryCode: string, localPhone: string) {
   return Boolean(rule && local.length === rule.localLength && !local.startsWith("0"));
 }
 
-export default function WhatsAppView({ initialChats, tenant, cloudStatus, warning, currentUserId }: WhatsAppViewProps) {
+function splitInternationalPhone(value: string) {
+  const digits = normalizeWhatsAppPhone(value);
+  const country = PHONE_COUNTRIES.find((item) => digits.startsWith(item.code));
+  if (!country) return null;
+  return {
+    countryCode: country.code,
+    localPhone: digits.slice(country.code.length),
+  };
+}
+
+export default function WhatsAppView({ initialChats, tenant, cloudStatus, currentUserId }: WhatsAppViewProps) {
   const { lang } = useApp();
   const { notify } = useNotify();
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
-  const locale = isArabic ? "ar-SA" : "en-US";
   const [chats, setChats] = useState<Chat[]>(initialChats);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -275,13 +320,17 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   const [isSending, setIsSending] = useState(false);
   const [newCountryCode, setNewCountryCode] = useState("966");
   const [newPhone, setNewPhone] = useState("");
+  const [newCustomerQuery, setNewCustomerQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [newChatError, setNewChatError] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fetchInFlightRef = useRef<Promise<Chat[]> | null>(null);
   const sendInFlightRef = useRef(false);
@@ -324,12 +373,30 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     if (!value) return t.now;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t.now;
-    return formatDisplayDateTime(date);
+    const pad = (part: number) => String(part).padStart(2, "0");
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${String(date.getFullYear()).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
   const sortedChats = useMemo(() => {
     return [...chats].sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime());
   }, [chats]);
+
+  const customerOptions = useMemo(() => {
+    const byPhone = new Map<string, { phone: string; name: string }>();
+    for (const chat of chats) {
+      const phone = normalizeWhatsAppPhone(chat.contactPhone);
+      if (!phone || byPhone.has(phone)) continue;
+      const rawName = String(chat.contactName || "").trim();
+      const name =
+        !rawName || rawName === phone || /^[+\d\s-]{6,}$/.test(rawName) || isTechnical(rawName)
+          ? t.fallbackCustomer
+          : rawName;
+      byPhone.set(phone, { phone, name });
+    }
+    return [...byPhone.values()].sort((left, right) =>
+      left.name.localeCompare(right.name, isArabic ? "ar" : "en"),
+    );
+  }, [chats, isArabic, t.fallbackCustomer]);
 
   useEffect(() => {
     setChats(initialChats);
@@ -427,8 +494,23 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   };
 
   const safeSendError = (result: any) => {
-    if (result?.errorCode === "WHATSAPP_TEMPLATE_REQUIRED") return t.templateRequired;
-    return cleanDisplayText(result?.errorMessage || "", t.safeSendError);
+    if (result?.errorCode === "WHATSAPP_TEMPLATE_REQUIRED") {
+      return t.templateRequired;
+    }
+
+    const raw = String(
+      result?.errorMessage || result?.errorCode || "",
+    );
+
+    if (
+      /TENANT_CONTEXT|WHATSAPP_(?:NOT_CONNECTED|NO_CREDENTIAL|NO_PHONE|MESSAGING_DISABLED)/.test(
+        raw,
+      )
+    ) {
+      return t.notConfigured;
+    }
+
+    return cleanDisplayText(raw, t.safeSendError);
   };
 
   const priorityLabel = (priority?: string | null) => {
@@ -439,9 +521,22 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   };
 
   const isWaitingReply = (chat: Chat) => chat.messages[chat.messages.length - 1]?.sender === "client";
-  const connected = cloudStatus?.configured && cloudStatus?.status === "connected";
-  const testMode = cloudStatus?.configured && cloudStatus?.status === "test-mode";
+  const connected =
+    cloudStatus?.configured && cloudStatus?.status === "connected";
+  const testMode =
+    cloudStatus?.configured && cloudStatus?.status === "test-mode";
   const whatsAppReachable = connected || testMode;
+  const providerLabel =
+    cloudStatus?.provider === "360dialog"
+      ? t.provider360
+      : cloudStatus?.provider === "meta"
+        ? t.providerMeta
+        : null;
+  const connectionLabel = testMode
+    ? t.testMode
+    : connected
+      ? `${t.connected}${providerLabel ? ` · ${providerLabel}` : ""}`
+      : t.disconnected;
 
   useEffect(() => {
     const startPolling = () => {
@@ -494,6 +589,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   const selectChat = (id: string) => {
     setSelectedId(id);
+    setMobileDetailOpen(true);
   };
 
   async function handleSend() {
@@ -537,14 +633,28 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
   }
 
   async function createTaskForSelected() {
-    if (!selectedChat) return;
-    const formData = new FormData();
-    formData.append("title", `${t.createTask} — ${safeName(selectedChat)}`);
-    formData.append("taskType", "Follow-up");
-    formData.append("contactPhone", selectedChat.contactPhone);
-    const result = await createWhatsAppTaskAction(formData);
-    if (result.success) toast.success(t.taskCreated);
-    else toast.error(t.taskError);
+    if (!selectedChat || isCreatingTask) return;
+
+    setIsCreatingTask(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", `${t.createTask} — ${safeName(selectedChat)}`);
+      formData.append("taskType", "Follow-up");
+      formData.append("contactPhone", normalizeWhatsAppPhone(selectedChat.contactPhone));
+      formData.append("contactName", safeName(selectedChat));
+      if (selectedChat.leadId) {
+        formData.append("leadId", selectedChat.leadId);
+      }
+
+      const result = await createWhatsAppTaskAction(formData);
+      if (result.success) {
+        toast.success(t.taskCreated);
+      } else {
+        toast.error(cleanDisplayText(String(result.error || ""), t.taskError));
+      }
+    } finally {
+      setIsCreatingTask(false);
+    }
   }
 
   async function archiveConversation() {
@@ -574,29 +684,49 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
 
   async function openAssign() {
     if (!selectedChat) return;
+
     setShowAssign(true);
-    if (users.length === 0) {
-      setLoadingUsers(true);
-      const result = await getTenantUsersAction();
-      setLoadingUsers(false);
-      if (Array.isArray(result)) {
-        setUsers(result.filter((u: any) => u.isActive).map((u: any) => ({ id: u.id, name: u.name })));
+    if (users.length > 0 || loadingUsers) return;
+
+    setLoadingUsers(true);
+    try {
+      const result = await getWhatsAppAssigneesAction();
+      if (result.success) {
+        setUsers(result.users);
+      } else {
+        toast.error(t.assignError);
       }
+    } finally {
+      setLoadingUsers(false);
     }
   }
 
   async function handleAssign(userId: string, userName: string) {
-    if (!selectedChat) return;
-    const result = await assignChatAction(selectedChat.id, userId);
-    if (result.success) {
-      const assignedName = result.assignedUserName || userName;
-      setChats((current) =>
-        current.map((c) => (c.id === selectedChat.id ? { ...c, assignedUserId: userId, assignedUserName: assignedName } : c))
-      );
-      setShowAssign(false);
-      toast.success(t.assigned);
-    } else {
-      toast.error(t.assignError);
+    if (!selectedChat || assigningUserId) return;
+
+    setAssigningUserId(userId);
+    try {
+      const result = await assignChatAction(selectedChat.id, userId);
+      if (result.success) {
+        const assignedName = result.assignedUserName || userName;
+        setChats((current) =>
+          current.map((chat) =>
+            chat.id === selectedChat.id
+              ? {
+                  ...chat,
+                  assignedUserId: userId,
+                  assignedUserName: assignedName,
+                }
+              : chat,
+          ),
+        );
+        setShowAssign(false);
+        toast.success(t.assigned);
+      } else {
+        toast.error(t.assignError);
+      }
+    } finally {
+      setAssigningUserId(null);
     }
   }
 
@@ -626,7 +756,10 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
           const newChat = freshChats.find(
             (chat) => normalizeWhatsAppPhone(chat.contactPhone) === (result.phone || normalizedPhone)
           );
-          if (newChat) setSelectedId(newChat.id);
+          if (newChat) {
+            setSelectedId(newChat.id);
+            setMobileDetailOpen(true);
+          }
         });
       } else {
         setNewChatError(safeSendError(result));
@@ -637,192 +770,784 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, warnin
     }
   }
 
-  const listItems: WorkspaceListItem[] = pageItems.map((chat) => ({
-    id: chat.id,
-    title: safeName(chat),
-    snippet: cleanDisplayText(chat.lastMessage, t.noMessages),
-    timestamp: formatDateTime(chat.time),
-    avatar: safeName(chat).charAt(0),
-    selected: chat.id === selectedId,
-    badge: chat.unread
-      ? { label: t.unreadBadge, tone: "warning" }
-      : chat.archived
-        ? { label: t.archived, tone: "neutral" }
-        : isWaitingReply(chat)
-        ? { label: t.pending, tone: "warning" }
-        : { label: t.read, tone: "success" },
-    onSelect: () => selectChat(chat.id),
-    actions: [
-      { label: t.openDetails, icon: Eye, onClick: () => selectChat(chat.id) },
-      { label: chat.archived ? t.unarchive : t.archive, icon: Archive, onClick: () => archiveChat(chat) },
-    ],
-  }));
+  const visibleStart =
+    visibleSource.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const visibleEnd = Math.min(
+    safePage * PAGE_SIZE,
+    visibleSource.length,
+  );
 
-  const timeline: WorkspaceTimelineItem[] =
-    selectedChat?.messages.map((message, index) => ({
-      id: message.id || `${selectedChat.id}-${message.time}-${index}`,
-      body: (
-          <span style={{ display: "grid", gap: 5 }}>
-            <span style={{ fontSize: 16, lineHeight: 1.7 }}>{cleanDisplayText(message.text, t.noData)}</span>
-          <span style={{ fontSize: 11, lineHeight: 1.2, opacity: 0.72 }}>
-            {formatDateTime(message.time)}
-            {message.sender === "agent" ? ` · ${statusLabel(message.status)}` : ""}
-          </span>
-        </span>
-      ),
-      side: message.sender === "agent" ? "in" : "out",
-    })) || [];
+  const conversationStatus = (chat: Chat) => {
+    if (chat.archived) {
+      return {
+        label: t.archivedFilter,
+        className:
+          "border-slate-500/30 bg-slate-500/10 text-slate-600 dark:text-slate-300",
+      };
+    }
+    if (chat.unread) {
+      return {
+        label: t.unreadBadge,
+        className:
+          "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      };
+    }
+    if (isWaitingReply(chat)) {
+      return {
+        label: t.pending,
+        className:
+          "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+      };
+    }
+    return {
+      label: t.read,
+      className:
+        "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    };
+  };
+
+  const closeNewChat = () => {
+    setShowNewForm(false);
+    setNewCountryCode("966");
+    setNewPhone("");
+    setNewCustomerQuery("");
+    setNewMessage("");
+    setNewChatError(null);
+  };
 
   return (
     <>
-    <UnifiedOperationsWorkspace
-      module="whatsapp"
-      language={language}
-      title={t.title}
-      description={`${connected ? t.connected : testMode ? t.testMode : t.disconnected}${!whatsAppReachable ? ` · ${t.notConfigured}` : warning ? ` · ${warning}` : ""}`}
-      kpis={[
-        { label: t.active, value: formatNumber(sortedChats.length), icon: MessageSquare },
-        { label: t.unread, value: formatNumber(unreadCount), icon: MessageSquare },
-        { label: t.waiting, value: formatNumber(waitingCount), icon: Clock },
-        { label: t.responseRate, value: formatPercent(responseRate), icon: Check },
-      ]}
-      listTitle={t.listTitle}
-      listSubtitle={`${t.latestFirst} · ${formatNumber(visibleSource.length)} ${t.listTitle}`}
-      newLabel={t.newLabel}
-      onNew={() => { setNewChatError(null); setShowNewForm(true); }}
-      searchValue={query}
-      searchPlaceholder={t.search}
-      onSearchChange={(value) => {
-        setQuery(value);
-        setPage(1);
-      }}
-      filterValue={filter}
-      filterLabel={t.filter}
-      filterOptions={[
-        { value: "ALL", label: t.all },
-        { value: "OPEN", label: t.open },
-        { value: "ARCHIVED", label: t.archivedFilter },
-        { value: "UNREAD", label: t.unreadFilter },
-        { value: "WAITING", label: t.waitingFilter },
-        ...(currentUserId ? [{ value: "ASSIGNED_TO_ME", label: t.assignedToMe }] : []),
-      ]}
-      onFilterChange={(value) => {
-        setFilter(value);
-        setPage(1);
-        void fetchFreshChats(value === "ARCHIVED" ? "archived" : "active");
-      }}
-      items={listItems}
-      pagination={{
-        page: safePage,
-        totalPages,
-        onPrevious: () => setPage((current) => Math.max(1, current - 1)),
-        onNext: () => setPage((current) => Math.min(totalPages, current + 1)),
-      }}
-      detail={
-        selectedChat
-          ? {
-              avatar: safeName(selectedChat).charAt(0),
-              title: safeName(selectedChat),
-              meta: `${formatDateTime(selectedChat.time)} · ${connected ? t.connected : testMode ? t.testMode : t.disconnected}`,
-              actions: [
-                  { label: t.assignee, icon: UserPlus, onClick: openAssign },
-                { label: t.createTask, icon: PlusCircle, onClick: createTaskForSelected },
-                { label: selectedChat.archived ? t.unarchive : t.archive, icon: Archive, tone: "danger", onClick: archiveConversation },
-              ],
-              context: [
-                { label: t.customer, value: safeName(selectedChat) },
-                { label: t.owner, value: selectedChat.assignedUserName || t.unknownAgent },
-                { label: t.priority, value: priorityLabel(selectedChat.leadPriority) },
-              ],
-              timeline,
-              emptyTitle: t.noData,
-              emptyDescription: t.noMessages,
-              composer: {
-                mode: "note",
-                value: messageInput,
-                placeholder: t.messagePlaceholder,
-                sendLabel: t.send,
-                onChange: setMessageInput,
-                onSend: handleSend,
-                disabled: false,
-              },
-            }
-          : null
-      }
-      emptyDetailTitle={t.noData}
-      emptyDetailDescription={t.select}
-    />
-      {showNewForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
-          <form onSubmit={handleNewChat} className="w-full max-w-md rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-6 shadow-2xl space-y-4 text-right" dir={isArabic ? "rtl" : "ltr"}>
-            <h2 className="text-base font-bold text-[var(--nc-text-primary)] border-b border-[var(--nc-border)] pb-2">{t.newChatTitle}</h2>
-            <div>
-              <label className="block mb-1.5 text-xs font-bold text-[var(--nc-text-secondary)]">{t.newChatPhone}</label>
-              <div className="grid grid-cols-[128px_1fr] gap-2">
-                <select
-                  value={newCountryCode}
-                  onChange={(e) => { setNewCountryCode(e.target.value); setNewChatError(null); }}
-                  aria-label={t.newChatCountry}
-                  className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                  dir="ltr"
-                >
-                  {PHONE_COUNTRIES.map((country) => (
-                    <option key={country.code} value={country.code}>
-                      +{country.code} {isArabic ? country.ar : country.en}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="tel"
-                  value={newPhone}
-                  onChange={(e) => { setNewPhone(normalizeLocalPhone(e.target.value)); setNewChatError(null); }}
-                  placeholder="551234567"
-                  required
-                  className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                  dir="ltr"
+      <section
+        dir={isArabic ? "rtl" : "ltr"}
+        className="nc-page nc-stack orca-container pb-4"
+        data-whatsapp-property-workspace
+        data-whatsapp-two-card-workspace
+      >
+        <header className="orca-workspace-hero">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-[var(--nc-accent)]">
+              {t.flow}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-black">{t.title}</h1>
+              <span
+                className={`inline-flex min-h-7 items-center justify-center rounded-full border px-3 text-xs font-black ${
+                  whatsAppReachable
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                {connectionLabel}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+              {t.description}
+            </p>
+            <p className="mt-1 text-xs text-[var(--nc-text-dim)]">
+              {tenant.companyName}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {!whatsAppReachable ? (
+              <a
+                href="/operations/settings?tab=integrations&category=MESSAGING"
+                className="nc-btn nc-btn-secondary inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-xs font-black"
+              >
+                {t.manageConnection}
+              </a>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() =>
+                void fetchFreshChats(
+                  filter === "ARCHIVED" ? "archived" : "active",
+                )
+              }
+              className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold"
+            >
+              <RefreshCw size={15} />
+              {t.refresh}
+            </button>
+
+            <button
+              type="button"
+              disabled={!whatsAppReachable}
+              onClick={() => {
+                setNewChatError(null);
+                setShowNewForm(true);
+              }}
+              className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={16} />
+              {t.newLabel}
+            </button>
+          </div>
+        </header>
+
+        <div className="orca-workspace-metrics">
+          {[
+            {
+              label: t.active,
+              value: formatNumber(sortedChats.filter((chat) => !chat.archived).length),
+              icon: MessageSquare,
+            },
+            {
+              label: t.unread,
+              value: formatNumber(unreadCount),
+              icon: MessageSquare,
+            },
+            {
+              label: t.waiting,
+              value: formatNumber(waitingCount),
+              icon: Clock,
+            },
+            {
+              label: t.responseRate,
+              value: formatPercent(responseRate),
+              icon: Check,
+            },
+          ].map(({ label, value, icon: Icon }) => (
+            <div
+              key={label}
+              className="orca-workspace-metric min-h-[84px]"
+            >
+              <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
+                <span>{label}</span>
+                <Icon size={17} />
+              </div>
+              <strong className="mt-3 block text-2xl">{value}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+          <span className="text-[var(--nc-text-secondary)]">
+            {t.matching}:
+          </span>
+          <strong>{formatNumber(visibleSource.length)}</strong>
+          <span className="text-[var(--nc-border)]">|</span>
+          <span className="text-[var(--nc-text-secondary)]">
+            {t.unread}:
+          </span>
+          <strong>{formatNumber(unreadCount)}</strong>
+          <span className="text-[var(--nc-border)]">|</span>
+          <span className="text-[var(--nc-text-secondary)]">
+            {t.latestFirst}
+          </span>
+        </div>
+
+        <div
+          dir="ltr"
+          className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
+          data-four-page-two-card-workspace
+        >
+          <aside
+            dir={isArabic ? "rtl" : "ltr"}
+            data-whatsapp-conversation-list
+            data-operational-list-card
+            className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+              mobileDetailOpen ? "hidden lg:flex" : "flex"
+            }`}
+          >
+            <div className="orca-workspace-toolbar border-b border-[var(--nc-border)] p-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
+                <label className="relative min-w-0">
+                  <Search
+                    size={16}
+                    className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${
+                      isArabic ? "right-3" : "left-3"
+                    }`}
+                  />
+                  <input
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                    }}
+                    placeholder={t.search}
+                    className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
+                      isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
+                    }`}
+                  />
+                </label>
+
+                <SettingsSelect
+                  value={filter}
+                  onChange={(value) => {
+                    setFilter(value);
+                    setPage(1);
+                    void fetchFreshChats(
+                      value === "ARCHIVED" ? "archived" : "active",
+                    );
+                  }}
+                  aria-label={t.filter}
+                  options={[
+                    { value: "ALL", label: t.all },
+                    { value: "OPEN", label: t.open },
+                    { value: "ARCHIVED", label: t.archivedFilter },
+                    { value: "UNREAD", label: t.unreadFilter },
+                    { value: "WAITING", label: t.waitingFilter },
+                    ...(currentUserId
+                      ? [
+                          {
+                            value: "ASSIGNED_TO_ME",
+                            label: t.assignedToMe,
+                          },
+                        ]
+                      : []),
+                  ]}
                 />
               </div>
             </div>
-            <div>
-              <label className="block mb-1.5 text-xs font-bold text-[var(--nc-text-secondary)]">{t.newChatMessage}</label>
-              <textarea value={newMessage} onChange={(e) => { setNewMessage(e.target.value); setNewChatError(null); }} placeholder={t.messagePlaceholder} required rows={3} className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none resize-none focus:border-[var(--nc-accent-border)]" />
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {pageItems.length === 0 ? (
+                <div className="flex h-full min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
+                  {t.noConversations}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {pageItems.map((chat) => {
+                    const selected = chat.id === selectedId;
+                    const status = conversationStatus(chat);
+
+                    return (
+                      <button
+                        key={chat.id}
+                        type="button"
+                        data-whatsapp-row
+                        aria-pressed={selected}
+                        onClick={() => selectChat(chat.id)}
+                        className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                          selected
+                            ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
+                            : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black ${
+                            selected
+                              ? "border-[var(--nc-accent-border)] bg-[var(--nc-surface-solid)]"
+                              : "border-[var(--nc-border)] bg-[var(--nc-surface-solid)]"
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {safeName(chat).charAt(0)}
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <strong className="truncate text-sm">
+                              {safeName(chat)}
+                            </strong>
+                            <time
+                              dir="ltr"
+                              className="shrink-0 text-[11px] text-[var(--nc-text-dim)]"
+                            >
+                              {formatDateTime(chat.time)}
+                            </time>
+                          </span>
+
+                          <span className="mt-1 flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate text-xs text-[var(--nc-text-secondary)]">
+                              {cleanDisplayText(
+                                chat.lastMessage,
+                                t.noMessages,
+                              )}
+                            </span>
+                            <span
+                              className={`inline-flex min-w-[78px] shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${status.className}`}
+                            >
+                              {status.label}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            {newChatError && (
-              <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-700 dark:text-red-200">
-                <p className="font-semibold">{t.newChatErrorTitle}</p>
-                <p className="mt-1 leading-5">{newChatError}</p>
+
+            <div className="orca-workspace-pagination flex min-h-[56px] items-center justify-between gap-2 border-t border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-text-secondary)]">
+              <span>
+                {isArabic
+                  ? `${formatNumber(visibleStart)}–${formatNumber(
+                      visibleEnd,
+                    )} من ${formatNumber(visibleSource.length)}`
+                  : `${visibleStart}–${visibleEnd} of ${visibleSource.length}`}
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((current) => Math.max(1, current - 1))
+                  }
+                  disabled={safePage <= 1}
+                  className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={t.pagePrevious}
+                >
+                  {isArabic ? (
+                    <ChevronRight size={17} />
+                  ) : (
+                    <ChevronLeft size={17} />
+                  )}
+                </button>
+
+                <span className="min-w-12 text-center font-bold text-[var(--nc-text-primary)]">
+                  {formatNumber(safePage)} / {formatNumber(totalPages)}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((current) =>
+                      Math.min(totalPages, current + 1),
+                    )
+                  }
+                  disabled={safePage >= totalPages}
+                  className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={t.pageNext}
+                >
+                  {isArabic ? (
+                    <ChevronLeft size={17} />
+                  ) : (
+                    <ChevronRight size={17} />
+                  )}
+                </button>
               </div>
-            )}
-            <div className="flex gap-2 pt-2">
-              <button type="submit" disabled={isCreatingChat} aria-busy={isCreatingChat} className="nc-btn-primary flex-1 min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-70">{isCreatingChat ? t.sending : t.newChatSend}</button>
-              <button type="button" disabled={isCreatingChat} onClick={() => { setShowNewForm(false); setNewCountryCode("966"); setNewPhone(""); setNewMessage(""); setNewChatError(null); }} className="nc-btn-ghost flex-1 min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-70">{t.newChatCancel}</button>
             </div>
-          </form>
-        </div>
-      )}
-      {showAssign && selectedChat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-5 shadow-2xl space-y-3" dir={isArabic ? "rtl" : "ltr"}>
-            <h2 className="text-base font-bold text-[var(--nc-text-primary)] border-b border-[var(--nc-border)] pb-2">{t.assignTitle}</h2>
-            <p className="text-xs text-[var(--nc-text-secondary)]">{safeName(selectedChat)}</p>
-            {loadingUsers ? (
-              <p className="text-sm text-[var(--nc-text-secondary)] text-center py-4">{isArabic ? "جاري تحميل المستخدمين..." : "Loading users..."}</p>
-            ) : users.length === 0 ? (
-              <p className="text-sm text-[var(--nc-text-secondary)] text-center py-4">{isArabic ? "لا يوجد مستخدمون" : "No users found"}</p>
+          </aside>
+
+          <section
+            dir={isArabic ? "rtl" : "ltr"}
+            data-whatsapp-conversation-detail
+            data-operational-detail-card
+            className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+              mobileDetailOpen ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            {selectedChat ? (
+              <>
+                <header className="flex min-h-[72px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMobileDetailOpen(false)}
+                      className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 lg:!hidden"
+                      aria-label={t.backToConversations}
+                    >
+                      {isArabic ? (
+                        <ChevronRight size={18} />
+                      ) : (
+                        <ChevronLeft size={18} />
+                      )}
+                    </button>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[var(--nc-accent)]">
+                        {connectionLabel}
+                      </p>
+                      <h2 className="mt-1 truncate text-lg font-black">
+                        {safeName(selectedChat)}
+                      </h2>
+                      <p
+                        dir="ltr"
+                        className="mt-1 text-xs text-[var(--nc-text-secondary)]"
+                      >
+                        +{normalizeWhatsAppPhone(selectedChat.contactPhone)}
+                        {" · "}
+                        {formatDateTime(selectedChat.time)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={openAssign}
+                      disabled={loadingUsers || Boolean(assigningUserId)}
+                      className="nc-btn nc-btn-secondary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <UserPlus size={16} />
+                      {t.assignee}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={createTaskForSelected}
+                      disabled={isCreatingTask}
+                      aria-busy={isCreatingTask}
+                      className="nc-btn nc-btn-secondary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-black disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <PlusCircle size={16} />
+                      {isCreatingTask ? t.creatingTask : t.createTask}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={archiveConversation}
+                      className="nc-btn inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-black text-rose-700 dark:text-rose-300"
+                    >
+                      <Archive size={16} />
+                      {selectedChat.archived
+                        ? t.unarchive
+                        : t.archive}
+                    </button>
+                  </div>
+                </header>
+
+                <div
+                  data-whatsapp-context-strip
+                  className="flex min-h-[44px] shrink-0 flex-wrap items-center gap-x-6 gap-y-2 border-b border-[var(--nc-border)] px-4 py-2.5 text-xs"
+                >
+                  <span className="min-w-0 text-[var(--nc-text-secondary)]">
+                    {t.customer}:{" "}
+                    <strong className="text-[var(--nc-text-primary)]">
+                      {safeName(selectedChat)}
+                    </strong>
+                  </span>
+                  <span className="min-w-0 text-[var(--nc-text-secondary)]">
+                    {t.owner}:{" "}
+                    <strong className="text-[var(--nc-text-primary)]">
+                      {selectedChat.assignedUserName || t.unknownAgent}
+                    </strong>
+                  </span>
+                  <span className="text-[var(--nc-text-secondary)]">
+                    {t.priority}:{" "}
+                    <strong className="text-[var(--nc-text-primary)]">
+                      {priorityLabel(selectedChat.leadPriority)}
+                    </strong>
+                  </span>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {selectedChat.messages.length === 0 ? (
+                    <div className="flex h-full min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
+                      {t.noMessages}
+                    </div>
+                  ) : (
+                    <div className="mx-auto flex max-w-4xl flex-col gap-2.5">
+                      {selectedChat.messages.map((message, index) => {
+                        const isAgent = message.sender === "agent";
+                        return (
+                          <article
+                            key={
+                              message.id ||
+                              `${selectedChat.id}-${message.time}-${index}`
+                            }
+                            className={`flex ${
+                              isAgent ? "justify-end" : "justify-start"
+                            }`}
+                          >
+                            <div
+                              className={`max-w-[72%] rounded-xl border px-3 py-2 ${
+                                isAgent
+                                  ? "border-blue-500/30 bg-blue-600 text-white"
+                                  : "border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]"
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap text-sm leading-6">
+                                {cleanDisplayText(
+                                  message.text,
+                                  t.noData,
+                                )}
+                              </p>
+                              <p
+                                dir="ltr"
+                                className={`mt-0.5 text-[10px] ${
+                                  isAgent
+                                    ? "text-blue-100"
+                                    : "text-[var(--nc-text-dim)]"
+                                }`}
+                              >
+                                {formatDateTime(message.time)}
+                                {isAgent
+                                  ? ` · ${statusLabel(message.status)}`
+                                  : ""}
+                              </p>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <footer className="shrink-0 border-t border-[var(--nc-border)] px-4 py-3">
+                  <div
+                    data-whatsapp-message-composer
+                    className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_120px]"
+                  >
+                    <textarea
+                      value={messageInput}
+                      onChange={(event) =>
+                        setMessageInput(event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" &&
+                          !event.shiftKey &&
+                          !event.nativeEvent.isComposing
+                        ) {
+                          event.preventDefault();
+                          void handleSend();
+                        }
+                      }}
+                      disabled={!whatsAppReachable || isSending}
+                      rows={3}
+                      placeholder={t.messagePlaceholder}
+                      className="min-h-[84px] max-h-[144px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-3 text-sm leading-6 outline-none focus:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSend()}
+                      disabled={
+                        !whatsAppReachable ||
+                        isSending ||
+                        !messageInput.trim()
+                      }
+                      className="nc-btn-primary inline-flex h-11 min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-[120px]"
+                    >
+                      <Send size={16} />
+                      {isSending ? t.sending : t.send}
+                    </button>
+                  </div>
+                </footer>
+              </>
             ) : (
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {users.map((u) => (
-                  <button key={u.id} type="button" onClick={() => handleAssign(u.id, u.name)} className="w-full text-right px-3 py-2.5 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] hover:bg-[var(--nc-surface)] text-sm font-semibold text-[var(--nc-text-primary)] flex items-center justify-between gap-2">
-                    <span>{u.name}</span>
-                    {selectedChat.assignedUserId === u.id && <span className="text-xs text-[var(--nc-accent-text)]">✓</span>}
-                  </button>
-                ))}
+              <div className="flex h-full min-h-[360px] items-center justify-center p-8 text-center">
+                <div>
+                  <MessageSquare
+                    size={28}
+                    className="mx-auto text-[var(--nc-text-dim)]"
+                  />
+                  <h2 className="mt-3 text-lg font-black">
+                    {t.noData}
+                  </h2>
+                  <p className="mt-2 text-sm text-[var(--nc-text-secondary)]">
+                    {t.select}
+                  </p>
+                </div>
               </div>
             )}
-            <button type="button" onClick={() => setShowAssign(false)} className="nc-btn-ghost w-full min-h-[40px] rounded-xl text-sm font-semibold">{isArabic ? "إلغاء" : "Cancel"}</button>
-          </div>
+          </section>
         </div>
-      )}
+      </section>
+      {showNewForm && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-x-0 bottom-0 top-[88px] z-[120] flex items-center justify-center bg-black/55 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="whatsapp-new-chat-title"
+            >
+              <form
+                onSubmit={handleNewChat}
+                className="max-h-full w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-6 text-right shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                dir={isArabic ? "rtl" : "ltr"}
+              >
+                <h2
+                  id="whatsapp-new-chat-title"
+                  className="border-b border-[var(--nc-border)] pb-2 text-base font-bold text-[var(--nc-text-primary)]"
+                >
+                  {t.newChatTitle}
+                </h2>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                    {t.newChatCustomerSearch}
+                  </label>
+                  <input
+                    list="whatsapp-customer-options"
+                    value={newCustomerQuery}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setNewCustomerQuery(value);
+                      const normalized = normalizeWhatsAppPhone(value);
+                      const selected = customerOptions.find(
+                        (option) => option.phone === normalized,
+                      );
+                      const split = selected ? splitInternationalPhone(selected.phone) : null;
+                      if (split) {
+                        setNewCountryCode(split.countryCode);
+                        setNewPhone(split.localPhone);
+                        setNewChatError(null);
+                      }
+                    }}
+                    placeholder={t.newChatCustomerSearch}
+                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+                    dir={isArabic ? "rtl" : "ltr"}
+                  />
+                  <datalist id="whatsapp-customer-options">
+                    {customerOptions.map((option) => (
+                      <option key={option.phone} value={option.phone}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </datalist>
+                  <p className="mt-1 text-[11px] text-[var(--nc-text-secondary)]">
+                    {t.newChatCustomerHint}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                    {t.newChatPhone}
+                  </label>
+                  <div className="grid grid-cols-[128px_1fr] gap-2">
+                    <select
+                      value={newCountryCode}
+                      onChange={(event) => {
+                        setNewCountryCode(event.target.value);
+                        setNewChatError(null);
+                      }}
+                      aria-label={t.newChatCountry}
+                      className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+                      dir="ltr"
+                    >
+                      {PHONE_COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          +{country.code} {isArabic ? country.ar : country.en}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={newPhone}
+                      onChange={(event) => {
+                        setNewPhone(
+                          normalizeLocalPhone(event.target.value),
+                        );
+                        setNewChatError(null);
+                      }}
+                      placeholder="551234567"
+                      required
+                      className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
+                    {t.newChatMessage}
+                  </label>
+                  <textarea
+                    value={newMessage}
+                    onChange={(event) => {
+                      setNewMessage(event.target.value);
+                      setNewChatError(null);
+                    }}
+                    placeholder={t.messagePlaceholder}
+                    required
+                    rows={3}
+                    className="min-h-[112px] w-full resize-none rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-base text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
+                  />
+                </div>
+
+                {newChatError ? (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-700 dark:text-red-200"
+                  >
+                    <p className="font-semibold">{t.newChatErrorTitle}</p>
+                    <p className="mt-1 leading-5">{newChatError}</p>
+                  </div>
+                ) : null}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={isCreatingChat || !whatsAppReachable}
+                    aria-busy={isCreatingChat}
+                    className="nc-btn-primary min-h-[44px] flex-1 rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isCreatingChat ? t.sending : t.newChatSend}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isCreatingChat}
+                    onClick={closeNewChat}
+                    className="nc-btn-ghost min-h-[44px] flex-1 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-70"
+                  >
+                    {t.newChatCancel}
+                  </button>
+                </div>
+              </form>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {showAssign && selectedChat && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-x-0 bottom-0 top-[88px] z-[120] flex items-center justify-center bg-black/55 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="whatsapp-assign-title"
+            >
+              <div
+                className="max-h-full w-full max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-5 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                dir={isArabic ? "rtl" : "ltr"}
+              >
+                <h2
+                  id="whatsapp-assign-title"
+                  className="border-b border-[var(--nc-border)] pb-2 text-base font-bold text-[var(--nc-text-primary)]"
+                >
+                  {t.assignTitle}
+                </h2>
+                <p className="text-xs text-[var(--nc-text-secondary)]">
+                  {safeName(selectedChat)}
+                </p>
+
+                {loadingUsers ? (
+                  <p className="py-4 text-center text-sm text-[var(--nc-text-secondary)]">
+{t.loadingTeam}
+                  </p>
+                ) : users.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-[var(--nc-text-secondary)]">
+{t.noTeam}
+                  </p>
+                ) : (
+                  <div className="max-h-64 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {users.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() =>
+                          handleAssign(user.id, user.name)
+                        }
+                        disabled={Boolean(assigningUserId)}
+                        aria-busy={assigningUserId === user.id}
+                        className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 text-right text-sm font-semibold text-[var(--nc-text-primary)] hover:bg-[var(--nc-surface)] disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <span>{user.name}</span>
+                        {selectedChat.assignedUserId === user.id ? (
+                          <span className="text-xs text-[var(--nc-accent-text)]">
+                            ✓
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowAssign(false)}
+                  className="nc-btn-ghost min-h-[44px] w-full rounded-xl text-sm font-semibold"
+                >
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
     </>
   );
 }

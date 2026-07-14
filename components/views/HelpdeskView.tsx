@@ -1,26 +1,58 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Archive, CheckCircle2, Clock, Headphones, ShieldCheck } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Archive,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock3,
+  Headphones,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Send,
+  TicketCheck,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
+import { createPortal } from "react-dom";
 
-import { closeTicketAction, createTicketAction } from "@/app/actions/helpdesk";
+import {
+  closeTicketAction,
+  createTicketAction,
+  getTicketsAction,
+  reopenTicketAction,
+} from "@/app/actions/helpdesk";
 import { useApp } from "@/app/context/AppContext";
-import UnifiedOperationsWorkspace from "@/components/operations-workspace/UnifiedOperationsWorkspace";
-import type { WorkspaceListItem, WorkspaceTimelineItem } from "@/components/operations-workspace/types";
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import { toArabicNumerals } from "@/lib/formatters";
 
-interface Ticket {
+const PAGE_SIZE = 6;
+
+type TicketStatus = "OPEN" | "CLOSED";
+
+interface TicketRecord {
   id: string;
   title: string;
   description: string;
   status: string;
   aiResponse: string | null;
-  createdAt: Date | string;
-  updatedAt?: Date | string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface Reply {
+interface ReplyRecord {
   id: string;
   message: string;
   sender: "CLIENT" | "SUPPORT" | "AI";
@@ -28,463 +60,1107 @@ interface Reply {
 }
 
 interface HelpdeskViewProps {
-  initialTickets: Ticket[];
+  initialTickets: TicketRecord[];
   tenantName: string;
+  initialLoadFailed?: boolean;
 }
-
-const PAGE_SIZE = 5;
 
 const TEXT = {
   AR: {
     title: "مركز الدعم",
-    description: "مركز الدعم لإدارة التذاكر والردود ضمن نموذج العمليات الموحد.",
-    openTickets: "التذاكر المفتوحة",
-    highPriority: "عالية الأولوية",
-    waitingCustomer: "بانتظار العميل",
-    slaMet: "نسبة الالتزام بالاستجابة",
-    listTitle: "مركز الدعم",
-    latestFirst: "الأحدث تحديثًا",
-    newLabel: "تذكرة جديدة",
-    search: "ابحث...",
+    description: "إدارة تذاكر الدعم ومتابعة الردود وحالة المعالجة ضمن نطاق المنشأة.",
+    flow: "المنشأة ← التذكرة ← المتابعة ← الإغلاق",
+    total: "إجمالي التذاكر",
+    open: "المفتوحة",
+    closed: "المغلقة",
+    waiting: "بانتظار المعالجة",
+    newTicket: "تذكرة جديدة",
+    refresh: "تحديث",
+    search: "ابحث بعنوان التذكرة أو تفاصيلها...",
     filter: "تصفية التذاكر",
     all: "الكل",
-    open: "مفتوحة",
-    pending: "قيد الانتظار",
-    closed: "مغلقة",
-    sla: "ضمن المدة",
-    customer: "العميل",
-    owner: "المسؤول",
-    priority: "الأولوية",
-    close: "إغلاق",
-    closeConfirm: "هل تريد إغلاق هذه التذكرة؟",
-    closedOk: "تم إغلاق التذكرة",
-    closeError: "تعذر إغلاق التذكرة",
-    subject: "موضوع التذكرة",
-    details: "تفاصيل التذكرة",
-    sendTicket: "إرسال التذكرة",
-    replyPlaceholder: "اكتب رد متابعة...",
-    sendReply: "إرسال",
-    noData: "لا توجد بيانات",
-    noTickets: "لا توجد تذاكر دعم.",
-    select: "اختر تذكرة لمشاهدة التفاصيل",
-    newTicketOk: "تم إنشاء التذكرة",
-    newTicketError: "تعذر إنشاء التذكرة",
-    supportTeam: "فريق الدعم",
-    medium: "متوسطة",
-    high: "مرتفعة",
-    ticket: "تذكرة",
-    supportRequest: "طلب دعم",
-    demoTicketTitle: "طلب مساعدة فنية",
-    demoTicketDescription: "طلب دعم متعلق بإحدى خدمات المنصة.",
-    demoAiResponse: "تم استلام التذكرة، ويجري الآن توجيهها إلى فريق الدعم المختص.",
-    demoClientReply: "أحتاج إلى متابعة حالة الطلب.",
-    demoSupportReply: "تم تحديث الطلب وسيتم إشعارك عند اكتمال المعالجة.",
-    ticketCount: "تذكرة",
+    ticket: "التذكرة",
+    subject: "الموضوع",
+    created: "تاريخ الإنشاء",
+    updated: "آخر تحديث",
+    response: "استجابة الدعم",
+    status: "الحالة",
+    responded: "تم الرد",
+    noResponse: "بانتظار الرد",
+    matching: "النتائج المطابقة",
+    ordered: "الأحدث تحديثًا أولًا",
+    showing: "عرض",
+    of: "من",
+    noTickets: "لا توجد تذاكر دعم مطابقة.",
+    selectTicket: "اختر تذكرة من الجدول لعرض تفاصيلها.",
+    loading: "جاري تحميل تذاكر الدعم...",
+    loadError: "تعذر تحميل تذاكر الدعم.",
+    retry: "إعادة المحاولة",
     organization: "المنشأة",
-    replySent: "تم إرسال الرد",
-    replyError: "تعذر إرسال الرد",
-    repliesError: "تعذر تحميل الردود",
+    details: "تفاصيل التذكرة",
+    supportResponse: "استجابة فريق الدعم",
+    noSupportResponse: "لم يصل رد من فريق الدعم حتى الآن.",
+    replies: "ردود المتابعة",
+    noReplies: "لا توجد ردود متابعة لهذه التذكرة.",
+    repliesError: "تعذر تحميل ردود التذكرة.",
+    repliesLoading: "جاري تحميل الردود...",
+    replyPlaceholder: "اكتب رد متابعة...",
+    sendReply: "إرسال الرد",
+    replySent: "تم إرسال الرد.",
+    replyError: "تعذر إرسال الرد.",
+    close: "إغلاق التذكرة",
+    reopen: "إعادة فتح التذكرة",
+    closedOk: "تم إغلاق التذكرة.",
+    reopenedOk: "تمت إعادة فتح التذكرة.",
+    statusError: "تعذر تحديث حالة التذكرة.",
+    modalTitle: "إنشاء تذكرة دعم",
+    cancel: "إلغاء",
+    create: "إرسال التذكرة",
+    createOk: "تم إنشاء التذكرة.",
+    createError: "تعذر إنشاء التذكرة.",
+    titleField: "عنوان التذكرة",
+    detailsField: "تفاصيل المشكلة أو الطلب",
+    unknown: "غير محدد",
+    openCount: "التذاكر النشطة",
+    conversation: "المحادثة",
+    originalRequest: "الطلب الأساسي",
+    requester: "المنشأة",
+    supportTeam: "فريق الدعم",
+    context: "معلومات التذكرة",
+    showContext: "إظهار معلومات التذكرة",
+    hideContext: "إخفاء معلومات التذكرة",
+    backToTickets: "العودة إلى التذاكر",
+    noConversation: "لا توجد رسائل متابعة بعد.",
   },
   EN: {
     title: "Support Center",
-    description: "Support Center for tickets and replies within the unified operations workspace.",
-    openTickets: "Open tickets",
-    highPriority: "High priority",
-    waitingCustomer: "Waiting on customer",
-    slaMet: "SLA met",
-    listTitle: "Support Center",
-    latestFirst: "Recently updated",
-    newLabel: "New ticket",
-    search: "Search...",
+    description: "Manage support tickets, replies, and processing status within the organization.",
+    flow: "Organization → ticket → follow-up → closure",
+    total: "Total tickets",
+    open: "Open",
+    closed: "Closed",
+    waiting: "Awaiting support",
+    newTicket: "New ticket",
+    refresh: "Refresh",
+    search: "Search by ticket title or details...",
     filter: "Filter tickets",
     all: "All",
-    open: "Open",
-    pending: "Pending",
-    closed: "Closed",
-    sla: "Within SLA",
-    customer: "Customer",
-    owner: "Owner",
-    priority: "Priority",
-    close: "Close",
-    closeConfirm: "Close this ticket?",
-    closedOk: "Ticket closed",
-    closeError: "Failed to close ticket",
-    subject: "Ticket subject",
-    details: "Ticket details",
-    sendTicket: "Send ticket",
-    replyPlaceholder: "Type a follow-up reply...",
-    sendReply: "Send",
-    noData: "No data",
-    noTickets: "No support tickets.",
-    select: "Select a ticket to view details",
-    newTicketOk: "Ticket created",
-    newTicketError: "Failed to create ticket",
-    supportTeam: "Support team",
-    medium: "Medium",
-    high: "High",
     ticket: "Ticket",
-    supportRequest: "Support request",
-    demoTicketTitle: "Technical assistance request",
-    demoTicketDescription: "A support request related to one of the platform services.",
-    demoAiResponse: "The ticket has been received and routed to the appropriate support team.",
-    demoClientReply: "I would like an update on this request.",
-    demoSupportReply: "The request has been updated. You will be notified when processing is complete.",
-    ticketCount: "tickets",
+    subject: "Subject",
+    created: "Created",
+    updated: "Last updated",
+    response: "Support response",
+    status: "Status",
+    responded: "Responded",
+    noResponse: "Awaiting response",
+    matching: "Matching results",
+    ordered: "Recently updated first",
+    showing: "Showing",
+    of: "of",
+    noTickets: "No matching support tickets.",
+    selectTicket: "Select a ticket from the table to view its details.",
+    loading: "Loading support tickets...",
+    loadError: "Failed to load support tickets.",
+    retry: "Retry",
     organization: "Organization",
-    replySent: "Reply sent",
-    replyError: "Failed to send reply",
-    repliesError: "Failed to load replies",
+    details: "Ticket details",
+    supportResponse: "Support response",
+    noSupportResponse: "No support response has been received yet.",
+    replies: "Follow-up replies",
+    noReplies: "No follow-up replies for this ticket.",
+    repliesError: "Failed to load ticket replies.",
+    repliesLoading: "Loading replies...",
+    replyPlaceholder: "Type a follow-up reply...",
+    sendReply: "Send reply",
+    replySent: "Reply sent.",
+    replyError: "Failed to send reply.",
+    close: "Close ticket",
+    reopen: "Reopen ticket",
+    closedOk: "Ticket closed.",
+    reopenedOk: "Ticket reopened.",
+    statusError: "Failed to update ticket status.",
+    modalTitle: "Create support ticket",
+    cancel: "Cancel",
+    create: "Submit ticket",
+    createOk: "Ticket created.",
+    createError: "Failed to create ticket.",
+    titleField: "Ticket title",
+    detailsField: "Describe the issue or request",
+    unknown: "Not specified",
+    openCount: "Active tickets",
+    conversation: "Conversation",
+    originalRequest: "Original request",
+    requester: "Organization",
+    supportTeam: "Support team",
+    context: "Ticket information",
+    showContext: "Show ticket information",
+    hideContext: "Hide ticket information",
+    backToTickets: "Back to tickets",
+    noConversation: "No follow-up messages yet.",
   },
 };
 
-function isTechnicalText(value: string) {
+function cleanDisplayText(value: unknown, fallback: string) {
+  const raw = String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!raw) return fallback;
+
+  const withoutIdentifiers = raw
+    .replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+      "",
+    )
+    .replace(/\b(?:ticket|reply|message|user|id)_[a-z0-9_-]+\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return withoutIdentifiers || fallback;
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ||
-    /(?:^|\b)(?:ticket|reply|message|lead|user|task|id)_[a-z0-9_-]+(?:\b|$)/i.test(value)
+    <label className="block space-y-1.5">
+      <span className="text-xs font-bold text-[var(--nc-text-secondary)]">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 
-function cleanDisplayText(value: unknown, fallback: string) {
-  const raw = String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  if (!raw || isTechnicalText(raw)) return fallback;
-  const cleaned = raw
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "")
-    .replace(/\b(?:TICKET|REPLY|MESSAGE|LEAD|USER|TASK)_[A-Z0-9_]+\b/g, "")
-    .replace(/\b(?:ticket|reply|message|lead|user|task|id)_[a-z0-9_-]+\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  return cleaned || fallback;
-}
-
-export default function HelpdeskView({ initialTickets, tenantName }: HelpdeskViewProps) {
+export default function HelpdeskView({
+  initialTickets,
+  tenantName,
+  initialLoadFailed = false,
+}: HelpdeskViewProps) {
   const { lang } = useApp();
   const language = lang === "EN" ? "EN" : "AR";
   const t = TEXT[language];
   const isArabic = language === "AR";
 
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-  const [selectedId, setSelectedId] = useState<string | null>(initialTickets[0]?.id || null);
+  const [tickets, setTickets] = useState<TicketRecord[]>(initialTickets);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialTickets[0]?.id || null,
+  );
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("ALL");
+  const [filter, setFilter] = useState<"ALL" | TicketStatus>("ALL");
   const [page, setPage] = useState(1);
-  const [newMode, setNewMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(
+    initialLoadFailed ? t.loadError : "",
+  );
+
+  const [editorOpen, setEditorOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [busyTicketId, setBusyTicketId] = useState("");
+  const [replies, setReplies] = useState<ReplyRecord[]>([]);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+  const [repliesError, setRepliesError] = useState("");
   const [replyInput, setReplyInput] = useState("");
-  const [replies, setReplies] = useState<Reply[]>([]);
-  const [submittingReply, setSubmittingReply] = useState(false);
-  const [repliesError, setRepliesError] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
 
-  const formatNumber = (value: number | string) => (isArabic ? toArabicNumerals(value) : String(value));
-  const formatDateTime = (value?: Date | string | null) => {
-    if (!value) return "—";
+  const formatNumber = (value: number | string) =>
+    isArabic ? toArabicNumerals(value) : String(value);
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return t.unknown;
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
+    if (Number.isNaN(date.getTime())) return t.unknown;
+
     const pad = (part: number) => String(part).padStart(2, "0");
-    return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${String(date.getFullYear()).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${String(
+      date.getFullYear(),
+    ).slice(-2)} • ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
-  const isDemoTenant = /(?:stress|demo)/i.test(tenantName);
-  const displayTenantName = isDemoTenant ? t.organization : cleanDisplayText(tenantName, t.organization);
-  const displayTicketTitle = (ticket: Ticket) => isDemoTenant ? t.demoTicketTitle : cleanDisplayText(ticket.title, t.supportRequest);
-  const displayTicketDescription = (ticket: Ticket) =>
-    isDemoTenant ? t.demoTicketDescription : cleanDisplayText(ticket.description, t.noData);
-  const displayAiResponse = (value: string) =>
-    isDemoTenant ? t.demoAiResponse : cleanDisplayText(value, t.noData);
-  const displayReply = (reply: Reply) => {
-    if (!isDemoTenant) return cleanDisplayText(reply.message, t.noData);
-    return reply.sender === "CLIENT" ? t.demoClientReply : t.demoSupportReply;
-  };
+  const organizationName = cleanDisplayText(tenantName, t.unknown);
 
-  const ticketNumber = (ticket: Ticket) => {
-    const ordered = tickets
-      .slice()
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .findIndex((item) => item.id === ticket.id);
-    const number = String(Math.max(1, ordered + 1)).padStart(3, "0");
-    return `${t.ticket} #${number}`;
-  };
+  const sortedTickets = useMemo(
+    () =>
+      [...tickets].sort(
+        (left, right) =>
+          new Date(right.updatedAt).getTime() -
+          new Date(left.updatedAt).getTime(),
+      ),
+    [tickets],
+  );
 
-  const priorityFor = (ticket: Ticket) => {
-    const text = `${ticket.title} ${ticket.description}`.toLowerCase();
-    return text.includes("عطل") || text.includes("خطأ") || text.includes("مشكلة") || text.includes("error") ? t.high : t.medium;
-  };
+  const ticketNumber = useCallback(
+    (ticket: TicketRecord) => {
+      const chronological = [...tickets].sort(
+        (left, right) =>
+          new Date(left.createdAt).getTime() -
+          new Date(right.createdAt).getTime(),
+      );
+      const index = chronological.findIndex((item) => item.id === ticket.id);
+      return `${t.ticket} #${String(Math.max(1, index + 1)).padStart(3, "0")}`;
+    },
+    [t.ticket, tickets],
+  );
 
-  const slaMet = (ticket: Ticket) => {
-    const created = new Date(ticket.createdAt).getTime();
-    const updated = new Date(ticket.updatedAt || ticket.createdAt).getTime();
-    return updated - created <= 15 * 60 * 1000;
-  };
+  const filteredTickets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
 
-  const sortedTickets = useMemo(() => {
-    return [...tickets].sort(
-      (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-    );
-  }, [tickets]);
+    return sortedTickets.filter((ticket) => {
+      const matchesFilter =
+        filter === "ALL" || ticket.status.toUpperCase() === filter;
+      const haystack = `${ticket.title} ${ticket.description}`.toLowerCase();
+      const matchesQuery =
+        !normalizedQuery || haystack.includes(normalizedQuery);
 
-  const selectedTicket = sortedTickets.find((ticket) => ticket.id === selectedId) || null;
+      return matchesFilter && matchesQuery;
+    });
+  }, [filter, query, sortedTickets]);
 
-  useEffect(() => {
-    if (!selectedTicket) {
-      setReplies([]);
-      return;
-    }
-    const ticketId = selectedTicket.id;
-    let cancelled = false;
-    async function loadReplies() {
-      try {
-        const response = await fetch(`/api/v1/support/tickets/${ticketId}/reply`);
-        const json = await response.json();
-        if (!cancelled && json.success) {
-          setReplies(json.data);
-          setRepliesError(false);
-        }
-      } catch {
-        if (!cancelled) {
-          setReplies([]);
-          setRepliesError(true);
-        }
-      }
-    }
-    loadReplies();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTicket?.id]);
-
-  const filteredTickets = sortedTickets.filter((ticket) => {
-    const haystack = `${displayTicketTitle(ticket)} ${displayTicketDescription(ticket)} ${ticketNumber(ticket)}`.toLowerCase();
-    const matchesSearch = haystack.includes(query.toLowerCase());
-    const matchesFilter = filter === "ALL" || ticket.status === filter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTickets.length / PAGE_SIZE),
+  );
   const safePage = Math.min(page, totalPages);
-  const pageItems = filteredTickets.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageItems = filteredTickets.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const selectedTicket =
+    sortedTickets.find((ticket) => ticket.id === selectedId) || null;
+
+  const openCount = tickets.filter(
+    (ticket) => ticket.status.toUpperCase() === "OPEN",
+  ).length;
+  const closedCount = tickets.filter(
+    (ticket) => ticket.status.toUpperCase() === "CLOSED",
+  ).length;
+  const waitingCount = tickets.filter(
+    (ticket) =>
+      ticket.status.toUpperCase() === "OPEN" && !ticket.aiResponse?.trim(),
+  ).length;
+
+  const visibleStart =
+    filteredTickets.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const visibleEnd = Math.min(
+    safePage * PAGE_SIZE,
+    filteredTickets.length,
+  );
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   useEffect(() => {
-    if (newMode) return;
-    if (selectedId && filteredTickets.some((ticket) => ticket.id === selectedId)) return;
-    setSelectedId(filteredTickets[0]?.id || null);
-  }, [filteredTickets, newMode, selectedId]);
+    if (
+      selectedId &&
+      filteredTickets.some((ticket) => ticket.id === selectedId)
+    ) {
+      return;
+    }
 
-  const openCount = tickets.filter((ticket) => ticket.status === "OPEN").length;
-  const highCount = tickets.filter((ticket) => priorityFor(ticket) === t.high).length;
-  const waitingCount = tickets.filter((ticket) => ticket.status === "OPEN" && !ticket.aiResponse).length;
-  const slaCount = tickets.filter(slaMet).length;
-  const slaRate = tickets.length ? Math.round((slaCount / tickets.length) * 100) : 0;
+    setSelectedId(filteredTickets[0]?.id || null);
+  }, [filteredTickets, selectedId]);
+
+  useEffect(() => {
+    setLoadError(initialLoadFailed ? t.loadError : "");
+  }, [initialLoadFailed, t.loadError]);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        setEditorOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [editorOpen, saving]);
+
+  const loadTickets = useCallback(
+    async (preferredId?: string | null) => {
+      setIsLoading(true);
+      setLoadError("");
+
+      try {
+        const result = await getTicketsAction();
+
+        if (!result.success) {
+          setLoadError(result.error || t.loadError);
+          return;
+        }
+
+        setTickets(result.data);
+        const targetId =
+          preferredId && result.data.some((ticket) => ticket.id === preferredId)
+            ? preferredId
+            : result.data[0]?.id || null;
+        setSelectedId(targetId);
+      } catch {
+        setLoadError(t.loadError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [t.loadError],
+  );
+
+  useEffect(() => {
+    if (!selectedTicket) {
+      setReplies([]);
+      setRepliesError("");
+      return;
+    }
+
+    let cancelled = false;
+    const ticketId = selectedTicket.id;
+
+    async function loadReplies() {
+      setRepliesLoading(true);
+      setRepliesError("");
+
+      try {
+        const response = await fetch(
+          `/api/v1/support/tickets/${ticketId}/reply`,
+          { cache: "no-store" },
+        );
+        const payload = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !payload.success) {
+          setReplies([]);
+          setRepliesError(payload.error || t.repliesError);
+          return;
+        }
+
+        setReplies(Array.isArray(payload.data) ? payload.data : []);
+      } catch {
+        if (!cancelled) {
+          setReplies([]);
+          setRepliesError(t.repliesError);
+        }
+      } finally {
+        if (!cancelled) setRepliesLoading(false);
+      }
+    }
+
+    void loadReplies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTicket?.id, t.repliesError]);
+
+  function beginCreate() {
+    setNewTitle("");
+    setNewDescription("");
+    setEditorOpen(true);
+  }
 
   async function createTicket() {
     if (!newTitle.trim() || !newDescription.trim()) return;
-    const formData = new FormData();
-    formData.append("title", newTitle.trim());
-    formData.append("description", newDescription.trim());
-    const result = await createTicketAction(formData);
-    if (result.success && "ticket" in result && result.ticket) {
-      const newTicket: Ticket = {
-        id: result.ticket.id,
-        title: result.ticket.title,
-        description: result.ticket.description,
-        status: result.ticket.status,
-        aiResponse: result.ticket.aiResponse,
-        createdAt: result.ticket.createdAt,
-        updatedAt: result.ticket.updatedAt || result.ticket.createdAt,
-      };
-      setTickets((current) => [newTicket, ...current]);
-      setSelectedId(newTicket.id);
-      setNewMode(false);
+
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("title", newTitle.trim());
+      formData.append("description", newDescription.trim());
+
+      const result = await createTicketAction(formData);
+
+      if (!result.success) {
+        toast.error(result.error || t.createError);
+        return;
+      }
+
+      toast.success(t.createOk);
+      setEditorOpen(false);
       setNewTitle("");
       setNewDescription("");
-      toast.success(t.newTicketOk);
-    } else {
-      toast.error(t.newTicketError);
+      await loadTickets(result.ticket.id);
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function closeTicket(ticket: Ticket) {
-    if (!window.confirm(t.closeConfirm)) return;
-    const result = await closeTicketAction(ticket.id);
-    if (result.success) {
-      setTickets((current) => current.map((item) => (item.id === ticket.id ? { ...item, status: "CLOSED", updatedAt: new Date() } : item)));
-      toast.success(t.closedOk);
-    } else {
-      toast.error(t.closeError);
-    }
-  }
+  async function toggleTicketStatus(ticket: TicketRecord) {
+    setBusyTicketId(ticket.id);
 
-  function openTicket(ticketId: string) {
-    setNewMode(false);
-    setSelectedId(ticketId);
+    try {
+      const isClosed = ticket.status.toUpperCase() === "CLOSED";
+      const result = isClosed
+        ? await reopenTicketAction(ticket.id)
+        : await closeTicketAction(ticket.id);
+
+      if (!result.success) {
+        toast.error(result.error || t.statusError);
+        return;
+      }
+
+      setTickets((current) =>
+        current.map((item) =>
+          item.id === ticket.id ? result.ticket : item,
+        ),
+      );
+      toast.success(isClosed ? t.reopenedOk : t.closedOk);
+    } finally {
+      setBusyTicketId("");
+    }
   }
 
   async function sendReply() {
-    if (!replyInput.trim() || !selectedTicket) return;
-    setSubmittingReply(true);
+    if (!selectedTicket || !replyInput.trim()) return;
+
+    setSendingReply(true);
     try {
-      const response = await fetch(`/api/v1/support/tickets/${selectedTicket.id}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: replyInput.trim(), sender: "CLIENT" }),
-      });
-      const json = await response.json();
-      if (json.success) {
-        setReplies((current) => [...current, json.data]);
-        setReplyInput("");
-        toast.success(t.replySent);
-      } else {
-        toast.error(t.replyError);
+      const response = await fetch(
+        `/api/v1/support/tickets/${selectedTicket.id}/reply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: replyInput.trim() }),
+        },
+      );
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        toast.error(payload.error || t.replyError);
+        return;
       }
+
+      setReplies((current) => [...current, payload.data]);
+      setReplyInput("");
+      toast.success(t.replySent);
     } catch {
       toast.error(t.replyError);
     } finally {
-      setSubmittingReply(false);
+      setSendingReply(false);
     }
   }
 
-  const listItems: WorkspaceListItem[] = pageItems.map((ticket) => ({
-    id: ticket.id,
-    title: ticketNumber(ticket),
-    snippet: displayTicketTitle(ticket),
-    timestamp: formatDateTime(ticket.updatedAt || ticket.createdAt),
-    avatar: "#",
-    selected: ticket.id === selectedId && !newMode,
-    badge: { label: slaMet(ticket) ? t.sla : t.pending, tone: slaMet(ticket) ? "success" : "warning" },
-    onSelect: () => openTicket(ticket.id),
-    actions: [],
-  }));
+  const statusLabel = (ticket: TicketRecord) =>
+    ticket.status.toUpperCase() === "CLOSED" ? t.closed : t.open;
 
-  const timeline: WorkspaceTimelineItem[] = selectedTicket
-    ? [
-        { id: `${selectedTicket.id}-description`, body: displayTicketDescription(selectedTicket), time: formatDateTime(selectedTicket.createdAt), side: "neutral" },
-        ...(selectedTicket.aiResponse
-          ? [{ id: `${selectedTicket.id}-ai`, body: displayAiResponse(selectedTicket.aiResponse), time: formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt), side: "in" as const }]
-          : []),
-        ...replies.map((reply) => ({
-          id: reply.id,
-          body: displayReply(reply),
-          time: formatDateTime(reply.createdAt),
-          side: reply.sender === "CLIENT" ? ("out" as const) : ("in" as const),
-        })),
-      ]
-    : [];
-
-  const detail = newMode
-    ? {
-        avatar: "+",
-        title: t.newLabel,
-        meta: displayTenantName,
-        actions: [],
-        context: [
-          { label: t.customer, value: displayTenantName },
-          { label: t.owner, value: t.supportTeam },
-          { label: t.priority, value: t.medium },
-        ] as [{ label: string; value: string }, { label: string; value: string }, { label: string; value: string }],
-        timeline: [] as WorkspaceTimelineItem[],
-        emptyTitle: t.newLabel,
-        emptyDescription: t.details,
-        composer: {
-          mode: "message" as const,
-          value: newDescription,
-          bodyLabel: t.details,
-          placeholder: t.details,
-          sendLabel: t.sendTicket,
-          onChange: setNewDescription,
-          onSend: createTicket,
-          disabled: !newTitle.trim() || !newDescription.trim(),
-          fields: [{ id: "title", label: t.subject, value: newTitle, placeholder: t.subject, onChange: setNewTitle, required: true }],
-        },
-      }
-    : selectedTicket
-      ? {
-          avatar: "#",
-          title: ticketNumber(selectedTicket),
-          meta: (
-            <>
-              <span>{selectedTicket.status === "OPEN" ? t.open : t.closed}</span>
-              <span aria-hidden="true">·</span>
-              <span dir="ltr">{formatDateTime(selectedTicket.updatedAt || selectedTicket.createdAt)}</span>
-            </>
-          ),
-          actions: [
-            { label: t.close, icon: Archive, tone: "danger" as const, onClick: () => closeTicket(selectedTicket), disabled: selectedTicket.status === "CLOSED" },
-          ],
-          context: [
-            { label: t.customer, value: displayTenantName },
-            { label: t.owner, value: t.supportTeam },
-            { label: t.priority, value: priorityFor(selectedTicket) },
-          ] as [{ label: string; value: string }, { label: string; value: string }, { label: string; value: string }],
-          timeline: repliesError
-            ? [...timeline, { id: `${selectedTicket.id}-replies-error`, body: t.repliesError, side: "out" as const }]
-            : timeline,
-          emptyTitle: t.noData,
-          emptyDescription: t.noTickets,
-          composer:
-            selectedTicket.status === "OPEN"
-              ? {
-                  mode: "message" as const,
-                  value: replyInput,
-                  bodyLabel: t.replyPlaceholder,
-                  placeholder: t.replyPlaceholder,
-                  sendLabel: t.sendReply,
-                  onChange: setReplyInput,
-                  onSend: sendReply,
-                  disabled: submittingReply || !replyInput.trim(),
-                }
-              : undefined,
-        }
-      : null;
+  const statusClass = (ticket: TicketRecord) =>
+    ticket.status.toUpperCase() === "CLOSED"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
 
   return (
-    <UnifiedOperationsWorkspace
-      module="helpdesk"
-      language={language}
-      title={t.title}
-      description={t.description}
-      kpis={[
-        { label: t.openTickets, value: formatNumber(openCount), icon: Headphones },
-        { label: t.highPriority, value: formatNumber(highCount), icon: ShieldCheck },
-        { label: t.waitingCustomer, value: formatNumber(waitingCount), icon: Clock },
-        { label: t.slaMet, value: `${formatNumber(slaRate)}${isArabic ? "٪" : "%"}`, icon: CheckCircle2 },
-      ]}
-      listTitle={t.listTitle}
-      listSubtitle={`${formatNumber(filteredTickets.length)} ${t.ticketCount} · ${t.latestFirst}`}
-      newLabel={t.newLabel}
-      onNew={() => {
-        setNewMode(true);
-        setSelectedId(null);
-      }}
-      searchValue={query}
-      searchPlaceholder={t.search}
-      onSearchChange={(value) => {
-        setQuery(value);
-        setPage(1);
-      }}
-      filterValue={filter}
-      filterLabel={t.filter}
-      filterOptions={[
-        { value: "ALL", label: t.all },
-        { value: "OPEN", label: t.open },
-        { value: "CLOSED", label: t.closed },
-      ]}
-      onFilterChange={(value) => {
-        setFilter(value);
-        setPage(1);
-      }}
-      items={listItems}
-      pagination={{
-        page: safePage,
-        totalPages,
-        onPrevious: () => setPage((current) => Math.max(1, current - 1)),
-        onNext: () => setPage((current) => Math.min(totalPages, current + 1)),
-      }}
-      detail={detail}
-      emptyDetailTitle={t.noData}
-      emptyDetailDescription={t.select}
-    />
+    <section
+      dir={isArabic ? "rtl" : "ltr"}
+      className="nc-page nc-stack orca-container pb-4"
+      data-helpdesk-property-workspace
+      data-support-split-workspace
+    >
+      <header className="orca-workspace-hero">
+        <div>
+          <p className="text-xs font-bold text-[var(--nc-accent)]">
+            {t.flow}
+          </p>
+          <h1 className="mt-1 text-2xl font-black">{t.title}</h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+            {t.description}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadTickets(selectedId)}
+            disabled={isLoading}
+            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw
+              size={15}
+              className={isLoading ? "animate-spin" : ""}
+            />
+            {t.refresh}
+          </button>
+
+          <button
+            type="button"
+            onClick={beginCreate}
+            className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
+          >
+            <Plus size={16} />
+            {t.newTicket}
+          </button>
+        </div>
+      </header>
+
+      <div className="orca-workspace-metrics">
+        {[
+          { label: t.total, value: formatNumber(tickets.length), icon: Headphones },
+          { label: t.open, value: formatNumber(openCount), icon: Clock3 },
+          { label: t.closed, value: formatNumber(closedCount), icon: TicketCheck },
+          { label: t.waiting, value: formatNumber(waitingCount), icon: MessageSquareText },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="orca-workspace-metric min-h-[84px]">
+            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
+              <span>{label}</span>
+              <Icon size={17} />
+            </div>
+            <strong className="mt-3 block text-2xl">{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+        <span className="text-[var(--nc-text-secondary)]">
+          {t.openCount}:
+        </span>
+        <strong>{formatNumber(openCount)}</strong>
+        <span className="text-[var(--nc-border)]">|</span>
+        <span className="text-[var(--nc-text-secondary)]">
+          {t.matching}:
+        </span>
+        <strong>{formatNumber(filteredTickets.length)}</strong>
+        <span className="text-[var(--nc-border)]">|</span>
+        <span className="text-[var(--nc-text-secondary)]">{t.ordered}</span>
+      </div>
+
+      {loadError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-700 dark:text-rose-200"
+        >
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadTickets(selectedId)}
+            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-rose-500/30 px-4 text-xs font-black"
+          >
+            {t.retry}
+          </button>
+        </div>
+      ) : null}
+
+      <div
+        dir="ltr"
+        className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
+        data-four-page-two-card-workspace
+      >
+        <aside
+          dir={isArabic ? "rtl" : "ltr"}
+          data-support-ticket-list
+          data-operational-list-card
+          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+            mobileDetailOpen ? "hidden lg:flex" : "flex"
+          }`}
+        >
+          <div className="orca-workspace-toolbar border-b border-[var(--nc-border)] p-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
+              <label className="relative min-w-0">
+                <Search
+                  size={16}
+                  className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${
+                    isArabic ? "right-3" : "left-3"
+                  }`}
+                />
+                <input
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder={t.search}
+                  className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
+                    isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
+                  }`}
+                />
+              </label>
+
+              <SettingsSelect
+                value={filter}
+                onChange={(value) => {
+                  setFilter(value as "ALL" | TicketStatus);
+                  setPage(1);
+                }}
+                aria-label={t.filter}
+                options={[
+                  { value: "ALL", label: t.all },
+                  { value: "OPEN", label: t.open },
+                  { value: "CLOSED", label: t.closed },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {isLoading && tickets.length === 0 ? (
+              <div className="flex h-full min-h-[220px] items-center justify-center gap-2 text-sm text-[var(--nc-text-secondary)]">
+                <Loader2
+                  size={18}
+                  className="animate-spin text-[var(--nc-accent)]"
+                />
+                {t.loading}
+              </div>
+            ) : pageItems.length === 0 ? (
+              <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
+                {t.noTickets}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pageItems.map((ticket) => {
+                  const selected = ticket.id === selectedId;
+                  const hasSupportResponse = Boolean(ticket.aiResponse?.trim());
+
+                  return (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      data-ticket-row
+                      aria-pressed={selected}
+                      onClick={() => {
+                        setSelectedId(ticket.id);
+                        setMobileDetailOpen(true);
+                      }}
+                      className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                        selected
+                          ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
+                          : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
+                      }`}
+                    >
+                      <span
+                        className={`h-9 w-1 shrink-0 rounded-full ${
+                          ticket.status.toUpperCase() === "CLOSED"
+                            ? "bg-emerald-500/70"
+                            : hasSupportResponse
+                              ? "bg-sky-500/70"
+                              : "bg-amber-500/70"
+                        }`}
+                        aria-hidden="true"
+                      />
+
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <strong className="truncate text-sm">
+                            {cleanDisplayText(ticket.title, t.unknown)}
+                          </strong>
+                          <time
+                            dir="ltr"
+                            className="shrink-0 text-[11px] text-[var(--nc-text-dim)]"
+                          >
+                            {formatDateTime(ticket.updatedAt)}
+                          </time>
+                        </span>
+
+                        <span className="mt-1 flex items-center justify-between gap-2">
+                          <span className="min-w-0 flex items-center gap-2">
+                            <span className="shrink-0 text-[11px] font-bold text-[var(--nc-text-dim)]">
+                              {ticketNumber(ticket)}
+                            </span>
+                            <span className="min-w-0 truncate text-xs text-[var(--nc-text-secondary)]">
+                              {cleanDisplayText(ticket.description, t.unknown)}
+                            </span>
+                          </span>
+                          <span
+                            className={`inline-flex min-w-[76px] shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass(
+                              ticket,
+                            )}`}
+                          >
+                            {statusLabel(ticket)}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="orca-workspace-pagination flex min-h-[56px] items-center justify-between gap-2 border-t border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-text-secondary)]">
+            <span>
+              {isArabic
+                ? `${formatNumber(visibleStart)}–${formatNumber(
+                    visibleEnd,
+                  )} من ${formatNumber(filteredTickets.length)}`
+                : `${visibleStart}–${visibleEnd} of ${filteredTickets.length}`}
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={safePage <= 1}
+                className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={isArabic ? "الصفحة السابقة" : "Previous page"}
+              >
+                {isArabic ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+              </button>
+
+              <span className="min-w-12 text-center font-bold text-[var(--nc-text-primary)]">
+                {formatNumber(safePage)} / {formatNumber(totalPages)}
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((current) => Math.min(totalPages, current + 1))
+                }
+                disabled={safePage >= totalPages}
+                className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={isArabic ? "الصفحة التالية" : "Next page"}
+              >
+                {isArabic ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section
+          dir={isArabic ? "rtl" : "ltr"}
+          data-support-conversation
+          data-operational-detail-card
+          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+            mobileDetailOpen ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          {selectedTicket ? (
+            <>
+              <header className="flex min-h-[78px] shrink-0 items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileDetailOpen(false)}
+                    className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 lg:hidden"
+                    aria-label={t.backToTickets}
+                  >
+                    {isArabic ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                  </button>
+
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[var(--nc-accent)]">
+                      {ticketNumber(selectedTicket)}
+                    </p>
+                    <h2 className="mt-1 truncate text-lg font-black">
+                      {cleanDisplayText(selectedTicket.title, t.unknown)}
+                    </h2>
+                    <p
+                      dir="ltr"
+                      className="mt-1 text-xs text-[var(--nc-text-secondary)]"
+                    >
+                      {formatDateTime(selectedTicket.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={`hidden min-w-[82px] justify-center rounded-full border px-3 py-1 text-xs font-bold sm:inline-flex ${statusClass(
+                      selectedTicket,
+                    )}`}
+                  >
+                    {statusLabel(selectedTicket)}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => void toggleTicketStatus(selectedTicket)}
+                    disabled={busyTicketId === selectedTicket.id}
+                    className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busyTicketId === selectedTicket.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : selectedTicket.status.toUpperCase() === "CLOSED" ? (
+                      <RotateCcw size={16} />
+                    ) : (
+                      <Archive size={16} />
+                    )}
+                    <span className="hidden sm:inline">
+                      {selectedTicket.status.toUpperCase() === "CLOSED"
+                        ? t.reopen
+                        : t.close}
+                    </span>
+                  </button>
+                </div>
+              </header>
+
+              <section className="shrink-0 border-b border-[var(--nc-border)] px-3 py-1.5">
+                <button
+                  type="button"
+                  onClick={() => setContextOpen((current) => !current)}
+                  className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl px-2 text-xs font-bold text-[var(--nc-text-secondary)] hover:bg-[var(--nc-surface-strong)]"
+                  aria-expanded={contextOpen}
+                >
+                  <span>{t.context}</span>
+                  {contextOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+                </button>
+
+                {contextOpen ? (
+                  <div className="grid gap-2 pb-2 sm:grid-cols-3">
+                    <div className="orca-info-cell min-h-[56px]">
+                      <span>{t.organization}</span>
+                      <strong className="truncate">{organizationName}</strong>
+                    </div>
+                    <div className="orca-info-cell min-h-[56px]">
+                      <span>{t.created}</span>
+                      <strong dir="ltr">
+                        {formatDateTime(selectedTicket.createdAt)}
+                      </strong>
+                    </div>
+                    <div className="orca-info-cell min-h-[56px]">
+                      <span>{t.updated}</span>
+                      <strong dir="ltr">
+                        {formatDateTime(selectedTicket.updatedAt)}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="mx-auto flex max-w-4xl flex-col gap-2.5">
+                  <article className="max-w-[74%] self-start rounded-2xl rounded-tl-md border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3.5 py-2.5">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                      <strong className="text-[var(--nc-accent)]">
+                        {t.originalRequest}
+                      </strong>
+                      <time dir="ltr" className="text-[var(--nc-text-dim)]">
+                        {formatDateTime(selectedTicket.createdAt)}
+                      </time>
+                    </div>
+                    <p className="whitespace-pre-wrap leading-7 text-[var(--nc-text-primary)]">
+                      {cleanDisplayText(selectedTicket.description, t.unknown)}
+                    </p>
+                  </article>
+
+                  {selectedTicket.aiResponse?.trim() ? (
+                    <article className="max-w-[74%] self-end rounded-2xl rounded-tr-md border border-sky-500/25 bg-sky-500/10 px-3.5 py-2.5">
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                        <strong className="text-sky-700 dark:text-sky-300">
+                          {t.supportTeam}
+                        </strong>
+                        <time dir="ltr" className="text-[var(--nc-text-dim)]">
+                          {formatDateTime(selectedTicket.updatedAt)}
+                        </time>
+                      </div>
+                      <p className="whitespace-pre-wrap leading-7">
+                        {cleanDisplayText(
+                          selectedTicket.aiResponse,
+                          t.noSupportResponse,
+                        )}
+                      </p>
+                    </article>
+                  ) : null}
+
+                  {repliesLoading ? (
+                    <div className="flex min-h-[120px] items-center justify-center gap-2 text-sm text-[var(--nc-text-secondary)]">
+                      <Loader2 size={17} className="animate-spin" />
+                      {t.repliesLoading}
+                    </div>
+                  ) : repliesError ? (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-3 text-sm text-rose-700 dark:text-rose-200"
+                    >
+                      {repliesError}
+                    </div>
+                  ) : replies.length === 0 && !selectedTicket.aiResponse?.trim() ? (
+                    <div className="rounded-xl border border-dashed border-[var(--nc-border)] px-3 py-5 text-center text-sm text-[var(--nc-text-secondary)]">
+                      {t.noConversation}
+                    </div>
+                  ) : (
+                    replies.map((reply) => {
+                      const fromSupport =
+                        reply.sender === "SUPPORT" || reply.sender === "AI";
+
+                      return (
+                        <article
+                          key={reply.id}
+                          className={`max-w-[74%] rounded-2xl border px-3.5 py-2.5 ${
+                            fromSupport
+                              ? "self-end rounded-tr-md border-sky-500/25 bg-sky-500/10"
+                              : "self-start rounded-tl-md border-[var(--nc-border)] bg-[var(--nc-surface-solid)]"
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                            <strong
+                              className={
+                                fromSupport
+                                  ? "text-sky-700 dark:text-sky-300"
+                                  : "text-[var(--nc-accent)]"
+                              }
+                            >
+                              {fromSupport ? t.supportTeam : t.requester}
+                            </strong>
+                            <time dir="ltr" className="text-[var(--nc-text-dim)]">
+                              {formatDateTime(reply.createdAt)}
+                            </time>
+                          </div>
+                          <p className="whitespace-pre-wrap leading-7">
+                            {cleanDisplayText(reply.message, t.unknown)}
+                          </p>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <footer className="shrink-0 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2.5">
+                {selectedTicket.status.toUpperCase() === "OPEN" ? (
+                  <div className="mx-auto grid max-w-4xl items-center gap-2 sm:grid-cols-[minmax(0,1fr)_120px]">
+                    <textarea
+                      rows={2}
+                      value={replyInput}
+                      onChange={(event) => setReplyInput(event.target.value)}
+                      placeholder={t.replyPlaceholder}
+                      className="orca-form-textarea min-h-[56px] max-h-[88px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2 outline-none focus:border-[var(--nc-accent-border)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void sendReply()}
+                      disabled={sendingReply || !replyInput.trim()}
+                      className="nc-btn-primary inline-flex h-11 min-h-11 max-h-11 w-full items-center justify-center gap-2 self-center rounded-xl px-4 font-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-[120px] sm:justify-self-center"
+                    >
+                      {sendingReply ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Send size={16} />
+                      )}
+                      {t.sendReply}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mx-auto max-w-4xl rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-center text-sm font-bold text-[var(--nc-text-secondary)]">
+                    {t.closed}
+                  </div>
+                )}
+              </footer>
+            </>
+          ) : (
+            <div className="flex h-full min-h-[240px] items-center justify-center p-6 text-center text-sm text-[var(--nc-text-secondary)]">
+              {t.selectTicket}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {editorOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="orca-dialog-overlay fixed inset-x-0 bottom-0 top-[88px] z-[140] flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-6 backdrop-blur-sm"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget && !saving) {
+                  setEditorOpen(false);
+                }
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="helpdesk-editor-title"
+                className="orca-dialog w-full max-w-2xl overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl"
+              >
+                <div className="orca-dialog-header">
+                  <div>
+                    <p className="text-xs font-bold text-[var(--nc-accent)]">
+                      {t.title}
+                    </p>
+                    <h2
+                      id="helpdesk-editor-title"
+                      className="mt-1 text-lg font-black"
+                    >
+                      {t.modalTitle}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditorOpen(false)}
+                    disabled={saving}
+                    className="orca-dialog-close min-h-[44px] min-w-[44px]"
+                    aria-label={t.cancel}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void createTicket();
+                  }}
+                  className="max-h-[calc(100vh-190px)] overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  <div className="grid gap-4">
+                    <Field label={t.titleField}>
+                      <input
+                        value={newTitle}
+                        onChange={(event) => setNewTitle(event.target.value)}
+                        maxLength={160}
+                        required
+                        autoFocus
+                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                      />
+                    </Field>
+
+                    <Field label={t.detailsField}>
+                      <textarea
+                        rows={5}
+                        value={newDescription}
+                        onChange={(event) => setNewDescription(event.target.value)}
+                        maxLength={5000}
+                        required
+                        className="orca-form-textarea min-h-[120px] max-h-[220px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                      />
+                    </Field>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditorOpen(false)}
+                        disabled={saving}
+                        className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {t.cancel}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={
+                          saving ||
+                          newTitle.trim().length < 3 ||
+                          newDescription.trim().length < 5
+                        }
+                        className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 font-black disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {saving ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <CheckCircle2 size={16} />
+                        )}
+                        {t.create}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </section>
   );
 }

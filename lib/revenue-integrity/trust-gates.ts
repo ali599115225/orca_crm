@@ -23,7 +23,7 @@ function encryptCredentials(credentials: ProviderCredentials) {
   return `v1.${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
 }
 
-function decryptCredentials(value: string): ProviderCredentials {
+export function decryptProviderCredentials(value: string): ProviderCredentials {
   const [version, ivValue, tagValue, bodyValue] = String(value).split(".");
   if (version !== "v1" || !ivValue || !tagValue || !bodyValue) throw new Error("INVALID_ENCRYPTED_CREDENTIALS");
   const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivValue, "base64url"));
@@ -34,6 +34,204 @@ function decryptCredentials(value: string): ProviderCredentials {
 
 function providerValue(credentials: ProviderCredentials, key: string): string {
   return String(credentials[key] ?? "").trim();
+}
+
+function requireHttpsUrl(value: string, errorCode: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") throw new Error(errorCode);
+    return url.toString();
+  } catch {
+    throw new Error(errorCode);
+  }
+}
+
+function validateCustomPaymentCredentials(
+  baseUrl: string | null | undefined,
+  credentials: ProviderCredentials,
+) {
+  const providerName = providerValue(credentials, "providerName");
+  const integrationMode = providerValue(
+    credentials,
+    "integrationMode",
+  ).toUpperCase();
+
+  if (!providerName) {
+    throw new Error("CUSTOM_PAYMENT_PROVIDER_NAME_REQUIRED");
+  }
+
+  if (integrationMode === "PAYMENT_LINK") {
+    const paymentLinkUrl = requireHttpsUrl(
+      providerValue(credentials, "paymentLinkUrl"),
+      "CUSTOM_PAYMENT_HTTPS_LINK_REQUIRED",
+    );
+    return {
+      configured: true,
+      providerName,
+      integrationMode,
+      paymentLinkUrl,
+    };
+  }
+
+  if (integrationMode !== "API") {
+    throw new Error("CUSTOM_PAYMENT_INTEGRATION_MODE_REQUIRED");
+  }
+
+  const normalizedBaseUrl = requireHttpsUrl(
+    String(baseUrl || "").trim(),
+    "CUSTOM_PAYMENT_HTTPS_BASE_URL_REQUIRED",
+  );
+  const authHeaderName = providerValue(
+    credentials,
+    "authHeaderName",
+  );
+  const authScheme = providerValue(
+    credentials,
+    "authScheme",
+  ).toUpperCase();
+  const credential = providerValue(credentials, "credential");
+  const createPaymentPath = providerValue(
+    credentials,
+    "createPaymentPath",
+  );
+  const verifyPaymentPath = providerValue(
+    credentials,
+    "verifyPaymentPath",
+  );
+  const requestTemplate = providerValue(
+    credentials,
+    "requestTemplate",
+  );
+
+  const mappingKeys = [
+    "responseReferencePath",
+    "responseRedirectUrlPath",
+    "responseStatusPath",
+    "responseAmountPath",
+    "responseCurrencyPath",
+    "paidStatuses",
+    "webhookSecret",
+    "webhookSignatureHeader",
+    "webhookReferencePath",
+  ] as const;
+
+  if (
+    !authHeaderName ||
+    !credential ||
+    !createPaymentPath ||
+    !verifyPaymentPath ||
+    !requestTemplate ||
+    mappingKeys.some(
+      (key) => !providerValue(credentials, key),
+    )
+  ) {
+    throw new Error("CUSTOM_PAYMENT_API_FIELDS_REQUIRED");
+  }
+
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(authHeaderName)) {
+    throw new Error("CUSTOM_PAYMENT_AUTH_HEADER_INVALID");
+  }
+    if (
+      !/^[A-Za-z0-9-]{1,64}$/.test(
+        providerValue(credentials, "webhookSignatureHeader"),
+      )
+    ) {
+      throw new Error("CUSTOM_PAYMENT_WEBHOOK_HEADER_INVALID");
+    }
+  if (!["BEARER", "BASIC", "API_KEY"].includes(authScheme)) {
+    throw new Error("CUSTOM_PAYMENT_AUTH_SCHEME_INVALID");
+  }
+  if (
+    !createPaymentPath.startsWith("/") ||
+    !verifyPaymentPath.startsWith("/") ||
+    !verifyPaymentPath.includes("{reference}")
+  ) {
+    throw new Error("CUSTOM_PAYMENT_API_PATHS_INVALID");
+  }
+
+  try {
+    const template = JSON.parse(requestTemplate);
+    if (
+      !template ||
+      typeof template !== "object" ||
+      Array.isArray(template)
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error("CUSTOM_PAYMENT_REQUEST_TEMPLATE_INVALID");
+  }
+
+  return {
+    configured: true,
+    providerName,
+    integrationMode,
+    normalizedBaseUrl,
+  };
+}
+
+const DIALOG360_ALLOWED_HOSTS = new Set([
+  "waba-v2.360dialog.io",
+  "waba-sandbox.360dialog.io",
+]);
+
+function validateDialog360Credentials(
+  baseUrl: string | null | undefined,
+  credentials: ProviderCredentials,
+) {
+  const apiKey = providerValue(credentials, "apiKey");
+  const displayPhoneNumber = providerValue(credentials, "displayPhoneNumber");
+  const webhookSecret = providerValue(credentials, "webhookSecret");
+
+  if (!apiKey || !displayPhoneNumber || !webhookSecret) {
+    throw new Error("DIALOG360_FIELDS_REQUIRED");
+  }
+
+  const normalizedPhone = displayPhoneNumber.replace(/\D/g, "");
+  if (normalizedPhone.length < 8 || normalizedPhone.length > 15) {
+    throw new Error("DIALOG360_PHONE_INVALID");
+  }
+
+  if (webhookSecret.length < 24) {
+    throw new Error("DIALOG360_WEBHOOK_SECRET_TOO_SHORT");
+  }
+
+  const normalizedBaseUrl = requireHttpsUrl(
+    String(baseUrl || "https://waba-v2.360dialog.io").trim(),
+    "DIALOG360_HTTPS_BASE_URL_REQUIRED",
+  );
+  const url = new URL(normalizedBaseUrl);
+
+  if (!DIALOG360_ALLOWED_HOSTS.has(url.hostname.toLowerCase())) {
+    throw new Error("DIALOG360_BASE_URL_NOT_ALLOWED");
+  }
+
+  return {
+    apiKey,
+    displayPhoneNumber: normalizedPhone,
+    webhookSecret,
+    normalizedBaseUrl: `${url.origin}${url.pathname.replace(/\/+$/, "")}`,
+  };
+}
+
+function providerGroup(provider: RevenueProvider): RevenueProvider[] {
+  if (
+    provider === "PAYLINK" ||
+    provider === "NGENIUS" ||
+    provider === "CUSTOM_PAYMENT"
+  ) {
+    return ["PAYLINK", "NGENIUS", "CUSTOM_PAYMENT"];
+  }
+
+  if (provider === "RESEND" || provider === "SMTP") {
+    return ["RESEND", "SMTP"];
+  }
+
+  if (provider === "DIALOG360") {
+    return ["DIALOG360"];
+  }
+
+  return [provider];
 }
 
 function normalizedProvider(value: string): RevenueProvider {
@@ -53,6 +251,26 @@ async function expectOk(response: Response, provider: RevenueProvider) {
 }
 
 async function testProvider(provider: RevenueProvider, baseUrl: string | null, credentials: ProviderCredentials) {
+  if (provider === "CUSTOM_PAYMENT") {
+    return validateCustomPaymentCredentials(baseUrl, credentials);
+  }
+
+  if (provider === "DIALOG360") {
+    const validated = validateDialog360Credentials(baseUrl, credentials);
+    const response = await fetch(
+      `${validated.normalizedBaseUrl}/health_status`,
+      {
+        headers: {
+          "D360-API-KEY": validated.apiKey,
+          Accept: "application/json",
+          "User-Agent": "ORCA-CRM/1.0",
+        },
+        signal: AbortSignal.timeout(12_000),
+      },
+    );
+    return expectOk(response, provider);
+  }
+
   if (provider === "RESEND") {
     const apiKey = providerValue(credentials, "apiKey");
     if (!apiKey) throw new Error("RESEND_API_KEY_REQUIRED");
@@ -127,6 +345,99 @@ async function testProvider(provider: RevenueProvider, baseUrl: string | null, c
   return expectOk(response, provider);
 }
 
+
+export async function getDefaultPaymentProviderRuntime(
+  tenantId: string,
+) {
+  const connection =
+    await rawPrisma.revenueProviderConnection.findFirst({
+      where: {
+        tenantId,
+        isDefault: true,
+        status: "CONNECTED",
+        provider: { in: ["NGENIUS", "CUSTOM_PAYMENT"] },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+  if (!connection) {
+    throw new Error(
+      "DEFAULT_PAYMENT_PROVIDER_NOT_CONFIGURED",
+    );
+  }
+
+  const provider = normalizedProvider(connection.provider);
+  const credentials = decryptProviderCredentials(
+    connection.encryptedCredentials,
+  );
+
+  if (provider === "CUSTOM_PAYMENT") {
+    validateCustomPaymentCredentials(
+      connection.baseUrl,
+      credentials,
+    );
+  }
+
+  if (
+    provider === "NGENIUS" &&
+    (!providerValue(credentials, "apiKey") ||
+      !providerValue(credentials, "outletId"))
+  ) {
+    throw new Error(
+      "NGENIUS_API_KEY_AND_OUTLET_REQUIRED",
+    );
+  }
+
+  return {
+    connectionId: connection.id,
+    tenantId: connection.tenantId,
+    provider,
+    baseUrl: connection.baseUrl,
+    credentials,
+  };
+}
+
+export async function getPaymentProviderRuntimeByConnectionId(
+  connectionId: string,
+) {
+  const normalizedId = String(connectionId || "").trim();
+  if (!normalizedId) {
+    throw new Error("PAYMENT_PROVIDER_CONNECTION_ID_REQUIRED");
+  }
+
+  const connection =
+    await rawPrisma.revenueProviderConnection.findFirst({
+      where: {
+        id: normalizedId,
+        status: "CONNECTED",
+      },
+    });
+
+  if (!connection) {
+    throw new Error("PAYMENT_PROVIDER_CONNECTION_NOT_ACTIVE");
+  }
+
+  const provider = normalizedProvider(connection.provider);
+  const credentials = decryptProviderCredentials(
+    connection.encryptedCredentials,
+  );
+
+  if (provider === "CUSTOM_PAYMENT") {
+    validateCustomPaymentCredentials(
+      connection.baseUrl,
+      credentials,
+    );
+  }
+
+  return {
+    connectionId: connection.id,
+    tenantId: connection.tenantId,
+    provider,
+    baseUrl: connection.baseUrl,
+    credentials,
+  };
+}
+
 export async function saveProviderConnection(input: {
   tenantId: string;
   actorId: string;
@@ -137,11 +448,35 @@ export async function saveProviderConnection(input: {
 }) {
   const provider = normalizedProvider(input.provider);
   if (!input.credentials || Object.keys(input.credentials).length === 0) throw new Error("PROVIDER_CREDENTIALS_REQUIRED");
+  if (provider === "CUSTOM_PAYMENT") {
+    validateCustomPaymentCredentials(input.baseUrl, input.credentials);
+  }
+  if (provider === "DIALOG360") {
+    validateDialog360Credentials(input.baseUrl, input.credentials);
+  }
   const encryptedCredentials = encryptCredentials(input.credentials);
   const webhookSecret = providerValue(input.credentials, "webhookSecret");
   const webhookSecretHash = webhookSecret ? createHash("sha256").update(webhookSecret).digest("hex") : null;
 
-  const existing = await rawPrisma.revenueProviderConnection.findFirst({ where: { tenantId: input.tenantId, provider } });
+  const existing = await rawPrisma.revenueProviderConnection.findFirst({
+    where: { tenantId: input.tenantId, provider },
+  });
+  const existingMetadata =
+    existing?.metadata &&
+    typeof existing.metadata === "object" &&
+    !Array.isArray(existing.metadata)
+      ? (existing.metadata as Record<string, unknown>)
+      : {};
+  const webhookToken =
+    provider === "DIALOG360"
+      ? String(existingMetadata.webhookToken || "").trim() ||
+        randomBytes(24).toString("base64url")
+      : null;
+  const connectionMetadata =
+    provider === "DIALOG360"
+      ? { ...existingMetadata, webhookToken }
+      : existingMetadata;
+
   const saved = existing
     ? await rawPrisma.revenueProviderConnection.update({
         where: { id: existing.id },
@@ -152,6 +487,7 @@ export async function saveProviderConnection(input: {
           isDefault: Boolean(input.isDefault),
           status: "PENDING",
           webhookSecretHash,
+          metadata: connectionMetadata as any,
           lastError: null,
           updatedBy: input.actorId,
         },
@@ -165,7 +501,7 @@ export async function saveProviderConnection(input: {
           isDefault: Boolean(input.isDefault),
           status: "PENDING",
           webhookSecretHash,
-          metadata: {},
+          metadata: connectionMetadata as any,
           createdBy: input.actorId,
           updatedBy: input.actorId,
         },
@@ -173,7 +509,15 @@ export async function saveProviderConnection(input: {
 
   if (input.isDefault) {
     await rawPrisma.revenueProviderConnection.updateMany({
-      where: { tenantId: input.tenantId, provider: { not: provider }, isDefault: true },
+      where: {
+        tenantId: input.tenantId,
+        provider: {
+          in: providerGroup(provider).filter(
+            (candidate) => candidate !== provider,
+          ),
+        },
+        isDefault: true,
+      },
       data: { isDefault: false },
     });
   }
@@ -193,7 +537,7 @@ export async function testProviderConnection(tenantId: string, actorId: string, 
   const provider = normalizedProvider(providerValueInput);
   const connection = await rawPrisma.revenueProviderConnection.findFirst({ where: { tenantId, provider } });
   if (!connection || connection.status === "DISCONNECTED") throw new Error("PROVIDER_NOT_CONFIGURED");
-  const credentials = decryptCredentials(connection.encryptedCredentials);
+  const credentials = decryptProviderCredentials(connection.encryptedCredentials);
   const testedAt = new Date();
 
   try {
@@ -252,6 +596,14 @@ export function sanitizeConnection(connection: any) {
     lastSuccessAt: connection.lastSuccessAt?.toISOString?.() || null,
     lastError: connection.lastError,
     hasWebhookSecret: Boolean(connection.webhookSecretHash),
+    webhookToken:
+      connection.provider === "DIALOG360" &&
+      connection.metadata &&
+      typeof connection.metadata === "object" &&
+      !Array.isArray(connection.metadata) &&
+      typeof connection.metadata.webhookToken === "string"
+        ? connection.metadata.webhookToken
+        : null,
     createdAt: connection.createdAt?.toISOString?.() || null,
     updatedAt: connection.updatedAt?.toISOString?.() || null,
   };
@@ -263,7 +615,7 @@ export async function listProviderConnections(tenantId: string) {
   return REVENUE_PROVIDERS.map((provider) => map.get(provider) || {
     id: null, tenantId, provider, status: "NOT_CONFIGURED", baseUrl: null,
     credentialsVersion: 0, isDefault: false, lastTestedAt: null, lastSuccessAt: null,
-    lastError: null, hasWebhookSecret: false, createdAt: null, updatedAt: null,
+    lastError: null, hasWebhookSecret: false, webhookToken: null, createdAt: null, updatedAt: null,
   });
 }
 
@@ -353,7 +705,7 @@ export async function verifyAndStoreProviderWebhook(input: {
   const provider = normalizedProvider(input.provider);
   const connection = await rawPrisma.revenueProviderConnection.findFirst({ where: { id: input.connectionId, provider } });
   if (!connection || connection.status !== "CONNECTED") throw new Error("ACTIVE_PROVIDER_CONNECTION_REQUIRED");
-  const credentials = decryptCredentials(connection.encryptedCredentials);
+  const credentials = decryptProviderCredentials(connection.encryptedCredentials);
   const secret = providerValue(credentials, "webhookSecret");
   if (!secret) throw new Error("WEBHOOK_SECRET_NOT_CONFIGURED");
   const expected = createHmac("sha256", secret).update(input.rawBody).digest("hex");

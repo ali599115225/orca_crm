@@ -1,37 +1,160 @@
-import { httpErrorResponse } from "@/lib/http-error-response";
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { authenticateRequest } from '@/lib/api-auth';
-import { ErrorCode } from "@/lib/errors";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  DOCUMENT_DELETE_ROLES,
+  DOCUMENT_READ_ROLES,
+  DocumentAccessError,
+  runWithDocumentAccess,
+} from "@/lib/documents/access";
 
-export async function DELETE(
+export const runtime = "nodejs";
+
+function contentDisposition(name: string, download: boolean): string {
+  const fallback =
+    name
+      .replace(/[^\x20-\x7E]/g, "_")
+      .replace(/["\\]/g, "_")
+      .slice(0, 120) || "document";
+  return `${download ? "attachment" : "inline"}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+}
+
+function accessErrorResponse(error: DocumentAccessError) {
+  return NextResponse.json(
+    {
+      success: false,
+      code: error.code,
+      error:
+        error.status === 401
+          ? "انتهت الجلسة أو تعذر التحقق من المستخدم."
+          : "لا تملك الصلاحية المطلوبة.",
+    },
+    { status: error.status },
+  );
+}
+
+export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await authenticateRequest(request);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    return await runWithDocumentAccess(
+      DOCUMENT_READ_ROLES,
+      async (access) => {
+        const { id } = await params;
+        const document = await prisma.document.findFirst({
+          where: { id, tenantId: access.tenantId },
+          select: {
+            name: true,
+            mimeType: true,
+            size: true,
+            content: true,
+          },
+        });
+
+        if (!document) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DOCUMENT_NOT_FOUND",
+              error: "المستند غير موجود.",
+            },
+            { status: 404 },
+          );
+        }
+
+        const download = request.nextUrl.searchParams.get("download") === "1";
+        return new NextResponse(new Uint8Array(document.content), {
+          status: 200,
+          headers: {
+            "Content-Type": document.mimeType,
+            "Content-Length": String(document.size),
+            "Content-Disposition": contentDisposition(document.name, download),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store, max-age=0",
+            "Content-Security-Policy":
+              "default-src 'none'; sandbox; style-src 'unsafe-inline'; img-src 'self' data: blob:",
+          },
+        });
+      },
+    );
+  } catch (error) {
+    if (error instanceof DocumentAccessError) {
+      return accessErrorResponse(error);
     }
 
-    const { id } = await params;
-
-    const prismaAny = prisma as any;
-    const doc = await prismaAny.document.findFirst({
-      where: { id, tenantId: session.tenantId },
+    console.error("[DocumentsRepository] open failed", {
+      code: "DOCUMENT_OPEN_FAILED",
     });
-    if (!doc) {
-      return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
+    return NextResponse.json(
+      {
+        success: false,
+        code: "DOCUMENT_OPEN_FAILED",
+        error: "تعذر فتح المستند.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    return await runWithDocumentAccess(
+      DOCUMENT_DELETE_ROLES,
+      async (access) => {
+        const { id } = await params;
+        const existing = await prisma.document.findFirst({
+          where: { id, tenantId: access.tenantId },
+          select: { id: true },
+        });
+        if (!existing) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DOCUMENT_NOT_FOUND",
+              error: "المستند غير موجود.",
+            },
+            { status: 404 },
+          );
+        }
+
+        const deleted = await prisma.document.deleteMany({
+          where: { id, tenantId: access.tenantId },
+        });
+        if (deleted.count !== 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DOCUMENT_DELETE_CONFLICT",
+              error: "تعذر حذف المستند بسبب تعارض متزامن.",
+            },
+            { status: 409 },
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: "تم حذف المستند.",
+        });
+      },
+    );
+  } catch (error) {
+    if (error instanceof DocumentAccessError) {
+      return accessErrorResponse(error);
     }
 
-    const deleted = await prismaAny.document.deleteMany({
-      where: { id, tenantId: session.tenantId },
+    console.error("[DocumentsRepository] delete failed", {
+      code: "DOCUMENT_DELETE_FAILED",
     });
-    if (deleted.count !== 1) {
-      return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
-    }
-    return NextResponse.json({ success: true, message: 'تم حذف الملف' });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "DELETE /api/v1/documents/[id] failed", error, 500);
+    return NextResponse.json(
+      {
+        success: false,
+        code: "DOCUMENT_DELETE_FAILED",
+        error: "تعذر حذف المستند.",
+      },
+      { status: 500 },
+    );
   }
 }

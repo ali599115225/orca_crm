@@ -1,5 +1,3 @@
-// app/actions/sales.ts
-// Hardened: session + DB role check before exposing PII (sales rep performance data).
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -14,86 +12,108 @@ export interface SalesRepKPI {
   leadsCount: number;
   bookings: number;
   contracts: number;
-  conversionRate: string;
-  responseTime: string;
-  targetAchieved: number;
+  conversionRate: number;
+  responseMinutes: number | null;
+  performanceScore: number;
 }
 
-/**
- * جلب وتحليل مؤشرات الأداء الأساسية (KPIs) لفريق المبيعات بالشركة
- */
 export async function getSalesPerformanceAction(): Promise<SalesRepKPI[]> {
-  try {
-    // ── Auth: only managers and admins may see PII of all sales reps ─────────
-    const session = await getSession();
-    if (!session) return [];
-    await assertServerActionRole(session, ["ADMIN", "owner", "SALES_MANAGER"]);
+  const session = await getSession();
+  if (!session) throw new Error("UNAUTHORIZED");
 
-    const tenant = await getActiveTenant();
+  await assertServerActionRole(session, [
+    "ADMIN",
+    "owner",
+    "SALES_MANAGER",
+  ]);
 
-    // 1. جلب جميع الموظفين الذين لديهم صلاحيات مبيعات أو إدارة مبيعات لهذه الشركة العقارية
-    const salesUsers = await prisma.user.findMany({
-      where: {
-        tenantId: tenant.id,
-        role: { in: ["SALES_EMPLOYEE", "SALES_MANAGER", "ADMIN"] },
-      },
-      include: {
-        leads: {
-          select: {
-            id: true,
-            status: true,
-          },
+  const tenant = await getActiveTenant();
+
+  const salesUsers = await prisma.user.findMany({
+    where: {
+      tenantId: tenant.id,
+      role: { in: ["SALES_EMPLOYEE", "SALES_MANAGER", "ADMIN"] },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      leads: {
+        where: {
+          isArchived: false,
+        },
+        select: {
+          status: true,
+          createdAt: true,
+          lastContactedAt: true,
         },
       },
-    });
+    },
+  });
 
-    // 2. تجميع وتحليل البيانات وحساب نسب التحويل تلقائياً لكل موظف
-    const performanceData = salesUsers.map((user) => {
-      const totalLeads = user.leads.length;
-
-      // حساب عدد الحجوزات النشطة (RESERVED)
-      const bookings = user.leads.filter((l) => l.status === "RESERVED").length;
-
-      // حساب العقود الموقعة نهائياً (CONTRACT_SIGNED أو WON)
+  return salesUsers
+    .map((user) => {
+      const leadsCount = user.leads.length;
+      const bookings = user.leads.filter(
+        (lead) => lead.status === "RESERVED",
+      ).length;
       const contracts = user.leads.filter(
-        (l) => l.status === "CONTRACT_SIGNED" || l.status === "WON"
+        (lead) =>
+          lead.status === "CONTRACT_SIGNED" || lead.status === "WON",
       ).length;
 
-      // حساب معدل التحويل الكلي (حجوزات + مبيعات نهائية مقسومة على إجمالي العملاء)
       const successfulDeals = bookings + contracts;
       const conversionRate =
-        totalLeads > 0 ? ((successfulDeals / totalLeads) * 100).toFixed(1) : "0.0";
+        leadsCount > 0
+          ? Number(((successfulDeals / leadsCount) * 100).toFixed(1))
+          : 0;
 
-      // تقدير سرعة الاستجابة بشكل ديناميكي بسيط بناءً على بيانات المستشار
-      let simulatedResponseTime = "15 دقيقة";
-      if (user.role === "ADMIN") simulatedResponseTime = "5 دقائق";
-      else if (user.name.includes("الغامدي")) simulatedResponseTime = "8 دقائق";
-      else if (user.name.includes("العتيبي")) simulatedResponseTime = "11 دقيقة";
+      const responseSamples = user.leads
+        .filter(
+          (lead) =>
+            lead.lastContactedAt &&
+            lead.lastContactedAt.getTime() >= lead.createdAt.getTime(),
+        )
+        .map(
+          (lead) =>
+            (lead.lastContactedAt!.getTime() - lead.createdAt.getTime()) /
+            60_000,
+        );
 
-      // قياس الهدف المستهدف (مثال: مستهدف 15 عملية بيع أو حجز شهرياً)
-      const monthlyTarget = 15;
-      const targetAchieved = Math.min(
-        Math.round((successfulDeals / monthlyTarget) * 100),
-        100
-      );
+      const responseMinutes =
+        responseSamples.length > 0
+          ? Math.round(
+              responseSamples.reduce((sum, value) => sum + value, 0) /
+                responseSamples.length,
+            )
+          : null;
+
+      const performanceScore =
+        leadsCount > 0
+          ? Math.min(
+              100,
+              Math.round(
+                ((contracts * 1 + bookings * 0.5) / leadsCount) * 100,
+              ),
+            )
+          : 0;
 
       return {
         id: user.id,
         name: user.name,
         email: user.email,
-        leadsCount: totalLeads,
+        leadsCount,
         bookings,
         contracts,
-        conversionRate: `${conversionRate}%`,
-        responseTime: simulatedResponseTime,
-        targetAchieved,
+        conversionRate,
+        responseMinutes,
+        performanceScore,
       };
-    });
-
-    // ترتيب الموظفين حسب النسبة الأعلى لتحقيق الأهداف لإنشاء لوحة شرف للمبيعات
-    return performanceData.sort((a, b) => b.targetAchieved - a.targetAchieved);
-  } catch (error) {
-    console.error("فشل جلب تحليلات أداء المبيعات:", error);
-    return [];
-  }
+    })
+    .sort(
+      (a, b) =>
+        b.contracts - a.contracts ||
+        b.bookings - a.bookings ||
+        b.conversionRate - a.conversionRate,
+    );
 }

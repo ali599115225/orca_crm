@@ -115,7 +115,7 @@ export default function InvoicesWorkspace({
         return;
       }
 
-      const response = await fetch(`/api/v1/installments/${nextInstallment.id}/pay/ngenius`, {
+      const response = await fetch(`/api/v1/installments/${nextInstallment.id}/pay`, {
         method: 'POST',
         credentials: 'include',
       });

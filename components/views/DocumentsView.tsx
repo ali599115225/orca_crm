@@ -1,584 +1,1062 @@
-// components/views/DocumentsView.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useApp } from '@/app/context/AppContext';
-import { toast } from '@/app/context/ToastContext';
-import { getDocumentsAction, createDocumentActionDirect, deleteDocumentActionDirect } from '@/app/actions/documents';
-import { SmartCard } from '@/components/ui/SmartCard';
-import PageHeader from '@/components/ui/PageHeader';
-import { formatDisplayDate } from '@/lib/display/dateTime';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+  Download,
+  ExternalLink,
+  File,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  FolderOpen,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+  X,
+} from "lucide-react";
+import { useApp } from "@/app/context/AppContext";
+
+type DocumentType = "CONTRACT" | "BLUEPRINT" | "ID" | "IMAGE" | "OTHER";
 
 interface DocumentItem {
   id: string;
   name: string;
-  url: string;
-  type: 'CONTRACT' | 'BLUEPRINT' | 'ID' | 'IMAGE' | 'OTHER';
-  linkedTo?: string | null;
-  linkedType?: 'PROPERTY' | 'PROJECT' | 'LEAD' | null;
+  type: DocumentType;
+  status: string;
+  mimeType: string;
+  extension: string;
   size: number;
+  ownerName: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+const DOCUMENT_TYPES: Array<{
+  value: "ALL" | DocumentType;
+  ar: string;
+  en: string;
+}> = [
+  { value: "ALL", ar: "كل الأنواع", en: "All types" },
+  { value: "CONTRACT", ar: "عقد", en: "Contract" },
+  { value: "BLUEPRINT", ar: "مخطط", en: "Blueprint" },
+  { value: "ID", ar: "هوية", en: "ID" },
+  { value: "IMAGE", ar: "صورة", en: "Image" },
+  { value: "OTHER", ar: "أخرى", en: "Other" },
+];
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "غير محدد";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(date)
+    .replace(",", "");
+}
+
+function formatSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
+  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function documentTypeLabel(type: string, isArabic: boolean): string {
+  const item = DOCUMENT_TYPES.find((entry) => entry.value === type);
+  return item ? (isArabic ? item.ar : item.en) : isArabic ? "أخرى" : "Other";
+}
+
+function DocumentIcon({
+  item,
+  className = "h-5 w-5",
+}: {
+  item: DocumentItem;
+  className?: string;
+}) {
+  if (item.mimeType.startsWith("image/")) {
+    return <FileImage className={className} aria-hidden="true" />;
+  }
+  if (
+    item.extension === "xlsx" ||
+    item.extension === "csv"
+  ) {
+    return <FileSpreadsheet className={className} aria-hidden="true" />;
+  }
+  if (
+    item.mimeType === "application/pdf" ||
+    item.extension === "docx" ||
+    item.extension === "txt"
+  ) {
+    return <FileText className={className} aria-hidden="true" />;
+  }
+  return <File className={className} aria-hidden="true" />;
+}
+
+function messageForCode(code: string | undefined, isArabic: boolean): string {
+  const messages: Record<string, [string, string]> = {
+    EMPTY_FILE: ["الملف فارغ.", "The file is empty."],
+    FILE_TOO_LARGE: ["حجم الملف يتجاوز 10 ميجابايت.", "The file exceeds 10 MB."],
+    UNSAFE_FILE_NAME: ["اسم الملف أو امتداده غير آمن.", "The file name or extension is unsafe."],
+    INVALID_FILE_TYPE: ["نوع الملف غير مسموح به.", "The file type is not allowed."],
+    FILE_SIGNATURE_MISMATCH: ["محتوى الملف لا يطابق امتداده.", "The file content does not match its extension."],
+    DOCUMENT_FORBIDDEN: ["لا تملك الصلاحية المطلوبة.", "You do not have the required permission."],
+    DOCUMENT_UNAUTHENTICATED: ["انتهت الجلسة. سجّل الدخول مجددًا.", "Your session has expired. Sign in again."],
+    DOCUMENT_ACTOR_NOT_FOUND: ["تعذر التحقق من المستخدم داخل المنشأة.", "The tenant user could not be verified."],
+    DOCUMENTS_LOAD_FAILED: ["تعذر تحميل مستودع المستندات.", "Unable to load the document repository."],
+  };
+  const value = messages[String(code || "")];
+  return value
+    ? value[isArabic ? 0 : 1]
+    : isArabic
+      ? "تعذر إكمال العملية."
+      : "The operation could not be completed.";
 }
 
 export default function DocumentsView() {
-  const { theme, lang } = useApp();
-  const isArabic = lang === 'AR';
-  const dir = isArabic ? 'rtl' : 'ltr';
+  const { lang } = useApp();
+  const isArabic = lang === "AR";
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filterType, setFilterType] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Upload panel state
+  const [canUpload, setCanUpload] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | DocumentType>("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [ownerFilter, setOwnerFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("ALL");
+  const [portalReady, setPortalReady] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
+  const [uploadType, setUploadType] = useState<DocumentType>("OTHER");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
-  // Form fields for upload
-  const [docType, setDocType] = useState<'CONTRACT' | 'BLUEPRINT' | 'ID' | 'IMAGE' | 'OTHER'>('CONTRACT');
-  const [linkedTo, setLinkedTo] = useState('');
-  const [linkedType, setLinkedType] = useState<'PROPERTY' | 'PROJECT' | 'LEAD' | ''>('');
+  useEffect(() => setPortalReady(true), []);
 
-  // Preview modal
-  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
-
-  const fetchDocs = async () => {
+  const loadDocuments = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getDocumentsAction();
-      if (res.success && res.data) {
-        setDocuments(res.data as any[]);
+      const response = await fetch("/api/v1/documents", {
+        cache: "no-store",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.code || "DOCUMENTS_LOAD_FAILED");
       }
-    } catch (err) {
-      console.error('Failed to fetch documents:', err);
+      const data = Array.isArray(payload.data) ? payload.data : [];
+      setDocuments(data);
+      setCanUpload(Boolean(payload.permissions?.canUpload));
+      setCanDelete(Boolean(payload.permissions?.canDelete));
+      setSelectedId((current) =>
+        current && data.some((item: DocumentItem) => item.id === current)
+          ? current
+          : data[0]?.id || "",
+      );
+    } catch (error) {
+      setDocuments([]);
+      setNotice({
+        type: "error",
+        text: messageForCode(
+          error instanceof Error ? error.message : "DOCUMENTS_LOAD_FAILED",
+          isArabic,
+        ),
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [isArabic]);
 
   useEffect(() => {
-    fetchDocs();
-  }, []);
+    void loadDocuments();
+  }, [loadDocuments]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    await uploadFile(file);
+  const owners = useMemo(
+    () =>
+      [...new Set(documents.map((item) => item.ownerName).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [documents],
+  );
+
+  const filtered = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    const now = Date.now();
+
+    return documents.filter((item) => {
+      const matchesSearch =
+        !normalized ||
+        item.name.toLowerCase().includes(normalized) ||
+        item.extension.toLowerCase().includes(normalized) ||
+        item.ownerName.toLowerCase().includes(normalized);
+      const matchesType =
+        typeFilter === "ALL" || item.type === typeFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || item.status === statusFilter;
+      const matchesOwner =
+        ownerFilter === "ALL" || item.ownerName === ownerFilter;
+
+      const created = new Date(item.createdAt).getTime();
+      const age = now - created;
+      const matchesDate =
+        dateFilter === "ALL" ||
+        (dateFilter === "TODAY" && age <= 24 * 60 * 60 * 1000) ||
+        (dateFilter === "7D" && age <= 7 * 24 * 60 * 60 * 1000) ||
+        (dateFilter === "30D" && age <= 30 * 24 * 60 * 60 * 1000);
+
+      return (
+        matchesSearch &&
+        matchesType &&
+        matchesStatus &&
+        matchesOwner &&
+        matchesDate
+      );
+    });
+  }, [documents, search, typeFilter, statusFilter, ownerFilter, dateFilter]);
+
+  const selected = useMemo(
+    () =>
+      filtered.find((item) => item.id === selectedId) ||
+      documents.find((item) => item.id === selectedId) ||
+      filtered[0] ||
+      null,
+    [documents, filtered, selectedId],
+  );
+
+  const chooseFile = (file: File | null) => {
+    if (!file) return;
+    setUploadFile(file);
+    setNotice(null);
   };
 
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      await uploadFile(files[0]);
-    }
-  };
-
-  const uploadFile = async (file: File) => {
-    setUploading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
-
-      const res = await createDocumentActionDirect({
-        name: file.name,
-        type: docType,
-        linkedTo: linkedTo || null,
-        linkedType: linkedType || null,
-        size: file.size,
-        fileContent: base64,
+  const submitUpload = async () => {
+    if (!uploadFile) {
+      setNotice({
+        type: "error",
+        text: isArabic ? "اختر ملفًا للرفع." : "Select a file to upload.",
       });
-
-      if (res.success) {
-        setSuccess(isArabic ? 'تم رفع المستند بنجاح وحفظه بالمستودع.' : 'Document uploaded successfully.');
-        fetchDocs();
-        setLinkedTo('');
-        setLinkedType('');
-      } else {
-        setError(res.error || 'Upload failed');
-      }
-    } catch (err: any) {
-      setError(isArabic ? 'حدث خطأ في الاتصال بالخادم.' : 'Connection error.');
-    } finally {
-      setUploading(false);
-      setTimeout(() => {
-        setSuccess(null);
-        setError(null);
-      }, 4000);
+      return;
     }
-  };
 
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-
-  const handleDelete = async (id: string) => {
-    setConfirmDelete(id);
-  };
-
-  const confirmDeleteFile = async () => {
-    if (!confirmDelete) return;
+    setBusy(true);
+    setNotice(null);
     try {
-      const res = await deleteDocumentActionDirect(confirmDelete);
-      if (res.success) {
-        setSuccess(isArabic ? 'تم حذف الملف بنجاح.' : 'File deleted.');
-        setDocuments(documents.filter(d => d.id !== confirmDelete));
-        if (previewDoc?.id === confirmDelete) setPreviewDoc(null);
-      } else {
-        setError(res.error || 'Delete failed');
+      const formData = new FormData();
+      formData.set("file", uploadFile);
+      formData.set("type", uploadType);
+
+      const response = await fetch("/api/v1/documents", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.code || "DOCUMENT_UPLOAD_FAILED");
       }
-    } catch (err) {
-      setError('Connection error');
+
+      setUploadOpen(false);
+      setUploadFile(null);
+      setNotice({
+        type: "success",
+        text: isArabic
+          ? "تم رفع المستند وحفظه فعليًا."
+          : "The document was uploaded and stored.",
+      });
+      await loadDocuments();
+      if (payload.data?.id) setSelectedId(payload.data.id);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text: messageForCode(
+          error instanceof Error ? error.message : undefined,
+          isArabic,
+        ),
+      });
     } finally {
-      setConfirmDelete(null);
-      setTimeout(() => setSuccess(null), 3000);
+      setBusy(false);
     }
   };
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getDocTypeLabel = (type: string) => {
-    switch (type) {
-      case 'CONTRACT': return isArabic ? 'عقد موحد' : 'Contract';
-      case 'BLUEPRINT': return isArabic ? 'مخطط كروكي' : 'Blueprint';
-      case 'ID': return isArabic ? 'بطاقة هوية' : 'ID Document';
-      case 'IMAGE': return isArabic ? 'صورة عقار' : 'Image';
-      default: return isArabic ? 'ملحقات أخرى' : 'Other';
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/v1/documents/${deleteTarget.id}`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload?.success) {
+        throw new Error(
+          response.status === 403
+            ? "DOCUMENT_FORBIDDEN"
+            : payload?.code || "DOCUMENT_DELETE_FAILED",
+        );
+      }
+      setDeleteTarget(null);
+      setNotice({
+        type: "success",
+        text: isArabic
+          ? "تم حذف المستند."
+          : "The document was deleted.",
+      });
+      await loadDocuments();
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text: messageForCode(
+          error instanceof Error ? error.message : undefined,
+          isArabic,
+        ),
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
-  const getDocIcon = (type: string) => {
-    switch (type) {
-      case 'CONTRACT': return 'ph-file-text text-emerald-500';
-      case 'BLUEPRINT': return 'ph-compass text-blue-500';
-      case 'ID': return 'ph-identification-card text-purple-500';
-      case 'IMAGE': return 'ph-image text-amber-500';
-      default: return 'ph-file text-[var(--nc-foreground-muted)]';
-    }
-  };
+  const previewUrl = selected
+    ? `/api/v1/documents/${selected.id}`
+    : "";
+  const canPreviewInline = Boolean(
+    selected &&
+      (selected.mimeType.startsWith("image/") ||
+        selected.mimeType === "application/pdf" ||
+        selected.extension === "txt" ||
+        selected.extension === "csv"),
+  );
 
-  const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          doc.type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'ALL' || doc.type === filterType;
-    return matchesSearch && matchesType;
-  });
-
-  const DOCS_TITLE = {
-    AR: { title: 'مستودع الوثائق المشترك', desc: 'تحكَّم في مخططات المشاريع، العقود والبطاقات بمكان مركزي آمن.' },
-    EN: { title: 'Shared Document Repository', desc: 'Manage project blueprints, contracts and IDs in one secure central location.' },
-  };
-  const pageText = DOCS_TITLE[lang] || DOCS_TITLE.AR;
+  const documentKpis = [
+    {
+      label: isArabic ? "إجمالي المستندات" : "Total documents",
+      value: documents.length,
+    },
+    {
+      label: isArabic ? "العقود" : "Contracts",
+      value: documents.filter((item) => item.type === "CONTRACT").length,
+    },
+    {
+      label: isArabic ? "الصور والمخططات" : "Images & blueprints",
+      value: documents.filter((item) =>
+        ["IMAGE", "BLUEPRINT"].includes(item.type),
+      ).length,
+    },
+    {
+      label: isArabic ? "المالكون" : "Owners",
+      value: owners.length,
+    },
+  ];
 
   return (
-    <div className="space-y-5 p-6" dir={dir}>
+    <section
+      dir={isArabic ? "rtl" : "ltr"}
+      className="nc-page nc-stack orca-container pb-4"
+      data-documents-property-workspace
+    >
+      <header className="orca-workspace-hero">
+        <div>
+          <p className="text-xs font-bold text-[var(--nc-accent)]">
+            {isArabic
+              ? "المستند ← المالك ← المعاينة ← التنزيل"
+              : "Document → owner → preview → download"}
+          </p>
+          <h1 className="mt-1 text-2xl font-black">
+            {isArabic ? "مستودع المستندات" : "Document Repository"}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
+            {isArabic
+              ? "إدارة الملفات التشغيلية والبحث فيها ومعاينتها وتنزيلها من مساحة عمل موحدة."
+              : "Manage, search, preview, and download operational files from one unified workspace."}
+          </p>
+        </div>
 
-      <PageHeader title={pageText.title} description={pageText.desc} />
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadDocuments()}
+            disabled={loading}
+            className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw
+              size={15}
+              className={loading ? "animate-spin" : ""}
+              aria-hidden="true"
+            />
+            {isArabic ? "تحديث" : "Refresh"}
+          </button>
 
-      {/* Messages */}
-      {success && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold animate-pulse">
-          {success}
+          {canUpload && (
+            <button
+              type="button"
+              onClick={() => setUploadOpen(true)}
+              className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
+            >
+              <Upload size={16} aria-hidden="true" />
+              {isArabic ? "رفع مستند" : "Upload document"}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {notice && (
+        <div
+          role={notice.type === "error" ? "alert" : "status"}
+          className={
+            notice.type === "success"
+              ? "rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+              : "rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-300"
+          }
+        >
+          {notice.text}
         </div>
       )}
-      {error && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
-          {error}
-        </div>
-      )}
 
-      {/* ── Document Grid Card (full width, no title) ── */}
-      <SmartCard className="p-5 space-y-4">
-        {/* Toolbar: filters + search + view toggle */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div className="flex flex-wrap gap-1.5">
-            {['ALL', 'CONTRACT', 'BLUEPRINT', 'ID', 'IMAGE', 'OTHER'].map(type => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                  filterType === type
-                    ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)] border-transparent shadow-sm'
-                    : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:border-[var(--nc-accent-border)]'
-                }`}
-              >
-                {type === 'ALL' ? (isArabic ? 'الكل' : 'All') : getDocTypeLabel(type)}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Search */}
-            <div className="relative w-full sm:w-44 bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] rounded-lg px-3 py-2 flex items-center gap-1.5">
-              <i className="ph ph-magnifying-glass text-[var(--nc-foreground-muted)] text-xs"></i>
-              <label htmlFor="doc-search" className="sr-only">{isArabic ? 'ابحث باسم الملف' : 'Search files'}</label>
-              <input
-                id="doc-search"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isArabic ? 'ابحث باسم الملف...' : 'Search files...'}
-                className="bg-transparent border-none outline-none text-xs w-full text-[var(--nc-foreground)] font-bold"
-              />
+      <div className="orca-workspace-metrics">
+        {[
+          {
+            label: isArabic ? "إجمالي المستندات" : "Total documents",
+            value: documents.length,
+            icon: FolderOpen,
+          },
+          {
+            label: isArabic ? "العقود" : "Contracts",
+            value: documents.filter((item) => item.type === "CONTRACT").length,
+            icon: FileText,
+          },
+          {
+            label: isArabic ? "الصور والمخططات" : "Images & blueprints",
+            value: documents.filter((item) =>
+              ["IMAGE", "BLUEPRINT"].includes(item.type),
+            ).length,
+            icon: FileImage,
+          },
+          {
+            label: isArabic ? "المالكون" : "Owners",
+            value: owners.length,
+            icon: Users,
+          },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="orca-workspace-metric min-h-[96px]">
+            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
+              <span>{label}</span>
+              <Icon size={17} aria-hidden="true" />
             </div>
-            {/* View mode */}
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'grid' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
-              aria-label="عرض شبكي"
-            >
-              <i className="ph ph-squares-four"></i>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition-colors ${viewMode === 'list' ? 'bg-[var(--nc-accent-soft)] border-[var(--nc-accent-border)] text-[var(--nc-accent-text)]' : 'border-[var(--nc-border)] text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)]'}`}
-              aria-label="عرض قائمة"
-            >
-              <i className="ph ph-list"></i>
-            </button>
+            <strong className="mt-3 block text-2xl" dir="ltr">
+              {value}
+            </strong>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Documents Grid/List */}
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-8 h-8 border-3 border-[var(--nc-accent-border)] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-            <p className="text-xs text-[var(--nc-foreground-muted)]">{isArabic ? 'جاري الاتصال بمستودع الملفات...' : 'Syncing document archive...'}</p>
-          </div>
-        ) : filteredDocs.length === 0 ? (
-          <div className="py-20 border border-dashed border-[var(--nc-border)] rounded-2xl text-center text-[var(--nc-foreground-muted)]">
-            <i className="ph ph-file-x text-4xl block mb-2 opacity-50"></i>
-            <p className="text-xs">{isArabic ? 'لم نعثر على أي مستندات تطابق الفلتر.' : 'No files matching criteria.'}</p>
-          </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredDocs.map(doc => (
-              <div
-                key={doc.id}
-                className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-4 rounded-xl shadow-sm hover:border-[var(--nc-accent-border)]/40 transition-all flex flex-col justify-between group h-40"
+      <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+        <span className="text-[var(--nc-text-secondary)]">
+          {isArabic ? "النتائج المطابقة" : "Matching results"}:
+        </span>
+        <strong dir="ltr">{filtered.length}</strong>
+        <span className="text-[var(--nc-border)]">|</span>
+        <span className="text-[var(--nc-text-secondary)]">
+          {isArabic ? "الصيغ المدعومة" : "Supported formats"}:
+        </span>
+        <strong dir="ltr">PDF · JPG · PNG · WEBP · DOCX · XLSX · TXT · CSV</strong>
+      </div>
+
+      <div
+        dir="ltr"
+        className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_410px]"
+        data-four-page-two-card-workspace
+      >
+        <section
+          dir={isArabic ? "rtl" : "ltr"}
+          className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden lg:h-[520px]"
+          data-operational-list-card
+        >
+          <div className="orca-workspace-toolbar border-b border-[var(--nc-border)] p-3">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_150px_150px]">
+              <label className="relative min-w-0">
+                <Search
+                  size={16}
+                  className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${
+                    isArabic ? "right-3" : "left-3"
+                  }`}
+                  aria-hidden="true"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={
+                    isArabic
+                      ? "ابحث بالاسم أو النوع أو المالك..."
+                      : "Search by name, type, or owner..."
+                  }
+                  className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
+                    isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
+                  }`}
+                />
+              </label>
+
+              <select
+                aria-label={isArabic ? "تصفية حسب النوع" : "Filter by type"}
+                value={typeFilter}
+                onChange={(event) =>
+                  setTypeFilter(event.target.value as "ALL" | DocumentType)
+                }
+                className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-bold text-[var(--nc-foreground)]"
               >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center">
-                      <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
-                    </div>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/10 text-rose-500 rounded transition-opacity"
-                      aria-label="حذف المستند"
-                    >
-                      <i className="ph ph-trash"></i>
-                    </button>
-                  </div>
+                {DOCUMENT_TYPES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {isArabic ? item.ar : item.en}
+                  </option>
+                ))}
+              </select>
 
-                  <h4 className="font-bold text-xs text-[var(--nc-foreground)] truncate" title={doc.name}>
-                    {doc.name}
-                  </h4>
+              <select
+                aria-label={isArabic ? "تصفية حسب الحالة" : "Filter by status"}
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-bold text-[var(--nc-foreground)]"
+              >
+                <option value="ALL">
+                  {isArabic ? "كل الحالات" : "All statuses"}
+                </option>
+                <option value="READY">{isArabic ? "جاهز" : "Ready"}</option>
+              </select>
+            </div>
 
-                  <div className="flex items-center gap-2 text-[10px] text-[var(--nc-foreground-muted)]">
-                    <span>{formatSize(doc.size)}</span>
-                    <span>•</span>
-                    <span>{getDocTypeLabel(doc.type)}</span>
-                  </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <select
+                aria-label={isArabic ? "تصفية حسب المالك" : "Filter by owner"}
+                value={ownerFilter}
+                onChange={(event) => setOwnerFilter(event.target.value)}
+                className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-bold text-[var(--nc-foreground)]"
+              >
+                <option value="ALL">
+                  {isArabic ? "كل المالكين" : "All owners"}
+                </option>
+                {owners.map((owner) => (
+                  <option key={owner} value={owner}>
+                    {owner}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label={isArabic ? "تصفية حسب التاريخ" : "Filter by date"}
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+                className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 text-sm font-bold text-[var(--nc-foreground)]"
+              >
+                <option value="ALL">
+                  {isArabic ? "كل التواريخ" : "All dates"}
+                </option>
+                <option value="TODAY">
+                  {isArabic ? "آخر 24 ساعة" : "Last 24 hours"}
+                </option>
+                <option value="7D">
+                  {isArabic ? "آخر 7 أيام" : "Last 7 days"}
+                </option>
+                <option value="30D">
+                  {isArabic ? "آخر 30 يومًا" : "Last 30 days"}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-[52px] shrink-0 items-center justify-between border-b border-[var(--nc-border)] px-4">
+              <div className="flex items-center gap-2">
+                <Filter
+                  className="h-4 w-4 text-[var(--nc-text-secondary)]"
+                  aria-hidden="true"
+                />
+                <h2 className="text-sm font-black">
+                  {isArabic ? "المستندات" : "Documents"}
+                </h2>
+              </div>
+              <span
+                className="text-xs font-bold text-[var(--nc-text-secondary)]"
+                dir="ltr"
+              >
+                {filtered.length}
+              </span>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table className="w-full min-w-[820px] text-sm">
+                <thead className="sticky top-0 z-10 bg-[var(--nc-surface-solid)] text-xs text-[var(--nc-text-secondary)]">
+                  <tr>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "الملف" : "File"}
+                    </th>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "النوع" : "Type"}
+                    </th>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "الحجم" : "Size"}
+                    </th>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "المالك" : "Owner"}
+                    </th>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "التاريخ" : "Date"}
+                    </th>
+                    <th className="px-4 py-3 text-start">
+                      {isArabic ? "الحالة" : "Status"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading &&
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr
+                        key={index}
+                        className="border-t border-[var(--nc-border)]"
+                      >
+                        <td colSpan={6} className="px-4 py-3">
+                          <div className="h-12 animate-pulse rounded-xl bg-[var(--nc-surface-strong)]" />
+                        </td>
+                      </tr>
+                    ))}
+
+                  {!loading &&
+                    filtered.map((item) => (
+                      <tr
+                        key={item.id}
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => setSelectedId(item.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedId(item.id);
+                          }
+                        }}
+                        className={`cursor-pointer border-t border-[var(--nc-border)] outline-none transition hover:bg-[var(--nc-surface-strong)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                          selected?.id === item.id
+                            ? "bg-[var(--nc-accent-soft)]"
+                            : ""
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-foreground)]">
+                              <DocumentIcon item={item} />
+                            </span>
+                            <div className="min-w-0">
+                              <p
+                                className="max-w-72 truncate font-bold"
+                                title={item.name}
+                              >
+                                {item.name}
+                              </p>
+                              <p className="mt-1 text-[11px] uppercase text-[var(--nc-text-dim)]">
+                                {item.extension}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--nc-text-secondary)]">
+                          {documentTypeLabel(item.type, isArabic)}
+                        </td>
+                        <td className="px-4 py-3" dir="ltr">
+                          {formatSize(item.size)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--nc-text-secondary)]">
+                          {item.ownerName ||
+                            (isArabic ? "غير محدد" : "Not specified")}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-[var(--nc-text-secondary)]"
+                          dir="ltr"
+                        >
+                          {formatDateTime(item.createdAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex min-w-[80px] justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-black text-emerald-700 dark:text-emerald-300">
+                            {isArabic ? "جاهز" : "Ready"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+
+                  {!loading && filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4">
+                        <div className="flex min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center">
+                          <div className="max-w-md">
+                            <FolderOpen
+                              className="mx-auto h-9 w-9 text-[var(--nc-accent)]"
+                              aria-hidden="true"
+                            />
+                            <h3 className="mt-3 text-sm font-black">
+                              {documents.length === 0
+                                ? isArabic
+                                  ? "لا توجد مستندات بعد"
+                                  : "No documents yet"
+                                : isArabic
+                                  ? "لا توجد نتائج مطابقة"
+                                  : "No matching results"}
+                            </h3>
+                            <p className="mt-2 text-xs leading-6 text-[var(--nc-text-secondary)]">
+                              {documents.length === 0
+                                ? isArabic
+                                  ? "ارفع أول مستند ليظهر هنا مع بيانات المالك والحجم والتاريخ."
+                                  : "Upload the first document to display its owner, size, and date here."
+                                : isArabic
+                                  ? "غيّر البحث أو عوامل التصفية لعرض مستندات أخرى."
+                                  : "Adjust the search or filters to display other documents."}
+                            </p>
+                            {canUpload && documents.length === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setUploadOpen(true)}
+                                className="nc-btn-primary mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
+                              >
+                                <Upload size={15} aria-hidden="true" />
+                                {isArabic
+                                  ? "رفع أول مستند"
+                                  : "Upload first document"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section
+          dir={isArabic ? "rtl" : "ltr"}
+          className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden lg:h-[520px]"
+          data-operational-detail-card
+        >
+          {selected ? (
+            <>
+              <header className="flex min-h-[78px] shrink-0 items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--nc-accent)]">
+                    {documentTypeLabel(selected.type, isArabic)}
+                  </p>
+                  <h2
+                    className="mt-1 truncate text-lg font-black"
+                    title={selected.name}
+                  >
+                    {selected.name}
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--nc-text-secondary)]" dir="ltr">
+                    {formatDateTime(selected.createdAt)}
+                  </p>
                 </div>
 
-                <div className="mt-4 pt-2 border-t border-[var(--nc-border)] flex justify-between items-center">
+                {canDelete && (
                   <button
-                    onClick={() => setPreviewDoc(doc)}
-                    className="text-[10px] text-indigo-500 font-bold hover:underline"
+                    type="button"
+                    onClick={() => setDeleteTarget(selected)}
+                    className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-rose-500/30 px-3 text-rose-700 dark:text-rose-300"
+                    aria-label={
+                      isArabic ? "حذف المستند" : "Delete document"
+                    }
                   >
-                    {isArabic ? 'معاينة المستند' : 'Preview inline'}
+                    <Trash2 className="mx-auto h-4 w-4" aria-hidden="true" />
                   </button>
+                )}
+              </header>
 
-                  {doc.linkedType && (
-                    <span className="bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-[8px] font-black px-1.5 py-0.5 rounded border border-[var(--nc-border)]">
-                      {doc.linkedType === 'LEAD' ? (isArabic ? 'عميل' : 'Lead') : doc.linkedType === 'PROPERTY' ? (isArabic ? 'عقار' : 'Property') : (isArabic ? 'مشروع' : 'Project')}
-                    </span>
+              <div className="min-h-0 flex-1 p-3">
+                <div className="flex h-full min-h-[220px] items-center justify-center overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
+                  {selected.mimeType.startsWith("image/") ? (
+                    <img
+                      src={previewUrl}
+                      alt={selected.name}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : canPreviewInline ? (
+                    <iframe
+                      src={previewUrl}
+                      title={selected.name}
+                      className="h-full min-h-[280px] w-full border-0"
+                    />
+                  ) : (
+                    <div className="p-6 text-center">
+                      <DocumentIcon
+                        item={selected}
+                        className="mx-auto h-12 w-12 text-[var(--nc-text-dim)]"
+                      />
+                      <p className="mt-4 text-sm leading-7 text-[var(--nc-text-secondary)]">
+                        {isArabic
+                          ? "لا تتوفر معاينة مباشرة لهذا النوع. يمكنك فتح الملف أو تنزيله."
+                          : "Inline preview is unavailable for this type. Open or download the file instead."}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          /* List View */
-          <div className="space-y-2">
-            {filteredDocs.map(doc => (
-              <div
-                key={doc.id}
-                className="bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-3.5 rounded-xl flex items-center justify-between gap-4 hover:border-[var(--nc-accent-border)]/40 transition-all"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center shrink-0">
-                    <i className={`ph-fill ${getDocIcon(doc.type)} text-lg`}></i>
+
+              <div className="shrink-0 border-t border-[var(--nc-border)] p-4">
+                <dl className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <dt className="text-[var(--nc-text-secondary)]">
+                      {isArabic ? "النوع والحجم" : "Type and size"}
+                    </dt>
+                    <dd className="mt-1 font-bold">
+                      {selected.extension.toUpperCase()} ·{" "}
+                      {formatSize(selected.size)}
+                    </dd>
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-xs text-[var(--nc-foreground)] truncate" title={doc.name}>
-                      {doc.name}
-                    </h4>
-                    <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">
-                      {getDocTypeLabel(doc.type)} • {formatSize(doc.size)} • {formatDisplayDate(doc.createdAt)}
-                    </p>
+                  <div>
+                    <dt className="text-[var(--nc-text-secondary)]">
+                      {isArabic ? "المالك" : "Owner"}
+                    </dt>
+                    <dd className="mt-1 font-bold">
+                      {selected.ownerName ||
+                        (isArabic ? "غير محدد" : "Not specified")}
+                    </dd>
                   </div>
-                </div>
+                </dl>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setPreviewDoc(doc)}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-[10px] font-bold hover:bg-[var(--nc-surface-strong)] transition-colors"
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold"
                   >
-                    {isArabic ? 'معاينة' : 'Preview'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(doc.id)}
-                    className="p-2 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors"
-                    aria-label="حذف المستند"
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    {isArabic ? "فتح" : "Open"}
+                  </a>
+                  <a
+                    href={`${previewUrl}?download=1`}
+                    className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
                   >
-                    <i className="ph ph-trash"></i>
-                  </button>
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    {isArabic ? "تنزيل" : "Download"}
+                  </a>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </SmartCard>
-
-      {/* ── Upload Panel (Bottom, Parallel Horizontal Expansion) ── */}
-      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] overflow-hidden transition-all duration-500 ease-in-out shadow-sm">
-        {/* Collapsed Header / Toggle Bar */}
-        <button
-          onClick={() => setUploadOpen(prev => !prev)}
-          className="w-full flex items-center justify-between px-5 py-3.5 text-start group hover:bg-[var(--nc-surface)]/40 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors duration-300 ${uploadOpen ? 'bg-[var(--nc-accent)] text-[var(--nc-foreground)]' : 'bg-[var(--nc-surface)] border border-[var(--nc-border)] text-[var(--nc-foreground-muted)]'}`}>
-              <i className={`ph-bold ph-upload-simple text-sm transition-transform duration-300 ${uploading ? 'animate-bounce' : ''}`}></i>
-            </span>
-            <div>
-              <p className="text-sm font-extrabold text-[var(--nc-foreground)]">
-                {isArabic ? 'تحميل مستند جديد للمستودع' : 'Upload Document to Repository'}
-              </p>
-              <p className="text-[10px] text-[var(--nc-foreground-muted)] font-medium">
-                {uploading
-                  ? (isArabic ? 'جاري رفع الملف...' : 'Uploading...')
-                  : (isArabic ? 'PDF, PNG, JPG, DOCX — حتى 5 ميجابايت' : 'PDF, PNG, JPG, DOCX — up to 5MB')}
-              </p>
-            </div>
-          </div>
-          <i className={`ph-bold ph-caret-down text-[var(--nc-foreground-muted)] text-sm transition-transform duration-300 ${uploadOpen ? 'rotate-180' : ''}`}></i>
-        </button>
-
-        {/* Expandable Form — Horizontal parallel layout */}
-        <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden ${uploadOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}
-        >
-          <div className="border-t border-[var(--nc-border)] px-5 py-4">
-            {/* Horizontal grid: Type | Link Context | Entity ID | Drop Zone */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-              {/* Col 1: Doc Type */}
-              <div>
-                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
-                  {isArabic ? 'تصنيف الملف *' : 'Document Type *'}
-                </label>
-                <select
-                  value={docType}
-                  onChange={(e: any) => setDocType(e.target.value)}
-                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
-                >
-                  <option value="CONTRACT">{isArabic ? 'عقد موحد' : 'Contract'}</option>
-                  <option value="BLUEPRINT">{isArabic ? 'مخطط كروكي' : 'Blueprint'}</option>
-                  <option value="ID">{isArabic ? 'بطاقة هوية' : 'ID Document'}</option>
-                  <option value="IMAGE">{isArabic ? 'صورة عقار' : 'Image'}</option>
-                  <option value="OTHER">{isArabic ? 'ملف ملحق' : 'Other'}</option>
-                </select>
-              </div>
-
-              {/* Col 2: Link Context */}
-              <div>
-                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
-                  {isArabic ? 'ربط بـ' : 'Link Context'}
-                </label>
-                <select
-                  value={linkedType}
-                  onChange={(e: any) => setLinkedType(e.target.value)}
-                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] transition-colors"
-                >
-                  <option value="">{isArabic ? 'غير مرتبطة' : 'Unlinked'}</option>
-                  <option value="PROPERTY">{isArabic ? 'عقار مخصص' : 'Property'}</option>
-                  <option value="PROJECT">{isArabic ? 'مشروع عقاري' : 'Project'}</option>
-                  <option value="LEAD">{isArabic ? 'عميل مهتم' : 'Lead'}</option>
-                </select>
-              </div>
-
-              {/* Col 3: Entity ID */}
-              <div>
-                <label className="block text-[var(--nc-foreground-muted)] text-[10px] font-bold mb-1.5">
-                  {isArabic ? 'معرف الكيان' : 'Entity ID'}
-                </label>
-                <input
-                  type="text"
-                  value={linkedTo}
-                  disabled={!linkedType}
-                  onChange={(e) => setLinkedTo(e.target.value)}
-                  placeholder={linkedType ? 'ID...' : 'N/A'}
-                  className="w-full rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] px-3 py-2.5 text-xs text-[var(--nc-foreground)] font-bold focus:outline-none focus:border-[var(--nc-accent-border)] disabled:opacity-40 transition-colors"
+            </>
+          ) : (
+            <div className="flex h-full min-h-[260px] items-center justify-center p-6 text-center">
+              <div className="max-w-sm">
+                <FolderOpen
+                  className="mx-auto h-10 w-10 text-[var(--nc-accent)]"
+                  aria-hidden="true"
                 />
-              </div>
-
-              {/* Col 4: Drag & Drop / File picker */}
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-                className="relative border-2 border-dashed border-[var(--nc-accent-border)]/50 hover:border-[var(--nc-accent-border)] rounded-xl py-2.5 px-4 text-center cursor-pointer transition-all hover:bg-[var(--nc-surface)]/30 hover:scale-[1.02] duration-200 flex items-center justify-center gap-2 min-h-[42px]"
-              >
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={uploading}
-                />
-                <i className={`ph ph-cloud-arrow-up text-base ${uploading ? 'text-[var(--nc-accent)] animate-bounce' : 'text-[var(--nc-accent-border)]'}`}></i>
-                <span className="text-[10px] font-extrabold text-[var(--nc-foreground-muted)]">
-                  {uploading
-                    ? (isArabic ? 'جاري الرفع...' : 'Uploading...')
-                    : (isArabic ? 'اسحب أو اختر ملفاً' : 'Drop or pick file')}
-                </span>
+                <h2 className="mt-3 text-base font-black">
+                  {isArabic
+                    ? "اختر مستندًا من القائمة"
+                    : "Select a document from the list"}
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-[var(--nc-text-secondary)]">
+                  {isArabic
+                    ? "ستظهر هنا المعاينة والمالك والحجم والتاريخ وإجراءات الفتح والتنزيل."
+                    : "Preview, owner, size, date, and open/download actions will appear here."}
+                </p>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </section>
       </div>
 
-      {/* PDF/Image Preview Modal */}
-      {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--nc-surface)]/80 backdrop-blur-md">
-          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-[var(--nc-surface-strong)] border border-[var(--nc-border)] p-6 shadow-2xl animate-scale-up flex flex-col h-[80vh]">
-            <div className="flex justify-between items-center border-b border-[var(--nc-border)] pb-3.5 mb-4 shrink-0">
-              <h3 className="text-[var(--nc-foreground)] font-extrabold text-sm flex items-center gap-2">
-                <i className="ph-bold ph-eye text-[var(--nc-foreground-muted)]"></i>
-                {previewDoc.name}
-              </h3>
-              <button
-                onClick={() => setPreviewDoc(null)}
-                className="text-[var(--nc-foreground-muted)] hover:text-[var(--nc-foreground)] text-lg bg-[var(--nc-surface)] hover:bg-[var(--nc-surface-strong)] w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Simulated file display view */}
-            <div className="flex-grow bg-[var(--nc-surface)]/80 border border-[var(--nc-border)] rounded-xl overflow-hidden flex items-center justify-center relative p-6">
-              {previewDoc.type === 'IMAGE' || previewDoc.name.endsWith('.png') || previewDoc.name.endsWith('.jpg') ? (
-                <div className="text-center space-y-4 max-w-full max-h-full flex flex-col items-center">
-                  <div className="w-32 h-32 rounded-xl bg-[var(--nc-surface)] border border-[var(--nc-border)] flex items-center justify-center shadow-lg">
-                    <i className="ph ph-image text-[var(--nc-foreground)] text-5xl opacity-80"></i>
-                  </div>
-                  <p className="text-[var(--nc-foreground-muted)] text-xs">{isArabic ? 'معاينة صورة المحتوى العقاري' : 'Property image visual preview'}</p>
+      {portalReady &&
+        uploadOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 pb-8 pt-24 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="document-upload-title"
+          >
+            <div className="w-full max-w-xl rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-6 shadow-2xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 id="document-upload-title" className="text-lg font-black text-[var(--nc-foreground)]">
+                    {isArabic ? "رفع مستند جديد" : "Upload a document"}
+                  </h2>
+                  <p className="mt-2 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                    {isArabic
+                      ? "الأنواع المسموحة: PDF وJPG وPNG وWEBP وDOCX وXLSX وTXT وCSV. الحد الأقصى 10 ميجابايت."
+                      : "Allowed: PDF, JPG, PNG, WEBP, DOCX, XLSX, TXT, and CSV. Maximum 10 MB."}
+                  </p>
                 </div>
-              ) : (
-                /* PDF preview card mockup */
-                <div className="w-full max-w-md bg-white border border-[var(--nc-border)] rounded-xl p-8 text-[var(--nc-foreground)] font-bold space-y-6 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 left-0 h-2.5 bg-gradient-to-r from-emerald-500 via-indigo-500 to-amber-500"></div>
-
-                  <div className="flex justify-between items-center border-b border-[var(--nc-border)] pb-4">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-[var(--nc-foreground)]">أوركا لخدمات المحاكاة العقارية</h4>
-                      <p className="text-[10px] text-[var(--nc-foreground-muted)] mt-0.5">ORCA DIGITAL COMPLIANCE SECURE DOCUMENT</p>
-                    </div>
-                    <i className="ph ph-seal-check text-emerald-500 text-3xl"></i>
-                  </div>
-
-                  <div className="space-y-3.5 text-[11px] leading-relaxed">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'اسم الوثيقة:' : 'Document Name:'}</span>
-                        <span className="block font-extrabold text-[var(--nc-foreground)] truncate">{previewDoc.name}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'تاريخ التخزين:' : 'Storage Date:'}</span>
-                        <span className="block font-mono font-bold text-[var(--nc-foreground)]">{formatDisplayDate(previewDoc.createdAt)}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="block text-[var(--nc-foreground-muted)] font-bold">{isArabic ? 'تصنيف الموثوقية:' : 'Security Classification:'}</span>
-                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded font-black text-[9px] uppercase">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        {isArabic ? 'رسمي مشفر (Secure Encrypted)' : 'Encrypted'}
-                      </span>
-                    </div>
-                    <div className="p-3 bg-[var(--nc-surface)] border border-[var(--nc-border)] rounded-lg text-[var(--nc-foreground-muted)] font-mono text-[9px] select-all leading-normal whitespace-pre">
-                      {`SECURE_DECRYPT_ID: ${previewDoc.id}\nDIGEST_SHA256: 4a2b918a38b1...2c8d\nSTORAGE_BLOB_PROVIDER: MOCK_PERSIST_JSON`}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-[var(--nc-border)] pt-4 flex justify-between items-center text-[10px] font-bold text-[var(--nc-foreground-muted)]">
-                    <span>{isArabic ? 'بوابة التحقق الحكومي' : 'Government verify portal'}</span>
-                    <span className="text-emerald-500 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                      {isArabic ? 'نشط ومتصل' : 'Active sync'}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-between items-center gap-4 mt-6 pt-4 border-t border-[var(--nc-border)] shrink-0">
-              <span className="text-[var(--nc-foreground-muted)] text-[10px] font-mono">{formatSize(previewDoc.size)}</span>
-
-              <div className="flex gap-2">
                 <button
-                  onClick={() => setPreviewDoc(null)}
-                  className="px-4 py-2 bg-[var(--nc-surface-strong)] hover:bg-[var(--nc-surface)] text-[var(--nc-foreground-muted)] text-xs font-bold rounded-xl cursor-pointer transition-colors border border-[var(--nc-border)]"
+                  type="button"
+                  onClick={() => setUploadOpen(false)}
+                  className="min-h-[44px] min-w-[44px] rounded-xl text-[var(--nc-foreground-muted)] hover:bg-[var(--nc-surface-strong)]"
+                  aria-label={isArabic ? "إغلاق" : "Close"}
                 >
-                  {isArabic ? 'إغلاق' : 'Close'}
+                  <X className="mx-auto h-5 w-5" aria-hidden="true" />
                 </button>
-                <a
-                  href={previewDoc.url}
-                  download={previewDoc.name}
-                  onClick={(e) => {
-                    if (previewDoc.url.startsWith('/mock-documents/')) {
-                      e.preventDefault();
-                      toast.error(isArabic ? 'هذا الملف وهمي وغير متوفر للتحميل' : 'This is a mock file and is not available for download');
-                      return;
-                    }
-                    toast.info(isArabic ? `جاري تنزيل: ${previewDoc.name}` : `Downloading: ${previewDoc.name}`);
-                  }}
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-650 to-indigo-500 hover:from-indigo-500 hover:to-indigo-450 text-[var(--nc-foreground)] text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
+              </div>
+
+              <label className="mt-5 block text-sm font-bold text-[var(--nc-foreground)]">
+                {isArabic ? "تصنيف المستند" : "Document type"}
+                <select
+                  value={uploadType}
+                  onChange={(event) =>
+                    setUploadType(event.target.value as DocumentType)
+                  }
+                  className="mt-2 min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 text-sm text-[var(--nc-foreground)]"
                 >
-                  <i className="ph-bold ph-download-simple"></i>
-                  <span>{isArabic ? 'تحميل وتنزيل الملف' : 'Download Document'}</span>
-                </a>
+                  {DOCUMENT_TYPES.filter((item) => item.value !== "ALL").map(
+                    (item) => (
+                      <option key={item.value} value={item.value}>
+                        {isArabic ? item.ar : item.en}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+
+              <div
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setDragging(true);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDragging(false);
+                  chooseFile(event.dataTransfer.files?.[0] || null);
+                }}
+                className={`mt-5 rounded-2xl border-2 border-dashed p-8 text-center transition ${
+                  dragging
+                    ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)]"
+                    : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)]"
+                }`}
+              >
+                <Upload className="mx-auto h-10 w-10 text-[var(--nc-foreground-muted)]" aria-hidden="true" />
+                <p className="mt-3 text-sm font-bold text-[var(--nc-foreground)]">
+                  {uploadFile
+                    ? uploadFile.name
+                    : isArabic
+                      ? "اسحب الملف هنا أو اختره من الجهاز"
+                      : "Drop the file here or choose it from your device"}
+                </p>
+                {uploadFile && (
+                  <p className="mt-2 text-xs text-[var(--nc-foreground-muted)]" dir="ltr">
+                    {formatSize(uploadFile.size)}
+                  </p>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.txt,.csv"
+                  onChange={(event) =>
+                    chooseFile(event.target.files?.[0] || null)
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-4 text-sm font-bold text-[var(--nc-foreground)]"
+                >
+                  {isArabic ? "اختيار ملف" : "Choose file"}
+                </button>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUploadOpen(false)}
+                  className="min-h-[44px] flex-1 rounded-xl border border-[var(--nc-border)] px-4 text-sm font-bold text-[var(--nc-foreground)]"
+                >
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !uploadFile}
+                  onClick={() => void submitUpload()}
+                  className="min-h-[44px] flex-1 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {busy
+                    ? isArabic
+                      ? "جارٍ الرفع..."
+                      : "Uploading..."
+                    : isArabic
+                      ? "رفع المستند"
+                      : "Upload document"}
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)}></div>
-          <div className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs">
-            <h3 className="text-base font-extrabold text-rose-400 border-b border-white/5 pb-2">{isArabic ? 'تأكيد حذف الملف' : 'Confirm Delete'}</h3>
-            <p className="text-[var(--nc-text-dim)]">{isArabic ? 'هل أنت متأكد أنك تريد حذف هذا الملف؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this file? This action cannot be undone.'}</p>
-            <div className="flex gap-2">
-              <button onClick={confirmDeleteFile} className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all">{isArabic ? 'تأكيد الحذف' : 'Delete'}</button>
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-[var(--nc-surface)] border border-white/5 text-[var(--nc-text-dim)] rounded-xl transition-all">{isArabic ? 'إلغاء' : 'Cancel'}</button>
+      {portalReady &&
+        deleteTarget &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 pb-8 pt-24 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="document-delete-title"
+          >
+            <div className="w-full max-w-md rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-6 shadow-2xl">
+              <h2 id="document-delete-title" className="text-lg font-black text-[var(--nc-foreground)]">
+                {isArabic ? "تأكيد حذف المستند" : "Confirm document deletion"}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--nc-foreground-muted)]">
+                {isArabic
+                  ? `سيتم حذف «${deleteTarget.name}» نهائيًا. لا يمكن التراجع عن هذا الإجراء.`
+                  : `“${deleteTarget.name}” will be permanently deleted. This action cannot be undone.`}
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="min-h-[44px] flex-1 rounded-xl border border-[var(--nc-border)] px-4 text-sm font-bold text-[var(--nc-foreground)]"
+                >
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void confirmDelete()}
+                  className="min-h-[44px] flex-1 rounded-xl bg-rose-600 px-4 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {busy
+                    ? isArabic
+                      ? "جارٍ الحذف..."
+                      : "Deleting..."
+                    : isArabic
+                      ? "حذف نهائي"
+                      : "Delete permanently"}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </div>,
+          document.body,
+        )}
+    </section>
   );
 }

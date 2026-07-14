@@ -3,7 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
-import { runWithTenantContext } from "@/lib/tenant-context";
+import { runWithTenantContext, setTenantContext } from "@/lib/tenant-context";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
@@ -14,110 +14,211 @@ export async function createWhatsAppTaskAction(formData: FormData) {
   try {
     const tenant = await getActiveTenant();
     const session = await getSession();
-    const title = formData.get("title") as string;
-    const taskType = formData.get("taskType") as string;
-    const contactPhone = formData.get("contactPhone") as string;
+    const userId =
+      typeof session?.userId === "string" ? session.userId : undefined;
 
-    console.log("[WA_TASK] start", { tenantId: tenant.id, phone: contactPhone, title, taskType });
-
-    if (!title || !taskType) {
-      return { success: false, error: "جميع الحقول إلزامية" };
+    if (!userId) {
+      return { success: false, error: "يجب تسجيل الدخول أولًا." };
     }
 
-    const dueDate = new Date(Date.now() + 3600000);
+    return await runWithTenantContext(
+      { tenantId: tenant.id, userId },
+      async () => {
+        const title = String(formData.get("title") || "").trim();
+        const taskType = String(formData.get("taskType") || "").trim();
+        const contactPhone = String(
+          formData.get("contactPhone") || "",
+        ).replace(/[^\d]/g, "");
+        const contactName = String(
+          formData.get("contactName") || "",
+        ).trim();
+        const requestedLeadId = String(
+          formData.get("leadId") || "",
+        ).trim();
 
-    const taskTypePriorityMap: Record<string, "HIGH" | "MEDIUM" | "LOW"> = {
-      "Call": "HIGH",
-      "Visit": "HIGH",
-      "Follow-up": "MEDIUM",
-      "Send Offer": "HIGH",
-    };
-    const priority = taskTypePriorityMap[taskType] || "MEDIUM";
-    const description = `${taskType} — من واتساب ${contactPhone || ""}`;
-
-    // Find or create lead for this WhatsApp contact
-    let leadId: string | null = null;
-    if (contactPhone) {
-      const contact = await prisma.whatsAppContact.findFirst({
-        where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contactPhone) },
-        select: { leadId: true },
-      });
-      leadId = contact?.leadId || null;
-    }
-    if (!leadId) {
-      try {
-        const newLead = await prisma.$transaction(async (tx) => {
-          await assertPlanLimit({ tenantId: tenant.id, feature: "leads", tx });
-          return tx.lead.create({
-            data: {
-              tenantId: tenant.id,
-              firstName: "WhatsApp",
-              lastName: contactPhone || "Lead",
-              phone: contactPhone || "",
-              phoneHash: hashPhone(tenant.id, contactPhone),
-              city: "غير محدد",
-              source: "WHATSAPP",
-              status: "NEW",
-            },
-          });
-        });
-        leadId = newLead.id;
-      } catch (e) {
-        if (e instanceof PlanLimitError) {
-          await logPlanBlockedAttempt({ tenantId: tenant.id, error: e }).catch(() => {});
-          return { success: false, error: e.message, code: e.code };
+        if (!title || !taskType || !contactPhone) {
+          return {
+            success: false,
+            error: "بيانات المهمة أو رقم العميل غير مكتملة.",
+          };
         }
-        throw e;
-      }
-      if (contactPhone) {
-        try {
+
+        const activeUser = await prisma.user.findFirst({
+          where: {
+            id: userId,
+            tenantId: tenant.id,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        if (!activeUser) {
+          return {
+            success: false,
+            error: "تعذر تحديد الموظف المسؤول عن المهمة.",
+          };
+        }
+
+        let leadId: string | null = null;
+
+        if (requestedLeadId) {
+          const requestedLead = await prisma.lead.findFirst({
+            where: {
+              id: requestedLeadId,
+              tenantId: tenant.id,
+            },
+            select: { id: true },
+          });
+          leadId = requestedLead?.id || null;
+        }
+
+        if (!leadId) {
+          const contact = await prisma.whatsAppContact.findFirst({
+            where: {
+              tenantId: tenant.id,
+              OR: [
+                {
+                  phoneHash: hashPhone(
+                    tenant.id,
+                    contactPhone,
+                  ),
+                },
+                { phone: contactPhone },
+                { phone: `+${contactPhone}` },
+              ],
+            },
+            select: { leadId: true },
+          });
+
+          if (contact?.leadId) {
+            const linkedLead = await prisma.lead.findFirst({
+              where: {
+                id: contact.leadId,
+                tenantId: tenant.id,
+              },
+              select: { id: true },
+            });
+            leadId = linkedLead?.id || null;
+          }
+        }
+
+        if (!leadId) {
+          try {
+            const newLead = await prisma.$transaction(
+              async (tx) => {
+                await assertPlanLimit({
+                  tenantId: tenant.id,
+                  feature: "leads",
+                  tx,
+                });
+
+                const safeName =
+                  contactName &&
+                  contactName !== contactPhone &&
+                  !/^[+\d\s-]{6,}$/.test(contactName)
+                    ? contactName.slice(0, 80)
+                    : "عميل واتساب";
+
+                return tx.lead.create({
+                  data: {
+                    tenantId: tenant.id,
+                    firstName: safeName,
+                    lastName: contactPhone,
+                    phone: contactPhone,
+                    phoneHash: hashPhone(
+                      tenant.id,
+                      contactPhone,
+                    ),
+                    city: "غير محدد",
+                    source: "WHATSAPP",
+                    status: "NEW",
+                  },
+                  select: { id: true },
+                });
+              },
+            );
+
+            leadId = newLead.id;
+          } catch (error) {
+            if (error instanceof PlanLimitError) {
+              await logPlanBlockedAttempt({
+                tenantId: tenant.id,
+                error,
+              }).catch(() => {});
+              return {
+                success: false,
+                error: error.message,
+                code: error.code,
+              };
+            }
+            throw error;
+          }
+
           await prisma.whatsAppContact.updateMany({
-            where: { tenantId: tenant.id, phoneHash: hashPhone(tenant.id, contactPhone) },
+            where: {
+              tenantId: tenant.id,
+              OR: [
+                {
+                  phoneHash: hashPhone(
+                    tenant.id,
+                    contactPhone,
+                  ),
+                },
+                { phone: contactPhone },
+                { phone: `+${contactPhone}` },
+              ],
+            },
             data: { leadId },
           });
-        } catch {}
-      }
-    }
+        }
 
-    console.log("[WA_TASK] leadId:", leadId);
+        if (!leadId) {
+          return {
+            success: false,
+            error: "تعذر ربط المهمة بعميل واتساب.",
+          };
+        }
 
-    // Get current user as assignee
-    let assignedTo = session?.userId as string | undefined;
-    if (!assignedTo) {
-      const anyUser = await prisma.user.findFirst({
-        where: { tenantId: tenant.id },
-        select: { id: true },
-      });
-      assignedTo = anyUser?.id;
-    }
+        const taskTypePriorityMap: Record<
+          string,
+          "HIGH" | "MEDIUM" | "LOW"
+        > = {
+          Call: "HIGH",
+          Visit: "HIGH",
+          "Follow-up": "MEDIUM",
+          "Send Offer": "HIGH",
+        };
 
-    console.log("[WA_TASK] assignedTo:", assignedTo);
+        const task = await prisma.task.create({
+          data: {
+            tenantId: tenant.id,
+            title,
+            description: `${taskType} — متابعة واتساب مع ${contactName || contactPhone}`,
+            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            priority:
+              taskTypePriorityMap[taskType] || "MEDIUM",
+            status: "PENDING",
+            leadId,
+            assignedTo: activeUser.id,
+          },
+          select: { id: true },
+        });
 
-    if (!assignedTo) {
-      return { success: false, error: "لا يوجد مستخدم لتعيين المهمة" };
-    }
+        revalidatePath("/operations/tasks");
+        revalidatePath("/operations/whatsapp");
 
-    const task = await prisma.task.create({
-      data: {
-        tenantId: tenant.id,
-        title,
-        description: description || "",
-        dueDate,
-        priority,
-        status: "PENDING",
-        leadId: leadId!,
-        assignedTo: assignedTo!,
+        return {
+          success: true,
+          taskId: task.id,
+        };
       },
-    });
-
-    console.log("[WA_TASK] success taskId:", task.id);
-
-    revalidatePath("/operations/tasks");
-    revalidatePath("/operations/whatsapp");
-    return { success: true, taskId: task.id };
-  } catch (error: any) {
-    console.error("[WA_TASK] error:", error.message);
-    return { success: false, error: error.message };
+    );
+  } catch (error) {
+    console.error("[WhatsApp] task creation failed", error);
+    return {
+      success: false,
+      error: "تعذر إنشاء مهمة المتابعة.",
+    };
   }
 }
 
@@ -152,6 +253,7 @@ export async function fetchWhatsAppDashboardStats(tenantId: string) {
 export async function getWhatsAppDashboardStats() {
   try {
     const tenant = await getActiveTenant();
+    setTenantContext({ tenantId: tenant.id });
     return fetchWhatsAppDashboardStats(tenant.id);
   } catch (error: any) {
     return { success: false, error: error.message, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 };

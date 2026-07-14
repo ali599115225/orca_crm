@@ -76,9 +76,9 @@ describe("R01 tenant model policy registry", () => {
   });
 
   it("keeps the approved registry counts stable", () => {
-    expect(REQUIRED_TENANT_MODELS).toHaveLength(67);
+    expect(REQUIRED_TENANT_MODELS).toHaveLength(70);
     expect(OPTIONAL_TENANT_MODELS).toHaveLength(3);
-    expect(schemaTenantModels).toHaveLength(70);
+    expect(schemaTenantModels).toHaveLength(73);
   });
 
   it("fails closed on newly added tenantId models until they are classified", () => {

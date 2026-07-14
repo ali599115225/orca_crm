@@ -499,7 +499,7 @@ export default function SalesContractWorkspace({
     setNotice("");
     try {
       const response = await fetch(
-        `/api/v1/installments/${item.id}/pay/ngenius`,
+        `/api/v1/installments/${item.id}/pay`,
         {
           method: "POST",
           credentials: "include",
@@ -808,9 +808,9 @@ export default function SalesContractWorkspace({
   return (
     <main
       dir={locale === "ar" ? "rtl" : "ltr"}
-      className="space-y-4 pb-8"
+      className="nc-page nc-stack orca-container pb-10"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="orca-workspace-panel orca-contract-header flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-3">
           <button
             type="button"
@@ -892,7 +892,7 @@ export default function SalesContractWorkspace({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="orca-contract-kpis">
         {[
           [
             L("صافي العقد", "Contract subtotal"),
@@ -929,12 +929,12 @@ export default function SalesContractWorkspace({
         ].map(([label, value]) => (
           <div
             key={label}
-            className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4"
+            className="orca-contract-kpi"
           >
             <span className="text-[11px] text-[var(--nc-text-dim)]">
               {label}
             </span>
-            <strong className="mt-2 block text-base text-[var(--nc-text-primary)]">
+            <strong className="mt-2 block break-words text-sm leading-6 text-[var(--nc-text-primary)] 2xl:text-base">
               {value}
             </strong>
           </div>
@@ -948,7 +948,7 @@ export default function SalesContractWorkspace({
         stages={contractLifecycleStages}
       />
 
-      <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-2">
+      <nav className="orca-workspace-tabs flex flex-wrap justify-center gap-2 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-2">
         {([
           ["overview", L("نظرة عامة", "Overview"), Landmark],
           ["payment-plan", L("خطة الدفع", "Payment plan"), CreditCard],
@@ -968,7 +968,7 @@ export default function SalesContractWorkspace({
             className={`inline-flex min-w-fit items-center gap-2 rounded-xl px-4 py-2 text-xs font-black ${
               tab === value
                 ? "bg-[var(--nc-accent)] text-slate-950"
-                : "text-[var(--nc-text-secondary)]"
+                : "border border-transparent text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
             }`}
           >
             <Icon size={14} />
@@ -991,7 +991,7 @@ export default function SalesContractWorkspace({
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="orca-auto-grid">
             {[
               [L("المشروع", "Project"), contract.unit.project.name],
               [L("الوحدة", "Unit"), contract.unit.unitNumber],
@@ -1052,7 +1052,7 @@ export default function SalesContractWorkspace({
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="min-h-[76px] rounded-xl border border-[var(--nc-glass-border)] p-3"
+                className="orca-summary-card rounded-xl border border-[var(--nc-glass-border)] p-3 text-center"
               >
                 <span className="text-[10px] text-[var(--nc-text-dim)]">
                   {label}
@@ -1136,7 +1136,7 @@ export default function SalesContractWorkspace({
                     onChange={(event) => setRestructureReason(event.target.value)}
                     required
                     rows={3}
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                    className="orca-form-textarea min-h-24 w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
                   />
                 </div>
 
@@ -1230,7 +1230,7 @@ export default function SalesContractWorkspace({
                     }
                     required
                     rows={3}
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                    className="orca-form-textarea min-h-24 w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
                   />
                 </div>
 

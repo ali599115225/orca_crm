@@ -478,11 +478,11 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
     <section dir={direction} className={leadVisual.page}>
       <div className={leadVisual.pageStack}>
         {/* Header */}
-        <div className={`${leadVisual.panel} p-4 sm:p-5`}>
+        <div className={`${leadVisual.detailHero} p-4 sm:p-5`}>
           <button
             type="button"
             onClick={() => router.push("/operations/leads")}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-secondary)] transition hover:text-[var(--nc-text-primary)]"
+            className={leadVisual.secondaryButton}
           >
             <BackIcon className="h-3.5 w-3.5" aria-hidden="true" />
             {labels.back}
@@ -643,9 +643,9 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
         </div>
 
         {/* Tabs */}
-        <div className={`${leadVisual.panel} p-4 sm:p-5`}>
+        <div className={`${leadVisual.workspacePanel} lg:h-[620px]`}>
           <div
-            className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1"
+            className={leadVisual.workspaceTabs}
             role="tablist"
             aria-label={labels.title}
           >
@@ -671,7 +671,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             })}
           </div>
 
-          <div className="mt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {activeTab === "overview" && (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className={infoCardClass}>

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const route = readFileSync(
   join(
     process.cwd(),
-    "app/api/v1/installments/[id]/pay/ngenius/route.ts",
+    "app/api/v1/installments/[id]/pay/route.ts",
   ),
   "utf8",
 );

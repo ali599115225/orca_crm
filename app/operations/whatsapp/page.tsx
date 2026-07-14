@@ -9,11 +9,11 @@ export default async function WHATSAPPPage() {
   let cloudStatus: any = { configured: false, provider: "none", source: "none", status: "disconnected", error: null };
 
   try { chatResult = await getWhatsAppChatsAction(); } catch { chatResult.warning = "فشل تحميل المحادثات"; }
-  try { cloudStatus = await getCloudAPIStatusAction(); } catch { cloudStatus.error = "فشل الاتصال بـ Meta API"; }
+  try { cloudStatus = await getCloudAPIStatusAction(); } catch { cloudStatus.error = "تعذر التحقق من مزود واتساب"; }
 
   const chats = chatResult.success && chatResult.chats ? chatResult.chats : [];
   const tenant = {
-    companyName: (chatResult.success && chatResult.tenant?.companyName) || "مؤسسة أبعاد السكنية",
+    companyName: (chatResult.success && chatResult.tenant?.companyName) || "المنشأة",
     whatsappConnected: cloudStatus.configured && (cloudStatus.status === "connected" || cloudStatus.status === "test-mode"),
   };
 

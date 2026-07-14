@@ -29,6 +29,7 @@ export default function DashboardMetricCard({
       href={href}
       className={dashboardVisual.metricCard}
       aria-label={title}
+      data-dashboard-card="kpi"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

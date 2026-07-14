@@ -127,4 +127,9 @@ export interface UnifiedOperationsWorkspaceProps {
   detail: WorkspaceDetail | null;
   emptyDetailTitle: string;
   emptyDetailDescription: string;
+  loading?: boolean;
+  loadingLabel?: string;
+  errorMessage?: string;
+  retryLabel?: string;
+  onRetry?: () => void;
 }

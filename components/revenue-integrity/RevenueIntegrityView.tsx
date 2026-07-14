@@ -79,7 +79,7 @@ const TAB_LABELS: Record<Tab, { ar: string; en: string }> = {
   predictive: { ar: "الذكاء التنبؤي", en: "Predictive Intelligence" },
 };
 
-const PANEL_CLASS = `${dashboardVisual.panel} p-5`;
+const PANEL_CLASS = `${revenueVisual.panel}`;
 const CONTENT_CARD_CLASS = dashboardVisual.contentCard;
 const INTERACTIVE_ROW_CLASS = leadVisual.interactiveRow;
 const TABLE_ROW_CLASS = "transition-colors hover:bg-[var(--nc-accent-soft)] focus-within:bg-[var(--nc-accent-soft)]";
@@ -145,13 +145,15 @@ function Panel({
 }) {
   return (
     <section className={className ? `${PANEL_CLASS} ${className}` : PANEL_CLASS}>
-      <div className="mb-4">
+      <div className="shrink-0 border-b border-[var(--nc-border)] px-4 py-3">
         <h2 className={revenueVisual.sectionTitle}>{title}</h2>
         {description ? (
           <p className={revenueVisual.sectionDescription}>{description}</p>
         ) : null}
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {children}
+      </div>
     </section>
   );
 }
@@ -279,14 +281,14 @@ function PredictiveTab({
   const items = pageData?.items ?? [];
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2.2fr)_minmax(18rem,0.8fr)]">
+    <div data-revenue-tab-layout="predictive" className={revenueVisual.tabWorkspaceGrid}>
       <Panel
         title={L("لوحة الذكاء التنبؤي", "Predictive Intelligence")}
         description={L(
           "تحليل حتمي قائم على قواعد وإشارات الإيراد الحالية.",
           "Rule-based deterministic analysis using current revenue signals.",
         )}
-        className="min-w-0 self-start h-fit"
+        className="min-w-0"
       >
         <dl className={`${revenueVisual.softCard} space-y-3 text-xs`}>
           <div className="flex justify-between gap-3">
@@ -358,7 +360,7 @@ function PredictiveTab({
           "أربع نتائج لكل صفحة دون تمديد الكروت عند غياب البيانات.",
           "Four results per page without stretching empty cards.",
         )}
-        className="min-w-0 self-start h-fit"
+        className="min-w-0"
       >
         {loading && !pageData ? (
           <div className="flex flex-col items-center gap-3 py-6" aria-busy="true">
@@ -803,21 +805,14 @@ export default function RevenueIntegrityView({
   return (
     <main className={revenueVisual.page} dir={isArabic ? "rtl" : "ltr"}>
       <div className={revenueVisual.shell}>
-      <div className="text-sm font-bold text-[var(--nc-text-secondary)]">
-        <a
-          href="/operations"
-          className="transition hover:text-[var(--nc-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]"
-        >
-          {L("العمليات", "Operations")}
-        </a>
-        <span className="mx-2">/</span>
-        <span className="text-[var(--nc-text-primary)]">
-          {L("سلامة الإيراد", "Revenue Integrity")}
-        </span>
-      </div>
-
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <header className={revenueVisual.workspaceHero}>
         <div>
+          <p className="text-xs font-bold text-[var(--nc-accent)]">
+            {L(
+              "المخاطر ← الإجراء ← التدقيق ← التنبؤ",
+              "Risk → action → audit → prediction",
+            )}
+          </p>
           <h1 className={revenueVisual.pageTitle}>
             {L("سلامة الإيراد العقاري", "Real Estate Revenue Integrity")}
           </h1>
@@ -864,13 +859,13 @@ export default function RevenueIntegrityView({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 auto-rows-fr md:grid-cols-3 xl:grid-cols-5">
+      <div className={revenueVisual.workspaceMetrics}>
         {metrics.map(([label, value]) => (
           <div key={label} className={`${revenueVisual.metricCard} h-full`}>
             <div className="text-xs font-bold text-[var(--nc-text-secondary)]">
               {label}
             </div>
-            <div className="mt-3 break-words text-xl font-black leading-tight text-[var(--nc-text-primary)] sm:text-2xl">
+            <div className="mt-3 break-words text-xl font-black leading-tight text-[var(--nc-text-primary)]">
               {value}
             </div>
           </div>
@@ -878,7 +873,7 @@ export default function RevenueIntegrityView({
       </div>
 
       <nav
-        className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-2"
+        className={revenueVisual.workspaceTabs}
         aria-label={L("أقسام سلامة الإيراد", "Revenue integrity sections")}
       >
         {visibleTabs.map((tab) => (
@@ -901,14 +896,14 @@ export default function RevenueIntegrityView({
       </nav>
 
       {activeTab === "radar" ? (
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2.2fr)_minmax(18rem,0.8fr)]">
+        <div data-revenue-tab-layout="radar" className={revenueVisual.tabWorkspaceGrid}>
           <Panel
             title={L("المخاطر النشطة", "Active risks")}
             description={L(
               "كل إشارة مرتبطة بكيان وقيمة ومسؤول وحالة إغلاق.",
               "Every signal is tied to an entity, value, owner, and closure state.",
             )}
-            className="min-w-0 self-start h-fit"
+            className="min-w-0"
           >
             {riskItems.length === 0 ? (
               <EmptyState>
@@ -919,76 +914,90 @@ export default function RevenueIntegrityView({
               </EmptyState>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-center text-xs">
-                    <thead>
-                      <tr className="border-b border-[var(--nc-border)] text-[11px] text-[var(--nc-text-secondary)]">
-                        <th className="px-3 py-3 text-center">{L("القاعدة", "Rule")}</th>
-                        <th className="px-3 py-3 text-center">{L("السبب", "Reason")}</th>
-                        <th className="px-3 py-3 text-center">{L("القيمة", "Value")}</th>
-                        <th className="px-3 py-3 text-center">{L("الشدة", "Severity")}</th>
-                        <th className="px-3 py-3 text-center">{L("الحالة", "Status")}</th>
-                        {capabilities.canManageRisks ? (
-                          <th className="px-3 py-3 text-center">{L("الإجراء", "Action")}</th>
-                        ) : null}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {riskItems.map((risk: any) => (
-                        <tr
-                          key={risk.id}
-                          className={`${TABLE_ROW_CLASS} border-b border-[var(--nc-border)] last:border-0`}
+                <div className="min-w-0 overflow-hidden">
+                  <div
+                    className={`grid items-center border-b border-[var(--nc-border)] px-2 py-2 text-center text-[10px] font-bold text-[var(--nc-text-secondary)] ${
+                      capabilities.canManageRisks
+                        ? "grid-cols-[22%_29%_16%_9%_9%_15%]"
+                        : "grid-cols-[24%_38%_18%_10%_10%]"
+                    }`}
+                  >
+                    <span>{L("القاعدة", "Rule")}</span>
+                    <span>{L("السبب", "Reason")}</span>
+                    <span>{L("القيمة", "Value")}</span>
+                    <span>{L("الشدة", "Severity")}</span>
+                    <span>{L("الحالة", "Status")}</span>
+                    {capabilities.canManageRisks ? (
+                      <span>{L("الإجراء", "Action")}</span>
+                    ) : null}
+                  </div>
+
+                  <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [scrollbar-color:transparent_transparent] [&::-webkit-scrollbar]:hidden">
+                    {riskItems.map((risk: any) => (
+                      <div
+                        key={risk.id}
+                        className={`mx-1 mb-1 grid min-h-[76px] items-center rounded-xl border border-transparent px-2 py-2 text-center transition-colors hover:border-[var(--nc-border)] hover:bg-[var(--nc-accent-soft)] ${
+                          capabilities.canManageRisks
+                            ? "grid-cols-[22%_29%_16%_9%_9%_15%]"
+                            : "grid-cols-[24%_38%_18%_10%_10%]"
+                        }`}
+                      >
+                        <div className="line-clamp-2 px-2 text-[11px] font-bold leading-5 text-[var(--nc-text-primary)]">
+                          {displayRevenueIntegrityValue(risk.ruleCode, langEnum)}
+                        </div>
+
+                        <div className="line-clamp-2 border-s border-[var(--nc-border)] px-2 text-[10px] leading-5 text-[var(--nc-text-secondary)]">
+                          {isArabic ? risk.reasonAr : risk.reasonEn}
+                        </div>
+
+                        <div
+                          className="whitespace-nowrap px-2 text-[11px] font-black text-[var(--nc-text-primary)]"
+                          title={formatMoney(risk.revenueAtRisk, locale)}
                         >
-                          <td className="px-3 py-3 font-bold text-[var(--nc-text-primary)]">
-                            {displayRevenueIntegrityValue(risk.ruleCode, langEnum)}
-                          </td>
-                          <td className="max-w-xs px-3 py-3 text-center text-[var(--nc-text-secondary)]">
-                            {isArabic ? risk.reasonAr : risk.reasonEn}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 font-bold text-[var(--nc-text-primary)]">
-                            {formatMoney(risk.revenueAtRisk, locale)}
-                          </td>
-                          <td className="px-3 py-3">
-                            <StatusBadge value={risk.severity} lang={langEnum} />
-                          </td>
-                          <td className="px-3 py-3">
-                            <StatusBadge value={risk.status} lang={langEnum} />
-                          </td>
-                          {capabilities.canManageRisks ? (
-                            <td className="px-3 py-3">
-                              <div className="flex justify-center gap-2">
-                                {risk.status === "OPEN" ? (
-                                  <button
-                                    type="button"
-                                    disabled={pending}
-                                    onClick={() =>
-                                      execute(
-                                        () => acknowledgeRevenueRiskAction(risk.id),
-                                        L("تم استلام الخطر.", "Risk acknowledged."),
-                                      )
-                                    }
-                                    className={SECONDARY_BUTTON_CLASS}
-                                  >
-                                    {L("استلام", "Acknowledge")}
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  disabled={pending}
-                                  onClick={() =>
-                                    openReasonDialog("resolve-risk", risk.id)
-                                  }
-                                  className={revenueVisual.successGhostButton}
-                                >
-                                  {L("إغلاق", "Resolve")}
-                                </button>
-                              </div>
-                            </td>
-                          ) : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          {formatMoney(risk.revenueAtRisk, locale)}
+                        </div>
+
+                        <div className="flex justify-center px-1">
+                          <StatusBadge value={risk.severity} lang={langEnum} />
+                        </div>
+
+                        <div className="flex justify-center px-1">
+                          <StatusBadge value={risk.status} lang={langEnum} />
+                        </div>
+
+                        {capabilities.canManageRisks ? (
+                          <div className="grid grid-cols-1 gap-1.5 px-1">
+                            {risk.status === "OPEN" ? (
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() =>
+                                  execute(
+                                    () => acknowledgeRevenueRiskAction(risk.id),
+                                    L("تم استلام الخطر.", "Risk acknowledged."),
+                                  )
+                                }
+                                className={`${SECONDARY_BUTTON_CLASS} !min-h-9 !w-full !justify-center !px-2 !text-[10px]`}
+                              >
+                                {L("استلام", "Acknowledge")}
+                              </button>
+                            ) : null}
+
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() =>
+                                openReasonDialog("resolve-risk", risk.id)
+                              }
+                              className={`${revenueVisual.successGhostButton} !min-h-9 !w-full !justify-center !px-2 !text-[10px]`}
+                            >
+                              {L("إغلاق", "Resolve")}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <Pager
                   page={riskPage}
@@ -1007,7 +1016,7 @@ export default function RevenueIntegrityView({
             )}
           </Panel>
 
-          <Panel title={L("آخر تشغيل", "Latest run")} className="min-w-0 self-start h-fit">
+          <Panel title={L("آخر تشغيل", "Latest run")} className="min-w-0">
             {initialData.latestRun ? (
               <dl className="space-y-4 text-sm">
                 <div>
@@ -1057,8 +1066,8 @@ export default function RevenueIntegrityView({
       ) : null}
 
       {activeTab === "actions" && capabilities.canReadActions ? (
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2.2fr)_minmax(18rem,0.8fr)]">
-          <Panel title={L("طابور الاعتماد", "Approval queue")} className="min-w-0 self-start h-fit">
+        <div data-revenue-tab-layout="actions" className={revenueVisual.tabWorkspaceGrid}>
+          <Panel title={L("طابور الاعتماد", "Approval queue")} className="min-w-0">
             {suggestionItems.length === 0 ? (
               <EmptyState>
                 {L("لا توجد اقتراحات بعد.", "No suggestions yet.")}
@@ -1228,7 +1237,7 @@ export default function RevenueIntegrityView({
               "التحليل ينشئ اقتراحًا فقط. التنفيذ يتطلب اعتمادًا بشريًا.",
               "Analysis creates a suggestion only. Execution requires human approval.",
             )}
-            className="min-w-0 self-start h-fit"
+            className="min-w-0"
           >
             <form
               className="space-y-4"
@@ -1316,16 +1325,16 @@ export default function RevenueIntegrityView({
       ) : null}
 
       {activeTab === "audit" && capabilities.canReadAudit ? (
-        <div className="grid items-start gap-5 xl:grid-cols-2">
-          <Panel title={L("الأحداث", "Domain events")} className="min-w-0 self-start h-fit">
+        <div data-revenue-tab-layout="audit" className={revenueVisual.tabWorkspaceGrid}>
+          <Panel title={L("الأحداث", "Domain events")} className="min-w-0">
             {eventItems.length === 0 ? (
               <EmptyState>{L("لا توجد أحداث.", "No events.")}</EmptyState>
             ) : (
               <div className="space-y-2">
                 {eventItems.map((event: any) => (
-                  <InteractiveSurface
+                  <div
                     key={event.id}
-                    variant="card"
+
                     className="p-4 text-start"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -1346,7 +1355,7 @@ export default function RevenueIntegrityView({
                       )}{" "}
                       · {safeDisplayId(event.aggregateId, langEnum)}
                     </div>
-                  </InteractiveSurface>
+                  </div>
                 ))}
                 <Pager
                   page={eventPage}
@@ -1364,7 +1373,7 @@ export default function RevenueIntegrityView({
             )}
           </Panel>
 
-          <Panel title={L("التدقيق وصندوق الصادر", "Audit & Outbox")} className="min-w-0 self-start h-fit">
+          <Panel title={L("التدقيق وصندوق الصادر", "Audit & Outbox")} className="min-w-0">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 flex-wrap">
                 {initialData.outbox.length > 0 ? (
@@ -1409,9 +1418,9 @@ export default function RevenueIntegrityView({
               ) : (
               <div className="space-y-2">
                 {auditItems.map((entry: any) => (
-                  <InteractiveSurface
+                  <div
                     key={entry.id}
-                    variant="card"
+
                     className="p-4 text-start"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -1432,7 +1441,7 @@ export default function RevenueIntegrityView({
                       )}{" "}
                       · {safeDisplayId(entry.resourceId, langEnum)}
                     </div>
-                  </InteractiveSurface>
+                  </div>
                 ))}
                 <Pager
                   page={auditPage}
@@ -1585,3 +1594,9 @@ export default function RevenueIntegrityView({
     </main>
   );
 }
+
+
+
+
+
+

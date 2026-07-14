@@ -7,6 +7,40 @@ import {
   requireAgentAccess,
 } from "@/lib/agents/access";
 
+function safeLogMessage(value: string, actionType: string): string {
+  const raw = String(value || "").trim();
+
+  if (actionType === "AI_USAGE") {
+    try {
+      const parsed = JSON.parse(raw) as {
+        source?: string;
+        outcome?: string;
+        totalTokens?: number;
+      };
+      const source =
+        parsed.source === "SAFE_FALLBACK" ? "المسار الآمن" : "مزود الذكاء الاصطناعي";
+      const outcome =
+        parsed.outcome === "SUCCESS"
+          ? "نجاح"
+          : parsed.outcome === "FAILED"
+            ? "فشل"
+            : "بديل آمن";
+      return `تم تسجيل استخدام ${source}. النتيجة: ${outcome}.`;
+    } catch {
+      return "تم تسجيل حدث استخدام لمزود الذكاء الاصطناعي.";
+    }
+  }
+
+  return raw
+    .replace(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
+      "[معرّف محمي]",
+    )
+    .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[بريد محمي]")
+    .replace(/(api[_-]?key|secret|token)\s*[:=]\s*[^\s,;]+/gi, "$1=[محمي]")
+    .slice(0, 500);
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -38,14 +72,25 @@ export async function GET(
             tenantId: access.tenantId,
             agentId: { in: [slot.id, slot.agentType] },
           },
+          select: {
+            actionType: true,
+            logMessageAr: true,
+            severity: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
           take: 100,
         });
 
         return NextResponse.json({
           success: true,
-          agentId: id,
-          data: logs,
+          data: logs.map((log, index) => ({
+            eventKey: `${log.createdAt.toISOString()}-${log.actionType}-${index}`,
+            actionType: log.actionType,
+            messageAr: safeLogMessage(log.logMessageAr, log.actionType),
+            severity: log.severity,
+            createdAt: log.createdAt,
+          })),
         });
       },
     );

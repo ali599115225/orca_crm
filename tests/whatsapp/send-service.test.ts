@@ -58,12 +58,14 @@ describe("WhatsApp send service", () => {
     });
 
     resolveConnectionMock.mockResolvedValue({
+      provider: "META",
       source: "tenant-connection",
       tenantId: "tenant-1",
       connectionId: "connection-1",
       phoneNumberId: "phone-number-1",
       wabaId: "waba-1",
       accessToken: "access-token",
+      apiBaseUrl: "https://graph.facebook.com/v25.0",
     });
 
     hashPhoneMock.mockReturnValue("phone-hash");
@@ -146,6 +148,48 @@ describe("WhatsApp send service", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: "failed",
+        }),
+      }),
+    );
+  });
+
+  it("sends text through 360dialog with the tenant API key", async () => {
+    resolveConnectionMock.mockResolvedValue({
+      provider: "DIALOG360",
+      source: "360dialog",
+      tenantId: "tenant-1",
+      connectionId: "dialog-1",
+      phoneNumberId: "966500000000",
+      wabaId: null,
+      accessToken: "dialog-api-key",
+      apiBaseUrl: "https://waba-v2.360dialog.io",
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({ messages: [{ id: "dialog-message-1" }] }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const result = await sendWhatsAppMessage(
+      "tenant-1",
+      "+966500000000",
+      "مرحبا",
+    );
+
+    expect(result).toMatchObject({
+      success: true,
+      provider: "DIALOG360",
+      metaMessageId: "dialog-message-1",
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://waba-v2.360dialog.io/messages",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "D360-API-KEY": "dialog-api-key",
         }),
       }),
     );

@@ -56,14 +56,28 @@ export async function completePaymentTransaction(input: {
     const payment = await tx.paymentTransaction.findFirst({
       where: { id: input.transactionId, tenantId: input.tenantId },
       include: {
-        installment: true,
-        invoice: true,
         receipt: true,
       },
     });
     if (!payment) throw new Error("Payment transaction not found.");
     if (payment.status === PAYMENT_STATUS.COMPLETED) {
       return { payment, idempotent: true };
+    }
+
+    const installment = payment.installmentId
+      ? await tx.installment.findFirst({
+          where: { id: payment.installmentId, tenantId: input.tenantId },
+        })
+      : null;
+    if (payment.installmentId && !installment) {
+      throw new Error("Installment not found for payment tenant.");
+    }
+    if (
+      payment.invoiceId &&
+      installment?.invoiceId &&
+      payment.invoiceId !== installment.invoiceId
+    ) {
+      throw new Error("Payment invoice and installment are inconsistent.");
     }
 
     const expectedMinor =
@@ -80,14 +94,12 @@ export async function completePaymentTransaction(input: {
       throw new Error("Verified payment currency does not match the expected currency.");
     }
 
-    const invoiceId = payment.invoiceId || payment.installment?.invoiceId || null;
+    const invoiceId = payment.invoiceId || installment?.invoiceId || null;
     if (!invoiceId) throw new Error("Payment is not linked to an invoice.");
 
-    const invoice =
-      payment.invoice ||
-      (await tx.invoice.findFirst({
-        where: { id: invoiceId, tenantId: input.tenantId },
-      }));
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, tenantId: input.tenantId },
+    });
     if (!invoice) throw new Error("Invoice not found for payment.");
 
     const completedForInvoiceBefore = await tx.paymentTransaction.aggregate({
@@ -107,18 +119,18 @@ export async function completePaymentTransaction(input: {
       throw new Error("Payment exceeds the invoice remaining balance.");
     }
 
-    if (payment.installment) {
+    if (installment) {
       const completedForInstallment = await tx.paymentTransaction.aggregate({
         where: {
           tenantId: input.tenantId,
-          installmentId: payment.installment.id,
+          installmentId: installment.id,
           status: PAYMENT_STATUS.COMPLETED,
           id: { not: payment.id },
         },
         _sum: { netAmount: true },
       });
       const paidBefore = Number(completedForInstallment._sum.netAmount || 0);
-      const installmentTotal = Number(payment.installment.amountSar);
+      const installmentTotal = Number(installment.amountSar);
       if (roundMoney(paidBefore + amount) > roundMoney(installmentTotal)) {
         throw new Error("Payment exceeds the installment remaining balance.");
       }
@@ -141,11 +153,11 @@ export async function completePaymentTransaction(input: {
       },
     });
 
-    if (payment.installment) {
+    if (installment) {
       const completedForInstallment = await tx.paymentTransaction.aggregate({
         where: {
           tenantId: input.tenantId,
-          installmentId: payment.installment.id,
+          installmentId: installment.id,
           status: PAYMENT_STATUS.COMPLETED,
         },
         _sum: { netAmount: true },
@@ -153,9 +165,9 @@ export async function completePaymentTransaction(input: {
       const installmentPaid = roundMoney(
         Number(completedForInstallment._sum.netAmount || 0),
       );
-      const installmentTotal = roundMoney(Number(payment.installment.amountSar));
+      const installmentTotal = roundMoney(Number(installment.amountSar));
       await tx.installment.update({
-        where: { id: payment.installment.id },
+        where: { id: installment.id },
         data: {
           paymentStatus:
             installmentPaid >= installmentTotal
@@ -217,16 +229,16 @@ export async function completePaymentTransaction(input: {
       );
     }
 
-    if (payment.installment?.paymentPlanId) {
+    if (installment?.paymentPlanId) {
       const remaining = await tx.installment.count({
         where: {
-          paymentPlanId: payment.installment.paymentPlanId,
+          paymentPlanId: installment.paymentPlanId,
           paymentStatus: { not: INSTALLMENT_STATUS.PAID },
         },
       });
       if (remaining === 0) {
         await tx.paymentPlan.updateMany({
-          where: { id: payment.installment.paymentPlanId, tenantId: input.tenantId },
+          where: { id: installment.paymentPlanId, tenantId: input.tenantId },
           data: {
             status: PAYMENT_PLAN_STATUS.COMPLETED,
             completedAt: new Date(),
@@ -235,7 +247,7 @@ export async function completePaymentTransaction(input: {
       }
     }
 
-    const contractId = invoice.contractId || payment.installment?.contractId || null;
+    const contractId = invoice.contractId || installment?.contractId || null;
     let earlySettlement:
       | {
           paymentPlanId: string;

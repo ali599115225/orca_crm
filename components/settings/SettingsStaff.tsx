@@ -157,13 +157,13 @@ export default function SettingsStaff({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="orca-settings-section orca-settings-staff-section">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-black text-[var(--nc-foreground)]">
             {isArabic ? "فريق العمل" : "Staff Directory"}
           </h2>
-          <p className="text-sm text-[var(--nc-foreground-muted)]">
+          <p className="text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
             {isArabic
               ? "إدارة موظفي المنشأة وعقودهم وصلاحياتهم"
               : "Manage company employees, contracts, and permissions"}
@@ -198,7 +198,7 @@ export default function SettingsStaff({
               <input
                 name="name"
                 required
-                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
@@ -209,7 +209,7 @@ export default function SettingsStaff({
                 type="email"
                 name="email"
                 required
-                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
@@ -218,7 +218,7 @@ export default function SettingsStaff({
               </label>
               <input
                 name="jobTitle"
-                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div>
@@ -246,7 +246,7 @@ export default function SettingsStaff({
                 type="password"
                 name="password"
                 required
-                className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
               />
             </div>
             <div className="md:col-span-2 flex gap-2 pt-2">
@@ -261,9 +261,9 @@ export default function SettingsStaff({
         </SmartCard>
       )}
 
-      <SmartCard className="relative z-0">
-        <div className="min-h-[400px]">
-          <table className="w-full table-fixed text-sm text-start">
+      <SmartCard className="orca-workspace-panel relative z-0 overflow-hidden">
+        <div className="min-h-[400px] overflow-x-auto">
+          <table className="w-full min-w-[980px] table-fixed text-start text-sm">
             <colgroup>
               <col className="w-[25%]" />
               <col className="w-[18%]" />

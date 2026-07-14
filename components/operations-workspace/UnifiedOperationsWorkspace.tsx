@@ -59,11 +59,16 @@ export default function UnifiedOperationsWorkspace({
   detail,
   emptyDetailTitle,
   emptyDetailDescription,
+  loading = false,
+  loadingLabel,
+  errorMessage,
+  retryLabel,
+  onRetry,
 }: UnifiedOperationsWorkspaceProps) {
   const dir = language === "AR" ? "rtl" : "ltr";
 
   return (
-    <section className={styles.root} dir={dir}>
+    <section className={styles.root} dir={dir} data-module={module}>
       <div className={styles.shell}>
         <header className={styles.pageHeader}>
           <div className={styles.titleBlock}>
@@ -109,7 +114,12 @@ export default function UnifiedOperationsWorkspace({
                 <h2>{listTitle}</h2>
                 <small>{listSubtitle}</small>
               </div>
-              <button type="button" className={`${styles.button} ${styles.primaryButton}`} onClick={onNew}>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.primaryButton}`}
+                onClick={onNew}
+                disabled={loading || Boolean(errorMessage)}
+              >
                 <Plus size={17} />
                 <span>{newLabel}</span>
               </button>
@@ -122,6 +132,7 @@ export default function UnifiedOperationsWorkspace({
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
+                disabled={loading || Boolean(errorMessage)}
               />
               <label className="sr-only" htmlFor={`${module}-filter`}>
                 {filterLabel}
@@ -132,6 +143,7 @@ export default function UnifiedOperationsWorkspace({
                 value={filterValue}
                 onChange={(event) => onFilterChange(event.target.value)}
                 aria-label={filterLabel}
+                disabled={loading || Boolean(errorMessage)}
               >
                 {filterOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -142,7 +154,28 @@ export default function UnifiedOperationsWorkspace({
             </div>
 
             <div className={styles.list} role="listbox" tabIndex={0} aria-label={listTitle}>
-              {items.length === 0 ? (
+              {loading ? (
+                <div className={styles.loadingState} role="status" aria-live="polite">
+                  <span className={styles.stateSpinner} aria-hidden="true" />
+                  <p>{loadingLabel || text(language, "جاري تحميل البيانات...", "Loading data...")}</p>
+                </div>
+              ) : errorMessage ? (
+                <div className={styles.errorState} role="alert">
+                  <div>
+                    <h3>{text(language, "تعذر تحميل البيانات", "Unable to load data")}</h3>
+                    <p>{errorMessage}</p>
+                    {onRetry ? (
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.secondaryButton}`}
+                        onClick={onRetry}
+                      >
+                        {retryLabel || text(language, "إعادة المحاولة", "Retry")}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : items.length === 0 ? (
                 <div className={styles.emptyState}>
                   <div>
                     <h3>{text(language, "لا توجد نتائج", "No results")}</h3>

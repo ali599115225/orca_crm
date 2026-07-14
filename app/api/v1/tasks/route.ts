@@ -1,28 +1,38 @@
-import { httpErrorResponse } from "@/lib/http-error-response";
+import { Priority } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
 import {
   runWithDatabaseSession,
   TENANT_ROLES,
   TENANT_WRITE_ROLES,
 } from "@/lib/api-auth-guard";
-import { Priority } from "@prisma/client";
-import { ErrorCode } from "@/lib/errors";
 import { writeAuditLog } from "@/lib/audit";
+import { ErrorCode } from "@/lib/errors";
+import { httpErrorResponse } from "@/lib/http-error-response";
+import { prisma } from "@/lib/prisma";
 
 const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const TASK_PRIORITIES = new Set<Priority>(["LOW", "MEDIUM", "HIGH"]);
 
 export async function GET(request: NextRequest) {
   return runWithDatabaseSession(request, TENANT_ROLES, async (session) => {
     try {
       const { searchParams } = new URL(request.url);
-      const assignee = searchParams.get("assignee");
-      const leadId = searchParams.get("leadId");
+      const assignee = searchParams.get("assignee")?.trim() || "";
+      const leadId = searchParams.get("leadId")?.trim() || "";
 
       if (leadId && !UUID_REGEX.test(leadId)) {
         return NextResponse.json(
           { success: false, error: "معرف العميل غير صالح." },
+          { status: 400 },
+        );
+      }
+
+      if (assignee && !UUID_REGEX.test(assignee)) {
+        return NextResponse.json(
+          { success: false, error: "معرف المسؤول غير صالح." },
           { status: 400 },
         );
       }
@@ -33,10 +43,20 @@ export async function GET(request: NextRequest) {
           ...(assignee ? { assignedTo: assignee } : {}),
           ...(leadId ? { leadId } : {}),
         },
-        orderBy: { dueDate: "asc" },
+        orderBy: [{ status: "asc" }, { dueDate: "asc" }],
         include: {
           lead: {
-            select: { firstName: true, lastName: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          assignedUser: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
         take: 100,
@@ -62,13 +82,20 @@ export async function POST(request: NextRequest) {
     async (session) => {
       try {
         const body = await request.json();
-        const { leadId, title, description, dueDate, priority } = body;
+        const leadId = String(body.leadId || "").trim();
+        const requestedAssignee = String(body.assignedTo || "").trim();
+        const title = String(body.title || "").trim();
+        const description = String(body.description || "").trim();
+        const rawPriority = String(body.priority || "MEDIUM")
+          .trim()
+          .toUpperCase();
+        const dueDate = new Date(body.dueDate);
 
-        if (!leadId || !title) {
+        if (!leadId || title.length < 2) {
           return NextResponse.json(
             {
               success: false,
-              error: "معرف العميل وعنوان المهمة مطلوبان.",
+              error: "العميل وعنوان المهمة مطلوبان.",
             },
             { status: 400 },
           );
@@ -81,10 +108,42 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        if (requestedAssignee && !UUID_REGEX.test(requestedAssignee)) {
+          return NextResponse.json(
+            { success: false, error: "معرف المسؤول غير صالح." },
+            { status: 400 },
+          );
+        }
+
+        if (!TASK_PRIORITIES.has(rawPriority as Priority)) {
+          return NextResponse.json(
+            { success: false, error: "أولوية المهمة غير صالحة." },
+            { status: 400 },
+          );
+        }
+
+        if (Number.isNaN(dueDate.getTime())) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "تاريخ استحقاق المهمة غير صالح.",
+            },
+            { status: 400 },
+          );
+        }
+
         const lead = await prisma.lead.findFirst({
-          where: { id: leadId, tenantId: session.tenantId },
-          select: { id: true },
+          where: {
+            id: leadId,
+            tenantId: session.tenantId,
+            isArchived: false,
+          },
+          select: {
+            id: true,
+            assignedTo: true,
+          },
         });
+
         if (!lead) {
           return NextResponse.json(
             {
@@ -95,42 +154,80 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        let priorityEnum: Priority = "MEDIUM";
-        if (priority === "HIGH") priorityEnum = "HIGH";
-        if (priority === "LOW") priorityEnum = "LOW";
-
-        const parsedDueDate = dueDate
-          ? new Date(dueDate)
-          : new Date(Date.now() + 24 * 60 * 60 * 1000);
-        if (Number.isNaN(parsedDueDate.getTime())) {
+        const assignedTo = requestedAssignee || lead.assignedTo || "";
+        if (!assignedTo) {
           return NextResponse.json(
-            { success: false, error: "تاريخ استحقاق المهمة غير صالح." },
-            { status: 400 },
+            {
+              success: false,
+              error: "يجب اختيار مسؤول للمهمة.",
+            },
+            { status: 409 },
+          );
+        }
+
+        const assignedUser = await prisma.user.findFirst({
+          where: {
+            id: assignedTo,
+            tenantId: session.tenantId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        if (!assignedUser) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "المسؤول غير موجود أو غير نشط في منشأتك.",
+            },
+            { status: 404 },
           );
         }
 
         const task = await prisma.task.create({
           data: {
             tenantId: session.tenantId,
-            leadId,
-            assignedTo: session.userId,
-            title: String(title).trim(),
-            description: description ? String(description).trim() : null,
-            dueDate: parsedDueDate,
-            priority: priorityEnum,
+            leadId: lead.id,
+            assignedTo,
+            title: title.slice(0, 160),
+            description: description
+              ? description.slice(0, 2000)
+              : null,
+            dueDate,
+            priority: rawPriority as Priority,
             status: "PENDING",
             createdBy: session.userId,
             updatedBy: session.userId,
+          },
+          include: {
+            lead: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         });
 
         await writeAuditLog({
           tenantId: session.tenantId,
           userId: session.userId,
-          action: "LEAD_TASK_CREATED",
-          tableName: "leads",
-          recordId: leadId,
-          details: JSON.stringify({ taskId: task.id }),
+          action: "TASK_CREATED",
+          tableName: "tasks",
+          recordId: task.id,
+          details: JSON.stringify({
+            leadId: lead.id,
+            assignedTo,
+            dueDate: dueDate.toISOString(),
+            priority: rawPriority,
+          }),
         });
 
         return NextResponse.json(

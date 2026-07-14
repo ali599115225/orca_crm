@@ -1,31 +1,37 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockIsDedicatedCopy,
-  mockAuthenticateRequest,
+  mockWriteAuditLog,
   prismaMock,
 } = vi.hoisted(() => {
-  const mockIsDedicatedCopy = vi.fn();
-  const mockAuthenticateRequest = vi.fn();
+  const mockWriteAuditLog = vi.fn();
   const prismaMock = {
-    ticket: { create: vi.fn(), update: vi.fn() },
+    ticket: {
+      create: vi.fn(),
+      findMany: vi.fn(),
+    },
   };
-  return { mockIsDedicatedCopy, mockAuthenticateRequest, prismaMock };
+  return { mockWriteAuditLog, prismaMock };
 });
 
-vi.mock("@/lib/deployment-license", () => ({
-  isDedicatedCopyDeployment: () => mockIsDedicatedCopy(),
+vi.mock("@/lib/api-auth-guard", () => ({
+  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+  runWithDatabaseSession: vi.fn(
+    async (_request: any, _roles: readonly string[], operation: (session: any) => unknown) =>
+      operation({ tenantId: "tenant-1", userId: "user-1", role: "ADMIN" }),
+  ),
 }));
 
-vi.mock("@/lib/api-auth", () => ({
-  authenticateRequest: (...a: any[]) => mockAuthenticateRequest(...a),
+vi.mock("@/lib/audit", () => ({
+  writeAuditLog: (...args: any[]) => mockWriteAuditLog(...args),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 vi.mock("@/lib/http-error-response", () => ({
-  httpErrorResponse: vi.fn((_req: any, _code: any, _msg: string) => ({
-    json: () => Promise.resolve({ error: _msg }),
+  httpErrorResponse: vi.fn((_request: any, _code: any, context: string) => ({
+    status: 500,
+    json: async () => ({ success: false, error: context }),
   })),
 }));
 
@@ -35,55 +41,53 @@ vi.mock("@/lib/errors", () => ({
 
 import { POST } from "@/app/api/v1/support/tickets/route";
 
-const SESSION = { tenantId: "tenant-1" };
-
-function makeBody(desc: string) {
+function makeRequest(description: string) {
   return {
-    json: async () => ({ title: "استفسار", description: desc }),
+    json: async () => ({
+      title: "استفسار",
+      description,
+    }),
   } as any;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuthenticateRequest.mockResolvedValue(SESSION);
-  prismaMock.ticket.create.mockResolvedValue({ id: "ticket-1" });
-  prismaMock.ticket.update.mockImplementation(({ data }: any) => Promise.resolve({ id: "ticket-1", ...data }));
+  prismaMock.ticket.create.mockResolvedValue({
+    id: "ticket-1",
+    title: "استفسار",
+    description: "أحتاج إلى مساعدة فنية",
+    status: "OPEN",
+    aiResponse: null,
+    createdAt: new Date("2026-07-13T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-13T00:00:00.000Z"),
+  });
+  mockWriteAuditLog.mockResolvedValue(undefined);
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+describe("support ticket API", () => {
+  it("returns a real created ticket without a fabricated assistant response", async () => {
+    const response = await POST(makeRequest("أريد ترقية باقة والدفع وربط نطاق"));
+    const body = await response.json();
 
-describe("support tickets API — DEDICATED_COPY", () => {
-  it("DEDICATED_COPY reply does NOT contain مدى or فيزا or STC Pay or ترقية", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const res = await POST(makeBody("أريد ترقية باقة والدفع"));
-    const body = await res.json();
-    const aiReply = body.data?.aiResponse || "";
-
-    expect(aiReply).not.toContain("مدى");
-    expect(aiReply).not.toContain("فيزا");
-    expect(aiReply).not.toContain("STC Pay");
-    expect(aiReply).not.toContain("ترقية");
+    expect(response.status).toBe(201);
+    expect(body.success).toBe(true);
+    expect(body.data.aiResponse).toBeNull();
+    expect(prismaMock.ticket.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: "tenant-1",
+        aiResponse: null,
+      }),
+    });
   });
 
-  it("DEDICATED_COPY reply references independent license", async () => {
-    mockIsDedicatedCopy.mockReturnValue(true);
-    const res = await POST(makeBody("أريد معلومات عن الاشتراك والدفع"));
-    const body = await res.json();
-    const aiReply = body.data?.aiResponse || "";
+  it("does not expose simulated payment or provider instructions", async () => {
+    const response = await POST(makeRequest("أريد ترقية باقة والدفع وربط نطاق"));
+    const body = await response.json();
+    const text = body.data.aiResponse || "";
 
-    expect(aiReply).toContain("ترخيص مستقل");
-  });
-
-  it("SaaS reply contains payment methods", async () => {
-    mockIsDedicatedCopy.mockReturnValue(false);
-    const res = await POST(makeBody("أريد ترقية باقة"));
-    const body = await res.json();
-    const aiReply = body.data?.aiResponse || "";
-
-    expect(aiReply).toContain("مدى");
-    expect(aiReply).toContain("فيزا");
-    expect(aiReply).toContain("STC Pay");
+    expect(text).not.toContain("مدى");
+    expect(text).not.toContain("فيزا");
+    expect(text).not.toContain("STC Pay");
+    expect(text).not.toContain("cname.vercel-dns.com");
   });
 });

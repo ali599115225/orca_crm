@@ -20,6 +20,13 @@ export async function PATCH(
         const { id } = await params;
         const task = await prisma.task.findFirst({
           where: { id, tenantId: session.tenantId },
+          select: {
+            id: true,
+            tenantId: true,
+            leadId: true,
+            status: true,
+            auditLog: true,
+          },
         });
 
         if (!task) {
@@ -42,10 +49,14 @@ export async function PATCH(
         await writeAuditLog({
           tenantId: session.tenantId,
           userId: session.userId,
-          action: "LEAD_TASK_COMPLETED",
-          tableName: "leads",
-          recordId: task.leadId,
-          details: JSON.stringify({ taskId: task.id }),
+          action: "TASK_COMPLETED",
+          tableName: "tasks",
+          recordId: task.id,
+          details: JSON.stringify({
+            leadId: task.leadId,
+            from: task.status,
+            to: "COMPLETED",
+          }),
         });
 
         return NextResponse.json({ success: true, data: updatedTask });

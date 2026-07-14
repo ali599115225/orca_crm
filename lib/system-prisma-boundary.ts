@@ -159,6 +159,25 @@ export const SYSTEM_CLIENT_ALLOWLIST: readonly SystemClientAllowlistEntry[] = [
     justification:
       "Retention cron executes cross-tenant data lifecycle raw SQL operations.",
   },
+  {
+    module: "app/api/payments/custom/return/route.ts",
+    category: SYSTEM_CLIENT_CATEGORIES.WEBHOOK_INGRESS,
+    justification:
+      "Signed payment-provider browser return resolves the transaction before tenant binding, then verifies the connection tenant before reconciliation.",
+  },
+  {
+    module: "app/api/payments/custom/webhook/[connectionId]/route.ts",
+    category: SYSTEM_CLIENT_CATEGORIES.WEBHOOK_INGRESS,
+    justification:
+      "Signed custom payment webhook resolves its tenant-scoped provider connection before tenant binding and rejects cross-tenant transactions.",
+  },
+  {
+    module: "lib/payments/custom-payment-reconciliation.ts",
+    category: SYSTEM_CLIENT_CATEGORIES.WEBHOOK_INGRESS,
+    justification:
+      "Authoritative custom-payment reconciliation is invoked from signed ingress routes and validates transaction and provider tenant ownership before financial completion.",
+  },
+
 ] as const;
 
 export const SYSTEM_CLIENT_ALLOWLIST_MODULES = SYSTEM_CLIENT_ALLOWLIST.map(

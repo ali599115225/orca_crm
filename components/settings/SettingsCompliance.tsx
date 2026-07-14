@@ -136,12 +136,12 @@ export default function SettingsCompliance({
     drawer === "shared-credentials" || drawer === "digital-identity" ? "sm:w-[min(720px,100vw)]" : "sm:w-[640px]";
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="orca-settings-section orca-settings-compliance-section">
+      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
         <h2 className="text-lg font-black text-[var(--nc-foreground)]">
           {L("الامتثال والربط الحكومي", "Compliance & Gov Integrations")}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-[var(--nc-foreground-muted)]">
+        <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
           {L(
             "المصدر الوحيد والموحد لإدارة هويات الربط مع بوابات إيجار والزكاة والضريبة والجمارك (ZATCA).",
             "Unified source of truth for managing integration identities with Ejar and ZATCA portals.",
@@ -150,7 +150,7 @@ export default function SettingsCompliance({
       </div>
 
       {/* 1. Compliance status summary */}
-      <SmartCard className="p-5">
+      <SmartCard className="orca-workspace-panel p-5">
         <h3 className="text-base font-black text-[var(--nc-foreground)]">
           {L("ملخص حالة الامتثال", "Compliance status summary")}
         </h3>
@@ -184,7 +184,7 @@ export default function SettingsCompliance({
 
       {/* Row: company digital identity | shared credentials */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SmartCard className="flex flex-col gap-3 p-5">
+        <SmartCard className="orca-settings-card flex min-h-[210px] flex-col gap-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)]">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
               <i className="ph-bold ph-identification-badge text-base text-[var(--nc-foreground)]" aria-hidden="true" />
@@ -198,10 +198,10 @@ export default function SettingsCompliance({
               </p>
             </div>
           </div>
-          <div className="mt-auto pt-2">
+          <div className="mt-auto border-t border-[var(--nc-border)] pt-4">
             <SettingsButton
               variant="secondary"
-              className="min-w-[120px]"
+              className="w-[132px] justify-center"
               onClick={() => openDrawer("digital-identity")}
             >
               {L("تعديل", "Edit")}
@@ -209,7 +209,7 @@ export default function SettingsCompliance({
           </div>
         </SmartCard>
 
-        <SmartCard className="flex flex-col gap-3 p-5">
+        <SmartCard className="orca-settings-card flex min-h-[210px] flex-col gap-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)]">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
               <i className="ph-bold ph-key text-base text-[var(--nc-foreground)]" aria-hidden="true" />
@@ -223,11 +223,11 @@ export default function SettingsCompliance({
               </p>
             </div>
           </div>
-          <div className="mt-auto pt-2">
+          <div className="mt-auto border-t border-[var(--nc-border)] pt-4">
             <SettingsButton
               type="button"
               variant="primary"
-              className="min-w-[120px]"
+              className="w-[132px] justify-center"
               onClick={() => openDrawer("shared-credentials")}
             >
               {L("ربط", "Connect")}
@@ -238,7 +238,7 @@ export default function SettingsCompliance({
 
       {/* Row: ZATCA integration | Ejar integration */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SmartCard className="flex flex-col gap-3 p-5">
+        <SmartCard className="orca-settings-card flex min-h-[210px] flex-col gap-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)]">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
               <i className="ph-bold ph-buildings text-base text-[var(--nc-foreground)]" aria-hidden="true" />
@@ -253,14 +253,14 @@ export default function SettingsCompliance({
               {L("متصل", "Connected")}
             </span>
           </div>
-          <div className="mt-auto flex gap-2 pt-2">
-            <SettingsButton variant="ghost" className="min-w-[120px]" onClick={() => openDrawer("zatca")}>
+          <div className="mt-auto flex gap-2 border-t border-[var(--nc-border)] pt-4">
+            <SettingsButton variant="secondary" className="w-[132px] justify-center" onClick={() => openDrawer("zatca")}>
               {L("عرض التفاصيل", "View details")}
             </SettingsButton>
           </div>
         </SmartCard>
 
-        <SmartCard className="flex flex-col gap-3 p-5">
+        <SmartCard className="orca-settings-card flex min-h-[210px] flex-col gap-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)]">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
               <i className="ph-bold ph-house-line text-base text-[var(--nc-foreground)]" aria-hidden="true" />
@@ -275,8 +275,8 @@ export default function SettingsCompliance({
               {L("قيد المراجعة", "Pending review")}
             </span>
           </div>
-          <div className="mt-auto flex gap-2 pt-2">
-            <SettingsButton variant="ghost" className="min-w-[120px]" onClick={() => openDrawer("ejar")}>
+          <div className="mt-auto flex gap-2 border-t border-[var(--nc-border)] pt-4">
+            <SettingsButton variant="secondary" className="w-[132px] justify-center" onClick={() => openDrawer("ejar")}>
               {L("عرض التفاصيل", "View details")}
             </SettingsButton>
           </div>
@@ -284,7 +284,7 @@ export default function SettingsCompliance({
       </div>
 
       {/* Digital liability disclaimer — full width, last */}
-      <SmartCard className="flex flex-col gap-3 p-5">
+      <SmartCard className="orca-settings-card flex min-h-[210px] flex-col gap-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)]">
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
             <i className="ph-bold ph-pen-nib text-base text-[var(--nc-foreground)]" aria-hidden="true" />
@@ -307,10 +307,10 @@ export default function SettingsCompliance({
             {hasSigned ? L("موقع", "Signed") : L("غير موقع", "Not signed")}
           </span>
         </div>
-        <div className="pt-2">
+        <div className="mt-auto border-t border-[var(--nc-border)] pt-4">
           <SettingsButton
             variant="primary"
-            className="min-w-[120px]"
+            className="w-[132px] justify-center"
             onClick={() => openDrawer("disclaimer")}
             disabled={hasSigned}
           >
@@ -366,7 +366,7 @@ export default function SettingsCompliance({
                               name="commercialRegistry"
                               type="text"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -377,7 +377,7 @@ export default function SettingsCompliance({
                               name="vatNumber"
                               type="text"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -388,7 +388,7 @@ export default function SettingsCompliance({
                               name="nationalAddress"
                               type="text"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                         </div>
@@ -425,7 +425,7 @@ export default function SettingsCompliance({
                               name="zatcaBinarySecurityToken"
                               type="password"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -436,7 +436,7 @@ export default function SettingsCompliance({
                               name="zatcaSecret"
                               type="password"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -446,7 +446,7 @@ export default function SettingsCompliance({
                             <input
                               name="zatcaWebhookSecret"
                               type="password"
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                         </div>
@@ -468,7 +468,7 @@ export default function SettingsCompliance({
                               name="ejarAccessToken"
                               type="password"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -479,7 +479,7 @@ export default function SettingsCompliance({
                               name="ejarBrokerId"
                               type="text"
                               required
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                           <div>
@@ -489,7 +489,7 @@ export default function SettingsCompliance({
                             <input
                               name="ejarWebhookSecret"
                               type="password"
-                              className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                              className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
                             />
                           </div>
                         </div>
@@ -627,7 +627,7 @@ export default function SettingsCompliance({
                             setSignatureName(e.target.value);
                             if (signatureError) setSignatureError(null);
                           }}
-                          className="h-10 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm font-bold text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] focus:outline-none"
+                          className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm font-bold text-[var(--nc-foreground)] focus:border-[var(--nc-accent-border)] focus:outline-none"
                           placeholder={L("اكتب اسمك الكامل للمصادقة", "Type your full name to certify")}
                         />
                         {signatureError && (

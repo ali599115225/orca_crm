@@ -1,14 +1,12 @@
-// app/actions/tasks.ts
-// Hardened: session + DB-backed role required for all mutations.
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { getActiveTenant } from "@/lib/tenant";
-import { getSession } from "@/lib/session";
+import { revalidatePath } from "next/cache";
+
 import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
-import { revalidatePath } from "next/cache";
 import { sendWhatsAppNotification } from "@/lib/notifications";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 import { runWithTenantContext } from "@/lib/tenant-context";
 
 const TASK_ROLES = [
@@ -19,179 +17,570 @@ const TASK_ROLES = [
   "rental_manager",
 ] as const;
 
+const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
+type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+class TaskInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TaskInputError";
+  }
+}
+
+function taskActionError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message === "UNAUTHORIZED") {
+    return "يجب تسجيل الدخول أولاً.";
+  }
+
+  if (message === "FORBIDDEN") {
+    return "لا تملك صلاحية تنفيذ هذه العملية.";
+  }
+
+  if (error instanceof TaskInputError) {
+    return error.message;
+  }
+
+  console.error("[Tasks]", error);
+  return fallback;
+}
+
 async function requireTaskSession() {
   const session = await getSession();
-  if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
+  if (!session) throw new Error("UNAUTHORIZED");
+
   const verified = await assertServerActionRole(session, TASK_ROLES);
-  const tenant = await getActiveTenant();
-  return { session: verified, tenant };
+  return {
+    session: verified,
+    tenantId: verified.tenantId,
+  };
+}
+
+function normalizedText(value: FormDataEntryValue | null, maxLength: number) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function parseTaskPriority(value: FormDataEntryValue | null): TaskPriority {
+  const priority = String(value || "").trim().toUpperCase();
+
+  if (!TASK_PRIORITIES.includes(priority as TaskPriority)) {
+    throw new TaskInputError("أولوية المهمة غير صالحة.");
+  }
+
+  return priority as TaskPriority;
+}
+
+function parseTaskDueDate(formData: FormData): Date {
+  const dueAt = normalizedText(formData.get("dueAt"), 64);
+
+  if (dueAt) {
+    const parsed = new Date(dueAt);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new TaskInputError("تاريخ ووقت استحقاق المهمة غير صالحين.");
+    }
+    return parsed;
+  }
+
+  const dueDateOnly = normalizedText(formData.get("dueDateOnly"), 10);
+  const dueTimeOnly = normalizedText(formData.get("dueTimeOnly"), 5);
+
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(dueDateOnly) ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(dueTimeOnly)
+  ) {
+    throw new TaskInputError("تاريخ ووقت استحقاق المهمة غير صالحين.");
+  }
+
+  const parsed = new Date(`${dueDateOnly}T${dueTimeOnly}:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new TaskInputError("تاريخ ووقت استحقاق المهمة غير صالحين.");
+  }
+
+  return parsed;
+}
+
+function parseTaskForm(formData: FormData) {
+  const title = normalizedText(formData.get("title"), 160);
+  const description = normalizedText(formData.get("description"), 2000);
+  const leadId = normalizedText(formData.get("leadId"), 80);
+  const assignedTo = normalizedText(formData.get("assignedTo"), 80);
+  const priority = parseTaskPriority(formData.get("priority"));
+  const dueDate = parseTaskDueDate(formData);
+
+  if (title.length < 2) {
+    throw new TaskInputError("عنوان المهمة مطلوب ويجب أن يتكون من حرفين على الأقل.");
+  }
+
+  if (!leadId) {
+    throw new TaskInputError("يجب اختيار عميل للمهمة.");
+  }
+
+  return {
+    title,
+    description: description || null,
+    leadId,
+    assignedTo: assignedTo || null,
+    priority,
+    dueDate,
+  };
+}
+
+async function findTaskRelations(
+  tenantId: string,
+  leadId: string,
+  requestedAssigneeId?: string | null,
+) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId, tenantId },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      assignedTo: true,
+      assignedUser: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          isActive: true,
+        },
+      },
+    },
+  });
+
+  if (!lead) {
+    throw new TaskInputError("العميل غير موجود أو لا يتبع منشأتك.");
+  }
+
+  const assignedTo = String(requestedAssigneeId || lead.assignedTo || "").trim();
+  if (!assignedTo) {
+    throw new TaskInputError("يجب اختيار مسؤول للمهمة.");
+  }
+
+  let assignedUser =
+    lead.assignedTo === assignedTo && lead.assignedUser?.isActive
+      ? lead.assignedUser
+      : null;
+
+  if (!assignedUser) {
+    assignedUser = await prisma.user.findFirst({
+      where: {
+        id: assignedTo,
+        tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        isActive: true,
+      },
+    });
+  }
+
+  if (!assignedUser) {
+    throw new TaskInputError("المسؤول غير موجود أو غير نشط في منشأتك.");
+  }
+
+  return {
+    lead,
+    assignedTo,
+    assignedUser,
+  };
+}
+
+async function notifyAssignedUser(input: {
+  tenantId: string;
+  phone?: string | null;
+  title: string;
+  leadName: string;
+  dueDate: Date;
+}) {
+  const phone = String(input.phone || "").trim();
+  if (!phone) return;
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+  const formattedDate = `${pad(input.dueDate.getDate())}/${pad(
+    input.dueDate.getMonth() + 1,
+  )}/${String(input.dueDate.getFullYear()).slice(-2)} ${pad(
+    input.dueDate.getHours(),
+  )}:${pad(input.dueDate.getMinutes())}`;
+  await sendWhatsAppNotification(
+    input.tenantId,
+    phone,
+    "new_task_assignment",
+    [input.title, input.leadName, formattedDate],
+  ).catch((error) => {
+    console.warn("[Tasks] assignment notification failed", {
+      code: error instanceof Error ? error.name : "UNKNOWN",
+    });
+  });
 }
 
 export async function getTasksAction(page = 1, limit = 50) {
-  try {
-    const { tenant } = await requireTaskSession();
+  const safePage = Math.max(1, Number.isFinite(page) ? Math.trunc(page) : 1);
+  const safeLimit = Math.min(
+    100,
+    Math.max(1, Number.isFinite(limit) ? Math.trunc(limit) : 50),
+  );
 
-    return runWithTenantContext({ tenantId: tenant.id }, async () => {
-      const skip = (page - 1) * limit;
+  try {
+    const { tenantId } = await requireTaskSession();
+
+    return await runWithTenantContext({ tenantId }, async () => {
+      const skip = (safePage - 1) * safeLimit;
 
       const [tasks, total] = await Promise.all([
         prisma.task.findMany({
-          where: { tenantId: tenant.id },
+          where: { tenantId },
           include: {
-            lead: { select: { firstName: true, lastName: true, phone: true } },
-            assignedUser: { select: { name: true } },
+            lead: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
-          orderBy: { dueDate: "asc" },
+          orderBy: [{ status: "asc" }, { dueDate: "asc" }],
           skip,
-          take: limit,
+          take: safeLimit,
         }),
-        prisma.task.count({ where: { tenantId: tenant.id } }),
+        prisma.task.count({ where: { tenantId } }),
       ]);
 
       return {
+        success: true as const,
         data: tasks,
-        page,
-        limit,
+        page: safePage,
+        limit: safeLimit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.max(1, Math.ceil(total / safeLimit)),
       };
     });
   } catch (error) {
-    console.error("فشل جلب المهام:", error);
-    return { data: [], page, limit, total: 0, totalPages: 0 };
+    return {
+      success: false as const,
+      data: [],
+      page: safePage,
+      limit: safeLimit,
+      total: 0,
+      totalPages: 1,
+      error: taskActionError(error, "تعذر تحميل المهام."),
+    };
   }
 }
 
 export async function getLeadsListAction() {
   try {
-    const { tenant } = await requireTaskSession();
+    const { tenantId } = await requireTaskSession();
 
-    return runWithTenantContext({ tenantId: tenant.id }, async () => {
-      return await prisma.lead.findMany({
-        where: { tenantId: tenant.id },
-        select: { id: true, firstName: true, lastName: true },
-      });
+    return await runWithTenantContext({ tenantId }, async () => {
+      const [leads, users] = await Promise.all([
+        prisma.lead.findMany({
+          where: {
+            tenantId,
+            isArchived: false,
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            assignedTo: true,
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+        }),
+        prisma.user.findMany({
+          where: {
+            tenantId,
+            isActive: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+          orderBy: { name: "asc" },
+        }),
+      ]);
+
+      return {
+        success: true as const,
+        data: leads,
+        users,
+      };
     });
   } catch (error) {
-    console.error("فشل جلب قائمة العملاء:", error);
-    return [];
+    return {
+      success: false as const,
+      data: [],
+      users: [],
+      error: taskActionError(error, "تعذر تحميل خيارات المهمة."),
+    };
   }
 }
 
 export async function toggleTaskStatusAction(
   taskId: string,
-  currentStatus: string,
+  _clientStatus?: string,
 ) {
   try {
-    const { session, tenant } = await requireTaskSession();
+    const { session, tenantId } = await requireTaskSession();
+    const normalizedTaskId = String(taskId || "").trim();
 
-    return runWithTenantContext(
-      { tenantId: tenant.id, userId: session.userId as string | undefined },
+    if (!normalizedTaskId) {
+      throw new TaskInputError("معرف المهمة غير صالح.");
+    }
+
+    return await runWithTenantContext(
+      { tenantId, userId: session.userId },
       async () => {
+        const task = await prisma.task.findFirst({
+          where: {
+            id: normalizedTaskId,
+            tenantId,
+          },
+          select: {
+            id: true,
+            status: true,
+          },
+        });
+
+        if (!task) {
+          throw new TaskInputError("المهمة غير موجودة أو لا تتبع منشأتك.");
+        }
+
         const newStatus =
-          currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
+          task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
 
         await prisma.task.update({
-          where: { id: taskId, tenantId: tenant.id },
-          data: { status: newStatus },
-        });
-
-        await writeAuditLog({
-          tenantId: tenant.id,
-          userId: session.userId,
-          action: "TASK_STATUS_CHANGED",
-          tableName: "tasks",
-          recordId: taskId,
-          details: JSON.stringify({ from: currentStatus, to: newStatus }),
-        });
-
-        revalidatePath("/operations/tasks");
-        return { success: true };
-      },
-    );
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * إنشاء مهمة جديدة ودمج التاريخ والوقت المفرّقين تلقائياً
- */
-export async function createTaskAction(formData: FormData) {
-  try {
-    const { session, tenant } = await requireTaskSession();
-
-    return runWithTenantContext(
-      { tenantId: tenant.id, userId: session.userId as string | undefined },
-      async () => {
-        const title = formData.get("title") as string;
-        const description = formData.get("description") as string;
-        const leadId = formData.get("leadId") as string;
-        const dueDateOnly = formData.get("dueDateOnly") as string;
-        const dueTimeOnly = formData.get("dueTimeOnly") as string;
-        const priority = formData.get("priority") as any;
-
-        if (!title || !leadId || !dueDateOnly || !dueTimeOnly || !priority) {
-          throw new Error("جميع الحقول التي تحتوى على (*) هي حقول إلزامية.");
-        }
-
-        const lead = await prisma.lead.findUnique({
-          where: { id: leadId, tenantId: tenant.id },
-          select: { firstName: true, assignedTo: true },
-        });
-
-        if (!lead || !lead.assignedTo) {
-          throw new Error(
-            "العميل المختار غير مسند لمستشار مبيعات ليتم تكليفه بهذه المهمة.",
-          );
-        }
-
-        const combinedDueDate = new Date(`${dueDateOnly}T${dueTimeOnly}`);
-
-        const task = await prisma.task.create({
+          where: {
+            id: task.id,
+            tenantId,
+          },
           data: {
-            tenant: { connect: { id: tenant.id } },
-            lead: { connect: { id: leadId } },
-            assignedUser: { connect: { id: lead.assignedTo } },
-            title,
-            description: description || null,
-            dueDate: combinedDueDate,
-            priority,
-            status: "PENDING",
-            createdBy: session.userId,
+            status: newStatus,
+            updatedBy: session.userId,
           },
         });
 
         await writeAuditLog({
-          tenantId: tenant.id,
+          tenantId,
+          userId: session.userId,
+          action: "TASK_STATUS_CHANGED",
+          tableName: "tasks",
+          recordId: task.id,
+          details: JSON.stringify({
+            from: task.status,
+            to: newStatus,
+          }),
+        });
+
+        revalidatePath("/operations/tasks");
+        return {
+          success: true as const,
+          status: newStatus,
+        };
+      },
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error: taskActionError(error, "تعذر تحديث حالة المهمة."),
+    };
+  }
+}
+
+export async function createTaskAction(formData: FormData) {
+  try {
+    const { session, tenantId } = await requireTaskSession();
+    const input = parseTaskForm(formData);
+
+    return await runWithTenantContext(
+      { tenantId, userId: session.userId },
+      async () => {
+        const { lead, assignedTo, assignedUser } = await findTaskRelations(
+          tenantId,
+          input.leadId,
+          input.assignedTo,
+        );
+
+        const task = await prisma.task.create({
+          data: {
+            tenantId,
+            leadId: lead.id,
+            assignedTo,
+            title: input.title,
+            description: input.description,
+            dueDate: input.dueDate,
+            priority: input.priority,
+            status: "PENDING",
+            createdBy: session.userId,
+            updatedBy: session.userId,
+          },
+          include: {
+            lead: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+        await writeAuditLog({
+          tenantId,
           userId: session.userId,
           action: "TASK_CREATED",
           tableName: "tasks",
           recordId: task.id,
           details: JSON.stringify({
-            title,
-            leadId,
-            dueDate: combinedDueDate.toISOString(),
+            leadId: lead.id,
+            assignedTo,
+            dueDate: input.dueDate.toISOString(),
+            priority: input.priority,
           }),
         });
 
-        // إرسال الإشعار (non-blocking)
-        const salesPhone = "+966505123456";
-        const templateName = "new_task_assignment";
-        const formattedDate = combinedDueDate.toLocaleString("ar-SA");
-        const variables = [title, lead.firstName, formattedDate];
-        await sendWhatsAppNotification(
-          tenant.id,
-          salesPhone,
-          templateName,
-          variables,
-        ).catch(() => {});
+        await notifyAssignedUser({
+          tenantId,
+          phone: assignedUser.phone,
+          title: input.title,
+          leadName: [lead.firstName, lead.lastName].filter(Boolean).join(" "),
+          dueDate: input.dueDate,
+        });
 
         revalidatePath("/operations/tasks");
-        return { success: true };
+        return {
+          success: true as const,
+          task,
+        };
       },
     );
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    return {
+      success: false as const,
+      error: taskActionError(error, "تعذر إنشاء المهمة."),
+    };
+  }
+}
+
+export async function updateTaskAction(formData: FormData) {
+  try {
+    const { session, tenantId } = await requireTaskSession();
+    const taskId = normalizedText(formData.get("taskId"), 80);
+    const input = parseTaskForm(formData);
+
+    if (!taskId) {
+      throw new TaskInputError("معرف المهمة غير صالح.");
+    }
+
+    return await runWithTenantContext(
+      { tenantId, userId: session.userId },
+      async () => {
+        const existing = await prisma.task.findFirst({
+          where: {
+            id: taskId,
+            tenantId,
+          },
+          select: {
+            id: true,
+            leadId: true,
+            assignedTo: true,
+            title: true,
+            dueDate: true,
+            priority: true,
+          },
+        });
+
+        if (!existing) {
+          throw new TaskInputError("المهمة غير موجودة أو لا تتبع منشأتك.");
+        }
+
+        const { lead, assignedTo } = await findTaskRelations(
+          tenantId,
+          input.leadId,
+          input.assignedTo,
+        );
+
+        const task = await prisma.task.update({
+          where: {
+            id: existing.id,
+            tenantId,
+          },
+          data: {
+            leadId: lead.id,
+            assignedTo,
+            title: input.title,
+            description: input.description,
+            dueDate: input.dueDate,
+            priority: input.priority,
+            updatedBy: session.userId,
+          },
+          include: {
+            lead: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+        await writeAuditLog({
+          tenantId,
+          userId: session.userId,
+          action: "TASK_UPDATED",
+          tableName: "tasks",
+          recordId: existing.id,
+          details: JSON.stringify({
+            leadChanged: existing.leadId !== lead.id,
+            assigneeChanged: existing.assignedTo !== assignedTo,
+            dueDateChanged:
+              existing.dueDate.toISOString() !== input.dueDate.toISOString(),
+            priorityChanged: existing.priority !== input.priority,
+            titleChanged: existing.title !== input.title,
+          }),
+        });
+
+        revalidatePath("/operations/tasks");
+        return {
+          success: true as const,
+          task,
+        };
+      },
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error: taskActionError(error, "تعذر تحديث المهمة."),
+    };
   }
 }

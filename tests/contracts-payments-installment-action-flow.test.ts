@@ -11,7 +11,7 @@ describe("sales contract installment action flow", () => {
     "components/sales/SalesContractWorkspace.tsx",
   );
   const paymentRoute = read(
-    "app/api/v1/installments/[id]/pay/ngenius/route.ts",
+    "app/api/v1/installments/[id]/pay/route.ts",
   );
 
   it("shows explicit action states instead of an unexplained dash", () => {
@@ -40,7 +40,7 @@ describe("sales contract installment action flow", () => {
 
   it("keeps the real installment payment action wired to N-Genius", () => {
     expect(workspace).toContain(
-      "/api/v1/installments/${item.id}/pay/ngenius",
+      "/api/v1/installments/${item.id}/pay",
     );
     expect(workspace).toContain(
       "onClick={() => void payInstallment(item)}",

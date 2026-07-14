@@ -1,19 +1,25 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
+import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { decryptToken } from "./credential-service";
+
+export type WhatsAppProvider = "META" | "DIALOG360";
 
 export type WhatsAppConnectionSource =
   | "tenant-connection"
-  | "orca-test-bridge";
+  | "orca-test-bridge"
+  | "360dialog";
 
 export interface ResolvedConnection {
+  provider: WhatsAppProvider;
   source: WhatsAppConnectionSource;
   tenantId: string;
   connectionId: string | null;
   phoneNumberId: string;
   wabaId: string | null;
   accessToken: string;
+  apiBaseUrl: string;
 }
 
 export type ResolveErrorCode =
@@ -121,12 +127,9 @@ async function resolveTestBridgePhone(
     select: { wabaId: true, businessAccountId: true },
   });
 
-  if (!phone) {
-    return null;
-  }
+  if (!phone) return null;
 
   const phoneWaba = phone.wabaId || phone.businessAccountId || null;
-
   if (bridgeWabaId && phoneWaba && phoneWaba !== bridgeWabaId) {
     return null;
   }
@@ -160,8 +163,104 @@ function readTestBridgeEnv(tenantId: string) {
   };
 }
 
+type Dialog360ConnectionRow = {
+  id: string;
+  status: string;
+  baseUrl: string | null;
+  encryptedCredentials: string;
+  isDefault: boolean;
+  lastSuccessAt: Date | null;
+};
+
+type Dialog360Runtime = {
+  connectionId: string;
+  apiKey: string;
+  displayPhoneNumber: string;
+  baseUrl: string;
+  isDefault: boolean;
+  lastSuccessAt: Date | null;
+};
+
+async function loadDialog360Connection(
+  tenantId: string,
+): Promise<Dialog360ConnectionRow | null> {
+  return rawPrisma.revenueProviderConnection.findUnique({
+    where: {
+      tenantId_provider: {
+        tenantId,
+        provider: "DIALOG360",
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      baseUrl: true,
+      encryptedCredentials: true,
+      isDefault: true,
+      lastSuccessAt: true,
+    },
+  });
+}
+
+function resolveDialog360Runtime(
+  connection: Dialog360ConnectionRow | null,
+): Dialog360Runtime | null {
+  if (!connection || connection.status !== "CONNECTED") {
+    return null;
+  }
+
+  const credentials = decryptProviderCredentials(
+    connection.encryptedCredentials,
+  );
+  const apiKey = String(credentials.apiKey || "").trim();
+  const displayPhoneNumber = String(
+    credentials.displayPhoneNumber || "",
+  ).replace(/\D/g, "");
+
+  if (!apiKey) {
+    throw new WhatsAppResolveError("WHATSAPP_NO_CREDENTIAL");
+  }
+  if (!displayPhoneNumber) {
+    throw new WhatsAppResolveError("WHATSAPP_NO_PHONE");
+  }
+
+  const rawBaseUrl = String(
+    connection.baseUrl || "https://waba-v2.360dialog.io",
+  ).trim();
+
+  let baseUrl: string;
+  try {
+    const parsed = new URL(rawBaseUrl);
+    const allowedHosts = new Set([
+      "waba-v2.360dialog.io",
+      "waba-sandbox.360dialog.io",
+    ]);
+
+    if (
+      parsed.protocol !== "https:" ||
+      !allowedHosts.has(parsed.hostname.toLowerCase())
+    ) {
+      throw new Error("DIALOG360_BASE_URL_NOT_ALLOWED");
+    }
+
+    baseUrl = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    throw new WhatsAppResolveError("WHATSAPP_NOT_CONNECTED");
+  }
+
+  return {
+    connectionId: connection.id,
+    apiKey,
+    displayPhoneNumber,
+    baseUrl,
+    isDefault: connection.isDefault,
+    lastSuccessAt: connection.lastSuccessAt,
+  };
+}
+
 export interface ConnectionStatusResult {
   configured: boolean;
+  provider: WhatsAppProvider | "none";
   source: WhatsAppConnectionSource | "none";
   status: "connected" | "test-mode" | "disconnected";
   wabaId?: string | null;
@@ -172,23 +271,49 @@ export interface ConnectionStatusResult {
 export async function getConnectionStatus(
   tenantId: string,
 ): Promise<ConnectionStatusResult> {
-  const connection = await prisma.whatsAppConnection.findUnique({
-    where: { tenantId },
-    select: { status: true, wabaId: true, activeSince: true },
-  });
+  const [metaConnection, dialogConnection] = await Promise.all([
+    prisma.whatsAppConnection.findUnique({
+      where: { tenantId },
+      select: { status: true, wabaId: true, activeSince: true },
+    }),
+    loadDialog360Connection(tenantId),
+  ]);
 
-  if (connection?.status === "ACTIVE") {
+  const dialogConnected =
+    dialogConnection?.status === "CONNECTED";
+
+  if (dialogConnected && dialogConnection?.isDefault) {
     return {
       configured: true,
+      provider: "DIALOG360",
+      source: "360dialog",
+      status: "connected",
+      activeSince: dialogConnection.lastSuccessAt,
+    };
+  }
+
+  if (metaConnection?.status === "ACTIVE") {
+    return {
+      configured: true,
+      provider: "META",
       source: "tenant-connection",
       status: "connected",
-      wabaId: connection.wabaId,
-      activeSince: connection.activeSince,
+      wabaId: metaConnection.wabaId,
+      activeSince: metaConnection.activeSince,
+    };
+  }
+
+  if (dialogConnected) {
+    return {
+      configured: true,
+      provider: "DIALOG360",
+      source: "360dialog",
+      status: "connected",
+      activeSince: dialogConnection.lastSuccessAt,
     };
   }
 
   const bridgeEnv = readTestBridgeEnv(tenantId);
-
   if (bridgeEnv.eligible) {
     const phone = await resolveTestBridgePhone(
       bridgeEnv.bridgeTenantId as string,
@@ -199,6 +324,7 @@ export async function getConnectionStatus(
     if (phone) {
       return {
         configured: true,
+        provider: "META",
         source: "orca-test-bridge",
         status: "test-mode",
         wabaId: bridgeEnv.bridgeWabaId,
@@ -207,7 +333,12 @@ export async function getConnectionStatus(
     }
   }
 
-  return { configured: false, source: "none", status: "disconnected" };
+  return {
+    configured: false,
+    provider: "none",
+    source: "none",
+    status: "disconnected",
+  };
 }
 
 export async function resolveConnection(
@@ -215,15 +346,37 @@ export async function resolveConnection(
 ): Promise<ResolvedConnection> {
   await assertWhatsAppMessagingEnabled(tenantId);
 
-  const connection = await prisma.whatsAppConnection.findUnique({
-    where: { tenantId },
-    select: {
-      id: true,
-      tenantId: true,
-      status: true,
-      wabaId: true,
-    },
-  });
+  const [connection, dialogConnection] = await Promise.all([
+    prisma.whatsAppConnection.findUnique({
+      where: { tenantId },
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        wabaId: true,
+      },
+    }),
+    loadDialog360Connection(tenantId),
+  ]);
+
+  const defaultDialog360 =
+    dialogConnection?.status === "CONNECTED" &&
+    dialogConnection.isDefault
+      ? resolveDialog360Runtime(dialogConnection)
+      : null;
+
+  if (defaultDialog360) {
+    return {
+      provider: "DIALOG360",
+      source: "360dialog",
+      tenantId,
+      connectionId: defaultDialog360.connectionId,
+      phoneNumberId: defaultDialog360.displayPhoneNumber,
+      wabaId: null,
+      accessToken: defaultDialog360.apiKey,
+      apiBaseUrl: defaultDialog360.baseUrl,
+    };
+  }
 
   if (connection?.status === "SUSPENDED") {
     throw new WhatsAppResolveError("WHATSAPP_MESSAGING_DISABLED");
@@ -257,23 +410,41 @@ export async function resolveConnection(
     if (!credential) {
       throw new WhatsAppResolveError("WHATSAPP_NO_CREDENTIAL");
     }
-
     if (!phone) {
       throw new WhatsAppResolveError("WHATSAPP_NO_PHONE");
     }
 
     return {
+      provider: "META",
       source: "tenant-connection",
       tenantId,
       connectionId: connection.id,
       phoneNumberId: phone.phoneNumberId,
       wabaId: phone.wabaId ?? connection.wabaId,
       accessToken: decryptToken(credential),
+      apiBaseUrl: "",
+    };
+  }
+
+  const fallbackDialog360 =
+    dialogConnection?.status === "CONNECTED"
+      ? resolveDialog360Runtime(dialogConnection)
+      : null;
+
+  if (fallbackDialog360) {
+    return {
+      provider: "DIALOG360",
+      source: "360dialog",
+      tenantId,
+      connectionId: fallbackDialog360.connectionId,
+      phoneNumberId: fallbackDialog360.displayPhoneNumber,
+      wabaId: null,
+      accessToken: fallbackDialog360.apiKey,
+      apiBaseUrl: fallbackDialog360.baseUrl,
     };
   }
 
   const bridgeEnv = readTestBridgeEnv(tenantId);
-
   if (bridgeEnv.eligible) {
     const phone = await resolveTestBridgePhone(
       bridgeEnv.bridgeTenantId as string,
@@ -283,12 +454,14 @@ export async function resolveConnection(
 
     if (phone) {
       return {
+        provider: "META",
         source: "orca-test-bridge",
         tenantId,
         connectionId: null,
         phoneNumberId: bridgeEnv.bridgePhoneNumberId as string,
         wabaId: bridgeEnv.bridgeWabaId,
         accessToken: bridgeEnv.bridgeAccessToken as string,
+        apiBaseUrl: "",
       };
     }
   }

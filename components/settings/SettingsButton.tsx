@@ -24,7 +24,7 @@ const VARIANT_CLASSES: Record<SettingsButtonVariant, string> = {
 /**
  * The single shared button for every Settings surface (Organization, Staff,
  * Billing, AI, Integrations, Compliance, and their drawers/modals). Fixed
- * 40px height / 12px radius / 16px horizontal padding / 14px semibold text
+ * 44px height / 12px radius / 16px horizontal padding / 14px semibold text
  * across every variant so buttons never differ in height, radius, or type
  * between screens at the same level.
  */
@@ -39,8 +39,8 @@ const SettingsButton = forwardRef<HTMLButtonElement, SettingsButtonProps>(
       <button
         ref={ref}
         type={type}
-        className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-          isIcon ? "w-10 px-0" : "px-4"
+        className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+          isIcon ? "w-11 px-0" : "px-4"
         } ${VARIANT_CLASSES[variant]} ${className}`}
         {...rest}
       >

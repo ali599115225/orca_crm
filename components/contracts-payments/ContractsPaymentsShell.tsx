@@ -87,7 +87,7 @@ export default function ContractsPaymentsShell({
 
   return (
     <div
-      className="nc-page nc-stack overflow-x-hidden"
+      className="nc-page nc-stack orca-container overflow-x-hidden"
       dir={isArabic ? 'rtl' : 'ltr'}
       data-contracts-payments-shell
     >
@@ -122,7 +122,7 @@ export default function ContractsPaymentsShell({
               return (
                 <div
                   key={metric.label}
-                  className={`rounded-2xl border p-4 ${metricToneClass[tone]}`}
+                  className={`orca-contract-shell-metric rounded-2xl border p-4 text-center ${metricToneClass[tone]}`}
                 >
                   <span className="block text-[10px] font-bold text-[var(--nc-text-dim)]">
                     {metric.label}
@@ -143,7 +143,7 @@ export default function ContractsPaymentsShell({
 
       <section className="overflow-hidden rounded-[28px] border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
         <div className="border-b border-white/10 bg-[var(--nc-surface-solid)] px-3 py-3">
-          <div className="flex min-w-max items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="orca-workspace-tabs flex flex-wrap items-center justify-center gap-2">
             {tabs.map(({ id, label, Icon }) => (
               <button
                 key={id}
@@ -153,7 +153,7 @@ export default function ContractsPaymentsShell({
                 className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-black transition-all ${
                   activePane === id
                     ? 'border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
-                    : 'border-transparent bg-transparent text-[var(--nc-foreground-muted)] hover:border-white/10 hover:bg-white/[0.035] hover:text-white'
+                    : 'border-transparent bg-transparent text-[var(--nc-foreground-muted)] hover:border-[var(--orca-action-gold)] hover:bg-[var(--orca-action-gold-soft)] hover:text-[var(--orca-action-gold)]'
                 }`}
               >
                 <Icon size={14} />

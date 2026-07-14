@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ─── vi.hoisted: all variables used inside vi.mock factories ──────────────
 const {
   mockTicketCreate, mockTicketUpdate, mockProjectCreate,
-  mockTaskCreate, mockTaskUpdate,
+  mockTaskCreate, mockTaskFindFirst, mockTaskUpdate,
   mockUserFindFirst, mockUserUpdateMany, mockUserDeleteMany,
   mockTenantUpdate,
 } = vi.hoisted(() => ({
@@ -13,6 +13,7 @@ const {
   mockTicketUpdate:   vi.fn(),
   mockProjectCreate:  vi.fn(),
   mockTaskCreate:     vi.fn(),
+  mockTaskFindFirst:  vi.fn(),
   mockTaskUpdate:     vi.fn(),
   mockUserFindFirst:  vi.fn(),
   mockUserUpdateMany: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
       create: mockTaskCreate,
+      findFirst: mockTaskFindFirst,
       update: mockTaskUpdate,
     },
     lead: {
@@ -166,8 +168,24 @@ function denyRole(msg = "FORBIDDEN") { vi.mocked(assertServerActionRole).mockRej
 describe("Helpdesk Authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTicketCreate.mockResolvedValue({ id: "ticket-1" });
-    mockTicketUpdate.mockResolvedValue({ id: "ticket-1", aiResponse: "رد", status: "CLOSED" });
+    mockTicketCreate.mockResolvedValue({
+      id: "ticket-1",
+      title: "تذكرة",
+      description: "مشكلة",
+      aiResponse: null,
+      status: "OPEN",
+      createdAt: new Date("2026-07-13T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-13T00:00:00.000Z"),
+    });
+    mockTicketUpdate.mockResolvedValue({
+      id: "ticket-1",
+      title: "تذكرة",
+      description: "مشكلة",
+      aiResponse: null,
+      status: "CLOSED",
+      createdAt: new Date("2026-07-13T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-13T00:00:00.000Z"),
+    });
     vi.mocked(writeAuditLog).mockResolvedValue(undefined);
   });
 
@@ -274,7 +292,14 @@ describe("Tasks Authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTaskCreate.mockResolvedValue({ id: "task-1" });
+    mockTaskFindFirst.mockResolvedValue({ id: "task-1", status: "PENDING" });
     mockTaskUpdate.mockResolvedValue({ id: "task-1", status: "COMPLETED" });
+    mockUserFindFirst.mockResolvedValue({
+      id: "user-1",
+      name: "المسؤول",
+      phone: null,
+      isActive: true,
+    });
     vi.mocked(writeAuditLog).mockResolvedValue(undefined);
   });
 
@@ -283,6 +308,7 @@ describe("Tasks Authorization", () => {
     const { createTaskAction } = await import("@/app/actions/tasks");
     const fd = new FormData();
     fd.append("title", "مهمة"); fd.append("leadId", "lead-1");
+    fd.append("assignedTo", "user-1");
     fd.append("dueDateOnly", "2026-12-01"); fd.append("dueTimeOnly", "10:00");
     fd.append("priority", "HIGH");
     const result = await createTaskAction(fd);
@@ -295,6 +321,7 @@ describe("Tasks Authorization", () => {
     const { createTaskAction } = await import("@/app/actions/tasks");
     const fd = new FormData();
     fd.append("title", "مهمة"); fd.append("leadId", "lead-1");
+    fd.append("assignedTo", "user-1");
     fd.append("dueDateOnly", "2026-12-01"); fd.append("dueTimeOnly", "10:00");
     fd.append("priority", "HIGH");
     const result = await createTaskAction(fd);
@@ -496,8 +523,8 @@ describe("AuditAction type completeness", () => {
     const newEvents = [
       "USER_CREATED", "USER_UPDATED", "USER_DELETED",
       "PROJECT_CREATED", "UNIT_STATUS_TOGGLED",
-      "TASK_CREATED", "TASK_STATUS_CHANGED",
-      "TICKET_CREATED", "TICKET_CLOSED",
+      "TASK_CREATED", "TASK_UPDATED", "TASK_COMPLETED", "TASK_STATUS_CHANGED",
+      "TICKET_CREATED", "TICKET_CLOSED", "TICKET_REOPENED", "TICKET_REPLIED",
       "SETTINGS_UPDATED",
     ] as const;
     for (const action of newEvents) {

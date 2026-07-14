@@ -61,9 +61,9 @@ declare global {
 
 const TEXT = {
   AR: {
-    title: "تكامل واتساب",
+    title: "Meta WhatsApp Cloud",
     description:
-      "اربط حساب واتساب للأعمال بهذه الشركة عبر التسجيل المضمن من Meta.",
+      "اربط حساب واتساب للأعمال الخاص بالمنشأة مباشرة عبر التسجيل المضمن من Meta.",
     connected: "متصل",
     disconnected: "غير متصل",
     pending: "جارٍ الربط",
@@ -93,7 +93,7 @@ const TEXT = {
     adminOnly: "يتطلب الربط أو الفصل صلاحية مدير الشركة.",
   },
   EN: {
-    title: "WhatsApp Integration",
+    title: "Meta WhatsApp Cloud",
     description:
       "Connect this company’s WhatsApp Business account through Meta Embedded Signup.",
     connected: "Connected",
@@ -480,7 +480,7 @@ export default function WhatsAppIntegrationSettings({
         : t.disconnected;
 
   return (
-    <section className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+    <section className="orca-settings-card rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-3">
@@ -580,7 +580,7 @@ export default function WhatsAppIntegrationSettings({
             type="button"
             onClick={connect}
             disabled={Boolean(busy)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--nc-primary)] px-4 py-2 text-xs font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 text-sm font-semibold text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -601,7 +601,7 @@ export default function WhatsAppIntegrationSettings({
               type="button"
               onClick={disconnect}
               disabled={Boolean(busy)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 py-2 text-xs font-bold text-red-600 transition-opacity disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 text-sm font-semibold text-red-600 transition-opacity disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300"
             >
               {busy === "disconnect" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

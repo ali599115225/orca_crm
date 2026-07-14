@@ -92,14 +92,20 @@ describe("Revenue Integrity final closure", () => {
     expect(view).not.toMatch(/PageSize\s*=\s*(5|8|10)\b/);
   });
 
-  it("keeps cards content-sized with no fake stretch", () => {
+  it("uses the Tasks workspace hierarchy with fixed internal scrolling", () => {
     expect(view).not.toContain("min-h-40");
-    expect(view).not.toMatch(/\bh-\[\d+px\]/);
     expect(view).not.toMatch(/minHeight/);
     expect(view).not.toContain("placeholder-row");
-    expect(view).toContain("grid items-start gap-5 xl:grid-cols-2");
-    expect(view).toContain("flex items-center justify-between gap-3 flex-wrap");
-    expect(view).toContain("inline-flex items-center gap-1.5");
+    expect(view).toContain("revenueVisual.workspaceHero");
+    expect(view).toContain("revenueVisual.workspaceMetrics");
+    expect(view).toContain("revenueVisual.workspaceTabs");
+    expect(view).toContain(
+      "grid items-stretch gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.8fr)]",
+    );
+    expect(view).toContain("grid items-stretch gap-3 xl:grid-cols-2");
+    expect(view).not.toContain("self-start h-fit");
+    expect(visual).toContain("lg:h-[560px]");
+    expect(view).toContain("[scrollbar-width:none]");
   });
 
   it("blocks follow-up execution without a lead and offers linking", () => {
@@ -222,5 +228,31 @@ describe("Revenue Integrity final closure", () => {
     expect(view).not.toContain("testRevenueProviderAction");
     expect(view).not.toContain("providerPage");
     expect(view).not.toContain("providerItems");
+  });
+});
+
+
+describe("Revenue Integrity four-tab compact visual contract", () => {
+  const viewSource = readFileSync(
+    path.join(process.cwd(), "components/revenue-integrity/RevenueIntegrityView.tsx"),
+    "utf8",
+  );
+  const visualSource = readFileSync(
+    path.join(process.cwd(), "components/revenue-integrity/visual.ts"),
+    "utf8",
+  );
+
+  it("uses one compact side-by-side workspace contract for all four tabs", () => {
+    expect(viewSource).toContain('data-revenue-tab-layout="radar"');
+    expect(viewSource).toContain('data-revenue-tab-layout="actions"');
+    expect(viewSource).toContain('data-revenue-tab-layout="audit"');
+    expect(viewSource).toContain('data-revenue-tab-layout="predictive"');
+    expect(viewSource.match(/revenueVisual\.tabWorkspaceGrid/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("keeps panels compact with internal scrolling", () => {
+    expect(visualSource).toContain("lg:h-[430px]");
+    expect(visualSource).toContain("xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]");
+    expect(visualSource).toContain("[scrollbar-width:none]");
   });
 });

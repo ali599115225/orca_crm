@@ -223,6 +223,14 @@ export async function assertServerActionRole(
     throw new Error('UNAUTHORIZED');
   }
 
+  // Establish the authenticated tenant scope before any database-backed
+  // role or super-admin lookup. Downstream authorization still verifies
+  // the active tenant and rejects cross-tenant access.
+  setTenantContext({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
+
   if (await isSuperAdmin(session.userId)) {
     setTenantContext({
       tenantId: session.tenantId,

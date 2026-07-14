@@ -7,13 +7,7 @@ import {
   requireAgentAccess,
 } from "@/lib/agents/access";
 import { getAgentDefinition } from "@/lib/agents/registry";
-import {
-  canActivateAgent,
-  getPlanAgentEntitlement,
-  isKnownAgentCode,
-} from "@/lib/agents/entitlements";
 import { writeAuditLog } from "@/lib/audit";
-import { getDeploymentLicenseMode } from "@/lib/deployment-license";
 
 async function handle(
   request: NextRequest,
@@ -22,7 +16,7 @@ async function handle(
   try {
     const access = await requireAgentAccess({ roles: AGENT_MANAGER_ROLES });
     const { id } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
 
     return runWithTenantContext(
       { tenantId: access.tenantId, userId: access.userId },
@@ -51,6 +45,7 @@ async function handle(
             { status: 404 },
           );
         }
+
         if (!getAgentDefinition(slot.agentType)) {
           return NextResponse.json(
             {
@@ -60,85 +55,6 @@ async function handle(
             },
             { status: 409 },
           );
-        }
-
-        if (body.isActive && !slot.isActive) {
-          const agentCode = String(slot.agentType || "")
-            .trim()
-            .toUpperCase();
-
-          if (!isKnownAgentCode(agentCode)) {
-            return NextResponse.json(
-              {
-                success: false,
-                code: "AGENT_TYPE_UNREGISTERED",
-                error: "Agent type is not registered.",
-              },
-              { status: 409 },
-            );
-          }
-
-          const [tenant, activeCount, activeLeases] = await Promise.all([
-            prisma.tenant.findUnique({
-              where: { id: access.tenantId },
-              select: { subscriptionPlan: true },
-            }),
-            prisma.agentSlot.count({
-              where: { tenantId: access.tenantId, isActive: true },
-            }),
-            prisma.agentLease.findMany({
-              where: {
-                tenantId: access.tenantId,
-                endDate: { gt: new Date() },
-              },
-              select: { agentId: true },
-            }),
-          ]);
-
-          const plan = tenant?.subscriptionPlan || "basic";
-          const licenseMode = getDeploymentLicenseMode();
-          const entitlement = getPlanAgentEntitlement(plan);
-          const activeSubscriptionCodes = new Set(
-            activeLeases
-              .map((lease) =>
-                String(lease.agentId || "")
-                  .trim()
-                  .toUpperCase(),
-              )
-              .filter(isKnownAgentCode)
-              .filter((code) => !entitlement.includedAgents.includes(code)),
-          );
-
-          const decision = canActivateAgent({
-            licenseMode,
-            plan,
-            agentCode,
-            activeAgentCount: activeCount,
-            activeSubscriptionCount: activeSubscriptionCodes.size,
-            hasActiveSubscription: activeLeases.some(
-              (lease) =>
-                String(lease.agentId || "")
-                  .trim()
-                  .toUpperCase() === agentCode,
-            ),
-          });
-
-          if (!decision.allowed) {
-            return NextResponse.json(
-              {
-                success: false,
-                code:
-                  decision.reason === "AGENT_NOT_ENTITLED"
-                    ? "AGENT_NOT_ENTITLED"
-                    : "AGENT_CAP_LOCK",
-                error:
-                  decision.reason === "AGENT_NOT_ENTITLED"
-                    ? "Agent is not included in the plan and has no active subscription."
-                    : `Active agent limit reached (${decision.effectiveLimit}).`,
-              },
-              { status: 409 },
-            );
-          }
         }
 
         const result = await prisma.agentSlot.updateMany({
@@ -156,6 +72,20 @@ async function handle(
           );
         }
 
+        await prisma.agentTelemetryLog.create({
+          data: {
+            tenantId: access.tenantId,
+            agentId: slot.id,
+            actionType: body.isActive
+              ? "AGENT_ACTIVATED"
+              : "AGENT_DEACTIVATED",
+            logMessageAr: body.isActive
+              ? "تم تفعيل الوكيل."
+              : "تم إيقاف الوكيل.",
+            severity: "Info",
+          },
+        });
+
         await writeAuditLog({
           tenantId: access.tenantId,
           userId: access.userId,
@@ -167,7 +97,6 @@ async function handle(
 
         return NextResponse.json({
           success: true,
-          agentId: id,
           isActive: body.isActive,
         });
       },
