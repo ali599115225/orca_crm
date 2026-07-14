@@ -6,7 +6,6 @@
       "description": "تدقيق وقراءة دون تعديل",
       "mode": "primary",
       "model": "opencode-go/deepseek-v4-flash",
-      "steps": 4,
       "permission": {
         "edit": "deny",
         "bash": {
@@ -22,7 +21,6 @@
       "description": "تنفيذ مهام ORCA المحددة",
       "mode": "primary",
       "model": "opencode-go/qwen3.7-plus",
-      "steps": 16,
       "permission": {
         "edit": "ask",
         "bash": {
@@ -46,7 +44,6 @@
       "description": "مراجعة نهائية دون تعديل",
       "mode": "subagent",
       "model": "opencode-go/kimi-k2.7-code",
-      "steps": 5,
       "permission": {
         "edit": "deny",
         "bash": {
@@ -64,7 +61,6 @@
       "description": "مراجعة أمنية ومعمارية دون تعديل",
       "mode": "subagent",
       "model": "opencode-go/qwen3.7-max",
-      "steps": 4,
       "permission": {
         "edit": "deny",
         "bash": {
