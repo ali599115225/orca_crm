@@ -1169,7 +1169,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                               <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 p-3 text-xs leading-6 text-[var(--nc-foreground-muted)]">
                                 {L(
                                   "استخدم بيانات صندوق بريد المنشأة من مزودها الحالي. يوصى بالمنفذ 587 مع STARTTLS أو 465 مع TLS. تبقى البيانات مشفرة داخل نطاق المنشأة، ولا يسمح بعناوين الخوادم المحلية أو الخاصة.",
-                                  "Use the organization mailbox credentials from its current provider. Port 587 with STARTTLS or 465 with TLS is recommended. Credentials remain encrypted within the tenant scope, and local or private server addresses are not allowed.",
+                                  "Use the organization mailbox credentials from its current provider. Port 587 with STARTTLS or 465 with TLS is recommended. Credentials remain encrypted within the organization scope, and local or private server addresses are not allowed.",
                                 )}
                               </div>
                             )}

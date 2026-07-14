@@ -13,7 +13,7 @@ import {
 const COPY = {
   AR: {
     marketingTitle: "الإعلان والتسويق",
-    marketingDescription: "قراءة أداء مصادر العملاء واتصالات المنصات اعتمادًا على بيانات المستأجر الفعلية.",
+    marketingDescription: "قراءة أداء مصادر العملاء واتصالات المنصات اعتمادًا على البيانات التشغيلية الفعلية.",
     campaignsTitle: "أداء الحملات ومصادر العملاء",
     campaignsDescription: "تحليل التحويل والعقود حسب المصدر المسجل للعميل دون إنشاء حملات أو ميزانيات افتراضية.",
     live: "بيانات تشغيلية",
@@ -32,7 +32,7 @@ const COPY = {
     status: "الحالة",
     updated: "آخر تحديث",
     noSources: "لا توجد بيانات مصادر عملاء مسجلة حاليًا.",
-    noConnections: "لا توجد اتصالات منصات محفوظة لهذا المستأجر.",
+    noConnections: "لا توجد اتصالات منصات محفوظة لهذه المنشأة.",
     settings: "إدارة التكاملات",
     loading: "جاري تحميل البيانات التشغيلية...",
     errorTitle: "تعذر تحميل بيانات التسويق",
@@ -42,7 +42,7 @@ const COPY = {
   },
   EN: {
     marketingTitle: "Advertising & Marketing",
-    marketingDescription: "Operational performance for lead sources and platform connections using tenant-scoped data.",
+    marketingDescription: "Operational performance for lead sources and platform connections using organization-scoped data.",
     campaignsTitle: "Campaign & Lead Source Performance",
     campaignsDescription: "Conversion and signed-contract analysis by recorded lead source, without generated campaigns or budgets.",
     live: "Operational data",
@@ -61,7 +61,7 @@ const COPY = {
     status: "Status",
     updated: "Last updated",
     noSources: "No lead source data is currently recorded.",
-    noConnections: "No platform connections are saved for this tenant.",
+    noConnections: "No platform connections are saved for this organization.",
     settings: "Manage integrations",
     loading: "Loading operational data...",
     errorTitle: "Unable to load marketing data",

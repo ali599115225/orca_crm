@@ -599,7 +599,7 @@ export default function SettingsCompliance({
                             تحمل المسؤولية الرقمية الكاملة عن العمليات الصادرة والواردة من
                             بوابات إيجار والزكاة والضريبة والجمارك (ZATCA)، مع إخلاء طرف
                             مزود النظام ORCA من أي التزامات قانونية أو انقطاع ناتج عن
-                            إساءة استخدام أو تسريب مفاتيح الربط خارج سياق المستأجر.
+                            إساءة استخدام أو تسريب مفاتيح الربط خارج سياق المنشأة.
                           </p>
                         ) : (
                           <p>
@@ -609,7 +609,7 @@ export default function SettingsCompliance({
                             responsibility for operations inbound and outbound from Ejar
                             and ZATCA portals, and I hold the system provider (ORCA)
                             harmless against any legal liabilities or disruptions
-                            resulting from misuse or credential leakage outside the tenant
+                            resulting from misuse or credential leakage outside the organization
                             context.
                           </p>
                         )}

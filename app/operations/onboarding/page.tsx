@@ -26,7 +26,7 @@ export default async function OnboardingPage() {
     <div className="max-w-xl mx-auto bg-white p-8 rounded-2xl border border-gray-200 shadow-sm space-y-6">
       <div className="text-center space-y-1">
         <span className="inline-block text-[10px] bg-amber-500/10 text-amber-500 font-bold px-3 py-1 rounded-full border border-amber-500/10">
-          خطوة التفعيل النهائية لنظام الـ SaaS 🏢
+          خطوة التفعيل النهائية للنظام 🏢
         </span>
         <h2 className="text-xl font-black text-[var(--nc-text-primary)] font-bold">إكمال بيانات ملف منشأتك العقارية</h2>
         <p className="text-xs text-[var(--nc-text-dim)] font-medium">

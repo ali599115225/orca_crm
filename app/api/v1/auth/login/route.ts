@@ -18,8 +18,18 @@ export async function POST(request: NextRequest) {
     if (!jwtSecret) {
       return NextResponse.json({ error: "JWT_SECRET not configured" }, { status: 500 });
     }
-    const body = await request.json();
-    const { email, password } = body;
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "بيانات الطلب غير صالحة. تأكد من إرسال JSON صحيح." },
+        { status: 400 }
+      );
+    }
+
+    const { email, password } = body || {};
 
     const clientIp = request.headers.get("x-forwarded-for") || "unknown";
     const rl = await rateLimit(`login:${clientIp}`, 5, 60000, true);

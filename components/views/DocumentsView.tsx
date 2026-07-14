@@ -119,7 +119,7 @@ function messageForCode(code: string | undefined, isArabic: boolean): string {
     FILE_SIGNATURE_MISMATCH: ["محتوى الملف لا يطابق امتداده.", "The file content does not match its extension."],
     DOCUMENT_FORBIDDEN: ["لا تملك الصلاحية المطلوبة.", "You do not have the required permission."],
     DOCUMENT_UNAUTHENTICATED: ["انتهت الجلسة. سجّل الدخول مجددًا.", "Your session has expired. Sign in again."],
-    DOCUMENT_ACTOR_NOT_FOUND: ["تعذر التحقق من المستخدم داخل المنشأة.", "The tenant user could not be verified."],
+    DOCUMENT_ACTOR_NOT_FOUND: ["تعذر التحقق من المستخدم داخل المنشأة.", "The user could not be verified."],
     DOCUMENTS_LOAD_FAILED: ["تعذر تحميل مستودع المستندات.", "Unable to load the document repository."],
   };
   const value = messages[String(code || "")];
