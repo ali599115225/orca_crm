@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Check,
@@ -18,7 +19,7 @@ import {
 } from "@/app/actions/contract";
 import type { ContractWizardErrorCode } from "@/app/actions/contract";
 import { useApp } from "@/app/context/AppContext";
-import SettingsSelect from "@/components/settings/SettingsSelect";
+import ContractWizardSelect from "@/components/features/contract-wizard/ContractWizardSelect";
 import { displayEntity, displayPerson } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
 import { contractWizardVisual } from "./contractWizardVisual";
@@ -430,7 +431,7 @@ export default function ContractWizard({
   const NextIcon = isArabic ? ChevronLeft : ChevronRight;
   const BackIcon = isArabic ? ChevronRight : ChevronLeft;
 
-  return (
+  return createPortal(
     <div
       className={contractWizardVisual.overlay}
       dir={direction}
@@ -583,16 +584,21 @@ export default function ContractWizard({
                 <label className={contractWizardVisual.label}>
                   {t("contractWizard.clientLabel")}
                 </label>
-                <SettingsSelect
-                  className="w-full"
-                  placement="bottom"
+                <ContractWizardSelect
                   value={clientId}
                   onChange={(value) => {
                     setClientId(value);
                     setErrorCode(null);
                   }}
                   disabled={isSubmitting}
-                  options={clientOptions}
+                  isEmpty={clients.length === 0}
+                  emptyStateLabel={t("contractWizard.clientEmpty")}
+                  options={clientOptions.filter((o) => o.value !== "")}
+                  placeholder={
+                    clients.length === 0
+                      ? t("contractWizard.clientEmpty")
+                      : t("contractWizard.clientPlaceholder")
+                  }
                   aria-label={t("contractWizard.clientLabel")}
                 />
               </div>
@@ -604,13 +610,23 @@ export default function ContractWizard({
                   <label className={contractWizardVisual.label}>
                     {t("contractWizard.propertyLabel")}
                   </label>
-                  <SettingsSelect
-                    className="w-full"
-                    placement="bottom"
+                  {/*
+                   * Property select is always openable — even when the list is
+                   * empty — so the user sees a clear empty-state message
+                   * instead of a silent frozen button.
+                   */}
+                  <ContractWizardSelect
                     value={propertyId}
                     onChange={handlePropertyChange}
                     disabled={isSubmitting}
-                    options={propertyOptions}
+                    isEmpty={properties.length === 0}
+                    emptyStateLabel={t("contractWizard.propertyEmpty")}
+                    options={propertyOptions.filter((o) => o.value !== "")}
+                    placeholder={
+                      properties.length === 0
+                        ? t("contractWizard.propertyEmpty")
+                        : t("contractWizard.propertyPlaceholder")
+                    }
                     aria-label={t("contractWizard.propertyLabel")}
                   />
                 </div>
@@ -623,7 +639,15 @@ export default function ContractWizard({
                     {t("contractWizard.amountLabel")}
                   </label>
 
-                  <div className="relative">
+                  {/*
+                   * Compound amount field layout:
+                   * [  numeric input ............ | SAR ]
+                   * - Input is dir=ltr so decimal entry is natural.
+                   * - Currency suffix is a flex-sibling, never absolute, so
+                   *   it stays flush and never overlaps the text.
+                   * - focus-within on the wrapper gives a unified focus ring.
+                   */}
+                  <div className={contractWizardVisual.amountFieldWrapper}>
                     <input
                       id="contract-wizard-amount"
                       type="text"
@@ -638,9 +662,12 @@ export default function ContractWizard({
                         setErrorCode(null);
                       }}
                       disabled={isSubmitting}
-                      className={`${contractWizardVisual.field} ps-16 font-mono tabular-nums`}
+                      className={contractWizardVisual.amountInput}
                     />
-                    <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--nc-text-dim)]">
+                    <span
+                      aria-hidden="true"
+                      className={contractWizardVisual.amountSuffix}
+                    >
                       {t("contractWizard.currency")}
                     </span>
                   </div>
@@ -774,6 +801,7 @@ export default function ContractWizard({
           </form>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

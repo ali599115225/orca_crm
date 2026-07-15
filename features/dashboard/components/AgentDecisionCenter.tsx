@@ -429,7 +429,7 @@ export default function AgentDecisionCenter({
 
     return (
       <div
-        className={`flex min-h-10 items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+        className={`flex h-11 min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
           isSentinel
             ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)]"
             : "border-[var(--nc-border)] bg-[var(--nc-surface-solid)]"
@@ -453,7 +453,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <span
-          className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold ${tone.textClassName}`}
+          className={`inline-flex min-w-[96px] shrink-0 items-center justify-center gap-1.5 text-[11px] font-bold ${tone.textClassName}`}
         >
           <span
             className={`h-2 w-2 rounded-full ${tone.dotClassName}`}
@@ -488,7 +488,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.sectionPanel} flex h-full min-h-[310px] flex-col p-5 xl:col-span-4`}
+          className={`${dashboardVisual.sectionPanel} flex min-h-[310px] flex-col overflow-hidden p-5 xl:col-span-4 xl:h-[310px] xl:max-h-[310px]`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="decision"
           data-dashboard-decision-center
@@ -510,7 +510,7 @@ export default function AgentDecisionCenter({
             <span className={dashboardVisual.statusBadge}>{copy.live}</span>
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="dashboard-scroll-area mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {signals.length === 0 ? (
               <div className="grid h-full min-h-[170px] place-items-center rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4 text-center text-xs text-[var(--nc-text-secondary)]">
                 {copy.noOperationalSignals}
@@ -521,7 +521,7 @@ export default function AgentDecisionCenter({
                   <Link
                     key={signal.key}
                     href={signal.href}
-                    className={`${dashboardVisual.interactiveContentCard} flex min-h-[58px] items-center justify-between gap-3 px-3 py-2.5`}
+                    className={`${dashboardVisual.interactiveContentCard} flex h-[58px] min-h-[58px] items-center justify-between gap-3 px-3 py-2.5`}
                   >
                     <div className="min-w-0">
                       <p className="line-clamp-1 text-sm font-bold text-[var(--nc-text-primary)]">
@@ -558,7 +558,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.sectionPanel} flex h-full min-h-[390px] max-h-[430px] flex-col p-5 xl:col-span-4`}
+          className={`${dashboardVisual.sectionPanel} flex min-h-[390px] flex-col overflow-hidden p-5 xl:col-span-4 xl:h-[430px] xl:min-h-[430px] xl:max-h-[430px]`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="agents"
           data-dashboard-agent-status
@@ -584,7 +584,7 @@ export default function AgentDecisionCenter({
             </div>
           )}
 
-          <div className="mt-3 min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="dashboard-scroll-area mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {agentsError ? (
               <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-xs font-bold text-red-700 dark:text-red-300">
                 {copy.agentsUnavailable}
@@ -669,7 +669,7 @@ export default function AgentDecisionCenter({
                   </button>
                 </header>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pt-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_bottom,transparent_0,black_2rem,black_100%)]">
                   <div className="flex flex-wrap gap-2">
                     {suggestions.map((suggestion) => (
                       <button
@@ -731,7 +731,7 @@ export default function AgentDecisionCenter({
                     <button
                       type="submit"
                       disabled={!draft.trim()}
-                      className="nc-btn-primary grid min-h-11 min-w-11 place-items-center p-0 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="nc-btn-primary grid h-11 min-h-11 w-11 min-w-11 place-items-center rounded-xl p-0 shadow-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={copy.sendMessage}
                     >
                       <SendHorizontal
@@ -740,9 +740,6 @@ export default function AgentDecisionCenter({
                       />
                     </button>
                   </div>
-                  <p className="mt-2 text-[11px] text-[var(--nc-text-dim)]">
-                    {copy.assistantInputHint}
-                  </p>
                 </form>
               </aside>
             </div>,

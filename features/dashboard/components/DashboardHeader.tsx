@@ -60,7 +60,7 @@ export default function DashboardHeader({
           <button
             type="button"
             onClick={onIssueContract}
-            className={dashboardVisual.ghostButton}
+            className={dashboardVisual.headerPrimaryButton}
           >
             <FilePlus2 className="h-4 w-4" aria-hidden="true" />
             {copy.issueContract}
@@ -70,7 +70,7 @@ export default function DashboardHeader({
         <button
           type="button"
           onClick={onAskOrca}
-          className={dashboardVisual.ghostButton}
+          className={dashboardVisual.headerSecondaryButton}
         >
           <Bot className="h-4 w-4" aria-hidden="true" />
           {copy.askOrca}
@@ -79,7 +79,7 @@ export default function DashboardHeader({
         <button
           type="button"
           onClick={onRefresh}
-          className={dashboardVisual.ghostButton}
+          className={dashboardVisual.headerGhostButton}
         >
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
           {copy.refreshData}

@@ -28,7 +28,9 @@ describe("dashboard executive model and agent plan", () => {
     expect(header).toContain("orca-workspace-hero");
     expect(header).toContain("copy.issueContract");
     expect(header).toContain("copy.askOrca");
-    expect(header).toContain("className={dashboardVisual.ghostButton}");
+    expect(header).toContain("className={dashboardVisual.headerPrimaryButton}");
+    expect(header).toContain("className={dashboardVisual.headerSecondaryButton}");
+    expect(header).toContain("className={dashboardVisual.headerGhostButton}");
     expect(header).toContain("copy.refreshData");
     expect(kpis).toContain("orca-workspace-metrics");
   });

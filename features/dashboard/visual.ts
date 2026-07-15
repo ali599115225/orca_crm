@@ -10,9 +10,9 @@ export const dashboardVisual = {
   contentCard:
     "rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-sm",
   interactiveContentCard:
-    "rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-sm transition duration-200 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:shadow-md focus:outline-none focus-visible:border-[var(--nc-accent-border)] focus-visible:bg-[var(--nc-accent-soft)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
+    "rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-sm transition-[border-color,background-color,box-shadow] duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-surface-soft)] hover:shadow-sm focus:outline-none focus-visible:border-[var(--nc-accent-border)] focus-visible:bg-[var(--nc-surface-soft)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
   metricCard:
-    "orca-workspace-metric group flex min-h-[98px] h-full flex-col justify-between text-start transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
+    "orca-workspace-metric group flex h-full min-h-[98px] flex-col justify-between text-start transition-[border-color,background-color,box-shadow] duration-150 hover:!border-[var(--nc-accent-border)] hover:!bg-[var(--nc-surface-soft)] hover:!shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
   stageCard:
     "group rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4 text-start shadow-sm transition duration-200 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:shadow-md focus:outline-none focus-visible:border-[var(--nc-accent-border)] focus-visible:bg-[var(--nc-accent-soft)] focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
   title:
@@ -23,13 +23,19 @@ export const dashboardVisual = {
   primaryButton:
     "nc-btn-primary inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50",
   ghostButton:
-    "nc-btn-ghost inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-transparent bg-transparent px-4 text-sm font-bold text-[var(--nc-text-secondary)] transition-colors duration-150 hover:border-[var(--nc-border)] hover:bg-[var(--nc-surface-soft)] hover:text-[var(--nc-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
+  headerPrimaryButton:
+    "nc-btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
+  headerSecondaryButton:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm font-bold text-[var(--nc-text-primary)] transition-colors duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
+  headerGhostButton:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-transparent bg-transparent px-4 text-sm font-bold text-[var(--nc-text-secondary)] transition-colors duration-150 hover:border-[var(--nc-border)] hover:bg-[var(--nc-surface-soft)] hover:text-[var(--nc-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
   secondaryLink:
     "inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold text-[var(--nc-accent)] transition hover:bg-[var(--nc-accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]",
   iconTile:
     "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)]",
   metricIconTile:
-    "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)] transition-colors duration-200 group-hover:border-[var(--nc-accent-border)] group-hover:bg-[var(--nc-accent-soft)] group-hover:text-[var(--nc-accent)] group-focus-visible:border-[var(--nc-accent-border)] group-focus-visible:bg-[var(--nc-accent-soft)] group-focus-visible:text-[var(--nc-accent)]",
+    "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)] transition-colors duration-150 group-hover:border-[var(--nc-accent-border)] group-hover:bg-[var(--nc-surface-strong)] group-hover:text-[var(--nc-accent)] group-focus-visible:border-[var(--nc-accent-border)] group-focus-visible:bg-[var(--nc-surface-strong)] group-focus-visible:text-[var(--nc-accent)]",
   statusBadge:
     "inline-flex items-center rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--nc-accent)]",
   tabActive:

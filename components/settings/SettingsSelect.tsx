@@ -22,6 +22,7 @@ interface SettingsSelectProps {
   disabled?: boolean;
   mono?: boolean;
   placement?: "auto" | "bottom";
+  portalZIndex?: number;
   "aria-label"?: string;
 }
 
@@ -67,6 +68,7 @@ export default function SettingsSelect({
   disabled,
   mono,
   placement = "auto",
+  portalZIndex = 200,
   ...rest
 }: SettingsSelectProps) {
   const [open, setOpen] = useState(false);
@@ -75,6 +77,7 @@ export default function SettingsSelect({
     top: number;
     left: number;
     width: number;
+    maxHeight: number;
     direction: "ltr" | "rtl";
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -89,10 +92,17 @@ export default function SettingsSelect({
     const button = buttonRef.current;
     if (!button) return;
     const rect = button.getBoundingClientRect();
+    const viewportGap = 8;
     const estimatedListHeight = Math.min(options.length * 36 + 8, 240);
-    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportGap;
+    const spaceAbove = rect.top - viewportGap;
     const openUpward =
-      placement === "auto" && spaceBelow < estimatedListHeight && rect.top > estimatedListHeight;
+      placement === "auto" &&
+      spaceBelow < estimatedListHeight &&
+      spaceAbove > spaceBelow;
+    const availableHeight = openUpward ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(96, Math.min(240, availableHeight - 4));
+    const renderedHeight = Math.min(estimatedListHeight, maxHeight);
     const preferredMinimum = Math.min(220, Math.max(0, window.innerWidth - 8));
     const width = Math.min(
       Math.max(rect.width, preferredMinimum),
@@ -102,9 +112,12 @@ export default function SettingsSelect({
       window.getComputedStyle(button).direction === "rtl" ? "rtl" : "ltr";
 
     setPosition({
-      top: openUpward ? Math.max(rect.top - estimatedListHeight - 4, 4) : rect.bottom + 4,
+      top: openUpward
+        ? Math.max(rect.top - renderedHeight - 4, 4)
+        : Math.min(rect.bottom + 4, window.innerHeight - renderedHeight - 4),
       left: Math.max(4, Math.min(rect.left, window.innerWidth - width - 4)),
       width,
+      maxHeight,
       direction,
     });
   }
@@ -230,8 +243,15 @@ export default function SettingsSelect({
             id={listboxId}
             role="listbox"
             dir={position.direction}
-            style={{ position: "fixed", top: position.top, left: position.left, width: position.width }}
-            className="z-[200] max-h-60 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl"
+            style={{
+              position: "fixed",
+              top: position.top,
+              left: position.left,
+              width: position.width,
+              maxHeight: position.maxHeight,
+              zIndex: portalZIndex,
+            }}
+            className="overflow-y-auto overscroll-contain rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl"
           >
             {options.map((option, index) => (
               <div

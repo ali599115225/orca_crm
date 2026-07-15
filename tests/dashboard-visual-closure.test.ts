@@ -39,9 +39,15 @@ describe("Dashboard V3 visual and structural closure", () => {
 
   it("uses four KPI cards, one full-width spine, and one operations center", () => {
     expect(view).toContain("<DashboardKpiGrid");
-    expect(view).toContain("<DealSpineSnapshot");
-    expect(view).toContain("<DailyOperationsCenter");
-    expect(view).not.toContain("xl:col-span-8");
+    expect(view).toContain("<AgentDecisionCenter");
+
+    const executiveCenter = fs.readFileSync(
+      "features/dashboard/components/AgentDecisionCenter.tsx",
+      "utf8",
+    );
+
+    expect(executiveCenter).toContain("<DealSpineSnapshot");
+    expect(executiveCenter).toContain("<DailyOperationsCenter");
     expect(view).not.toContain("xl:col-span-4");
   });
 
@@ -64,7 +70,10 @@ describe("Dashboard V3 visual and structural closure", () => {
     expect(visual).toContain("bg-[var(--nc-accent)]");
     expect(visual).toContain("text-[var(--nc-accent)]");
     expect(visual).toContain("hover:bg-[var(--nc-accent-soft)]");
-    expect(visual).toContain("var(--orca-ui-on-primary)");
+    expect(visual).toContain("headerPrimaryButton:");
+    expect(visual).toContain("nc-btn-primary");
+    expect(visual).toContain("headerSecondaryButton:");
+    expect(visual).toContain("headerGhostButton:");
     expect(`${visual}\n${operations}`).not.toContain("var(--nc-op-blue)");
   });
 
@@ -73,7 +82,8 @@ describe("Dashboard V3 visual and structural closure", () => {
     expect(visual).toContain("contentCard:");
     expect(visual).toContain("interactiveContentCard:");
     expect(pipeline).toContain("dashboardVisual.sectionPanel");
-    expect(pipeline).toContain("dashboardVisual.stageCard");
+    expect(pipeline).toContain("data-dashboard-connected-pipeline");
+    expect(pipeline).not.toContain("dashboardVisual.stageCard");
     expect(operations).toContain("dashboardVisual.sectionPanel");
     expect(operations).toContain("dashboardVisual.contentCard");
   });
@@ -84,7 +94,8 @@ describe("Dashboard V3 visual and structural closure", () => {
     );
     expect(wizardVisual).toContain("var(--nc-surface-solid)");
     expect(wizardVisual).toContain("var(--nc-accent)");
-    expect(wizardVisual).toContain("var(--orca-ui-on-primary)");
+    expect(wizardVisual).toContain("nc-btn-primary");
+    expect(wizardVisual).toContain("nc-btn-secondary");
     expect(wizardVisual).not.toContain("var(--nc-op-blue)");
     expect(`${wizard}\n${wizardVisual}`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
   });

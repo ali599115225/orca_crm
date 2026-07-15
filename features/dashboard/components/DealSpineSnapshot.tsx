@@ -65,7 +65,7 @@ export default function DealSpineSnapshot({
 
   return (
     <section
-      className={`${dashboardVisual.sectionPanel} flex h-full min-h-[310px] flex-col p-5`}
+      className={`${dashboardVisual.sectionPanel} flex min-h-[310px] flex-col overflow-hidden p-5 xl:h-[310px] xl:max-h-[310px]`}
       data-dashboard-card="pipeline"
       data-dashboard-connected-pipeline
     >

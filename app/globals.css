@@ -1766,3 +1766,15 @@ textarea {
     min-width: max-content;
   }
 }
+
+/* Dashboard-only internal scroll areas */
+.orca-dashboard-final .dashboard-scroll-area {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-dashboard-final .dashboard-scroll-area::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

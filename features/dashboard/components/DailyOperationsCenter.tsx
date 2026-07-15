@@ -260,7 +260,7 @@ export default function DailyOperationsCenter({
                 : copy.low;
 
           return (
-            <div key={task.id} className={`${dashboardVisual.contentCard} p-3.5`}>
+            <div key={task.id} className={`${dashboardVisual.contentCard} min-h-[84px] p-3.5`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="line-clamp-2 text-sm font-bold text-[var(--nc-text-primary)]">
@@ -347,7 +347,7 @@ export default function DailyOperationsCenter({
             <Link
               key={lead.id}
               href={`/operations/leads/${lead.id}`}
-              className={`${dashboardVisual.interactiveContentCard} flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between`}
+              className={`${dashboardVisual.interactiveContentCard} flex min-h-[84px] flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between`}
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
@@ -469,7 +469,7 @@ export default function DailyOperationsCenter({
 
   return (
     <section
-      className={`${dashboardVisual.sectionPanel} flex h-full min-h-[390px] max-h-[430px] flex-col p-5 sm:p-6`}
+      className={`${dashboardVisual.sectionPanel} flex min-h-[390px] flex-col overflow-hidden p-5 sm:p-6 xl:h-[430px] xl:min-h-[430px] xl:max-h-[430px]`}
       data-dashboard-card="operations"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -495,7 +495,7 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="mt-5 flex max-w-full gap-2 overflow-x-auto border-b border-[var(--nc-glass-border)] pb-3"
+        className="mt-5 flex max-w-full gap-2 overflow-x-auto border-b border-[var(--nc-glass-border)] pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label={copy.operationsTitle}
       >
@@ -535,7 +535,7 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="min-h-0 flex-1 overflow-y-auto pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="dashboard-scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5"
         role="tabpanel"
         id={`dashboard-panel-${activeTab}`}
         aria-labelledby={`dashboard-tab-${activeTab}`}
