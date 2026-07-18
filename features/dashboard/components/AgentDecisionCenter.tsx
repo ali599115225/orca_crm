@@ -488,7 +488,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.sectionPanel} flex min-h-[310px] flex-col overflow-hidden p-5 xl:col-span-4 xl:h-[310px] xl:max-h-[310px]`}
+          className={`${dashboardVisual.dashPanel} p-4 xl:col-span-4`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="decision"
           data-dashboard-decision-center
@@ -510,9 +510,9 @@ export default function AgentDecisionCenter({
             <span className={dashboardVisual.statusBadge}>{copy.live}</span>
           </div>
 
-          <div className="dashboard-scroll-area mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className={`${dashboardVisual.dashPanelBody} mt-3`}>
             {signals.length === 0 ? (
-              <div className="grid h-full min-h-[170px] place-items-center rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4 text-center text-xs text-[var(--nc-text-secondary)]">
+              <div className="grid place-items-center rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4 py-6 text-center text-xs text-[var(--nc-text-secondary)]">
                 {copy.noOperationalSignals}
               </div>
             ) : (
@@ -521,7 +521,7 @@ export default function AgentDecisionCenter({
                   <Link
                     key={signal.key}
                     href={signal.href}
-                    className={`${dashboardVisual.interactiveContentCard} flex h-[58px] min-h-[58px] items-center justify-between gap-3 px-3 py-2.5`}
+                    className={`${dashboardVisual.interactiveContentCard} flex items-center justify-between gap-3 px-3 py-2`}
                   >
                     <div className="min-w-0">
                       <p className="line-clamp-1 text-sm font-bold text-[var(--nc-text-primary)]">
@@ -558,7 +558,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.sectionPanel} flex min-h-[390px] flex-col overflow-hidden p-5 xl:col-span-4 xl:h-[430px] xl:min-h-[430px] xl:max-h-[430px]`}
+          className={`${dashboardVisual.dashPanel} flex flex-col p-4 xl:col-span-4`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="agents"
           data-dashboard-agent-status
@@ -584,13 +584,13 @@ export default function AgentDecisionCenter({
             </div>
           )}
 
-          <div className="dashboard-scroll-area mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="mt-2">
             {agentsError ? (
               <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-xs font-bold text-red-700 dark:text-red-300">
                 {copy.agentsUnavailable}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {roleOrder.map((role) => (
                   <div key={role.type}>
                     {renderAgentRow(
@@ -604,13 +604,15 @@ export default function AgentDecisionCenter({
             )}
           </div>
 
-          <Link
-            href="/operations/agents"
-            className={`${dashboardVisual.secondaryLink} mt-2 shrink-0`}
-          >
-            {copy.openAgents}
-            <ArrowIcon className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          <div className={`${dashboardVisual.dashPanelFooter} mt-auto pt-2`}>
+            <Link
+              href="/operations/agents"
+              className={dashboardVisual.secondaryLink}
+            >
+              {copy.openAgents}
+              <ArrowIcon className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </aside>
       </section>
 

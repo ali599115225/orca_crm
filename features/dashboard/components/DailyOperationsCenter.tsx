@@ -8,7 +8,7 @@ import {
   MessageCircleMore,
   UserRound,
 } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   displayEntity,
   displayEnum,
@@ -85,6 +85,38 @@ export default function DailyOperationsCenter({
     recentLeads: null,
     whatsapp: null,
   });
+
+  const tabpanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const apply = () => {
+      const panel = tabpanelRef.current;
+      if (!panel) return;
+      const mobile = window.matchMedia("(max-width: 639px)").matches;
+      const container = panel.firstElementChild as HTMLElement | null;
+      if (!container) return;
+      const rows = Array.from(container.children) as HTMLElement[];
+      if (!mobile) {
+        rows.forEach((r) => { r.style.height = ""; });
+        panel.style.height = "";
+        return;
+      }
+      rows.forEach((r) => { r.style.height = "auto"; });
+      void panel.offsetHeight;
+      let maxH = 0;
+      rows.slice(0, Math.min(3, rows.length)).forEach((r) => {
+        maxH = Math.max(maxH, r.getBoundingClientRect().height);
+      });
+      if (maxH === 0) return;
+      rows.forEach((r) => { r.style.height = `${maxH}px`; });
+      panel.style.height = `${Math.ceil(maxH * 3 + 28)}px`;
+    };
+
+    apply();
+    const mq = window.matchMedia("(max-width: 639px)");
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [activeTab]);
 
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
 
@@ -213,24 +245,37 @@ export default function DailyOperationsCenter({
     }
   };
 
+  const SLOT_COUNT = 3;
+  const emptySlotClass =
+    "grid min-h-[60px] place-items-center rounded-xl border border-dashed border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-xs text-[var(--nc-text-dim)] sm:h-[84px]";
+
+  const renderEmptySlots = (filled: number) =>
+    Array.from({ length: Math.max(0, SLOT_COUNT - filled) }, (_, i) => (
+      <div key={`empty-${i}`} className={emptySlotClass} aria-hidden="true">
+        لا توجد عناصر إضافية
+      </div>
+    ));
+
   const renderTasks = () => {
     if (operations.tasks.status === "error") {
       return (
-        <DashboardSectionState
-          kind="error"
-          message={copy.dataUnavailable}
-          retryLabel={copy.retry}
-          onRetry={onRetry}
-        />
+        <div className="space-y-2">
+          <DashboardSectionState
+            kind="error"
+            message={copy.dataUnavailable}
+            retryLabel={copy.retry}
+            onRetry={onRetry}
+          />
+          {renderEmptySlots(1)}
+        </div>
       );
     }
 
     if (filteredTasks.length === 0) {
       return (
-        <DashboardSectionState
-          kind="empty"
-          message={normalizedSearch ? copy.noSearchResults : copy.noTasks}
-        />
+        <div className="space-y-2">
+          {renderEmptySlots(0)}
+        </div>
       );
     }
 
@@ -260,7 +305,7 @@ export default function DailyOperationsCenter({
                 : copy.low;
 
           return (
-            <div key={task.id} className={`${dashboardVisual.contentCard} min-h-[84px] p-3.5`}>
+            <div key={task.id} className={`${dashboardVisual.contentCard} p-3.5 sm:h-[84px] sm:overflow-hidden`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="line-clamp-2 text-sm font-bold text-[var(--nc-text-primary)]">
@@ -298,17 +343,7 @@ export default function DailyOperationsCenter({
             </div>
           );
         })}
-
-        <div className="pt-2">
-          <Link href="/operations/tasks" className={dashboardVisual.secondaryLink}>
-            {copy.viewAllTasks}
-            {isArabic ? (
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            )}
-          </Link>
-        </div>
+        {renderEmptySlots(filteredTasks.length)}
       </div>
     );
   };
@@ -316,21 +351,23 @@ export default function DailyOperationsCenter({
   const renderLeads = () => {
     if (operations.recentLeads.status === "error") {
       return (
-        <DashboardSectionState
-          kind="error"
-          message={copy.dataUnavailable}
-          retryLabel={copy.retry}
-          onRetry={onRetry}
-        />
+        <div className="space-y-2">
+          <DashboardSectionState
+            kind="error"
+            message={copy.dataUnavailable}
+            retryLabel={copy.retry}
+            onRetry={onRetry}
+          />
+          {renderEmptySlots(1)}
+        </div>
       );
     }
 
     if (filteredLeads.length === 0) {
       return (
-        <DashboardSectionState
-          kind="empty"
-          message={normalizedSearch ? copy.noSearchResults : copy.noLeads}
-        />
+        <div className="space-y-2">
+          {renderEmptySlots(0)}
+        </div>
       );
     }
 
@@ -347,7 +384,7 @@ export default function DailyOperationsCenter({
             <Link
               key={lead.id}
               href={`/operations/leads/${lead.id}`}
-              className={`${dashboardVisual.interactiveContentCard} flex min-h-[84px] flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between`}
+              className={`${dashboardVisual.interactiveContentCard} flex flex-col gap-3 p-3.5 sm:h-[84px] sm:overflow-hidden sm:flex-row sm:items-center sm:justify-between`}
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-[var(--nc-text-primary)]">
@@ -389,17 +426,7 @@ export default function DailyOperationsCenter({
             </Link>
           );
         })}
-
-        <div className="pt-2">
-          <Link href="/operations/leads" className={dashboardVisual.secondaryLink}>
-            {copy.viewAllLeads}
-            {isArabic ? (
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            )}
-          </Link>
-        </div>
+        {renderEmptySlots(filteredLeads.length)}
       </div>
     );
   };
@@ -407,18 +434,24 @@ export default function DailyOperationsCenter({
   const renderWhatsapp = () => {
     if (operations.whatsapp.status === "error") {
       return (
-        <DashboardSectionState
-          kind="error"
-          message={copy.dataUnavailable}
-          retryLabel={copy.retry}
-          onRetry={onRetry}
-        />
+        <div className="space-y-2">
+          <DashboardSectionState
+            kind="error"
+            message={copy.dataUnavailable}
+            retryLabel={copy.retry}
+            onRetry={onRetry}
+          />
+          {renderEmptySlots(1)}
+        </div>
       );
     }
 
     if (!whatsappMatchesSearch) {
       return (
-        <DashboardSectionState kind="empty" message={copy.noSearchResults} />
+        <div className="space-y-2">
+          <DashboardSectionState kind="empty" message={copy.noSearchResults} />
+          {renderEmptySlots(1)}
+        </div>
       );
     }
 
@@ -441,35 +474,24 @@ export default function DailyOperationsCenter({
     ];
 
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          {metrics.map((metric) => (
-            <div key={metric.key} className={`${dashboardVisual.contentCard} p-4`}>
-              <p className="text-xs font-bold text-[var(--nc-text-secondary)]">
-                {metric.label}
-              </p>
-              <strong className="mt-3 block text-3xl font-black text-[var(--nc-text-primary)]">
-                {metric.value}
-              </strong>
-            </div>
-          ))}
-        </div>
-
-        <Link href="/operations/whatsapp" className={dashboardVisual.secondaryLink}>
-          {copy.openWhatsapp}
-          {isArabic ? (
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          )}
-        </Link>
+      <div className="space-y-2">
+        {metrics.map((metric) => (
+          <div key={metric.key} className={`${dashboardVisual.contentCard} flex items-center justify-between px-4 py-3 sm:h-[84px] sm:overflow-hidden`}>
+            <p className="text-sm font-bold text-[var(--nc-text-secondary)]">
+              {metric.label}
+            </p>
+            <strong className="text-2xl font-black text-[var(--nc-text-primary)]">
+              {metric.value}
+            </strong>
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
     <section
-      className={`${dashboardVisual.sectionPanel} flex min-h-[390px] flex-col overflow-hidden p-5 sm:p-6 xl:h-[430px] xl:min-h-[430px] xl:max-h-[430px]`}
+      className={`${dashboardVisual.dashPanel} p-4`}
       data-dashboard-card="operations"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -495,7 +517,7 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="mt-5 flex max-w-full gap-2 overflow-x-auto border-b border-[var(--nc-glass-border)] pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="orca-ops-tablist mt-3 flex max-w-full gap-1.5 overflow-x-auto border-b border-[var(--nc-glass-border)] pb-3 sm:gap-2"
         role="tablist"
         aria-label={copy.operationsTitle}
       >
@@ -535,7 +557,8 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="dashboard-scroll-area min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5"
+        ref={tabpanelRef}
+        className="orca-ops-tabpanel h-[280px] overflow-y-auto overscroll-contain pt-3"
         role="tabpanel"
         id={`dashboard-panel-${activeTab}`}
         aria-labelledby={`dashboard-tab-${activeTab}`}
@@ -543,6 +566,30 @@ export default function DailyOperationsCenter({
         {activeTab === "tasks" && renderTasks()}
         {activeTab === "recentLeads" && renderLeads()}
         {activeTab === "whatsapp" && renderWhatsapp()}
+      </div>
+
+      <div className={`${dashboardVisual.dashPanelFooter} pt-2`}>
+        <Link
+          href={
+            activeTab === "tasks"
+              ? "/operations/tasks"
+              : activeTab === "recentLeads"
+                ? "/operations/leads"
+                : "/operations/whatsapp"
+          }
+          className={dashboardVisual.secondaryLink}
+        >
+          {activeTab === "tasks"
+            ? copy.viewAllTasks
+            : activeTab === "recentLeads"
+              ? copy.viewAllLeads
+              : copy.openWhatsapp}
+          {isArabic ? (
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          )}
+        </Link>
       </div>
     </section>
   );

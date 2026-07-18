@@ -6,7 +6,7 @@ export const leadVisual = {
   pageStack: "nc-stack",
   workspaceHero: "orca-workspace-hero",
   detailHero: "orca-workspace-hero !block",
-  workspaceMetrics: "orca-workspace-metrics",
+  workspaceMetrics: "orca-workspace-metrics grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
   workspacePanel:
     "orca-workspace-panel flex min-w-0 flex-col overflow-hidden",
   workspaceToolbar:

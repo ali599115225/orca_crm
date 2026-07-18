@@ -25,65 +25,67 @@ export default function DashboardHeader({
   onRefresh,
 }: DashboardHeaderProps) {
   return (
-    <header className="orca-workspace-hero" data-dashboard-card="title">
+    <header
+      className="orca-workspace-hero !gap-4 !py-2.5 sm:!py-3"
+      data-dashboard-card="title"
+    >
       <div className="min-w-0">
         <p className="text-xs font-bold text-[var(--nc-accent)]">
           {copy.dashboardEyebrow}
         </p>
-        <h1 className={`mt-2 ${dashboardVisual.title}`}>
+        <h1 className={`mt-1.5 ${dashboardVisual.title}`}>
           {copy.welcome} <bdi dir="auto">{welcomeName}</bdi>
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--nc-text-secondary)]">
+        <p className="mt-1 max-w-2xl text-sm text-[var(--nc-text-secondary)]">
           {copy.description}
         </p>
       </div>
 
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-stretch sm:justify-end">
-        <div
-          className={`${dashboardVisual.softPanel} flex min-h-11 items-center gap-3 px-4 py-2.5`}
-        >
+      <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto sm:items-end">
+        <p className="flex items-center gap-2 text-xs">
           <CalendarDays
-            className="h-4 w-4 text-[var(--nc-text-dim)]"
+            className="h-3.5 w-3.5 shrink-0 text-[var(--nc-text-dim)]"
             aria-hidden="true"
           />
-          <div>
-            <p className="text-[11px] font-bold text-[var(--nc-text-dim)]">
-              {copy.today}
-            </p>
-            <p className="text-sm font-bold text-[var(--nc-text-primary)]">
-              {formatRiyadhDisplayDate(generatedAt)}
-            </p>
-          </div>
-        </div>
+          <span className="font-bold text-[var(--nc-text-dim)]">
+            {copy.today}
+          </span>
+          <span className="font-bold text-[var(--nc-text-secondary)]">
+            {formatRiyadhDisplayDate(generatedAt)}
+          </span>
+        </p>
 
-        {canIssueContract && (
+        <div className="flex flex-wrap items-center gap-2">
+          {canIssueContract && (
+            <button
+              type="button"
+              onClick={onIssueContract}
+              className={dashboardVisual.headerPrimaryButton}
+            >
+              <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+              {copy.issueContract}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={onIssueContract}
-            className={dashboardVisual.headerPrimaryButton}
+            onClick={onAskOrca}
+            className={dashboardVisual.headerSecondaryButton}
           >
-            <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-            {copy.issueContract}
+            <Bot className="h-4 w-4" aria-hidden="true" />
+            {copy.askOrca}
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={onAskOrca}
-          className={dashboardVisual.headerSecondaryButton}
-        >
-          <Bot className="h-4 w-4" aria-hidden="true" />
-          {copy.askOrca}
-        </button>
-
-        <button
-          type="button"
-          onClick={onRefresh}
-          className={dashboardVisual.headerGhostButton}
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          {copy.refreshData}
-        </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className={dashboardVisual.headerIconButton}
+            title={copy.refreshData}
+            aria-label={copy.refreshData}
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </header>
   );

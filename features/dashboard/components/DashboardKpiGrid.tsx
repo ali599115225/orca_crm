@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { DashboardReadModel } from "../model";
 import type { DashboardCopy } from "../copy/dashboardCopy";
+import { dashboardVisual } from "../visual";
 import DashboardMetricCard from "./DashboardMetricCard";
 
 interface DashboardKpiGridProps {
@@ -21,7 +22,7 @@ export default function DashboardKpiGrid({
 }: DashboardKpiGridProps) {
   return (
     <section
-      className="orca-workspace-metrics !grid !grid-cols-1 gap-3 sm:!grid-cols-2 xl:!grid-cols-4"
+      className={dashboardVisual.kpiGrid}
       aria-label={copy.activeLeads}
     >
       <DashboardMetricCard

@@ -105,6 +105,34 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  const pageRootRef = useRef<HTMLElement | null>(null);
+
+  // Hide the layout's vertical scrollbar only while the Leads page is
+  // mounted (scrolling stays fully functional). The actual scroller is an
+  // ancestor owned by the shared layout, so it is tagged at runtime instead
+  // of editing shared files; the tag is removed on unmount.
+  useEffect(() => {
+    const node = pageRootRef.current;
+    if (!node) return;
+    let scroller: HTMLElement | null = null;
+    let parent = node.parentElement;
+    while (parent) {
+      const overflowY = window.getComputedStyle(parent).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") {
+        scroller = parent;
+        break;
+      }
+      parent = parent.parentElement;
+    }
+    if (!scroller) return;
+    scroller.setAttribute("data-leads-hide-scrollbar", "true");
+    scroller.style.setProperty("scrollbar-width", "none");
+    return () => {
+      scroller.removeAttribute("data-leads-hide-scrollbar");
+      scroller.style.removeProperty("scrollbar-width");
+    };
+  }, []);
+
   const rows: LeadListRow[] = result?.data || [];
   const kpis = result?.kpis;
 
@@ -142,7 +170,9 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
   };
 
   return (
-    <section dir={direction} className={leadVisual.page}>
+    <section ref={pageRootRef} dir={direction} className={leadVisual.page}>
+      {/* Scoped rule for the tagged layout scroller (Chromium/WebKit). */}
+      <style>{`[data-leads-hide-scrollbar]::-webkit-scrollbar{display:none;width:0;height:0}`}</style>
       <div className={leadVisual.pageStack}>
         <header className={leadVisual.workspaceHero}>
           <div>
@@ -212,7 +242,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
         )}
 
         <div
-          className={`${leadVisual.workspacePanel} lg:h-[560px]`}
+          className={`${leadVisual.workspacePanel} lg:max-h-[560px]`}
           data-operational-list-card
         >
           <div className={`${leadVisual.workspaceToolbar} p-3`}>
@@ -275,7 +305,11 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            data-leads-hide-scrollbar
+            style={{ scrollbarWidth: "none" }}
+            className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {loading ? (
               <div className={leadVisual.emptyState}>
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
@@ -359,7 +393,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                           </span>
 
                           <span className="text-center text-xs font-bold tabular-nums text-[var(--nc-text-primary)]">
-                            {formatNumber(lead.leadScore, isArabic)}
+                            <bdi dir="ltr">{formatNumber(lead.leadScore, isArabic)}/{formatNumber(100, isArabic)}</bdi>
                           </span>
 
                           <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
@@ -396,7 +430,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         type="button"
                         disabled={page >= (result?.totalPages || 1)}
                         onClick={() => setPage((value) => Math.min(result?.totalPages || 1, value + 1))}
-                        className={leadVisual.compactPrimaryButton}
+                        className={leadVisual.secondaryButton}
                       >
                         {labels.next}
                       </button>

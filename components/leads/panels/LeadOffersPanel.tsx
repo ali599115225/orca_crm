@@ -120,14 +120,24 @@ export default function LeadOffersPanel({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={openOfferModal}
-          disabled={!canCreateOffer}
-          className={leadVisual.primaryButton}
-        >
-          {labels.createOffer}
-        </button>
+        <div>
+          <button
+            type="button"
+            onClick={openOfferModal}
+            disabled={!canCreateOffer}
+            className={leadVisual.primaryButton}
+            title={!canCreateOffer ? (!canWrite ? (isArabic ? "لا تملك صلاحية الكتابة" : "No write permission") : labels.offerNoOpportunity) : undefined}
+          >
+            {labels.createOffer}
+          </button>
+          {!canCreateOffer && (
+            <p className="mt-1.5 text-xs font-medium text-[var(--nc-text-dim)]" role="note">
+              {!canWrite
+                ? (isArabic ? "لا تملك صلاحية الكتابة" : "No write permission")
+                : labels.offerNoOpportunity}
+            </p>
+          )}
+        </div>
       </div>
 
       {actionError && (

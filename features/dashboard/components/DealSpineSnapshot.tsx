@@ -65,7 +65,7 @@ export default function DealSpineSnapshot({
 
   return (
     <section
-      className={`${dashboardVisual.sectionPanel} flex min-h-[310px] flex-col overflow-hidden p-5 xl:h-[310px] xl:max-h-[310px]`}
+      className={`${dashboardVisual.dashPanel} p-4`}
       data-dashboard-card="pipeline"
       data-dashboard-connected-pipeline
     >
@@ -100,7 +100,7 @@ export default function DealSpineSnapshot({
       </div>
 
       {pipeline.status === "error" ? (
-        <div className="mt-5 flex flex-1 items-center">
+        <div className="mt-3">
           <DashboardSectionState
             kind="error"
             message={copy.dataUnavailable}
@@ -110,7 +110,7 @@ export default function DealSpineSnapshot({
         </div>
       ) : (
         <>
-          <div className="mt-5 min-h-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className={`${dashboardVisual.hScroll} mt-3`}>
             <div className="relative mx-auto min-w-[620px] px-4 pb-1 pt-1">
               <div
                 className="absolute left-[10%] right-[10%] top-[66px] h-px bg-[var(--nc-border)]"
@@ -128,7 +128,7 @@ export default function DealSpineSnapshot({
                     <Link
                       key={stage.key}
                       href={stageLinks[stage.key]}
-                      className="group relative z-10 flex min-h-[150px] flex-col items-center px-2 py-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]"
+                      className="group relative z-10 flex flex-col items-center px-2 py-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]"
                     >
                       <span className="text-xs font-bold text-[var(--nc-text-secondary)] transition group-hover:text-[var(--nc-accent)]">
                         {labels[stage.key]}
@@ -136,7 +136,7 @@ export default function DealSpineSnapshot({
                       <span className="mt-3 grid h-12 w-12 place-items-center rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-accent)] shadow-sm transition group-hover:border-[var(--nc-accent)] group-hover:bg-[var(--nc-accent-soft)]">
                         <Icon className="h-5 w-5" aria-hidden="true" />
                       </span>
-                      <strong className="mt-3 text-2xl font-black text-[var(--nc-text-primary)]">
+                      <strong className="mt-2 text-2xl font-black text-[var(--nc-text-primary)]">
                         {stage.count}
                       </strong>
                       <span className="mt-1 text-[11px] font-bold text-[var(--nc-text-dim)]">

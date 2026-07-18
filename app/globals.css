@@ -1767,13 +1767,126 @@ textarea {
   }
 }
 
-/* Dashboard-only internal scroll areas */
+/* ─── Dashboard Foundation: Grid, Panels & Scroll ─── */
+
+/* Executive row grid: stacks by default, splits when content space allows */
+.orca-dashboard-final .dashboard-exec-row {
+  display: grid;
+  gap: 1rem;
+}
+
+@container orca-workspace (min-width: 860px) {
+  .orca-dashboard-final .dashboard-exec-row {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  }
+}
+
+/* KPI grid: 2×2 by default, 4 columns on wide, 1 column on ultra-narrow/zoom */
+.orca-dashboard-final .dashboard-kpi-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container orca-workspace (min-width: 860px) {
+  .orca-dashboard-final .dashboard-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container orca-workspace (max-width: 360px) {
+  .orca-dashboard-final .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Panel structural separation: shell → header → body → footer */
+.orca-dashboard-final .dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.orca-dashboard-final .dashboard-panel-header {
+  flex: 0 0 auto;
+}
+
+.orca-dashboard-final .dashboard-panel-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-dashboard-final .dashboard-panel-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.orca-dashboard-final .dashboard-panel-footer {
+  flex: 0 0 auto;
+}
+
+/* Horizontal scroll with hidden scrollbar (for pipeline etc.) */
+.orca-dashboard-final .dashboard-hscroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-dashboard-final .dashboard-hscroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Vertical scroll areas (legacy class + panel body) */
 .orca-dashboard-final .dashboard-scroll-area {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .orca-dashboard-final .dashboard-scroll-area::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Dashboard page: hide scrollbar on scroll containers when Dashboard is active */
+.overflow-y-auto:has(.orca-dashboard-final) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.overflow-y-auto:has(.orca-dashboard-final)::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Daily Operations Center tab-panel: hidden scrollbar, active scroll */
+.orca-dashboard-final .orca-ops-tabpanel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-dashboard-final .orca-ops-tabpanel::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Daily Operations Center tab-list: hidden horizontal scrollbar */
+.orca-dashboard-final .orca-ops-tablist {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-dashboard-final .orca-ops-tablist::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

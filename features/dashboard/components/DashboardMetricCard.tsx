@@ -43,14 +43,14 @@ export default function DashboardMetricCard({
         <span className={dashboardVisual.metricIconTile}>{icon}</span>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2">
         {isReady ? (
-          <strong className="text-3xl font-black leading-none text-[var(--nc-text-primary)]">
+          <strong className="text-2xl font-black leading-none text-[var(--nc-text-primary)]">
             {value.data}
           </strong>
         ) : (
           <div className="flex items-end justify-between gap-3">
-            <strong className="text-3xl font-black leading-none text-[var(--nc-text-dim)]">
+            <strong className="text-2xl font-black leading-none text-[var(--nc-text-dim)]">
               —
             </strong>
             <span className="text-xs font-bold text-red-600 dark:text-red-300">
