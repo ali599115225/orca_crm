@@ -592,7 +592,7 @@ export default function ContractWizard({
                   }}
                   disabled={isSubmitting}
                   isEmpty={clients.length === 0}
-                  emptyStateLabel={t("contractWizard.clientEmpty")}
+                  emptyLabel={t("contractWizard.clientEmpty")}
                   options={clientOptions.filter((o) => o.value !== "")}
                   placeholder={
                     clients.length === 0
@@ -620,7 +620,7 @@ export default function ContractWizard({
                     onChange={handlePropertyChange}
                     disabled={isSubmitting}
                     isEmpty={properties.length === 0}
-                    emptyStateLabel={t("contractWizard.propertyEmpty")}
+                    emptyLabel={t("contractWizard.propertyEmpty")}
                     options={propertyOptions.filter((o) => o.value !== "")}
                     placeholder={
                       properties.length === 0
