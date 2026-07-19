@@ -60,5 +60,6 @@
 | C-007 | FIXED | حذف password reset وSMS/email من `handleSuccessfulPaymentInternal` |
 | C-008 | FIXED | حذف الأرقام الثابتة من مسارات Runtime المفحوصة، بما فيها seed التلقائي لمحادثات منصور |
 | C-029 | FIXED | حذف schedule من `vercel.json` وتحويل route إلى authenticated no-op |
+| C-026 | BLOCKED EXTERNALLY | Push ناجح؛ إنشاء Draft PR أعاد GitHub App 403 و`gh` غير مصادق؛ يحتاج تفويض GitHub فقط |
 
 التصنيف النهائي لهذه الحزمة: `FIXED` لمسارات Runtime، `OUT OF SCOPE` للمنتج، وحقول/جداول البيانات `DEFERRED WITH OWNER/MIGRATION GATE` بلا حذف أو Migration.

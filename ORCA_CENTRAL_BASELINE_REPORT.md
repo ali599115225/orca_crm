@@ -5,7 +5,7 @@
 **Repository:** `ali599115225/orca_crm`
 **Execution branch:** `work/orca-central-baseline-execution-20260719`
 **Execution base:** `de74ba5d16bb9723f8921067745da0c3265f9029`
-**Write state:** `ACTIVE — LOCAL P0-02 VERIFIED; PUSH/PREVIEW PENDING`
+**Write state:** `P0-02 PUSHED AND PREVIEW READY; PR CREATION BLOCKED BY GITHUB APP 403`
 ## 1. القرار التنفيذي الحاكم
 | البند | الحالة |
 |---|---|
@@ -148,4 +148,6 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - TypeScript: `npx --no-install tsc --noEmit` = `PASS`.
 - Production Build: `npm run build` = `PASS`؛ 102/102 صفحة static generation.
 - Sentry source-map upload: `NOT CONFIGURED`؛ لم يحدث رفع خارجي.
-- Vercel Preview: `PENDING` بعد Commit/Push.
+- Commit: `5d0d3735dd7e0a1489738b1e0d8058a1f2164ce4` pushed إلى فرع التنفيذ.
+- Vercel Preview: `READY` — `https://orca-3prucfo8g-ali-s-projectsorcacrm.vercel.app` (`dpl_B4ec5RWdJW3rJHLEGv7XqGzjwhf8`).
+- Pull Request: `BLOCKED BY EXTERNAL GITHUB AUTHORIZATION`؛ GitHub App أعاد `403 Resource not accessible by integration` وGitHub CLI غير مسجل الدخول. لا يوجد التفاف إلى `main`.
