@@ -27,10 +27,6 @@ interface User {
 }
 
 interface SettingsStaffProps {
-  tenant: {
-    companyName: string;
-    subscriptionPlan: string;
-  };
   users: User[];
   lang: "AR" | "EN";
   isArabic: boolean;
@@ -56,7 +52,6 @@ const ROLE_TRANSLATIONS = {
 };
 
 export default function SettingsStaff({
-  tenant,
   users,
   lang,
   isArabic,

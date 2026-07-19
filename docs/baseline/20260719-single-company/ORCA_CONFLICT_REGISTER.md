@@ -48,3 +48,17 @@
 - هذه الأرقام مؤشرات Corpus وليست عدد ثغرات؛ السجل أعلاه هو القائمة المنقحة ذات الأولوية.
 ## قاعدة التعديل
 لا يعدل أي بند Legacy قبل تحديد الاعتماديات والبيانات والتوافق واختبار الرجوع. لا تختبر البنود ذات الأثر المالي أو الإرسال الحقيقي.
+
+## تحديث تنفيذ P0-02 — 2026-07-19
+| البنود | الحالة | الدليل التنفيذي |
+|---|---|---|
+| C-001 | FIXED | `/register` يعيد 404؛ action بلا Prisma/Cookie/Provider |
+| C-002 | FIXED | إزالة billing navigation/render وحقول الخطة من settings query |
+| C-003 | FIXED | subscription/add-on/agent-lease actions وpayment service تعيد `LEGACY_SAAS_OUT_OF_SCOPE` قبل الأثر |
+| C-004 | FIXED FOR CURRENT MODEL | `plan-guard` يتجاوز حدود الباقات وفق عقد التشغيل؛ حقول DB مجمدة |
+| C-006 | FIXED | default = `DEDICATED_COPY`, `valid:false`, reason=`NO_LICENSE_ASSUMED`; signed SaaS mode rejected |
+| C-007 | FIXED | حذف password reset وSMS/email من `handleSuccessfulPaymentInternal` |
+| C-008 | FIXED | حذف الأرقام الثابتة من مسارات Runtime المفحوصة، بما فيها seed التلقائي لمحادثات منصور |
+| C-029 | FIXED | حذف schedule من `vercel.json` وتحويل route إلى authenticated no-op |
+
+التصنيف النهائي لهذه الحزمة: `FIXED` لمسارات Runtime، `OUT OF SCOPE` للمنتج، وحقول/جداول البيانات `DEFERRED WITH OWNER/MIGRATION GATE` بلا حذف أو Migration.

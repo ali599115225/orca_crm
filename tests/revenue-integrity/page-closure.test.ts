@@ -234,11 +234,11 @@ describe("Revenue Integrity final closure", () => {
 
 describe("Revenue Integrity four-tab compact visual contract", () => {
   const viewSource = readFileSync(
-    path.join(process.cwd(), "components/revenue-integrity/RevenueIntegrityView.tsx"),
+    join(process.cwd(), "components/revenue-integrity/RevenueIntegrityView.tsx"),
     "utf8",
   );
   const visualSource = readFileSync(
-    path.join(process.cwd(), "components/revenue-integrity/visual.ts"),
+    join(process.cwd(), "components/revenue-integrity/visual.ts"),
     "utf8",
   );
 

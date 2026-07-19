@@ -146,7 +146,7 @@ describe("A. Payment guards in DEDICATED_COPY", () => {
     const result = await initiateSubscriptionPaymentAction("gold");
 
     expect(result.success).toBe(false);
-    expect((result as any).dedicatedCopyBlocked).toBe(true);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
     expect((result as any).error).toContain("غير متاحة");
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
@@ -156,7 +156,7 @@ describe("A. Payment guards in DEDICATED_COPY", () => {
     const result = await initiateAddonPaymentAction(3);
 
     expect(result.success).toBe(false);
-    expect((result as any).dedicatedCopyBlocked).toBe(true);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
     expect((result as any).error).toContain("غير متاحة");
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
@@ -170,7 +170,7 @@ describe("A. Payment guards in DEDICATED_COPY", () => {
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
 
-  it("SaaS mode does not trigger dedicatedCopyBlocked", async () => {
+  it("legacy SaaS mode cannot re-enable platform subscription payment", async () => {
     setSaas();
     mockInitiatePayment.mockResolvedValue({
       success: true,
@@ -179,8 +179,9 @@ describe("A. Payment guards in DEDICATED_COPY", () => {
 
     const result = await initiateSubscriptionPaymentAction("gold");
 
-    expect((result as any).dedicatedCopyBlocked).toBeFalsy();
-    expect(mockInitiatePayment).toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
+    expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
 });
 
@@ -197,13 +198,13 @@ describe("B. Agent lease guards in DEDICATED_COPY", () => {
     });
 
     expect(result.success).toBe(false);
-    expect((result as any).dedicatedCopyBlocked).toBe(true);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
     expect(prismaMock.agentLease.findUnique).not.toHaveBeenCalled();
     expect(prismaMock.agentLease.upsert).not.toHaveBeenCalled();
     expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
-  it("SaaS mode allows lease flow to proceed", async () => {
+  it("legacy SaaS mode cannot re-enable agent add-on leasing", async () => {
     setSaas();
     prismaMock.agentLease.findUnique.mockResolvedValue(null);
     prismaMock.agentLease.upsert.mockResolvedValue({
@@ -220,8 +221,9 @@ describe("B. Agent lease guards in DEDICATED_COPY", () => {
       autoRenewal: true,
     });
 
-    expect((result as any).dedicatedCopyBlocked).toBeFalsy();
-    expect(prismaMock.agentLease.findUnique).toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
+    expect(prismaMock.agentLease.findUnique).not.toHaveBeenCalled();
   });
 });
 
@@ -250,7 +252,7 @@ describe("E. Plan limit guards in DEDICATED_COPY", () => {
     expect(mockTx.tenant.findUnique).not.toHaveBeenCalled();
   });
 
-  it("assertPlanLimit queries DB in SaaS mode", async () => {
+  it("legacy SaaS mode cannot re-enable package limit queries", async () => {
     setSaas();
     const mockTx = {
       $queryRaw: vi.fn(),
@@ -269,7 +271,7 @@ describe("E. Plan limit guards in DEDICATED_COPY", () => {
       tx: mockTx as any,
     });
 
-    expect(mockTx.$queryRaw).toHaveBeenCalled();
-    expect(mockTx.tenant.findUnique).toHaveBeenCalled();
+    expect(mockTx.$queryRaw).not.toHaveBeenCalled();
+    expect(mockTx.tenant.findUnique).not.toHaveBeenCalled();
   });
 });

@@ -69,7 +69,7 @@ describe("handleSuccessfulPaymentInternal — DEDICATED_COPY", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("SaaS mode is NOT blocked by the dedicated copy guard", async () => {
+  it("a legacy SaaS mode cannot re-enable subscription activation", async () => {
     mockIsDedicatedCopy.mockReturnValue(false);
     prismaMock.tenant.update.mockResolvedValue({
       id: "tenant-1",
@@ -80,7 +80,9 @@ describe("handleSuccessfulPaymentInternal — DEDICATED_COPY", () => {
 
     const result = await handleSuccessfulPaymentInternal("tenant-1", "gold", "MONTHLY");
 
-    expect(prismaMock.tenant.update).toHaveBeenCalled();
-    expect(result.success).toBe(true);
+    expect(prismaMock.tenant.update).not.toHaveBeenCalled();
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect((result as any).code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
   });
 });

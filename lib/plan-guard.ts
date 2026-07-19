@@ -3,6 +3,7 @@
 import { prisma } from "./prisma";
 import type { PrismaClient } from "@prisma/client";
 import { getDeploymentLicenseMode } from "./deployment-license";
+import { isLegacySaasEnabled } from "./platform-operating-model";
 
 // Transaction client type — derived from the extended prisma instance
 type PrismaTx = Parameters<Parameters<(typeof prisma)["$transaction"]>[0]>[0];
@@ -136,7 +137,7 @@ export async function assertPlanLimit(params: {
   feature: CountFeature;
   tx: PrismaTx;
 }): Promise<void> {
-  if (getDeploymentLicenseMode() === "DEDICATED_COPY") return;
+  if (!isLegacySaasEnabled() || getDeploymentLicenseMode() === "DEDICATED_COPY") return;
 
   const db = params.tx;
 
@@ -216,7 +217,7 @@ export async function canUseFeature(params: {
   feature: GateFeature;
   tx?: PrismaTx;
 }): Promise<boolean> {
-  if (getDeploymentLicenseMode() === "DEDICATED_COPY") return true;
+  if (!isLegacySaasEnabled() || getDeploymentLicenseMode() === "DEDICATED_COPY") return true;
 
   const db = params.tx || prisma;
   const tenant = await db.tenant.findUnique({

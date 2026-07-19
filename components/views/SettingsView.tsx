@@ -6,7 +6,6 @@ import { useApp } from "@/app/context/AppContext";
 import SettingsNavigation, {
   type SettingsSection,
 } from "@/components/settings/SettingsNavigation";
-import SettingsBilling from "@/components/settings/SettingsBilling";
 import SettingsStaff from "@/components/settings/SettingsStaff";
 import SettingsCompliance from "@/components/settings/SettingsCompliance";
 import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsHub";
@@ -27,9 +26,6 @@ interface SettingsViewProps {
   tenant: {
     companyName: string;
     subdomain: string;
-    subscriptionPlan: string;
-    extraAgents: number;
-    licenseMode?: "SAAS" | "DEDICATED_COPY";
   };
   users?: User[];
 }
@@ -51,20 +47,6 @@ function resolveSection(value: string | null): SettingsSection {
     : "organization";
 }
 
-function displayPlan(value: string, isArabic: boolean): string {
-  const plan = value.trim().toLowerCase();
-
-  if (["gold", "diamond", "platinum", "super"].includes(plan)) {
-    return isArabic ? "الباقة الذهبية" : "Gold Plan";
-  }
-
-  if (["silver", "pro", "professional"].includes(plan)) {
-    return isArabic ? "الباقة الفضية" : "Silver Plan";
-  }
-
-  return isArabic ? "الباقة الأساسية" : "Basic Plan";
-}
-
 export default function SettingsView({
   tenant,
   users = [],
@@ -73,21 +55,20 @@ export default function SettingsView({
   const searchParams = useSearchParams();
   const { lang } = useApp();
   const isArabic = lang === "AR";
-  const isDedicatedCopy = tenant.licenseMode === "DEDICATED_COPY";
   const headerRef = useRef<HTMLDivElement>(null);
 
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
     const requested = resolveSection(searchParams.get("tab"));
-    return isDedicatedCopy && requested === "billing" ? "organization" : requested;
+    return requested === "billing" ? "organization" : requested;
   });
 
   useEffect(() => {
     const resolved = resolveSection(searchParams.get("tab"));
     setActiveSection(
-      isDedicatedCopy && resolved === "billing" ? "organization" : resolved,
+      resolved === "billing" ? "organization" : resolved,
     );
     headerRef.current?.scrollIntoView({ block: "start" });
-  }, [isDedicatedCopy, searchParams]);
+  }, [searchParams]);
 
   const staffUsers = useMemo(
     () =>
@@ -102,7 +83,7 @@ export default function SettingsView({
   );
 
   const changeSection = (section: SettingsSection) => {
-    const target = isDedicatedCopy && section === "billing" ? "organization" : section;
+    const target = section === "billing" ? "organization" : section;
     setActiveSection(target);
     router.replace("/operations/settings?tab=" + target, { scroll: false });
     requestAnimationFrame(() => {
@@ -126,13 +107,9 @@ export default function SettingsView({
           {isArabic ? "الإعدادات" : "Settings"}
         </h1>
         <p className="max-w-3xl text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
-          {isDedicatedCopy
-            ? isArabic
-              ? "إدارة بيانات المؤسسة والفريق والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
-              : "Manage organization data, staff, integrations, advertising, and compliance from one place."
-            : isArabic
-              ? "إدارة بيانات المؤسسة والفريق والباقة والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
-              : "Manage organization data, staff, billing, integrations, advertising, and compliance from one place."}
+          {isArabic
+            ? "إدارة بيانات المؤسسة والفريق والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
+            : "Manage organization data, staff, integrations, advertising, and compliance from one place."}
         </p>
         </div>
       </header>
@@ -142,7 +119,7 @@ export default function SettingsView({
           activeSection={activeSection}
           lang={lang}
           onChange={changeSection}
-          hideBilling={isDedicatedCopy}
+          hideBilling
         />
       </div>
 
@@ -171,12 +148,6 @@ export default function SettingsView({
                 <dd className="font-en">{tenant.subdomain}</dd>
               </div>
 
-              {!isDedicatedCopy && (
-                <div className="orca-info-tile">
-                  <dt>{isArabic ? "الباقة الحالية" : "Current Plan"}</dt>
-                  <dd>{displayPlan(tenant.subscriptionPlan, isArabic)}</dd>
-                </div>
-              )}
             </dl>
           </SmartCard>
         )}
@@ -184,16 +155,11 @@ export default function SettingsView({
         {activeSection === "staff" && (
           <div className="orca-settings-section orca-settings-staff">
             <SettingsStaff
-              tenant={tenant}
               users={staffUsers}
               lang={lang}
               isArabic={isArabic}
             />
           </div>
-        )}
-
-        {!isDedicatedCopy && activeSection === "billing" && (
-          <SettingsBilling tenant={tenant} lang={lang} isArabic={isArabic} />
         )}
 
         {activeSection === "ai" && (

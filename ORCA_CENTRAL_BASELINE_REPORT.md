@@ -1,11 +1,11 @@
 # ORCA CENTRAL BASELINE REPORT
 **Document ID:** ORCA-CBR-001
-**Version:** 1.0 — Single-Company and Integration Ownership Baseline
+**Version:** 1.1 — P0-02 Single-Company Runtime Enforcement
 **Date:** 2026-07-19
 **Repository:** `ali599115225/orca_crm`
-**Base candidate:** `work/orca-pre-parallel-20260715` @ `f41c8dd81d730acc5b8b520971e8a47c5e72903b`
-**Intended execution branch:** `work/orca-central-baseline-execution-20260719`
-**Write state:** `BLOCKED — GitHub App installation/write authorization missing`
+**Execution branch:** `work/orca-central-baseline-execution-20260719`
+**Execution base:** `de74ba5d16bb9723f8921067745da0c3265f9029`
+**Write state:** `ACTIVE — LOCAL P0-02 VERIFIED; PUSH/PREVIEW PENDING`
 ## 1. القرار التنفيذي الحاكم
 | البند | الحالة |
 |---|---|
@@ -123,3 +123,29 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - Sentinel schema fix يحتاج Migration وموافقة مستقلة.
 - أي مزود خارجي أو إرسال أو دفع حقيقي يحتاج بيانات الشركة وموافقتها.
 - أي ادعاء ترخيص أو قرار قانوني/تجاري يعود للمالك.
+
+## 12. تنفيذ P0-02 — إغلاق Runtime لمسارات SaaS
+**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+
+### 12.1 حدود المنتج المنفذة
+- أضيف عقد مركزي في `lib/platform-operating-model.ts` يثبت `SINGLE_INDEPENDENT_COMPANY` و`legacySaasEnabled: false` وحالة التكامل الافتراضية `NOT_CONFIGURED`.
+- `/register` يعيد 404، و`registerTenantAction` أصبح compatibility boundary بلا قراءة FormData أو Prisma أو Cookies أو Provider calls.
+- إجراءات دفع اشتراك المنصة وشراء الإضافات واستئجار الوكلاء تعيد `LEGACY_SAAS_OUT_OF_SCOPE` قبل المصادقة أو قاعدة البيانات أو مزود الدفع.
+- خدمة الدفع تمنع إنشاء intent أو معالجة callback لاشتراك المنصة، مع إبقاء callbacks المرتبطة بـ`invoiceId` أو`installmentId` في حالة `BUSINESS_PAYMENT_PENDING` للمسار التشغيلي المستقبلي.
+- أزيل `/api/cron/billing` من `vercel.json`، وبقي endpoint متوافقًا ومصادقًا لكنه يعيد `skipped` بلا Prisma أو heartbeat أو إشعار أو Provider call.
+- أزيل تغيير كلمة مرور المدير والإرسال النصي والبريدي من callback نجاح اشتراك SaaS، وأزيلت الأرقام الثابتة من مسارات Runtime المفحوصة.
+- أزيل إنشاء محادثات وأرقام عملاء وهمية تلقائيًا عند فراغ محادثات منصور.
+- أزيلت الباقات والترقيات والاشتراك وحدود النمو من سطح إعدادات الشركة واستعلاماته.
+- أصبح غياب الترخيص الافتراضي `NO_LICENSE_ASSUMED` مع fail-safe إلى نموذج الشركة الواحدة؛ لا يعود الافتراضي `SAAS`.
+
+### 12.2 ما تم الحفاظ عليه
+- العقود العقارية وخطط دفعات العملاء والفواتير والأقساط والتسويات لم تُعطل.
+- Provider adapters وWebhooks ومسارات مدفوعات الأعمال بقيت Integration-Ready.
+- لم يحدث Migration أو `prisma db push` أو تعديل بيانات Production أو إرسال/دفع حقيقي.
+
+### 12.3 أدلة التحقق المحلية
+- اختبارات P0 المستهدفة: `43/43 PASS` عبر 8 ملفات.
+- TypeScript: `npx --no-install tsc --noEmit` = `PASS`.
+- Production Build: `npm run build` = `PASS`؛ 102/102 صفحة static generation.
+- Sentry source-map upload: `NOT CONFIGURED`؛ لم يحدث رفع خارجي.
+- Vercel Preview: `PENDING` بعد Commit/Push.

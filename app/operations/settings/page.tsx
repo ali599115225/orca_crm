@@ -3,22 +3,16 @@ import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import SettingsView from "@/components/views/SettingsView";
 import { getActiveTenant } from "@/lib/tenant";
-import { getDeploymentLicenseMode } from "@/lib/deployment-license";
 import { getSession } from "@/lib/session";
 import { runWithTenantContext } from "@/lib/tenant-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const licenseMode = getDeploymentLicenseMode();
   // Default values
   let tenant = {
     companyName: "ORCA",
     subdomain: "orca",
-    subscriptionPlan: "BASIC",
-    extraAgents: 0,
-    licenseMode,
-    growthWarning: false,
   };
   let users: any[] = [];
   try {
@@ -37,9 +31,6 @@ export default async function SettingsPage() {
             select: {
               companyName: true,
               subdomain: true,
-              subscriptionPlan: true,
-              extraAgents: true,
-              _count: { select: { leads: true } },
             },
           }),
           prisma.user.findMany({
@@ -50,23 +41,9 @@ export default async function SettingsPage() {
     );
 
     if (dbTenant) {
-      const PLAN_LEAD_LIMITS: Record<string, number> = {
-        BASIC: 200,
-        SILVER: 1000,
-        GOLD: 5000,
-        SUPER: 99999,
-      };
-
-      const limit = PLAN_LEAD_LIMITS[dbTenant.subscriptionPlan] ?? 200;
-      const growthWarning = licenseMode === "DEDICATED_COPY" ? false : dbTenant._count.leads > limit * 0.8;
-
       tenant = {
         companyName: dbTenant.companyName,
         subdomain: dbTenant.subdomain,
-        subscriptionPlan: dbTenant.subscriptionPlan,
-        extraAgents: dbTenant.extraAgents ?? 0,
-        licenseMode,
-        growthWarning,
       };
     }
     users = dbUsers.map((u) => ({

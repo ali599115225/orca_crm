@@ -11,6 +11,10 @@ import { authorizeAgentAccess } from "@/lib/licensing";
 import { assertAgentCanRun } from "@/lib/agents/guard";
 import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 import {
+  LEGACY_SAAS_OUT_OF_SCOPE,
+  isLegacySaasEnabled,
+} from "@/lib/platform-operating-model";
+import {
   sanitizeAgentInput,
   detectInjectionPatterns,
   wrapUntrustedContent,
@@ -305,64 +309,6 @@ export async function getMansourChatsAction() {
       where: { tenantId: tenant.id },
       orderBy: { updatedAt: "desc" }
     });
-
-    // في حال عدم وجود محادثات، نقوم بتهيئة محادثات وهمية تمثل عمل منصور الفعلي مع leads حقيقيين
-    if (chats.length === 0) {
-      const dbLeads = await prisma.lead.findMany({
-        where: { tenantId: tenant.id },
-        take: 3
-      });
-
-      const sampleChats = [
-        {
-          contactName: dbLeads[0] ? `${dbLeads[0].firstName} ${dbLeads[0].lastName || ""}`.trim() : "عبدالرحمن السديري",
-          contactPhone: dbLeads[0] ? dbLeads[0].phone : "+966505051122",
-          leadId: dbLeads[0] ? dbLeads[0].id : null,
-          lastMessage: "أريد كتالوج الأسعار لو سمحت",
-          status: "INTERESTED",
-          messages: [
-            { sender: "client", text: "أهلاً، رأيت إعلان مشروع النخبة السكني", time: "11:20 ص" },
-            { sender: "mansour", text: "مرحباً بك أخي الكريم! أنا منصور وكيل المبيعات الآلي المساعد لك بخصوص مشروع النخبة. كيف يمكنني إفادتك اليوم؟ - منصور", time: "11:21 ص" },
-            { sender: "client", text: "أريد كتالوج الأسعار لو سمحت", time: "11:22 ص" }
-          ]
-        },
-        {
-          contactName: dbLeads[1] ? `${dbLeads[1].firstName} ${dbLeads[1].lastName || ""}`.trim() : "م. منيرة الفيصل",
-          contactPhone: dbLeads[1] ? dbLeads[1].phone : "+966533112233",
-          leadId: dbLeads[1] ? dbLeads[1].id : null,
-          lastMessage: "هل العرض يشمل الإفراغ الفوري؟",
-          status: "STUDY",
-          messages: [
-            { sender: "client", text: "السلام عليكم، بخصوص الفلل في الياسمين المتاحة بالمنصة", time: "أمس" },
-            { sender: "mansour", text: "وعليكم السلام ورحمة الله وبركاته أختي الفاضلة. نعم، فلل الياسمين تمتاز بتشطيب نخبوي وضمانات تصل لـ ٢٠ سنة. كيف يمكنني خدمتك؟ - منصور", time: "أمس" },
-            { sender: "client", text: "هل العرض يشمل الإفراغ الفوري؟", time: "أمس" }
-          ]
-        }
-      ];
-
-      await Promise.all(
-        sampleChats.map(c => {
-          const encryptedJson = encryptText(JSON.stringify(c.messages));
-          return prisma.mansourChat.create({
-            data: {
-              tenantId: tenant.id,
-              leadId: c.leadId,
-              contactName: c.contactName,
-              contactPhone: c.contactPhone,
-              contactPhoneHash: hashPhone(tenant.id, c.contactPhone),
-              lastMessage: c.lastMessage,
-              status: c.status,
-              messagesJson: encryptedJson
-            }
-          });
-        })
-      );
-
-      chats = await prisma.mansourChat.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { updatedAt: "desc" }
-      });
-    }
 
     // فك تشفير محادثات العميل لسلامة العرض في الواجهة
     return {
@@ -867,18 +813,17 @@ export async function leaseAgentAction(data: {
   autoRenewal: boolean;
 }) {
   try {
+    if (!isLegacySaasEnabled()) {
+      return {
+        success: false,
+        error: "شراء أو استئجار إضافات SaaS غير متاح في منصة الشركة الواحدة.",
+        code: LEGACY_SAAS_OUT_OF_SCOPE,
+      };
+    }
+
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
     const tenant = await getActiveTenant();
-
-    if (isDedicatedCopyDeployment()) {
-      return {
-        success: false,
-        error:
-          "استئجار الوكلاء غير متاح في النسخة المستقلة. جميع الوكلاء مشمولون في الترخيص.",
-        dedicatedCopyBlocked: true,
-      };
-    }
 
     const requestedAgent = data.agentId.toUpperCase();
     

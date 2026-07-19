@@ -3,6 +3,7 @@ import {
 normalizeLicenseMode,
 type LicenseMode,
 } from "@/lib/agents/entitlements";
+import { isLegacySaasEnabled } from "@/lib/platform-operating-model";
 
 export interface DeploymentLicensePayload {
 version: 1;
@@ -24,10 +25,10 @@ reason: string | null;
 
 let cachedLicense: ResolvedDeploymentLicense | null = null;
 
-function defaultSaasLicense(reason: string | null): ResolvedDeploymentLicense {
+function defaultSingleCompanyBoundary(reason: string): ResolvedDeploymentLicense {
 return {
-mode: "SAAS",
-valid: reason === null,
+mode: "DEDICATED_COPY",
+valid: false,
 source: "DEFAULT",
 payload: null,
 reason,
@@ -82,7 +83,7 @@ const publicKeyRaw = process.env.ORCA_LICENSE_PUBLIC_KEY?.trim();
 
 if (payloadToken || signatureToken || publicKeyRaw) {
 if (!payloadToken || !signatureToken || !publicKeyRaw) {
-cachedLicense = defaultSaasLicense(
+cachedLicense = defaultSingleCompanyBoundary(
 "INCOMPLETE_SIGNED_LICENSE_CONFIGURATION",
 );
 return cachedLicense;
@@ -101,14 +102,19 @@ try {
   );
 
   if (!signatureValid) {
-    cachedLicense = defaultSaasLicense("INVALID_LICENSE_SIGNATURE");
+    cachedLicense = defaultSingleCompanyBoundary("INVALID_LICENSE_SIGNATURE");
     return cachedLicense;
   }
 
   const payload = parsePayload(payloadToken);
 
+  if (payload.licenseMode === "SAAS" && !isLegacySaasEnabled()) {
+    cachedLicense = defaultSingleCompanyBoundary("SAAS_LICENSE_MODE_OUT_OF_SCOPE");
+    return cachedLicense;
+  }
+
   if (isExpired(payload.expiresAt)) {
-    cachedLicense = defaultSaasLicense("LICENSE_EXPIRED");
+    cachedLicense = defaultSingleCompanyBoundary("LICENSE_EXPIRED");
     return cachedLicense;
   }
 
@@ -122,7 +128,7 @@ try {
 
   return cachedLicense;
 } catch {
-  cachedLicense = defaultSaasLicense("INVALID_SIGNED_LICENSE");
+  cachedLicense = defaultSingleCompanyBoundary("INVALID_SIGNED_LICENSE");
   return cachedLicense;
 }
 
@@ -145,7 +151,7 @@ return cachedLicense;
 
 }
 
-cachedLicense = defaultSaasLicense(null);
+cachedLicense = defaultSingleCompanyBoundary("NO_LICENSE_ASSUMED");
 return cachedLicense;
 }
 

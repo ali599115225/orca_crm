@@ -156,7 +156,7 @@ describe("Business Payment Classification", () => {
     expect(adapter.verifyPayment).not.toHaveBeenCalled();
   });
 
-  it("does not classify as business payment when only rawPayload has invoiceId", async () => {
+  it("blocks a legacy platform payment even when rawPayload mentions an invoice", async () => {
     setDedicatedCopy(false);
     wireTransactionStore({
       id: "tx-3",
@@ -179,9 +179,11 @@ describe("Business Payment Classification", () => {
       adapter,
     });
 
-    expect(result.ok).toBe(true);
-    expect(result.status).toBe("COMPLETED");
-    expect(adapter.verifyPayment).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      status: "DEDICATED_BLOCKED",
+    });
+    expect(adapter.verifyPayment).not.toHaveBeenCalled();
   });
 });
 

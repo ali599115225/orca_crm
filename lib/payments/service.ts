@@ -5,6 +5,10 @@ import type { PaymentProviderAdapter, PaymentVerificationResult } from './types'
 import { getPaymentProvider, isProviderEnabled } from './registry';
 import { handleSuccessfulPaymentInternal } from "@/lib/server/internal";
 import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
+import {
+  LEGACY_SAAS_OUT_OF_SCOPE,
+  isLegacySaasEnabled,
+} from "@/lib/platform-operating-model";
 
 function providerSearchCondition(providerCode: string) {
   const upper = providerCode.toUpperCase();
@@ -121,7 +125,21 @@ export async function initiatePayment(input: {
   metadata?: Record<string, string>;
   description?: string;
   callbackUrl?: string;
-}): Promise<{ success: boolean; paymentUrl?: string; internalTxId?: string; error?: string }> {
+}): Promise<{
+  success: boolean;
+  paymentUrl?: string;
+  internalTxId?: string;
+  error?: string;
+  code?: typeof LEGACY_SAAS_OUT_OF_SCOPE;
+}> {
+  if (!isLegacySaasEnabled()) {
+    return {
+      success: false,
+      code: LEGACY_SAAS_OUT_OF_SCOPE,
+      error: "SaaS platform payments are outside the single-company model.",
+    };
+  }
+
   try {
     const providerCode = (input.providerCode || 'MOYASAR').toUpperCase();
 
@@ -223,7 +241,7 @@ export async function processPaymentCallback(input: {
     return { ok: true, status: 'BUSINESS_PAYMENT_PENDING' };
   }
 
-  if (isDedicatedCopyDeployment()) {
+  if (!isLegacySaasEnabled() || isDedicatedCopyDeployment()) {
     return {
       ok: false,
       status: 'DEDICATED_BLOCKED',

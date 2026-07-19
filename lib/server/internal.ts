@@ -5,104 +5,42 @@
 
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import { sendSMSNotification } from "@/lib/notifications";
-import { sendAdminEmailAlert } from "@/lib/email";
-import { revalidatePath } from "next/cache";
-import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
+import {
+  LEGACY_SAAS_OUT_OF_SCOPE,
+  ORCA_PLATFORM_MODEL,
+} from "@/lib/platform-operating-model";
 
 // ── Billing Agent (from app/actions/billingAgent.ts) ─────────────────────────
 
 /** سند — تفعيل الحساب بعد نجاح الدفع */
 export async function handleSuccessfulPaymentInternal(
-  tenantId: string,
-  plan: string,
-  billingCycle: "MONTHLY" | "YEARLY"
-) {
-  if (isDedicatedCopyDeployment()) {
-    return {
-      success: false,
-      error: "تفعيل اشتراكات SaaS غير متاح في النسخة المستقلة.",
-    };
-  }
-
-  try {
-    const now = new Date();
-    const expiresAt = new Date();
-    if (billingCycle === "YEARLY") {
-      expiresAt.setDate(now.getDate() + 365);
-    } else {
-      expiresAt.setDate(now.getDate() + 30);
-    }
-
-    const tenant = await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        subscriptionPlan: plan,
-        isActive: true,
-        paymentStatus: "PAID",
-        billingCycle: billingCycle,
-        subscriptionExpiresAt: expiresAt,
-      },
-      include: { users: { where: { role: "ADMIN" } } },
-    });
-
-    const adminUser = tenant.users[0];
-    if (!adminUser) throw new Error("لم يتم العثور على حساب المدير العام للمنشأة العقارية.");
-
-    const plainPassword = generateSecureRandomPassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-    await prisma.user.update({
-      where: { id: adminUser.id },
-      data: { passwordHash: hashedPassword, isActive: true },
-    });
-
-    const welcomeMessage = `🔒 تنبيه أوركا: تم تفعيل باقتك العقارية بنجاح!\nرابط لوحتك الخاصة: https://${tenant.subdomain}.orca.az-ez.pro/login\nالبريد: ${adminUser.email}\nالباسورد: ${plainPassword}\n(يرجى حفظ البيانات وتغيير الباسورد فور الدخول)`;
-
-    await sendSMSNotification("+966557516311", welcomeMessage);
-
-    const emailSubject = `💰 تفعيل اشتراك ناجح: ${tenant.companyName}`;
-    const emailHtml = `<div style="font-family: Arial, sans-serif; direction: rtl; text-align: right; padding: 20px;"><h2 style="color: #10b981;">الوكيل سند: تم تفعيل منشأة عقارية بنجاح</h2><p>تم إتمام عملية الدفع وتنشيط الحساب آلياً:</p><ul><li><strong>الشركة:</strong> ${tenant.companyName}</li><li><strong>الباقة المفعلة:</strong> ${plan}</li><li><strong>تاريخ الانتهاء:</strong> ${expiresAt.toLocaleDateString('ar-SA')}</li></ul></div>`;
-    await sendAdminEmailAlert(emailSubject, emailHtml);
-
-    revalidatePath("/operations");
-    return { success: true };
-  } catch (error: any) {
-    console.error("خطأ تفعيل الوكيل سند:", error);
-    return { success: false, error: error.message };
-  }
+  _tenantId: string,
+  _plan: string,
+  _billingCycle: "MONTHLY" | "YEARLY"
+): Promise<{
+  success: boolean;
+  error?: string;
+  code?: typeof LEGACY_SAAS_OUT_OF_SCOPE;
+  platformModel?: typeof ORCA_PLATFORM_MODEL.platformModel;
+}> {
+  return {
+    success: false as const,
+    code: LEGACY_SAAS_OUT_OF_SCOPE,
+    platformModel: ORCA_PLATFORM_MODEL.platformModel,
+    error: "تفعيل اشتراكات SaaS غير متاح في منصة الشركة الواحدة.",
+  };
 }
 
 /** سند — تعطيل الاشتراكات المنتهية */
 export async function checkAndSuspendExpiredTenantsInternal() {
-  try {
-    const now = new Date();
-    const expiredTenants = await prisma.tenant.findMany({
-      where: { isActive: true, subscriptionExpiresAt: { lt: now } },
-    });
-
-    if (expiredTenants.length === 0) {
-      return { success: true, message: "لا يوجد اشتراكات منتهية اليوم." };
-    }
-
-    const expiredIds = expiredTenants.map((t) => t.id);
-    await prisma.tenant.updateMany({
-      where: { id: { in: expiredIds } },
-      data: { isActive: false, paymentStatus: "UNPAID" },
-    });
-
-    for (const tenant of expiredTenants) {
-      const suspendSMS = `⚠️ تنبيه أوركا: شريكنا العزيز بـ (${tenant.companyName})، نود إعلامك بانتهاء اشتراكك الشهري وتعليق صلاحيات اللوحة مؤقتاً. يرجى الدخول وتجديد الاشتراك لتفعيل السحابة فوراً: https://orca.az-ez.pro/operations?tab=settings`;
-      await sendSMSNotification("+966557516311", suspendSMS);
-    }
-
-    revalidatePath("/operations");
-    return { success: true, updatedCount: expiredTenants.length };
-  } catch (error: any) {
-    console.error("خطأ تعطيل الاشتراكات للوكيل سند:", error);
-    return { success: false, error: error.message };
-  }
+  return {
+    success: true as const,
+    skipped: true as const,
+    updatedCount: 0,
+    code: LEGACY_SAAS_OUT_OF_SCOPE,
+    platformModel: ORCA_PLATFORM_MODEL.platformModel,
+    message: "فحص اشتراكات SaaS معطل في منصة الشركة الواحدة.",
+  };
 }
 
 // ── Sadad Agent (from app/actions/sanadAgent.ts) ─────────────────────────────
@@ -191,15 +129,4 @@ export async function classifyWhatsAppLeadInternal(leadId: string, messageText: 
   } catch (error: any) {
     return { success: false, error: "classification_failed" };
   }
-}
-
-// ── Shared Helpers ──────────────────────────────────────────────────────────
-
-function generateSecureRandomPassword(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#";
-  let password = "";
-  for (let i = 0; i < 8; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
 }

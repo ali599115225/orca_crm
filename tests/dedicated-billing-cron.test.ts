@@ -88,7 +88,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Billing Cron — DEDICATED_COPY", () => {
+describe("Billing Cron — single-company platform", () => {
   it("rejects request without Authorization header", async () => {
     const res = await GET(makeRequest());
     const body = await res.json();
@@ -103,7 +103,7 @@ describe("Billing Cron — DEDICATED_COPY", () => {
     expect(body.error).toBe("Unauthorized");
   });
 
-  it("returns skipped=true in DEDICATED_COPY with correct auth", async () => {
+  it("returns skipped=true with correct auth", async () => {
     mockIsDedicatedCopy.mockReturnValue(true);
     const res = await GET(makeRequest("Bearer test-secret"));
     const body = await res.json();
@@ -111,19 +111,14 @@ describe("Billing Cron — DEDICATED_COPY", () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.skipped).toBe(true);
-    expect(body.mode).toBe("DEDICATED_COPY");
+    expect(body.platformModel).toBe("INTERNAL_COMPANY_OPERATING_PLATFORM");
   });
 
-  it("calls recordHeartbeat in DEDICATED_COPY before returning skipped", async () => {
+  it("does not touch the database heartbeat table before returning skipped", async () => {
     mockIsDedicatedCopy.mockReturnValue(true);
     await GET(makeRequest("Bearer test-secret"));
 
-    expect(mockRecordHeartbeat).toHaveBeenCalledWith(
-      expect.objectContaining({
-        serviceId: "CRON_BILLING",
-        metadata: expect.objectContaining({ mode: "DEDICATED_COPY", skipped: true }),
-      }),
-    );
+    expect(mockRecordHeartbeat).not.toHaveBeenCalled();
   });
 
   it("does NOT call any billing Prisma operations in DEDICATED_COPY", async () => {
@@ -149,13 +144,13 @@ describe("Billing Cron — DEDICATED_COPY", () => {
     expect(body.skipped).toBe(true);
   });
 
-  it("SaaS mode does NOT return skipped", async () => {
+  it("a legacy SaaS license flag cannot re-enable billing", async () => {
     mockIsDedicatedCopy.mockReturnValue(false);
     const res = await GET(makeRequest("Bearer test-secret"));
     const body = await res.json();
 
-    expect(body.skipped).toBeUndefined();
+    expect(body.skipped).toBe(true);
     expect(body.success).toBe(true);
-    expect(mockCheckAndSuspend).toHaveBeenCalled();
+    expect(mockCheckAndSuspend).not.toHaveBeenCalled();
   });
 });
