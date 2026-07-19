@@ -21,7 +21,7 @@
 | C-007 | P0 | External effects | Payment success resets admin password and sends SMS | `lib/server/internal.ts` | تغيير كلمة مرور وإرسالها نصيًا إلى رقم ثابت | PROHIBITED / SECURITY RISK | إيقاف المسار خلف قرار المالك؛ عدم اختباره أو تشغيله |
 | C-008 | P0 | Credentials | Developer/personal contact risk | `lib/server/internal.ts` | رقم SMS ثابت داخل الكود | PROHIBITED | إزالة القيمة من الكود بعد تحقق الاستخدام وإضافة test يمنع الأرقام الثابتة |
 | C-009 | P1 | Routing | Subdomain/wildcard tenant routing | `Tenant.subdomain`, Vercel `*.orca.az-ez.pro` | يوحي بشركات مستقلة ويستخدم host resolution | LEGACY COMPATIBILITY | إبقاء مؤقت؛ target fixed company scope + internal branches |
-| C-010 | P0 | RBAC | Prisma roles vs application roles mismatch | `schema.prisma`, `AuthContext.tsx`, `rbac-policy.ts` | خمسة أدوار DB مقابل أدوار owner/accountant/rental_manager وغيرها | CONFLICTING | توحيد Role Registry قبل توسيع الصلاحيات |
+| C-010 | P0 | RBAC | Prisma roles vs application roles mismatch | `schema.prisma`, `AuthContext.tsx`, `rbac-policy.ts` | خمسة أدوار DB؛ أزيلت الأدوار القديمة من حدود التفويض | FIXED CURRENT MODEL | إبقاء اختبار المنع؛ أي دور تنظيمي جديد يحتاج Schema/contract additive معتمد |
 | C-011 | P1 | Organization | No first-class branch/team model | `schema.prisma` | department نص فقط؛ لا Branch/Team/assignment | MISSING | تصميم Org model وMigration additive بعد اعتماد المالك |
 | C-012 | P0 | WhatsApp | Server actions lack DB-backed role boundary | `app/actions/whatsapp.ts` | قراءة/إرسال/أرشفة/إسناد/تبديل اتصال تعتمد company/tenant resolution | SECURITY GAP | إضافة shared access boundary واختبارات عدم استدعاء Provider عند الرفض |
 | C-013 | P0 | WhatsApp | Real provider send path exists | `sendWhatsAppMessageAction` | قد ينفذ إرسالًا فعليًا عند وجود إعداد | CONTROLLED EXTERNAL EFFECT | لا اختبار حقيقي؛ Mock فقط؛ يتطلب بيانات الشركة وموافقة صريحة |
@@ -90,3 +90,10 @@ Operational notifications وconnection resolver أصبحا scoped، ونجح ف�
 | C-019 | FIXED FOR NON-MIGRATION RUNTIME | ZATCA fail-closed NOT_CONFIGURED + owner gate؛ Sentinel بلا SaaS queries أو pool restart؛ heartbeat schema drift مؤجل في C-017 |
 
 كل external execution افتراضيًا مغلق، وأي بيانات Legacy متعددة المنشآت تمنع العمل المجدول بدل التخمين.
+
+## تحديث تنفيذ P0-06 — 2026-07-19
+| البنود | الحالة | الدليل التنفيذي |
+|---|---|---|
+| C-010 | FIXED FOR CURRENT MODEL | سياسة/واجهة/Server boundaries موحدة مع Prisma؛ platform identity منفصلة؛ static regression test؛ 234/234 اختبارًا |
+
+لا يمنح هذا الإغلاق أدوارًا تنظيمية جديدة؛ Branch/Team وFinance/Rental roles المقترحة تبقى P1 additive خلف بوابة تصميم وMigration مستقلة.

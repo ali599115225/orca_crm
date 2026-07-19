@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|
 | R-001 | Critical | High | إزالة tenantId مبكرًا أو تجاوز scoped Prisma يسبب فقد/اختلاط بيانات | تجميد الحذف؛ scoped client؛ narrow system capabilities؛ backup/dry-run | Partial — runtime raw-client bypasses fixed in P0-04 |
 | R-002 | Critical | Medium | إرسال/دفع حقيقي باستخدام إعداد غير معتمد أو بيانات المطور | Hard deny لمسارات SaaS؛ إزالة الأرقام الثابتة؛ Mock by default للتكاملات الباقية | Mitigated for P0-02; provider activation owner-gated |
-| R-003 | High | High | تعارض الأدوار بين Prisma والواجهة يسمح أو يمنع عمليات خطأ | Role registry موحدة؛ server-side guards؛ negative tests | Open |
+| R-003 | High | High | تعارض الأدوار بين Prisma والواجهة يسمح أو يمنع عمليات خطأ | Role registry موحدة؛ server-side guards؛ negative tests | Fixed in P0-06 for current role model |
 | R-004 | High | High | غياب Branch/Team scopes يجعل العزل الداخلي غير مكتمل | Org model additive؛ ownership rules؛ migration plan | Open |
 | R-005 | High | High | بقايا SaaS تظهر تسجيل شركات وباقات وترقيات خارج النطاق | `/register` 404؛ actions محظورة؛ billing UI/query removed؛ data frozen | Fixed in P0-02 |
 | R-006 | High | High | فشل Preview لكل فروع العمل يمنع إثبات التجميع | إصلاح TypeScript ثم tsc/build/preview | Open |
@@ -49,6 +49,12 @@
 - `OWNER-GATED`: ZATCA submissions وSentinel email alerts معطلان افتراضيًا ببوابات صريحة.
 - `DEFERRED WITH MIGRATION GATE`: R-007/C-017 لجدول `sentinel_heartbeats`؛ لا schema change في هذه الخطة.
 - `VERIFIED`: 86/86 اختبار Cron/tenant scope/heartbeat موسع وTypeScript ناجحان.
+
+## تحديث P0-06 — 2026-07-19
+- `FIXED`: قوائم أدوار الشركة في حدود الخادم والواجهة تستخدم قيم Prisma الخمس فقط.
+- `FIXED`: هوية المنصة منفصلة عن Role Registry الخاصة بالشركة ولا تحتاج دورًا وهميًا في قاعدة البيانات.
+- `VERIFIED`: 234/234 اختبار تفويض/عزل مستهدف، اختبار ساكن ضد الأدوار القديمة، TypeScript، وProduction Build.
+- `DEFERRED`: الأدوار التنظيمية الجديدة وBranch/Team scopes تبقى تصميم P1 additive ولا تُحاكى بأسماء غير مخزنة.
 ## حدود القبول
 - أي خطر Critical مفتوح يمنع Go-Live للتدفق المتأثر.
 - المخاطر القانونية/التجارية والتراخيص يقررها المالك ولا يغلقها المطور.

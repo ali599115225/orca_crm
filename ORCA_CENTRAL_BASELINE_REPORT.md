@@ -44,7 +44,7 @@
 - User يملك `department` نصيًا فقط؛ لا توجد Branch/Team models أو assignments.
 ### 4.2 RBAC
 - Role Enum في Prisma: `ADMIN`, `SALES_MANAGER`, `SALES_EMPLOYEE`, `MARKETING`, `READ_ONLY`.
-- الكود يذكر أيضًا أدوارًا لا يمكن تخزينها في هذا Enum، منها `owner`, `accountant`, `rental_manager`, `SUPER_ADMIN`, `PLATFORM_ARCHITECT`.
+- حدود أدوار الشركة موحدة مع هذا Enum؛ هويات المنصة المهيأة منفصلة ولا تعد قيم Prisma Role.
 - توجد Server Actions حساسة لا تعيد التحقق من المستخدم الفعال والدور؛ واتساب هو أوضح P0 مثبت.
 ### 4.3 SaaS legacy
 مثبت في الكود:
@@ -187,7 +187,7 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - Vercel Preview: `READY` — `https://orca-76wqptmtd-ali-s-projectsorcacrm.vercel.app` (`dpl_4NNSu8vghVfXDKE4yM2xXWvibE8R`).
 
 ## 15. تنفيذ P0-05 — Scheduled work company scope and owner gates
-**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+**الحالة:** `FIXED — VERIFIED AND PREVIEW READY`
 
 - أضيف resolver موثوق للعمل المجدول يعيد Company Scope فقط عند وجود منشأة فعالة واحدة، ويفشل مغلقًا عند الصفر أو التعدد في بيانات Legacy.
 - Cron الأقساط يدخل `runWithTenantContext` ويمرر Company Scope موثوقًا إلى العامل؛ الاستعلام يرشح `tenantId` صراحة ولا يبني رسالة أو رابط إرسال.
@@ -197,3 +197,17 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - التحقق المستهدف: `71/71 PASS` عبر Cron/Sentinel/Company Scope tests، دون Cron فعلي أو ZATCA/email/provider call.
 - التحقق الموسع لكل Cron ذات الصلة والعزل/heartbeat: `86/86 PASS` عبر 9 ملفات؛ TypeScript `PASS`.
 - Production Build: `PASS` مع 102/102 صفحة static generation؛ لا Sentry upload لغياب auth token.
+- Commit: `ed76b063b02e8709a815b7dc44a75a9d49ca87d6` pushed إلى فرع التنفيذ.
+- Vercel Preview: `READY` — `https://orca-k53tm5ukr-ali-s-projectsorcacrm.vercel.app` (`dpl_23morwHyAUBBWJf89u88R41fCxZQ`).
+
+## 16. تنفيذ P0-06 — RBAC role-contract closure
+**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+
+- وُحدت قوائم تفويض الخادم والواجهة مع أدوار Prisma الفعلية: `ADMIN`, `SALES_MANAGER`, `SALES_EMPLOYEE`, `MARKETING`, `READ_ONLY`.
+- أزيلت أسماء `owner`, `accountant`, و`rental_manager` من حدود التفويض؛ لم تكن قابلة للتخزين في Prisma ولم تعد تظهر كمسارات صلاحية موازية.
+- فُصلت هوية المنصة المهيأة عن دور الشركة في Revenue Integrity؛ تعيد حماية الشركة التحقق من العضوية الفعالة، بينما لا تدخل هوية المنصة في Role Registry الخاصة بالشركة.
+- أضيف `MARKETING` إلى مصفوفة السياسة الرسمية، واستبدل اسم `TENANT_ADMIN` الوصفي بقيمة `ADMIN` الفعلية.
+- حُدثت اختبارات قديمة لتطابق إغلاق SaaS وحدود document/installment الحالية من دون إضعاف negative paths.
+- التحقق الأمني الموسع: `234/234 PASS` عبر 11 ملفًا، ويشمل اختبارًا ساكنًا يمنع عودة الأدوار القديمة إلى الحدود المعروفة.
+- TypeScript: `PASS`، وProduction Build: `PASS` مع 102/102 صفحة static generation.
+- لم تحدث Migration أو Production write أو Provider call أو تغيير بيانات.

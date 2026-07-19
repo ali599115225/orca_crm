@@ -17,7 +17,6 @@ import {
 
 const MARKETING_ROLES = [
   "ADMIN",
-  "owner",
   "MARKETING",
   "SALES_MANAGER",
 ];

@@ -15,7 +15,7 @@ import {
 } from '@/lib/accounting';
 
 const FINANCE_ROLES = ['ADMIN', 'SALES_MANAGER'] as const;
-const COMMISSION_ROLES = ['ADMIN', 'owner'] as const;
+const COMMISSION_ROLES = ['ADMIN'] as const;
 
 export async function processPayment(
   invoiceId: string,
@@ -66,7 +66,7 @@ export async function processPayment(
 
 export async function processCommissionPayment(commissionId: string) {
   try {
-    // ── Auth: DB-backed — only ADMIN/owner may pay commissions ───────────────
+    // ── Auth: DB-backed — only ADMIN may pay commissions ─────────────────────
     const [tenant, session] = await Promise.all([getActiveTenant(), getSession()]);
     if (!session) throw new Error('Authentication required.');
     const verified = await assertServerActionRole(session, COMMISSION_ROLES);

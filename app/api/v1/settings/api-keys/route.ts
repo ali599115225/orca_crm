@@ -13,7 +13,7 @@ import { encryptText } from '@/lib/crypto';
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
 
-const API_KEY_ADMIN_ROLES = ["ADMIN", "owner"] as const;
+const API_KEY_ADMIN_ROLES = ["ADMIN"] as const;
 
 function maskKey(key: string): string {
   if (key.length <= 8) return '********';

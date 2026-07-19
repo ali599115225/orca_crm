@@ -10,8 +10,8 @@ import {
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
 
-const SETTINGS_READER_ROLES = ["ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager"] as const;
-const SETTINGS_WRITER_ROLES = ["ADMIN", "owner"] as const;
+const SETTINGS_READER_ROLES = ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"] as const;
+const SETTINGS_WRITER_ROLES = ["ADMIN"] as const;
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth(request);
     if (!session) return unauthorizedResponse(request);
-    // Settings mutations are ADMIN/owner only
+    // Settings mutations are ADMIN only.
     const allowed = await hasDatabaseRole(session, SETTINGS_WRITER_ROLES);
     if (!allowed) return forbiddenResponse(request);
 

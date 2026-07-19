@@ -12,10 +12,8 @@ import { runWithTenantContext } from "@/lib/tenant-context";
 import { CONTRACT_WRITER_ROLES } from "@/lib/auth/contract-access-policy";
 const CONTRACT_READER_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
-  "rental_manager",
 ] as const;
 
 export type ContractWizardErrorCode =
@@ -84,7 +82,7 @@ export async function saveContractTermsAction(
       async () => {
         const verified = await assertServerActionRole(
           session,
-          ["ADMIN", "owner"],
+          ["ADMIN"],
         );
 
         await prisma.tenant.update({

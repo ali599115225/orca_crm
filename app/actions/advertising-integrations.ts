@@ -9,7 +9,6 @@ import { assertServerActionRole } from "@/lib/api-auth-guard";
 
 const ADVERTISING_ROLES = [
   "ADMIN",
-  "owner",
   "MARKETING",
   "SALES_MANAGER",
 ];

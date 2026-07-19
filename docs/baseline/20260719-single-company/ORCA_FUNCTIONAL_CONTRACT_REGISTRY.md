@@ -6,7 +6,7 @@
 | ID | المجال | العقد التجاري | الحقيقة الحالية | حالة التكامل | القرار |
 |---|---|---|---|---|---|
 | FC-001 | Authentication & Session | Internal users only | Operations shell active-user fallback fixed؛ other sensitive boundaries under review | No external provider | Partial P0 hardening |
-| FC-002 | Staff & User Management | Company employees/agents | Implemented partially; role model inconsistent | None | P1 redesign |
+| FC-002 | Staff & User Management | Company employees/agents | Current five-role model consistent across Prisma/policy/UI/server boundaries | None | P0-06 fixed; P1 org expansion additive only |
 | FC-003 | Organization Structure | Departments/branches/teams | Department text only; Branch/Team missing | None | P1 design first |
 | FC-004 | Leads & Contacts | Internal sales operations | Implemented; visual/detail closure not fully proven | Inbound adapters optional | Verify after build |
 | FC-005 | Projects & Properties | Company inventory/projects | Implemented across work branches; not integrated | Maps/storage NOT_CONFIGURED | Verify after branch integration |
@@ -52,3 +52,8 @@
 - `FIXED`: FC-008 scheduled scan context؛ FC-017 default NOT_CONFIGURED؛ Sentinel destructive/legacy behavior removed.
 - `DEFERRED WITH OWNER GATE`: تفعيل ZATCA أو Sentinel email.
 - `DEFERRED WITH MIGRATION GATE`: Sentinel heartbeat schema drift.
+
+## دليل P0-06
+- `VERIFIED`: 234/234 اختبار تفويض وعزل، TypeScript، وProduction Build ناجحة.
+- `FIXED`: FC-002 في النموذج الحالي؛ أزيلت الأدوار القديمة، وأضيف MARKETING إلى السياسة، وفُصلت هوية المنصة عن أدوار الشركة.
+- `DEFERRED`: FC-003 والأدوار التنظيمية الجديدة تحتاج تصميمًا وSchema/Migration additive مع موافقة مستقلة.

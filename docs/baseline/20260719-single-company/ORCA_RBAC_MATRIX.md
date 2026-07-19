@@ -1,13 +1,14 @@
 # ORCA RBAC MATRIX
 **Document ID:** ORCA-RBAC-001
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-07-19
-**Status:** `CURRENT MATRIX PARTIAL — TARGET REQUIRES OWNER APPROVAL`
+**Status:** `CURRENT ENFORCED BASELINE — TARGET EXPANSION REQUIRES OWNER APPROVAL`
 ## 1. الأدوار المثبتة في Prisma حاليًا
 `ADMIN`, `SALES_MANAGER`, `SALES_EMPLOYEE`, `MARKETING`, `READ_ONLY`.
-## 2. أدوار مذكورة في الكود لكنها غير مثبتة في Prisma Role Enum
-`SUPER_ADMIN`, `PLATFORM_ARCHITECT`, `owner`, `accountant`, `rental_manager`, واسم السياسة `TENANT_ADMIN`.
-هذه الأسماء `CONFLICTING` ولا تعتبر أدوارًا قابلة للتعيين في قاعدة البيانات قبل توحيد النموذج.
+## 2. فصل هوية المنصة عن أدوار الشركة
+`SUPER_ADMIN` و`PLATFORM_ARCHITECT` هويات منصة مهيأة وليستا قيمًا في Prisma Role. لا تدخلان قوائم أدوار الشركة، ويجري التحقق منهما عبر حد الهوية المهيأ فقط.
+
+أزيلت الأسماء القديمة `owner`, `accountant`, `rental_manager`, و`TENANT_ADMIN` من حدود تفويض الخادم. لا تعتبر أي منها دورًا قابلًا للتعيين أو مسارًا بديلًا للصلاحية.
 ## 3. مصفوفة الحد الأدنى الحالية
 | المجال | ADMIN | SALES_MANAGER | SALES_EMPLOYEE | MARKETING | READ_ONLY |
 |---|---:|---:|---:|---:|---:|
@@ -43,10 +44,9 @@ role permission
 + company scope
 ```
 ## 6. فجوات P0/P1
-1. عدم تطابق Role Enum مع أسماء الأدوار في AuthContext والسياسات.
-2. بعض Server Actions تعتمد `getActiveTenant()` دون إعادة التحقق من المستخدم والدور.
-3. جلسة طويلة قد تستمر بعد تعطيل المستخدم ما لم يعاد التحقق من DB.
-4. لا توجد نماذج Branch/Team، و`department` نص حر فقط.
-5. لا توجد Permission Registry موحدة تغطي جميع المجالات.
+1. بعض Server Actions تعتمد `getActiveTenant()` دون إعادة التحقق من المستخدم والدور.
+2. جلسة طويلة قد تستمر بعد تعطيل المستخدم ما لم يعاد التحقق من DB.
+3. لا توجد نماذج Branch/Team، و`department` نص حر فقط.
+4. لا توجد Permission Registry موحدة تغطي جميع المجالات.
 ## 7. قاعدة التنفيذ
 لا تعتمد حماية الواجهة. جميع الكتابات والاتصالات الخارجية والتحويلات المالية تحتاج Guard خادميًا واختبار negative path يثبت عدم استدعاء Prisma mutation أو Provider عند الرفض.

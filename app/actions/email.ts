@@ -17,10 +17,8 @@ import { runWithTenantContext } from "@/lib/tenant-context";
 
 const EMAIL_SENDER_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
-  "rental_manager",
 ] as const;
 
 const PROVIDER_NOT_CONFIGURED_MESSAGE =

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   assertServerActionRole,
   isSuperAdmin,
+  TENANT_ROLES,
 } from "@/lib/api-auth-guard";
 import type { RevenuePermission } from "./contracts";
 
@@ -20,11 +21,7 @@ const ALL: RevenuePermission[] = [
 ];
 
 const ROLE_PERMISSIONS: Record<string, RevenuePermission[]> = {
-  SUPER_ADMIN: ALL,
-  PLATFORM_ARCHITECT: ALL,
   ADMIN: ALL,
-  OWNER: ALL,
-  owner: ALL,
   SALES_MANAGER: [
     "revenue.risk.read",
     "revenue.risk.manage",
@@ -41,20 +38,6 @@ const ROLE_PERMISSIONS: Record<string, RevenuePermission[]> = {
   ],
   MARKETING: [
     "revenue.action.read",
-    "revenue.predictive.read",
-  ],
-  rental_manager: [
-    "revenue.risk.read",
-    "revenue.risk.manage",
-    "revenue.action.read",
-    "revenue.action.approve",
-    "revenue.trust.read",
-  ],
-  accountant: [
-    "revenue.risk.read",
-    "revenue.risk.manage",
-    "revenue.trust.read",
-    "revenue.audit.read",
     "revenue.predictive.read",
   ],
   READ_ONLY: [
@@ -85,22 +68,16 @@ export type RevenueAuthorizationContext = {
   capabilities: RevenueCapabilities;
 };
 
-function rolesForPermission(
-  permission: RevenuePermission,
-): readonly string[] {
-  return Object.entries(ROLE_PERMISSIONS)
-    .filter(([, permissions]) =>
-      permissions.includes(permission),
-    )
-    .map(([role]) => role);
-}
-
 function capabilitiesForRole(
   role: string,
 ): RevenueCapabilities {
-  const granted = new Set(
-    ROLE_PERMISSIONS[role] || [],
-  );
+  return capabilitiesForPermissions(ROLE_PERMISSIONS[role] || []);
+}
+
+function capabilitiesForPermissions(
+  permissions: readonly RevenuePermission[],
+): RevenueCapabilities {
+  const granted = new Set(permissions);
 
   return {
     canReadRisks: granted.has("revenue.risk.read"),
@@ -129,7 +106,7 @@ export async function requireRevenuePermission(
 
   const verified = await assertServerActionRole(
     session,
-    rolesForPermission(permission),
+    TENANT_ROLES,
   );
 
   const tenant = await getActiveTenant();
@@ -155,7 +132,9 @@ export async function requireRevenuePermission(
         )?.role || "",
       );
 
-  const capabilities = capabilitiesForRole(role);
+  const capabilities = platformAdmin
+    ? capabilitiesForPermissions(ALL)
+    : capabilitiesForRole(role);
   const permissionGranted: Record<
     RevenuePermission,
     boolean

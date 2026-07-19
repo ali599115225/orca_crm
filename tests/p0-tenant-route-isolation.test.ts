@@ -44,6 +44,16 @@ vi.mock("@/lib/api-helpers", () => ({
   getTenantAndUser: mocks.getTenantAndUser,
 }));
 
+vi.mock("@/lib/documents/access", () => ({
+  DOCUMENT_DELETE_ROLES: ["ADMIN", "SALES_MANAGER"],
+  DOCUMENT_READ_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+  DocumentAccessError: class DocumentAccessError extends Error {},
+  runWithDocumentAccess: async (
+    _roles: readonly string[],
+    operation: (access: { tenantId: string; userId: string; role: string }) => Promise<unknown>,
+  ) => operation({ tenantId: "tenant-a", userId: "user-a", role: "ADMIN" }),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     document: {

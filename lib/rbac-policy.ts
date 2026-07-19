@@ -1,8 +1,9 @@
 export type RbacRole =
   | 'PLATFORM_OWNER'
-  | 'TENANT_ADMIN'
+  | 'ADMIN'
   | 'SALES_MANAGER'
   | 'SALES_EMPLOYEE'
+  | 'MARKETING'
   | 'READ_ONLY';
 
 export type TenantContextRule =
@@ -32,13 +33,22 @@ export const RBAC_POLICY_MATRIX: RbacPolicyRow[] = [
     evidence: ['lib/api-auth-guard.ts:isSuperAdmin', 'lib/api-auth-guard.ts:requireSuperAdminInDev'],
   },
   {
-    role: 'TENANT_ADMIN',
+    role: 'ADMIN',
     codeRole: 'ADMIN',
     action: 'manage',
     resource: 'tenant resources',
     tenantContext: 'TENANT_MEMBERSHIP_REQUIRED',
     allowed: true,
     evidence: ['prisma/schema.prisma:Role.ADMIN', 'lib/api-auth-guard.ts:hasDatabaseRole'],
+  },
+  {
+    role: 'MARKETING',
+    codeRole: 'MARKETING',
+    action: 'read/write marketing workflow',
+    resource: 'campaigns, advertising integrations, and leads where allowed',
+    tenantContext: 'TENANT_MEMBERSHIP_REQUIRED',
+    allowed: true,
+    evidence: ['prisma/schema.prisma:Role.MARKETING', 'app/actions/marketing-campaigns.ts'],
   },
   {
     role: 'SALES_MANAGER',

@@ -10,8 +10,8 @@ import { writeAuditLog } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 
-const PROJECT_READER_ROLES = ["ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager"] as const;
-const PROJECT_WRITER_ROLES = ["ADMIN", "owner", "SALES_MANAGER"] as const;
+const PROJECT_READER_ROLES = ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE"] as const;
+const PROJECT_WRITER_ROLES = ["ADMIN", "SALES_MANAGER"] as const;
 
 async function requireProjectSession(writerRole = false) {
   const session = await getSession();

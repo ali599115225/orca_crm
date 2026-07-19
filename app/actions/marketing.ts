@@ -42,7 +42,6 @@ export async function getMarketingOverviewAction(): Promise<MarketingOverview> {
 
   await assertServerActionRole(session, [
     "ADMIN",
-    "owner",
     "MARKETING",
     "SALES_MANAGER",
   ]);

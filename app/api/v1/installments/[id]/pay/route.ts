@@ -15,9 +15,7 @@ import {
 
 const PAYMENT_ALLOWED_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
-  "rental_manager",
 ] as const;
 
 function idempotencyHash(

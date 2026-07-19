@@ -9,10 +9,7 @@ export type UserRole =
   | 'SALES_MANAGER'
   | 'SALES_EMPLOYEE'
   | 'MARKETING'
-  | 'READ_ONLY'
-  | 'rental_manager'
-  | 'accountant'
-  | 'owner';
+  | 'READ_ONLY';
 
 const FULL_ACCESS = [
   'CREATE_UNIT',
@@ -73,9 +70,6 @@ export const PERMISSIONS: Record<UserRole, readonly string[]> = {
   ],
   MARKETING: ['UPLOAD_DOC', 'CALC_MORTGAGE', 'SCHEDULE_VISIT'],
   READ_ONLY: [],
-  rental_manager: ['CALC_MORTGAGE', 'SCHEDULE_VISIT', 'VIEW'],
-  accountant: ['CALC_MORTGAGE', 'VIEW'],
-  owner: ['VIEW'],
 };
 
 interface AuthContextType {

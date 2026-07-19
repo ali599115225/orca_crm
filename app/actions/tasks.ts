@@ -11,10 +11,8 @@ import { runWithTenantContext } from "@/lib/tenant-context";
 
 const TASK_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
-  "rental_manager",
 ] as const;
 
 const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;

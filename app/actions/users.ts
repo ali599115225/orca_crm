@@ -13,7 +13,7 @@ import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/pl
 import { hashEmail } from "@/lib/privacy-mask";
 import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
-const USER_ADMIN_ROLES = ["ADMIN", "owner"] as const;
+const USER_ADMIN_ROLES = ["ADMIN"] as const;
 
 /**
  * دالة مساعدة DB-backed للتحقق من مشرف الشركة (tenantId scoped)

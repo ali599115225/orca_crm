@@ -19,7 +19,6 @@ import { executeCampaignCommand } from "@/lib/marketing/campaign-orchestrator";
 
 const CAMPAIGN_ROLES = [
   "ADMIN",
-  "owner",
   "MARKETING",
   "SALES_MANAGER",
 ];

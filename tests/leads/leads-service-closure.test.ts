@@ -652,7 +652,7 @@ describe("assertServerActionRole — tenant context initialization", () => {
     expect(enterWithSpy).not.toHaveBeenCalled();
   });
 
-  it("does NOT initialize tenant context on FORBIDDEN", async () => {
+  it("uses the authenticated session scope for DB revalidation before FORBIDDEN", async () => {
     const session = { userId: USER_ID, tenantId: TENANT_ID, role: "READ_ONLY" };
     mockUserFindFirst.mockResolvedValue({ id: USER_ID, tenantId: TENANT_ID, role: "READ_ONLY" });
     mockTenantFindFirst.mockResolvedValue(VALID_TENANT);
@@ -660,7 +660,11 @@ describe("assertServerActionRole — tenant context initialization", () => {
     const { assertServerActionRole } = await import("@/lib/api-auth-guard");
     await expect(assertServerActionRole(session, ["ADMIN"])).rejects.toThrow("FORBIDDEN");
 
-    expect(enterWithSpy).not.toHaveBeenCalled();
+    expect(enterWithSpy).toHaveBeenCalledOnce();
+    expect(enterWithSpy).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      userId: USER_ID,
+    });
   });
 });
 

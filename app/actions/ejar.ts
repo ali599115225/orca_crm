@@ -82,8 +82,6 @@ export async function submitContractToEjarAction(
 
     const verifiedSession = await assertServerActionRole(session, [
       "ADMIN",
-      "rental_manager",
-      "owner",
     ]);
 
     const tenant = await getActiveTenant();
@@ -448,7 +446,7 @@ export async function getPayrollCommissionsAction(userId?: string) {
     // DB-backed role check — was missing before this patch
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول.");
-    await assertServerActionRole(session, ["ADMIN", "owner", "rental_manager"]);
+    await assertServerActionRole(session, ["ADMIN"]);
 
     const tenant = await getActiveTenant();
 
@@ -484,8 +482,8 @@ export async function markCommissionPaidAction(commissionId: string) {
     const session = await getSession();
     if (!session) throw new Error("يجب تسجيل الدخول.");
 
-    // Only ADMIN and owner may pay commissions
-    await assertServerActionRole(session, ["ADMIN", "owner"]);
+    // Only ADMIN may pay commissions.
+    await assertServerActionRole(session, ["ADMIN"]);
 
     const tenant = await getActiveTenant();
     await seedChartOfAccounts(tenant.id);

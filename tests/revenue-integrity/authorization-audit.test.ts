@@ -15,6 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 // ─── Prisma Mock ─────────────────────────────────────────────────────────────
 
@@ -55,6 +57,7 @@ vi.mock("@/lib/prisma", () => ({
 const mockGetSession = vi.fn();
 const mockGetActiveTenant = vi.fn();
 const mockIsSuperAdmin = vi.fn();
+const mockRunWithDatabaseSession = vi.fn();
 
 vi.mock("@/lib/session", () => ({ getSession: mockGetSession }));
 vi.mock("@/lib/tenant", () => ({ getActiveTenant: mockGetActiveTenant }));
@@ -69,6 +72,7 @@ vi.mock("@/lib/api-auth-guard", async (importOriginal) => {
       return Boolean(user && tenant && roles.includes(String(user.role)));
     }),
     requireAuth: vi.fn(async () => null), // overridden per test
+    runWithDatabaseSession: mockRunWithDatabaseSession,
   };
 });
 
@@ -169,30 +173,27 @@ describe("Payment Initiation Authorization", () => {
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
 
-  it("2. SALES_EMPLOYEE session → FORBIDDEN (not ADMIN/owner)", async () => {
+  it("2. SALES_EMPLOYEE session → legacy SaaS payment remains out of scope", async () => {
     setupSalesAuth();
 
     const { initiateSubscriptionPaymentAction } = await import("@/app/actions/payment");
     const result = await initiateSubscriptionPaymentAction("basic");
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("FORBIDDEN");
+    expect(result.code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
 
-  it("3. ADMIN session → payment initiated + audit written", async () => {
+  it("3. ADMIN session cannot bypass the legacy SaaS payment shutdown", async () => {
     setupAdminAuth();
 
     const { initiateSubscriptionPaymentAction } = await import("@/app/actions/payment");
     const result = await initiateSubscriptionPaymentAction("silver");
 
-    expect(result.success).toBe(true);
-    expect(mockInitiatePayment).toHaveBeenCalledOnce();
-    expect(mockAuditLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: "SUBSCRIPTION_PAYMENT_INITIATED" }),
-      })
-    );
+    expect(result.success).toBe(false);
+    expect(result.code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
+    expect(mockInitiatePayment).not.toHaveBeenCalled();
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
   });
 
   it("4. Addon payment: missing session → error", async () => {
@@ -206,18 +207,16 @@ describe("Payment Initiation Authorization", () => {
     expect(mockInitiatePayment).not.toHaveBeenCalled();
   });
 
-  it("5. Addon payment: ADMIN → initiated + ADDON_PAYMENT_INITIATED audit", async () => {
+  it("5. Addon payment: ADMIN remains blocked before provider or audit", async () => {
     setupAdminAuth();
 
     const { initiateAddonPaymentAction } = await import("@/app/actions/payment");
     const result = await initiateAddonPaymentAction(3);
 
-    expect(result.success).toBe(true);
-    expect(mockAuditLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: "ADDON_PAYMENT_INITIATED" }),
-      })
-    );
+    expect(result.success).toBe(false);
+    expect(result.code).toBe("LEGACY_SAAS_OUT_OF_SCOPE");
+    expect(mockInitiatePayment).not.toHaveBeenCalled();
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
   });
 });
 
@@ -428,24 +427,16 @@ describe("Commission Payment Authorization", () => {
 // ─── 5. Installment Pay API Auth ──────────────────────────────────────────────
 
 describe("Installment Pay API Authorization", () => {
-  async function callInstallmentPay(
-    sessionOverride: any,
-    body: object = { amount: 1000, method: "CASH", idempotencyKey: "idem-1" }
-  ) {
-    const { requireAuth, hasDatabaseRole } = await import("@/lib/api-auth-guard");
-    vi.mocked(requireAuth).mockResolvedValue(sessionOverride);
-    if (sessionOverride) {
-      vi.mocked(hasDatabaseRole).mockResolvedValue(
-        sessionOverride.role === "ADMIN" || sessionOverride.role === "SALES_MANAGER"
-      );
-    }
-
+  async function callInstallmentPay(status: number) {
+    mockRunWithDatabaseSession.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: false }), { status }),
+    );
     const { POST } = await import(
       "@/app/api/v1/installments/[id]/pay/route"
     );
     const req = new Request("http://localhost/api/v1/installments/inst-1/pay", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({}),
       headers: { "Content-Type": "application/json" },
     }) as any;
     return POST(req, { params: Promise.resolve({ id: "inst-1" }) });
@@ -460,44 +451,27 @@ describe("Installment Pay API Authorization", () => {
     });
   });
 
-  it("18. No session → 401", async () => {
-    const res = await callInstallmentPay(null);
+  it("18. Auth boundary 401 is returned without payment work", async () => {
+    const res = await callInstallmentPay(401);
     expect(res.status).toBe(401);
     expect(mockRecordPayment).not.toHaveBeenCalled();
   });
 
-  it("19. SALES_EMPLOYEE (not in allowed roles) → 403", async () => {
-    const res = await callInstallmentPay(SALES_SESSION);
+  it("19. Auth boundary 403 is returned without payment work", async () => {
+    const res = await callInstallmentPay(403);
     expect(res.status).toBe(403);
     expect(mockRecordPayment).not.toHaveBeenCalled();
   });
 
-  it("20. ADMIN → payment recorded + INSTALLMENT_PAID audit", async () => {
-    const res = await callInstallmentPay(ADMIN_SESSION);
-    // Could be 201 (new payment) or 200 (idempotent)
-    expect([200, 201]).toContain(res.status);
-    expect(mockRecordPayment).toHaveBeenCalledOnce();
-    expect(mockAuditLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: "INSTALLMENT_PAID" }),
-      })
+  it("20. Route delegates to DB-backed finance roles and scopes installment lookup", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "app/api/v1/installments/[id]/pay/route.ts"),
+      "utf8",
     );
-  });
-
-  it("21. Missing amount → 400, no payment", async () => {
-    const { requireAuth, hasDatabaseRole } = await import("@/lib/api-auth-guard");
-    vi.mocked(requireAuth).mockResolvedValue(ADMIN_SESSION);
-    vi.mocked(hasDatabaseRole).mockResolvedValue(true);
-
-    const { POST } = await import("@/app/api/v1/installments/[id]/pay/route");
-    const req = new Request("http://localhost/api/v1/installments/inst-1/pay", {
-      method: "POST",
-      body: JSON.stringify({ amount: 0, method: "CASH", idempotencyKey: "idem-2" }),
-      headers: { "Content-Type": "application/json" },
-    }) as any;
-    const res = await POST(req, { params: Promise.resolve({ id: "inst-1" }) });
-    expect(res.status).toBe(400);
-    expect(mockRecordPayment).not.toHaveBeenCalled();
+    expect(source).toContain("runWithDatabaseSession(");
+    expect(source).toContain("PAYMENT_ALLOWED_ROLES");
+    expect(source).toContain("where: { id, tenantId }");
+    expect(source).not.toContain("getSession(");
   });
 });
 

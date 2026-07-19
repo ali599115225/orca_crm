@@ -30,9 +30,9 @@ import {
 
 // All accounting reads require at minimum a valid session
 const ACCOUNTING_READER_ROLES = [
-  "ADMIN", "owner", "SALES_MANAGER", "SALES_EMPLOYEE", "rental_manager",
+  "ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE",
 ] as const;
-const ACCOUNTING_ADMIN_ROLES = ["ADMIN", "owner"] as const;
+const ACCOUNTING_ADMIN_ROLES = ["ADMIN"] as const;
 
 /** Helper: require session + reader role */
 async function requireAccountingSession() {

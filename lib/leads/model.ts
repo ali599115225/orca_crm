@@ -69,22 +69,19 @@ export function legacyStageToStatus(value: string): LeadStatusValue | null {
 
 export const LEADS_READER_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
   "MARKETING",
-  "rental_manager",
 ] as const;
 
 export const LEADS_WRITER_ROLES = [
   "ADMIN",
-  "owner",
   "SALES_MANAGER",
   "SALES_EMPLOYEE",
   "MARKETING",
 ] as const;
 
-export const LEADS_MANAGER_ROLES = ["ADMIN", "owner", "SALES_MANAGER"] as const;
+export const LEADS_MANAGER_ROLES = ["ADMIN", "SALES_MANAGER"] as const;
 
 export const LEAD_ASSIGNABLE_ROLES = ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING"] as const;
 

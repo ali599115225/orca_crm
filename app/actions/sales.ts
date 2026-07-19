@@ -23,7 +23,6 @@ export async function getSalesPerformanceAction(): Promise<SalesRepKPI[]> {
 
   await assertServerActionRole(session, [
     "ADMIN",
-    "owner",
     "SALES_MANAGER",
   ]);
 
