@@ -51,8 +51,24 @@ export async function POST(request: NextRequest) {
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanPassword = String(password);
 
-    const maliciousPattern = /(\bSELECT\b|\bUNION\b|\bDROP\b|\bINSERT\b|\bDELETE\b|<script[\s\S]*?>|javascript:)/i;
-    if (maliciousPattern.test(cleanEmail) || maliciousPattern.test(cleanPassword)) {
+    // The SQL-keyword alternation below has no quantifiers, so it cannot
+    // backtrack catastrophically. The original <script[\s\S]*?> alternative
+    // did: an unanchored .test() retries at every position, and that branch
+    // lazily scanned to the next '>' from each one, forcing O(n^2) work on
+    // adversarial input. <script and javascript: are now matched with plain
+    // linear substring checks instead, which carry no such risk regardless
+    // of input length.
+    const sqlKeywordPattern = /\b(SELECT|UNION|DROP|INSERT|DELETE)\b/i;
+    function containsDisallowedPattern(value: string): boolean {
+      const lower = value.toLowerCase();
+      return (
+        sqlKeywordPattern.test(value) ||
+        lower.includes("<script") ||
+        lower.includes("javascript:")
+      );
+    }
+
+    if (containsDisallowedPattern(cleanEmail) || containsDisallowedPattern(cleanPassword)) {
       return NextResponse.json(
         { error: "المدخلات المرسلة تحتوي على رموز أو أنماط غير مسموح بها." },
         { status: 400 }

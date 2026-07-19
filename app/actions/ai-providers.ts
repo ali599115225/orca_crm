@@ -1,7 +1,29 @@
 "use server";
 
+import { getSession } from "@/lib/session";
+import { assertServerActionRole } from "@/lib/api-auth-guard";
+
+const AI_PROVIDER_ADMIN_ROLES = ["ADMIN"] as const;
+
+// No server-side trusted Azure OpenAI endpoint exists yet in this project
+// (no stored per-tenant connection record, no environment variable). Format
+// validation on the caller-supplied endpoint (e.g. an ".openai.azure.com"
+// suffix check) is not a trust boundary — it does not stop the request from
+// being aimed at any resource an attacker controls under that suffix, or at
+// a host that merely looks similar. Until a trusted endpoint is read from a
+// server-side source and compared by exact origin, this path fails closed:
+// it never calls fetch and never attaches the caller-supplied apiKey to a
+// request. Wiring a real Azure connection test requires a separate, reviewed
+// server-side connection contract (e.g. a stored, tenant-scoped connection
+// record) — out of scope for this change.
+const AZURE_OPENAI_ENDPOINT_NOT_CONFIGURED = "AZURE_OPENAI_ENDPOINT_NOT_CONFIGURED";
+
 export async function testAIProviderConnectionAction(provider: string, data: Record<string, string>) {
   try {
+    const session = await getSession();
+    if (!session) throw new Error("UNAUTHORIZED");
+    await assertServerActionRole(session, AI_PROVIDER_ADMIN_ROLES);
+
     // 1. Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -31,14 +53,11 @@ export async function testAIProviderConnectionAction(provider: string, data: Rec
     }
 
     if (provider === "azure") {
-      if (!data.endpoint || !data.endpoint.startsWith("https://")) throw new Error("Invalid Azure Endpoint URL");
-      const response = await fetch(`${data.endpoint}/openai/deployments/${data.deploymentName}/completions?api-version=2023-05-15`, {
-        method: "POST",
-        headers: { "api-key": data.apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "Hello", max_tokens: 1 })
-      });
-      if (response.status === 401 || response.status === 404) throw new Error("Invalid Azure Credentials or Deployment");
-      return { success: true };
+      // Fail closed: no trusted server-side Azure endpoint exists to
+      // validate the caller-supplied endpoint against, so no outbound
+      // request is made and the caller-supplied apiKey is never used.
+      // See the comment above AZURE_OPENAI_ENDPOINT_NOT_CONFIGURED.
+      return { success: false, error: AZURE_OPENAI_ENDPOINT_NOT_CONFIGURED };
     }
 
     if (provider === "bedrock") {
