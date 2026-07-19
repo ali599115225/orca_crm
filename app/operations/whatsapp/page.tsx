@@ -1,9 +1,14 @@
 import { getWhatsAppChatsAction, getCloudAPIStatusAction } from "@/app/actions/whatsapp";
 import WhatsAppView from "@/components/views/WhatsAppView";
-import { requireAuth } from "@/lib/api-auth-guard";
+import {
+  requireWhatsAppAccess,
+  WHATSAPP_READ_ROLES,
+} from "@/lib/whatsapp/access";
+import { redirect } from "next/navigation";
 
 export default async function WHATSAPPPage() {
-  const session = await requireAuth();
+  const access = await requireWhatsAppAccess(WHATSAPP_READ_ROLES).catch(() => null);
+  if (!access) redirect("/login");
 
   let chatResult: any = { success: false, chats: [], tenant: null, warning: null };
   let cloudStatus: any = { configured: false, provider: "none", source: "none", status: "disconnected", error: null };
@@ -23,7 +28,7 @@ export default async function WHATSAPPPage() {
       tenant={tenant}
       cloudStatus={cloudStatus}
       warning={chatResult.warning || null}
-      currentUserId={session?.userId || null}
+      currentUserId={access.userId}
     />
   );
 }

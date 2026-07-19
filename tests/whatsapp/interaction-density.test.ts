@@ -37,7 +37,8 @@ describe("WhatsApp interaction and density closure", () => {
   it("loads active assignees from a WhatsApp-specific tenant action", () => {
     expect(view).toContain("getWhatsAppAssigneesAction");
     expect(actions).toContain("export async function getWhatsAppAssigneesAction");
-    expect(actions).toContain("tenantId: tenant.id");
+    expect(actions).toContain("withWhatsAppAccess(WHATSAPP_WRITE_ROLES");
+    expect(actions).toContain("runWithTenantContext");
     expect(actions).toContain("isActive: true");
     expect(actions).toContain("users: users.map");
   });
@@ -49,6 +50,7 @@ describe("WhatsApp interaction and density closure", () => {
     expect(crm).toContain("requestedLeadId");
     expect(crm).toContain("runWithTenantContext");
     expect(crm).toContain("assignedTo: activeUser.id");
-    expect(crm).toContain("tenantId: tenant.id");
+    expect(crm).toContain("requireWhatsAppAccess(");
+    expect(crm).toContain("{ tenantId, userId }");
   });
 });

@@ -75,13 +75,17 @@ export default async function OperationsLayout({
       });
     },
   );
+  const isSuperAdmin = isPrivilegedSessionPayload(session);
+  if (!user && !isSuperAdmin) {
+    redirect("/login");
+  }
+
   const userEmail = user?.email || "";
   const userName = user?.name || "";
-  const isSuperAdmin = isPrivilegedSessionPayload(session);
 
   const rawCompanyName = tenant?.companyName || "";
   const isNewTenant = rawCompanyName === "" || rawCompanyName === "منشأة جديدة قيد التأسيس" || rawCompanyName.includes("قيد التأسيس");
-  const userRoleKey = isSuperAdmin ? "SUPER_ADMIN" : String(user?.role || "READ_ONLY");
+  const userRoleKey = isSuperAdmin ? "SUPER_ADMIN" : String(user!.role);
 
   return (
     <DashboardLayout

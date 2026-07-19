@@ -1,8 +1,8 @@
 import "server-only";
 
-import { fetchWhatsAppDashboardStats } from "@/app/actions/whatsapp-crm";
 import { prisma } from "@/lib/prisma";
 import { runWithTenantContext } from "@/lib/tenant-context";
+import { fetchWhatsAppDashboardStats } from "@/lib/whatsapp/dashboard-stats";
 import type {
   DashboardDataState,
   DashboardLeadItem,

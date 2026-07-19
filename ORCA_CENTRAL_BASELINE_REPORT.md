@@ -151,3 +151,22 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - Commit: `5d0d3735dd7e0a1489738b1e0d8058a1f2164ce4` pushed إلى فرع التنفيذ.
 - Vercel Preview: `READY` — `https://orca-3prucfo8g-ali-s-projectsorcacrm.vercel.app` (`dpl_B4ec5RWdJW3rJHLEGv7XqGzjwhf8`).
 - Pull Request: `BLOCKED BY EXTERNAL GITHUB AUTHORIZATION`؛ GitHub App أعاد `403 Resource not accessible by integration` وGitHub CLI غير مسجل الدخول. لا يوجد التفاف إلى `main`.
+
+## 13. تنفيذ P0-03 — WhatsApp authorization boundary
+**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+
+### 13.1 الحدود المنفذة
+- أضيف `lib/whatsapp/access.ts` لإعادة قراءة الجلسة والمستخدم الفعال والمنشأة الفعالة ودور قاعدة البيانات داخل Company Scope؛ لا يُوثق دور JWT القديم.
+- ثُبتت مصفوفة القراءة والكتابة وإدارة الاتصال: القراءة تشمل `READ_ONLY`، والكتابة لموظفي المبيعات فأعلى، وإدارة الاتصال لـ`ADMIN` فقط.
+- أصبحت جميع إجراءات القراءة والإرسال والأرشفة والإسناد وإدارة الاتصال وإنشاء المهمة وإحصاءات لوحة المعلومات تفوّض قبل أي Prisma mutation أو feature check أو Provider call.
+- نقل helper الإحصاءات إلى `lib/whatsapp/dashboard-stats.ts` مع `server-only`، وأزيل التصدير الذي يقبل `tenantId` من ملف Server Actions.
+- أزيل helper النشاط غير المستخدم بدل إبقاء Server Action قابلة لتمرير Company Scope من المستدعي.
+- تحققت صفحة `/operations/whatsapp` من مستخدم قاعدة البيانات الفعال، وأغلق Operations Layout fallback الذي كان يعرض المستخدم المعطل كـ`READ_ONLY`.
+- لم يحدث اتصال بمزود WhatsApp أو إرسال رسالة حقيقية أو تعديل Production أو Migration.
+
+### 13.2 أدلة التحقق المحلية
+- WhatsApp suite: `97/97 PASS` عبر 17 ملفًا.
+- TypeScript: `npx --no-install tsc --noEmit` = `PASS`.
+- Production Build: `npm run build` = `PASS`؛ 102/102 صفحة static generation.
+- فحص Operations/Auth/RBAC الإضافي: `30 PASS` و`1 PRE-EXISTING FAIL`؛ الفشل يرصد imports قديمة لـ`rawPrisma` في ثلاثة ملفات غير معدلة بهذه الشريحة، وسيعالج ضمن tenant-isolation دون توسيع P0-03.
+- Pull Request ما زال `BLOCKED BY EXTERNAL GITHUB AUTHORIZATION`؛ لا تغيير أو التفاف إلى `main`.

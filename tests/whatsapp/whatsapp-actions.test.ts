@@ -10,6 +10,9 @@ const prismaMock = vi.hoisted(() => ({
   lead: {
     findFirst: vi.fn(),
   },
+  tenant: {
+    findUnique: vi.fn(),
+  },
 }));
 
 const getActiveTenantMock = vi.hoisted(() => vi.fn());
@@ -23,6 +26,20 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/tenant", () => ({
   getActiveTenant: getActiveTenantMock,
+}));
+
+vi.mock("@/lib/whatsapp/access", () => ({
+  WHATSAPP_READ_ROLES: ["ADMIN", "READ_ONLY"],
+  WHATSAPP_WRITE_ROLES: ["ADMIN"],
+  WHATSAPP_CONNECTION_ROLES: ["ADMIN"],
+  requireWhatsAppAccess: vi.fn(async () => {
+    const tenant = await getActiveTenantMock();
+    return Object.freeze({
+      tenantId: tenant.id,
+      userId: "user-1",
+      role: "ADMIN",
+    });
+  }),
 }));
 
 vi.mock("@/lib/whatsapp/connection-resolver", () => ({
@@ -68,6 +85,10 @@ describe("WhatsApp actions — connection status and chat list", () => {
     prismaMock.whatsAppContact.findMany.mockResolvedValue([]);
     prismaMock.whatsAppMessage.findMany.mockResolvedValue([]);
     prismaMock.lead.findFirst.mockResolvedValue(null);
+    prismaMock.tenant.findUnique.mockImplementation(async ({ where }: any) => ({
+      id: where.id,
+      companyName: where.id === TEST_TENANT.id ? TEST_TENANT.companyName : OTHER_TENANT.companyName,
+    }));
   });
 
   it("reports test-mode status from the resolver without leaking credentials", async () => {
@@ -130,6 +151,7 @@ describe("WhatsApp actions — connection status and chat list", () => {
     const result = await getWhatsAppChatsAction();
 
     expect(result.success).toBe(true);
+    if (!result.success) throw new Error(result.error);
     expect(result.chats).toHaveLength(1);
     expect(prismaMock.whatsAppContact.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -154,6 +176,7 @@ describe("WhatsApp actions — connection status and chat list", () => {
       chats: [],
       provider: "none",
     });
+    if (!result.success) throw new Error(result.error);
     expect(result.warning).toBeTruthy();
     expect(prismaMock.whatsAppContact.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

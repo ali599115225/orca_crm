@@ -49,11 +49,10 @@ describe("WhatsApp provider-agnostic closure", () => {
   });
 
   it("derives tenant context before WhatsApp mutations and hides technical errors", () => {
-    expect(actions).toContain(
-      "setTenantContext({ tenantId: tenant.id })",
-    );
+    expect(actions).toContain("requireWhatsAppAccess");
+    expect(actions).toContain("runWithTenantContext");
     expect(crmActions).toContain("runWithTenantContext");
-    expect(crmActions).toContain("{ tenantId: tenant.id, userId }");
+    expect(crmActions).toContain("{ tenantId, userId }");
     expect(view).toContain("TENANT_CONTEXT");
     expect(view).toContain("t.notConfigured");
     expect(view).not.toContain(">TENANT_CONTEXT_REQUIRED<");

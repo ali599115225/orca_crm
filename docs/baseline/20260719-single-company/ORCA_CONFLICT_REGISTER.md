@@ -63,3 +63,13 @@
 | C-026 | BLOCKED EXTERNALLY | Push ناجح؛ إنشاء Draft PR أعاد GitHub App 403 و`gh` غير مصادق؛ يحتاج تفويض GitHub فقط |
 
 التصنيف النهائي لهذه الحزمة: `FIXED` لمسارات Runtime، `OUT OF SCOPE` للمنتج، وحقول/جداول البيانات `DEFERRED WITH OWNER/MIGRATION GATE` بلا حذف أو Migration.
+
+## تحديث تنفيذ P0-03 — 2026-07-19
+| البنود | الحالة | الدليل التنفيذي |
+|---|---|---|
+| C-012 | FIXED | shared DB-backed access boundary؛ مصفوفة أدوار؛ authorization قبل Prisma/provider؛ 97/97 WhatsApp tests |
+| C-013 | CONTROLLED / OWNER-GATED | مسار المزود محفوظ Integration-Ready؛ جميع اختبارات الرفض Mock-only ولم يحدث إرسال حقيقي |
+| C-024 | PARTIALLY FIXED | WhatsApp actions/page وOperations shell تمنع المستخدم المعطل؛ بقية boundaries الحساسة تبقى ضمن hardening المستمر |
+| C-026 | BLOCKED EXTERNALLY | Push/Preview ممكنان؛ GitHub App/CLI لا يملكان تفويض إنشاء PR |
+
+لم يقبل أي Server Action في ملفات WhatsApp `tenantId` من المستدعي، ولم يحدث Migration أو Production write أو provider call.

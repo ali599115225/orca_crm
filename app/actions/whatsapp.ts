@@ -2,29 +2,47 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
-import { logWhatsAppActivity } from "@/app/actions/whatsapp-crm";
 import { assertFeatureAccess, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
-import { hashPhone, redactPiiFromPayload } from "@/lib/privacy-mask";
-import { sendWhatsAppMessage, WhatsAppSendError } from "@/lib/whatsapp/send-service";
-import { resolveConnection, isMessagingEnabled, getConnectionStatus } from "@/lib/whatsapp/connection-resolver";
-import { setTenantContext } from "@/lib/tenant-context";
+import { sendWhatsAppMessage } from "@/lib/whatsapp/send-service";
+import { getConnectionStatus } from "@/lib/whatsapp/connection-resolver";
+import { runWithTenantContext } from "@/lib/tenant-context";
+import {
+  requireWhatsAppAccess,
+  type WhatsAppAccess,
+  WHATSAPP_CONNECTION_ROLES,
+  WHATSAPP_READ_ROLES,
+  WHATSAPP_WRITE_ROLES,
+} from "@/lib/whatsapp/access";
+
+async function withWhatsAppAccess<const T>(
+  allowedRoles: readonly string[],
+  operation: (access: WhatsAppAccess) => Promise<T> | T,
+): Promise<T> {
+  const access = await requireWhatsAppAccess(allowedRoles);
+  return runWithTenantContext(
+    { tenantId: access.tenantId, userId: access.userId },
+    () => operation(access),
+  );
+}
 
 export async function toggleWhatsAppConnectionAction(connected: boolean) {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    if (connected) {
-      await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
-    }
-    await prisma.tenant.update({
-      where: { id: tenant.id },
-      data: { whatsappConnected: connected }
-    });
-    revalidatePath("/operations/settings");
-    revalidatePath("/operations/whatsapp");
-    return { success: true };
+    return await withWhatsAppAccess(
+      WHATSAPP_CONNECTION_ROLES,
+      async ({ tenantId }) => {
+        if (connected) {
+          await assertFeatureAccess({ tenantId, feature: "whatsapp" });
+        }
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: { whatsappConnected: connected }
+        });
+        revalidatePath("/operations/settings");
+        revalidatePath("/operations/whatsapp");
+        return { success: true };
+      },
+    );
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
@@ -36,22 +54,22 @@ export async function toggleWhatsAppConnectionAction(connected: boolean) {
 
 export async function getCloudAPIStatusAction() {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    const result = await getConnectionStatus(tenant.id);
+    return await withWhatsAppAccess(WHATSAPP_READ_ROLES, async ({ tenantId }) => {
+      const result = await getConnectionStatus(tenantId);
 
-    if (!result.configured) {
-      return { configured: false, provider: "none", source: "none", status: "disconnected" };
-    }
+      if (!result.configured) {
+        return { configured: false, provider: "none", source: "none", status: "disconnected" };
+      }
 
-    return {
-      configured: true,
-      provider: result.provider === "DIALOG360" ? "360dialog" : "meta",
-      source: result.source,
-      status: result.status,
-      wabaId: result.wabaId ?? null,
-      activeSince: result.activeSince ?? null,
-    };
+      return {
+        configured: true,
+        provider: result.provider === "DIALOG360" ? "360dialog" : "meta",
+        source: result.source,
+        status: result.status,
+        wabaId: result.wabaId ?? null,
+        activeSince: result.activeSince ?? null,
+      };
+    });
   } catch {
     return { configured: false, provider: "none", source: "none", status: "disconnected" };
   }
@@ -59,29 +77,28 @@ export async function getCloudAPIStatusAction() {
 
 export async function getWhatsAppAssigneesAction() {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
+    return await withWhatsAppAccess(WHATSAPP_WRITE_ROLES, async ({ tenantId }) => {
+      const users = await prisma.user.findMany({
+        where: {
+          tenantId,
+          isActive: true,
+        },
+        orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+        take: 100,
+        select: {
+          id: true,
+          name: true,
+        },
+      });
 
-    const users = await prisma.user.findMany({
-      where: {
-        tenantId: tenant.id,
-        isActive: true,
-      },
-      orderBy: [{ name: "asc" }, { createdAt: "asc" }],
-      take: 100,
-      select: {
-        id: true,
-        name: true,
-      },
+      return {
+        success: true,
+        users: users.map((user) => ({
+          id: user.id,
+          name: user.name || "عضو فريق",
+        })),
+      };
     });
-
-    return {
-      success: true,
-      users: users.map((user) => ({
-        id: user.id,
-        name: user.name || "عضو فريق",
-      })),
-    };
   } catch (error) {
     console.error("[WhatsApp] failed to load assignees", error);
     return {
@@ -190,18 +207,17 @@ function safeSendResult<T extends {
 
 export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListMode } = {}) {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
+    return await withWhatsAppAccess(WHATSAPP_READ_ROLES, async ({ tenantId }) => {
     const archived = options.mode === "archived";
 
-    const connectionStatus = await getConnectionStatus(tenant.id);
+    const connectionStatus = await getConnectionStatus(tenantId);
 
     const connectionWarning = connectionStatus.configured
       ? null
       : "واتساب غير متصل. يمكنك مراجعة السجل والمهام، ويلزم ربط مزود قبل الإرسال.";
 
     const contacts = await prisma.whatsAppContact.findMany({
-      where: { tenantId: tenant.id, archived },
+      where: { tenantId, archived },
       select: {
         id: true,
         name: true,
@@ -219,12 +235,12 @@ export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListM
     const chats = await Promise.all(
       contacts.map(async (c) => {
         const messages = await prisma.whatsAppMessage.findMany({
-          where: { tenantId: tenant.id, phone: c.phone },
+          where: { tenantId, phone: c.phone },
           orderBy: { createdAt: "asc" },
           take: 50,
         });
         const lead = await prisma.lead.findFirst({
-          where: { tenantId: tenant.id, phone: c.phone },
+          where: { tenantId, phone: c.phone },
           select: { id: true, status: true, source: true, priority: true },
         });
         const lastMsg = messages[messages.length - 1];
@@ -255,7 +271,12 @@ export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListM
       })
     );
 
-    return {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, companyName: true },
+    });
+
+      return {
       success: true,
       chats,
       tenant,
@@ -267,51 +288,52 @@ export async function getWhatsAppChatsAction(options: { mode?: WhatsAppChatListM
             : "meta",
       contactsCount: contacts.length,
       warning: connectionWarning,
-    };
+      };
+    });
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }
 
 export async function sendWhatsAppMessageAction(chatId: string, messageText: string) {
-  const normalizedPhone = normalizeWhatsAppPhone(chatId);
-  if (!normalizedPhone || !validateWhatsAppPhone(normalizedPhone)) {
-    return safeSendResult({
-      success: false,
-      messageId: null,
-      contactId: null,
-      phone: normalizedPhone,
-      status: "failed",
-      errorCode: "WHATSAPP_INVALID_PHONE",
-      errorSubcode: undefined,
-      errorMessage: "رقم واتساب غير صالح",
-    });
-  }
-
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    await assertFeatureAccess({ tenantId: tenant.id, feature: "whatsapp" });
-    const result = await sendWhatsAppMessage(tenant.id, normalizedPhone, messageText);
+    return await withWhatsAppAccess(WHATSAPP_WRITE_ROLES, async ({ tenantId }) => {
+      const normalizedPhone = normalizeWhatsAppPhone(chatId);
+      if (!normalizedPhone || !validateWhatsAppPhone(normalizedPhone)) {
+        return safeSendResult({
+          success: false,
+          messageId: null,
+          contactId: null,
+          phone: normalizedPhone,
+          status: "failed",
+          errorCode: "WHATSAPP_INVALID_PHONE",
+          errorSubcode: undefined,
+          errorMessage: "رقم واتساب غير صالح",
+        });
+      }
 
-    return safeSendResult({
-      success: result.success && Boolean(result.metaMessageId),
-      messageId: result.messageId || null,
-      metaMessageId: result.metaMessageId || null,
-      phone: normalizedPhone,
-      status: result.success && result.metaMessageId ? "pending" : "failed",
-      errorCode: result.errorCode as any,
-      errorMessage: result.success
-        ? undefined
-        : sanitizeSendErrorMessage(result.errorCode, result.error),
+      await assertFeatureAccess({ tenantId, feature: "whatsapp" });
+      const result = await sendWhatsAppMessage(tenantId, normalizedPhone, messageText);
+
+      return safeSendResult({
+        success: result.success && Boolean(result.metaMessageId),
+        messageId: result.messageId || null,
+        metaMessageId: result.metaMessageId || null,
+        phone: normalizedPhone,
+        status: result.success && result.metaMessageId ? "pending" : "failed",
+        errorCode: result.errorCode as any,
+        errorMessage: result.success
+          ? undefined
+          : sanitizeSendErrorMessage(result.errorCode, result.error),
+      });
     });
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
-      return safeSendResult({ success: false, errorCode: error.code as any, errorMessage: error.message, phone: normalizedPhone, status: "failed" });
+      return safeSendResult({ success: false, errorCode: error.code as any, errorMessage: error.message, phone: normalizeWhatsAppPhone(chatId), status: "failed" });
     }
     return safeSendResult({
-      success: false, messageId: null, phone: normalizedPhone,
+      success: false, messageId: null, phone: "",
       status: "failed", errorCode: "WHATSAPP_SEND_FAILED",
       errorMessage:
         /TENANT_CONTEXT|WHATSAPP_(?:NOT_CONNECTED|NO_CREDENTIAL|NO_PHONE|MESSAGING_DISABLED)/.test(
@@ -324,50 +346,53 @@ export async function sendWhatsAppMessageAction(chatId: string, messageText: str
 }
 export async function archiveChatAction(contactId: string) {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    const contact = await prisma.whatsAppContact.findFirst({
-      where: { id: contactId, tenantId: tenant.id },
-    });
-    if (!contact) return { success: false, error: "المحادثة غير موجودة" };
+    return await withWhatsAppAccess(WHATSAPP_WRITE_ROLES, async ({ tenantId }) => {
+      const contact = await prisma.whatsAppContact.findFirst({
+        where: { id: contactId, tenantId },
+      });
+      if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
-    await prisma.whatsAppContact.update({
-      where: { id: contactId },
-      data: { archived: !contact.archived },
+      await prisma.whatsAppContact.update({
+        where: { id: contactId },
+        data: { archived: !contact.archived },
+      });
+      revalidatePath("/operations/whatsapp");
+      return { success: true, archived: !contact.archived };
     });
-    revalidatePath("/operations/whatsapp");
-    return { success: true, archived: !contact.archived };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }
 
 export async function assignChatAction(contactId: string, userId: string) {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    const contact = await prisma.whatsAppContact.findFirst({
-      where: { id: contactId, tenantId: tenant.id },
-    });
-    if (!contact) return { success: false, error: "المحادثة غير موجودة" };
+    return await withWhatsAppAccess(
+      WHATSAPP_WRITE_ROLES,
+      async ({ tenantId }) => {
+        const contact = await prisma.whatsAppContact.findFirst({
+          where: { id: contactId, tenantId },
+        });
+        if (!contact) return { success: false, error: "المحادثة غير موجودة" };
 
-    const assignee = await prisma.user.findFirst({
-      where: {
-        id: userId,
-        tenantId: tenant.id,
-        isActive: true,
+        const assignee = await prisma.user.findFirst({
+          where: {
+            id: userId,
+            tenantId,
+            isActive: true,
+          },
+          select: { id: true, name: true },
+        });
+        if (!assignee) return { success: false, error: "المستخدم غير فعال أو لا ينتمي لهذا المستأجر" };
+
+        await prisma.whatsAppContact.update({
+          where: { id: contactId },
+          data: { assignedUserId: assignee.id, assignedUserName: assignee.name },
+        });
+        revalidatePath("/operations/whatsapp");
+        return { success: true, assignedUserId: assignee.id, assignedUserName: assignee.name };
       },
-      select: { id: true, name: true },
-    });
-    if (!assignee) return { success: false, error: "المستخدم غير فعال أو لا ينتمي لهذا المستأجر" };
-
-    await prisma.whatsAppContact.update({
-      where: { id: contactId },
-      data: { assignedUserId: assignee.id, assignedUserName: assignee.name },
-    });
-    revalidatePath("/operations/whatsapp");
-    return { success: true, assignedUserId: assignee.id, assignedUserName: assignee.name };
+    );
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }

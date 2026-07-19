@@ -13,7 +13,7 @@
 | R-006 | High | High | فشل Preview لكل فروع العمل يمنع إثبات التجميع | إصلاح TypeScript ثم tsc/build/preview | Open |
 | R-007 | High | High | Schema drift لجدول sentinel_heartbeats يعطل Cron | Migration additive بعد backup/status؛ لا تعديل baseline | Blocked by migration gate |
 | R-008 | High | High | Cron jobs تفشل بسبب غياب Company Scope context | System boundary واختبارات tenant context | Open |
-| R-009 | High | Medium | جلسة صالحة لمستخدم معطل تستمر في بعض Server Actions | إعادة تحقق DB على boundaries الحساسة | Open |
+| R-009 | High | Medium | جلسة صالحة لمستخدم معطل تستمر في بعض Server Actions | إعادة تحقق DB على boundaries الحساسة | Partial — WhatsApp + operations shell fixed in P0-03 |
 | R-010 | High | Medium | ادعاء ترخيص/امتثال غير مثبت يعرض الشركة لمخاطر قانونية | NO LICENSE ASSUMED؛ إخفاء claims؛ owner/legal approval | Owner decision |
 | R-011 | High | Medium | أسرار Provider قد تحفظ أو تسجل بشكل غير آمن | Secret vault/env؛ redaction؛ no values in logs/reports | Open |
 | R-012 | Medium | High | مصطلحات Tenant/SaaS في الوثائق تربك القرار والتنفيذ | Source-of-truth index؛ superseded labels | Open |
@@ -30,6 +30,12 @@
 - `FIXED`: لا تغيير كلمة مرور أو إرسال خارجي ناتج عن دفع اشتراك SaaS.
 - `DEFERRED WITH OWNER GATE`: تفعيل أي Provider حقيقي وتقديم بيانات الشركة والتراخيص.
 - `OUT OF SCOPE`: تسجيل شركات، باقات SaaS، ترقيات، إضافات مدفوعة، وفوترة اشتراك المنصة.
+
+## تحديث P0-03 — 2026-07-19
+- `FIXED`: WhatsApp actions تعيد التحقق من المستخدم والمنشأة والدور من قاعدة البيانات قبل أي أثر.
+- `FIXED`: Operations shell لا يحول المستخدم المعطل إلى `READ_ONLY` تلقائيًا.
+- `VERIFIED`: 97/97 WhatsApp tests، TypeScript، وProduction Build بلا Provider calls.
+- `PARTIAL`: R-009 يبقى مفتوحًا لبقية Server Actions الحساسة خارج نطاق WhatsApp.
 ## حدود القبول
 - أي خطر Critical مفتوح يمنع Go-Live للتدفق المتأثر.
 - المخاطر القانونية/التجارية والتراخيص يقررها المالك ولا يغلقها المطور.

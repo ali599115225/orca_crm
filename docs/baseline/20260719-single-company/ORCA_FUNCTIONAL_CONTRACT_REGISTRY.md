@@ -5,7 +5,7 @@
 **Status:** `BASELINE — NOT A GO-LIVE CERTIFICATE`
 | ID | المجال | العقد التجاري | الحقيقة الحالية | حالة التكامل | القرار |
 |---|---|---|---|---|---|
-| FC-001 | Authentication & Session | Internal users only | Implemented / needs active-user revalidation | No external provider | P0 hardening |
+| FC-001 | Authentication & Session | Internal users only | Operations shell active-user fallback fixed؛ other sensitive boundaries under review | No external provider | Partial P0 hardening |
 | FC-002 | Staff & User Management | Company employees/agents | Implemented partially; role model inconsistent | None | P1 redesign |
 | FC-003 | Organization Structure | Departments/branches/teams | Department text only; Branch/Team missing | None | P1 design first |
 | FC-004 | Leads & Contacts | Internal sales operations | Implemented; visual/detail closure not fully proven | Inbound adapters optional | Verify after build |
@@ -17,7 +17,7 @@
 | FC-010 | Tasks & Maintenance | Internal operations | Implemented | Notification adapter optional | Verify |
 | FC-011 | Documents | Internal metadata/files | Implemented model; external storage not proven | Storage NOT_CONFIGURED | Adapter readiness only |
 | FC-012 | Email | Company-owned future provider | Draft/fail-safe path present | NOT_CONFIGURED | Keep; mock tests |
-| FC-013 | WhatsApp | Company-owned future provider | UI/actions present; authorization gap | NOT_CONFIGURED | P0 security; no real send |
+| FC-013 | WhatsApp | Company-owned future provider | DB-backed action/page authorization verified؛ provider remains owner-gated | NOT_CONFIGURED | P0-03 FIXED؛ no real send |
 | FC-014 | SMS | Company-owned future provider | Helpers remain Integration-Ready؛ hardcoded Runtime recipients removed from P0-02 paths | NOT_CONFIGURED | DEFERRED WITH OWNER GATE؛ no real sends |
 | FC-015 | Payment Gateway | Company-owned future provider | SaaS initiation/callback blocked؛ invoice/installment classification preserved | NOT_CONFIGURED | FIXED for P0-02؛ keep business-payment adapters |
 | FC-016 | Advertising | Company-owned future provider | Campaign/provider models present | NOT_CONFIGURED / no license proven | Mock only |
@@ -35,3 +35,9 @@
 - `FIXED`: FC-019 ومسار SaaS من FC-015 وFC-014.
 - `DEFERRED WITH OWNER GATE`: تفعيل مزودي الدفع/SMS/Email الحقيقيين ومدفوعات المعاملات العقارية المستقبلية.
 - `OUT OF SCOPE`: onboarding متعدد الشركات، subscriptions، plan upgrades، paid add-ons، SaaS billing Cron.
+
+## دليل P0-03
+- `VERIFIED`: FC-013 authorization عبر 97/97 اختبارًا، TypeScript، وProduction Build.
+- `FIXED`: أدوار القراءة/الكتابة/إدارة الاتصال، active-user revalidation، ومنع caller-supplied `tenantId` في WhatsApp Server Actions.
+- `DEFERRED WITH OWNER GATE`: تهيئة مزود WhatsApp أو اختبار إرسال حقيقي.
+- `PARTIAL`: FC-001 خارج WhatsApp يحتاج استكمال مراجعة بقية boundaries الحساسة.

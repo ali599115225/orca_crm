@@ -2,27 +2,26 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getActiveTenant } from "@/lib/tenant";
-import { runWithTenantContext, setTenantContext } from "@/lib/tenant-context";
-import { getSession } from "@/lib/session";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { revalidatePath } from "next/cache";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashPhone } from "@/lib/privacy-mask";
+import {
+  requireWhatsAppAccess,
+  WHATSAPP_READ_ROLES,
+  WHATSAPP_WRITE_ROLES,
+} from "@/lib/whatsapp/access";
+import { fetchWhatsAppDashboardStats } from "@/lib/whatsapp/dashboard-stats";
 
 // Phase F: Quick task creation from WhatsApp conversation
 export async function createWhatsAppTaskAction(formData: FormData) {
   try {
-    const tenant = await getActiveTenant();
-    const session = await getSession();
-    const userId =
-      typeof session?.userId === "string" ? session.userId : undefined;
-
-    if (!userId) {
-      return { success: false, error: "يجب تسجيل الدخول أولًا." };
-    }
+    const { tenantId, userId } = await requireWhatsAppAccess(
+      WHATSAPP_WRITE_ROLES,
+    );
 
     return await runWithTenantContext(
-      { tenantId: tenant.id, userId },
+      { tenantId, userId },
       async () => {
         const title = String(formData.get("title") || "").trim();
         const taskType = String(formData.get("taskType") || "").trim();
@@ -46,7 +45,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
         const activeUser = await prisma.user.findFirst({
           where: {
             id: userId,
-            tenantId: tenant.id,
+            tenantId,
             isActive: true,
           },
           select: { id: true },
@@ -65,7 +64,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
           const requestedLead = await prisma.lead.findFirst({
             where: {
               id: requestedLeadId,
-              tenantId: tenant.id,
+              tenantId,
             },
             select: { id: true },
           });
@@ -75,11 +74,11 @@ export async function createWhatsAppTaskAction(formData: FormData) {
         if (!leadId) {
           const contact = await prisma.whatsAppContact.findFirst({
             where: {
-              tenantId: tenant.id,
+              tenantId,
               OR: [
                 {
                   phoneHash: hashPhone(
-                    tenant.id,
+                    tenantId,
                     contactPhone,
                   ),
                 },
@@ -94,7 +93,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
             const linkedLead = await prisma.lead.findFirst({
               where: {
                 id: contact.leadId,
-                tenantId: tenant.id,
+                tenantId,
               },
               select: { id: true },
             });
@@ -107,7 +106,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
             const newLead = await prisma.$transaction(
               async (tx) => {
                 await assertPlanLimit({
-                  tenantId: tenant.id,
+                  tenantId,
                   feature: "leads",
                   tx,
                 });
@@ -121,12 +120,12 @@ export async function createWhatsAppTaskAction(formData: FormData) {
 
                 return tx.lead.create({
                   data: {
-                    tenantId: tenant.id,
+                    tenantId,
                     firstName: safeName,
                     lastName: contactPhone,
                     phone: contactPhone,
                     phoneHash: hashPhone(
-                      tenant.id,
+                      tenantId,
                       contactPhone,
                     ),
                     city: "غير محدد",
@@ -142,7 +141,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
           } catch (error) {
             if (error instanceof PlanLimitError) {
               await logPlanBlockedAttempt({
-                tenantId: tenant.id,
+                tenantId,
                 error,
               }).catch(() => {});
               return {
@@ -156,11 +155,11 @@ export async function createWhatsAppTaskAction(formData: FormData) {
 
           await prisma.whatsAppContact.updateMany({
             where: {
-              tenantId: tenant.id,
+              tenantId,
               OR: [
                 {
                   phoneHash: hashPhone(
-                    tenant.id,
+                    tenantId,
                     contactPhone,
                   ),
                 },
@@ -191,7 +190,7 @@ export async function createWhatsAppTaskAction(formData: FormData) {
 
         const task = await prisma.task.create({
           data: {
-            tenantId: tenant.id,
+            tenantId,
             title,
             description: `${taskType} — متابعة واتساب مع ${contactName || contactPhone}`,
             dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -222,67 +221,14 @@ export async function createWhatsAppTaskAction(formData: FormData) {
   }
 }
 
-// Phase J: Dashboard stats for WhatsApp
-// This helper is safe to call from both Server Components (inside an explicit
-// runWithTenantContext scope) and from Server Action wrappers.
-export async function fetchWhatsAppDashboardStats(tenantId: string) {
-  const oneWeekAgo = new Date(Date.now() - 7 * 86400000);
-
-  return runWithTenantContext(
-    { tenantId },
-    async () => {
-      const [conversationsCount, newLeadsCount, unreadMessagesCount] = await Promise.all([
-        prisma.whatsAppContact.count({ where: { tenantId } }),
-        prisma.lead.count({
-          where: {
-            tenantId,
-            source: { in: ["WHATSAPP", "whatsapp"] },
-            createdAt: { gte: oneWeekAgo },
-          },
-        }),
-        prisma.whatsAppMessage.count({
-          where: { tenantId, direction: "inbound", readAt: null },
-        }),
-      ]);
-
-      return { success: true, conversationsCount, newLeadsCount, unreadMessagesCount };
-    },
-  );
-}
-
 export async function getWhatsAppDashboardStats() {
   try {
-    const tenant = await getActiveTenant();
-    setTenantContext({ tenantId: tenant.id });
-    return fetchWhatsAppDashboardStats(tenant.id);
+    const { tenantId, userId } = await requireWhatsAppAccess(WHATSAPP_READ_ROLES);
+    return runWithTenantContext({ tenantId, userId }, () =>
+      fetchWhatsAppDashboardStats(tenantId),
+    );
   } catch (error: any) {
     return { success: false, error: error.message, conversationsCount: 0, newLeadsCount: 0, unreadMessagesCount: 0 };
-  }
-}
-
-// Phase C: CRM Timeline Integration
-export async function logWhatsAppActivity(
-  tenantId: string,
-  leadId: string,
-  phone: string,
-  direction: "inbound" | "outbound",
-  messageText: string,
-  metaMessageId?: string
-) {
-  try {
-    const preview = messageText.length > 150 ? messageText.substring(0, 150) + "..." : messageText;
-    const directionLabel = direction === "inbound" ? "واردة" : "صادرة";
-    await prisma.leadActivity.create({
-      data: {
-        tenantId,
-        leadId,
-        userId: null,
-        activityType: "WHATSAPP_MESSAGE",
-        description: `${directionLabel}: ${preview}${metaMessageId ? ` (${metaMessageId})` : ""}`,
-      },
-    });
-  } catch (error) {
-    console.error("[WhatsApp CRM] Activity log error:", error);
   }
 }
 
