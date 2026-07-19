@@ -41,3 +41,8 @@
 - `FIXED`: أدوار القراءة/الكتابة/إدارة الاتصال، active-user revalidation، ومنع caller-supplied `tenantId` في WhatsApp Server Actions.
 - `DEFERRED WITH OWNER GATE`: تهيئة مزود WhatsApp أو اختبار إرسال حقيقي.
 - `PARTIAL`: FC-001 خارج WhatsApp يحتاج استكمال مراجعة بقية boundaries الحساسة.
+
+## دليل P0-04
+- `VERIFIED`: FC-013 webhook persistence وconnection resolution يعملان خلف tenant context؛ notification service يستخدم scoped Prisma.
+- `FIXED`: pre-context 360dialog discovery محصور في capability ضيقة بلا generic raw client export.
+- `DEFERRED WITH OWNER GATE`: اختبار webhook أو مزود WhatsApp فعلي.

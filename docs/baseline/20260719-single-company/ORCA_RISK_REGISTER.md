@@ -5,7 +5,7 @@
 **Status:** `ACTIVE`
 | ID | الأثر | الاحتمال | الخطر | الاستجابة/الضوابط | الحالة |
 |---|---|---|---|---|---|
-| R-001 | Critical | High | إزالة tenantId مبكرًا تسبب فقد/اختلاط بيانات | تجميد الحذف؛ Compatibility alias؛ counts/checksums؛ backup/dry-run | Open |
+| R-001 | Critical | High | إزالة tenantId مبكرًا أو تجاوز scoped Prisma يسبب فقد/اختلاط بيانات | تجميد الحذف؛ scoped client؛ narrow system capabilities؛ backup/dry-run | Partial — runtime raw-client bypasses fixed in P0-04 |
 | R-002 | Critical | Medium | إرسال/دفع حقيقي باستخدام إعداد غير معتمد أو بيانات المطور | Hard deny لمسارات SaaS؛ إزالة الأرقام الثابتة؛ Mock by default للتكاملات الباقية | Mitigated for P0-02; provider activation owner-gated |
 | R-003 | High | High | تعارض الأدوار بين Prisma والواجهة يسمح أو يمنع عمليات خطأ | Role registry موحدة؛ server-side guards؛ negative tests | Open |
 | R-004 | High | High | غياب Branch/Team scopes يجعل العزل الداخلي غير مكتمل | Org model additive؛ ownership rules؛ migration plan | Open |
@@ -36,6 +36,12 @@
 - `FIXED`: Operations shell لا يحول المستخدم المعطل إلى `READ_ONLY` تلقائيًا.
 - `VERIFIED`: 97/97 WhatsApp tests، TypeScript، وProduction Build بلا Provider calls.
 - `PARTIAL`: R-009 يبقى مفتوحًا لبقية Server Actions الحساسة خارج نطاق WhatsApp.
+
+## تحديث P0-04 — 2026-07-19
+- `FIXED`: ثلاثة raw-client bypasses خارج allowlist في notifications وWhatsApp runtime.
+- `VERIFIED`: فحص المصدر يمنع imports غير المصرح بها، و58/58 اختبارًا مستهدفًا ناجحًا.
+- `VERIFIED`: 185/185 اختبار عزل/إشعارات/WhatsApp موسع، TypeScript، وProduction Build.
+- `PARTIAL`: R-001 يبقى مفتوحًا لخطة الانتقال والنسخ/الاستعادة؛ لم يحذف `tenantId` ولم تحدث Migration.
 ## حدود القبول
 - أي خطر Critical مفتوح يمنع Go-Live للتدفق المتأثر.
 - المخاطر القانونية/التجارية والتراخيص يقررها المالك ولا يغلقها المطور.

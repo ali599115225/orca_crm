@@ -206,5 +206,32 @@ describe("R01 auth bootstrap boundary", () => {
       );
       expect(authBootstrapEntries.length).toBeGreaterThanOrEqual(1);
     });
+
+    it("encapsulates 360dialog pre-context lookup as a narrow ingress capability", () => {
+      const boundaryPath = path.join(process.cwd(), "lib", "system-prisma-boundary.ts");
+      const routePath = path.join(
+        process.cwd(),
+        "app", "api", "whatsapp", "webhook", "360dialog", "[webhookToken]", "route.ts",
+      );
+      const boundary = fs.readFileSync(boundaryPath, "utf8");
+      const route = fs.readFileSync(routePath, "utf8");
+      const capabilityStart = boundary.indexOf(
+        "export async function webhookFindDialog360ConnectionByToken",
+      );
+      const capabilityEnd = boundary.indexOf(
+        "\nexport async function",
+        capabilityStart + 1,
+      );
+      const capability = boundary.slice(capabilityStart, capabilityEnd);
+
+      expect(capabilityStart).toBeGreaterThanOrEqual(0);
+      expect(capability).toContain('provider: "DIALOG360"');
+      expect(capability).toContain('status: "CONNECTED"');
+      expect(capability).toContain('path: ["webhookToken"]');
+      expect(capability).toContain("equals: webhookToken");
+      expect(route).toContain("webhookFindDialog360ConnectionByToken");
+      expect(route).not.toMatch(/import\s+.*\brawPrisma\b/);
+      expect(route).toContain("runWithTenantContext");
+    });
   });
 });

@@ -1,21 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const rawPrismaMock = vi.hoisted(() => ({
-  revenueProviderConnection: {
-    findFirst: vi.fn(),
-  },
-  whatsAppContact: {
-    upsert: vi.fn(),
-  },
-  whatsAppMessage: {
-    findUnique: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
+const { connectionLookupMock, prismaMock } = vi.hoisted(() => ({
+  connectionLookupMock: vi.fn(),
+  prismaMock: {
+    whatsAppContact: {
+      upsert: vi.fn(),
+    },
+    whatsAppMessage: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
   },
 }));
 
 vi.mock("@/lib/prisma", () => ({
-  rawPrisma: rawPrismaMock,
+  prisma: prismaMock,
+}));
+
+vi.mock("@/lib/system-prisma-boundary", () => ({
+  webhookFindDialog360ConnectionByToken: (token: string) =>
+    connectionLookupMock(token),
 }));
 
 vi.mock("@/lib/privacy-mask", () => ({
@@ -45,19 +50,19 @@ import { POST } from "@/app/api/whatsapp/webhook/360dialog/[webhookToken]/route"
 
 describe("360dialog WhatsApp webhook", () => {
   beforeEach(() => {
-    rawPrismaMock.revenueProviderConnection.findFirst.mockResolvedValue({
+    connectionLookupMock.mockResolvedValue({
       id: "connection-1",
       tenantId: "tenant-1",
       encryptedCredentials: "encrypted",
     });
-    rawPrismaMock.whatsAppContact.upsert.mockResolvedValue({
+    prismaMock.whatsAppContact.upsert.mockResolvedValue({
       id: "contact-1",
     });
-    rawPrismaMock.whatsAppMessage.findUnique.mockResolvedValue(null);
-    rawPrismaMock.whatsAppMessage.create.mockResolvedValue({
+    prismaMock.whatsAppMessage.findUnique.mockResolvedValue(null);
+    prismaMock.whatsAppMessage.create.mockResolvedValue({
       id: "message-1",
     });
-    rawPrismaMock.whatsAppMessage.update.mockResolvedValue({
+    prismaMock.whatsAppMessage.update.mockResolvedValue({
       id: "message-1",
     });
   });
@@ -97,21 +102,10 @@ describe("360dialog WhatsApp webhook", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(
-      rawPrismaMock.revenueProviderConnection.findFirst,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          provider: "DIALOG360",
-          status: "CONNECTED",
-          metadata: {
-            path: ["webhookToken"],
-            equals: "abcdefghijklmno123456789",
-          },
-        },
-      }),
+    expect(connectionLookupMock).toHaveBeenCalledWith(
+      "abcdefghijklmno123456789",
     );
-    expect(rawPrismaMock.whatsAppContact.upsert).toHaveBeenCalledWith(
+    expect(prismaMock.whatsAppContact.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
           tenantId: "tenant-1",
@@ -119,7 +113,7 @@ describe("360dialog WhatsApp webhook", () => {
         }),
       }),
     );
-    expect(rawPrismaMock.whatsAppMessage.create).toHaveBeenCalledWith(
+    expect(prismaMock.whatsAppMessage.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           tenantId: "tenant-1",
@@ -148,6 +142,6 @@ describe("360dialog WhatsApp webhook", () => {
     });
 
     expect(response.status).toBe(401);
-    expect(rawPrismaMock.whatsAppMessage.create).not.toHaveBeenCalled();
+    expect(prismaMock.whatsAppMessage.create).not.toHaveBeenCalled();
   });
 });

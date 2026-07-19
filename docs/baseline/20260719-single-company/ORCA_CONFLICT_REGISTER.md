@@ -41,6 +41,7 @@
 | C-027 | P1 | Migration workflow | Historical baseline naming and drift | manual migration workflow + baseline directory | الـbaseline التاريخي ليس Migration لاحقة لإصلاح Production | PROCESS GAP | Migration additive باسم صالح مع confirmation/status/backup |
 | C-028 | P1 | Documentation | Archived SaaS/multi-tenant claims | local corpus scan | آلاف المطابقات عبر 185 ملفًا | DOCUMENT CONFLICT | لا حذف تاريخي؛ وسم superseded وإنشاء source-of-truth index |
 | C-029 | P0 | Billing Cron | Active scheduled SaaS billing and outbound alerts | `vercel.json`, `app/api/cron/billing/route.ts` | Cron runs daily, suspends expired tenants, renews agent leases, and may send SMS to a fixed number if credentials later exist | OUT OF SCOPE / PROHIBITED EXTERNAL EFFECT | Disable/short-circuit in single-company mode before any provider credential is configured; add no-provider-call tests |
+| C-030 | P0 | Tenant isolation | Runtime modules bypass scoped Prisma outside system allowlist | 360dialog webhook، connection resolver، operational notifications | raw client usage bypasses central fail-closed tenant enforcement | SECURITY GAP | narrow pre-context webhook capability؛ scoped Prisma after context؛ boundary test |
 ## نتائج المسح النصي للحزمة
 - تمت مراجعة 343 مصدرًا نصيًا من حزمة الأدلة المحلية.
 - سجل المسح الخام احتفظ بـ4600 مطابقة مصنفة.
@@ -73,3 +74,10 @@
 | C-026 | BLOCKED EXTERNALLY | Push/Preview ممكنان؛ GitHub App/CLI لا يملكان تفويض إنشاء PR |
 
 لم يقبل أي Server Action في ملفات WhatsApp `tenantId` من المستدعي، ولم يحدث Migration أو Production write أو provider call.
+
+## تحديث تنفيذ P0-04 — 2026-07-19
+| البنود | الحالة | الدليل التنفيذي |
+|---|---|---|
+| C-030 | FIXED | لا imports غير allowlisted لـ`rawPrisma`؛ webhook discovery capability ضيقة؛ كل post-ingress work داخل tenant context |
+
+Operational notifications وconnection resolver أصبحا scoped، ونجح فحص boundary المستهدف دون اتصال خارجي أو Production write.

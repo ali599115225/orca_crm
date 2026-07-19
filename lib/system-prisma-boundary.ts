@@ -430,6 +430,37 @@ export async function authBootstrapFindTenantActive(
   }
 }
 
+/**
+ * Resolves the company scope for signed 360dialog webhook ingress before an
+ * AsyncLocalStorage tenant context exists. The ingress route must validate the
+ * encrypted webhook secret before processing any payload inside that context.
+ */
+export async function webhookFindDialog360ConnectionByToken(
+  webhookToken: string,
+): Promise<{
+  id: string;
+  tenantId: string;
+  encryptedCredentials: string;
+} | null> {
+  if (!webhookToken) return null;
+
+  return getRawPrisma().revenueProviderConnection.findFirst({
+    where: {
+      provider: "DIALOG360",
+      status: "CONNECTED",
+      metadata: {
+        path: ["webhookToken"],
+        equals: webhookToken,
+      },
+    } as Prisma.RevenueProviderConnectionWhereInput,
+    select: {
+      id: true,
+      tenantId: true,
+      encryptedCredentials: true,
+    },
+  });
+}
+
 export async function authBootstrapFindUserByEmail(email: string) {
   if (!email) return null;
 

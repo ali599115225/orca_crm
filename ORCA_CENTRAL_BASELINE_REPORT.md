@@ -170,3 +170,16 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - Production Build: `npm run build` = `PASS`؛ 102/102 صفحة static generation.
 - فحص Operations/Auth/RBAC الإضافي: `30 PASS` و`1 PRE-EXISTING FAIL`؛ الفشل يرصد imports قديمة لـ`rawPrisma` في ثلاثة ملفات غير معدلة بهذه الشريحة، وسيعالج ضمن tenant-isolation دون توسيع P0-03.
 - Pull Request ما زال `BLOCKED BY EXTERNAL GITHUB AUTHORIZATION`؛ لا تغيير أو التفاف إلى `main`.
+- Commit: `a30af5b2754511025562a9f08ec0315eb7f62cdf` pushed إلى فرع التنفيذ.
+- Vercel Preview: `READY` — `https://orca-onf7rp2y8-ali-s-projectsorcacrm.vercel.app` (`dpl_99MV5skew4WkAtPk5zKEtsjpj7wA`).
+
+## 14. تنفيذ P0-04 — System Prisma boundary closure
+**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+
+- أزيلت imports غير المسموحة لـ`rawPrisma` من operational notifications وWhatsApp connection resolver و360dialog webhook route.
+- أصبحت قراءات الإشعارات وحالتها وconnection resolution تستخدم Prisma المقيد داخل Company Scope موثق.
+- حُصر اكتشاف اتصال 360dialog قبل معرفة Company Scope في capability ضيقة داخل `system-prisma-boundary`، ثم تعالج كل رسائل وحالات webhook داخل `runWithTenantContext` وبـPrisma المقيد.
+- لا يزال webhook يتطلب token صالحًا وsecret مشفرًا ومقارنة constant-time قبل معالجة payload.
+- التحقق المستهدف: `58/58 PASS` ويشمل اختبار منع أي import غير allowlisted لـ`rawPrisma`؛ لم يُستدعَ webhook أو Provider حقيقي.
+- التحقق الموسع للعزل والإشعارات وWhatsApp: `185/185 PASS` عبر 27 ملفًا.
+- TypeScript: `PASS`، وProduction Build: `PASS` مع 102/102 صفحة static generation.

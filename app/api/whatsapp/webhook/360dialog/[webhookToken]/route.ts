@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rawPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { hashPhone } from "@/lib/privacy-mask";
 import { runWithTenantContext } from "@/lib/tenant-context";
+import { webhookFindDialog360ConnectionByToken } from "@/lib/system-prisma-boundary";
 import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { constantTimeEqual } from "@/lib/whatsapp/webhook-security";
 
@@ -132,22 +133,9 @@ export async function POST(
     );
   }
 
-  const connection =
-    await rawPrisma.revenueProviderConnection.findFirst({
-      where: {
-        provider: "DIALOG360",
-        status: "CONNECTED",
-        metadata: {
-          path: ["webhookToken"],
-          equals: normalizedToken,
-        },
-      } as any,
-      select: {
-        id: true,
-        tenantId: true,
-        encryptedCredentials: true,
-      },
-    });
+  const connection = await webhookFindDialog360ConnectionByToken(
+    normalizedToken,
+  );
 
   if (!connection) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
@@ -191,7 +179,7 @@ export async function POST(
         );
         const name = String(contact?.profile?.name || "").trim() || null;
 
-        await rawPrisma.whatsAppContact.upsert({
+        await prisma.whatsAppContact.upsert({
           where: {
             tenantId_phoneHash: {
               tenantId: connection.tenantId,
@@ -215,7 +203,7 @@ export async function POST(
         });
 
         const existing =
-          await rawPrisma.whatsAppMessage.findUnique({
+          await prisma.whatsAppMessage.findUnique({
             where: {
               tenantId_metaMessageId: {
                 tenantId: connection.tenantId,
@@ -226,7 +214,7 @@ export async function POST(
           });
 
         if (!existing) {
-          await rawPrisma.whatsAppMessage.create({
+          await prisma.whatsAppMessage.create({
             data: {
               tenantId: connection.tenantId,
               phone,
@@ -250,7 +238,7 @@ export async function POST(
         if (!providerMessageId || !status) continue;
 
         const message =
-          await rawPrisma.whatsAppMessage.findUnique({
+          await prisma.whatsAppMessage.findUnique({
             where: {
               tenantId_metaMessageId: {
                 tenantId: connection.tenantId,
@@ -262,7 +250,7 @@ export async function POST(
 
         if (!message) continue;
 
-        await rawPrisma.whatsAppMessage.update({
+        await prisma.whatsAppMessage.update({
           where: { id: message.id },
           data: statusUpdate(status, eventDate(statusEvent.timestamp)),
         });

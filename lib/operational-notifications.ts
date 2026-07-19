@@ -1,6 +1,6 @@
 import "server-only";
 
-import { rawPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export type OperationalNotificationSource =
   | "WHATSAPP"
@@ -88,7 +88,7 @@ export async function listOperationalNotifications(
   session: NotificationSession,
   limit = 30,
 ): Promise<OperationalNotification[]> {
-  const db = rawPrisma as any;
+  const db = prisma as any;
   const now = new Date();
   const since = new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const dueUntil = new Date(
@@ -448,7 +448,7 @@ export async function markOperationalNotificationRead(
     throw new Error("NOTIFICATION_NOT_FOUND");
   }
 
-  const db = rawPrisma as any;
+  const db = prisma as any;
   const existing = await db.auditLog.findFirst({
     where: {
       tenantId: session.tenantId,
@@ -484,7 +484,7 @@ export async function markAllOperationalNotificationsRead(
 
   if (!unreadIds.length) return 0;
 
-  const db = rawPrisma as any;
+  const db = prisma as any;
   await db.auditLog.createMany({
     data: unreadIds.map((id) => ({
       tenantId: session.tenantId,

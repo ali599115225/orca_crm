@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, rawPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { decryptToken } from "./credential-service";
 
@@ -184,7 +184,7 @@ type Dialog360Runtime = {
 async function loadDialog360Connection(
   tenantId: string,
 ): Promise<Dialog360ConnectionRow | null> {
-  return rawPrisma.revenueProviderConnection.findUnique({
+  return prisma.revenueProviderConnection.findUnique({
     where: {
       tenantId_provider: {
         tenantId,

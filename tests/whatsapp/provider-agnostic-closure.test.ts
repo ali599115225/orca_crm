@@ -22,6 +22,7 @@ describe("WhatsApp provider-agnostic closure", () => {
   const webhook = read(
     "app/api/whatsapp/webhook/360dialog/[webhookToken]/route.ts",
   );
+  const systemBoundary = read("lib/system-prisma-boundary.ts");
   const sendRoute = read("app/api/v1/whatsapp/send/route.ts");
   const threadsRoute = read("app/api/v1/whatsapp/threads/route.ts");
 
@@ -66,9 +67,10 @@ describe("WhatsApp provider-agnostic closure", () => {
   });
 
   it("derives webhook tenancy from the encrypted connection rather than request data", () => {
-    expect(webhook).toContain('provider: "DIALOG360"');
+    expect(systemBoundary).toContain('provider: "DIALOG360"');
     expect(webhook).toContain("connection.tenantId");
-    expect(webhook).toContain('path: ["webhookToken"]');
+    expect(systemBoundary).toContain('path: ["webhookToken"]');
+    expect(webhook).toContain("webhookFindDialog360ConnectionByToken");
     expect(settings).toContain("connection.webhookToken");
     expect(settings).not.toContain(
       "/api/whatsapp/webhook/360dialog/${connection.id}",
