@@ -46,7 +46,11 @@ export async function checkAndSuspendExpiredTenantsInternal() {
 // ── Sadad Agent (from app/actions/sanadAgent.ts) ─────────────────────────────
 
 /** سند — مراقبة وجدولة تحصيل الأقساط العقارية */
-export async function runInstallmentAgentInternal() {
+export async function runInstallmentAgentInternal(tenantId: string) {
+  if (!tenantId) {
+    return { success: false as const, error: "COMPANY_SCOPE_REQUIRED" };
+  }
+
   try {
     const today = new Date();
     const threeDaysFromNow = new Date(today);
@@ -54,6 +58,7 @@ export async function runInstallmentAgentInternal() {
 
     const upcomingInstallments = await prisma.installment.findMany({
       where: {
+        tenantId,
         paymentStatus: "Pending",
         dueDate: { gte: today, lte: threeDaysFromNow },
       },
@@ -77,13 +82,6 @@ export async function runInstallmentAgentInternal() {
     }
 
     for (const inst of upcomingInstallments) {
-      const tenantId = inst.contract?.unit?.project?.tenantId;
-      const companyName = "المنشأة العقارية";
-      if (!tenantId) continue;
-
-      const paymentUrl = `https://orca.az-ez.pro/contract/${inst.contractId}?payment=installment`;
-
-      const message = `🔔 تنبيه أوركا: مرحباً بك في ${companyName}\nنود تذكيرك بأن هناك قسطاً يستحق بتاريخ ${inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('ar-SA') : "قريباً"}.\nللسداد: ${paymentUrl}`;
       console.log("[SANAD] Installment reminder checked");
     }
 

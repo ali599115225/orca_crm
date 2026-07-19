@@ -461,6 +461,31 @@ export async function webhookFindDialog360ConnectionByToken(
   });
 }
 
+export type SingleCompanyScopeResolution =
+  | { status: "READY"; tenantId: string }
+  | { status: "NOT_FOUND" | "AMBIGUOUS"; tenantId: null };
+
+/**
+ * Resolves the one active company scope used by trusted scheduled work.
+ * It fails closed when legacy data contains zero or multiple active tenants.
+ */
+export async function cronResolveSingleActiveCompanyScope(): Promise<SingleCompanyScopeResolution> {
+  const companies = await getRawPrisma().tenant.findMany({
+    where: { isActive: true },
+    orderBy: { id: "asc" },
+    take: 2,
+    select: { id: true },
+  });
+
+  if (companies.length === 0) {
+    return { status: "NOT_FOUND", tenantId: null };
+  }
+  if (companies.length !== 1) {
+    return { status: "AMBIGUOUS", tenantId: null };
+  }
+  return { status: "READY", tenantId: companies[0].id };
+}
+
 export async function authBootstrapFindUserByEmail(email: string) {
   if (!email) return null;
 

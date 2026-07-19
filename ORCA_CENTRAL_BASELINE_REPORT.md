@@ -183,3 +183,17 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - التحقق المستهدف: `58/58 PASS` ويشمل اختبار منع أي import غير allowlisted لـ`rawPrisma`؛ لم يُستدعَ webhook أو Provider حقيقي.
 - التحقق الموسع للعزل والإشعارات وWhatsApp: `185/185 PASS` عبر 27 ملفًا.
 - TypeScript: `PASS`، وProduction Build: `PASS` مع 102/102 صفحة static generation.
+- Commit: `b63e8b288d69e4d30d2d71d2652654c3575e735c` pushed إلى فرع التنفيذ.
+- Vercel Preview: `READY` — `https://orca-76wqptmtd-ali-s-projectsorcacrm.vercel.app` (`dpl_4NNSu8vghVfXDKE4yM2xXWvibE8R`).
+
+## 15. تنفيذ P0-05 — Scheduled work company scope and owner gates
+**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+
+- أضيف resolver موثوق للعمل المجدول يعيد Company Scope فقط عند وجود منشأة فعالة واحدة، ويفشل مغلقًا عند الصفر أو التعدد في بيانات Legacy.
+- Cron الأقساط يدخل `runWithTenantContext` ويمرر Company Scope موثوقًا إلى العامل؛ الاستعلام يرشح `tenantId` صراحة ولا يبني رسالة أو رابط إرسال.
+- Cron ZATCA أصبح `ZATCA_NOT_CONFIGURED` افتراضيًا قبل قاعدة البيانات أو أي submission، ولا يعمل إلا خلف `ORCA_ZATCA_CRON_ENABLED=true` ثم Company Scope وحيد موثوق.
+- Sentinel أزيلت منه فحوص تعليق الشركات وحدود باقات SaaS، وأزيل restart التلقائي لـConnection Pool؛ البريد لا يرسل إلا خلف `ORCA_SENTINEL_EMAIL_ALERTS_ENABLED=true`.
+- `sentinel_heartbeats` المفقود في Production لم يُنشأ ولم تُنفذ Migration؛ يبقى C-017 خلف بوابة Migration/backup مستقلة.
+- التحقق المستهدف: `71/71 PASS` عبر Cron/Sentinel/Company Scope tests، دون Cron فعلي أو ZATCA/email/provider call.
+- التحقق الموسع لكل Cron ذات الصلة والعزل/heartbeat: `86/86 PASS` عبر 9 ملفات؛ TypeScript `PASS`.
+- Production Build: `PASS` مع 102/102 صفحة static generation؛ لا Sentry upload لغياب auth token.

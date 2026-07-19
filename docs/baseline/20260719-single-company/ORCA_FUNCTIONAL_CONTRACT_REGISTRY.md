@@ -12,7 +12,7 @@
 | FC-005 | Projects & Properties | Company inventory/projects | Implemented across work branches; not integrated | Maps/storage NOT_CONFIGURED | Verify after branch integration |
 | FC-006 | Tours & Offers | Internal workflow | Implemented in specialty branches; preview failed globally | WhatsApp/email notifications optional | Verify; no real sends |
 | FC-007 | Contracts & Payment Plans | Company business transactions | Implemented; authorization and tenant context require ongoing proof | Payment provider NOT_CONFIGURED | No real payment |
-| FC-008 | Installments & Invoices | Internal finance operations | Runtime cron failure due context | Payment/SMS/email adapters | P0 cron fix; mock only |
+| FC-008 | Installments & Invoices | Internal finance operations | Cron company scope fixed؛ reminder scan only؛ no send | Payment/SMS/email adapters | P0-05 fixed; mock only |
 | FC-009 | Rental Operations | Internal rental management | Implemented partially; no DB rental role | Ejar NOT PROVEN | P1 RBAC |
 | FC-010 | Tasks & Maintenance | Internal operations | Implemented | Notification adapter optional | Verify |
 | FC-011 | Documents | Internal metadata/files | Implemented model; external storage not proven | Storage NOT_CONFIGURED | Adapter readiness only |
@@ -21,8 +21,8 @@
 | FC-014 | SMS | Company-owned future provider | Helpers remain Integration-Ready؛ hardcoded Runtime recipients removed from P0-02 paths | NOT_CONFIGURED | DEFERRED WITH OWNER GATE؛ no real sends |
 | FC-015 | Payment Gateway | Company-owned future provider | SaaS initiation/callback blocked؛ invoice/installment classification preserved | NOT_CONFIGURED | FIXED for P0-02؛ keep business-payment adapters |
 | FC-016 | Advertising | Company-owned future provider | Campaign/provider models present | NOT_CONFIGURED / no license proven | Mock only |
-| FC-017 | ZATCA/Ejar/Government | Future company responsibility | Models/jobs/docs exist; license/readiness not proven | NOT CONFIGURED | No compliance claim |
-| FC-018 | Agents & Sentinel | Internal automation/monitoring | Schema drift and cron failures | AI providers NOT_CONFIGURED | P0 operations |
+| FC-017 | ZATCA/Ejar/Government | Future company responsibility | Cron fail-closed behind explicit owner gate؛ license/readiness not proven | NOT CONFIGURED | No compliance claim / no real submission |
+| FC-018 | Agents & Sentinel | Internal automation/monitoring | Safe DB health check؛ SaaS checks/pool restart removed؛ heartbeat schema drift remains | Email owner-gated | Partial؛ Migration gate remains |
 | FC-019 | Tenant Registration & SaaS Billing | No valid business contract | Runtime disabled؛ register 404؛ billing schedule removed؛ actions/services no-op | No provider call | OUT OF SCOPE / FIXED in P0-02 |
 | FC-020 | Dashboard & Reporting | Internal management | Production available; work-branch build blocked | None | Verify after build |
 ## حالات التحقق
@@ -46,3 +46,9 @@
 - `VERIFIED`: FC-013 webhook persistence وconnection resolution يعملان خلف tenant context؛ notification service يستخدم scoped Prisma.
 - `FIXED`: pre-context 360dialog discovery محصور في capability ضيقة بلا generic raw client export.
 - `DEFERRED WITH OWNER GATE`: اختبار webhook أو مزود WhatsApp فعلي.
+
+## دليل P0-05
+- `VERIFIED`: Cron company scope/fail-closed behavior عبر 71/71 اختبارًا مستهدفًا.
+- `FIXED`: FC-008 scheduled scan context؛ FC-017 default NOT_CONFIGURED؛ Sentinel destructive/legacy behavior removed.
+- `DEFERRED WITH OWNER GATE`: تفعيل ZATCA أو Sentinel email.
+- `DEFERRED WITH MIGRATION GATE`: Sentinel heartbeat schema drift.

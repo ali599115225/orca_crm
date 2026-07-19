@@ -69,6 +69,7 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
     vi.stubEnv("CRON_SECRET", "test-cron-secret");
     consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.rateLimit.mockResolvedValue({ allowed: true });
+    mocks.queryRaw.mockResolvedValue([{ ok: 1 }]);
     mocks.sendAdminEmailAlert.mockResolvedValue(undefined);
     mocks.recordHeartbeat.mockResolvedValue({ success: true, serviceId: "CRON_SENTINEL", status: "HEALTHY" });
     mocks.reconcileStaleHeartbeats.mockResolvedValue({
@@ -83,22 +84,35 @@ describe("P2-B2c Sentinel cron heartbeat integration", () => {
     vi.unstubAllEnvs();
   });
 
-  it("does not send CRON_SENTINEL heartbeat when a core sentinel check fails", async () => {
-    mocks.queryRaw.mockResolvedValue([{ ok: 1 }]);
-    mocks.tenantCount.mockRejectedValue(new Error("tenant check failed"));
-    mocks.usageMeterCount.mockResolvedValue(0);
+  it("fails safely without pool restart, email, or heartbeat when the database check fails", async () => {
+    mocks.queryRaw.mockRejectedValue(new Error("database unavailable"));
 
     const response = await sentinelCron(cronRequest("/api/cron/sentinel"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.report.anomalies).toContain("❌ فشل فحص الشركات المعلقة ذات المشاريع النشطة.");
+    expect(body.report.dbStatus).toBe("ERROR");
+    expect(body.report.selfHealingApplied).toBe(false);
     expect(mocks.recordHeartbeat).not.toHaveBeenCalled();
+    expect(mocks.disconnect).not.toHaveBeenCalled();
+    expect(mocks.connect).not.toHaveBeenCalled();
+    expect(mocks.sendAdminEmailAlert).not.toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalledWith(
-      "Sentinel cron suspended tenant project check failed:",
+      "Sentinel cron database health check failed:",
       expect.any(Error),
     );
+  });
+
+  it("sends the report only when the explicit owner-controlled email gate is enabled", async () => {
+    const defaultResponse = await sentinelCron(cronRequest("/api/cron/sentinel"));
+    expect(defaultResponse.status).toBe(200);
+    expect(mocks.sendAdminEmailAlert).not.toHaveBeenCalled();
+
+    vi.stubEnv("ORCA_SENTINEL_EMAIL_ALERTS_ENABLED", "true");
+    const enabledResponse = await sentinelCron(cronRequest("/api/cron/sentinel"));
+    expect(enabledResponse.status).toBe(200);
+    expect(mocks.sendAdminEmailAlert).toHaveBeenCalledTimes(1);
   });
 
   it("does not send CRON_RETENTION heartbeat when a retention operation fails", async () => {

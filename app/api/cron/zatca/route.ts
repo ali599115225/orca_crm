@@ -8,6 +8,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
 import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
+import { runWithTenantContext } from "@/lib/tenant-context";
+import { cronResolveSingleActiveCompanyScope } from "@/lib/system-prisma-boundary";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -36,11 +38,32 @@ export async function GET(request: NextRequest) {
     }, { status: 429 });
   }
 
-  try {
+  if (process.env.ORCA_ZATCA_CRON_ENABLED !== "true") {
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      code: "ZATCA_NOT_CONFIGURED",
+      processed: 0,
+    });
+  }
+
+  const companyScope = await cronResolveSingleActiveCompanyScope();
+  if (companyScope.status !== "READY") {
+    return NextResponse.json(
+      { success: false, code: `COMPANY_SCOPE_${companyScope.status}` },
+      { status: 503 },
+    );
+  }
+
+  return runWithTenantContext(
+    { tenantId: companyScope.tenantId },
+    async () => {
+    try {
     const now = new Date();
 
     const pendingItems = await prisma.zatcaQueue.findMany({
       where: {
+        tenantId: companyScope.tenantId,
         status: { in: ['PENDING', 'RETRYING'] },
         OR: [
           { nextRetryAt: null },
@@ -148,7 +171,10 @@ export async function GET(request: NextRequest) {
     }
 
     const pendingTotal = await prisma.zatcaQueue.count({
-      where: { status: { in: ['PENDING', 'RETRYING'] } },
+      where: {
+        tenantId: companyScope.tenantId,
+        status: { in: ['PENDING', 'RETRYING'] },
+      },
     });
 
     try {
@@ -169,4 +195,6 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/cron/zatca failed", error, 500);
   }
+    },
+  );
 }

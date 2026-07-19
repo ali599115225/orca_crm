@@ -81,3 +81,12 @@
 | C-030 | FIXED | لا imports غير allowlisted لـ`rawPrisma`؛ webhook discovery capability ضيقة؛ كل post-ingress work داخل tenant context |
 
 Operational notifications وconnection resolver أصبحا scoped، ونجح فحص boundary المستهدف دون اتصال خارجي أو Production write.
+
+## تحديث تنفيذ P0-05 — 2026-07-19
+| البنود | الحالة | الدليل التنفيذي |
+|---|---|---|
+| C-017 | DEFERRED WITH MIGRATION GATE | جدول heartbeat المفقود لم يُنشأ؛ يلزم status/backup/additive migration وموافقة مستقلة |
+| C-018 | FIXED | Cron الأقساط يحل Company Scope وحيدًا، يدخل tenant context، ويرشح `tenantId`؛ لا إرسال |
+| C-019 | FIXED FOR NON-MIGRATION RUNTIME | ZATCA fail-closed NOT_CONFIGURED + owner gate؛ Sentinel بلا SaaS queries أو pool restart؛ heartbeat schema drift مؤجل في C-017 |
+
+كل external execution افتراضيًا مغلق، وأي بيانات Legacy متعددة المنشآت تمنع العمل المجدول بدل التخمين.

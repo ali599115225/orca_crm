@@ -12,7 +12,7 @@
 | R-005 | High | High | بقايا SaaS تظهر تسجيل شركات وباقات وترقيات خارج النطاق | `/register` 404؛ actions محظورة؛ billing UI/query removed؛ data frozen | Fixed in P0-02 |
 | R-006 | High | High | فشل Preview لكل فروع العمل يمنع إثبات التجميع | إصلاح TypeScript ثم tsc/build/preview | Open |
 | R-007 | High | High | Schema drift لجدول sentinel_heartbeats يعطل Cron | Migration additive بعد backup/status؛ لا تعديل baseline | Blocked by migration gate |
-| R-008 | High | High | Cron jobs تفشل بسبب غياب Company Scope context | System boundary واختبارات tenant context | Open |
+| R-008 | High | High | Cron jobs تفشل بسبب غياب Company Scope context | Single-company resolver؛ tenant context؛ fail-closed external gates | Fixed for non-migration Cron paths in P0-05 |
 | R-009 | High | Medium | جلسة صالحة لمستخدم معطل تستمر في بعض Server Actions | إعادة تحقق DB على boundaries الحساسة | Partial — WhatsApp + operations shell fixed in P0-03 |
 | R-010 | High | Medium | ادعاء ترخيص/امتثال غير مثبت يعرض الشركة لمخاطر قانونية | NO LICENSE ASSUMED؛ إخفاء claims؛ owner/legal approval | Owner decision |
 | R-011 | High | Medium | أسرار Provider قد تحفظ أو تسجل بشكل غير آمن | Secret vault/env؛ redaction؛ no values in logs/reports | Open |
@@ -42,6 +42,13 @@
 - `VERIFIED`: فحص المصدر يمنع imports غير المصرح بها، و58/58 اختبارًا مستهدفًا ناجحًا.
 - `VERIFIED`: 185/185 اختبار عزل/إشعارات/WhatsApp موسع، TypeScript، وProduction Build.
 - `PARTIAL`: R-001 يبقى مفتوحًا لخطة الانتقال والنسخ/الاستعادة؛ لم يحذف `tenantId` ولم تحدث Migration.
+
+## تحديث P0-05 — 2026-07-19
+- `FIXED`: Cron الأقساط وZATCA لا ينفذان tenant-scoped work خارج Company Scope موثوق.
+- `FIXED`: Sentinel لا يفصل Connection Pool تلقائيًا ولا ينفذ فحوص SaaS legacy.
+- `OWNER-GATED`: ZATCA submissions وSentinel email alerts معطلان افتراضيًا ببوابات صريحة.
+- `DEFERRED WITH MIGRATION GATE`: R-007/C-017 لجدول `sentinel_heartbeats`؛ لا schema change في هذه الخطة.
+- `VERIFIED`: 86/86 اختبار Cron/tenant scope/heartbeat موسع وTypeScript ناجحان.
 ## حدود القبول
 - أي خطر Critical مفتوح يمنع Go-Live للتدفق المتأثر.
 - المخاطر القانونية/التجارية والتراخيص يقررها المالك ولا يغلقها المطور.

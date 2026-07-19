@@ -56,73 +56,9 @@ export async function GET(request: NextRequest) {
     report.anomalies.push(`🚨 فشل قاعدة البيانات: ${dbError.message}`);
     console.error("Sentinel cron database health check failed:", dbError);
 
-    // ===================================================
-    // 2. Self-Healing: محاولة الإصلاح الذاتي
-    // ===================================================
-    report.selfHealingApplied = true;
     report.recommendations.push(
-      "🔧 محاولة إصلاح: إعادة تهيئة Connection Pool."
+      "مراجعة اتصال قاعدة البيانات يدويًا؛ لا يعيد Sentinel تشغيل Connection Pool تلقائيًا."
     );
-
-    try {
-      // قطع جميع الاتصالات وإعادة الاتصال
-      await prisma.$disconnect();
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      await prisma.$connect();
-      await prisma.$queryRaw`SELECT 1`;
-
-      report.anomalies.push("✅ Self-Healing نجح: استُعيد الاتصال بقاعدة البيانات.");
-      report.selfHealingApplied = true;
-    } catch (retryError: any) {
-      report.anomalies.push(`❌ فشل الإصلاح الذاتي: ${retryError.message}`);
-      coreTaskFailed = true;
-      console.error("Sentinel cron database self-healing failed:", retryError);
-    }
-  }
-
-  // ===================================================
-  // 4. فحص الشركات المعلقة التي لديها مشاريع نشطة
-  // ===================================================
-  try {
-    const suspendedWithProjects = await prisma.tenant.count({
-      where: {
-        isActive: false,
-        projects: { some: {} },
-      },
-    });
-
-    if (suspendedWithProjects > 0) {
-      report.anomalies.push(
-        `⚠️ ${suspendedWithProjects} شركة معلقة لديها مشاريع عقارية نشطة.`
-      );
-      report.recommendations.push("مراجعة الشركات المعلقة وإشعار مديريها بالتجديد.");
-    }
-  } catch (error) {
-    coreTaskFailed = true;
-    report.anomalies.push("❌ فشل فحص الشركات المعلقة ذات المشاريع النشطة.");
-    console.error("Sentinel cron suspended tenant project check failed:", error);
-  }
-
-  // ===================================================
-  // 5. فحص عدادات الاستخدام المنتهية
-  // ===================================================
-  try {
-    const exhaustedMeters = await prisma.usageMeter.count({
-      where: {
-        usageValue: { gte: prisma.usageMeter.fields.limitValue },
-      },
-    });
-
-    if (exhaustedMeters > 0) {
-      report.anomalies.push(
-        `📊 ${exhaustedMeters} مقعد وكيل بلغ الحد الأقصى من الاستخدام.`
-      );
-      report.recommendations.push("اقتراح ترقية باقة هؤلاء المستخدمين.");
-    }
-  } catch (error) {
-    coreTaskFailed = true;
-    report.anomalies.push("❌ فشل فحص عدادات الاستخدام المنتهية.");
-    console.error("Sentinel cron exhausted usage meter check failed:", error);
   }
 
   // إذا لا توجد مشاكل
@@ -156,13 +92,15 @@ export async function GET(request: NextRequest) {
     </div>
   `;
 
-  try {
-    await sendAdminEmailAlert(
-      `${hasCritical ? "🚨 حرج" : "🔍 دوري"}: تقرير ساهر - ${report.dbStatus}`,
-      emailHtml
-    );
-  } catch (error) {
-    console.error("Sentinel cron report email failed:", error);
+  if (process.env.ORCA_SENTINEL_EMAIL_ALERTS_ENABLED === "true") {
+    try {
+      await sendAdminEmailAlert(
+        `${hasCritical ? "🚨 حرج" : "🔍 دوري"}: تقرير ساهر - ${report.dbStatus}`,
+        emailHtml
+      );
+    } catch (error) {
+      console.error("Sentinel cron report email failed:", error);
+    }
   }
 
   if (!coreTaskFailed) {

@@ -7,6 +7,8 @@ import { timingSafeEqual } from "crypto";
 import { runInstallmentAgentInternal } from "@/lib/server/internal";
 import { rateLimit } from "@/lib/rate-limit";
 import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
+import { runWithTenantContext } from "@/lib/tenant-context";
+import { cronResolveSingleActiveCompanyScope } from "@/lib/system-prisma-boundary";
 
 function isAuthorizedCronRequest(authHeader: string | null, secret: string): boolean {
   if (!authHeader?.startsWith("Bearer ")) return false;
@@ -41,7 +43,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runInstallmentAgentInternal();
+    const companyScope = await cronResolveSingleActiveCompanyScope();
+    if (companyScope.status !== "READY") {
+      return NextResponse.json(
+        { ok: false, code: `COMPANY_SCOPE_${companyScope.status}` },
+        { status: 503 },
+      );
+    }
+
+    const result = await runWithTenantContext(
+      { tenantId: companyScope.tenantId },
+      () => runInstallmentAgentInternal(companyScope.tenantId),
+    );
     if (result.success) {
       try {
         const heartbeat = await recordHeartbeat({ serviceId: "CRON_SANAD_INSTALLMENTS" });

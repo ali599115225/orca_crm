@@ -233,5 +233,16 @@ describe("R01 auth bootstrap boundary", () => {
       expect(route).not.toMatch(/import\s+.*\brawPrisma\b/);
       expect(route).toContain("runWithTenantContext");
     });
+
+    it("resolves scheduled work only when exactly one active company exists", () => {
+      const boundary = fs.readFileSync(
+        path.join(process.cwd(), "lib", "system-prisma-boundary.ts"),
+        "utf8",
+      );
+      expect(boundary).toContain("cronResolveSingleActiveCompanyScope");
+      expect(boundary).toContain("take: 2");
+      expect(boundary).toContain('status: "AMBIGUOUS"');
+      expect(boundary).toContain('status: "NOT_FOUND"');
+    });
   });
 });

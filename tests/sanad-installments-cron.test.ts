@@ -7,14 +7,23 @@ vi.mock('server-only', () => ({}));
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const { rateLimitMock, runInstallmentAgentInternalMock } = vi.hoisted(() => ({
+const { rateLimitMock, runInstallmentAgentInternalMock, companyScopeMock } = vi.hoisted(() => ({
   rateLimitMock: vi.fn(),
   runInstallmentAgentInternalMock: vi.fn(),
+  companyScopeMock: vi.fn(),
 }));
 
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: rateLimitMock }));
 vi.mock('@/lib/server/internal', () => ({
   runInstallmentAgentInternal: runInstallmentAgentInternalMock,
+}));
+vi.mock('@/lib/system-prisma-boundary', () => ({
+  cronResolveSingleActiveCompanyScope: companyScopeMock,
+}));
+vi.mock('@/lib/tenant-context', () => ({
+  runWithTenantContext: vi.fn(
+    async (_context: unknown, operation: () => Promise<unknown>) => operation(),
+  ),
 }));
 
 import { GET } from '@/app/api/cron/installments/route';
@@ -39,6 +48,7 @@ describe('SANAD installments cron security', () => {
     vi.stubEnv('CRON_SECRET', 'cron-secret');
     rateLimitMock.mockResolvedValue({ allowed: true, remaining: 0, resetIn: 300000 });
     runInstallmentAgentInternalMock.mockResolvedValue({ success: true, processedCount: 1 });
+    companyScopeMock.mockResolvedValue({ status: 'READY', tenantId: 'company-1' });
   });
 
   afterEach(() => {
@@ -93,7 +103,7 @@ describe('SANAD installments cron security', () => {
     await expect(response.json()).resolves.toEqual({ ok: true, processed: 1, failed: 0 });
     expect(response.status).toBe(200);
     expect(runInstallmentAgentInternalMock).toHaveBeenCalledTimes(1);
-    expect(runInstallmentAgentInternalMock).toHaveBeenCalledWith();
+    expect(runInstallmentAgentInternalMock).toHaveBeenCalledWith('company-1');
   });
 
   it('allows only one internal execution across concurrent requests', async () => {
@@ -113,7 +123,21 @@ describe('SANAD installments cron security', () => {
   it('ignores tenantId query parameters and never forwards request data', async () => {
     await GET(cronRequest('/api/cron/installments?tenantId=tenant-from-client', 'cron-secret'));
 
-    expect(runInstallmentAgentInternalMock).toHaveBeenCalledWith();
+    expect(runInstallmentAgentInternalMock).toHaveBeenCalledWith('company-1');
+
+  });
+
+  it('fails closed when the single company scope is ambiguous', async () => {
+    companyScopeMock.mockResolvedValueOnce({ status: 'AMBIGUOUS', tenantId: null });
+
+    const response = await GET(cronRequest('/api/cron/installments', 'cron-secret'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: 'COMPANY_SCOPE_AMBIGUOUS',
+    });
+    expect(runInstallmentAgentInternalMock).not.toHaveBeenCalled();
   });
 
   it('has no server action wrapper or client caller for the internal SANAD function', () => {
