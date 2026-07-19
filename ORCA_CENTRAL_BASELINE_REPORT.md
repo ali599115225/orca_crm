@@ -201,7 +201,7 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - Vercel Preview: `READY` — `https://orca-k53tm5ukr-ali-s-projectsorcacrm.vercel.app` (`dpl_23morwHyAUBBWJf89u88R41fCxZQ`).
 
 ## 16. تنفيذ P0-06 — RBAC role-contract closure
-**الحالة:** `FIXED — LOCAL VERIFICATION COMPLETE`
+**الحالة:** `FIXED — VERIFIED AND PREVIEW READY`
 
 - وُحدت قوائم تفويض الخادم والواجهة مع أدوار Prisma الفعلية: `ADMIN`, `SALES_MANAGER`, `SALES_EMPLOYEE`, `MARKETING`, `READ_ONLY`.
 - أزيلت أسماء `owner`, `accountant`, و`rental_manager` من حدود التفويض؛ لم تكن قابلة للتخزين في Prisma ولم تعد تظهر كمسارات صلاحية موازية.
@@ -211,3 +211,5 @@ ContractWizard.tsx: emptyStateLabel does not exist; expected emptyLabel
 - التحقق الأمني الموسع: `234/234 PASS` عبر 11 ملفًا، ويشمل اختبارًا ساكنًا يمنع عودة الأدوار القديمة إلى الحدود المعروفة.
 - TypeScript: `PASS`، وProduction Build: `PASS` مع 102/102 صفحة static generation.
 - لم تحدث Migration أو Production write أو Provider call أو تغيير بيانات.
+- Commit: `70c538da99b262446bb0854cfda9440e3a65e422` pushed إلى فرع التنفيذ.
+- Vercel Preview: `READY` — `https://orca-me0amwp6w-ali-s-projectsorcacrm.vercel.app` (`dpl_8L16xN21gGWQfoh16zypLpStH1SS`).
