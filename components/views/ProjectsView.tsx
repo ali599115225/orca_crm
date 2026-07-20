@@ -1,6 +1,15 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Building2,
+  CheckCircle2,
+  FolderKanban,
+  LayoutGrid,
+  Plus,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
 import { getDetailedProjectsAction, getProjectUnitsAction } from '@/app/actions/projects';
@@ -44,16 +53,24 @@ const PAGE_SIZE = 10;
 
 const copy = {
   ar: {
+    breadcrumb: 'العمليات / المشاريع العقارية',
     pageTitle: 'المشاريع العقارية',
     pageSubtitle: 'إدارة مشاريع التطوير العقاري ومتابعة الوحدات والإنجاز.',
     createProject: 'إنشاء مشروع',
+    refresh: 'تحديث',
     totalProjects: 'إجمالي المشاريع',
     activeProjects: 'المشاريع النشطة',
     totalUnits: 'إجمالي الوحدات',
+    completedProjects: 'المشاريع المكتملة',
     soldUnits: 'المباعة',
+    kpiRegistryNote: 'سجل المشاريع الحالي',
+    kpiActiveNote: 'غير مكتملة ضمن السجل',
+    kpiUnitsNote: 'إجمالي الوحدات المرتبطة',
+    kpiCompletedNote: 'مشاريع بحالة مكتمل',
     searchPlaceholder: 'ابحث باسم المشروع أو الموقع أو الحالة',
     loadingProjects: 'جاري تحميل المشاريع العقارية...',
     noProjects: 'لا توجد مشاريع عقارية مطابقة للبحث الحالي.',
+    noProjectsYet: 'لا توجد مشاريع عقارية حتى الآن.',
     projectName: 'اسم المشروع',
     location: 'الموقع',
     status: 'الحالة',
@@ -112,16 +129,24 @@ const copy = {
     blocked: 'متوقفة',
   },
   en: {
+    breadcrumb: 'Operations / Real Estate Projects',
     pageTitle: 'Real Estate Projects',
     pageSubtitle: 'Manage development projects, units, and execution progress.',
     createProject: 'Create Project',
+    refresh: 'Refresh',
     totalProjects: 'Total Projects',
     activeProjects: 'Active Projects',
     totalUnits: 'Total Units',
+    completedProjects: 'Completed Projects',
     soldUnits: 'Sold',
+    kpiRegistryNote: 'Current project registry',
+    kpiActiveNote: 'Not completed in registry',
+    kpiUnitsNote: 'Linked units total',
+    kpiCompletedNote: 'Projects marked completed',
     searchPlaceholder: 'Search by project name, location, or status',
     loadingProjects: 'Loading real estate projects...',
     noProjects: 'No projects match the current search.',
+    noProjectsYet: 'No real estate projects yet.',
     projectName: 'Project Name',
     location: 'Location',
     status: 'Status',
@@ -412,7 +437,7 @@ function PaginationBar({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-4 py-3 text-sm text-[var(--nc-text-secondary)]">
+    <div className="orca-workspace-pagination flex items-center justify-between px-4 py-3 text-sm text-[var(--nc-text-secondary)]">
       <span>
         {labels.page} {formatNumber(page, isArabic)} {labels.of}{' '}
         {formatNumber(totalPages, isArabic)}
@@ -461,36 +486,24 @@ export default function ProjectsView() {
   const [unitPage, setUnitPage] = useState(1);
   const [bookingUnit, setBookingUnit] = useState<UnitItem | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadProjects = useCallback(async () => {
+    try {
+      setIsLoadingProjects(true);
 
-    async function loadProjects() {
-      try {
-        setIsLoadingProjects(true);
+      const result = await getDetailedProjectsAction();
+      const data = extractArray(result).map(normalizeProject);
 
-        const result = await getDetailedProjectsAction();
-        const data = extractArray(result).map(normalizeProject);
-
-        if (!mounted) return;
-
-        setProjects(data);
-      } catch {
-        if (!mounted) return;
-
-        setProjects([]);
-      } finally {
-        if (!mounted) return;
-
-        setIsLoadingProjects(false);
-      }
+      setProjects(data);
+    } catch {
+      setProjects([]);
+    } finally {
+      setIsLoadingProjects(false);
     }
-
-    void loadProjects();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -521,7 +534,38 @@ export default function ProjectsView() {
 
   const totalUnits = projects.reduce((sum, project) => sum + toNumber(project.unitsTotal), 0);
   const soldUnits = projects.reduce((sum, project) => sum + toNumber(project.unitsSold), 0);
-  const activeProjects = projects.filter((project) => !isCompletedProject(project.status)).length;
+  const completedProjects = projects.filter((project) => isCompletedProject(project.status)).length;
+  const activeProjects = projects.length - completedProjects;
+  const hasActiveSearch = searchTerm.trim().length > 0;
+  const searchIconSide = isArabic ? 'right-3' : 'left-3';
+  const searchInputPad = isArabic ? 'pr-9 pl-3' : 'pl-9 pr-3';
+
+  const listKpis = [
+    {
+      label: labels.totalProjects,
+      value: formatNumber(projects.length, isArabic),
+      note: labels.kpiRegistryNote,
+      icon: FolderKanban,
+    },
+    {
+      label: labels.activeProjects,
+      value: formatNumber(activeProjects, isArabic),
+      note: labels.kpiActiveNote,
+      icon: Building2,
+    },
+    {
+      label: labels.totalUnits,
+      value: formatNumber(totalUnits, isArabic),
+      note: `${labels.soldUnits}: ${formatNumber(soldUnits, isArabic)}`,
+      icon: LayoutGrid,
+    },
+    {
+      label: labels.completedProjects,
+      value: formatNumber(completedProjects, isArabic),
+      note: labels.kpiCompletedNote,
+      icon: CheckCircle2,
+    },
+  ];
 
   async function handleSelectProject(projectId: string | number) {
     setSelectedProjectId(projectId);
@@ -853,117 +897,160 @@ export default function ProjectsView() {
   }
 
   return (
-    <section dir={direction} className="space-y-5 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section
+      dir={direction}
+      className="nc-page nc-stack orca-container space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6"
+    >
+      <header className="orca-workspace-hero">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--nc-text-primary)]">{labels.pageTitle}</h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">{labels.pageSubtitle}</p>
+          <p className="text-xs font-bold text-[var(--nc-accent)]">{labels.breadcrumb}</p>
+          <h1 className="mt-1 text-2xl font-black tracking-[-0.02em] text-[var(--nc-text-primary)]">
+            {labels.pageTitle}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--nc-text-secondary)]">
+            {labels.pageSubtitle}
+          </p>
         </div>
 
-        {hasPermission('CREATE_PROJECT') && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="nc-btn-primary min-h-[44px] rounded-xl px-4 py-2 text-sm font-semibold"
-          >
-            {labels.createProject}
-          </button>
-        )}
-      </div>
-
-      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
-          <p className="text-sm text-[var(--nc-text-secondary)]">{labels.totalProjects}</p>
-          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
-            {formatNumber(projects.length, isArabic)}
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
-          <p className="text-sm text-[var(--nc-text-secondary)]">{labels.activeProjects}</p>
-          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
-            {formatNumber(activeProjects, isArabic)}
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
-          <p className="text-sm text-[var(--nc-text-secondary)]">{labels.totalUnits}</p>
-          <p className="mt-3 text-2xl font-bold text-[var(--nc-text-primary)]">
-            {formatNumber(totalUnits, isArabic)}
-          </p>
-          <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-            {labels.soldUnits}: {formatNumber(soldUnits, isArabic)}
-          </p>
-        </div>
-      </div>
-
-      <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <input
-            value={searchTerm}
-            onChange={(event) => {
-              setSearchTerm(event.target.value);
-              setProjectPage(1);
+            onClick={() => {
+              void loadProjects();
             }}
-            placeholder={labels.searchPlaceholder}
-            className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm text-[var(--nc-text-primary)] outline-none lg:max-w-md"
-          />
+            disabled={isLoadingProjects}
+            className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={isLoadingProjects ? 'animate-spin' : ''} aria-hidden="true" />
+            {labels.refresh}
+          </button>
+
+          {hasPermission('CREATE_PROJECT') && (
+            <button
+              type="button"
+              className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
+            >
+              <Plus size={16} aria-hidden="true" />
+              {labels.createProject}
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="orca-workspace-metrics">
+        {listKpis.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div key={item.label} className="orca-workspace-metric min-h-[96px]">
+              <div className="flex items-start justify-between gap-3 text-start">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-5 text-[var(--nc-text-secondary)]">
+                    {item.label}
+                  </p>
+                  <strong className="mt-2 block text-2xl font-black tabular-nums tracking-tight text-[var(--nc-text-primary)]">
+                    {item.value}
+                  </strong>
+                </div>
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)]">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+              </div>
+              <p className="mt-3 text-start text-xs font-medium leading-5 text-[var(--nc-text-secondary)]">
+                {item.note}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden" data-operational-list-card>
+        <div className="orca-workspace-toolbar shrink-0 border-b border-[var(--nc-border)] p-3">
+          <div className="relative w-full lg:max-w-md">
+            <Search
+              size={15}
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-secondary)] ${searchIconSide}`}
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setProjectPage(1);
+              }}
+              placeholder={labels.searchPlaceholder}
+              aria-label={labels.searchPlaceholder}
+              className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] ${searchInputPad} text-sm font-semibold text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent-border)]`}
+            />
+          </div>
         </div>
 
         {isLoadingProjects ? (
-          <EmptyState message={labels.loadingProjects} />
+          <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 px-4 py-6">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent" />
+            <span className="text-xs font-medium text-[var(--nc-text-secondary)]">
+              {labels.loadingProjects}
+            </span>
+          </div>
         ) : filteredProjects.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead>
-                <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.projectName}</th>
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.location}</th>
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.units}</th>
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.progress}</th>
-                  <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.action}</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {pagedProjects.map((project) => (
-                  <tr key={project.id} className="border-b border-[var(--nc-border)]">
-                    <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                      {displayProjectName(project, displayLocale, labels)}
-                    </td>
-
-                    <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                      {displayProjectLocation(project, displayLocale, labels)}
-                    </td>
-
-                    <td className="px-3 py-3">
-                      <StatusBadge>{normalizeProjectStatus(project.status, labels, displayLocale)}</StatusBadge>
-                    </td>
-
-                    <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                      {formatNumber(project.unitsSold, isArabic)} /{' '}
-                      {formatNumber(project.unitsTotal, isArabic)}
-                    </td>
-
-                    <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                      {formatNumber(project.progressPercent, isArabic)}%
-                    </td>
-
-                    <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleSelectProject(project.id);
-                        }}
-                        className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold"
-                      >
-                        {labels.open}
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
+                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.projectName}</th>
+                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.location}</th>
+                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
+                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.units}</th>
+                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.progress}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {pagedProjects.map((project) => (
+                    <tr
+                      key={project.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        void handleSelectProject(project.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          void handleSelectProject(project.id);
+                        }
+                      }}
+                      className="orca-data-row cursor-pointer border-b border-[var(--nc-border)] transition-colors hover:bg-[var(--nc-accent-soft)] focus-visible:bg-[var(--nc-accent-soft)] focus-visible:outline-none"
+                    >
+                      <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
+                        {displayProjectName(project, displayLocale, labels)}
+                      </td>
+
+                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                        {displayProjectLocation(project, displayLocale, labels)}
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <StatusBadge>
+                          {normalizeProjectStatus(project.status, labels, displayLocale)}
+                        </StatusBadge>
+                      </td>
+
+                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                        {formatNumber(project.unitsSold, isArabic)} /{' '}
+                        {formatNumber(project.unitsTotal, isArabic)}
+                      </td>
+
+                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
+                        {formatNumber(project.progressPercent, isArabic)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <PaginationBar
               page={projectPage}
@@ -973,9 +1060,13 @@ export default function ProjectsView() {
               onPrevious={() => setProjectPage((page) => Math.max(1, page - 1))}
               onNext={() => setProjectPage((page) => Math.min(projectTotalPages, page + 1))}
             />
-          </div>
+          </>
         ) : (
-          <EmptyState message={labels.noProjects} />
+          <div className="flex min-h-[180px] max-h-[220px] flex-col items-center justify-center px-4 py-6 text-center">
+            <p className="text-sm font-medium text-[var(--nc-text-secondary)]">
+              {hasActiveSearch ? labels.noProjects : labels.noProjectsYet}
+            </p>
+          </div>
         )}
       </div>
     </section>
