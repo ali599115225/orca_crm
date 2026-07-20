@@ -36,7 +36,7 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.60.0",
-        "@tailwindcss/postcss": "^4.3.0",
+        "@tailwindcss/postcss": "^4.3.2",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
         "@types/bcryptjs": "^2.4.6",
@@ -50,7 +50,7 @@
         "jsdom": "^29.1.1",
         "postcss": "^8.5.15",
         "prisma": "^7.8.0",
-        "tailwindcss": "^4.3.0",
+        "tailwindcss": "^4.3.2",
         "tsx": "^4.22.3",
         "typescript": "latest",
         "vitest": "^4.1.8"
