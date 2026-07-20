@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
     type: "ORCA_WHATSAPP_OAUTH_CALLBACK",
     code,
     state,
-  }).replaceAll("<", "\\u003c");
+  })
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026")
+    .replaceAll("'", "\\u0027");
 
   const fallback = JSON.stringify(
     `${targetOrigin}/operations/settings?tab=compliance`,
