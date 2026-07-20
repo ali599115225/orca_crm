@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/whatsapp/embedded-signup/callback/route";
 
 // Empirical verification for CodeQL Alert #9 (js/reflected-xss,
 // app/api/whatsapp/embedded-signup/callback/route.ts:47). This calls the
 // real route handler with adversarial `code`/`state`/Host values and
-// inspects the ACTUAL response body — it does not reason about the code
-// theoretically. No network calls: NextRequest is constructed in-process,
-// and the route itself performs no I/O.
+// inspects the ACTUAL, UNMODIFIED response body — it does not reason about
+// the code theoretically, and it never cleans/strips/normalizes the body
+// before asserting on it (a stripping step could itself hide a real
+// breakout). No network calls: NextRequest is constructed in-process, and
+// the route itself performs no I/O.
 
 const BASE = "https://orca.az-ez.pro/api/whatsapp/embedded-signup/callback";
 
@@ -28,9 +30,32 @@ async function runAndGetBody(params: Record<string, string>, headers?: Record<st
 // The concrete exploit signature: an attacker-controlled value re-opening a
 // new <script> element after prematurely closing the legitimate one.
 const SCRIPT_BREAKOUT_PATTERN = /<\/script[^>]*>\s*<script/i;
-// A bare, unescaped '<' immediately followed by '/' or a tag name character
-// is the raw ingredient the breakout needs; assert none survives at all.
+// A bare, unescaped '<' is the raw ingredient any HTML/script breakout
+// needs; the dynamic JSON slice (see extractPayloadLiteral) must contain
+// none of these, ever — checked directly on that raw slice, never on a
+// stripped/cleaned copy of the body.
 const RAW_LESS_THAN_PATTERN = /</;
+
+function getScriptTagCounts(body: string) {
+  return {
+    openCount: (body.match(/<script\b[^>]*>/gi) ?? []).length,
+    closeCount: (body.match(/<\/script>/gi) ?? []).length,
+  };
+}
+
+// Locates the dynamic JSON payload literal using the template's own fixed,
+// hard-coded surrounding text in route.ts (`const payload = ...;\n  const
+// origin = `) — never by deleting/stripping HTML tags ourselves, which
+// would risk hiding exactly the kind of breakout this test exists to catch.
+function extractPayloadLiteral(body: string): string {
+  const match = body.match(/const payload = ([\s\S]*?);\n {2}const origin = /);
+  if (!match) {
+    throw new Error(
+      "could not locate 'const payload = ...;' via the route's fixed template boundary",
+    );
+  }
+  return match[1];
+}
 
 describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-signup callback)", () => {
   it("baseline: returns HTML with the expected Content-Type (confirms the sink)", async () => {
@@ -56,34 +81,58 @@ describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-s
     ["null byte and control chars", "a\u0000b\u0007c"],
   ];
 
+  let baselineScriptTagCounts: { openCount: number; closeCount: number };
+
+  beforeAll(async () => {
+    const { body } = await runAndGetBody({ code: "abc123", state: "xyz789" });
+    baselineScriptTagCounts = getScriptTagCounts(body);
+  });
+
+  function assertPayloadStaysInert(body: string, payload: string) {
+    // 1) The raw, unmodified body must never contain the attacker payload
+    // verbatim, and never exhibit the concrete breakout signature.
+    expect(body).not.toMatch(SCRIPT_BREAKOUT_PATTERN);
+    if (payload.includes("<")) {
+      expect(body).not.toContain(payload);
+    }
+    if (/onerror\s*=|onload\s*=/i.test(payload)) {
+      expect(body).not.toMatch(/onerror\s*=|onload\s*=/i);
+    }
+    if (payload.toLowerCase().includes("javascript:")) {
+      expect(body.toLowerCase()).not.toContain("javascript:");
+    }
+
+    // 2) The raw document's <script>/</script> tag count must be identical
+    // to the known-safe baseline: the payload opened or closed no element.
+    expect(getScriptTagCounts(body)).toEqual(baselineScriptTagCounts);
+
+    // 3) Extract exactly the dynamic JSON slice via the template's real
+    // fixed boundary text, then assert directly on that raw slice.
+    const jsonLiteral = extractPayloadLiteral(body);
+    expect(jsonLiteral).not.toMatch(RAW_LESS_THAN_PATTERN);
+    if (payload.includes("<")) {
+      expect(jsonLiteral).toMatch(/\\u003c/);
+    }
+
+    // 4) Prove, via the real JS engine (not visual inspection), that the
+    // slice parses back to exactly the original payload.
+    // eslint-disable-next-line no-new-func
+    const evaluated = new Function(`return (${jsonLiteral});`)();
+    return evaluated;
+  }
+
   it.each(codeStatePayloads)("code=%s payload does not break out of the script context", async (_label, payload) => {
     const { response, body } = await runAndGetBody({ code: payload, state: "benign" });
     expect(response.headers.get("Content-Type")).toContain("text/html");
-    expect(body).not.toMatch(SCRIPT_BREAKOUT_PATTERN);
-
-    // Every literal '<' contributed by `code`/`state` must have been
-    // neutralized. The only legitimate '<' characters in the whole document
-    // are the fixed template markup; strip those known-good tags out —
-    // repeatedly, to a fixed point, so an adversarial string that only
-    // resolves into a stripped tag after an earlier removal pass can't
-    // hide behind a single-pass replace — and assert nothing
-    // attacker-shaped remains.
-    let withoutFixedMarkup = body.replace(/<!doctype html>/i, "");
-    let previousPass: string;
-    do {
-      previousPass = withoutFixedMarkup;
-      withoutFixedMarkup = withoutFixedMarkup.replace(
-        /<\/?(html|head|meta|title|body|p|script)[^>]*>/gi,
-        "",
-      );
-    } while (withoutFixedMarkup !== previousPass);
-    expect(withoutFixedMarkup).not.toMatch(RAW_LESS_THAN_PATTERN);
+    const evaluated = assertPayloadStaysInert(body, payload);
+    expect(evaluated.code).toBe(payload);
   });
 
   it.each(codeStatePayloads)("state=%s payload does not break out of the script context", async (_label, payload) => {
     const { response, body } = await runAndGetBody({ code: "benign", state: payload });
     expect(response.headers.get("Content-Type")).toContain("text/html");
-    expect(body).not.toMatch(SCRIPT_BREAKOUT_PATTERN);
+    const evaluated = assertPayloadStaysInert(body, payload);
+    expect(evaluated.state).toBe(payload);
   });
 
   it("the payload object round-trips through JSON.parse-equivalent semantics (JS engine, not just visual inspection)", async () => {
