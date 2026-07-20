@@ -30,11 +30,21 @@ async function runAndGetBody(params: Record<string, string>, headers?: Record<st
 // The concrete exploit signature: an attacker-controlled value re-opening a
 // new <script> element after prematurely closing the legitimate one.
 const SCRIPT_BREAKOUT_PATTERN = /<\/script[^>]*>\s*<script/i;
-// A bare, unescaped '<' is the raw ingredient any HTML/script breakout
+// The HTML/JS-string metacharacters route.ts neutralizes inside the dynamic
+// JSON slice, and their expected \uXXXX escape form. A bare, unescaped
+// instance of any of these is the raw ingredient an HTML/script breakout
 // needs; the dynamic JSON slice (see extractPayloadLiteral) must contain
-// none of these, ever — checked directly on that raw slice, never on a
-// stripped/cleaned copy of the body.
-const RAW_LESS_THAN_PATTERN = /</;
+// none of them, ever — checked directly on that raw slice, never on a
+// stripped/cleaned copy of the body. ('"' is intentionally excluded: it is
+// a JSON structural delimiter that JSON.stringify already escapes
+// correctly, and re-escaping it here would corrupt the JSON syntax itself.)
+const ESCAPED_CHARS: Array<[string, string]> = [
+  ["<", "\\u003c"],
+  [">", "\\u003e"],
+  ["&", "\\u0026"],
+  ["'", "\\u0027"],
+];
+const RAW_UNESCAPED_METACHAR_PATTERN = /[<>&']/;
 
 function getScriptTagCounts(body: string) {
   return {
@@ -78,6 +88,10 @@ describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-s
     ["U+2029 paragraph separator", "line1\u2029alert(1)"],
     ["HTML entity for <", "&lt;script&gt;alert(1)&lt;/script&gt;"],
     ["template-literal breakout attempt", "${alert(1)}`;alert(1);//"],
+    ["greater-than raw", "a>b"],
+    ["ampersand raw", "a&b"],
+    ["single quote raw", "a'b"],
+    ["combined metacharacter injection attempt", "<img src=x onerror=alert(1)>'&"],
     ["null byte and control chars", "a\u0000b\u0007c"],
   ];
 
@@ -92,14 +106,8 @@ describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-s
     // 1) The raw, unmodified body must never contain the attacker payload
     // verbatim, and never exhibit the concrete breakout signature.
     expect(body).not.toMatch(SCRIPT_BREAKOUT_PATTERN);
-    if (payload.includes("<")) {
+    if (ESCAPED_CHARS.some(([char]) => payload.includes(char))) {
       expect(body).not.toContain(payload);
-    }
-    if (/onerror\s*=|onload\s*=/i.test(payload)) {
-      expect(body).not.toMatch(/onerror\s*=|onload\s*=/i);
-    }
-    if (payload.toLowerCase().includes("javascript:")) {
-      expect(body.toLowerCase()).not.toContain("javascript:");
     }
 
     // 2) The raw document's <script>/</script> tag count must be identical
@@ -107,14 +115,34 @@ describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-s
     expect(getScriptTagCounts(body)).toEqual(baselineScriptTagCounts);
 
     // 3) Extract exactly the dynamic JSON slice via the template's real
-    // fixed boundary text, then assert directly on that raw slice.
+    // fixed boundary text, then assert directly on that raw slice: no
+    // unescaped metacharacter survives, and every one the payload actually
+    // contains shows up in its escaped \uXXXX form.
     const jsonLiteral = extractPayloadLiteral(body);
-    expect(jsonLiteral).not.toMatch(RAW_LESS_THAN_PATTERN);
-    if (payload.includes("<")) {
-      expect(jsonLiteral).toMatch(/\\u003c/);
+    expect(jsonLiteral).not.toMatch(RAW_UNESCAPED_METACHAR_PATTERN);
+    for (const [char, escaped] of ESCAPED_CHARS) {
+      if (payload.includes(char)) {
+        expect(jsonLiteral).toContain(escaped);
+      }
     }
 
-    // 4) Prove, via the real JS engine (not visual inspection), that the
+    // 4) Any event-handler/javascript: text the payload contributes is
+    // proven inert data (not a live HTML attribute) by check 3 above: it
+    // lives only inside the JSON slice, which is already proven free of
+    // unescaped '<'/'>', so no new tag exists for such an attribute to
+    // attach to. This check targets the STATIC remainder of the document
+    // (JSON slice excised) to additionally prove no event handler or
+    // javascript: URI ever leaks into a real, executable position outside
+    // that slice.
+    const bodyOutsideJsonLiteral = body.replace(jsonLiteral, "");
+    if (/onerror\s*=|onload\s*=/i.test(payload)) {
+      expect(bodyOutsideJsonLiteral).not.toMatch(/onerror\s*=|onload\s*=/i);
+    }
+    if (payload.toLowerCase().includes("javascript:")) {
+      expect(bodyOutsideJsonLiteral.toLowerCase()).not.toContain("javascript:");
+    }
+
+    // 5) Prove, via the real JS engine (not visual inspection), that the
     // slice parses back to exactly the original payload.
     // eslint-disable-next-line no-new-func
     const evaluated = new Function(`return (${jsonLiteral});`)();
