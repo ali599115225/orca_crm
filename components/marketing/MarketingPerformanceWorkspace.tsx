@@ -10,7 +10,7 @@ import {
 
 /* ─── visual tokens (mirrors dashboardVisual) ──────────────────────────── */
 const V = {
-  page: "nc-page nc-stack orca-container orca-marketing-final pb-4",
+  page: "nc-page nc-stack orca-container orca-marketing-final pb-10",
   shell: "space-y-4",
   hero: "orca-workspace-hero",
   metrics: "orca-workspace-metrics",
