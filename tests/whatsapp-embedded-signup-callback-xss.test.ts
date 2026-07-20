@@ -63,11 +63,20 @@ describe("Alert #9 — reflected XSS empirical verification (WhatsApp embedded-s
 
     // Every literal '<' contributed by `code`/`state` must have been
     // neutralized. The only legitimate '<' characters in the whole document
-    // are the fixed template markup; strip those known-good tags out and
-    // assert nothing attacker-shaped remains.
-    const withoutFixedMarkup = body
-      .replace(/<!doctype html>/i, "")
-      .replace(/<\/?(html|head|meta|title|body|p|script)[^>]*>/gi, "");
+    // are the fixed template markup; strip those known-good tags out —
+    // repeatedly, to a fixed point, so an adversarial string that only
+    // resolves into a stripped tag after an earlier removal pass can't
+    // hide behind a single-pass replace — and assert nothing
+    // attacker-shaped remains.
+    let withoutFixedMarkup = body.replace(/<!doctype html>/i, "");
+    let previousPass: string;
+    do {
+      previousPass = withoutFixedMarkup;
+      withoutFixedMarkup = withoutFixedMarkup.replace(
+        /<\/?(html|head|meta|title|body|p|script)[^>]*>/gi,
+        "",
+      );
+    } while (withoutFixedMarkup !== previousPass);
     expect(withoutFixedMarkup).not.toMatch(RAW_LESS_THAN_PATTERN);
   });
 
