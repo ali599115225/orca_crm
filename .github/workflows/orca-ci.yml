@@ -41,6 +41,7 @@ jobs:
       - name: Core regression tests
         run: >
           npx vitest run
+          tests/foundation/g3-01-architecture-contract.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
