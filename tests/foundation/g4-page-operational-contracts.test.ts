@@ -10,16 +10,30 @@ const reconcileScript = join(ROOT, "scripts/g4-contract-reconcile.mjs");
 const registryPath = join(ROOT, "artifacts/g4-contract-registry.json");
 const inventoryPath = join(ROOT, "artifacts/g4-contract-inventory.json");
 const overridesPath = join(ROOT, "docs/architecture/ORCA_G4_VISUAL_STATUS_OVERRIDES.json");
+const registryIndexPath = join(ROOT, "docs/architecture/ORCA_G4_CONTRACT_REGISTRY.md");
+const pagesPath = join(ROOT, "docs/architecture/ORCA_G4_PAGES_AND_SURFACES.md");
+const apisPath = join(ROOT, "docs/architecture/ORCA_G4_API_CONTRACTS.md");
+const actionsPath = join(ROOT, "docs/architecture/ORCA_G4_SERVER_ACTION_CONTRACTS.md");
 const workflowPath = join(ROOT, ".github/workflows/orca-ci.yml");
 
-function runRegistry() {
+type RegistryResult = {
+  inventory: any;
+  registry: any;
+};
+
+let cachedRegistry: RegistryResult | null = null;
+
+function runRegistry(): RegistryResult {
+  if (cachedRegistry) return cachedRegistry;
+
   execFileSync(process.execPath, [inventoryScript], { cwd: ROOT, stdio: "pipe" });
   execFileSync(process.execPath, [normalizeScript], { cwd: ROOT, stdio: "pipe" });
   execFileSync(process.execPath, [reconcileScript], { cwd: ROOT, stdio: "pipe" });
-  return {
+  cachedRegistry = {
     inventory: JSON.parse(readFileSync(inventoryPath, "utf8")),
     registry: JSON.parse(readFileSync(registryPath, "utf8")),
   };
+  return cachedRegistry;
 }
 
 describe("G4 — Page and operational contract registry", () => {
@@ -89,6 +103,28 @@ describe("G4 — Page and operational contract registry", () => {
     ]);
     expect(leadTabs?.visualStatus).toBe("PARTIAL_DOCUMENTED_ISSUE");
     expect(leadDialog?.visualStatus).toBe("PARTIAL_DOCUMENTED_ISSUE");
+  });
+
+  it("binds the generated inventory to complete durable architecture records", () => {
+    const index = readFileSync(registryIndexPath, "utf8");
+    const pages = readFileSync(pagesPath, "utf8");
+    const apis = readFileSync(apisPath, "utf8");
+    const actions = readFileSync(actionsPath, "utf8");
+
+    expect(index).toContain("Total contracts: **359**");
+    expect(index).toContain("Pages: **43**");
+    expect(index).toContain("APIs: **129**");
+    expect(index).toContain("Server actions: **162**");
+
+    expect((pages.match(/^\| `\/[^|]+` \| `app\/[^|]+page\.(?:ts|tsx|js|jsx)`/gm) ?? [])).toHaveLength(43);
+    expect((pages.match(/^\| `(?:app|components|features)\/[^|]+` \|/gm) ?? []).length).toBeGreaterThanOrEqual(8);
+
+    expect((apis.match(/^\| `\/[^|]+` \| [A-Z]/gm) ?? [])).toHaveLength(129);
+    expect(apis).toContain("| `/api/v1/installments/[id]/pay/ngenius` | POST |");
+
+    expect((actions.match(/^\| `[A-Za-z_$][\w$]*` \|/gm) ?? [])).toHaveLength(162);
+    expect(actions).toContain("| `createLeadAction` |");
+    expect(actions).toContain("| `sendWhatsAppMessageAction` |");
   });
 
   it("retains an explicit visual decision file and permanent CI generation gates", () => {
