@@ -1,9 +1,9 @@
 name: ORCA Dependency Audit Diagnostic
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/orca-z1-business-discovery-20260721
+      - work/orca-zero-based-execution-20260721
     paths:
       - .github/workflows/orca-dependency-audit-diagnostic.yml
       - package.json
