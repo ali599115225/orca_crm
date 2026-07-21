@@ -89,6 +89,9 @@ jobs:
             lib/payments/providers/paylink.ts \
             components/contracts-payments/ContractsPaymentsCenter.tsx \
             scripts/g5-security-quality-inventory.mjs \
+            tests/foundation/g3-07-progressive-enforcement.test.ts \
+            tests/foundation/g3-07-trusted-jobs.test.ts \
+            tests/foundation/g4-page-operational-contracts.test.ts \
             scripts/g5-verified-maintenance.mjs \
             .github/workflows/g5-verified-maintenance.yml
           git diff --cached --check
