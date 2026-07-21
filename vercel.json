@@ -1,4 +1,10 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "work/orca-foundation-plan-*": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/sentinel",
