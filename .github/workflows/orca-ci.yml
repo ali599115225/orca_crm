@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -26,7 +26,7 @@ jobs:
       - name: Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
 
       - name: Install
@@ -67,7 +67,7 @@ jobs:
       - name: G5 security and quality inventory
         run: node scripts/g5-security-quality-inventory.mjs
 
-      - name: G5 dependency discovery
+      - name: G5 dependency evidence
         shell: bash
         run: |
           npm audit --omit=dev --json > artifacts/g5-npm-audit-production.json || true
@@ -75,10 +75,16 @@ jobs:
           npm ls --all --json > artifacts/g5-npm-tree.json || true
           npm outdated --json > artifacts/g5-npm-outdated.json || true
 
-      - name: Upload G5 discovery evidence
+      - name: Production dependency audit
+        run: npm run security:audit
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Upload G5 security and quality evidence
         uses: actions/upload-artifact@v4
         with:
-          name: g5-security-quality-discovery
+          name: g5-security-quality-evidence
           path: |
             artifacts/g5-security-quality-inventory.json
             artifacts/g5-security-quality-inventory.md
@@ -89,11 +95,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Core regression tests
+      - name: Foundation and core regression tests
         run: >
           npx vitest run
           tests/foundation/g3-*.test.ts
           tests/foundation/g4-*.test.ts
+          tests/foundation/g5-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
