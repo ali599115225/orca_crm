@@ -3,12 +3,14 @@
 ## Stage record
 
 - **Stage:** G6 — Operations, Recovery & Reliability
-- **Repository status:** PASS / READY FOR FINAL CHECKS
+- **Repository status:** PASS / CLOSED
 - **Start SHA:** `a0915efc78b28144f13d8fd7d04633586f18a721`
 - **Verified implementation head:** `b60a8b588fc44261885ce2faafa219d27072937d`
+- **Verified final PR head:** `5f5e785ccaf80cd5ca1ecb198eb8c319314283f2`
+- **Functional merge SHA:** `20e9e653a569f06353609e947cd8c41157324d60`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
-- **PR:** #66
+- **Functional PR:** #66 — merged
 - **Main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production backup:** none
 - **Production restore:** none
@@ -146,7 +148,7 @@ Production RTO and RPO remain **UNVERIFIED** until that authorized rehearsal. Th
 
 ## Verified checks
 
-Head `b60a8b588fc44261885ce2faafa219d27072937d` passed:
+Final PR head `5f5e785ccaf80cd5ca1ecb198eb8c319314283f2` passed:
 
 - Node.js 24 installation;
 - Prisma validate and generate;
@@ -165,6 +167,27 @@ Head `b60a8b588fc44261885ce2faafa219d27072937d` passed:
 - P2 acceptance;
 - production build;
 - CodeQL Actions, Python, and JavaScript/TypeScript.
+
+## Vercel evidence
+
+Vercel Git Preview deployment `dpl_3yuzh6jvJp9FRHGGZn8Qhnd5m3SR` reached `READY` for the functional merge SHA `20e9e653a569f06353609e947cd8c41157324d60` on the central branch.
+
+The deployment:
+
+- cloned the verified central merge SHA;
+- completed Prisma generation;
+- completed Next.js compilation and TypeScript;
+- deployed outputs successfully;
+- created the branch alias without error;
+- was a Preview deployment, not a Production deployment.
+
+## Repository reconciliation
+
+- PR #66 merged into the central branch at `20e9e653a569f06353609e947cd8c41157324d60`.
+- The foundation branch was fast-forwarded without force to the same SHA.
+- Central and foundation compared `identical`, ahead `0`, behind `0`.
+- `main` remained identical to `f7af072c689178d397019648ab5c21336ab259b6`.
+- This documentation finalization payload records the closed state; its merge commit becomes the authoritative final repository SHA for G6.
 
 ## Durable outputs
 
@@ -186,14 +209,14 @@ Head `b60a8b588fc44261885ce2faafa219d27072937d` passed:
 
 ## Closure rule
 
-G6 becomes repository-closed only after:
+G6 is repository-closed because:
 
-1. this final documentation head passes ORCA CI, G6 inventory/tests, isolated recovery drill, regressions, acceptance, and production build;
-2. CodeQL succeeds for all configured languages;
-3. PR #66 merges into the central branch;
-4. Vercel Preview succeeds on the central merge SHA;
-5. the foundation branch is fast-forwarded to the central merge SHA;
-6. central and foundation compare identical;
-7. `main` remains unchanged.
+1. the final PR head passed ORCA CI, G6 inventory/tests, isolated recovery drill, regressions, acceptance, and production build;
+2. CodeQL succeeded for all configured languages;
+3. PR #66 merged into the central branch;
+4. Vercel Preview succeeded on the central merge SHA;
+5. the foundation branch was fast-forwarded to the central merge SHA;
+6. central and foundation compared identical;
+7. `main` remained unchanged.
 
-Until those conditions are reconciled, this report remains **PASS / READY FOR FINAL CHECKS**.
+**Final result: PASS / CLOSED.**
