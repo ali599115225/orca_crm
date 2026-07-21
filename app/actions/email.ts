@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
-import { assertServerActionRole } from "@/lib/api-auth-guard";
+import { assertServerActionRoleWithAudit } from "@/lib/authz/legacy-audit-guards";
 import {
   EMAIL_PROVIDER_INVALID,
   EMAIL_PROVIDER_NOT_CONFIGURED,
@@ -85,9 +85,14 @@ export async function sendEmailAction(formData: FormData) {
     const session = await getSession();
     if (!session) return { success: false, error: "يجب تسجيل الدخول أولاً." };
 
-    const verified = await assertServerActionRole(
+    const verified = await assertServerActionRoleWithAudit(
       session,
       EMAIL_SENDER_ROLES,
+      {
+        permissionKey: "email.send",
+        source: "action:sendEmailAction",
+        resource: { tenantId: String(session.tenantId || "") },
+      },
     );
     const tenant = await getActiveTenant();
 
@@ -278,7 +283,11 @@ export async function getEmailMessagesAction(limit = 50) {
     const session = await getSession();
     if (!session)
       return { success: false, error: "يجب تسجيل الدخول.", messages: [] };
-    await assertServerActionRole(session, EMAIL_SENDER_ROLES);
+    await assertServerActionRoleWithAudit(session, EMAIL_SENDER_ROLES, {
+      permissionKey: "email.read",
+      source: "action:getEmailMessagesAction",
+      resource: { tenantId: String(session.tenantId || "") },
+    });
     const tenant = await getActiveTenant();
 
     return runWithTenantContext(
@@ -312,7 +321,15 @@ export async function getLeadEmailMessagesAction(leadId: string) {
     const session = await getSession();
     if (!session)
       return { success: false, error: "يجب تسجيل الدخول.", messages: [] };
-    await assertServerActionRole(session, EMAIL_SENDER_ROLES);
+    await assertServerActionRoleWithAudit(session, EMAIL_SENDER_ROLES, {
+      permissionKey: "email.read",
+      source: "action:getLeadEmailMessagesAction",
+      resource: {
+        tenantId: String(session.tenantId || ""),
+        resourceType: "Lead",
+        resourceId: leadId,
+      },
+    });
     const tenant = await getActiveTenant();
 
     return runWithTenantContext(
