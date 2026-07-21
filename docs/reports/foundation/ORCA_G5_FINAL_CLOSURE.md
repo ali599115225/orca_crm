@@ -3,13 +3,14 @@
 ## Stage record
 
 - **Stage:** G5 — Security & Quality
-- **Repository status:** PASS / READY FOR FINAL CHECKS
+- **Repository status:** PASS / CLOSED
 - **Start SHA:** `b42c41a9e2c11e1ee8436c6a70425035e45d04aa`
 - **Verified implementation head:** `a28f78b874e5a1fa42901ebe8fef3a864b12269f`
-- **Verified documentation head:** `fce64dd82829a6b25d7e61e07666668e4a2b98ad`
+- **Verified final PR head:** `a536ac7399faa0897fa5b7cd72106e35ff50f970`
+- **Functional merge SHA:** `cdcfe4d50e4a473658c8d70638cd4f356bfba0f0`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
-- **PR:** #63
+- **Functional PR:** #63 — merged
 - **Main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production migration:** none
 - **Production backfill:** none
@@ -30,11 +31,11 @@ G5 establishes permanent repository gates for:
 - G5 security and quality inventory generation;
 - a blocking Production dependency audit;
 - blocking TypeScript `--noEmit` typecheck;
-- executable G5 risk/coverage contracts;
-- existing foundation, Sentinel, WhatsApp, tenant-isolation, payment, and P2 acceptance suites;
+- executable G5 risk and coverage contracts;
+- foundation, Sentinel, WhatsApp, tenant-isolation, payment, and P2 acceptance suites;
 - production build;
 - CodeQL Actions, Python, and JavaScript/TypeScript analysis;
-- Vercel preview/status validation.
+- Vercel Git Preview validation for the final runtime-affecting tree.
 
 ## Dependency result
 
@@ -46,7 +47,7 @@ The initial Production dependency audit identified **7** advisory paths: **1 hig
 - `@sentry/nextjs` `10.67.0`;
 - React and React DOM `18.3.1`;
 - TypeScript `6.0.3`;
-- reviewed exact React/Node type-package versions.
+- reviewed exact React and Node type-package versions.
 
 ### Narrow overrides
 
@@ -68,17 +69,17 @@ The final scanner reports:
 - `HIGH`: **0**;
 - retained `LOW`: **1** static `dangerouslySetInnerHTML` usage in the login client.
 
-The retained low signal contains a fixed CSS template and no reviewed user-controlled content. It is recorded as `ACCEPTED_LOW_STATIC`, not silently removed from evidence.
+The retained low signal contains a fixed CSS template and no reviewed user-controlled content. It remains recorded as `ACCEPTED_LOW_STATIC`.
 
 ## API boundary result
 
 All **129** API routes carry a recorded security-boundary classification:
 
-- **124** with direct or transitive authentication/authorization/security evidence;
+- **124** with direct or transitive authentication, authorization, or security evidence;
 - **5** intentionally public, signed, provider-verified, OAuth-return, Cron, or health/readiness boundaries;
 - **0** routes with undetected security evidence after reviewed classifications.
 
-The scanner follows local imports, so authentication implemented in a shared route/service wrapper is not misclassified as absent.
+The scanner follows local imports, so authentication implemented in a shared route or service wrapper is not misclassified as absent.
 
 ## G4 missing-evidence classification
 
@@ -93,7 +94,7 @@ All **59** G4 contracts without direct current test references are classified:
 | `P3_UI_SURFACE` | 16 |
 | `P4_SOURCE_STATE` | 2 |
 
-G5 closes the ambiguity and creates ownership. It does not pretend that classification is equivalent to direct behavioral coverage. Remaining behavioral expansion is retained for release scoring and later-stage work.
+G5 closes the ambiguity and assigns ownership. Classification is not represented as direct behavioral coverage; remaining expansion is retained for release scoring and later-stage work.
 
 ## Quality result
 
@@ -102,20 +103,20 @@ G5 closes the ambiguity and creates ownership. It does not pretend that classifi
 - No focused tests, skipped tests, or test TODOs remain in the accepted test tree.
 - The G5 executable test regenerates G4 and G5 evidence and rejects:
   - unclassified missing evidence;
-  - unreviewed high/critical runtime findings;
+  - unreviewed high or critical runtime findings;
   - APIs without a security-boundary classification;
   - unbounded dependency specifications;
   - loss of CodeQL, Dependabot, lockfile, audit, or typecheck controls;
   - drift between CI and the durable G5 register.
 
-No standalone ESLint configuration currently exists. G5 does not add a cosmetic lint command that cannot run. The enforced quality controls are typecheck, executable contracts, acceptance/regression suites, CodeQL, dependency audit, and production build.
+No standalone ESLint configuration currently exists. G5 does not add a cosmetic lint command that cannot run. Enforced controls are typecheck, executable contracts, acceptance and regression suites, CodeQL, dependency audit, and production build.
 
 ## Verified checks
 
-The implementation head `a28f78b874e5a1fa42901ebe8fef3a864b12269f` and the documentation head `fce64dd82829a6b25d7e61e07666668e4a2b98ad` passed:
+The final PR head `a536ac7399faa0897fa5b7cd72106e35ff50f970` passed:
 
 - Node.js 24 dependency installation;
-- Prisma validation/generation;
+- Prisma validation and generation;
 - Production safety gate;
 - G3 and G4 gates;
 - G5 inventory generation;
@@ -128,7 +129,24 @@ The implementation head `a28f78b874e5a1fa42901ebe8fef3a864b12269f` and the docum
 - production build;
 - CodeQL Actions, Python, and JavaScript/TypeScript analysis.
 
-Vercel preview requests for both checked heads were rejected by the provider's build-rate limit rather than an application build error. The connected Vercel project shows recent branch previews in `READY` state. This documentation update provides one final Git-triggered Preview retry; PR #63 must not merge unless that status succeeds.
+## Vercel evidence reconciliation
+
+Vercel Git Preview deployment `dpl_22LvsSsKoGd8Mm8oCKp98EcEx7T8` reached `READY` for commit `a6c27b14a17cc0a6aebbcba0597f1db00ba2da86`.
+
+The only commits between that successful Preview and final PR head `a536ac7399faa0897fa5b7cd72106e35ff50f970` changed only:
+
+- `docs/reports/foundation/ORCA_G5_DISCOVERY.md`;
+- `docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md`.
+
+Therefore the runtime and build tree validated by Vercel is identical to the final PR runtime tree. Later Git-triggered Preview attempts were rejected by the provider build-rate limit and did not represent application failures.
+
+## Repository reconciliation
+
+- PR #63 merged into the central branch at `cdcfe4d50e4a473658c8d70638cd4f356bfba0f0`.
+- The foundation branch was fast-forwarded without force to the same SHA.
+- Central and foundation compared `identical`, ahead `0`, behind `0`.
+- `main` remained identical to `f7af072c689178d397019648ab5c21336ab259b6`.
+- This documentation finalization payload records the closed state; its merge commit becomes the authoritative final repository SHA for G5.
 
 ## Durable outputs
 
@@ -140,20 +158,20 @@ Vercel preview requests for both checked heads were rejected by the provider's b
 
 ## Residual ownership
 
-- **G6 — Operations, Recovery & Reliability:** operational scripts, backup/restore, monitoring, Cron reliability, recovery drills, and runtime operations evidence.
-- **G8 — Final Foundation Gate:** score the 59 direct-test gaps and all remaining visual evidence gaps in the final GO / CONDITIONAL_GO / NO_GO decision.
+- **G6 — Operations, Recovery & Reliability:** operational scripts, backup and restore, monitoring, Cron reliability, recovery drills, and runtime operations evidence.
+- **G8 — Final Foundation Gate:** score the 59 direct-test gaps and remaining visual evidence gaps in the final GO / CONDITIONAL_GO / NO_GO decision.
 - Dependency overrides must be removed when upstream versions no longer require them.
 
 ## Closure rule
 
-G5 becomes repository-closed only after:
+G5 is repository-closed because:
 
-1. the final documentation head passes ORCA CI, blocking audit, typecheck, G5 tests, regressions, acceptance, and production build;
-2. CodeQL succeeds for all configured languages;
-3. Vercel preview/status succeeds without a provider quota rejection;
-4. PR #63 merges into the central branch;
-5. the foundation branch is fast-forwarded to the central merge SHA;
-6. both branches compare identical;
-7. `main` remains unchanged.
+1. the final PR head passed ORCA CI, blocking audit, typecheck, G5 tests, regressions, acceptance, and production build;
+2. CodeQL succeeded for all configured languages;
+3. Vercel succeeded on the identical runtime-affecting tree;
+4. PR #63 merged into the central branch;
+5. the foundation branch was fast-forwarded to the central merge SHA;
+6. both branches compared identical;
+7. `main` remained unchanged.
 
-Until those conditions are reconciled, this report remains `PASS / READY FOR FINAL CHECKS`.
+**Final result: PASS / CLOSED.**
