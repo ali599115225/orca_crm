@@ -235,7 +235,7 @@ async function transitionTo(
     data,
   });
   if (result.count !== 1) {
-    return { success: false, error: "Incident state changed concurrently." };
+    return { success: false, error: "Incident not found or status changed." };
   }
 
   const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
@@ -261,7 +261,11 @@ export async function resolveIncident(id: string): Promise<IncidentResult> {
 }
 
 export async function markIncidentFalsePositive(id: string): Promise<IncidentResult> {
-  const result = await transitionTo(id, "FALSE_POSITIVE", { falsePositiveAt: new Date() });
+  const closedAt = new Date();
+  const result = await transitionTo(id, "FALSE_POSITIVE", {
+    falsePositiveAt: closedAt,
+    resolvedAt: closedAt,
+  });
   if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_CLOSED", id, { reason: "Marked false positive" });
   return result;
 }
@@ -276,7 +280,9 @@ export async function assignIncident(id: string, assignedToId: string): Promise<
     where: { id, status: incident.status },
     data: { assignedToId },
   });
-  if (updated.count !== 1) return { success: false, error: "Incident state changed concurrently." };
+  if (updated.count !== 1) {
+    return { success: false, error: "Incident not found or status changed." };
+  }
   const result = await prisma.sentinelIncident.findUnique({ where: { id } });
   return { success: true, incident: result };
 }
@@ -316,7 +322,7 @@ export async function escalateIncident(
     },
   });
   if (updated.count !== 1) {
-    return { success: false, error: "Incident state changed concurrently." };
+    return { success: false, error: "Incident not found or status changed." };
   }
 
   const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
