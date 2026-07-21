@@ -65,6 +65,6 @@ describe('G3-07 trusted background-job boundary', () => {
     expect(route).toContain('authorizeTrustedJob')
     expect(route).toContain('"realtime.purge"')
     expect(route).toContain('CRON_SECRET')
-    expect(route).not.toMatch(/searchParams.*tenant|request\.json\(\).*tenant/is)
+    expect(route).not.toMatch(/searchParams[\s\S]*tenant|request\.json\(\)[\s\S]*tenant/i)
   })
 })

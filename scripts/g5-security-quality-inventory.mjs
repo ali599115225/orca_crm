@@ -26,11 +26,16 @@ const AUTH_MARKERS = [
   "runWithDatabaseSession", "requireDatabaseSession", "getSession(", "getVerifiedSession", "requirePermission(",
   "authorize(", "tenantContextFromSession(", "runWithTenantContext(", "assertPlatformOwner", "requirePlatformOwner",
   "verifyCronSecret", "isAuthorizedCronRequest", "verifyWebhook", "validateWebhook", "verifySignature", "verifyHmac",
+  "verifyAndStoreProviderWebhook", "verifyCustomPaymentCallbackSignature", "processPaymentCallback", "verifyPayment(",
+  "timingSafeEqual", "PAYLINK_WEBHOOK_SECRET", "CRON_SECRET",
   "withTrustedJob", "requireTrustedJob", "requireAuth", "getServerSession", "jwtVerify(",
 ];
 const PUBLIC_ROUTE_MARKERS = [
-  "/api/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",
-  "/api/whatsapp/webhook", "/api/revenue-integrity/webhook", "/api/v1/leads/webhook",
+  "/api/health", "/api/v1/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",
+  "/api/deploy-marker", "/api/payment/callback", "/api/payments/custom/return", "/api/payments/custom/webhook",
+  "/api/payments/ngenius/webhook", "/api/payments/paylink/webhook",
+  "/api/whatsapp/webhook", "/api/whatsapp/embedded-signup/callback", "/api/revenue-integrity/webhook",
+  "/api/v1/leads/webhook", "/login/google",
 ];
 const SECURITY_RANDOM_CONTEXT = /(idempotenc|nonce|otp|token|secret|password|session|invite|reset|verification|signature|csrf)/i;
 

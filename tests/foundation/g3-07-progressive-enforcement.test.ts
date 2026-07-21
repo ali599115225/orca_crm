@@ -57,7 +57,7 @@ describe('G3-07 progressive RBAC enforcement', () => {
     expect(
       configuredEnforcementDomains({
         G3_RBAC_ENFORCE_DOMAINS: 'finance,messaging',
-      } as NodeJS.ProcessEnv),
+      } as unknown as NodeJS.ProcessEnv),
     ).toEqual(new Set())
 
     expect(

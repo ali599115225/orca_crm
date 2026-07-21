@@ -1,5 +1,6 @@
 // lib/payments/providers/paylink.ts — SERVER-ONLY
 import "server-only";
+import { randomUUID } from "node:crypto";
 import type { PaymentCreateInput, PaymentProviderAdapter, PaymentProviderResult, PaymentVerificationResult } from '../types';
 
 function getPaylinkSecret(): string {
@@ -11,7 +12,7 @@ function getPaylinkBaseUrl(): string {
 }
 
 function generateIdempotencyKey(): string {
-  return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  return `orca-${randomUUID()}`;
 }
 
 export const paylinkProvider: PaymentProviderAdapter = {

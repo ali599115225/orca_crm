@@ -75,7 +75,9 @@ describe("G4 — Page and operational contract registry", () => {
 
   it("keeps non-visual contracts visually non-applicable and preserves documented visual decisions", () => {
     const { registry } = runRegistry();
-    const byId = new Map(registry.contracts.map((contract: { id: string }) => [contract.id, contract]));
+    const byId = new Map<string, { visualStatus?: string }>(
+      registry.contracts.map((contract: { id: string; visualStatus?: string }) => [contract.id, contract]),
+    );
 
     const nonVisual = registry.contracts.filter((contract: { kind: string }) => ["API", "SERVER_ACTION"].includes(contract.kind));
     expect(nonVisual.every((contract: { visualStatus: string }) => contract.visualStatus === "NOT_APPLICABLE")).toBe(true);
