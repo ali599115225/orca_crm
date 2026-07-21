@@ -67,11 +67,13 @@ jobs:
       - name: G5 security and quality inventory
         run: node scripts/g5-security-quality-inventory.mjs
 
-      - name: G5 npm audit discovery
+      - name: G5 dependency discovery
         shell: bash
         run: |
           npm audit --omit=dev --json > artifacts/g5-npm-audit-production.json || true
           npm audit --json > artifacts/g5-npm-audit-all.json || true
+          npm ls --all --json > artifacts/g5-npm-tree.json || true
+          npm outdated --json > artifacts/g5-npm-outdated.json || true
 
       - name: Upload G5 discovery evidence
         uses: actions/upload-artifact@v4
@@ -82,6 +84,8 @@ jobs:
             artifacts/g5-security-quality-inventory.md
             artifacts/g5-npm-audit-production.json
             artifacts/g5-npm-audit-all.json
+            artifacts/g5-npm-tree.json
+            artifacts/g5-npm-outdated.json
           if-no-files-found: error
           retention-days: 7
 
