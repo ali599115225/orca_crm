@@ -7,7 +7,7 @@ import { getLegacySaasCapability } from "@/lib/platform-operating-model";
  *
  * Authentication and rate limiting remain in place while deployed schedules
  * drain, but the endpoint performs no database mutation, provider call,
- * password change, notification, lease renewal, or subscription processing.
+ * password change, lease renewal, subscription processing, or outbound action.
  */
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
