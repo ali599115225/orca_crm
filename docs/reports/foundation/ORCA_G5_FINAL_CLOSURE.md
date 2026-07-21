@@ -6,6 +6,7 @@
 - **Repository status:** PASS / READY FOR FINAL CHECKS
 - **Start SHA:** `b42c41a9e2c11e1ee8436c6a70425035e45d04aa`
 - **Verified implementation head:** `a28f78b874e5a1fa42901ebe8fef3a864b12269f`
+- **Verified documentation head:** `fce64dd82829a6b25d7e61e07666668e4a2b98ad`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **PR:** #63
@@ -111,7 +112,7 @@ No standalone ESLint configuration currently exists. G5 does not add a cosmetic 
 
 ## Verified checks
 
-The implementation head `a28f78b874e5a1fa42901ebe8fef3a864b12269f` passed:
+The implementation head `a28f78b874e5a1fa42901ebe8fef3a864b12269f` and the documentation head `fce64dd82829a6b25d7e61e07666668e4a2b98ad` passed:
 
 - Node.js 24 dependency installation;
 - Prisma validation/generation;
@@ -127,7 +128,7 @@ The implementation head `a28f78b874e5a1fa42901ebe8fef3a864b12269f` passed:
 - production build;
 - CodeQL Actions, Python, and JavaScript/TypeScript analysis.
 
-A Vercel preview request for that head was rejected by the provider's build-rate limit rather than an application build error. The connected Vercel project shows recent branch previews in `READY` state. The final documentation head must obtain a normal Vercel status before PR #63 is merged.
+Vercel preview requests for both checked heads were rejected by the provider's build-rate limit rather than an application build error. The connected Vercel project shows recent branch previews in `READY` state. This documentation update provides one final Git-triggered Preview retry; PR #63 must not merge unless that status succeeds.
 
 ## Durable outputs
 
