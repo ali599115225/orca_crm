@@ -138,7 +138,7 @@ describe("G6 — Operations, recovery, and reliability gate", () => {
 
     expect(inventory.historicalEvidencePolicy.archiveReportsAreAuthoritative).toBe(false);
     expect(register).toContain("Historical reports under `docs/reports/archive/` are context only");
-    expect(register).toContain("Production restore: prohibited");
+    expect(register).toContain("**Production restore:** prohibited");
     expect(runbook).toContain("ORCA_G6_RESTORE_CONFIRM=RESTORE_NON_PRODUCTION");
     expect(runbook).toContain("Stop conditions");
   });
