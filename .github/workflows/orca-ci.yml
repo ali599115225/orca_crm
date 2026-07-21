@@ -46,13 +46,18 @@ jobs:
       - name: G4 contract inventory
         run: node scripts/g4-contract-inventory.mjs
 
-      - name: Upload G4 contract inventory
+      - name: G4 contract reconciliation
+        run: node scripts/g4-contract-reconcile.mjs
+
+      - name: Upload G4 contract registry
         uses: actions/upload-artifact@v4
         with:
-          name: g4-contract-inventory
+          name: g4-contract-registry
           path: |
             artifacts/g4-contract-inventory.json
             artifacts/g4-contract-inventory.md
+            artifacts/g4-contract-registry.json
+            artifacts/g4-contract-registry.md
           if-no-files-found: error
           retention-days: 7
 
