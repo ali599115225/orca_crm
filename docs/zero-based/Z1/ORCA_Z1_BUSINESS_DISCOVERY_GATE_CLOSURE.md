@@ -1,8 +1,8 @@
 # ORCA Z1 — Business Discovery Gate Closure
 
 - **Document ID:** ORCA-Z1-CLOSE-001
-- **Version:** 1.0
-- **Date:** 2026-07-21
+- **Version:** 1.1 — CI Revalidation
+- **Date:** 2026-07-22
 - **Status:** `PASS / CLOSED WITH OWNER DECISIONS CARRIED FORWARD`
 - **Repository:** `ali599115225/orca_crm`
 - **Branch:** `work/orca-z1-business-discovery-20260721`
@@ -158,7 +158,11 @@ Work that does not depend on these choices may continue through Z2–Z6 using th
 - Capability, process, persona, scope, and traceability evidence are present.
 - High-risk boundaries remain unchanged.
 
-## 11. Gate decision
+## 11. CI revalidation note
+
+This revision makes no substantive change to the Z1 business contract. It records a clean revalidation trigger after the previous Vercel Preview check was blocked solely by the external Hobby build-rate quota. ORCA CI had already completed successfully. No Runtime, database, provider, environment, `main`, or Production action is introduced.
+
+## 12. Gate decision
 
 ```text
 Z1 BUSINESS DISCOVERY: PASS / CLOSED
