@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -61,6 +61,27 @@ jobs:
             artifacts/g4-contract-inventory.md
             artifacts/g4-contract-registry.json
             artifacts/g4-contract-registry.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: G5 security and quality inventory
+        run: node scripts/g5-security-quality-inventory.mjs
+
+      - name: G5 npm audit discovery
+        shell: bash
+        run: |
+          npm audit --omit=dev --json > artifacts/g5-npm-audit-production.json || true
+          npm audit --json > artifacts/g5-npm-audit-all.json || true
+
+      - name: Upload G5 discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g5-security-quality-discovery
+          path: |
+            artifacts/g5-security-quality-inventory.json
+            artifacts/g5-security-quality-inventory.md
+            artifacts/g5-npm-audit-production.json
+            artifacts/g5-npm-audit-all.json
           if-no-files-found: error
           retention-days: 7
 
