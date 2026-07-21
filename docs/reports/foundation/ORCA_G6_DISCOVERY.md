@@ -6,7 +6,7 @@
 - **Start SHA:** `a0915efc78b28144f13d8fd7d04633586f18a721`
 - **Working branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
-- **Status:** DISCOVERY CLOSED / IMPLEMENTATION IN PROGRESS
+- **Status:** DISCOVERY CLOSED / IMPLEMENTATION VERIFIED
 - **Production action:** none
 
 ## Scope
@@ -56,15 +56,16 @@ Archived reports contain mutually incompatible claims, including:
 
 No execution artifact accompanies those claims. G6 therefore marks all archived backup and recovery reports as historical context only.
 
-## Implemented G6 direction
+## Implemented G6 controls
 
-1. Replace the legacy backup entrypoint with a compatibility wrapper that defaults to plan-only.
-2. Add a canonical Node backup command using fixed process arguments and explicit gates.
-3. Add a canonical restore drill that refuses Production and source-target equality.
-4. Produce SHA-256 and integrity evidence for every executed dump.
-5. Add a real isolated PostgreSQL backup/restore probe to GitHub Actions.
-6. Generate a current Cron, health, backup, restore, and documentation inventory on every PR.
-7. Retain Production provider settings, Production backup execution, Production restore, and environment changes outside repository automation.
+1. Replaced the legacy backup entrypoint with a compatibility wrapper that defaults to plan-only.
+2. Added a canonical Node backup command using fixed process arguments and explicit gates.
+3. Added a canonical restore drill that refuses Production and source-target equality.
+4. Added SHA-256 and integrity evidence for every executed dump.
+5. Added a real isolated PostgreSQL backup/restore probe to GitHub Actions.
+6. Added a current Cron, health, backup, restore, and documentation inventory on every PR.
+7. Kept Production provider settings, Production backup execution, Production restore, and environment changes outside repository automation.
+8. Verified the implementation with ORCA CI, CodeQL, regressions, acceptance, build, and two successful isolated recovery-drill runs.
 
 ## Provider facts requiring activation-time confirmation
 
