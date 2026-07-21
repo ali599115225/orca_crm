@@ -1,0 +1,182 @@
+enum OrgUnitType {
+  COMPANY
+  BRANCH
+  DEPARTMENT
+  TEAM
+
+  @@map("org_unit_type")
+}
+
+enum OrgAssignmentStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("org_assignment_status")
+}
+
+enum AccessScopeType {
+  TENANT
+  BRANCH
+  DEPARTMENT
+  TEAM
+  SELF
+  RESOURCE
+
+  @@map("access_scope_type")
+}
+
+enum RoleAssignmentStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("role_assignment_status")
+}
+
+enum AuthorizationMode {
+  AUDIT
+  ENFORCE
+
+  @@map("authorization_mode")
+}
+
+enum AuthorizationDecision {
+  ALLOW
+  DENY
+  SHADOW_ALLOW
+  SHADOW_DENY
+  ERROR
+
+  @@map("authorization_decision")
+}
+
+model OrgUnit {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  parentId  String?     @map("parent_id") @db.Uuid
+  type      OrgUnitType
+  code      String
+  name      String
+  isActive  Boolean     @default(true) @map("is_active")
+  metadata  Json?
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, code], map: "uq_org_units_tenant_code")
+  @@index([tenantId, type, isActive], map: "idx_org_units_tenant_type_active")
+  @@index([tenantId, parentId], map: "idx_org_units_tenant_parent")
+  @@map("org_units")
+}
+
+model OrgAssignment {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String              @map("tenant_id") @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  orgUnitId   String              @map("org_unit_id") @db.Uuid
+  status      OrgAssignmentStatus @default(ACTIVE)
+  isPrimary   Boolean             @default(false) @map("is_primary")
+  validFrom   DateTime            @default(now()) @map("valid_from") @db.Timestamptz
+  validUntil  DateTime?           @map("valid_until") @db.Timestamptz
+  createdById String?             @map("created_by_id") @db.Uuid
+  metadata    Json?
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, userId, orgUnitId], map: "uq_org_assignments_tenant_user_unit")
+  @@index([tenantId, userId, status], map: "idx_org_assignments_tenant_user_status")
+  @@index([tenantId, orgUnitId, status], map: "idx_org_assignments_tenant_unit_status")
+  @@map("org_assignments")
+}
+
+model AccessPermission {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique
+  resource    String
+  action      String
+  risk        String
+  description String   @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([resource, action, isActive], map: "idx_access_permissions_resource_action_active")
+  @@map("access_permissions")
+}
+
+model AccessRole {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  key         String
+  name        String
+  description String?  @db.Text
+  isSystem    Boolean  @default(false) @map("is_system")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, key], map: "uq_access_roles_tenant_key")
+  @@index([tenantId, isActive], map: "idx_access_roles_tenant_active")
+  @@map("access_roles")
+}
+
+model AccessRolePermission {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  accessRoleId String   @map("access_role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, accessRoleId, permissionId], map: "uq_access_role_permissions_tenant_role_permission")
+  @@index([tenantId, accessRoleId], map: "idx_access_role_permissions_tenant_role")
+  @@index([tenantId, permissionId], map: "idx_access_role_permissions_tenant_permission")
+  @@map("access_role_permissions")
+}
+
+model RoleAssignment {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String               @map("tenant_id") @db.Uuid
+  userId         String               @map("user_id") @db.Uuid
+  accessRoleId   String               @map("access_role_id") @db.Uuid
+  scopeType      AccessScopeType      @map("scope_type")
+  scopeOrgUnitId String?              @map("scope_org_unit_id") @db.Uuid
+  resourceType   String?              @map("resource_type")
+  resourceId     String?              @map("resource_id") @db.Uuid
+  status         RoleAssignmentStatus @default(ACTIVE)
+  validFrom      DateTime             @default(now()) @map("valid_from") @db.Timestamptz
+  validUntil     DateTime?            @map("valid_until") @db.Timestamptz
+  createdById    String?              @map("created_by_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, userId, status], map: "idx_role_assignments_tenant_user_status")
+  @@index([tenantId, accessRoleId, status], map: "idx_role_assignments_tenant_role_status")
+  @@index([tenantId, scopeType, scopeOrgUnitId], map: "idx_role_assignments_tenant_scope_unit")
+  @@index([tenantId, resourceType, resourceId], map: "idx_role_assignments_tenant_resource")
+  @@map("role_assignments")
+}
+
+model AuthorizationAudit {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  userId         String?               @map("user_id") @db.Uuid
+  permissionKey  String                @map("permission_key")
+  mode           AuthorizationMode
+  decision       AuthorizationDecision
+  legacyAllowed  Boolean?              @map("legacy_allowed")
+  rbacAllowed    Boolean               @map("rbac_allowed")
+  scopeType      AccessScopeType?      @map("scope_type")
+  scopeId        String?               @map("scope_id") @db.Uuid
+  resourceType   String?               @map("resource_type")
+  resourceId     String?               @map("resource_id") @db.Uuid
+  reasonCode     String                @map("reason_code")
+  source         String
+  requestId      String?               @map("request_id")
+  metadata       Json?
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, createdAt], map: "idx_authorization_audits_tenant_created")
+  @@index([tenantId, userId, createdAt], map: "idx_authorization_audits_tenant_user_created")
+  @@index([tenantId, permissionKey, createdAt], map: "idx_authorization_audits_tenant_permission_created")
+  @@index([tenantId, decision, createdAt], map: "idx_authorization_audits_tenant_decision_created")
+  @@map("authorization_audits")
+}
