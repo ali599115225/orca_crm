@@ -44,7 +44,7 @@ jobs:
         run: node scripts/g3-final-verification.mjs
 
       - name: G4 contract inventory
-        run: node scripts/g4-contract-inventory-v2.mjs
+        run: node scripts/g4-contract-inventory.mjs
 
       - name: Upload G4 contract inventory
         uses: actions/upload-artifact@v4
