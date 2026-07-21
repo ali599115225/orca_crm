@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "closedStatus": "CLOSED_RETAINED",
+    "rule": "A retained closed status is not reopened without a current documented regression. Historical reports alone do not close an unclassified surface."
+  },
+  "routes": {
+    "/login": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "LOGIN-F01 and LOGIN-V01 closure decision; no current documented regression."
+    },
+    "/dashboard": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "DASH-V01 closure decision; no current documented regression."
+    },
+    "/operations/dashboard": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Dashboard visual contract retained after current repository reconciliation."
+    },
+    "/leads": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Primary Leads workspace closure retained; detail route is tracked separately."
+    },
+    "/operations/leads": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Primary Leads workspace closure retained; detail route is tracked separately."
+    },
+    "/operations/leads/[id]": {
+      "status": "PARTIAL_DOCUMENTED_ISSUE",
+      "evidence": "Current documented issue: oversized detail structure and empty-state height must use content-driven auto height."
+    },
+    "/operations/properties": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Properties list/detail visual closure retained; no current documented regression."
+    },
+    "/operations/rental": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental contracts and payments visual closure retained."
+    },
+    "/operations/rental/invoices": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental invoices visual closure retained."
+    },
+    "/operations/rental/leases": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental leases visual closure retained."
+    },
+    "/operations/rental/payments": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental payments visual closure retained."
+    },
+    "/operations/rental/reconciliation": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental reconciliation visual closure retained."
+    },
+    "/operations/rental/settlements": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Rental settlements visual closure retained."
+    },
+    "/operations/tours": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Tours page visual closure retained; no current documented regression."
+    },
+    "/operations/offers": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Offers page visual closure retained; no current documented regression."
+    },
+    "/operations/sales": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Sales workspace visual closure retained."
+    },
+    "/operations/projects": {
+      "status": "PARTIAL",
+      "evidence": "Projects page remains in visual replanning and is not declared closed."
+    },
+    "/operations/tasks": {
+      "status": "PARTIAL",
+      "evidence": "Tasks page remains within the limited visual-unification workstream."
+    },
+    "/operations/helpdesk": {
+      "status": "PARTIAL",
+      "evidence": "Support Center remains within the limited visual-unification workstream."
+    },
+    "/operations/email": {
+      "status": "PARTIAL",
+      "evidence": "Email remains within the limited visual-unification workstream."
+    },
+    "/operations/whatsapp": {
+      "status": "PARTIAL",
+      "evidence": "WhatsApp is functionally present with documented UX items still open."
+    },
+    "/operations/settings": {
+      "status": "PARTIAL",
+      "evidence": "Settings sub-surfaces are partially unified; no complete current visual closure is asserted."
+    },
+    "/register": {
+      "status": "LEGACY_DISABLED",
+      "evidence": "Public company registration is disabled by the closed G3 SaaS-disablement contract."
+    }
+  },
+  "sources": {
+    "features/dashboard/components/DailyOperationsCenter.tsx": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Dashboard internal contract retained."
+    },
+    "features/leads/components/LeadDetailClient.tsx": {
+      "status": "PARTIAL_DOCUMENTED_ISSUE",
+      "evidence": "Detail container and empty-state height issue remains documented."
+    },
+    "features/leads/components/EngagementTabs.tsx": {
+      "status": "PARTIAL",
+      "evidence": "Lead engagement tabs require per-tab visual evidence and closure."
+    },
+    "components/views/ProjectsView.tsx": {
+      "status": "PARTIAL",
+      "evidence": "Projects tabs remain in visual replanning."
+    },
+    "components/properties/PropertyDetail.tsx": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Properties detail visual contract retained."
+    },
+    "components/real-estate/properties/PropertiesWorkspace.tsx": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Properties workspace visual contract retained."
+    },
+    "features/leads/components/LeadsWorkspace.tsx": {
+      "status": "CLOSED_RETAINED",
+      "evidence": "Primary Leads workspace visual contract retained."
+    }
+  }
+}

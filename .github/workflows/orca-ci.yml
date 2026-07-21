@@ -43,10 +43,32 @@ jobs:
       - name: G3 final verification
         run: node scripts/g3-final-verification.mjs
 
+      - name: G4 contract inventory
+        run: node scripts/g4-contract-inventory.mjs
+
+      - name: G4 API method normalization
+        run: node scripts/g4-contract-normalize.mjs
+
+      - name: G4 contract reconciliation
+        run: node scripts/g4-contract-reconcile.mjs
+
+      - name: Upload G4 contract registry
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-contract-registry
+          path: |
+            artifacts/g4-contract-inventory.json
+            artifacts/g4-contract-inventory.md
+            artifacts/g4-contract-registry.json
+            artifacts/g4-contract-registry.md
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Core regression tests
         run: >
           npx vitest run
           tests/foundation/g3-*.test.ts
+          tests/foundation/g4-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
