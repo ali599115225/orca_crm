@@ -110,11 +110,40 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: G6 operational reliability inventory
+        run: npm run g6:inventory
+
+      - name: Upload G6 operational reliability evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g6-operational-reliability-evidence
+          path: |
+            artifacts/g6-operational-reliability-inventory.json
+            artifacts/g6-operational-reliability-inventory.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: G6 executable contract tests
+        run: >
+          npx vitest run tests/foundation/g6-*.test.ts
+          --reporter=json
+          --outputFile=artifacts/g6-test-results.json
+
+      - name: Upload G6 executable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g6-executable-test-evidence
+          path: artifacts/g6-test-results.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Foundation and core regression tests
         run: >
           npx vitest run
           tests/foundation/g3-*.test.ts
           tests/foundation/g4-*.test.ts
+          tests/foundation/g6-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
@@ -136,3 +165,94 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  g6-recovery-drill:
+    name: G6 isolated recovery drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Execute isolated backup and restore drill
+        shell: bash
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/g6-recovery-drill
+          createdb -h 127.0.0.1 -U postgres orca_g6_source
+          createdb -h 127.0.0.1 -U postgres orca_g6_restore
+          psql -h 127.0.0.1 -U postgres -d orca_g6_source -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE g6_recovery_probe (
+            id integer PRIMARY KEY,
+            payload text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          INSERT INTO g6_recovery_probe (id, payload) VALUES (1, 'orca-g6-ci');
+          SQL
+
+          SOURCE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_g6_source?sslmode=disable'
+          TARGET_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_g6_restore?sslmode=disable'
+
+          ORCA_G6_BACKUP_EXECUTE=true \
+          ORCA_G6_CHANGE_APPROVED=true \
+          DIRECT_URL="$SOURCE_URL" \
+          node scripts/g6-backup-plan.mjs \
+            --execute \
+            --type ci \
+            --output-dir artifacts/g6-recovery-drill \
+            > artifacts/g6-recovery-drill/backup-command-result.json
+
+          BACKUP_FILE="$(find artifacts/g6-recovery-drill -maxdepth 1 -type f -name '*.dump' -print -quit)"
+          test -n "$BACKUP_FILE"
+
+          ORCA_G6_RESTORE_EXECUTE=true \
+          ORCA_G6_CHANGE_APPROVED=true \
+          ORCA_G6_RESTORE_CONFIRM=RESTORE_NON_PRODUCTION \
+          DATABASE_URL="$SOURCE_URL" \
+          DIRECT_URL="$SOURCE_URL" \
+          ORCA_G6_RESTORE_DATABASE_URL="$TARGET_URL" \
+          node scripts/g6-restore-drill.mjs \
+            --execute \
+            --backup-file "$BACKUP_FILE" \
+            > artifacts/g6-recovery-drill/restore-command-result.json
+
+          RESTORED_PAYLOAD="$(psql -h 127.0.0.1 -U postgres -d orca_g6_restore -tAc "SELECT payload FROM g6_recovery_probe WHERE id = 1")"
+          test "$RESTORED_PAYLOAD" = "orca-g6-ci"
+          printf 'probe=orca-g6-ci\nstatus=PASS\n' > artifacts/g6-recovery-drill/ci-verification.txt
+
+      - name: Upload isolated recovery drill evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g6-isolated-recovery-drill
+          path: artifacts/g6-recovery-drill/
+          if-no-files-found: error
+          retention-days: 7

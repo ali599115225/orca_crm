@@ -13,7 +13,10 @@
         "test:smoke": "vitest run tests/p2-health-readiness.test.ts tests/auth.test.ts",
         "test:acceptance": "vitest run tests/auth.test.ts tests/tenant-isolation.test.ts tests/p2-health-readiness.test.ts tests/payment-service.test.ts tests/phase02-full-closure.test.ts && npm run test:whatsapp && npm run test:sentinel",
         "typecheck": "tsc --noEmit",
-        "security:audit": "npm audit --omit=dev --audit-level=moderate"
+        "security:audit": "npm audit --omit=dev --audit-level=moderate",
+        "g6:inventory": "node scripts/g6-operational-reliability-inventory.mjs",
+        "g6:backup": "node scripts/g6-backup-plan.mjs",
+        "g6:restore-drill": "node scripts/g6-restore-drill.mjs"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
