@@ -9,12 +9,13 @@ import type {
   AccessContext,
   ResolvedRoleAssignment,
 } from '../../lib/authz/authorization'
+import type { PermissionKey } from '../../lib/authz/permission-registry'
 
 const TENANT_ID = '10000000-0000-0000-0000-000000000001'
 const USER_ID = '20000000-0000-0000-0000-000000000001'
 const NOW = new Date('2026-07-21T02:00:00.000Z')
 
-function context(permissionKeys: readonly string[]): AccessContext {
+function context(permissionKeys: readonly PermissionKey[]): AccessContext {
   const assignment: ResolvedRoleAssignment = {
     id: 'assignment-1',
     accessRoleId: 'role-1',
@@ -25,7 +26,7 @@ function context(permissionKeys: readonly string[]): AccessContext {
     resourceId: null,
     validFrom: new Date('2026-01-01T00:00:00.000Z'),
     validUntil: null,
-    permissionKeys: new Set(permissionKeys as never[]),
+    permissionKeys: new Set(permissionKeys),
   }
 
   return {
