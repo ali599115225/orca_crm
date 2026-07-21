@@ -57,7 +57,7 @@ describe('G3-06 current policy difference inventory', () => {
   it('records every selected legacy/RBAC mismatch before enforcement', () => {
     const differences = LEGACY_POLICY.flatMap((policy) =>
       LEGACY_ROLES.flatMap((role) => {
-        const legacyAllowed = policy.allowedRoles.includes(role)
+        const legacyAllowed = (policy.allowedRoles as readonly string[]).includes(role)
         const newAllowed = rbacAllows(role, policy.permissionKey)
         return legacyAllowed === newAllowed
           ? []
