@@ -114,6 +114,26 @@ jobs:
       - name: Install candidate tree
         run: npm ci
 
+      - name: Capture candidate audit
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          npm audit --omit=dev --json > artifacts/g5-candidate-audit.json || true
+          cp package.json artifacts/g5-candidate-package.json
+          cp package-lock.json artifacts/g5-candidate-package-lock.json
+
+      - name: Upload candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g5-candidate-dependencies
+          path: |
+            artifacts/g5-candidate-audit.json
+            artifacts/g5-candidate-package.json
+            artifacts/g5-candidate-package-lock.json
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Production dependency audit
         run: npm run security:audit
 
