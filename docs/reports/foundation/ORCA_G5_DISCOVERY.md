@@ -3,49 +3,50 @@
 ## Stage
 
 - **Stage:** G5 — Security & Quality
-- **Status:** IN PROGRESS
+- **Status:** DISCOVERY CLOSED
 - **Start SHA:** `b42c41a9e2c11e1ee8436c6a70425035e45d04aa`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **Main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 
-## Scope
+## Completed scope
 
-G5 owns repository security and quality evidence after the G4 contract registry. It must:
+G5 completed:
 
-1. classify the 59 G4 contracts without direct current test references;
-2. identify high-risk unproven API and Server Action surfaces;
-3. inspect dependency and supply-chain posture;
-4. inspect current static security signals and risky source patterns;
-5. verify API authentication/authorization evidence without assuming public access is safe;
-6. establish explicit type, dependency-audit, contract, regression, build, CodeQL, and preview gates;
-7. retain unresolved risks explicitly rather than converting them into PASS.
+1. classification of all 59 G4 contracts without direct current test references;
+2. risk-priority assignment for security-critical, mutation, sensitive-read, read, UI, and source-state contracts;
+3. dependency and supply-chain review;
+4. direct and transitive API security-boundary detection;
+5. runtime-source risk review separated from operational-tooling signals;
+6. correction of insecure payment idempotency randomness;
+7. reviewed dependency upgrades and narrow vulnerability overrides;
+8. blocking Production dependency audit and standalone TypeScript typecheck;
+9. executable G5 drift/security/quality contracts;
+10. durable risk ownership and final closure evidence.
 
-## Existing controls observed
+## Durable outputs
 
-- CodeQL advanced setup covers Actions, JavaScript/TypeScript, and Python.
-- Dependabot checks npm and GitHub Actions weekly.
-- ORCA CI validates Prisma, Production safety, G3, G4, core regressions, Sentinel, P2 acceptance, and the production build.
-- G4 records 359 contracts, with 300 carrying direct current test references and 59 classified as `NOT_PROVEN`.
+- `docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md`;
+- `docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md`;
+- `scripts/g5-security-quality-inventory.mjs`;
+- `tests/foundation/g5-security-quality.test.ts`;
+- CI artifacts under `g5-security-quality-evidence` and `g5-executable-test-evidence`.
 
-## Discovery outputs
-
-`scripts/g5-security-quality-inventory.mjs` will emit:
-
-- `artifacts/g5-security-quality-inventory.json`;
-- `artifacts/g5-security-quality-inventory.md`.
-
-CI will also capture npm audit results separately before a blocking policy is selected from the actual findings.
-
-## Status semantics
+## Evidence semantics
 
 - `VERIFIED`: direct current evidence satisfies the stated control.
-- `REVIEW_REQUIRED`: a signal exists but needs source-level review before severity is assigned.
-- `NOT_PROVEN`: no direct current evidence was detected.
-- `ACCEPTED_RISK`: a reviewed risk is retained with an owner and reason.
-- `BLOCKING`: a confirmed risk prevents G5 closure.
-- `OUT_OF_SCOPE`: owned by a later foundation stage.
+- `REVIEW_REQUIRED`: a tooling or operational signal remains for later operational review.
+- `NOT_PROVEN`: no direct current behavioral test reference exists.
+- `ACCEPTED_LOW_STATIC`: a reviewed low-risk static signal remains visible.
+- `BLOCKING`: a confirmed high/critical runtime or dependency risk prevents closure.
+- `OUT_OF_SCOPE`: explicitly owned by G6 or G8.
+
+## Final reference
+
+The complete results, classifications, dependency decisions, verified controls, residual ownership, and closure rule are recorded in:
+
+`docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md`
 
 ## Production boundary
 
-G5 does not include a Production deployment, migration, backfill, environment change, secret rotation, or Production data write. Security findings that require a Production action remain separately gated.
+No Production deployment, migration, backfill, environment change, secret rotation, or Production data write occurred during G5. Production actions remain separately gated.
