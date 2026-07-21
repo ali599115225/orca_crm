@@ -31,10 +31,12 @@ export const LEGACY_SAAS_CAPABILITIES = [
 export type LegacySaasCapability =
   (typeof LEGACY_SAAS_CAPABILITIES)[number];
 
-export type LegacySaasBlock = Readonly<{
+export type LegacySaasBlock<
+  Capability extends LegacySaasCapability = LegacySaasCapability,
+> = Readonly<{
   enabled: false;
   code: typeof LEGACY_SAAS_OUT_OF_SCOPE;
-  capability: LegacySaasCapability;
+  capability: Capability;
   platformModel: typeof ORCA_PLATFORM_MODEL.platformModel;
   reason: "SINGLE_COMPANY_OPERATIONAL_MODE";
 }>;
@@ -58,16 +60,15 @@ export function isLegacySaasEnabled(): false {
   return false;
 }
 
-export function getLegacySaasCapability(
-  capability: LegacySaasCapability,
-): LegacySaasBlock {
-  return LEGACY_SAAS_BLOCKS[capability];
+export function getLegacySaasCapability<
+  const Capability extends LegacySaasCapability,
+>(capability: Capability): LegacySaasBlock<Capability> {
+  return LEGACY_SAAS_BLOCKS[capability] as LegacySaasBlock<Capability>;
 }
 
-export function legacySaasBlockedResult(
-  capability: LegacySaasCapability,
-  error: string,
-) {
+export function legacySaasBlockedResult<
+  const Capability extends LegacySaasCapability,
+>(capability: Capability, error: string) {
   return Object.freeze({
     success: false as const,
     error,
