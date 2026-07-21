@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "authority": "ORCA Foundation G0-G8 Stage Ledger",
+  "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
+  "productionActionAuthorized": false,
+  "stages": [
+    {
+      "id": "G0",
+      "name": "Governance & Operating Model",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "ORCA_CENTRAL_BASELINE_PLAN.md",
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md"
+      ],
+      "closureBasis": "Single-company operating model, retained tenant security partition, company-owned external integrations, and prohibited developer-owned Production credentials are explicit controlling decisions."
+    },
+    {
+      "id": "G1",
+      "name": "Evidence Integrity",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "ORCA_CENTRAL_BASELINE_PLAN.md",
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md"
+      ],
+      "closureBasis": "Evidence priority, conflict resolution, current-source authority, and historical-evidence limitations are defined and retained."
+    },
+    {
+      "id": "G2",
+      "name": "Repository & Branch Reconciliation",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md",
+        "docs/reports/foundation/ORCA_G7_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "Foundation work uses a central integration branch, required PR checks, non-force reconciliation, and an unchanged main baseline; historical conflicts are terminally reconciled by G7."
+    },
+    {
+      "id": "G3",
+      "name": "Architecture, Organization, RBAC & Data Safety",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "Repository architecture, authorization, guarded data-transition tooling, and legacy SaaS disablement are closed; Production activation remains separate."
+    },
+    {
+      "id": "G4",
+      "name": "Page & Operational Contracts",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G4_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "The current contract inventory and evidence classifications are complete and protected from drift."
+    },
+    {
+      "id": "G5",
+      "name": "Security & Quality",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "Current High/Critical runtime risks are closed and blocking audit, typecheck, tests, CodeQL, and build controls are permanent."
+    },
+    {
+      "id": "G6",
+      "name": "Operations, Recovery & Reliability",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "Cron, health, safe backup/restore tooling, and isolated recovery evidence are closed at repository level."
+    },
+    {
+      "id": "G7",
+      "name": "Remediation Reconciliation & Closure",
+      "status": "PASS / CLOSED",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G7_FINAL_CLOSURE.md",
+        "ORCA_G7_REMEDIATION_POLICY.json"
+      ],
+      "closureBasis": "All known remediation items have explicit terminal status, owner, evidence, target, and dependencies; no reconciliation blockers remain."
+    },
+    {
+      "id": "G8",
+      "name": "Final Foundation Gate",
+      "status": "IN PROGRESS",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md"
+      ],
+      "closureBasis": "G8 closes when the executable final gate, central report, CI, CodeQL, merge, reconciliation, and unchanged main evidence complete."
+    }
+  ]
+}

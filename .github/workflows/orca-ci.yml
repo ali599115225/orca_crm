@@ -166,6 +166,37 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: G8 final foundation gate
+        run: npm run g8:gate
+
+      - name: Upload G8 final foundation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g8-final-foundation-evidence
+          path: |
+            artifacts/g8-final-foundation-gate.json
+            artifacts/g8-final-foundation-gate.md
+            ORCA_FOUNDATION_STAGE_LEDGER.json
+            ORCA_CENTRAL_BASELINE_REPORT.md
+            docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: G8 executable final-gate tests
+        run: >
+          npx vitest run tests/foundation/g8-*.test.ts
+          --reporter=json
+          --outputFile=artifacts/g8-test-results.json
+
+      - name: Upload G8 executable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g8-executable-test-evidence
+          path: artifacts/g8-test-results.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Foundation and core regression tests
         run: >
           npx vitest run
@@ -173,6 +204,7 @@ jobs:
           tests/foundation/g4-*.test.ts
           tests/foundation/g6-*.test.ts
           tests/foundation/g7-*.test.ts
+          tests/foundation/g8-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
