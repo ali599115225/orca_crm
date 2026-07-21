@@ -3,10 +3,12 @@
 ## Stage record
 
 - **Stage:** G3-01 — Architecture Contract
-- **Result:** IMPLEMENTED_PENDING_CI
+- **Result:** PASS
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **Start SHA:** `a8dd9c0ca1047651227c0f1268acca03599bfe0f`
+- **Verified implementation SHA:** `6f34edc8e3660786f46bf3951c330a3d0f31ae79`
+- **PR:** `#50`
 - **Baseline reconciliation state:** `FINAL_RECONCILIATION_STAGE_CLOSED`
 - **Main baseline observed:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production changes:** none
@@ -67,11 +69,12 @@ It establishes:
 11. Mandatory rollback, backup, restore, and isolated rehearsal evidence before production changes.
 12. No Prisma migration in G3-01.
 
-## Files added
+## Files changed
 
-- `docs/architecture/ADR-G3-01-single-company-access-context.md`
-- `tests/foundation/g3-01-architecture-contract.test.ts`
-- `docs/reports/foundation/ORCA_G3_01_ARCHITECTURE_CONTRACT_CLOSURE.md`
+- added `docs/architecture/ADR-G3-01-single-company-access-context.md`;
+- added `tests/foundation/g3-01-architecture-contract.test.ts`;
+- added `docs/reports/foundation/ORCA_G3_01_ARCHITECTURE_CONTRACT_CLOSURE.md`;
+- updated `.github/workflows/orca-ci.yml` to execute the G3-01 contract test explicitly.
 
 ## Migration record
 
@@ -80,43 +83,65 @@ It establishes:
 - Production migration applied: **no**
 - `prisma db push` used: **no**
 
-## Test contract
+## Test and build evidence
 
-The new Vitest contract checks that:
+GitHub Actions `ORCA CI` run `131` passed on verified implementation SHA `6f34edc8e3660786f46bf3951c330a3d0f31ae79`.
 
-- every mandatory G3-01 decision is present in the ADR;
+Successful steps:
+
+- Install;
+- Prisma client generation;
+- Production gate;
+- Core regression tests, including `tests/foundation/g3-01-architecture-contract.test.ts`;
+- Sentinel regression tests;
+- P2 acceptance tests;
+- production build.
+
+The G3-01 test verifies that:
+
+- every mandatory architecture decision is present in the ADR;
 - current schema compatibility anchors remain present;
 - no destructive `companyId` rename or legacy-data deletion is authorized;
 - branch/department/team/self/resource scopes remain subordinate to `tenantId`.
 
-Command expected in CI or an equivalent verified environment:
+## Security and deployment-preview evidence
 
-```bash
-npx vitest run tests/foundation/g3-01-architecture-contract.test.ts
-```
+GitHub Actions `CodeQL Advanced Setup` run `23` passed on the verified implementation SHA:
 
-## Build and security impact
+- Actions analysis: PASS;
+- Python analysis: PASS;
+- JavaScript/TypeScript analysis: PASS.
+
+Vercel commit status: **success**.
+
+This was a preview/status check only. No Production Deploy was requested or performed.
+
+## Build and runtime impact
 
 - Runtime source changed: **no**
 - Prisma schema changed: **no**
-- Build behavior changed: **no**
 - Authentication behavior changed: **no**
 - Authorization behavior changed: **no**
 - Tenant isolation behavior changed: **no**
+- CI coverage changed: **yes**, additive contract-test inclusion only
 - Secrets added: **no**
 
-The stage is intentionally documentation-and-contract only. CI evidence and PR merge evidence must be appended before the result changes to `PASS`.
+## Failure discovered and corrected
+
+The first CI cycle did not execute the new G3-01 test because ORCA CI uses an explicit Vitest file list. The test was added to that list.
+
+Two subsequent Core regression cycles exposed exact-string mismatches in the test contract (`default deny` versus `default-deny`, and Markdown code formatting around assignment model names). These were corrected in the test only; the accepted architecture decision did not change.
+
+The final verified cycle passed all required gates.
 
 ## Rollback
 
-Before merge, rollback is deletion/reversion of the three G3-01 files on the foundation branch.
+Before merge, rollback is a normal revert of the G3-01 commit set on the foundation branch.
 
-After merge, rollback is a normal revert of the G3-01 commit set. No schema or data rollback is needed because this stage creates no migration and changes no runtime code.
+After merge, rollback is a normal revert of the PR merge. No schema or data rollback is needed because this stage creates no migration and changes no runtime code.
 
-## Remaining gate
+## Closure rule
 
-- open PR to the central branch;
-- verify the stage test and required repository checks;
-- update this report with final SHAs and check evidence;
-- merge only after checks pass;
-- do not begin G3-02 before G3-01 is closed.
+G3-01 is technically complete at the verified implementation SHA. The evidence-only report update must also pass the required PR checks before merge.
+
+G3-02 SHALL NOT begin until PR #50 is merged into the central branch and the central SHA is verified.
