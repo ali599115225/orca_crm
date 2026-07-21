@@ -16,7 +16,8 @@
         "security:audit": "npm audit --omit=dev --audit-level=moderate",
         "g6:inventory": "node scripts/g6-operational-reliability-inventory.mjs",
         "g6:backup": "node scripts/g6-backup-plan.mjs",
-        "g6:restore-drill": "node scripts/g6-restore-drill.mjs"
+        "g6:restore-drill": "node scripts/g6-restore-drill.mjs",
+        "g7:reconcile": "node scripts/g7-remediation-reconciliation.mjs"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
