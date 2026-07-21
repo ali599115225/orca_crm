@@ -116,7 +116,7 @@ describe("G4 — Page and operational contract registry", () => {
     expect(index).toContain("APIs: **129**");
     expect(index).toContain("Server actions: **162**");
 
-    expect((pages.match(/^\| `\/[^|]+` \| `app\/[^|]+page\.(?:ts|tsx|js|jsx)`/gm) ?? [])).toHaveLength(43);
+    expect((pages.match(/^\| `\/[^`]*` \| `app\/(?:[^`]+\/)?page\.(?:ts|tsx|js|jsx)`/gm) ?? [])).toHaveLength(43);
     expect((pages.match(/^\| `(?:app|components|features)\/[^|]+` \|/gm) ?? []).length).toBeGreaterThanOrEqual(8);
 
     expect((apis.match(/^\| `\/[^|]+` \| [A-Z]/gm) ?? [])).toHaveLength(129);
