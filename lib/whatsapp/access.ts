@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { runWithTenantContext } from "@/lib/tenant-context";
+import { observeLegacyAuthorization } from "@/lib/authz/audit-mode";
 
 export const WHATSAPP_READ_ROLES = [
   "ADMIN",
@@ -26,9 +27,21 @@ export interface WhatsAppAccess {
   readonly role: string;
 }
 
+function auditPermissionForRoles(allowedRoles: readonly string[]) {
+  if (allowedRoles === WHATSAPP_CONNECTION_ROLES) {
+    return { permissionKey: "whatsapp.manage", source: "access:whatsapp.connection" };
+  }
+  if (allowedRoles === WHATSAPP_WRITE_ROLES) {
+    return { permissionKey: "whatsapp.send", source: "access:whatsapp.write" };
+  }
+  return { permissionKey: "whatsapp.read", source: "access:whatsapp.read" };
+}
+
 /**
  * Revalidates the session against the current database state before any
  * WhatsApp read, mutation, or provider call. A stale JWT role is never trusted.
+ * G3-06 additionally records a shadow RBAC comparison while the legacy result
+ * remains the only effective authorization decision.
  */
 export async function requireWhatsAppAccess(
   allowedRoles: readonly string[],
@@ -57,7 +70,24 @@ export async function requireWhatsAppAccess(
         }),
       ]);
 
-      if (!user || !tenant || !allowedRoles.includes(String(user.role))) {
+      const legacyAllowed = Boolean(
+        user && tenant && allowedRoles.includes(String(user.role)),
+      );
+      const audit = auditPermissionForRoles(allowedRoles);
+      await observeLegacyAuthorization(
+        {
+          tenantId,
+          userId,
+          role: user ? String(user.role) : String(session?.role || ""),
+        },
+        legacyAllowed,
+        {
+          ...audit,
+          resource: { tenantId },
+        },
+      );
+
+      if (!legacyAllowed || !user || !tenant) {
         throw new Error("FORBIDDEN");
       }
 
@@ -68,5 +98,4 @@ export async function requireWhatsAppAccess(
       });
     },
   );
-
 }
