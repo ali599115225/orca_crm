@@ -51,6 +51,22 @@ replaceExact(
   'const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/v1/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/deploy-marker", "/api/payment/callback", "/api/payments/custom/return", "/api/payments/custom/webhook",\n  "/api/payments/ngenius/webhook", "/api/payments/paylink/webhook",\n  "/api/whatsapp/webhook", "/api/whatsapp/embedded-signup/callback", "/api/revenue-integrity/webhook",\n  "/api/v1/leads/webhook", "/login/google",\n];',
 );
 
+replaceExact(
+  "tests/foundation/g3-07-progressive-enforcement.test.ts",
+  "        G3_RBAC_ENFORCE_DOMAINS: 'finance,messaging',\n      } as NodeJS.ProcessEnv),",
+  "        G3_RBAC_ENFORCE_DOMAINS: 'finance,messaging',\n      } as unknown as NodeJS.ProcessEnv),",
+);
+replaceExact(
+  "tests/foundation/g3-07-trusted-jobs.test.ts",
+  "/searchParams.*tenant|request\\.json\\(\\).*tenant/is",
+  "/searchParams[\\s\\S]*tenant|request\\.json\\(\\)[\\s\\S]*tenant/i",
+);
+replaceExact(
+  "tests/foundation/g4-page-operational-contracts.test.ts",
+  '    const byId = new Map(registry.contracts.map((contract: { id: string }) => [contract.id, contract]));',
+  '    const byId = new Map<string, { visualStatus?: string }>(\n      registry.contracts.map((contract: { id: string; visualStatus?: string }) => [contract.id, contract]),\n    );',
+);
+
 const packagePath = "package.json";
 const packageJson = JSON.parse(read(packagePath));
 packageJson.scripts.typecheck = "tsc --noEmit";
