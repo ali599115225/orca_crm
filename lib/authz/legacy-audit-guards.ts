@@ -7,6 +7,47 @@ import {
   observeLegacyAuthorization,
   type LegacyAuthorizationAuditOptions,
 } from './audit-mode'
+import {
+  enforceProgressiveAuthorization,
+  type EnforcementDomain,
+} from './enforcement'
+
+function domainForPermission(permissionKey: string): EnforcementDomain | null {
+  const resource = permissionKey.split('.')[0]
+  if (resource === 'users' || resource === 'settings' || resource === 'organization' || resource === 'access') {
+    return 'users-settings'
+  }
+  if (
+    resource === 'accounting' ||
+    resource === 'payments' ||
+    resource === 'installments' ||
+    resource === 'invoices' ||
+    resource === 'contracts' ||
+    resource === 'rentals' ||
+    resource === 'zatca'
+  ) {
+    return 'finance'
+  }
+  if (resource === 'email' || resource === 'whatsapp' || resource === 'notifications') {
+    return 'messaging'
+  }
+  if (
+    resource === 'leads' ||
+    resource === 'contacts' ||
+    resource === 'opportunities' ||
+    resource === 'projects' ||
+    resource === 'properties' ||
+    resource === 'tasks' ||
+    resource === 'tours' ||
+    resource === 'offers'
+  ) {
+    return 'sales'
+  }
+  if (resource === 'sentinel' || resource === 'realtime' || resource === 'automations') {
+    return 'jobs'
+  }
+  return null
+}
 
 export async function hasDatabaseRoleWithAudit(
   session: SessionPayload,
@@ -14,8 +55,18 @@ export async function hasDatabaseRoleWithAudit(
   audit: LegacyAuthorizationAuditOptions,
 ): Promise<boolean> {
   const legacyAllowed = await hasDatabaseRole(session, allowedRoles)
-  await observeLegacyAuthorization(session, legacyAllowed, audit)
-  return legacyAllowed
+  const domain = domainForPermission(audit.permissionKey)
+  if (!domain) {
+    await observeLegacyAuthorization(session, legacyAllowed, audit)
+    return legacyAllowed
+  }
+
+  const result = await enforceProgressiveAuthorization(session, legacyAllowed, {
+    domain,
+    ...audit,
+    auditSink: audit.sink,
+  })
+  return result.effectiveAllowed
 }
 
 function auditIdentity(value: unknown): SessionPayload | null {
@@ -48,15 +99,43 @@ export async function assertServerActionRoleWithAudit(
   audit: LegacyAuthorizationAuditOptions,
 ): Promise<SessionPayload> {
   const identity = auditIdentity(value)
+  let verified: SessionPayload | null = null
+  let legacyAllowed = false
+  let legacyError: unknown = null
 
   try {
-    const verified = await assertServerActionRole(value, allowedRoles)
-    await observeLegacyAuthorization(verified, true, audit)
-    return verified
+    verified = await assertServerActionRole(value, allowedRoles)
+    legacyAllowed = true
   } catch (error) {
-    if (identity) {
-      await observeLegacyAuthorization(identity, false, audit)
-    }
-    throw error
+    legacyError = error
   }
+
+  const effectiveIdentity = verified ?? identity
+  if (!effectiveIdentity) {
+    throw legacyError ?? new Error('UNAUTHORIZED')
+  }
+
+  const domain = domainForPermission(audit.permissionKey)
+  if (!domain) {
+    await observeLegacyAuthorization(effectiveIdentity, legacyAllowed, audit)
+  } else {
+    const result = await enforceProgressiveAuthorization(
+      effectiveIdentity,
+      legacyAllowed,
+      {
+        domain,
+        ...audit,
+        auditSink: audit.sink,
+      },
+    )
+    if (!result.effectiveAllowed) {
+      if (!legacyAllowed && legacyError) throw legacyError
+      throw new Error('FORBIDDEN')
+    }
+  }
+
+  if (!legacyAllowed || !verified) {
+    throw legacyError ?? new Error('FORBIDDEN')
+  }
+  return verified
 }
