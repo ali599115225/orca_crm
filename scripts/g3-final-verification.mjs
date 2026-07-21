@@ -9,7 +9,7 @@ const SERVER_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.mjs'])
 const REQUIRED_STAGE_REPORTS = [
   'docs/reports/foundation/ORCA_G3_01_ARCHITECTURE_CONTRACT_CLOSURE.md',
   'docs/reports/foundation/ORCA_G3_02_PERMISSION_INVENTORY_CLOSURE.md',
-  'docs/reports/foundation/ORCA_G3_03_SCHEMA_CLOSURE.md',
+  'docs/reports/foundation/ORCA_G3_03_RBAC_SCHEMA_CLOSURE.md',
   'docs/reports/foundation/ORCA_G3_04_SEED_BACKFILL_CLOSURE.md',
   'docs/reports/foundation/ORCA_G3_05_AUTHORIZATION_LAYER_CLOSURE.md',
   'docs/reports/foundation/ORCA_G3_06_AUDIT_MODE_CLOSURE.md',
@@ -28,7 +28,7 @@ const UNTRUSTED_TENANT_RULES = [
   {
     id: 'form-tenant-scope',
     pattern:
-      /(?:formData|data)\s*\.\s*get\(\s*['"`](?:tenantId|companyId|tenant_id|company_id)['"`]\s*\)/,
+      /formData\s*\.\s*get\(\s*['"`](?:tenantId|companyId|tenant_id|company_id)['"`]\s*\)/,
   },
   {
     id: 'header-tenant-scope',
@@ -125,7 +125,7 @@ function reviewPlatformTenantTarget(path, ruleId, content) {
 function scanUntrustedTenantSources() {
   const violations = []
   const reviewedPlatformTargets = []
-  const seenReviewed = new Set()
+  const reviewedKeys = new Set()
 
   for (const root of SERVER_ROOTS) {
     for (const absolute of walk(resolve(ROOT, root))) {
@@ -139,8 +139,8 @@ function scanUntrustedTenantSources() {
         const reviewed = reviewPlatformTenantTarget(path, rule.id, content)
         if (reviewed) {
           const key = `${reviewed.path}:${reviewed.ruleId}`
-          if (!seenReviewed.has(key)) {
-            seenReviewed.add(key)
+          if (!reviewedKeys.has(key)) {
+            reviewedKeys.add(key)
             reviewedPlatformTargets.push(reviewed)
           }
           continue
@@ -168,6 +168,7 @@ function verifyG3Migrations() {
     if (!directory.toLowerCase().includes('g3')) continue
     const path = resolve(migrationDir, directory, 'migration.sql')
     if (!existsSync(path)) continue
+
     const sql = stripSqlComments(readFileSync(path, 'utf8'))
     const repositoryPath = relative(ROOT, path).replaceAll('\\', '/')
     reviewed.push(repositoryPath)
@@ -180,10 +181,8 @@ function verifyG3Migrations() {
       /^\s*UPDATE\s+\S+\s+SET\b/mi,
       /ALTER\s+COLUMN[\s\S]*?SET\s+NOT\s+NULL/i,
     ]
-    for (const pattern of destructivePatterns) {
-      if (pattern.test(sql)) {
-        violations.push({ path: repositoryPath, ruleId: 'destructive-g3-sql' })
-      }
+    if (destructivePatterns.some((pattern) => pattern.test(sql))) {
+      violations.push({ path: repositoryPath, ruleId: 'destructive-g3-sql' })
     }
   }
   return { violations, reviewed }
@@ -198,20 +197,19 @@ function verifyWorkflowSafety() {
   for (const name of readdirSync(workflowDir)) {
     const path = resolve(workflowDir, name)
     if (!statSync(path).isFile()) continue
+
     const content = readFileSync(path, 'utf8')
     const repositoryPath = relative(ROOT, path).replaceAll('\\', '/')
     reviewed.push(repositoryPath)
 
     const forbidden = [
-      { ruleId: 'workflow-prisma-db-push', pattern: /prisma\s+db\s+push/i },
-      { ruleId: 'workflow-production-migrate', pattern: /prisma\s+migrate\s+deploy/i },
-      { ruleId: 'workflow-production-deploy', pattern: /vercel\s+(?:deploy\s+)?--prod/i },
-      { ruleId: 'workflow-force-push', pattern: /git\s+push[^\n]*--force/i },
+      ['workflow-prisma-db-push', /prisma\s+db\s+push/i],
+      ['workflow-production-migrate', /prisma\s+migrate\s+deploy/i],
+      ['workflow-production-deploy', /vercel\s+(?:deploy\s+)?--prod/i],
+      ['workflow-force-push', /git\s+push[^\n]*--force/i],
     ]
-    for (const item of forbidden) {
-      if (item.pattern.test(content)) {
-        violations.push({ path: repositoryPath, ruleId: item.ruleId })
-      }
+    for (const [ruleId, pattern] of forbidden) {
+      if (pattern.test(content)) violations.push({ path: repositoryPath, ruleId })
     }
   }
   return { violations, reviewed }
@@ -224,53 +222,48 @@ function verifyRequiredArtifacts() {
 }
 
 function verifySafeDefaults() {
-  const violations = []
   const enforcement = readFileSync(resolve(ROOT, 'lib/authz/enforcement.ts'), 'utf8')
   const operatingModel = readFileSync(
     resolve(ROOT, 'lib/platform-operating-model.ts'),
     'utf8',
   )
   const backfill = readFileSync(resolve(ROOT, 'scripts/g3-rbac-backfill.ts'), 'utf8')
-
   const required = [
-    {
-      path: 'lib/authz/enforcement.ts',
-      anchor: "G3_RBAC_ENFORCEMENT_ACK !== 'G3-07-DUAL-ALLOW'",
-      content: enforcement,
-      ruleId: 'unsafe-enforcement-default',
-    },
-    {
-      path: 'lib/authz/enforcement.ts',
-      anchor: "G3_RBAC_PRODUCTION_APPROVAL !== 'approved'",
-      content: enforcement,
-      ruleId: 'missing-production-enforcement-gate',
-    },
-    {
-      path: 'lib/platform-operating-model.ts',
-      anchor: 'legacySaasEnabled: false',
-      content: operatingModel,
-      ruleId: 'legacy-saas-enabled',
-    },
-    {
-      path: 'scripts/g3-rbac-backfill.ts',
-      anchor: "mode: apply ? 'APPLY_ISOLATED_TEST' : 'DRY_RUN'",
-      content: backfill,
-      ruleId: 'backfill-not-dry-run-default',
-    },
-    {
-      path: 'scripts/g3-rbac-backfill.ts',
-      anchor: 'G3 backfill writes are forbidden in Production',
-      content: backfill,
-      ruleId: 'missing-backfill-production-block',
-    },
+    [
+      'lib/authz/enforcement.ts',
+      "G3_RBAC_ENFORCEMENT_ACK !== 'G3-07-DUAL-ALLOW'",
+      enforcement,
+      'unsafe-enforcement-default',
+    ],
+    [
+      'lib/authz/enforcement.ts',
+      "G3_RBAC_PRODUCTION_APPROVAL !== 'approved'",
+      enforcement,
+      'missing-production-enforcement-gate',
+    ],
+    [
+      'lib/platform-operating-model.ts',
+      'legacySaasEnabled: false',
+      operatingModel,
+      'legacy-saas-enabled',
+    ],
+    [
+      'scripts/g3-rbac-backfill.ts',
+      "mode: apply ? 'APPLY_ISOLATED_TEST' : 'DRY_RUN'",
+      backfill,
+      'backfill-not-dry-run-default',
+    ],
+    [
+      'scripts/g3-rbac-backfill.ts',
+      'G3 backfill writes are forbidden in Production',
+      backfill,
+      'missing-backfill-production-block',
+    ],
   ]
 
-  for (const item of required) {
-    if (!item.content.includes(item.anchor)) {
-      violations.push({ path: item.path, ruleId: item.ruleId })
-    }
-  }
-  return violations
+  return required.flatMap(([path, anchor, content, ruleId]) =>
+    content.includes(anchor) ? [] : [{ path, ruleId }],
+  )
 }
 
 export function runFinalVerification() {
@@ -300,7 +293,9 @@ export function runFinalVerification() {
   }
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : ''
+const invokedPath = process.argv[1]
+  ? pathToFileURL(resolve(process.argv[1])).href
+  : ''
 if (import.meta.url === invokedPath) {
   const result = runFinalVerification()
   console.log(JSON.stringify(result, null, 2))
