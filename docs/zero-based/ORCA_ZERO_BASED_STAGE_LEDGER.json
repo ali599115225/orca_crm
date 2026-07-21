@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "authority": "ORCA Zero-Based Z0-Z8 Stage Ledger",
+  "repository": "ali599115225/orca_crm",
+  "defaultBranch": "main",
+  "observedMainSha": "f7af072c689178d397019648ab5c21336ab259b6",
+  "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
+  "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
+  "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
+  "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
+  "multiCompanySaasInScope": false,
+  "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
+  "integrationOwnership": "COMPANY_OWNER",
+  "developerOwnedProductionCredentials": "PROHIBITED",
+  "productionActionAuthorized": false,
+  "mainMergeAuthorized": false,
+  "currentGate": "Z1",
+  "stages": [
+    {
+      "id": "Z0",
+      "name": "Governance & Applicability",
+      "status": "PASS / CLOSED",
+      "stageBranch": "work/orca-z0-governance-20260721",
+      "evidenceRefs": [
+        "docs/reports/zero-based/ORCA_ZERO_BASED_EXECUTION_START_REPORT.md",
+        "docs/zero-based/Z0/ORCA_Z0_GOVERNANCE_GATE_CLOSURE.md",
+        "ORCA_CENTRAL_BASELINE_REPORT.md",
+        "docs/baseline/20260719-single-company/ORCA_PROJECT_CHARTER.md",
+        "docs/baseline/20260719-single-company/ORCA_EXTERNAL_INTEGRATION_POLICY.md"
+      ],
+      "runtimeChanged": false,
+      "databaseChanged": false,
+      "productionAction": false,
+      "nextAuthorizedGate": "Z1"
+    },
+    { "id": "Z1", "name": "Business Discovery", "status": "AUTHORIZED / NOT STARTED" },
+    { "id": "Z2", "name": "Domain Contracts", "status": "NOT STARTED" },
+    { "id": "Z3", "name": "Product Experience", "status": "NOT STARTED" },
+    { "id": "Z4", "name": "Data, Integration & Architecture", "status": "NOT STARTED" },
+    { "id": "Z5", "name": "Security & Quality", "status": "NOT STARTED" },
+    { "id": "Z6", "name": "Operations & Continuity", "status": "NOT STARTED" },
+    { "id": "Z7", "name": "Current-System Gap", "status": "NOT STARTED" },
+    { "id": "Z8", "name": "Execution Authorization", "status": "NOT STARTED" }
+  ],
+  "ownerDecisionRequired": [
+    "exact_real_estate_activities",
+    "legal_entity_size_and_structure",
+    "license_evidence",
+    "release_1_scope",
+    "hosting_and_processing_locations",
+    "retention_schedule",
+    "rto_rpo_mtpd_slo_targets",
+    "financial_and_contract_approval_limits",
+    "official_contract_invoice_templates",
+    "paid_provider_selection_and_budget",
+    "ai_usage_policy",
+    "production_release_authorization"
+  ]
+}
