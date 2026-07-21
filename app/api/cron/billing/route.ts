@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
-import {
-  LEGACY_SAAS_OUT_OF_SCOPE,
-  ORCA_PLATFORM_MODEL,
-} from "@/lib/platform-operating-model";
+import { getLegacySaasCapability } from "@/lib/platform-operating-model";
 
 /**
  * Compatibility endpoint for the retired SaaS subscription billing schedule.
@@ -33,8 +30,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,
     skipped: true,
-    code: LEGACY_SAAS_OUT_OF_SCOPE,
-    platformModel: ORCA_PLATFORM_MODEL.platformModel,
+    ...getLegacySaasCapability("BILLING_CRON"),
     message:
       "SaaS subscription billing automation is disabled for the single-company platform.",
   });
