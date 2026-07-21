@@ -1,23 +1,14 @@
-// app/actions/payment.ts — unified multi-provider payment initiation
-// Hardened: session + DB role check (ADMIN / owner) before any payment.
+// app/actions/payment.ts — retired platform subscription payment boundary
 "use server";
 
 import {
   LEGACY_SAAS_OUT_OF_SCOPE,
   ORCA_PLATFORM_MODEL,
+  legacySaasBlockedResult,
 } from "@/lib/platform-operating-model";
 
 const LEGACY_PAYMENT_ERROR =
   "مدفوعات اشتراك المنصة وإضافات SaaS غير متاحة في نموذج الشركة الواحدة.";
-
-function legacyPlatformPaymentBlocked() {
-  return {
-    success: false as const,
-    error: LEGACY_PAYMENT_ERROR,
-    code: LEGACY_SAAS_OUT_OF_SCOPE,
-    platformModel: ORCA_PLATFORM_MODEL.platformModel,
-  };
-}
 
 export async function initiateSubscriptionPaymentAction(
   plan: "basic" | "silver" | "gold" | "pro" | "professional" | "diamond",
@@ -25,7 +16,7 @@ export async function initiateSubscriptionPaymentAction(
 ) {
   void plan;
   void providerCode;
-  return legacyPlatformPaymentBlocked();
+  return legacySaasBlockedResult("SUBSCRIPTION_CHECKOUT", LEGACY_PAYMENT_ERROR);
 }
 
 export async function initiateAddonPaymentAction(
@@ -34,15 +25,18 @@ export async function initiateAddonPaymentAction(
 ) {
   void agentCount;
   void providerCode;
-  return legacyPlatformPaymentBlocked();
+  return legacySaasBlockedResult("ADDON_CHECKOUT", LEGACY_PAYMENT_ERROR);
 }
 
 export async function getAvailableProvidersAction() {
   return {
     success: true,
+    enabled: false as const,
     providers: [] as string[],
     default: null,
     state: ORCA_PLATFORM_MODEL.externalIntegrationsDefaultState,
     code: LEGACY_SAAS_OUT_OF_SCOPE,
+    capability: "SUBSCRIPTION_CHECKOUT" as const,
+    reason: "SINGLE_COMPANY_OPERATIONAL_MODE" as const,
   };
 }
