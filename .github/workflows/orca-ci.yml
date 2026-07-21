@@ -138,12 +138,41 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: G7 remediation reconciliation
+        run: npm run g7:reconcile
+
+      - name: Upload G7 remediation reconciliation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: g7-remediation-reconciliation-evidence
+          path: |
+            artifacts/g7-remediation-reconciliation.json
+            artifacts/g7-remediation-reconciliation.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: G7 executable reconciliation tests
+        run: >
+          npx vitest run tests/foundation/g7-*.test.ts
+          --reporter=json
+          --outputFile=artifacts/g7-test-results.json
+
+      - name: Upload G7 executable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g7-executable-test-evidence
+          path: artifacts/g7-test-results.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Foundation and core regression tests
         run: >
           npx vitest run
           tests/foundation/g3-*.test.ts
           tests/foundation/g4-*.test.ts
           tests/foundation/g6-*.test.ts
+          tests/foundation/g7-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
