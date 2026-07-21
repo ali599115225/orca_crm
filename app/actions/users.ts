@@ -5,51 +5,84 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
-import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { assertPlanLimit, PlanLimitError, logPlanBlockedAttempt } from "@/lib/plan-guard";
 import { hashEmail } from "@/lib/privacy-mask";
 import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
+import { enforceProgressiveAuthorization } from "@/lib/authz/enforcement";
+import { assertServerActionRoleWithProgressiveAuthorization } from "@/lib/authz/progressive-guards";
 
 const USER_ADMIN_ROLES = ["ADMIN"] as const;
 
 /**
- * دالة مساعدة DB-backed للتحقق من مشرف الشركة (tenantId scoped)
+ * DB-backed tenant administrator verification plus progressive RBAC.
+ * Legacy ADMIN remains required; RBAC can only add a denial inside the
+ * explicitly enabled users-settings domain.
  */
-async function verifyTenantAdmin() {
+async function verifyTenantAdmin(
+  permissionKey: "users.create" | "users.update" | "users.disable",
+  source: string,
+  resourceId?: string,
+) {
   const session = await getSession();
   if (!session) {
     throw new Error("يجب تسجيل الدخول أولاً.");
   }
 
-  // DB-backed: fetch user from DB with BOTH userId AND tenantId to prevent cross-tenant
   const tenant = await getActiveTenant();
   const user = await prisma.user.findFirst({
     where: {
       id: session.userId as string,
-      tenantId: tenant.id, // ← tenantId-scoped lookup (was missing before)
+      tenantId: tenant.id,
       isActive: true,
     },
     select: { id: true, role: true, name: true },
   });
 
-  if (!user || user.role !== "ADMIN") {
+  const legacyAllowed = Boolean(user && user.role === "ADMIN");
+  const access = await enforceProgressiveAuthorization(
+    {
+      tenantId: tenant.id,
+      userId: String(session.userId || ""),
+      role: user ? String(user.role) : String(session.role || ""),
+    },
+    legacyAllowed,
+    {
+      domain: "users-settings",
+      permissionKey,
+      source,
+      resource: {
+        tenantId: tenant.id,
+        resourceType: resourceId ? "User" : undefined,
+        resourceId: resourceId || undefined,
+      },
+    },
+  );
+
+  if (!access.effectiveAllowed || !user) {
     throw new Error("عذراً، هذه العملية تتطلب صلاحيات المدير العام للشركة (Admin).");
   }
 
   return { session, user, tenant };
 }
 
-/**
- * جلب جميع الموظفين التابعين للشركة الحالية
- */
+/** جلب جميع الموظفين التابعين للشركة الحالية */
 export async function getTenantUsersAction() {
   try {
     const session = await getSession();
     if (!session) return [];
-    await assertServerActionRole(session, USER_ADMIN_ROLES);
+    await assertServerActionRoleWithProgressiveAuthorization(
+      session,
+      USER_ADMIN_ROLES,
+      {
+        domain: "users-settings",
+        permissionKey: "users.read",
+        source: "action:getTenantUsersAction",
+        resource: { tenantId: String(session.tenantId || "") },
+      },
+    );
 
     const tenant = await getActiveTenant();
     return await prisma.user.findMany({
@@ -70,12 +103,13 @@ export async function getTenantUsersAction() {
   }
 }
 
-/**
- * إضافة موظف جديد للشركة مع التحقق من سقف الباقة
- */
+/** إضافة موظف جديد للشركة مع التحقق من سقف الباقة */
 export async function createTenantUserAction(formData: FormData) {
   try {
-    const { user: actorUser, tenant } = await verifyTenantAdmin();
+    const { user: actorUser, tenant } = await verifyTenantAdmin(
+      "users.create",
+      "action:createTenantUserAction",
+    );
 
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
@@ -86,7 +120,6 @@ export async function createTenantUserAction(formData: FormData) {
       throw new Error("جميع الحقول المطلوبة لإنشاء الموظف غير مكتملة.");
     }
 
-    // 1. التحقق من فرادة البريد الإلكتروني في النظام بأكمله
     const emailExists = await prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
@@ -95,10 +128,7 @@ export async function createTenantUserAction(formData: FormData) {
       throw new Error("البريد الإلكتروني المدخل مسجل بالفعل لموظف آخر في النظام.");
     }
 
-    // 2. تشفير كلمة المرور
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 3. إنشاء الموظف داخل transaction مع فحص الحد للتأمين ضد race condition
     const newUser = await prisma.$transaction(async (tx) => {
       await assertPlanLimit({ tenantId: tenant.id, feature: "staff", tx });
       return tx.user.create({
@@ -115,7 +145,6 @@ export async function createTenantUserAction(formData: FormData) {
       });
     });
 
-    // ── Audit ──────────────────────────────────────────────────────────────
     await writeAuditLog({
       tenantId: tenant.id,
       userId: actorUser.id,
@@ -137,12 +166,14 @@ export async function createTenantUserAction(formData: FormData) {
   }
 }
 
-/**
- * تحديث بيانات أو حالة موظف عقاري
- */
+/** تحديث بيانات أو حالة موظف عقاري */
 export async function updateTenantUserAction(userId: string, formData: FormData) {
   try {
-    const { user: actorUser, tenant } = await verifyTenantAdmin();
+    const { user: actorUser, tenant } = await verifyTenantAdmin(
+      "users.update",
+      "action:updateTenantUserAction",
+      userId,
+    );
 
     const name = formData.get("name") as string;
     const role = formData.get("role") as any;
@@ -152,7 +183,6 @@ export async function updateTenantUserAction(userId: string, formData: FormData)
       throw new Error("الاسم وصلاحية الدور مطلوبان لتعديل الموظف.");
     }
 
-    // التحقق من أن الموظف المستهدف ينتمي لنفس الشركة
     const targetUser = await prisma.user.findFirst({
       where: { id: userId, tenantId: tenant.id },
       select: { id: true, role: true, name: true },
@@ -162,7 +192,6 @@ export async function updateTenantUserAction(userId: string, formData: FormData)
       throw new Error("المستخدم غير موجود أو لا ينتمي لشركتك العقارية.");
     }
 
-    // tenantId-scoped update to prevent cross-tenant mutation
     await prisma.user.updateMany({
       where: { id: userId, tenantId: tenant.id },
       data: {
@@ -172,7 +201,6 @@ export async function updateTenantUserAction(userId: string, formData: FormData)
       },
     });
 
-    // ── Audit ──────────────────────────────────────────────────────────────
     await writeAuditLog({
       tenantId: tenant.id,
       userId: actorUser.id,
@@ -194,19 +222,19 @@ export async function updateTenantUserAction(userId: string, formData: FormData)
   }
 }
 
-/**
- * حذف موظف عقاري من النظام
- */
+/** حذف موظف عقاري من النظام */
 export async function deleteTenantUserAction(userId: string) {
   try {
-    const { user: actorUser, tenant } = await verifyTenantAdmin();
+    const { user: actorUser, tenant } = await verifyTenantAdmin(
+      "users.disable",
+      "action:deleteTenantUserAction",
+      userId,
+    );
 
-    // منع الموظف من حذف نفسه
     if (actorUser.id === userId) {
       throw new Error("لا يمكنك حذف حسابك الحالي الذي تستخدمه لتسجيل الدخول.");
     }
 
-    // التحقق من أن الموظف ينتمي لنفس الشركة
     const targetUser = await prisma.user.findFirst({
       where: { id: userId, tenantId: tenant.id },
       select: { id: true, name: true, email: true },
@@ -216,12 +244,10 @@ export async function deleteTenantUserAction(userId: string) {
       throw new Error("الموظف غير موجود أو لا ينتمي لشركتك العقارية.");
     }
 
-    // tenantId-scoped deleteMany to prevent cross-tenant deletion
     await prisma.user.deleteMany({
       where: { id: userId, tenantId: tenant.id },
     });
 
-    // ── Audit ──────────────────────────────────────────────────────────────
     await writeAuditLog({
       tenantId: tenant.id,
       userId: actorUser.id,

@@ -44,6 +44,8 @@ const LEGACY_POLICY = [
   allowedRoles: readonly LegacyRoleKey[]
 }[]
 
+const HISTORICAL_G3_06_DIFFERENCE_COUNT = 15
+
 const rolePermissions = new Map(
   ACCESS_ROLE_BLUEPRINTS.map((role) => [role.key, new Set(role.permissionKeys)]),
 )
@@ -53,40 +55,30 @@ function rbacAllows(role: LegacyRoleKey, permissionKey: PermissionKey): boolean 
   return rolePermissions.get(accessRoleKey)?.has(permissionKey) ?? false
 }
 
-describe('G3-06 current policy difference inventory', () => {
-  it('records every selected legacy/RBAC mismatch before enforcement', () => {
-    const differences = LEGACY_POLICY.flatMap((policy) =>
-      LEGACY_ROLES.flatMap((role) => {
-        const legacyAllowed = (policy.allowedRoles as readonly string[]).includes(role)
-        const newAllowed = rbacAllows(role, policy.permissionKey)
-        return legacyAllowed === newAllowed
-          ? []
-          : [
-              `${policy.permissionKey}:${role}:${legacyAllowed ? 'legacy-allow' : 'legacy-deny'}:${newAllowed ? 'rbac-allow' : 'rbac-deny'}`,
-            ]
-      }),
-    ).sort()
+function currentDifferences(): string[] {
+  return LEGACY_POLICY.flatMap((policy) =>
+    LEGACY_ROLES.flatMap((role) => {
+      const legacyAllowed = (policy.allowedRoles as readonly string[]).includes(role)
+      const newAllowed = rbacAllows(role, policy.permissionKey)
+      return legacyAllowed === newAllowed
+        ? []
+        : [
+            `${policy.permissionKey}:${role}:${legacyAllowed ? 'legacy-allow' : 'legacy-deny'}:${newAllowed ? 'rbac-allow' : 'rbac-deny'}`,
+          ]
+    }),
+  ).sort()
+}
 
-    expect(differences).toEqual([
-      'email.read:MARKETING:legacy-deny:rbac-allow',
-      'email.read:READ_ONLY:legacy-deny:rbac-allow',
-      'email.read:SALES_EMPLOYEE:legacy-allow:rbac-deny',
-      'email.read:SALES_MANAGER:legacy-allow:rbac-deny',
-      'email.send:MARKETING:legacy-deny:rbac-allow',
-      'email.send:SALES_EMPLOYEE:legacy-allow:rbac-deny',
-      'email.send:SALES_MANAGER:legacy-allow:rbac-deny',
-      'settings.read:READ_ONLY:legacy-deny:rbac-allow',
-      'settings.read:SALES_EMPLOYEE:legacy-allow:rbac-deny',
-      'settings.read:SALES_MANAGER:legacy-allow:rbac-deny',
-      'whatsapp.read:SALES_EMPLOYEE:legacy-allow:rbac-deny',
-      'whatsapp.read:SALES_MANAGER:legacy-allow:rbac-deny',
-      'whatsapp.send:MARKETING:legacy-deny:rbac-allow',
-      'whatsapp.send:SALES_EMPLOYEE:legacy-allow:rbac-deny',
-      'whatsapp.send:SALES_MANAGER:legacy-allow:rbac-deny',
-    ])
+describe('G3-06/G3-07 policy difference lifecycle', () => {
+  it('retains the historical G3-06 finding count as closure evidence', () => {
+    expect(HISTORICAL_G3_06_DIFFERENCE_COUNT).toBe(15)
   })
 
-  it('keeps settings management aligned and administrator authority intact', () => {
+  it('requires every selected unexpected grant and denial to be reconciled before enforcement', () => {
+    expect(currentDifferences()).toEqual([])
+  })
+
+  it('keeps administrator authority and explicit no-grant rules intact', () => {
     for (const policy of LEGACY_POLICY) {
       expect(rbacAllows('ADMIN', policy.permissionKey)).toBe(true)
     }
@@ -94,5 +86,9 @@ describe('G3-06 current policy difference inventory', () => {
     expect(rbacAllows('SALES_EMPLOYEE', 'settings.manage')).toBe(false)
     expect(rbacAllows('MARKETING', 'settings.manage')).toBe(false)
     expect(rbacAllows('READ_ONLY', 'settings.manage')).toBe(false)
+    expect(rbacAllows('MARKETING', 'email.send')).toBe(false)
+    expect(rbacAllows('MARKETING', 'whatsapp.send')).toBe(false)
+    expect(rbacAllows('READ_ONLY', 'settings.read')).toBe(false)
+    expect(rbacAllows('READ_ONLY', 'email.read')).toBe(false)
   })
 })

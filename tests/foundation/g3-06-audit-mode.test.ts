@@ -209,16 +209,19 @@ describe('G3-06 RBAC audit-only mode', () => {
     expect(result.event).not.toHaveProperty('body')
   })
 
-  it('connects audit mode to selected sensitive server boundaries', () => {
+  it('preserves audit mode behind the G3-07 progressive boundary integrations', () => {
     const settings = readFileSync('app/api/v1/settings/route.ts', 'utf8')
     const email = readFileSync('app/actions/email.ts', 'utf8')
     const whatsapp = readFileSync('lib/whatsapp/access.ts', 'utf8')
+    const enforcement = readFileSync('lib/authz/enforcement.ts', 'utf8')
 
-    expect(settings).toContain('hasDatabaseRoleWithAudit')
+    expect(settings).toContain('hasDatabaseRoleWithProgressiveAuthorization')
     expect(settings).toContain("permissionKey: 'settings.manage'")
     expect(email).toContain('assertServerActionRoleWithAudit')
     expect(email).toContain('permissionKey: "email.send"')
-    expect(whatsapp).toContain('observeLegacyAuthorization')
+    expect(whatsapp).toContain('enforceProgressiveAuthorization')
     expect(whatsapp).toContain('permissionKey: "whatsapp.send"')
+    expect(enforcement).toContain('observeLegacyAuthorization')
+    expect(enforcement).toContain("reason: 'LEGACY_MODE'")
   })
 })

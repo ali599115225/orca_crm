@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { purgeExpiredSyncEvents } from "@/lib/realtime/purge-sync-events";
 import { recordHeartbeat } from "@/lib/sentinel/heartbeat";
+import { authorizeTrustedJob } from "@/lib/authz/trusted-job";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,11 +37,14 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  if (!isAuthorized(request)) {
+  const legacyAuthorized = isAuthorized(request);
+  const access = authorizeTrustedJob(legacyAuthorized, "realtime.purge");
+
+  if (!access.effectiveAllowed) {
     return NextResponse.json(
-      { error: "Unauthorized" },
+      { error: legacyAuthorized ? "Forbidden" : "Unauthorized" },
       {
-        status: 401,
+        status: legacyAuthorized ? 403 : 401,
         headers: { "Cache-Control": "no-store" },
       },
     );

@@ -3,7 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { runWithTenantContext } from "@/lib/tenant-context";
-import { observeLegacyAuthorization } from "@/lib/authz/audit-mode";
+import { enforceProgressiveAuthorization } from "@/lib/authz/enforcement";
 
 export const WHATSAPP_READ_ROLES = [
   "ADMIN",
@@ -27,7 +27,7 @@ export interface WhatsAppAccess {
   readonly role: string;
 }
 
-function auditPermissionForRoles(allowedRoles: readonly string[]) {
+function permissionForRoles(allowedRoles: readonly string[]) {
   if (allowedRoles === WHATSAPP_CONNECTION_ROLES) {
     return { permissionKey: "whatsapp.manage", source: "access:whatsapp.connection" };
   }
@@ -39,9 +39,8 @@ function auditPermissionForRoles(allowedRoles: readonly string[]) {
 
 /**
  * Revalidates the session against the current database state before any
- * WhatsApp read, mutation, or provider call. A stale JWT role is never trusted.
- * G3-06 additionally records a shadow RBAC comparison while the legacy result
- * remains the only effective authorization decision.
+ * WhatsApp read, mutation, or provider call. G3-07 can additionally require
+ * RBAC for the messaging domain, but never turns a legacy denial into a grant.
  */
 export async function requireWhatsAppAccess(
   allowedRoles: readonly string[],
@@ -73,8 +72,8 @@ export async function requireWhatsAppAccess(
       const legacyAllowed = Boolean(
         user && tenant && allowedRoles.includes(String(user.role)),
       );
-      const audit = auditPermissionForRoles(allowedRoles);
-      await observeLegacyAuthorization(
+      const permission = permissionForRoles(allowedRoles);
+      const enforcement = await enforceProgressiveAuthorization(
         {
           tenantId,
           userId,
@@ -82,12 +81,13 @@ export async function requireWhatsAppAccess(
         },
         legacyAllowed,
         {
-          ...audit,
+          domain: "messaging",
+          ...permission,
           resource: { tenantId },
         },
       );
 
-      if (!legacyAllowed || !user || !tenant) {
+      if (!enforcement.effectiveAllowed || !user || !tenant) {
         throw new Error("FORBIDDEN");
       }
 
