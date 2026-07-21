@@ -51,8 +51,17 @@ jobs:
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
 
-      - name: Sentinel regression tests
-        run: npm run test:sentinel
+      - name: Sentinel incident service regression
+        run: npx vitest run tests/p2-sentinel-incidents.test.ts
+
+      - name: Sentinel command center regression
+        run: npx vitest run tests/p2-sentinel-command-center-incidents.test.ts
+
+      - name: Sentinel heartbeat service regression
+        run: npx vitest run tests/p2-sentinel-heartbeat-service.test.ts
+
+      - name: Sentinel cron heartbeat regression
+        run: npx vitest run tests/p2-sentinel-cron-heartbeat.test.ts
 
       - name: P2 acceptance tests
         run: npm run test:acceptance
