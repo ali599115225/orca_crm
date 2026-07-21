@@ -1,0 +1,147 @@
+name: G5 Verified Maintenance
+
+on:
+  push:
+    branches:
+      - work/orca-foundation-plan-20260721
+    paths:
+      - .github/workflows/g5-verified-maintenance.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: g5-verified-maintenance
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Verify and apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout work branch
+        uses: actions/checkout@v7
+        with:
+          ref: work/orca-foundation-plan-20260721
+          fetch-depth: 0
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Patch exact reviewed targets
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace_exact(path: str, old: str, new: str, expected: int = 1):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} matches, found {count}")
+              file.write_text(text.replace(old, new), encoding="utf-8")
+
+          replace_exact(
+              "lib/payments/providers/paylink.ts",
+              'import "server-only";\n',
+              'import "server-only";\nimport { randomUUID } from "node:crypto";\n',
+          )
+          replace_exact(
+              "lib/payments/providers/paylink.ts",
+              'function generateIdempotencyKey(): string {\n  return `orca-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;\n}',
+              'function generateIdempotencyKey(): string {\n  return `orca-${randomUUID()}`;\n}',
+          )
+
+          helper_anchor = "const DETAIL_TAB_PAGE_SIZE = 4;\n\n"
+          helper = "const DETAIL_TAB_PAGE_SIZE = 4;\n\nfunction createPaymentIdempotencyKey(): string {\n  return `idemp-${globalThis.crypto.randomUUID()}`;\n}\n\n"
+          replace_exact(
+              "components/contracts-payments/ContractsPaymentsCenter.tsx",
+              helper_anchor,
+              helper,
+          )
+          replace_exact(
+              "components/contracts-payments/ContractsPaymentsCenter.tsx",
+              "'idemp-' + Math.floor(100000 + Math.random() * 900000)",
+              "createPaymentIdempotencyKey()",
+              expected=2,
+          )
+
+          scanner = Path("scripts/g5-security-quality-inventory.mjs")
+          scanner_text = scanner.read_text(encoding="utf-8")
+          old_markers = '''  "verifyCronSecret", "isAuthorizedCronRequest", "verifyWebhook", "validateWebhook", "verifySignature", "verifyHmac",\n  "withTrustedJob", "requireTrustedJob", "requireAuth", "getServerSession", "jwtVerify(",\n];'''
+          new_markers = '''  "verifyCronSecret", "isAuthorizedCronRequest", "verifyWebhook", "validateWebhook", "verifySignature", "verifyHmac",\n  "verifyAndStoreProviderWebhook", "verifyCustomPaymentCallbackSignature", "processPaymentCallback", "verifyPayment(",\n  "timingSafeEqual", "PAYLINK_WEBHOOK_SECRET", "CRON_SECRET",\n  "withTrustedJob", "requireTrustedJob", "requireAuth", "getServerSession", "jwtVerify(",\n];'''
+          if scanner_text.count(old_markers) != 1:
+              raise SystemExit("scanner auth marker anchor mismatch")
+          scanner_text = scanner_text.replace(old_markers, new_markers)
+          old_public = '''const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/whatsapp/webhook", "/api/revenue-integrity/webhook", "/api/v1/leads/webhook",\n];'''
+          new_public = '''const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/v1/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/deploy-marker", "/api/payment/callback", "/api/payments/custom/return", "/api/payments/custom/webhook",\n  "/api/payments/ngenius/webhook", "/api/payments/paylink/webhook",\n  "/api/whatsapp/webhook", "/api/whatsapp/embedded-signup/callback", "/api/revenue-integrity/webhook",\n  "/api/v1/leads/webhook", "/login/google",\n];'''
+          if scanner_text.count(old_public) != 1:
+              raise SystemExit("scanner public route anchor mismatch")
+          scanner.write_text(scanner_text.replace(old_public, new_public), encoding="utf-8")
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          package["scripts"]["typecheck"] = "tsc --noEmit"
+          package["scripts"]["security:audit"] = "npm audit --omit=dev --audit-level=moderate"
+          exact = {
+              "next": "16.2.10",
+              "react": "18.3.1",
+              "react-dom": "18.3.1",
+              "@sentry/nextjs": "10.67.0",
+          }
+          exact_dev = {
+              "@types/node": "25.9.1",
+              "@types/react": "19.2.16",
+              "@types/react-dom": "19.2.3",
+              "typescript": "6.0.3",
+          }
+          for name, version in exact.items():
+              package["dependencies"][name] = version
+          for name, version in exact_dev.items():
+              package["devDependencies"][name] = version
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=4) + "\n", encoding="utf-8")
+          PY
+
+      - name: Generate candidate lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install candidate tree
+        run: npm ci
+
+      - name: Production dependency audit
+        run: npm run security:audit
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Foundation and acceptance tests
+        run: |
+          npx vitest run tests/foundation/g3-*.test.ts tests/foundation/g4-*.test.ts tests/phase02-full-closure.test.ts
+          npm run test:acceptance
+
+      - name: Production build
+        run: npm run build
+
+      - name: Remove one-time workflow
+        run: rm .github/workflows/g5-verified-maintenance.yml
+
+      - name: Commit verified changes
+        shell: bash
+        run: |
+          git config user.name "orca-foundation-bot"
+          git config user.email "orca-foundation-bot@users.noreply.github.com"
+          git add package.json package-lock.json \
+            lib/payments/providers/paylink.ts \
+            components/contracts-payments/ContractsPaymentsCenter.tsx \
+            scripts/g5-security-quality-inventory.mjs \
+            .github/workflows/g5-verified-maintenance.yml
+          git diff --cached --check
+          git commit -m "fix(g5): harden dependencies and payment idempotency"
+          git push origin HEAD:work/orca-foundation-plan-20260721
