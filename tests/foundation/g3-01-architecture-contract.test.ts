@@ -21,7 +21,7 @@ describe('G3-01 architecture contract', () => {
       'Trusted scope derivation',
       'OrgAssignment and RoleAssignment SHALL be separate',
       'Scoped, DB-backed RBAC',
-      'default deny',
+      'default-deny',
       'Legacy SaaS capability disablement',
       'Expand → Backfill → Verify → Enforce → Contract',
       'Rollback, backup, and restore policy',
