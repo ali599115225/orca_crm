@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   requireAuth,
-  hasDatabaseRole,
   unauthorizedResponse,
   forbiddenResponse,
 } from '@/lib/api-auth-guard';
+import { hasDatabaseRoleWithAudit } from '@/lib/authz/legacy-audit-guards';
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
 
@@ -17,7 +17,16 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
     if (!session) return unauthorizedResponse(request);
-    const allowed = await hasDatabaseRole(session, SETTINGS_READER_ROLES);
+    const allowed = await hasDatabaseRoleWithAudit(
+      session,
+      SETTINGS_READER_ROLES,
+      {
+        permissionKey: 'settings.read',
+        source: 'GET:/api/v1/settings',
+        requestId: request.headers.get('x-request-id'),
+        resource: { tenantId: session.tenantId },
+      },
+    );
     if (!allowed) return forbiddenResponse(request);
 
     const dbTenant = await prisma.tenant.findUnique({
@@ -45,8 +54,18 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth(request);
     if (!session) return unauthorizedResponse(request);
-    // Settings mutations are ADMIN only.
-    const allowed = await hasDatabaseRole(session, SETTINGS_WRITER_ROLES);
+    // Settings mutations are ADMIN only. G3-06 observes RBAC in shadow mode;
+    // this legacy database-backed decision remains authoritative.
+    const allowed = await hasDatabaseRoleWithAudit(
+      session,
+      SETTINGS_WRITER_ROLES,
+      {
+        permissionKey: 'settings.manage',
+        source: 'PUT:/api/v1/settings',
+        requestId: request.headers.get('x-request-id'),
+        resource: { tenantId: session.tenantId },
+      },
+    );
     if (!allowed) return forbiddenResponse(request);
 
     const body = await request.json();
