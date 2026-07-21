@@ -43,6 +43,19 @@ jobs:
       - name: G3 final verification
         run: node scripts/g3-final-verification.mjs
 
+      - name: G4 contract inventory
+        run: node scripts/g4-contract-inventory.mjs
+
+      - name: Upload G4 contract inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: g4-contract-inventory
+          path: |
+            artifacts/g4-contract-inventory.json
+            artifacts/g4-contract-inventory.md
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Core regression tests
         run: >
           npx vitest run
