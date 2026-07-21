@@ -3,65 +3,43 @@
 ## Stage
 
 - **Stage:** G4 — Page & Operational Contracts
-- **Status:** IN PROGRESS
+- **Status:** COMPLETE / SUPERSEDED BY FINAL CLOSURE
 - **Start SHA:** `6068e4762798c8261ec0a56a2122fd61d8a49454`
+- **Verified PR head SHA:** `92991de41fad76e0e1187587fbe2188466f6b52e`
+- **G4 central merge SHA:** `a8fb332afc7cf26b60f154204dbab67c4b8589d8`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **Main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 
-## Discovery rule
+## Discovery result
 
-The G4 registry is generated from the current repository checkout, then manually reconciled against tests, runtime evidence, and retained visual-closure records. Historical reports alone do not prove the current source state.
+The current repository checkout was scanned and reconciled into a durable central registry covering pages, routes, APIs, Server Actions, tabs, overlays, route states, Prisma dependencies, canonical permission references, current test references, and visual-closure decisions.
 
-Closed pages are retained as closed unless a current repository finding or documented runtime/visual regression demonstrates a contract violation.
+The discovery produced **359 recorded contracts**:
 
-## Required inventory
+- 43 pages;
+- 129 APIs;
+- 162 Server Actions;
+- 8 tab sets;
+- 6 modals/dialogs/drawers;
+- 7 route-level loading/error states;
+- 4 layouts.
 
-G4 must account for:
+## Final outputs
 
-- routes;
-- pages;
-- tabs;
-- modals, drawers, and overlays;
-- server actions;
-- APIs;
-- Prisma model dependencies;
-- permissions;
-- loading, empty, error, and not-found states;
-- functional contracts;
-- runtime evidence;
-- visual closure status.
+- `docs/architecture/ORCA_G4_CONTRACT_REGISTRY.md`
+- `docs/architecture/ORCA_G4_PAGES_AND_SURFACES.md`
+- `docs/architecture/ORCA_G4_API_CONTRACTS.md`
+- `docs/architecture/ORCA_G4_SERVER_ACTION_CONTRACTS.md`
+- `docs/architecture/ORCA_G4_VISUAL_STATUS_OVERRIDES.json`
+- `docs/reports/foundation/ORCA_G4_FINAL_CLOSURE.md`
 
-## Automated evidence
+The raw and reconciled JSON registries are reproducibly generated and uploaded by CI as the `g4-contract-registry` artifact.
 
-`scripts/g4-contract-inventory.mjs` scans the current checkout and emits:
+## Decision rule retained
 
-- `artifacts/g4-contract-inventory.json`;
-- `artifacts/g4-contract-inventory.md`.
-
-The generated inventory contains paths, symbols, route metadata, model names, permission keys, test references, report references, and source hashes only. It does not emit source contents, environment values, credentials, or runtime data.
-
-## Status semantics
-
-- `VERIFIED`: current source and current evidence satisfy the contract.
-- `PARTIAL`: the contract exists but one or more required states/evidence links remain incomplete.
-- `MISSING`: a required contract or state is absent.
-- `CONFLICTING`: current implementation and retained evidence disagree.
-- `NOT_PROVEN`: no sufficient current evidence exists.
-- `CLOSED_RETAINED`: previously closed and no current documented regression was found.
-- `OUT_OF_SCOPE`: not part of the current page/operational contract surface.
-
-## Remaining work
-
-1. Run the generated inventory in CI.
-2. Download and inspect the canonical JSON artifact.
-3. Reconcile routes, pages, actions, APIs, models, permissions, and states.
-4. Build the central contract registry.
-5. Add executable drift/coverage checks.
-6. Create the G4 final closure report.
-7. Run CI, build, CodeQL, and Vercel checks.
-8. Merge only after all G4 gates pass.
+Previously closed pages were not reopened without a current documented defect. Missing functional or visual evidence remains classified as `NOT_PROVEN`, `PARTIAL`, or `HISTORICAL_EVIDENCE_ONLY`; it was not guessed closed.
 
 ## Production boundary
 
-No Production deployment, migration, backfill, environment change, or Production data action is part of G4.
+No Production deployment, migration, backfill, environment change, data write, or main-branch modification occurred in G4.
