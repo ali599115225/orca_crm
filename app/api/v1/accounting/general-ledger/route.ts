@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { getGeneralLedgerReport } from '@/lib/accounting';
+import {
+  enforceProgressiveAuthorization,
+  isEnforcementDomainEnabled,
+} from '@/lib/authz/enforcement';
 
 async function authenticateRequest(request: NextRequest) {
   const cookieStore = await cookies();
@@ -25,7 +29,37 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
 
   try {
-    const tenantId = session.tenantId as string;
+    const tenantId = typeof session.tenantId === 'string' ? session.tenantId : '';
+    const userId = typeof session.userId === 'string' ? session.userId : '';
+    if (!tenantId) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
+    if (!userId && isEnforcementDomainEnabled('finance')) {
+      return NextResponse.json({ error: 'غير مصرح بالصلاحية' }, { status: 403 });
+    }
+
+    if (userId) {
+      const access = await enforceProgressiveAuthorization(
+        {
+          tenantId,
+          userId,
+          role: typeof session.role === 'string' ? session.role : '',
+        },
+        true,
+        {
+          domain: 'finance',
+          permissionKey: 'accounting.read',
+          source: 'GET:/api/v1/accounting/general-ledger',
+          requestId: request.headers.get('x-request-id'),
+          resource: { tenantId },
+        },
+      );
+      if (!access.effectiveAllowed) {
+        return NextResponse.json({ error: 'غير مصرح بالصلاحية' }, { status: 403 });
+      }
+    }
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId') || undefined;
     const fromDate = searchParams.get('fromDate') || undefined;
