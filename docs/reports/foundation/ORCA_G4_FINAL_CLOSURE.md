@@ -3,11 +3,13 @@
 ## Stage record
 
 - **Stage:** G4 — Page & Operational Contracts
-- **Repository status:** PASS / READY FOR FINAL CHECKS
+- **Repository status:** PASS / CLOSED
 - **Start SHA:** `6068e4762798c8261ec0a56a2122fd61d8a49454`
+- **Verified PR head SHA:** `92991de41fad76e0e1187587fbe2188466f6b52e`
+- **G4 central merge SHA:** `a8fb332afc7cf26b60f154204dbab67c4b8589d8`
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
-- **PR:** #61
+- **PR:** #61 — merged
 - **Main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production migration:** none
 - **Production backfill:** none
@@ -68,9 +70,28 @@ The G4 executable gate rejects:
 - permission keys not present in the canonical G3 permission registry;
 - malformed contracts without source, kind, or functional description;
 - silent changes to the accepted contract counts;
+- drift between the generated registry and durable architecture records;
 - loss of retained closed-page decisions;
 - accidental closure of the documented Leads detail issue;
 - omission of G4 generation and tests from CI.
+
+## Verified checks
+
+The verified PR head `92991de41fad76e0e1187587fbe2188466f6b52e` passed:
+
+- dependency installation;
+- Prisma validation and generation;
+- Production safety gate;
+- G3 final verification;
+- G4 inventory, API-method normalization, and reconciliation;
+- G4 machine registry generation and artifact upload;
+- G4 drift and durable-document consistency tests;
+- existing core regressions;
+- all four Sentinel regression gates;
+- P2 acceptance;
+- production build;
+- CodeQL Actions, Python, and JavaScript/TypeScript analysis;
+- Vercel status/preview.
 
 ## Functional evidence result
 
@@ -104,6 +125,15 @@ Previously closed pages were not reopened without a current documented regressio
 
 G4 does not change runtime authorization, database schema, Production state, or deployment configuration. Permission references are accepted only when they exist in the closed G3 permission registry. No source content, secret, environment value, credential, or runtime record is emitted in G4 artifacts.
 
+## Final reconciliation
+
+After PR #61 merged:
+
+- the foundation branch was fast-forwarded to `a8fb332afc7cf26b60f154204dbab67c4b8589d8`;
+- the central and foundation branches compared identical;
+- `main` remained identical to `f7af072c689178d397019648ab5c21336ab259b6`;
+- no force update or Production action occurred.
+
 ## Residual work ownership
 
 - **G5 — Security & Quality:** classify missing test references, expand the release suite, inspect CodeQL and dependency findings, and retain or fix quality risks.
@@ -112,14 +142,4 @@ G4 does not change runtime authorization, database schema, Production state, or 
 
 ## Closure rule
 
-G4 is repository-closed only after:
-
-1. inventory, normalization, reconciliation, and G4 contract tests pass;
-2. existing regression suites and the production build pass;
-3. CodeQL and Vercel checks pass;
-4. PR #61 merges into the central branch;
-5. the foundation branch is fast-forwarded to the final central SHA;
-6. both branches compare identical;
-7. `main` remains unchanged.
-
-Until those final checks and reconciliation complete, this report remains `PASS / READY FOR FINAL CHECKS`.
+The G4 repository closure rule is satisfied at `a8fb332afc7cf26b60f154204dbab67c4b8589d8`: all required checks passed, PR #61 merged, the foundation branch was synchronized, both branches compared identical, and `main` remained unchanged. Production activation is outside G4.
