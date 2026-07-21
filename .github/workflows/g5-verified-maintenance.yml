@@ -79,8 +79,8 @@ jobs:
           if scanner_text.count(old_markers) != 1:
               raise SystemExit("scanner auth marker anchor mismatch")
           scanner_text = scanner_text.replace(old_markers, new_markers)
-          old_public = '''const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/v1/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/deploy-marker", "/api/payment/callback", "/api/payments/custom/return", "/api/payments/custom/webhook",\n  "/api/payments/ngenius/webhook", "/api/payments/paylink/webhook",\n  "/api/whatsapp/webhook", "/api/whatsapp/embedded-signup/callback", "/api/revenue-integrity/webhook",\n  "/api/v1/leads/webhook", "/login/google",\n];'''
-          new_public = old_public
+          old_public = '''const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/whatsapp/webhook", "/api/revenue-integrity/webhook", "/api/v1/leads/webhook",\n];'''
+          new_public = '''const PUBLIC_ROUTE_MARKERS = [\n  "/api/health", "/api/v1/health", "/api/auth", "/api/public", "/api/webhooks", "/api/cron", "/api/realtime",\n  "/api/deploy-marker", "/api/payment/callback", "/api/payments/custom/return", "/api/payments/custom/webhook",\n  "/api/payments/ngenius/webhook", "/api/payments/paylink/webhook",\n  "/api/whatsapp/webhook", "/api/whatsapp/embedded-signup/callback", "/api/revenue-integrity/webhook",\n  "/api/v1/leads/webhook", "/login/google",\n];'''
           if scanner_text.count(old_public) != 1:
               raise SystemExit("scanner public route anchor mismatch")
           scanner.write_text(scanner_text.replace(old_public, new_public), encoding="utf-8")
