@@ -43,9 +43,8 @@ const keysWhere = (
 ): readonly PermissionKey[] =>
   PERMISSION_REGISTRY.filter(predicate).map(({ key }) => key) as PermissionKey[]
 
-const SALES_RESOURCES = new Set([
+const SALES_MANAGER_RESOURCES = new Set([
   'dashboard',
-  'users',
   'leads',
   'contacts',
   'opportunities',
@@ -58,7 +57,11 @@ const SALES_RESOURCES = new Set([
   'installments',
   'invoices',
   'payments',
+  'accounting',
   'rentals',
+  'email',
+  'whatsapp',
+  'settings',
   'documents',
   'notifications',
   'reports',
@@ -78,21 +81,51 @@ const SALES_EMPLOYEE_RESOURCES = new Set([
   'installments',
   'invoices',
   'payments',
+  'accounting',
   'rentals',
+  'email',
+  'whatsapp',
+  'settings',
   'documents',
   'notifications',
 ])
 
-const MARKETING_RESOURCES = new Set([
-  'dashboard',
-  'leads',
-  'contacts',
-  'marketing',
-  'whatsapp',
-  'email',
-  'documents',
-  'notifications',
-  'reports',
+const MARKETING_PERMISSION_KEYS = new Set<PermissionKey>([
+  'dashboard.read',
+  'leads.read',
+  'contacts.read',
+  'marketing.read',
+  'marketing.manage',
+  'marketing.publish',
+  'whatsapp.read',
+  'documents.read',
+  'documents.upload',
+  'notifications.read',
+  'notifications.manage',
+  'reports.read',
+])
+
+const READ_ONLY_PERMISSION_KEYS = new Set<PermissionKey>([
+  'dashboard.read',
+  'leads.read',
+  'projects.read',
+  'properties.read',
+  'contacts.read',
+  'opportunities.read',
+  'tasks.read',
+  'tours.read',
+  'offers.read',
+  'contracts.read',
+  'installments.read',
+  'invoices.read',
+  'payments.read',
+  'rentals.read',
+  'marketing.read',
+  'whatsapp.read',
+  'helpdesk.read',
+  'documents.read',
+  'notifications.read',
+  'reports.read',
 ])
 
 export const ACCESS_ROLE_BLUEPRINTS = [
@@ -107,7 +140,10 @@ export const ACCESS_ROLE_BLUEPRINTS = [
     name: 'Sales Manager',
     description: 'Sales leadership and approval authority without company administration or trusted-system permissions.',
     permissionKeys: keysWhere(
-      ({ resource, risk }) => SALES_RESOURCES.has(resource) && risk !== 'ADMIN' && risk !== 'SYSTEM',
+      ({ resource, risk }) =>
+        SALES_MANAGER_RESOURCES.has(resource) &&
+        risk !== 'ADMIN' &&
+        risk !== 'SYSTEM',
     ),
   },
   {
@@ -115,22 +151,26 @@ export const ACCESS_ROLE_BLUEPRINTS = [
     name: 'Sales Employee',
     description: 'Day-to-day sales operations without approval, administration, or system authority.',
     permissionKeys: keysWhere(
-      ({ resource, risk }) => SALES_EMPLOYEE_RESOURCES.has(resource) && (risk === 'READ' || risk === 'WRITE'),
+      ({ resource, risk }) =>
+        SALES_EMPLOYEE_RESOURCES.has(resource) &&
+        (risk === 'READ' || risk === 'WRITE'),
     ),
   },
   {
     key: 'marketing',
     name: 'Marketing',
-    description: 'Marketing and customer communication work without provider or access administration.',
-    permissionKeys: keysWhere(
-      ({ resource, risk }) => MARKETING_RESOURCES.has(resource) && (risk === 'READ' || risk === 'WRITE' || (resource === 'marketing' && risk === 'APPROVE')),
+    description: 'Explicit marketing and read-only communication authority without implicit provider or send grants.',
+    permissionKeys: keysWhere(({ key }) =>
+      MARKETING_PERMISSION_KEYS.has(key as PermissionKey),
     ),
   },
   {
     key: 'read-only',
     name: 'Read Only',
-    description: 'Read-only operational visibility inside assigned scope.',
-    permissionKeys: keysWhere(({ risk }) => risk === 'READ'),
+    description: 'Explicit operational read visibility; no blanket grant for every READ-classified permission.',
+    permissionKeys: keysWhere(({ key }) =>
+      READ_ONLY_PERMISSION_KEYS.has(key as PermissionKey),
+    ),
   },
 ] as const satisfies readonly AccessRoleBlueprint[]
 
