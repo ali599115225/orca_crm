@@ -3,42 +3,46 @@
 ## التقرير المركزي النهائي لخطة أساس ORCA CRM
 
 - **Document ID:** ORCA-CBR-001
-- **Version:** 3.0 — G8 Final Foundation Gate
+- **Version:** 3.1 — G0–G8 Foundation Closed
 - **Repository:** `ali599115225/orca_crm`
 - **Authority:** authoritative central foundation source of truth
+- **Final foundation status:** `PASS / CLOSED`
 - **Operating model:** `VERIFIED — SINGLE INDEPENDENT COMPANY`
 - **Integration ownership:** `COMPANY OWNER`
 - **Repository foundation verdict:** `GO`
 - **Production launch verdict:** `CONDITIONAL_GO`
 - **Production GO authorized:** no
 - **Automatic Production action authorized:** no
+- **Owner release instruction required:** yes
 - **Next authorized state:** `CONTROLLED_ACTIVATION_PLANNING_ONLY`
-- **Central G8 start SHA:** `6d63d21423692d404c2e428fa0e385d3c6be5ea5`
+- **Functional G8 merge SHA:** `edee394d4a68d759b2a1fff4376949056cda960d`
 - **Observed main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production action performed by foundation program:** none
 
-## 1. Executive decision
+## 1. Final executive decision
 
-The ORCA repository foundation is coherent, reproducible, and protected by executable governance, architecture, authorization, contract, security, quality, operations, recovery, and remediation gates.
+The ORCA G0–G8 foundation plan is closed at repository level.
+
+The repository is coherent, reproducible, and protected by executable governance, architecture, authorization, page/operational contracts, security, quality, operations, recovery, remediation, and final-decision gates.
 
 No current repository condition requires `NO_GO`.
 
-Production activation evidence is incomplete and deliberately separate from repository foundation closure. The current final decision is:
+Production activation remains separate because the required activation evidence has not been produced. The final current decision is:
 
-> **CONDITIONAL_GO — close the foundation plan and continue controlled activation planning only.**
+> **CONDITIONAL_GO — the foundation is closed; continue controlled activation planning only.**
 
 This report does not authorize:
 
-- merge of the foundation program into `main`;
+- merge into `main`;
 - Production deployment or traffic switch;
 - Production migration or backfill;
-- constraint/index creation or validation;
+- constraints/index validation;
 - RBAC enforcement enablement;
 - Production backup or restore;
-- external provider activation;
-- environment, secret, domain, or data change.
+- external-provider activation;
+- environment, secret, domain, or data changes.
 
-A future `GO` decision still requires a separate explicit owner release instruction.
+A future Production `GO` still requires complete activation evidence and a separate explicit owner instruction.
 
 ## 2. Governing operating model
 
@@ -50,14 +54,14 @@ A future `GO` decision still requires a separate explicit owner release instruct
 | Tenant persistence | Retained temporarily as company/security partition |
 | Internal organization and RBAC | Required |
 | External integration ownership | `COMPANY OWNER` |
-| Technical provider responsibility | Integration-ready paths, adapters, signature verification, and safe disconnected states |
-| Production provider accounts | Not supplied or configured by the foundation program |
+| Technical responsibility | Integration-ready paths, adapters, signature verification, and safe disconnected states |
+| Production provider accounts | Company responsibility; not supplied by the foundation program |
 | Developer-owned Production credentials | Prohibited |
 | License assumptions | No license assumed without official evidence |
 
 Historical SaaS structures remain only for compatibility, audit, and recovery. They are not current commercial capabilities.
 
-A provider-backed feature may remain `NOT_CONFIGURED` when it fails safely and does not claim connectivity.
+`NOT_CONFIGURED` is an acceptable provider state only when the system fails safely and does not claim connectivity.
 
 ## 3. Evidence authority
 
@@ -65,14 +69,14 @@ Evidence is accepted in this order:
 
 1. approved operating-model and integration-ownership decisions;
 2. current executable source;
-3. current blocking CI, security, test, and build evidence;
-4. current stage ledgers, architecture records, and closure reports;
+3. blocking CI, security, test, recovery, and build evidence;
+4. current stage ledger, architecture records, and closure reports;
 5. live provider inspection for provider-controlled facts;
 6. archived reports as historical context only.
 
-A historical report, screenshot, filename, previous agent statement, or test-name count cannot override current executable evidence.
+Historical reports, screenshots, filenames, or earlier agent statements cannot override current executable evidence.
 
-## 4. Foundation stage ledger
+## 4. Final stage ledger
 
 The machine-readable authority is:
 
@@ -80,19 +84,19 @@ The machine-readable authority is:
 ORCA_FOUNDATION_STAGE_LEDGER.json
 ```
 
-| Stage | Scope | Result | Primary authority |
-|---|---|---|---|
-| G0 | Governance & Operating Model | PASS / CLOSED | Central plan and execution addendum |
-| G1 | Evidence Integrity | PASS / CLOSED | Central plan and execution addendum |
-| G2 | Repository & Branch Reconciliation | PASS / CLOSED | Execution addendum and G7 closure |
-| G3 | Architecture, Organization, RBAC & Data Safety | PASS / CLOSED | `docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md` |
-| G4 | Page & Operational Contracts | PASS / CLOSED | `docs/reports/foundation/ORCA_G4_FINAL_CLOSURE.md` |
-| G5 | Security & Quality | PASS / CLOSED | `docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md` |
-| G6 | Operations, Recovery & Reliability | PASS / CLOSED | `docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md` |
-| G7 | Remediation Reconciliation & Closure | PASS / CLOSED | `docs/reports/foundation/ORCA_G7_FINAL_CLOSURE.md` |
-| G8 | Final Foundation Gate | PASS / CLOSED candidate | `docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md` |
+| Stage | Scope | Result |
+|---|---|---|
+| G0 | Governance & Operating Model | PASS / CLOSED |
+| G1 | Evidence Integrity | PASS / CLOSED |
+| G2 | Repository & Branch Reconciliation | PASS / CLOSED |
+| G3 | Architecture, Organization, RBAC & Data Safety | PASS / CLOSED |
+| G4 | Page & Operational Contracts | PASS / CLOSED |
+| G5 | Security & Quality | PASS / CLOSED |
+| G6 | Operations, Recovery & Reliability | PASS / CLOSED |
+| G7 | Remediation Reconciliation & Closure | PASS / CLOSED |
+| G8 | Final Foundation Gate | PASS / CLOSED |
 
-The formal execution sequence is:
+The formal sequence is:
 
 ```text
 G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7 → G8
@@ -110,55 +114,47 @@ Closed decisions include:
 - internal company platform rather than current multi-company SaaS;
 - retained `tenantId` as a security partition;
 - company ownership of provider accounts, credentials, subscriptions, licenses, and approvals;
-- prohibition of developer-owned Production credentials.
+- prohibition of Developer-owned Production credentials.
 
 ### G1 — Evidence integrity
 
-The foundation distinguishes:
-
-- intended truth;
-- current implementation truth;
-- runtime/provider truth;
-- historical evidence.
-
-Current source and executable evidence supersede contradictory archived claims.
+Current implementation and executable evidence supersede contradictory historical claims. `PARTIAL`, `NOT_PROVEN`, and `CONFLICTING` cannot be converted to PASS without current evidence or an explicit terminal decision.
 
 ### G2 — Repository and branches
 
 The accepted process uses:
 
-- protected central integration branch;
+- a central integration branch;
 - scoped work branches;
 - required PR checks;
 - CodeQL;
-- Vercel Preview/runtime evidence;
-- non-force fast-forward reconciliation;
+- Vercel runtime/build evidence;
+- non-force reconciliation;
 - unchanged `main` during foundation closure.
 
-Historical conflicts are terminally reconciled through G7 rather than left as ambiguous `CONFLICTING` entries.
+The stale unmerged G8 draft on `work/orca-foundation-plan-20260721` is superseded historical work and is explicitly excluded from merge.
 
-## 6. G3 — Architecture, organization, RBAC, and data safety
+## 6. G3 result
 
-G3 establishes:
+G3 established:
 
-- single-company operational mode with retained Tenant security partition;
-- typed permission registry;
+- the single-company architecture contract;
 - organization units and assignments;
-- role assignments and scoped permissions;
+- typed permission registry;
+- role assignments and scoped access;
 - central `AccessContext` resolution;
 - database-backed default-deny authorization;
-- Tenant-subordinate branch, department, team, self, and resource scopes;
-- audit-only legacy/new policy comparison;
-- progressive `legacy_allow AND rbac_allow` enforcement;
+- audit-only legacy/new comparison;
+- progressive dual-allow enforcement;
 - trusted-job authorization;
-- disablement of legacy SaaS entry points without destructive historical-data deletion;
-- additive migration, guarded backfill, constraints/index proposals, preflight, validation, and rollback tooling.
+- legacy SaaS disablement without destructive historical-data deletion;
+- guarded migration, backfill, constraints/index, validation, and rollback tooling.
 
-Repository closure does not prove Production activation. No Production migration, backfill, constraint validation, RBAC enablement, or data write was performed by the foundation program.
+No Production migration, backfill, constraint validation, RBAC enablement, or data write was executed.
 
-## 7. G4 — Page and operational contracts
+## 7. G4 result
 
-G4 registers **359** current contracts:
+G4 registered **359** current contracts:
 
 - 43 pages;
 - 129 APIs;
@@ -167,17 +163,17 @@ G4 registers **359** current contracts:
 - 6 overlays;
 - route loading, error, and layout states.
 
-Evidence status:
+Evidence classification remains explicit:
 
-- 300 contracts have direct current test references;
-- 59 contracts do not have direct current test references;
-- 19 visual contracts are retained closed;
-- 37 visual contracts remain partial, documented-issue, not-proven, or historical-only;
-- one legacy visual surface is disabled.
+- 300 contracts with direct current test references;
+- 59 without direct current test references;
+- 19 retained visual closures;
+- 37 open visual decisions;
+- one disabled legacy visual surface.
 
-A page is not launch-closed merely because it builds or has a historical screenshot.
+A build or historical screenshot is not final visual proof.
 
-## 8. G5 — Security and quality
+## 8. G5 result
 
 Permanent blocking controls include:
 
@@ -186,21 +182,19 @@ Permanent blocking controls include:
 - Production safety gate;
 - Production dependency audit;
 - TypeScript typecheck;
-- executable foundation and regression contracts;
-- acceptance tests;
+- executable foundation, regression, and acceptance tests;
 - production build;
-- CodeQL for Actions, Python, and JavaScript/TypeScript;
-- Vercel runtime/build evidence.
+- CodeQL Actions, Python, and JavaScript/TypeScript.
 
 Current security result:
 
-- Production dependency audit at configured threshold: zero findings;
-- current runtime Critical findings: 0;
-- current runtime High findings: 0;
-- retained accepted Low static signal: 1;
-- API security-boundary classifications: 129/129;
+- dependency audit at configured threshold: zero findings;
+- runtime Critical findings: 0;
+- runtime High findings: 0;
+- accepted Low static signal: 1;
+- API classifications: 129/129;
 - APIs with undetected security evidence: 0;
-- focused, skipped, or TODO tests in accepted tree: 0.
+- focused/skipped/TODO tests in accepted tree: 0.
 
 Direct-test gaps:
 
@@ -213,54 +207,42 @@ Direct-test gaps:
 | P3 UI | 16 |
 | P4 source state | 2 |
 
-The 25 P0/P1 gaps require direct evidence before unrestricted Production launch unless an approved narrower launch scope excludes the relevant capabilities.
+The 25 P0/P1 gaps require direct evidence before unrestricted Production launch unless an approved narrower launch scope excludes them.
 
-## 9. G6 — Operations, recovery, and reliability
+## 9. G6 result
 
-G6 establishes:
+G6 established:
 
 - scheduled Cron readiness: 6/6;
-- health contracts present: 4/4;
-- plan-only backup by default;
-- explicit backup execution and Production approval gates;
-- PostgreSQL custom-format dump integrity verification;
-- SHA-256 manifests;
+- health contracts: 4/4;
+- plan-only backup and restore by default;
+- explicit execution and approval gates;
+- dump integrity verification and SHA-256 manifests;
 - no automatic archive deletion;
-- plan-only restore by default;
 - structural refusal of Production restore;
-- refusal of source-target equality;
-- isolated restore without destructive clean/drop operations;
-- actual PostgreSQL backup/restore drill in CI using synthetic data.
+- isolated PostgreSQL backup/restore drill using synthetic data.
 
-The CI drill proves repository recovery tooling. It does not prove current Production recovery objectives.
+The CI drill proves repository tooling, not Production RTO/RPO.
 
-Unverified Production recovery work includes:
+Provider recovery window, representative restore, Production RTO/RPO, storage lifecycle/KMS ownership, and scheduled logical backups remain activation work.
 
-- current Neon plan and recovery/history window;
-- snapshot schedule and retention;
-- representative restored Production-like branch/database;
-- representative integrity counts;
-- application readiness after restore;
-- Production RTO and RPO;
-- object-storage lifecycle, access policy, KMS ownership, and scheduled logical backups.
+## 10. G7 result
 
-## 10. G7 — Remediation reconciliation
-
-G7 corrected the missing governance step between G6 and G8.
+G7 supplied the missing mandatory reconciliation gate between G6 and G8.
 
 Final reconciliation:
 
-- curated controlling decisions: 21;
-- generated item-level visual decisions: 37;
+- curated decisions: 21;
+- item-level visual decisions: 37;
 - total terminal decisions: 58;
-- direct-test gaps carried: 59;
+- direct-test gaps: 59;
 - P0/P1 Production blockers: 25;
 - lower-priority deferred gaps: 34;
-- Production activation blocker categories: 6;
+- Production blocker categories: 6;
 - unowned High/Critical items: 0;
-- blocking reconciliation findings: 0.
+- reconciliation blockers: 0.
 
-Allowed terminal statuses are:
+Allowed terminal states are:
 
 - `CLOSED`;
 - `DEFERRED_WITH_APPROVAL`;
@@ -268,9 +250,7 @@ Allowed terminal statuses are:
 - `ACCEPTED_RESIDUAL_RISK`;
 - `PRODUCTION_ACTIVATION_BLOCKER`.
 
-No item remains terminally `PARTIAL`, `MISSING`, `CONFLICTING`, `NOT_PROVEN`, `UNKNOWN`, or `OPEN`.
-
-## 11. G8 — Final foundation gate
+## 11. G8 final machine decision
 
 The executable authority is:
 
@@ -278,7 +258,7 @@ The executable authority is:
 scripts/g8-final-foundation-gate.mjs
 ```
 
-Current expected machine decision:
+The verified result from ORCA CI run `29853746496` was:
 
 ```text
 g8RepositoryStageResult = PASS / CLOSED
@@ -288,41 +268,23 @@ productionGoAuthorized = false
 automaticProductionActionAuthorized = false
 ownerReleaseInstructionRequired = true
 nextAuthorizedState = CONTROLLED_ACTIVATION_PLANNING_ONLY
+repositoryBlockers = 0
+unverifiedReleaseConditions = 6
 ```
 
-### Repository foundation: GO
+The retained evidence artifact digest is:
 
-`GO` at repository-foundation level means:
+`sha256:5db785f8b1e33f5e76f19869460a2991c1d31a1ffcd5044bef93903c7702b02f`
 
-- G0–G7 are closed;
-- G7 reconciliation is clean;
-- no High/Critical current runtime risk is open;
-- API, Cron, health, audit, typecheck, tests, recovery, CodeQL, and build controls are current;
-- all known remediation items have owner, evidence, target, dependencies, and terminal decision;
-- no repository blocker remains.
-
-It does not mean Production has been activated.
-
-### Production launch: CONDITIONAL_GO
-
-Production remains conditional on six groups:
-
-1. owner approval and protected `main` merge;
-2. G3 Production data-plane activation and staged RBAC;
-3. provider recovery, representative restore, and Production RTO/RPO;
-4. launch-critical direct tests and visual proof;
-5. deterministic critical staging browser journeys;
-6. provider/secret decisions, Production health, and rollback.
+Functional head `6c68c13b96c8c36dd924a43f5242c7b344d5fa4e` passed ORCA CI, the isolated recovery drill, production build, and CodeQL. PR #70 merged into central at `edee394d4a68d759b2a1fff4376949056cda960d`.
 
 ## 12. Production activation evidence
 
-The only file that may promote the Production verdict to `GO` is:
+The only file that may promote Production from `CONDITIONAL_GO` to `GO` is:
 
 ```text
 docs/reports/activation/ORCA_PRODUCTION_ACTIVATION_EVIDENCE.json
 ```
-
-It is intentionally absent during foundation repository closure.
 
 A valid package must:
 
@@ -330,41 +292,27 @@ A valid package must:
 - identify one approved central SHA and resulting `main` SHA;
 - identify a Production deployment;
 - carry approval evidence;
-- verify all 14 required activation checks with durable references and timestamps;
-- contain no database URLs, connection strings, passwords, API keys, tokens, private keys, or private data.
+- verify all 14 required checks with durable references and timestamps;
+- contain no database URLs, passwords, API keys, tokens, private keys, or private data.
 
 Missing or invalid evidence produces `CONDITIONAL_GO`, never implicit `GO`.
 
-Even a valid package does not execute Production. A separate explicit owner release instruction remains required.
+## 13. Six activation-condition groups
 
-## 13. External integrations
+1. owner approval and protected `main` merge;
+2. G3 Production data-plane activation and staged RBAC;
+3. provider recovery, representative restore, and Production RTO/RPO;
+4. launch-critical direct tests and visual proof;
+5. deterministic critical staging E2E journeys;
+6. provider/secret decisions, Production health, and rollback.
 
-The technical deliverable includes adapters, routes, webhook boundaries, signature verification, mocks, and safe disconnected states.
+## 14. Vercel evidence
 
-Actual provider accounts and Production credentials belong to the operating company. Before enabling a provider, evidence must record:
+The automatic Vercel request for G8 merge `edee394d4a68d759b2a1fff4376949056cda960d` was rejected by the provider's `build-rate-limit`, not by compilation or application failure.
 
-- account owner;
-- contract/license status;
-- secure credential location;
-- callback/webhook domain;
-- signature/auth verification;
-- test transaction/message evidence;
-- failure and rollback behavior;
-- data-retention responsibility.
+The last successful Git Preview was `dpl_GMiz75v52XCgkUqt8vRuAK7NtJRL` at commit `20b9c59c4fdf8a388f08ceaa895ca98d2f0a6f5d`, state `READY`.
 
-`NOT_CONFIGURED` is acceptable only when the system fails safely and does not claim connectivity.
-
-## 14. CI/CD and Vercel
-
-Every foundation PR runs:
-
-- ORCA CI;
-- G3–G8 executable gates;
-- dependency audit and TypeScript;
-- regression and acceptance suites;
-- production build;
-- isolated PostgreSQL recovery drill;
-- CodeQL.
+Changes after that Preview are limited to foundation governance, reports, ledgers, scripts, tests, CI configuration, package scripts, and the Vercel branch-suppression rule. There is no application Runtime source change, Prisma schema/migration change, dependency-version/lockfile change, or build-command change. The complete final tree independently passed TypeScript and the production build.
 
 Repeated automatic Previews are suppressed for:
 
@@ -373,23 +321,23 @@ work/orca-foundation-plan-*
 work/orca-g*-*
 ```
 
-Central and `main` Git deployments remain enabled. This avoids quota exhaustion without bypassing release validation or creating a manual Production deployment.
+Central and `main` deployments remain enabled. No manual Production deployment was used to bypass the quota.
 
-## 15. Final conditions before Production GO
+## 15. Final Production conditions
 
-The current Production launch remains conditional on:
+Production remains conditional on:
 
-1. explicit owner Production approval;
-2. approved central SHA and protected merge to `main`;
+1. explicit owner approval;
+2. approved central SHA and protected `main` merge;
 3. restorable recovery point;
 4. representative migration rehearsal;
 5. reviewed backfill dry-run;
 6. zero-violation constraints/index preflight and controlled validation;
 7. representative RBAC audit and staged enablement;
 8. provider recovery window and measured Production RTO/RPO;
-9. direct behavioral evidence for launch-critical P0/P1 contracts;
-10. current visual proof for launch-critical pages and states;
-11. deterministic critical staging E2E journeys;
+9. direct evidence for launch-critical P0/P1 contracts;
+10. current launch visual proof;
+11. deterministic critical staging E2E;
 12. secrets rotation and company provider decisions;
 13. Production deployment identity and health verification;
 14. rollback target and verified rollback procedure.
@@ -398,9 +346,7 @@ The current Production launch remains conditional on:
 
 ### Foundation plan
 
-**PASS / CLOSED candidate**
-
-G0 through G8 are structurally complete. Final authority is established after G8 PR checks, central merge, branch reconciliation, and unchanged-main evidence.
+**PASS / CLOSED**
 
 ### Repository foundation
 
@@ -412,7 +358,7 @@ The repository is ready for controlled activation planning.
 
 **CONDITIONAL_GO**
 
-Production remains prohibited until the activation conditions are verified for one approved release and the owner provides an explicit release instruction.
+Production remains prohibited until activation evidence is verified for one approved release and the owner gives an explicit instruction.
 
 ### Next authorized state
 
@@ -420,4 +366,4 @@ Production remains prohibited until the activation conditions are verified for o
 
 ## 17. Supersession notice
 
-This version supersedes intake-era statuses, blockers, GitHub-App limitations, old build failures, and pre-G3 remediation judgments in earlier versions of this report. Those records remain available in Git history as historical context, but current decisions are governed by the G0–G8 ledger, G3–G8 closure records, current source, and executable CI evidence.
+This version supersedes intake-era statuses, old P0 findings, GitHub-App limitations, historical build failures, and pre-G3 judgments in earlier versions. Those records remain in Git history only as historical context. Current authority is the G0–G8 ledger, G3–G8 closure reports, current source, and executable CI evidence.
