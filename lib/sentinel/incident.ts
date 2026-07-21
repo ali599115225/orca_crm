@@ -318,7 +318,6 @@ export async function escalateIncident(
     },
     data: {
       escalationLevel: newLevel,
-      escalatedAt: new Date(),
     },
   });
   if (updated.count !== 1) {
