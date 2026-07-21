@@ -6,7 +6,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from '@/lib/api-auth-guard';
-import { hasDatabaseRoleWithAudit } from '@/lib/authz/legacy-audit-guards';
+import { hasDatabaseRoleWithProgressiveAuthorization } from '@/lib/authz/progressive-guards';
 import { writeAuditLog } from '@/lib/audit';
 import { ErrorCode } from "@/lib/errors";
 
@@ -17,17 +17,18 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
     if (!session) return unauthorizedResponse(request);
-    const allowed = await hasDatabaseRoleWithAudit(
+    const access = await hasDatabaseRoleWithProgressiveAuthorization(
       session,
       SETTINGS_READER_ROLES,
       {
+        domain: 'users-settings',
         permissionKey: 'settings.read',
         source: 'GET:/api/v1/settings',
         requestId: request.headers.get('x-request-id'),
         resource: { tenantId: session.tenantId },
       },
     );
-    if (!allowed) return forbiddenResponse(request);
+    if (!access.effectiveAllowed) return forbiddenResponse(request);
 
     const dbTenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId },
@@ -54,19 +55,18 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth(request);
     if (!session) return unauthorizedResponse(request);
-    // Settings mutations are ADMIN only. G3-06 observes RBAC in shadow mode;
-    // this legacy database-backed decision remains authoritative.
-    const allowed = await hasDatabaseRoleWithAudit(
+    const access = await hasDatabaseRoleWithProgressiveAuthorization(
       session,
       SETTINGS_WRITER_ROLES,
       {
+        domain: 'users-settings',
         permissionKey: 'settings.manage',
         source: 'PUT:/api/v1/settings',
         requestId: request.headers.get('x-request-id'),
         resource: { tenantId: session.tenantId },
       },
     );
-    if (!allowed) return forbiddenResponse(request);
+    if (!access.effectiveAllowed) return forbiddenResponse(request);
 
     const body = await request.json();
     const { commercialRegistry, vatNumber, nationalAddress, companyName } = body;
