@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/api-auth';
 import { writeAuditLog } from '@/lib/audit';
+import {
+  enforceProgressiveAuthorization,
+  isEnforcementDomainEnabled,
+} from '@/lib/authz/enforcement';
 
 export async function POST(
   request: NextRequest,
@@ -14,6 +18,41 @@ export async function POST(
     }
 
     const { id } = await params;
+    const tenantId = typeof session.tenantId === 'string' ? session.tenantId : '';
+    const userId = typeof session.userId === 'string' ? session.userId : '';
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
+
+    if (!userId && isEnforcementDomainEnabled('sales')) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالصلاحية' }, { status: 403 });
+    }
+
+    if (userId) {
+      const access = await enforceProgressiveAuthorization(
+        {
+          tenantId,
+          userId,
+          role: typeof session.role === 'string' ? session.role : '',
+        },
+        true,
+        {
+          domain: 'sales',
+          permissionKey: 'properties.schedule-visit',
+          source: 'POST:/api/properties/:id/schedule-visit',
+          requestId: request.headers.get('x-request-id'),
+          resource: {
+            tenantId,
+            resourceType: 'Unit',
+            resourceId: id,
+          },
+        },
+      );
+      if (!access.effectiveAllowed) {
+        return NextResponse.json({ success: false, error: 'غير مصرح بالصلاحية' }, { status: 403 });
+      }
+    }
+
     const body = await request.json();
     const { userName, phone, datetime } = body;
 
@@ -39,8 +78,8 @@ export async function POST(
     const visitId = `VS-${Date.now().toString(36).toUpperCase()}`;
 
     await writeAuditLog({
-      tenantId: session.tenantId,
-      userId: session.userId,
+      tenantId,
+      userId: userId || null,
       action: 'LEAD_CREATED',
       tableName: 'units',
       recordId: id,
