@@ -70,6 +70,6 @@ Object.assign(packageJson.devDependencies, {
 packageJson.overrides = {
   ...(packageJson.overrides ?? {}),
   "brace-expansion": "5.0.7",
-  postcss: "8.5.20",
+  postcss: "$postcss",
 };
 write(packagePath, `${JSON.stringify(packageJson, null, 4)}\n`);
