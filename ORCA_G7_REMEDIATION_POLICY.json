@@ -1,0 +1,367 @@
+{
+  "schemaVersion": 1,
+  "authority": "ORCA G7 Remediation Reconciliation & Closure",
+  "allowedStatuses": [
+    "CLOSED",
+    "DEFERRED_WITH_APPROVAL",
+    "OUT_OF_SCOPE",
+    "ACCEPTED_RESIDUAL_RISK",
+    "PRODUCTION_ACTIVATION_BLOCKER"
+  ],
+  "forbiddenTerminalStatuses": [
+    "PARTIAL",
+    "MISSING",
+    "CONFLICTING",
+    "NOT_PROVEN",
+    "UNKNOWN",
+    "OPEN"
+  ],
+  "items": [
+    {
+      "id": "G7-GOV-001",
+      "title": "Single-company operating model and integration ownership",
+      "category": "GOVERNANCE",
+      "severity": "CRITICAL",
+      "status": "CLOSED",
+      "owner": "Owner / Architecture",
+      "targetStage": "G0",
+      "evidenceRefs": [
+        "ORCA_CENTRAL_BASELINE_PLAN.md",
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md",
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [],
+      "rationale": "The single independent company model, retained tenant security partition, and company-owned provider policy are explicit authorities."
+    },
+    {
+      "id": "G7-REPO-001",
+      "title": "Central integration and branch reconciliation process",
+      "category": "REPOSITORY",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "owner": "Release Engineering",
+      "targetStage": "G2",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md",
+        "docs/reports/foundation/ORCA_G4_FINAL_CLOSURE.md",
+        "docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md",
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [],
+      "rationale": "Foundation stages use PR checks, central merge, Vercel Preview, fast-forward reconciliation, and an unchanged main baseline."
+    },
+    {
+      "id": "G7-ARCH-001",
+      "title": "Repository architecture, organization, authorization, and legacy SaaS disablement",
+      "category": "ARCHITECTURE_RBAC",
+      "severity": "CRITICAL",
+      "status": "CLOSED",
+      "owner": "Architecture / Security",
+      "targetStage": "G3",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [],
+      "rationale": "G3 establishes default-deny authorization, scoped organization/RBAC contracts, guarded data-transition tooling, and legacy SaaS disablement."
+    },
+    {
+      "id": "G7-ARCH-002",
+      "title": "Production application of G3 migration, backfill, constraints, and staged RBAC enforcement",
+      "category": "PRODUCTION_DATA_PLANE",
+      "severity": "CRITICAL",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Owner / Database / Security",
+      "targetStage": "Production Activation",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md",
+        "docs/architecture/G3_RELEASE_RUNBOOK.md"
+      ],
+      "dependencies": [
+        "restorable provider recovery point",
+        "isolated representative rehearsal",
+        "explicit owner approval"
+      ],
+      "rationale": "Repository tooling exists, but no Production migration, backfill, constraint validation, or RBAC domain enablement was executed."
+    },
+    {
+      "id": "G7-CONTRACT-001",
+      "title": "Central page and operational contract registry",
+      "category": "FUNCTIONAL_CONTRACTS",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "owner": "Architecture / Product",
+      "targetStage": "G4",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G4_FINAL_CLOSURE.md",
+        "docs/architecture/ORCA_G4_CONTRACT_REGISTRY.md"
+      ],
+      "dependencies": [],
+      "rationale": "All current pages, APIs, Server Actions, tabs, overlays, route states, permissions, models, and evidence classifications are registered."
+    },
+    {
+      "id": "G7-TEST-001",
+      "title": "Direct behavioral evidence for P0 and P1 contracts",
+      "category": "TEST_EVIDENCE",
+      "severity": "CRITICAL",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Quality / Security",
+      "targetStage": "G8 Launch Scope / Production Activation",
+      "evidenceRefs": [
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md",
+        "docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [
+        "approved launch scope",
+        "deterministic staging identities and fixtures"
+      ],
+      "rationale": "The 11 P0 security-critical, 8 P1 mutation, and 6 P1 sensitive-read contracts require direct current evidence before unrestricted launch."
+    },
+    {
+      "id": "G7-TEST-002",
+      "title": "Lower-priority P2, P3, and P4 direct-test gaps",
+      "category": "TEST_EVIDENCE",
+      "severity": "MEDIUM",
+      "status": "DEFERRED_WITH_APPROVAL",
+      "owner": "Quality / Product",
+      "targetStage": "Post-foundation backlog or narrowed launch scope",
+      "evidenceRefs": [
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md"
+      ],
+      "dependencies": [
+        "release-criticality review"
+      ],
+      "rationale": "The remaining 34 lower-priority contracts stay measurable and must be elevated when they enter launch scope or change."
+    },
+    {
+      "id": "G7-VISUAL-001",
+      "title": "Open visual evidence contracts",
+      "category": "VISUAL_EVIDENCE",
+      "severity": "HIGH",
+      "status": "DEFERRED_WITH_APPROVAL",
+      "owner": "Product / UI",
+      "targetStage": "G8 launch-scope scoring and visual closeout",
+      "evidenceRefs": [
+        "docs/architecture/ORCA_G4_PAGES_AND_SURFACES.md",
+        "docs/architecture/ORCA_G4_VISUAL_STATUS_OVERRIDES.json"
+      ],
+      "dependencies": [
+        "approved launch-critical page list",
+        "current screenshots and interaction evidence"
+      ],
+      "rationale": "Every PARTIAL, documented-issue, NOT_PROVEN, or historical-only visual surface is expanded into an owned child record by the G7 reconciliation script."
+    },
+    {
+      "id": "G7-SEC-001",
+      "title": "Security, dependency, API-boundary, typecheck, and build controls",
+      "category": "SECURITY_QUALITY",
+      "severity": "CRITICAL",
+      "status": "CLOSED",
+      "owner": "Security / Quality",
+      "targetStage": "G5",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G5_FINAL_CLOSURE.md",
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md"
+      ],
+      "dependencies": [],
+      "rationale": "G5 closes current High/Critical runtime findings, classifies 129 API boundaries, and installs blocking audit, typecheck, tests, CodeQL, and build gates."
+    },
+    {
+      "id": "G7-SEC-002",
+      "title": "Static login dangerouslySetInnerHTML signal",
+      "category": "ACCEPTED_SECURITY_RISK",
+      "severity": "LOW",
+      "status": "ACCEPTED_RESIDUAL_RISK",
+      "owner": "Frontend / Security",
+      "targetStage": "Optional hardening",
+      "evidenceRefs": [
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md"
+      ],
+      "dependencies": [],
+      "rationale": "Reviewed content is a fixed CSS template without user-controlled input; modernization remains optional unless the expression changes."
+    },
+    {
+      "id": "G7-QUALITY-001",
+      "title": "Absence of a standalone ESLint configuration",
+      "category": "QUALITY_TOOLING",
+      "severity": "LOW",
+      "status": "ACCEPTED_RESIDUAL_RISK",
+      "owner": "Quality / Frontend",
+      "targetStage": "Optional tooling improvement",
+      "evidenceRefs": [
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md"
+      ],
+      "dependencies": [],
+      "rationale": "The project enforces typecheck, executable contracts, acceptance/regression suites, CodeQL, dependency audit, and production build instead of a non-functional lint command."
+    },
+    {
+      "id": "G7-DEP-001",
+      "title": "Temporary dependency overrides",
+      "category": "DEPENDENCIES",
+      "severity": "MEDIUM",
+      "status": "DEFERRED_WITH_APPROVAL",
+      "owner": "Dependency Maintenance",
+      "targetStage": "Routine dependency maintenance",
+      "evidenceRefs": [
+        "package.json",
+        "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md"
+      ],
+      "dependencies": [
+        "upstream dependency releases"
+      ],
+      "rationale": "Narrow brace-expansion and PostCSS overrides remain guarded and should be removed when upstream constraints no longer require them."
+    },
+    {
+      "id": "G7-OPS-001",
+      "title": "Repository operations, Cron, health, backup, and restore controls",
+      "category": "OPERATIONS_RECOVERY",
+      "severity": "CRITICAL",
+      "status": "CLOSED",
+      "owner": "Operations / Database",
+      "targetStage": "G6",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md",
+        "docs/architecture/ORCA_G6_OPERATIONS_RECOVERY_REGISTER.md"
+      ],
+      "dependencies": [],
+      "rationale": "G6 verifies 6/6 scheduled Cron contracts, 4/4 health contracts, safe backup/restore commands, and an isolated PostgreSQL recovery drill."
+    },
+    {
+      "id": "G7-OPS-002",
+      "title": "Current provider recovery configuration and Production RTO/RPO",
+      "category": "PRODUCTION_RECOVERY",
+      "severity": "CRITICAL",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Owner / Operations / Database",
+      "targetStage": "Production Activation",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md",
+        "docs/runbooks/ORCA_G6_BACKUP_RESTORE_RUNBOOK.md"
+      ],
+      "dependencies": [
+        "current Neon plan and recovery window",
+        "representative isolated restore",
+        "measured application readiness"
+      ],
+      "rationale": "The CI drill is synthetic repository evidence and cannot be represented as Production recovery capability or RTO/RPO."
+    },
+    {
+      "id": "G7-OPS-003",
+      "title": "Object-storage retention, lifecycle, access policy, KMS ownership, and scheduled logical backups",
+      "category": "BACKUP_INFRASTRUCTURE",
+      "severity": "HIGH",
+      "status": "DEFERRED_WITH_APPROVAL",
+      "owner": "Owner / Operations / Security",
+      "targetStage": "Infrastructure activation",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [
+        "approved storage provider and account",
+        "company-owned encryption and access policy"
+      ],
+      "rationale": "Repository tooling supports explicit S3 upload, but infrastructure ownership and retention policy require separate approval."
+    },
+    {
+      "id": "G7-INTEGRATION-001",
+      "title": "Company-owned external provider credentials, subscriptions, licenses, and callback configuration",
+      "category": "EXTERNAL_INTEGRATIONS",
+      "severity": "HIGH",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Company Owner / Integration Owner",
+      "targetStage": "Provider-specific Production Activation",
+      "evidenceRefs": [
+        "ORCA_CENTRAL_BASELINE_PLAN.md",
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md"
+      ],
+      "dependencies": [
+        "company provider accounts",
+        "official approvals and licenses where required",
+        "Production callback domains and secrets"
+      ],
+      "rationale": "Adapters and safe NOT_CONFIGURED states do not prove a real provider is ready. Each enabled provider requires company-owned activation evidence."
+    },
+    {
+      "id": "G7-SCOPE-001",
+      "title": "Legacy multi-company SaaS registration, subscriptions, billing, package limits, upgrades, and agent leasing",
+      "category": "LEGACY_SAAS",
+      "severity": "HIGH",
+      "status": "OUT_OF_SCOPE",
+      "owner": "Product / Architecture",
+      "targetStage": "No current stage; explicit future change control only",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G3_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [],
+      "rationale": "These capabilities are disabled under the approved single-company operating model while historical structures remain preserved."
+    },
+    {
+      "id": "G7-E2E-001",
+      "title": "Deterministic staging identities, fixtures, and critical browser journeys",
+      "category": "E2E_RELEASE_EVIDENCE",
+      "severity": "HIGH",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Quality / Release Engineering",
+      "targetStage": "Production Activation",
+      "evidenceRefs": [
+        "playwright.config.ts",
+        "docs/architecture/ORCA_G4_CONTRACT_REGISTRY.md"
+      ],
+      "dependencies": [
+        "isolated staging database",
+        "deterministic test identities and tenant/company fixtures",
+        "approved critical journey list"
+      ],
+      "rationale": "Playwright configuration and spec discovery are not current executed release evidence for critical browser journeys."
+    },
+    {
+      "id": "G7-RELEASE-001",
+      "title": "Protected merge to main, Production deployment, post-deploy health, and rollback evidence",
+      "category": "RELEASE_ACTIVATION",
+      "severity": "CRITICAL",
+      "status": "PRODUCTION_ACTIVATION_BLOCKER",
+      "owner": "Owner / Release Engineering / Operations",
+      "targetStage": "Production Activation",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md",
+        ".github/workflows/orca-production-smoke.yml"
+      ],
+      "dependencies": [
+        "explicit owner approval",
+        "approved release SHA",
+        "rollback target",
+        "Production health checks"
+      ],
+      "rationale": "Foundation closure intentionally leaves main and Production unchanged; release evidence must be created separately."
+    },
+    {
+      "id": "G7-HISTORY-001",
+      "title": "Contradictory archived reports and intake-era statuses",
+      "category": "EVIDENCE_GOVERNANCE",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "owner": "Governance / Architecture",
+      "targetStage": "G7",
+      "evidenceRefs": [
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md",
+        "ORCA_CENTRAL_BASELINE_PLAN_ADDENDUM.md"
+      ],
+      "dependencies": [],
+      "rationale": "Archived claims are historical context only and cannot override current source, CI, provider inspection, or stage closure evidence."
+    },
+    {
+      "id": "G7-VERCEL-001",
+      "title": "Vercel foundation Preview build-rate exhaustion",
+      "category": "CI_CD_CAPACITY",
+      "severity": "MEDIUM",
+      "status": "CLOSED",
+      "owner": "Release Engineering",
+      "targetStage": "G6/G7",
+      "evidenceRefs": [
+        "vercel.json",
+        "docs/reports/foundation/ORCA_G6_FINAL_CLOSURE.md"
+      ],
+      "dependencies": [],
+      "rationale": "Automatic Preview builds are disabled only for repeated foundation-plan branches while central and main Git deployments remain enabled."
+    }
+  ]
+}
