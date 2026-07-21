@@ -54,7 +54,7 @@ function extension(path) {
 function walk(path) {
   if (!existsSync(path)) return []
   const files = []
-  for (const name of readdirSync(path)) {
+  for (const name of readdirSync(path).sort()) {
     const absolute = resolve(path, name)
     const entry = statSync(absolute)
     if (entry.isDirectory()) {
@@ -89,21 +89,21 @@ function reviewPlatformTenantTarget(path, ruleId, content) {
     resolve(ROOT, 'lib/sentinel/incident.ts'),
     'utf8',
   )
-  const requiredRouteAnchors = [
+  const routeAnchors = [
     'authenticatePlatformOwner()',
     'ALLOWED_INCIDENT_ACTIONS.has(action)',
     'Invalid tenantId UUID',
     'createIncident({',
   ]
-  const requiredServiceAnchors = [
+  const serviceAnchors = [
     'prisma.tenant.findFirst',
     'where: { id: params.tenantId, isActive: true }',
     'Target tenant is missing or inactive',
   ]
 
   if (
-    requiredRouteAnchors.every((anchor) => content.includes(anchor)) &&
-    requiredServiceAnchors.every((anchor) => incidentService.includes(anchor))
+    routeAnchors.every((anchor) => content.includes(anchor)) &&
+    serviceAnchors.every((anchor) => incidentService.includes(anchor))
   ) {
     return {
       path,
@@ -164,7 +164,7 @@ function verifyG3Migrations() {
   const reviewed = []
   if (!existsSync(migrationDir)) return { violations, reviewed }
 
-  for (const directory of readdirSync(migrationDir)) {
+  for (const directory of readdirSync(migrationDir).sort()) {
     if (!directory.toLowerCase().includes('g3')) continue
     const path = resolve(migrationDir, directory, 'migration.sql')
     if (!existsSync(path)) continue
@@ -188,13 +188,53 @@ function verifyG3Migrations() {
   return { violations, reviewed }
 }
 
+function reviewProtectedWorkflow(path, ruleId, content) {
+  if (
+    path !== '.github/workflows/manual-prisma-migrations.yml' ||
+    ruleId !== 'workflow-production-migrate'
+  ) {
+    return null
+  }
+
+  const safeguards = [
+    'workflow_dispatch:',
+    'environment: production-database',
+    'confirmation:',
+    'if [ "$CONFIRMATION" != "DEPLOY" ]',
+    'PRISMA_MIGRATE_DATABASE_URL',
+    'expected_migration:',
+    'Invalid migration directory name',
+    'cancel-in-progress: false',
+  ]
+
+  if (!safeguards.every((anchor) => content.includes(anchor))) return null
+
+  return {
+    path,
+    ruleId,
+    classification: 'PROTECTED_MANUAL_DATABASE_RELEASE',
+    automaticExecution: false,
+    safeguards: [
+      'manual workflow dispatch',
+      'protected production-database environment',
+      'exact DEPLOY confirmation',
+      'dedicated migration credential',
+      'expected migration allow-target',
+      'serialized non-cancelling execution',
+    ],
+  }
+}
+
 function verifyWorkflowSafety() {
   const workflowDir = resolve(ROOT, '.github/workflows')
   const violations = []
   const reviewed = []
-  if (!existsSync(workflowDir)) return { violations, reviewed }
+  const reviewedProductionWorkflows = []
+  if (!existsSync(workflowDir)) {
+    return { violations, reviewed, reviewedProductionWorkflows }
+  }
 
-  for (const name of readdirSync(workflowDir)) {
+  for (const name of readdirSync(workflowDir).sort()) {
     const path = resolve(workflowDir, name)
     if (!statSync(path).isFile()) continue
 
@@ -208,11 +248,23 @@ function verifyWorkflowSafety() {
       ['workflow-production-deploy', /vercel\s+(?:deploy\s+)?--prod/i],
       ['workflow-force-push', /git\s+push[^\n]*--force/i],
     ]
+
     for (const [ruleId, pattern] of forbidden) {
-      if (pattern.test(content)) violations.push({ path: repositoryPath, ruleId })
+      if (!pattern.test(content)) continue
+      const reviewedWorkflow = reviewProtectedWorkflow(
+        repositoryPath,
+        ruleId,
+        content,
+      )
+      if (reviewedWorkflow) {
+        reviewedProductionWorkflows.push(reviewedWorkflow)
+      } else {
+        violations.push({ path: repositoryPath, ruleId })
+      }
     }
   }
-  return { violations, reviewed }
+
+  return { violations, reviewed, reviewedProductionWorkflows }
 }
 
 function verifyRequiredArtifacts() {
@@ -284,6 +336,7 @@ export function runFinalVerification() {
     checkedAt: new Date().toISOString(),
     violations,
     reviewedPlatformTargets: tenantScan.reviewedPlatformTargets,
+    reviewedProductionWorkflows: workflowScan.reviewedProductionWorkflows,
     reviewedG3Migrations: migrationScan.reviewed,
     reviewedWorkflows: workflowScan.reviewed,
     requiredStageReportCount: REQUIRED_STAGE_REPORTS.length,
