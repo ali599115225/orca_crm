@@ -52,19 +52,7 @@ jobs:
           tests/early-settlement.test.ts
 
       - name: Sentinel incident service regression
-        run: >
-          npx vitest run tests/p2-sentinel-incidents.test.ts
-          --reporter=json
-          --outputFile=sentinel-incidents-results.json
-
-      - name: Upload Sentinel incident failure details
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sentinel-incidents-failure
-          path: sentinel-incidents-results.json
-          if-no-files-found: error
-          retention-days: 3
+        run: npx vitest run tests/p2-sentinel-incidents.test.ts
 
       - name: Sentinel command center regression
         run: npx vitest run tests/p2-sentinel-command-center-incidents.test.ts
