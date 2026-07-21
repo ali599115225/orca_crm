@@ -24,6 +24,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ============================================================================
 
 const mocks = vi.hoisted(() => ({
+  tenantFindFirst: vi.fn(),
   sentinelIncidentCreate: vi.fn(),
   sentinelIncidentFindUnique: vi.fn(),
   sentinelIncidentFindMany: vi.fn(),
@@ -37,6 +38,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    tenant: {
+      findFirst: mocks.tenantFindFirst,
+    },
     sentinelIncident: {
       create: mocks.sentinelIncidentCreate,
       findUnique: mocks.sentinelIncidentFindUnique,
@@ -107,6 +111,7 @@ function makeIncident(overrides: Record<string, unknown> = {}) {
 describe("P2 — Sentinel Incident Foundation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.tenantFindFirst.mockResolvedValue({ id: "tenant-1" });
   });
 
   // ──────────────────────────────────────────────
@@ -119,6 +124,7 @@ describe("P2 — Sentinel Incident Foundation", () => {
     const result = await createIncident({ title: "Global outage" });
 
     expect(result.success).toBe(true);
+    expect(mocks.tenantFindFirst).not.toHaveBeenCalled();
     expect(mocks.sentinelIncidentCreate).toHaveBeenCalledTimes(1);
     const data = mocks.sentinelIncidentCreate.mock.calls[0][0].data;
     expect(data.tenantId).toBeNull();
@@ -145,9 +151,29 @@ describe("P2 — Sentinel Incident Foundation", () => {
     });
 
     expect(result.success).toBe(true);
+    expect(mocks.tenantFindFirst).toHaveBeenCalledWith({
+      where: { id: "tenant-1", isActive: true },
+      select: { id: true },
+    });
     const data = mocks.sentinelIncidentCreate.mock.calls[0][0].data;
     expect(data.tenantId).toBe("tenant-1");
     expect(data.severity).toBe("HIGH");
+  });
+
+  it("rejects a missing or inactive tenant target before incident persistence", async () => {
+    mocks.tenantFindFirst.mockResolvedValueOnce(null);
+
+    const result = await createIncident({
+      title: "Invalid tenant target",
+      tenantId: "missing-tenant",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Target tenant is missing or inactive.",
+    });
+    expect(mocks.sentinelIncidentCreate).not.toHaveBeenCalled();
+    expect(mocks.writeSentinelAudit).not.toHaveBeenCalled();
   });
 
   // ──────────────────────────────────────────────
