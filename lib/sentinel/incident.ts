@@ -125,6 +125,19 @@ export async function createIncident(params: CreateIncidentParams): Promise<Inci
   const validationError = validateCreateParams(params);
   if (validationError) return { success: false, error: validationError };
 
+  // A platform-owner command may identify a target Tenant, but that request
+  // value is never accepted as an operation context. Revalidate the target
+  // against current database state before persisting the incident.
+  if (params.tenantId) {
+    const targetTenant = await prisma.tenant.findFirst({
+      where: { id: params.tenantId, isActive: true },
+      select: { id: true },
+    });
+    if (!targetTenant) {
+      return { success: false, error: "Target tenant is missing or inactive." };
+    }
+  }
+
   const title = sanitizeString(params.title.trim(), MAX_TITLE_LENGTH);
   const summary = params.summary ? sanitizeString(params.summary, MAX_SUMMARY_LENGTH) : null;
   const affectedService = params.affectedService
@@ -219,97 +232,71 @@ async function transitionTo(
   const data: Record<string, unknown> = { status: newStatus, ...updateExtra };
   const result = await prisma.sentinelIncident.updateMany({
     where: { id, status: current.status },
-    data: data as any,
+    data,
   });
   if (result.count !== 1) {
-    return { success: false, error: "Incident not found or status changed." };
+    return { success: false, error: "Incident state changed concurrently." };
   }
-
-  const auditEvent = newStatus === "RESOLVED" || newStatus === "FALSE_POSITIVE"
-    ? "SENTINEL_INCIDENT_CLOSED"
-    : (`SENTINEL_INCIDENT_${newStatus}` as const);
-
-  await writeIncidentAudit(auditEvent, id, {
-    decision: `Incident transitioned from ${current.status} to ${newStatus}`,
-    reason: "Status change",
-    beforeState: current.status,
-    afterState: newStatus,
-  });
 
   const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
   return { success: true, incident };
 }
 
 export async function acknowledgeIncident(id: string): Promise<IncidentResult> {
-  return transitionTo(id, "ACKNOWLEDGED", { acknowledgedAt: new Date() });
+  const result = await transitionTo(id, "ACKNOWLEDGED", { acknowledgedAt: new Date() });
+  if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_ACKNOWLEDGED", id);
+  return result;
 }
 
 export async function startIncidentWork(id: string): Promise<IncidentResult> {
-  return transitionTo(id, "IN_PROGRESS");
+  const result = await transitionTo(id, "IN_PROGRESS", { workStartedAt: new Date() });
+  if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_IN_PROGRESS", id);
+  return result;
 }
 
 export async function resolveIncident(id: string): Promise<IncidentResult> {
-  return transitionTo(id, "RESOLVED", { resolvedAt: new Date() });
+  const result = await transitionTo(id, "RESOLVED", { resolvedAt: new Date() });
+  if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_CLOSED", id);
+  return result;
 }
 
 export async function markIncidentFalsePositive(id: string): Promise<IncidentResult> {
-  return transitionTo(id, "FALSE_POSITIVE", { resolvedAt: new Date() });
+  const result = await transitionTo(id, "FALSE_POSITIVE", { falsePositiveAt: new Date() });
+  if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_CLOSED", id, { reason: "Marked false positive" });
+  return result;
 }
 
 export async function assignIncident(id: string, assignedToId: string): Promise<IncidentResult> {
-  const result = await prisma.sentinelIncident.updateMany({
-    where: { id },
+  const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
+  if (!incident) return { success: false, error: "Incident not found." };
+  if (["RESOLVED", "FALSE_POSITIVE"].includes(incident.status)) {
+    return { success: false, error: "Cannot assign a closed incident." };
+  }
+  const updated = await prisma.sentinelIncident.updateMany({
+    where: { id, status: incident.status },
     data: { assignedToId },
   });
-  if (result.count !== 1) {
-    return { success: false, error: "Incident not found." };
-  }
-
-  await writeIncidentAudit("SENTINEL_COMMAND", id, {
-    decision: "Incident assigned",
-    reason: "Assignment change",
-    afterState: `assigned to ${assignedToId}`,
-  });
-
-  const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
-  return { success: true, incident };
+  if (updated.count !== 1) return { success: false, error: "Incident state changed concurrently." };
+  const result = await prisma.sentinelIncident.findUnique({ where: { id } });
+  return { success: true, incident: result };
 }
 
-export async function escalateIncident(id: string, newLevel: IncidentEscalationLevel): Promise<IncidentResult> {
-  if (!INCIDENT_ESCALATION_LEVELS.includes(newLevel as IncidentEscalationLevel)) {
-    return {
-      success: false,
-      error: `Invalid escalation level. Must be one of: ${INCIDENT_ESCALATION_LEVELS.join(", ")}.`,
-    };
+export async function escalateIncident(
+  id: string,
+  newLevel: IncidentEscalationLevel,
+): Promise<IncidentResult> {
+  if (!INCIDENT_ESCALATION_LEVELS.includes(newLevel)) {
+    return { success: false, error: "Invalid escalation level." };
   }
-
-  const current = await prisma.sentinelIncident.findUnique({
-    where: { id },
-    select: { id: true, escalationLevel: true },
-  });
+  const current = await prisma.sentinelIncident.findUnique({ where: { id } });
   if (!current) return { success: false, error: "Incident not found." };
-
-  const currentIdx = ESCALATION_ORDER.indexOf(current.escalationLevel);
-  const newIdx = ESCALATION_ORDER.indexOf(newLevel);
-  if (newIdx <= currentIdx) {
+  const currentIndex = ESCALATION_ORDER.indexOf(current.escalationLevel);
+  const newIndex = ESCALATION_ORDER.indexOf(newLevel);
+  if (newIndex <= currentIndex) {
     return { success: false, error: "Escalation level must increase." };
   }
-
-  const result = await prisma.sentinelIncident.updateMany({
-    where: { id, escalationLevel: current.escalationLevel },
-    data: { escalationLevel: newLevel },
+  return transitionTo(id, current.status as IncidentStatus, {
+    escalationLevel: newLevel,
+    escalatedAt: new Date(),
   });
-  if (result.count !== 1) {
-    return { success: false, error: "Incident not found or escalation level changed." };
-  }
-
-  await writeIncidentAudit("SENTINEL_COMMAND", id, {
-    decision: `Incident escalated to ${newLevel}`,
-    reason: "Escalation",
-    beforeState: current.escalationLevel,
-    afterState: newLevel,
-  });
-
-  const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
-  return { success: true, incident };
 }
