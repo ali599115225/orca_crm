@@ -3,13 +3,17 @@
 import {
   LEGACY_SAAS_OUT_OF_SCOPE,
   ORCA_PLATFORM_MODEL,
+  legacySaasBlockedResult,
 } from "@/lib/platform-operating-model";
 
 export interface TenantRegistrationResult {
   success: false;
+  enabled: false;
   code: typeof LEGACY_SAAS_OUT_OF_SCOPE;
+  capability: "PUBLIC_TENANT_REGISTRATION";
   error: string;
   platformModel: typeof ORCA_PLATFORM_MODEL.platformModel;
+  reason: "SINGLE_COMPANY_OPERATIONAL_MODE";
 }
 
 /**
@@ -22,11 +26,8 @@ export interface TenantRegistrationResult {
 export async function registerTenantAction(
   _formData: FormData,
 ): Promise<TenantRegistrationResult> {
-  return {
-    success: false,
-    code: LEGACY_SAAS_OUT_OF_SCOPE,
-    error:
-      "تسجيل شركات جديدة غير متاح. ORCA منصة تشغيل داخلية لشركة واحدة.",
-    platformModel: ORCA_PLATFORM_MODEL.platformModel,
-  };
+  return legacySaasBlockedResult(
+    "PUBLIC_TENANT_REGISTRATION",
+    "تسجيل شركات جديدة غير متاح. ORCA منصة تشغيل داخلية لشركة واحدة.",
+  );
 }
