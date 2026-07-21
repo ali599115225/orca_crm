@@ -3,6 +3,9 @@
   "authority": "ORCA Foundation G0-G8 Stage Ledger",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "productionActionAuthorized": false,
+  "finalFoundationStatus": "PASS / CLOSED",
+  "repositoryFoundationVerdict": "GO",
+  "productionLaunchVerdict": "CONDITIONAL_GO",
   "stages": [
     {
       "id": "G0",
@@ -83,11 +86,12 @@
     {
       "id": "G8",
       "name": "Final Foundation Gate",
-      "status": "IN PROGRESS",
+      "status": "PASS / CLOSED",
       "evidenceRefs": [
-        "docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md"
+        "docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md",
+        "ORCA_CENTRAL_BASELINE_REPORT.md"
       ],
-      "closureBasis": "G8 closes when the executable final gate, central report, CI, CodeQL, merge, reconciliation, and unchanged main evidence complete."
+      "closureBasis": "The executable gate returned repository foundation GO and Production CONDITIONAL_GO with zero repository blockers; PR #70 passed ORCA CI, recovery drill, build, and CodeQL and merged into central at edee394d4a68d759b2a1fff4376949056cda960d. Production remains separate and unauthorized."
     }
   ]
 }
