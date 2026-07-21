@@ -19,7 +19,7 @@ describe('G3-01 architecture contract', () => {
       '`tenantId` remains the security namespace',
       'Central CompanyContext and AccessContext',
       'Trusted scope derivation',
-      'OrgAssignment and RoleAssignment SHALL be separate',
+      '`OrgAssignment` and `RoleAssignment` SHALL be separate',
       'Scoped, DB-backed RBAC',
       'default-deny',
       'Legacy SaaS capability disablement',
