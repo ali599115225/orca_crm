@@ -1,9 +1,7 @@
 name: ORCA Lockfile Refresh
 
 on:
-  push:
-    branches:
-      - work/orca-security-advisory-20260721
+  pull_request:
 
 permissions:
   contents: read
