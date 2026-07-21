@@ -4,11 +4,12 @@
 
 - **Program:** ORCA Foundation G3
 - **Final stage:** G3-10 — Final Verification and Closure
-- **Repository result:** PASS — final PR checks complete; central merge pending
+- **Repository result:** PASS / CLOSED
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **G3-10 start SHA:** `356305ed44be371c8e13343a2cfce2a26fb73359`
-- **Verified PR head SHA:** `54958ad8009246363943bcf12eb1842447f0497e`
+- **Verified final PR head SHA:** `374860168990b24c6a18c3ed2f5a1d71cf5542ba`
+- **Final central merge SHA:** `b6131f449dd492c699330edb581426f59bb0bb07`
 - **Observed main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production migration applied:** no
 - **Production backfill executed:** no
@@ -29,7 +30,7 @@
 | G3-07 | Progressive dual-allow enforcement | #56 | `017eaf1436521bfacc409521f64f2a3b95199c79` | PASS / CLOSED |
 | G3-08 | Legacy SaaS disablement | #57 | `1a4eb7b16d2f6e8a3e670e0bd295740bccc6d425` | PASS / CLOSED |
 | G3-09 | Constraints and indexes proposal | #58 | `356305ed44be371c8e13343a2cfce2a26fb73359` | PASS / CLOSED |
-| G3-10 | Final verification and runbook | #59 | established by final GitHub merge | PASS / READY TO MERGE |
+| G3-10 | Final verification and runbook | #59 | `b6131f449dd492c699330edb581426f59bb0bb07` | PASS / CLOSED |
 
 ## Delivered architecture
 
@@ -157,7 +158,7 @@ Final closure requires:
 
 ## Verified final evidence
 
-The verified PR head `54958ad8009246363943bcf12eb1842447f0497e` passed:
+The final PR head `374860168990b24c6a18c3ed2f5a1d71cf5542ba` passed:
 
 - Prisma schema validation and client generation;
 - Production safety gate;
@@ -171,7 +172,13 @@ The verified PR head `54958ad8009246363943bcf12eb1842447f0497e` passed:
 - CodeQL JavaScript/TypeScript analysis;
 - Vercel status/preview.
 
-The final documentation-only report update must pass the same required PR checks before merge.
+PR #59 merged into the central branch at `b6131f449dd492c699330edb581426f59bb0bb07`.
+
+## Final reconciliation
+
+- The central and foundation branches were compared after synchronization and were identical at `b6131f449dd492c699330edb581426f59bb0bb07`.
+- `main` remained identical to `f7af072c689178d397019648ab5c21336ab259b6`.
+- No force update, Production database execution, Production environment change, or Production deployment occurred.
 
 ## Release and rollback
 
@@ -197,4 +204,4 @@ Repository closure does not satisfy these separate Production requirements:
 
 ## Closure rule
 
-G3 is repository-closed only when the final PR passes all required checks, merges into the central branch, the foundation branch is fast-forwarded to the final central SHA, both branches compare identical, and `main` remains unchanged. Production activation is explicitly outside this closure.
+The repository closure rule is satisfied at `b6131f449dd492c699330edb581426f59bb0bb07`: required checks passed, PR #59 merged, the foundation branch was fast-forwarded to the central SHA, both branches compared identical, and `main` remained unchanged. Production activation is explicitly outside this closure.
