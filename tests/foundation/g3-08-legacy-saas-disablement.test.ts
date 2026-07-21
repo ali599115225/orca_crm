@@ -138,7 +138,7 @@ describe('G3-08 layered legacy SaaS disablement', () => {
   it('preserves historical SaaS data structures and forbids destructive contraction', () => {
     const schema = read('prisma/schema.prisma')
     const migration = read(
-      'prisma/migrations/20260721010000_g3_03_additive_org_rbac/migration.sql',
+      'prisma/migrations/20260721010000_g3_rbac_expand/migration.sql',
     )
 
     expect(schema).toContain('model Tenant {')
