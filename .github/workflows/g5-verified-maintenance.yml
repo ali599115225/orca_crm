@@ -41,11 +41,12 @@ jobs:
       - name: Install candidate tree
         run: npm ci
 
-      - name: Capture candidate audit
+      - name: Capture candidate evidence
         shell: bash
         run: |
           mkdir -p artifacts
           npm audit --omit=dev --json > artifacts/g5-candidate-audit.json || true
+          npm run typecheck > artifacts/g5-candidate-typecheck.log 2>&1 || true
           cp package.json artifacts/g5-candidate-package.json
           cp package-lock.json artifacts/g5-candidate-package-lock.json
 
@@ -56,6 +57,7 @@ jobs:
           name: g5-candidate-dependencies
           path: |
             artifacts/g5-candidate-audit.json
+            artifacts/g5-candidate-typecheck.log
             artifacts/g5-candidate-package.json
             artifacts/g5-candidate-package-lock.json
           if-no-files-found: error
