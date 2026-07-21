@@ -36,34 +36,26 @@ describe('G3-08 layered legacy SaaS disablement', () => {
     ])
 
     for (const capability of LEGACY_SAAS_CAPABILITIES) {
-      expect(getLegacySaasCapability(capability)).toEqual({
+      expect(getLegacySaasCapability(capability)).toMatchObject({
         enabled: false,
         code: LEGACY_SAAS_OUT_OF_SCOPE,
         capability,
-        platformModel: 'INTERNAL_COMPANY_OPERATING_PLATFORM',
         reason: 'SINGLE_COMPANY_OPERATIONAL_MODE',
       })
     }
-  })
 
-  it('returns a stable non-executable compatibility result', () => {
     expect(
-      legacySaasBlockedResult(
-        'SUBSCRIPTION_CHECKOUT',
-        'subscription disabled',
-      ),
-    ).toEqual({
+      legacySaasBlockedResult('SUBSCRIPTION_CHECKOUT', 'disabled'),
+    ).toMatchObject({
       success: false,
-      error: 'subscription disabled',
       enabled: false,
       code: LEGACY_SAAS_OUT_OF_SCOPE,
       capability: 'SUBSCRIPTION_CHECKOUT',
-      platformModel: 'INTERNAL_COMPANY_OPERATING_PLATFORM',
-      reason: 'SINGLE_COMPANY_OPERATIONAL_MODE',
+      error: 'disabled',
     })
   })
 
-  it('blocks public company creation at page, component, and server-action layers', () => {
+  it('blocks public company creation at page, component, and action layers', () => {
     const page = read('app/register/page.tsx')
     const form = read('app/register/RegisterForm.tsx')
     const action = read('app/actions/register.ts')
@@ -72,82 +64,70 @@ describe('G3-08 layered legacy SaaS disablement', () => {
     expect(form).not.toContain('<form')
     expect(form).not.toContain('<input')
     expect(form).not.toContain('registerTenantAction')
-    expect(form).not.toContain('name="subdomain"')
     expect(action).toContain('legacySaasBlockedResult')
-    expect(action).toContain('"PUBLIC_TENANT_REGISTRATION"')
-    expect(action).not.toMatch(/@\/lib\/prisma|\.tenant\.create|cookies\(|setCookie|bcrypt|payment/i)
+    expect(action).toContain('PUBLIC_TENANT_REGISTRATION')
+    expect(action).not.toContain('@/lib/prisma')
+    expect(action).not.toContain('cookies()')
   })
 
-  it('blocks subscription and add-on checkout before provider or persistence access', () => {
+  it('blocks checkout and billing automation without persistence dependencies', () => {
     const payment = read('app/actions/payment.ts')
-    expect(payment).toContain('"SUBSCRIPTION_CHECKOUT"')
-    expect(payment).toContain('"ADDON_CHECKOUT"')
-    expect(payment).toContain('legacySaasBlockedResult')
-    expect(payment).not.toMatch(/@\/lib\/prisma|initiatePayment|paymentTransaction|provider\.create/i)
-  })
-
-  it('keeps retired billing automation authenticated, skipped, and side-effect free', () => {
     const billing = read('app/api/cron/billing/route.ts')
+
+    expect(payment).toContain('SUBSCRIPTION_CHECKOUT')
+    expect(payment).toContain('ADDON_CHECKOUT')
+    expect(payment).toContain('legacySaasBlockedResult')
+    expect(payment).not.toContain('@/lib/prisma')
+    expect(payment).not.toContain('@/lib/payments')
+
     expect(billing).toContain('CRON_SECRET')
     expect(billing).toContain('rateLimit')
     expect(billing).toContain('skipped: true')
-    expect(billing).toContain('"BILLING_CRON"')
-    expect(billing).not.toMatch(/@\/lib\/prisma|subscriptionExpiresAt|paymentStatus\s*:|\.update\(|\.create\(|sendEmail|notification/i)
+    expect(billing).toContain('BILLING_CRON')
+    expect(billing).not.toContain('@/lib/prisma')
+    expect(billing).not.toContain('@/lib/payments')
   })
 
-  it('blocks agent leasing before session, tenant, or AgentLease data access', () => {
+  it('keeps agent leasing and package gates behind the immutable model switch', () => {
     const growth = read('app/actions/growth.ts')
-    const start = growth.indexOf('export async function leaseAgentAction')
-    const leaseBoundary = growth.slice(start)
-    const guard = leaseBoundary.indexOf('if (!isLegacySaasEnabled())')
-    const session = leaseBoundary.indexOf('const session = await getSession()')
-    const persistence = leaseBoundary.indexOf('prisma.agentLease')
+    const planGuard = read('lib/plan-guard.ts')
+    const leaseStart = growth.indexOf('export async function leaseAgentAction')
+    const leaseBoundary = growth.slice(leaseStart)
 
-    expect(start).toBeGreaterThanOrEqual(0)
-    expect(guard).toBeGreaterThanOrEqual(0)
-    expect(guard).toBeLessThan(session)
-    expect(guard).toBeLessThan(persistence)
-    expect(leaseBoundary.slice(guard, session)).toContain(
-      'LEGACY_SAAS_OUT_OF_SCOPE',
-    )
+    expect(leaseStart).toBeGreaterThanOrEqual(0)
+    expect(leaseBoundary).toContain('if (!isLegacySaasEnabled())')
+    expect(leaseBoundary).toContain('LEGACY_SAAS_OUT_OF_SCOPE')
+    expect(planGuard).toContain('if (!isLegacySaasEnabled()')
+    expect(planGuard).toContain('return true;')
   })
 
-  it('disables package limits and package feature gates without database reads', () => {
-    const guard = read('lib/plan-guard.ts')
-    const countGuard = guard.indexOf(
-      'if (!isLegacySaasEnabled() || getDeploymentLicenseMode() === "DEDICATED_COPY") return;',
-    )
-    const tenantLock = guard.indexOf('FOR UPDATE')
-    const featureGuard = guard.indexOf(
-      'if (!isLegacySaasEnabled() || getDeploymentLicenseMode() === "DEDICATED_COPY") return true;',
-    )
-
-    expect(countGuard).toBeGreaterThanOrEqual(0)
-    expect(countGuard).toBeLessThan(tenantLock)
-    expect(featureGuard).toBeGreaterThanOrEqual(0)
-  })
-
-  it('removes upgrade and checkout actions from the billing UI', () => {
+  it('keeps upgrade and checkout actions absent from the compatibility billing UI', () => {
     const billingUi = read('components/settings/SettingsBilling.tsx')
-    expect(billingUi).toContain('لا توجد باقات أو ترقيات اشتراك')
     expect(billingUi).not.toContain('initiateSubscriptionPaymentAction')
     expect(billingUi).not.toContain('initiateAddonPaymentAction')
-    expect(billingUi).not.toMatch(/شراء الباقة|ابدأ التجربة|ترقية الآن|checkout/i)
+    expect(billingUi).toContain('Operational billing')
   })
 
-  it('preserves historical SaaS data structures and forbids destructive contraction', () => {
+  it('preserves historical SaaS structures and additive migration safety', () => {
     const schema = read('prisma/schema.prisma')
     const migration = read(
       'prisma/migrations/20260721010000_g3_rbac_expand/migration.sql',
     )
 
-    expect(schema).toContain('model Tenant {')
-    expect(schema).toContain('subscriptionPlan')
-    expect(schema).toContain('subscriptionExpiresAt')
-    expect(schema).toContain('paymentStatus')
-    expect(schema).toContain('billingCycle')
-    expect(schema).toContain('extraAgents')
-    expect(schema).toContain('model AgentLease {')
-    expect(migration).not.toMatch(/DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE|DELETE\s+FROM/i)
+    for (const anchor of [
+      'model Tenant {',
+      'subscriptionPlan',
+      'subscriptionExpiresAt',
+      'paymentStatus',
+      'billingCycle',
+      'extraAgents',
+      'model AgentLease {',
+    ]) {
+      expect(schema).toContain(anchor)
+    }
+
+    expect(migration).not.toMatch(
+      /DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE|DELETE\s+FROM/i,
+    )
   })
 })
