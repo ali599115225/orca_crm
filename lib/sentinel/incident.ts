@@ -288,15 +288,37 @@ export async function escalateIncident(
   if (!INCIDENT_ESCALATION_LEVELS.includes(newLevel)) {
     return { success: false, error: "Invalid escalation level." };
   }
-  const current = await prisma.sentinelIncident.findUnique({ where: { id } });
+
+  const current = await prisma.sentinelIncident.findUnique({
+    where: { id },
+    select: { id: true, status: true, escalationLevel: true },
+  });
   if (!current) return { success: false, error: "Incident not found." };
+  if (["RESOLVED", "FALSE_POSITIVE"].includes(current.status)) {
+    return { success: false, error: "Cannot escalate a closed incident." };
+  }
+
   const currentIndex = ESCALATION_ORDER.indexOf(current.escalationLevel);
   const newIndex = ESCALATION_ORDER.indexOf(newLevel);
-  if (newIndex <= currentIndex) {
+  if (currentIndex < 0 || newIndex <= currentIndex) {
     return { success: false, error: "Escalation level must increase." };
   }
-  return transitionTo(id, current.status as IncidentStatus, {
-    escalationLevel: newLevel,
-    escalatedAt: new Date(),
+
+  const updated = await prisma.sentinelIncident.updateMany({
+    where: {
+      id,
+      status: current.status,
+      escalationLevel: current.escalationLevel,
+    },
+    data: {
+      escalationLevel: newLevel,
+      escalatedAt: new Date(),
+    },
   });
+  if (updated.count !== 1) {
+    return { success: false, error: "Incident state changed concurrently." };
+  }
+
+  const incident = await prisma.sentinelIncident.findUnique({ where: { id } });
+  return { success: true, incident };
 }
