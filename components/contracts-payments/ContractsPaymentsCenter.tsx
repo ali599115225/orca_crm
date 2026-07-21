@@ -134,6 +134,10 @@ const initialEvents: EventLog[] = [];
 const CONTRACTS_PAGE_SIZE = 6;
 const DETAIL_TAB_PAGE_SIZE = 4;
 
+function createPaymentIdempotencyKey(): string {
+  return `idemp-${globalThis.crypto.randomUUID()}`;
+}
+
 
 type RentalLocale = DisplayLocale;
 type ActivePane = ContractsPaymentsPane;
@@ -513,7 +517,7 @@ export default function ContractsPaymentsCenter({
   useEffect(() => {
     setMounted(true);
     // Generate an idempotency key initially
-    setPayIdempotencyKey('idemp-' + Math.floor(100000 + Math.random() * 900000));
+    setPayIdempotencyKey(createPaymentIdempotencyKey());
   }, []);
 
   useEffect(() => {
@@ -776,7 +780,7 @@ export default function ContractsPaymentsCenter({
       // Reset
       setPayRef('');
       setPayDate('');
-      setPayIdempotencyKey('idemp-' + Math.floor(100000 + Math.random() * 900000));
+      setPayIdempotencyKey(createPaymentIdempotencyKey());
       setSelectedInvoice(null);
       setActiveModal(null);
     } catch (err: any) {
