@@ -1,0 +1,42 @@
+name: ORCA Lockfile Refresh
+
+on:
+  push:
+    branches:
+      - work/orca-security-advisory-20260721
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Refresh and verify lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Refresh lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Verify clean install and audit
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=moderate
+          npx prisma validate
+          npx prisma generate
+
+      - name: Upload refreshed lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-refreshed-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 3
