@@ -4,10 +4,11 @@
 
 - **Program:** ORCA Foundation G3
 - **Final stage:** G3-10 — Final Verification and Closure
-- **Repository result:** PASS pending final PR checks and central merge
+- **Repository result:** PASS — final PR checks complete; central merge pending
 - **Source branch:** `work/orca-foundation-plan-20260721`
 - **Target branch:** `work/orca-central-baseline-execution-20260719`
 - **G3-10 start SHA:** `356305ed44be371c8e13343a2cfce2a26fb73359`
+- **Verified PR head SHA:** `54958ad8009246363943bcf12eb1842447f0497e`
 - **Observed main baseline:** `f7af072c689178d397019648ab5c21336ab259b6`
 - **Production migration applied:** no
 - **Production backfill executed:** no
@@ -28,7 +29,7 @@
 | G3-07 | Progressive dual-allow enforcement | #56 | `017eaf1436521bfacc409521f64f2a3b95199c79` | PASS / CLOSED |
 | G3-08 | Legacy SaaS disablement | #57 | `1a4eb7b16d2f6e8a3e670e0bd295740bccc6d425` | PASS / CLOSED |
 | G3-09 | Constraints and indexes proposal | #58 | `356305ed44be371c8e13343a2cfce2a26fb73359` | PASS / CLOSED |
-| G3-10 | Final verification and runbook | final PR | recorded by final GitHub merge | PASS pending final checks |
+| G3-10 | Final verification and runbook | #59 | established by final GitHub merge | PASS / READY TO MERGE |
 
 ## Delivered architecture
 
@@ -148,11 +149,29 @@ Final closure requires:
 - G3 final repository verification;
 - every `tests/foundation/g3-*.test.ts` contract;
 - existing core regressions;
-- Sentinel regressions;
+- Sentinel incident, command-center, heartbeat-service, and cron-heartbeat regressions;
 - P2 acceptance tests;
 - production build;
 - CodeQL Actions, Python, and JavaScript/TypeScript analysis;
 - Vercel preview/status success only.
+
+## Verified final evidence
+
+The verified PR head `54958ad8009246363943bcf12eb1842447f0497e` passed:
+
+- Prisma schema validation and client generation;
+- Production safety gate;
+- executable G3 final verification;
+- all G3 foundation contracts and selected core regressions;
+- all four isolated Sentinel regression gates;
+- P2 acceptance;
+- production build;
+- CodeQL Actions analysis;
+- CodeQL Python analysis;
+- CodeQL JavaScript/TypeScript analysis;
+- Vercel status/preview.
+
+The final documentation-only report update must pass the same required PR checks before merge.
 
 ## Release and rollback
 
