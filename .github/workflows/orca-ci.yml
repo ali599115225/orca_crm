@@ -95,12 +95,26 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: G5 executable contract tests
+        run: >
+          npx vitest run tests/foundation/g5-*.test.ts
+          --reporter=json
+          --outputFile=artifacts/g5-test-results.json
+
+      - name: Upload G5 executable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g5-executable-test-evidence
+          path: artifacts/g5-test-results.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Foundation and core regression tests
         run: >
           npx vitest run
           tests/foundation/g3-*.test.ts
           tests/foundation/g4-*.test.ts
-          tests/foundation/g5-*.test.ts
           tests/phase02-full-closure.test.ts
           tests/realtime/client-runtime.test.ts
           tests/early-settlement.test.ts
