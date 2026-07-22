@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: الإبلاغ الخاص عن ثغرة أمنية
+    url: https://github.com/ali599115225/orca_crm/security/policy
+    about: لا تنشر ثغرات أو أسرارًا أو بيانات حساسة في Issue عام. استخدم سياسة الأمان ومسار الإفصاح الخاص.
