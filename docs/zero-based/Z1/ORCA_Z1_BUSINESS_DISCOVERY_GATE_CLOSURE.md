@@ -1,13 +1,13 @@
 # ORCA Z1 — Business Discovery Gate Closure
 
 - **Document ID:** ORCA-Z1-CLOSE-001
-- **Version:** 1.2 — Security Base Reconciliation
-- **Date:** 2026-07-22
+- **Version:** 1.3 — Final Security and Validation Reconciliation
+- **Date:** 2026-07-24
 - **Status:** `PASS / CLOSED WITH OWNER DECISIONS CARRIED FORWARD`
 - **Repository:** `ali599115225/orca_crm`
 - **Branch:** `work/orca-z1-business-discovery-20260721`
-- **Parent central SHA:** `d3bd565fd1d1f5df484814556c056765d45b392a`
-- **Security unblocker:** `PR #76 / merged as d3bd565fd1d1f5df484814556c056765d45b392a`
+- **Parent central SHA:** `2029c592ee4fc7133267c38c45b4b0b870692618`
+- **Security unblockers:** `PR #76 / merged as d3bd565fd1d1f5df484814556c056765d45b392a`; `PR #79 / merged as 2029c592ee4fc7133267c38c45b4b0b870692618`
 - **Production action authorized:** `false`
 
 ## 1. Gate objective
@@ -152,8 +152,9 @@ Work that does not depend on these choices may continue through Z2–Z6 using th
 ## 10. Gate acceptance evidence
 
 - Z0 is merged into the zero-based central branch.
-- Security advisory unblocker PR #76 passed ORCA CI, dependency audit, recovery/build evidence, and final-head Vercel Preview.
-- PR #76 is merged into the zero-based central branch as `d3bd565fd1d1f5df484814556c056765d45b392a`.
+- Historical security unblocker PR #76 passed its required gates and merged as `d3bd565fd1d1f5df484814556c056765d45b392a`.
+- Latest security unblocker PR #79 passed ORCA CI, zero-vulnerability production audit, TypeScript, G5–G8 tests, regressions, acceptance tests, recovery drill, build, and Vercel.
+- PR #79 is merged into the zero-based central branch as `2029c592ee4fc7133267c38c45b4b0b870692618`.
 - No Runtime or database file is changed by Z1.
 - No current code is treated as the target business definition.
 - Actual organization and licenses are not invented.
@@ -162,13 +163,13 @@ Work that does not depend on these choices may continue through Z2–Z6 using th
 
 ## 11. Final base and validation reconciliation
 
-This revision aligns the Z1 closure record with the security-unblocked central base. It does not change the Z1 business contract. Central merge still requires ORCA CI and Vercel to be green on this exact final documentation head. No Runtime, database, provider, environment, `main`, or Production action is introduced.
+This revision aligns the Z1 closure record with the actual central head `2029c592ee4fc7133267c38c45b4b0b870692618`, including merged security unblocker PR #79. The PR scope remains exactly six documentation files. Z1 remains closed in stage, while owner decisions and requirements explicitly marked as open remain carried forward without invention. Central merge still requires ORCA CI and Vercel to be green on this exact final reconciled documentation head. No Runtime, database, provider, environment, `main`, or Production action is introduced.
 
 ## 12. Gate decision
 
 ```text
 Z1 BUSINESS DISCOVERY: PASS / CLOSED IN STAGE
-SECURITY-UNBLOCKED CENTRAL BASE: RECONCILED
+SECURITY-UNBLOCKED CENTRAL BASE: RECONCILED TO 2029c592ee4fc7133267c38c45b4b0b870692618
 CAPABILITY MAP: COMPLETE
 REFERENCE ORGANIZATION MODEL: COMPLETE
 PERSONA REGISTRY: COMPLETE
@@ -177,7 +178,8 @@ RECOMMENDED RELEASE 1 SCOPE: COMPLETE
 INITIAL REQUIREMENTS TRACEABILITY: COMPLETE
 OWNER DECISIONS: REGISTERED WITH SAFE DEFAULTS
 CURRENT-SYSTEM CONFORMANCE: NOT ASSESSED UNTIL Z7
-CENTRAL MERGE: REQUIRES FINAL-HEAD GREEN CHECKS
+Z1 PR SCOPE: SIX DOCUMENTATION FILES ONLY
+CENTRAL MERGE: REQUIRES ORCA CI + VERCEL PASS ON FINAL RECONCILED HEAD
 BUILD AUTHORIZATION: NO
 RUNTIME CHANGE: NONE
 DATABASE CHANGE: NONE

@@ -7,7 +7,7 @@
   "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
   "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
   "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
-  "zeroBasedCentralSha": "d3bd565fd1d1f5df484814556c056765d45b392a",
+  "zeroBasedCentralSha": "2029c592ee4fc7133267c38c45b4b0b870692618",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "multiCompanySaasInScope": false,
   "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
@@ -15,14 +15,16 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "Z1_FINAL_EXTERNAL_VALIDATION_BEFORE_CENTRAL_MERGE",
+  "currentGate": "Z1_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "affectedPullRequests": [75],
       "scope": "FINAL_HEAD_PREVIEW_ONLY",
-      "policy": "HOURLY_CONDITION_WATCH; APPLY_ONE_REAL_DOCUMENTATION_RECONCILIATION_WHEN_CAPACITY_IS_AVAILABLE; NO_EMPTY_RETRY; NO_RED_CHECK_BYPASS"
+      "policy": "NO_EMPTY_RETRY; NO_RED_CHECK_BYPASS",
+      "resolution": "VERCEL_CAPACITY_AVAILABLE; FINAL_HEAD_REVALIDATION_STARTED",
+      "resolvedOn": "2026-07-24"
     }
   ],
   "securityUnblocker": {
@@ -36,6 +38,21 @@
     "vercel": "READY",
     "merged": true,
     "centralMergeSha": "d3bd565fd1d1f5df484814556c056765d45b392a",
+    "runtimeChanged": false,
+    "databaseChanged": false,
+    "productionAction": false
+  },
+  "latestSecurityUnblocker": {
+    "pullRequest": 79,
+    "branch": "work/orca-security-advisory-20260724-z1-unblock",
+    "finalHeadSha": "64707cf63ed6f1f0f8b9da862e4bde7a1127e8e1",
+    "scope": ["package.json", "package-lock.json", "tests/foundation/g5-security-quality.test.ts"],
+    "advisories": ["Next.js <=16.2.10", "find-my-way <=9.6.0", "valibot <=1.4.1"],
+    "orcaCi": "SUCCESS",
+    "productionDependencyAudit": "SUCCESS / ZERO VULNERABILITIES",
+    "vercel": "READY",
+    "merged": true,
+    "centralMergeSha": "2029c592ee4fc7133267c38c45b4b0b870692618",
     "runtimeChanged": false,
     "databaseChanged": false,
     "productionAction": false
@@ -55,15 +72,15 @@
     {
       "id": "Z1",
       "name": "Business Discovery",
-      "status": "PASS / CLOSED IN STAGE — CENTRAL MERGE REQUIRES FINAL GREEN VERCEL",
+      "status": "PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
       "stageBranch": "work/orca-z1-business-discovery-20260721",
       "pullRequest": 75,
-      "baseCentralSha": "d3bd565fd1d1f5df484814556c056765d45b392a",
-      "stageHeadShaBeforeFinalDocumentationReconciliation": "ffd369ca5592b016e039af12c3b05759cd4e2788",
-      "preparedClosureBlob": "56ad593461cb11dbc2ade831743ab499366276bb",
+      "baseCentralSha": "2029c592ee4fc7133267c38c45b4b0b870692618",
+      "stageHeadShaBeforeFinalDocumentationReconciliation": "8957b0722710795dac6c436fe78fe6c018131f32",
+      "closureDocumentBlobBeforeFinalReconciliation": "56ad593461cb11dbc2ade831743ab499366276bb",
       "blockingChecks": {
-        "orcaCi": "SUCCESS",
-        "vercel": "BLOCKED_EXTERNAL_BUILD_RATE_LIMIT",
+        "orcaCi": "PENDING_FINAL_RECONCILED_HEAD",
+        "vercel": "PENDING_FINAL_RECONCILED_HEAD",
         "mergeAllowed": false
       },
       "capabilities": 18,
@@ -76,7 +93,7 @@
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "nextAction": "APPLY_PREPARED_CLOSURE_AND_SCHEMA_VERSION_6_LEDGER_ON_ONE REAL COMMIT WHEN VERCEL CAPACITY IS AVAILABLE"
+      "nextAction": "RUN ORCA CI AND VERCEL ON THE FINAL RECONCILED HEAD; MERGE PR 75 ONLY IF BOTH PASS"
     },
     {
       "id": "Z2",
