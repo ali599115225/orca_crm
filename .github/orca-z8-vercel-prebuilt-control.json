@@ -1,0 +1,9 @@
+{
+  "final_branch": "work/orca-z8-execution-authorization-final-20260725",
+  "final_sha": "a82bcc937a8f69196b96f742801fe20f2eecaf99",
+  "target": "preview",
+  "project_id": "prj_9NIIVsnrpmQiPT5FZmGWQyLxdzrg",
+  "team_id": "team_QdddAl3RufFvXZjWXeWDY9mM",
+  "production_authorized": false,
+  "secret_values_may_be_printed": false
+}
