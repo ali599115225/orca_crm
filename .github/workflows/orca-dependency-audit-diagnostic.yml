@@ -1,0 +1,80 @@
+name: ORCA Dependency Audit Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - work/orca-dependency-audit-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'work/orca-dependency-audit-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install exact lockfile
+        run: npm ci
+
+      - name: Collect production dependency evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/dependency-audit
+          npm audit --omit=dev --json > artifacts/dependency-audit/npm-audit-production.json || true
+          npm ls --omit=dev --all --json > artifacts/dependency-audit/npm-tree-production.json || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('artifacts/dependency-audit')
+          audit=json.loads((root/'npm-audit-production.json').read_text())
+          vulns=audit.get('vulnerabilities',{})
+          rows=[]
+          for name,item in sorted(vulns.items()):
+              rows.append({
+                  'package':name,
+                  'severity':item.get('severity'),
+                  'isDirect':item.get('isDirect'),
+                  'range':item.get('range'),
+                  'nodes':item.get('nodes',[]),
+                  'via':item.get('via',[]),
+                  'fixAvailable':item.get('fixAvailable')
+              })
+          out={
+              'metadata':audit.get('metadata',{}),
+              'vulnerabilities':rows
+          }
+          (root/'summary.json').write_text(json.dumps(out,indent=2)+'\n')
+          lines=['# ORCA Production Dependency Audit Diagnostic','']
+          meta=audit.get('metadata',{}).get('vulnerabilities',{})
+          lines.append(f"Counts: `{json.dumps(meta,sort_keys=True)}`")
+          lines.append('')
+          for row in rows:
+              lines.append(f"## {row['package']} — {row['severity']}")
+              lines.append(f"- Direct: `{row['isDirect']}`")
+              lines.append(f"- Range: `{row['range']}`")
+              lines.append(f"- Nodes: `{row['nodes']}`")
+              lines.append(f"- Fix available: `{row['fixAvailable']}`")
+              lines.append(f"- Via: `{json.dumps(row['via'],ensure_ascii=False)}`")
+              lines.append('')
+          (root/'summary.md').write_text('\n'.join(lines)+'\n')
+          PY
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-production-dependency-audit-diagnostic
+          path: artifacts/dependency-audit/
+          if-no-files-found: error
+          retention-days: 7
