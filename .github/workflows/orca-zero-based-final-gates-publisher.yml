@@ -37,13 +37,13 @@ jobs:
           import json
           from pathlib import Path
           b=json.loads(Path('/tmp/orca-final-gate-publication-bundle.json').read_text())
-          required={'stage','central_sha','target_branch','commit_message','expected_document_files','previous_gate','stage_summary','files'}
+          required={'stage','central_sha','target_branch','commit_message','expected_document_files','previous_gate','stage_summary','document_paths','archive_b64'}
           missing=sorted(required-set(b))
           if missing: raise SystemExit(f'Missing keys: {missing}')
           if b['stage'] not in {'Z7','Z8'}: raise SystemExit('Only Z7 or Z8 is allowed')
           if not b['target_branch'].startswith('work/orca-'): raise SystemExit('Unexpected target branch')
-          if len(b['files']) != b['expected_document_files']: raise SystemExit('Document count mismatch')
-          paths=[x['path'] for x in b['files']]
+          if len(b['document_paths']) != b['expected_document_files']: raise SystemExit('Document count mismatch')
+          paths=b['document_paths']
           if len(paths) != len(set(paths)): raise SystemExit('Duplicate publication paths')
           prefix=f"docs/zero-based/{b['stage']}/"
           if not all(p.startswith(prefix) for p in paths): raise SystemExit('Cross-stage publication path detected')
@@ -70,17 +70,27 @@ jobs:
       - name: Materialize exact documents and reconcile ledger
         shell: python
         run: |
-          import base64, json
+          import base64, io, json, tarfile
           from pathlib import Path
 
           bundle=json.loads(Path('/tmp/orca-final-gate-publication-bundle.json').read_text())
           stage=bundle['stage']
           central=bundle['central_sha']
 
-          for item in bundle['files']:
-              target=Path(item['path'])
-              target.parent.mkdir(parents=True, exist_ok=True)
-              target.write_bytes(base64.b64decode(item['content_b64']))
+          expected=set(bundle['document_paths'])
+          archive=base64.b64decode(bundle['archive_b64'])
+          with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as tf:
+              members=[m for m in tf.getmembers() if m.isfile()]
+              names={m.name for m in members}
+              if names != expected:
+                  raise SystemExit(f'Archive paths mismatch: expected={sorted(expected)} actual={sorted(names)}')
+              for m in members:
+                  if m.name.startswith('/') or '..' in Path(m.name).parts:
+                      raise SystemExit(f'Unsafe archive member: {m.name}')
+                  target=Path(m.name)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with tf.extractfile(m) as src:
+                      target.write_bytes(src.read())
 
           ledger_path=Path('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json')
           ledger=json.loads(ledger_path.read_text())
