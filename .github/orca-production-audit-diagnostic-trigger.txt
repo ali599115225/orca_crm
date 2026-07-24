@@ -1,1 +1,1 @@
-run production audit diagnostic for Z7 final head and upload artifact
+run production audit diagnostic for Z7 final head with dependency path
