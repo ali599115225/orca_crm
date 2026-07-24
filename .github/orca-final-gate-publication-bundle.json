@@ -1,12 +1,12 @@
 {
   "stage": "Z7",
-  "central_sha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
+  "central_sha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
   "source_ref": "work/orca-z7-source-20260725",
-  "source_sha": "cc000b96a323553749afe8bb9a7113bb60d1b9ef",
-  "target_branch": "work/orca-z7-current-system-gap-clean-20260725",
+  "source_sha": "8914c3c572f9e6718ea4d1bb7179eaff9a2ff3f0",
+  "target_branch": "work/orca-z7-current-system-gap-final-20260725",
   "commit_message": "docs(zero-based): close Z7 current-system gap gate",
   "expected_document_files": 8,
-  "publisher_revision": "verified-central-and-source-refs-v1",
+  "publisher_revision": "verified-central-and-source-refs-v2-security-delta",
   "previous_gate": {
     "id": "Z6",
     "pull_request": 86,
