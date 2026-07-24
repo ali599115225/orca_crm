@@ -75,7 +75,7 @@ Each remains linked to a package with a safe default and explicit trigger.
 The final Z8 publication may merge into `work/orca-zero-based-execution-20260721` when:
 
 1. the branch is based on the recorded Z7 central baseline;
-2. the diff contains only the eight Z8 documents and the updated zero-based ledger, plus this closure reconciliation;
+2. the diff contains exactly eight Z8 documents, including this closure record, and the updated zero-based ledger;
 3. JSON files parse and the package registry covers all 32 gap IDs;
 4. package counts equal 14 / 3 / 8 / 3 / 0 active;
 5. no Runtime, package, Prisma, migration, data, provider, environment, credential, account, `main` or Production path changed;
