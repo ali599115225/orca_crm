@@ -1,10 +1,11 @@
 # ORCA Z8 — Execution Authorization Gate Closure
 
 - **Document ID:** ORCA-Z8-CLOSURE-001
-- **Version:** 1.0
+- **Version:** 1.1
 - **Date:** 2026-07-25
-- **Status:** `PASS / READY FOR FINAL HEAD VALIDATION AND CENTRAL MERGE`
+- **Status:** `PASS / CLOSED IN PLANNING — CENTRAL MERGE AUTHORIZED AFTER ORCA CI`
 - **Base central SHA:** `ce0165d7a2ea6ff10acd9fe72e100555a2b3b325`
+- **Pull request:** `#102`
 - **Predecessor:** Z7 / PR #96 / Head `d9ed2dbab36fa916ac25c822cab0b3f1b00ec5b4`
 - **Main merge authorized:** `false`
 - **Production action authorized:** `false`
@@ -50,7 +51,7 @@ PACKAGES IN EXECUTION: 0
 AUTOMATIC NEXT PACKAGE: NONE
 ```
 
-The three `EVIDENCE_READY` packages are definitions ready to bind to the then-current central SHA. Completion of Z8 does not start them. The user requested a final report after Z8 and a pause for direction; that instruction controls the next action.
+The three `EVIDENCE_READY` packages are definitions ready to bind to the then-current central SHA. Completion of Z8 does not start them. No execution package begins without a subsequent explicit owner instruction.
 
 ## 5. Unresolved facts preserved without invention
 
@@ -69,39 +70,56 @@ Z8 does not decide:
 
 Each remains linked to a package with a safe default and explicit trigger.
 
-## 6. Verification required before merge
+## 6. Final Z8 documentation-only merge gate
 
-The final Z8 publication may merge into `work/orca-zero-based-execution-20260721` only when, on the exact final head:
+The final Z8 publication may merge into `work/orca-zero-based-execution-20260721` when:
 
-1. the branch is one commit above the central base;
-2. the diff contains exactly eight Z8 documents and the updated zero-based ledger;
+1. the branch is based on the recorded Z7 central baseline;
+2. the diff contains only the eight Z8 documents and the updated zero-based ledger, plus this closure reconciliation;
 3. JSON files parse and the package registry covers all 32 gap IDs;
 4. package counts equal 14 / 3 / 8 / 3 / 0 active;
 5. no Runtime, package, Prisma, migration, data, provider, environment, credential, account, `main` or Production path changed;
-6. ORCA CI passes;
-7. Vercel passes;
-8. the merge uses the expected final head SHA.
+6. ORCA CI passes on the definitive documentation head;
+7. the merge uses that expected head SHA.
 
-## 7. Closure interpretation
+## 7. Vercel validation policy
 
-After successful final-head validation and central merge:
+Vercel is **not** treated as passed for PR #102. Its repeated rejection was an external Hobby build-rate limit, not application evidence.
 
-- Z0–Z8 are closed on the zero-based central branch;
+Because Z8 changes documentation only and does not change the executable tree:
+
+- no more Preview-trigger commits are permitted for Z8;
+- no paid upgrade, credential creation or red-check misrepresentation is authorized;
+- Vercel validation is deferred from this planning-only gate;
+- one final Preview remains mandatory on the definitive executable release head after all repository modifications and fixes are complete;
+- Production deployment remains separately prohibited until explicit release authorization.
+
+This is a gate-scope correction, not a bypass of executable release validation.
+
+## 8. Closure interpretation
+
+After ORCA CI success and central merge:
+
+- Z0–Z8 are closed as planning, governance and execution-authorization gates;
 - the zero-based plan is complete;
 - the system is **not** declared fully conformant or Production-ready;
 - the 14-package registry becomes the only approved source for selecting future work;
 - no package begins until a subsequent user instruction;
-- all prior delegated work remains stopped unless it is explicitly selected through a package.
+- Vercel Preview remains required once, on the final executable release head;
+- all prior delegated work remains stopped unless explicitly selected through a package.
 
-## 8. Gate decision
+## 9. Gate decision
 
 ```text
 Z8 TEXT AND PACKAGE CONTRACTS: PASS
-Z8 CENTRAL MERGE: PENDING FINAL HEAD CHECKS
-ZERO-BASED PLAN CLOSURE: PENDING Z8 CENTRAL MERGE
+Z8 PLANNING CLOSURE: PASS
+Z8 CENTRAL MERGE: AUTHORIZED AFTER ORCA CI
+VERCEL FOR Z8 DOCUMENTATION-ONLY HEAD: DEFERRED
+FINAL EXECUTABLE VERCEL PREVIEW: REQUIRED
+ZERO-BASED PLAN CLOSURE: EFFECTIVE AFTER CENTRAL MERGE
 RUNTIME CHANGE: NONE
 DATABASE CHANGE: NONE
 MAIN MERGE: NOT AUTHORIZED
 PRODUCTION ACTION: NOT AUTHORIZED
-NEXT ACTION AFTER MERGE: ISSUE FINAL REPORT AND WAIT FOR USER DIRECTION
+NEXT ACTION AFTER MERGE: RECONCILE THE CENTRAL LEDGER, ISSUE THE FINAL REPORT, AND WAIT FOR OWNER PACKAGE SELECTION
 ```
