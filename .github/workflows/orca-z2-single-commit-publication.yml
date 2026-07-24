@@ -21,21 +21,18 @@ jobs:
     timeout-minutes: 15
     env:
       CENTRAL_SHA: 8bef279d2a32b8b054d43f3905a8860dbf0aba6e
-      SOURCE_CANDIDATE_SHA: 4df7ac7b02759c363ea9957fdc156119ccecf0e7
-      REVIEW_PREPARATION_SHA: 5fd7806ed8dafff066a54a335c4d681f4baefe4d
       TARGET_BRANCH: work/orca-z2-domain-contracts-clean-20260724
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout transport branch
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Fetch approved Git objects
+      - name: Verify publication preconditions
         shell: bash
         run: |
-          git fetch --no-tags origin "$CENTRAL_SHA"
-          git fetch --no-tags origin "$SOURCE_CANDIDATE_SHA"
-          git fetch --no-tags origin "$REVIEW_PREPARATION_SHA"
+          git cat-file -e "$CENTRAL_SHA^{commit}"
           if git ls-remote --exit-code --heads origin "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
             echo "Target branch already exists; refusing to overwrite it."
             exit 1
@@ -47,18 +44,47 @@ jobs:
           git switch --detach "$CENTRAL_SHA"
           git switch -c "$TARGET_BRANCH"
 
-      - name: Materialize exact approved source set
-        shell: bash
+      - name: Materialize exact approved source blobs through GitHub API
+        shell: python
         run: |
-          mkdir -p docs/zero-based/Z2
-          git cat-file blob 67fd213d766fb60ef534454e66f3e8ada73d0a4b > docs/zero-based/ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md
-          git cat-file blob dc35b7c9e82c75453852c672ed4c0f748aa48ec9 > docs/zero-based/Z2/ORCA_DOMAIN_CONTRACT_REGISTRY.md
-          git cat-file blob a9ea935bed9fcb9110db07d6008acb4e6ce0b5e4 > docs/zero-based/Z2/ORCA_CUSTOMER_INVENTORY_PROJECT_TOUR_CONTRACTS.md
-          git cat-file blob 0bdf99cc5d8d59f8cb368807ae4a7cbd9e62c8e4 > docs/zero-based/Z2/ORCA_OFFER_CONTRACT_FINANCE_CONTRACTS.md
-          git cat-file blob 2625de7a0bda82e395068af5e3cae2baaec05181 > docs/zero-based/Z2/ORCA_WORKFLOW_COMMUNICATION_DOCUMENT_AI_CONTRACTS.md
-          git cat-file blob 1588a6f9a37df4fd19ebd524a2169e8732c84794 > docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md
-          git cat-file blob ea43a575c6f5c10b844a55413a8770d8acbc9b7d > docs/zero-based/Z2/ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md
-          git cat-file blob dbe3b84014a06fd10f4efd0f59948032c0dfb139 > docs/zero-based/Z2/ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md
+          from pathlib import Path
+          import base64
+          import json
+          import os
+          import urllib.request
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          blobs = {
+              "docs/zero-based/ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md": "67fd213d766fb60ef534454e66f3e8ada73d0a4b",
+              "docs/zero-based/Z2/ORCA_DOMAIN_CONTRACT_REGISTRY.md": "dc35b7c9e82c75453852c672ed4c0f748aa48ec9",
+              "docs/zero-based/Z2/ORCA_CUSTOMER_INVENTORY_PROJECT_TOUR_CONTRACTS.md": "a9ea935bed9fcb9110db07d6008acb4e6ce0b5e4",
+              "docs/zero-based/Z2/ORCA_OFFER_CONTRACT_FINANCE_CONTRACTS.md": "0bdf99cc5d8d59f8cb368807ae4a7cbd9e62c8e4",
+              "docs/zero-based/Z2/ORCA_WORKFLOW_COMMUNICATION_DOCUMENT_AI_CONTRACTS.md": "2625de7a0bda82e395068af5e3cae2baaec05181",
+              "docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md": "1588a6f9a37df4fd19ebd524a2169e8732c84794",
+              "docs/zero-based/Z2/ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md": "ea43a575c6f5c10b844a55413a8770d8acbc9b7d",
+              "docs/zero-based/Z2/ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md": "dbe3b84014a06fd10f4efd0f59948032c0dfb139",
+          }
+
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "orca-z2-publication",
+          }
+          for path, sha in blobs.items():
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}/git/blobs/{sha}",
+                  headers=headers,
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  payload = json.load(response)
+              if payload.get("sha") != sha or payload.get("encoding") != "base64":
+                  raise SystemExit(f"Unexpected blob response for {path}")
+              content = base64.b64decode(payload["content"])
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(content)
 
       - name: Generate fresh ledger and reconcile Z2 closure
         shell: python
