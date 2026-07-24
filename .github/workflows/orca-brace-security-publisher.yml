@@ -1,0 +1,86 @@
+name: ORCA Brace Expansion Security Publisher
+
+on:
+  pull_request:
+    branches:
+      - work/orca-brace-security-publication-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-brace-security-publication-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout technical control
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Create clean security branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA='75e0e25ed0247c7da2a4720c6e8aeb27f8bba959'
+          TARGET_BRANCH='work/orca-security-brace-expansion-20260725'
+          git fetch --no-tags origin "$CENTRAL_SHA"
+          if git ls-remote --exit-code --heads origin "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
+            echo 'Target branch already exists; refusing to overwrite.'
+            exit 1
+          fi
+          git switch --detach "$CENTRAL_SHA"
+          git switch -c "$TARGET_BRANCH"
+      - name: Apply minimal override and regenerate lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json','utf8'));
+          if (p.overrides?.['brace-expansion'] !== '5.0.7') {
+            throw new Error(`Unexpected existing override: ${p.overrides?.['brace-expansion']}`);
+          }
+          p.overrides['brace-expansion'] = '5.0.8';
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 4) + '\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts
+          npm ci --ignore-scripts
+      - name: Verify dependency graph and security result
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm explain brace-expansion --omit=dev
+          npm ls brace-expansion minimatch --omit=dev --all
+          node - <<'NODE'
+          const lock = require('./package-lock.json');
+          const entry = lock.packages?.['node_modules/brace-expansion'];
+          if (!entry || entry.version !== '5.0.8') {
+            throw new Error(`Lockfile brace-expansion is ${entry?.version}`);
+          }
+          NODE
+          npm audit --omit=dev --audit-level=moderate
+      - name: Verify exact scope and push one clean commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA='75e0e25ed0247c7da2a4720c6e8aeb27f8bba959'
+          TARGET_BRANCH='work/orca-security-brace-expansion-20260725'
+          git diff --check
+          mapfile -t changed < <(git diff --name-only)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = 'package-lock.json'
+          test "${changed[1]}" = 'package.json'
+          git config user.name 'ORCA Security Publisher'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'fix(security): update brace-expansion override to 5.0.8'
+          test "$(git rev-list --count "$CENTRAL_SHA..HEAD")" -eq 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
