@@ -1,0 +1,108 @@
+name: ORCA Z8 Vercel Prebuilt Preview
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z8-vercel-prebuilt-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orca-z8-vercel-prebuilt-preview-20260725
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.head_ref == 'work/orca-z8-vercel-prebuilt-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CONTROL_PATH: .github/orca-z8-vercel-prebuilt-control.json
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_QdddAl3RufFvXZjWXeWDY9mM
+      VERCEL_PROJECT_ID: prj_9NIIVsnrpmQiPT5FZmGWQyLxdzrg
+    steps:
+      - name: Checkout technical control
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate control and secret availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool "$CONTROL_PATH" >/dev/null
+          test -n "$VERCEL_TOKEN"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('.github/orca-z8-vercel-prebuilt-control.json').read_text())
+          required={'final_branch','final_sha','target','project_id','team_id'}
+          missing=sorted(required-set(c))
+          if missing: raise SystemExit(f'Missing control keys: {missing}')
+          if c['target']!='preview': raise SystemExit('Only preview is allowed')
+          if c['final_branch']!='work/orca-z8-execution-authorization-final-20260725': raise SystemExit('Unexpected final branch')
+          if c['final_sha']!='a82bcc937a8f69196b96f742801fe20f2eecaf99': raise SystemExit('Unexpected final SHA')
+          if c['project_id']!='prj_9NIIVsnrpmQiPT5FZmGWQyLxdzrg': raise SystemExit('Unexpected project')
+          if c['team_id']!='team_QdddAl3RufFvXZjWXeWDY9mM': raise SystemExit('Unexpected team')
+          Path('/tmp/final_branch').write_text(c['final_branch'])
+          Path('/tmp/final_sha').write_text(c['final_sha'])
+          PY
+
+      - name: Checkout exact Z8 final head
+        shell: bash
+        run: |
+          set -euo pipefail
+          FINAL_BRANCH="$(cat /tmp/final_branch)"
+          FINAL_SHA="$(cat /tmp/final_sha)"
+          git fetch --no-tags origin "$FINAL_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$FINAL_SHA"
+          git switch --detach "$FINAL_SHA"
+          test "$(git rev-parse HEAD)" = "$FINAL_SHA"
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install exact lockfile
+        run: npm ci
+
+      - name: Link Vercel project without exposing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Build exact head locally with Vercel
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(cat /tmp/final_sha)"
+          npx --yes vercel@latest build --token="$VERCEL_TOKEN"
+          test -f .vercel/output/config.json
+
+      - name: Deploy prebuilt Preview
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          FINAL_SHA="$(cat /tmp/final_sha)"
+          FINAL_BRANCH="$(cat /tmp/final_branch)"
+          URL="$(npx --yes vercel@latest deploy --prebuilt --archive=tgz --token="$VERCEL_TOKEN" --meta githubCommitSha="$FINAL_SHA" --meta githubCommitRef="$FINAL_BRANCH" --meta githubCommitOrg=ali599115225 --meta githubCommitRepo=orca_crm)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview deployed: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify deployment metadata and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="${{ steps.deploy.outputs.url }}"
+          npx --yes vercel@latest inspect "$URL" --timeout=10m --token="$VERCEL_TOKEN"
+          echo "Exact Z8 head: $(cat /tmp/final_sha)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Target: Preview" >> "$GITHUB_STEP_SUMMARY"
