@@ -1,0 +1,112 @@
+name: ORCA brace-expansion Security Publisher
+
+on:
+  pull_request:
+    branches:
+      - work/orca-brace-expansion-security-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: orca-brace-expansion-security-publisher-20260725
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-brace-expansion-security-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CONTROL_PATH: .github/orca-brace-expansion-security-control.json
+      CENTRAL_REF: work/orca-zero-based-execution-20260721
+    steps:
+      - name: Checkout control PR
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool "$CONTROL_PATH" >/dev/null
+          cp "$CONTROL_PATH" /tmp/control.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('/tmp/control.json').read_text())
+          required={'central_sha','target_branch','affected_package','from_version','to_version','advisory'}
+          missing=sorted(required-set(c))
+          if missing: raise SystemExit(f'Missing keys: {missing}')
+          if c['affected_package']!='brace-expansion': raise SystemExit('Unexpected package')
+          if c['from_version']!='5.0.7' or c['to_version']!='5.0.8': raise SystemExit('Unexpected version transition')
+          if c['advisory']!='GHSA-mh99-v99m-4gvg': raise SystemExit('Unexpected advisory')
+          if not c['target_branch'].startswith('work/orca-'): raise SystemExit('Unexpected target branch')
+          Path('/tmp/central_sha').write_text(c['central_sha'])
+          Path('/tmp/target_branch').write_text(c['target_branch'])
+          PY
+
+      - name: Create clean security branch from central
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_CENTRAL_SHA="$(cat /tmp/central_sha)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          git fetch --no-tags origin "+refs/heads/$CENTRAL_REF:refs/remotes/origin/$CENTRAL_REF"
+          CENTRAL_COMMIT="$(git rev-parse "refs/remotes/origin/$CENTRAL_REF")"
+          test "$CENTRAL_COMMIT" = "$EXPECTED_CENTRAL_SHA"
+          if git ls-remote --exit-code --heads origin "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
+            echo "Target branch already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git switch --detach "$CENTRAL_COMMIT"
+          git switch -c "$TARGET_BRANCH"
+
+      - name: Apply minimal lockfile remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs')
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'))
+          if (p.overrides?.['brace-expansion'] !== '5.0.7') throw new Error('Unexpected existing override')
+          p.overrides['brace-expansion']='5.0.8'
+          fs.writeFileSync('package.json',JSON.stringify(p,null,4)+'\n')
+          NODE
+          npm install --package-lock-only --ignore-scripts
+
+      - name: Verify exact dependency graph and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs')
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'))
+          const l=JSON.parse(fs.readFileSync('package-lock.json','utf8'))
+          if (p.overrides?.['brace-expansion'] !== '5.0.8') throw new Error('package.json override mismatch')
+          const installed=l.packages?.['node_modules/brace-expansion']?.version
+          if (installed !== '5.0.8') throw new Error(`lockfile brace-expansion mismatch: ${installed}`)
+          NODE
+          npm ci
+          npm audit --omit=dev --audit-level=moderate
+          npm ls brace-expansion minimatch --all
+
+      - name: Commit and push one minimal security change
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          git config user.name "ORCA Security Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --check
+          mapfile -t changed < <(git diff --cached --name-only)
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = "package-lock.json"
+          test "${changed[1]}" = "package.json"
+          git commit -m "fix(security): update brace-expansion to 5.0.8"
+          test "$(git rev-list --count "$CENTRAL_SHA..HEAD")" -eq 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
