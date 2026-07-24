@@ -1,0 +1,330 @@
+name: ORCA Z7 Repository Evidence
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z7-audit-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orca-z7-repository-evidence-20260725
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    if: github.head_ref == 'work/orca-z7-audit-control-20260725'
+    name: Collect immutable Z7 repository evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout technical pull request
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate and preserve control
+        shell: bash
+        run: |
+          test -f .github/orca-z7-audit-control.json
+          python -m json.tool .github/orca-z7-audit-control.json >/dev/null
+          cp .github/orca-z7-audit-control.json /tmp/orca-z7-audit-control.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c = json.loads(Path('/tmp/orca-z7-audit-control.json').read_text())
+          required = {'central_sha', 'evidence_id'}
+          missing = sorted(required - set(c))
+          if missing:
+              raise SystemExit(f'Missing keys: {missing}')
+          if c['evidence_id'] != 'ORCA-Z7-EVIDENCE-20260725':
+              raise SystemExit('Unexpected evidence id')
+          Path('/tmp/central_sha').write_text(c['central_sha'])
+          PY
+
+      - name: Checkout exact zero-based central commit
+        shell: bash
+        run: |
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          git cat-file -e "$CENTRAL_SHA^{commit}"
+          git switch --detach "$CENTRAL_SHA"
+          test "$(git rev-parse HEAD)" = "$CENTRAL_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Generate repository evidence package
+        shell: python
+        run: |
+          from __future__ import annotations
+          from collections import Counter, defaultdict
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+
+          ROOT = Path.cwd()
+          OUT = ROOT / 'z7-evidence'
+          OUT.mkdir()
+          central_sha = Path('/tmp/central_sha').read_text().strip()
+
+          def git(*args: str, text: bool = True):
+              return subprocess.check_output(['git', *args], text=text)
+
+          tracked = [p for p in git('ls-files').splitlines() if p]
+          tracked_set = set(tracked)
+          text_exts = {
+              '.ts','.tsx','.js','.jsx','.mjs','.cjs','.json','.md','.yml','.yaml','.toml',
+              '.prisma','.sql','.css','.scss','.html','.txt','.sh','.ps1','.env','.example'
+          }
+          code_exts = {'.ts','.tsx','.js','.jsx','.mjs','.cjs'}
+          source_roots = ('app/','components/','features/','lib/','server/','services/','actions/','packages/','src/')
+
+          def is_text_path(path: str) -> bool:
+              p = Path(path)
+              return p.suffix.lower() in text_exts or p.name in {'Dockerfile','.gitignore','.npmrc'}
+
+          def read_text(path: str) -> str:
+              try:
+                  return (ROOT / path).read_text(encoding='utf-8', errors='replace')
+              except OSError:
+                  return ''
+
+          file_rows = []
+          top_counts = Counter()
+          ext_counts = Counter()
+          dir_counts = Counter()
+          total_bytes = 0
+          for path in tracked:
+              fp = ROOT / path
+              size = fp.stat().st_size if fp.exists() else 0
+              total_bytes += size
+              top = path.split('/',1)[0]
+              top_counts[top] += 1
+              ext_counts[Path(path).suffix.lower() or '<none>'] += 1
+              parts = Path(path).parts
+              if len(parts) > 1:
+                  dir_counts['/'.join(parts[:2])] += 1
+              file_rows.append({'path': path, 'sizeBytes': size, 'sha256': hashlib.sha256(fp.read_bytes()).hexdigest() if fp.exists() and size <= 5_000_000 else None})
+
+          (OUT/'tracked-files.txt').write_text('\n'.join(tracked) + '\n')
+          (OUT/'file-inventory.json').write_text(json.dumps(file_rows, indent=2))
+          (OUT/'top-level-counts.json').write_text(json.dumps(dict(top_counts.most_common()), indent=2))
+          (OUT/'extension-counts.json').write_text(json.dumps(dict(ext_counts.most_common()), indent=2))
+          (OUT/'directory-counts.json').write_text(json.dumps(dict(dir_counts.most_common()), indent=2))
+
+          package = json.loads(read_text('package.json') or '{}')
+          package_meta = {
+              'name': package.get('name'),
+              'version': package.get('version'),
+              'engines': package.get('engines'),
+              'scripts': package.get('scripts', {}),
+              'dependencies': package.get('dependencies', {}),
+              'devDependencies': package.get('devDependencies', {}),
+              'overrides': package.get('overrides', {}),
+              'packageManager': package.get('packageManager'),
+          }
+          (OUT/'package-metadata.json').write_text(json.dumps(package_meta, indent=2))
+
+          provider_keywords = re.compile(r'(stripe|twilio|whatsapp|sendgrid|resend|mailgun|openai|anthropic|google|aws|azure|s3|cloudinary|vercel|supabase|firebase|sentry|datadog|mapbox|maps|sign|payment)', re.I)
+          provider_dependencies = {
+              name: ver for bucket in ('dependencies','devDependencies')
+              for name, ver in package.get(bucket, {}).items() if provider_keywords.search(name)
+          }
+          (OUT/'provider-dependencies.json').write_text(json.dumps(provider_dependencies, indent=2))
+
+          imports = Counter()
+          imports_by_file = defaultdict(list)
+          import_re = re.compile(r"(?:from\s+|require\(|import\s*\()['\"]([^'\"]+)['\"]")
+          for path in tracked:
+              if Path(path).suffix.lower() not in code_exts:
+                  continue
+              text = read_text(path)
+              for module in import_re.findall(text):
+                  root = module if module.startswith('.') or module.startswith('@/') else ('/'.join(module.split('/')[:2]) if module.startswith('@') else module.split('/')[0])
+                  imports[root] += 1
+                  if len(imports_by_file[path]) < 50:
+                      imports_by_file[path].append(module)
+          (OUT/'dependency-import-counts.json').write_text(json.dumps(dict(imports.most_common()), indent=2))
+          (OUT/'imports-by-file.json').write_text(json.dumps(imports_by_file, indent=2))
+
+          route_files = []
+          for path in tracked:
+              if not path.startswith('app/'):
+                  continue
+              name = Path(path).name
+              if name not in {'page.tsx','page.ts','layout.tsx','layout.ts','route.ts','route.tsx','loading.tsx','error.tsx','not-found.tsx','template.tsx'}:
+                  continue
+              parts = list(Path(path).parts[1:-1])
+              url_parts = [p for p in parts if not (p.startswith('(') and p.endswith(')')) and not p.startswith('@')]
+              route_files.append({'path': path, 'kind': name.split('.')[0], 'route': '/' + '/'.join(url_parts)})
+          (OUT/'next-route-inventory.json').write_text(json.dumps(route_files, indent=2))
+
+          api_routes = [r for r in route_files if r['kind']=='route']
+          pages = [r for r in route_files if r['kind']=='page']
+          (OUT/'api-routes.json').write_text(json.dumps(api_routes, indent=2))
+          (OUT/'page-routes.json').write_text(json.dumps(pages, indent=2))
+
+          server_actions = []
+          export_fn_re = re.compile(r'export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)|export\s+const\s+([A-Za-z0-9_]+)\s*=')
+          for path in tracked:
+              if Path(path).suffix.lower() not in code_exts:
+                  continue
+              text = read_text(path)
+              if "'use server'" not in text and '"use server"' not in text:
+                  continue
+              names = []
+              for a,b in export_fn_re.findall(text):
+                  names.append(a or b)
+              server_actions.append({'path': path, 'exports': sorted(set(names))})
+          (OUT/'server-actions.json').write_text(json.dumps(server_actions, indent=2))
+
+          tests = [p for p in tracked if re.search(r'(^|/)(tests?|__tests__)/|\.(test|spec)\.[cm]?[jt]sx?$', p)]
+          test_groups = Counter((p.split('/',2)[1] if p.startswith('tests/') and '/' in p else p.split('/',1)[0]) for p in tests)
+          (OUT/'test-files.txt').write_text('\n'.join(tests) + '\n')
+          (OUT/'test-group-counts.json').write_text(json.dumps(dict(test_groups.most_common()), indent=2))
+
+          workflow_files = [p for p in tracked if p.startswith('.github/workflows/')]
+          wf_dir = OUT/'workflows'
+          wf_dir.mkdir()
+          for path in workflow_files:
+              (wf_dir/Path(path).name).write_text(read_text(path))
+          (OUT/'workflow-files.txt').write_text('\n'.join(workflow_files) + '\n')
+
+          prisma_path = 'prisma/schema.prisma'
+          prisma_models = []
+          enums = []
+          if prisma_path in tracked_set:
+              schema = read_text(prisma_path)
+              (OUT/'prisma-schema.prisma').write_text(schema)
+              for kind, name, body in re.findall(r'(?ms)^\s*(model|enum)\s+(\w+)\s*\{(.*?)^\}', schema):
+                  fields = []
+                  for line in body.splitlines():
+                      s = line.strip()
+                      if not s or s.startswith('//') or s.startswith('@@'):
+                          continue
+                      fields.append(s.split()[0])
+                  row = {'name': name, 'fields': fields, 'fieldCount': len(fields)}
+                  (prisma_models if kind=='model' else enums).append(row)
+          (OUT/'prisma-models.json').write_text(json.dumps(prisma_models, indent=2))
+          (OUT/'prisma-enums.json').write_text(json.dumps(enums, indent=2))
+          migrations = sorted(p for p in tracked if p.startswith('prisma/migrations/'))
+          (OUT/'prisma-migrations.txt').write_text('\n'.join(migrations) + '\n')
+
+          env_names = Counter()
+          env_re = re.compile(r'(?:process\.env\.|process\.env\[\s*[\'\"])([A-Z][A-Z0-9_]+)')
+          for path in tracked:
+              if not is_text_path(path):
+                  continue
+              for name in env_re.findall(read_text(path)):
+                  env_names[name] += 1
+          (OUT/'environment-reference-names.json').write_text(json.dumps(dict(env_names.most_common()), indent=2))
+
+          pattern_defs = {
+              'tenant_partition': r'\btenantId\b|tenantContextFromSession|runWithTenantContext',
+              'organization_scope': r'\borganizationId\b|\bbranchId\b|\bdepartmentId\b|\bteamId\b',
+              'authentication': r'getSession\(|auth\(|requireAuth|session',
+              'authorization': r'permission|authorize|authorization|RBAC|role',
+              'audit': r'audit|AuditLog|correlationId|causationId',
+              'idempotency': r'idempot|dedup|requestHash',
+              'transaction': r'\$transaction|transaction\(|optimistic|version\b',
+              'outbox_event': r'outbox|inbox|domain event|eventId|publishEvent',
+              'webhook': r'webhook|signature|callback',
+              'job_cron': r'cron|scheduler|scheduled|queue|worker|retry|dead.?letter',
+              'provider_safe_state': r'NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|provider.*configured',
+              'file_storage': r'upload|download|signedUrl|presign|storage|object storage|malware|quarantine',
+              'export': r'export|CSV|spreadsheet|download report',
+              'ai': r'OpenAI|Anthropic|AIProvider|prompt|embedding|modelId|kill.?switch',
+              'observability': r'metric|trace|span|logger|log\.|health|heartbeat|alert|incident',
+              'privacy_retention': r'retention|legal.?hold|consent|opt.?out|redact|mask|personal data',
+              'money_finance': r'Decimal|currency|invoice|installment|payment|refund|settlement|allocation',
+              'document_evidence': r'document|template|hash|evidence|signature|signed',
+          }
+          pattern_results = {}
+          candidate_paths = [p for p in tracked if is_text_path(p) and (p.startswith(source_roots) or p.startswith('prisma/') or p.startswith('tests/') or p.startswith('.github/'))]
+          for key, expr in pattern_defs.items():
+              rx = re.compile(expr, re.I)
+              matches = []
+              files = Counter()
+              total = 0
+              for path in candidate_paths:
+                  text = read_text(path)
+                  for idx, line in enumerate(text.splitlines(), 1):
+                      if rx.search(line):
+                          total += 1
+                          files[path] += 1
+                          if len(matches) < 750:
+                              snippet = line.strip()[:300]
+                              snippet = re.sub(r'([A-Za-z0-9_]*(?:SECRET|TOKEN|PASSWORD|KEY)[A-Za-z0-9_]*)\s*[:=]\s*[\'\"][^\'\"]+[\'\"]', r'\1=<REDACTED_LITERAL>', snippet, flags=re.I)
+                              matches.append({'path': path, 'line': idx, 'snippet': snippet})
+              pattern_results[key] = {'totalMatches': total, 'fileCount': len(files), 'topFiles': files.most_common(50), 'matches': matches}
+          (OUT/'evidence-patterns.json').write_text(json.dumps(pattern_results, indent=2))
+
+          todos = []
+          todo_re = re.compile(r'\b(TODO|FIXME|HACK|XXX)\b', re.I)
+          for path in candidate_paths:
+              for idx, line in enumerate(read_text(path).splitlines(), 1):
+                  if todo_re.search(line) and len(todos) < 1000:
+                      todos.append({'path': path, 'line': idx, 'snippet': line.strip()[:300]})
+          (OUT/'todo-fixme.json').write_text(json.dumps(todos, indent=2))
+
+          large_files = sorted((r for r in file_rows if r['sizeBytes'] >= 100_000), key=lambda r:r['sizeBytes'], reverse=True)
+          (OUT/'large-files.json').write_text(json.dumps(large_files, indent=2))
+
+          source_files = [p for p in tracked if Path(p).suffix.lower() in code_exts and p.startswith(source_roots)]
+          source_lines = sum(len(read_text(p).splitlines()) for p in source_files)
+          summary = {
+              'evidenceId': 'ORCA-Z7-EVIDENCE-20260725',
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'centralSha': central_sha,
+              'gitStatusClean': not bool(git('status','--porcelain').strip()),
+              'trackedFiles': len(tracked),
+              'trackedBytes': total_bytes,
+              'sourceFiles': len(source_files),
+              'sourceLines': source_lines,
+              'pageRoutes': len(pages),
+              'apiRoutes': len(api_routes),
+              'serverActionFiles': len(server_actions),
+              'testFiles': len(tests),
+              'workflowFiles': len(workflow_files),
+              'prismaModels': len(prisma_models),
+              'prismaEnums': len(enums),
+              'migrationFiles': len(migrations),
+              'providerDependencies': len(provider_dependencies),
+              'environmentReferenceNames': len(env_names),
+              'todoFixmeCount': len(todos),
+          }
+          (OUT/'summary.json').write_text(json.dumps(summary, indent=2))
+          (OUT/'git-log.txt').write_text(git('log','--oneline','--decorate','-n','250'))
+          (OUT/'git-status.txt').write_text(git('status','--short','--branch'))
+          (OUT/'README.md').write_text(
+              '# ORCA Z7 Repository Evidence Package\n\n'
+              f'- Evidence ID: `ORCA-Z7-EVIDENCE-20260725`\n'
+              f'- Exact zero-based central SHA: `{central_sha}`\n'
+              '- Mode: read-only repository inspection\n'
+              '- Secrets/credential values: not collected\n'
+              '- Production data/providers/environments: not accessed\n\n'
+              'This artifact supports Z7 classification. File names, counts, source references, and existing contracts/tests are evidence inputs; they do not alone prove conformance.\n'
+          )
+
+      - name: Verify evidence integrity
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$(cat /tmp/central_sha)"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          python -m json.tool z7-evidence/summary.json >/dev/null
+          python -m json.tool z7-evidence/evidence-patterns.json >/dev/null
+          test -s z7-evidence/tracked-files.txt
+          test -s z7-evidence/package-metadata.json
+          test -s z7-evidence/next-route-inventory.json
+          test -s z7-evidence/test-files.txt
+
+      - name: Upload immutable evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-z7-repository-evidence-20260725
+          path: z7-evidence/
+          if-no-files-found: error
+          retention-days: 30
