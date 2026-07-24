@@ -150,7 +150,7 @@ describe("G5 — Security and quality gate", () => {
     });
     expect(packageJson.devDependencies.typescript).toBe("6.0.3");
     expect(packageJson.overrides).toMatchObject({
-      "brace-expansion": "5.0.7",
+      "brace-expansion": "5.0.8",
       postcss: "$postcss",
     });
     expect(packageJson.scripts.typecheck).toBe("tsc --noEmit");
