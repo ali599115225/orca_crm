@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "authority": "ORCA Zero-Based Z0-Z8 Stage Ledger",
   "repository": "ali599115225/orca_crm",
   "defaultBranch": "main",
@@ -7,7 +7,7 @@
   "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
   "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
   "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
-  "zeroBasedCentralSha": "11aaaae7d71a9dd91616145aace141255a07300b",
+  "zeroBasedCentralSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "multiCompanySaasInScope": false,
   "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
@@ -15,7 +15,7 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "Z6_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
+  "currentGate": "Z7_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
@@ -248,7 +248,7 @@
     {
       "id": "Z6",
       "name": "Operations & Continuity",
-      "status": "PASS / CLOSED AS Z6 TARGET PLANNING BASELINE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
+      "status": "PASS / CLOSED / MERGED TO CENTRAL",
       "candidateSha": "9edcb072065f0d63cd3cb267a1c79eebc7aa51c2",
       "independentReviewAddendumCandidateSha": "da747f57b3cc9eccc27d5ebc6ffff31f18f726c2",
       "supplementalRunbookPreparationSha": "a4935db66ebc7de0d965de0117d4466865998de9",
@@ -265,25 +265,60 @@
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": false,
+      "centralMergeAllowed": true,
       "stageBranch": "work/orca-z6-operations-continuity-clean-20260725",
       "baseCentralSha": "11aaaae7d71a9dd91616145aace141255a07300b",
-      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "pullRequest": 86,
       "planningClosure": true,
       "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED APPROVAL",
       "blockingChecks": {
-        "orcaCi": "PENDING_FINAL_HEAD",
-        "vercel": "PENDING_FINAL_HEAD",
-        "mergeAllowed": false
-      }
+        "orcaCi": "SUCCESS",
+        "vercel": "SUCCESS",
+        "mergeCompleted": true
+      },
+      "finalHeadSha": "a1db4547fbee72bf1f5b5b27da20d3069960d68b",
+      "centralMergeSha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959"
     },
     {
       "id": "Z7",
       "name": "Current-System Gap",
-      "status": "AUTHORIZED TO START AFTER Z6 FINAL CENTRAL MERGE; METHOD PREPARED / ASSESSMENT PENDING",
+      "status": "PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
       "methodReviewPreparationSha": "933c154dab7ce013b3745d86d43b826ac683db49",
-      "currentComponentsClassified": 0,
-      "gapsRegistered": 0
+      "currentComponentsClassified": 32,
+      "gapsRegistered": 32,
+      "stageBranch": "work/orca-z7-current-system-gap-final-20260725",
+      "baseCentralSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
+      "sourcePublicationRef": "work/orca-z7-source-20260725",
+      "sourcePublicationSha": "8914c3c572f9e6718ea4d1bb7179eaff9a2ff3f0",
+      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "publicationCommitRef": "THIS_SINGLE_COMMIT",
+      "publicationScopeFiles": 9,
+      "runtimeChanged": false,
+      "databaseChanged": false,
+      "productionAction": false,
+      "centralMergeAllowed": false,
+      "blockingChecks": {
+        "orcaCi": "PENDING_FINAL_HEAD",
+        "vercel": "PENDING_FINAL_HEAD",
+        "mergeAllowed": false
+      },
+      "p0Gaps": 18,
+      "p1Gaps": 12,
+      "p2Gaps": 2,
+      "dispositions": {
+        "KEEP": 4,
+        "ADAPT": 15,
+        "REBUILD": 2,
+        "RETIRE": 2,
+        "MISSING": 2,
+        "DEFER": 6,
+        "NOT_PROVEN": 1
+      },
+      "repositoryEvidenceArtifactId": 8610070392,
+      "repositoryEvidenceDigest": "sha256:2d882b4ec10ea362fa2ab42b67ed5d60d13a330c50688573e33914c9c05c0df9",
+      "unpublishedDependencySecurityCandidate": "ed4ea9087b2fe9c6ba1335610080870eb38efd4a",
+      "currentImplementationFullyConformant": false,
+      "z8PreparationAuthorized": true
     },
     {
       "id": "Z8",
@@ -304,9 +339,9 @@
     },
     "cleanPublicationPlanSha": "cfd4f2ee8e0bce9383ffe3468a37f5b0d2540329",
     "masterPlanComplianceAuditSha": "2b7c483a9ba23ab407d65c55558d630429d0f03e",
-    "currentPublicationStage": "Z6",
+    "currentPublicationStage": "Z7",
     "actualPostZ1CentralSha": "8bef279d2a32b8b054d43f3905a8860dbf0aba6e",
-    "actualCentralParentSha": "11aaaae7d71a9dd91616145aace141255a07300b"
+    "actualCentralParentSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b"
   },
   "masterPlanCompliance": {
     "mandatoryRegistersMapped": 25,
@@ -340,13 +375,13 @@
     "production_release_authorization"
   ],
   "lastClosedGate": {
-    "id": "Z1",
-    "pullRequest": 75,
-    "finalHeadSha": "0d44b5b37d39d276294990fe612e2b36df43eb8e",
-    "centralMergeSha": "8bef279d2a32b8b054d43f3905a8860dbf0aba6e",
+    "id": "Z6",
+    "pullRequest": 86,
+    "finalHeadSha": "a1db4547fbee72bf1f5b5b27da20d3069960d68b",
+    "centralMergeSha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
     "orcaCi": "SUCCESS",
     "vercel": "SUCCESS",
-    "scopeFiles": 6
+    "scopeFiles": 11
   },
   "ownerContinuationInstruction": {
     "date": "2026-07-25",
