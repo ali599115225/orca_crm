@@ -1,0 +1,96 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@prisma/dev": {
+      "name": "@prisma/dev",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "valibot"
+      ],
+      "effects": [
+        "prisma"
+      ],
+      "range": "<=0.0.0-dev.202603231356 || >=0.1.0",
+      "nodes": [
+        "node_modules/@prisma/dev"
+      ],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.19.3",
+        "isSemVerMajor": true
+      }
+    },
+    "prisma": {
+      "name": "prisma",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@prisma/dev"
+      ],
+      "effects": [],
+      "range": ">=6.20.0-dev.1",
+      "nodes": [
+        "node_modules/prisma"
+      ],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.19.3",
+        "isSemVerMajor": true
+      }
+    },
+    "valibot": {
+      "name": "valibot",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1124298,
+          "name": "valibot",
+          "dependency": "valibot",
+          "title": "Valibot: record() issue paths can make flatten() throw for inherited Object property names",
+          "url": "https://github.com/advisories/GHSA-5qjj-4xww-7phc",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-755"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=1.4.1"
+        }
+      ],
+      "effects": [
+        "@prisma/dev"
+      ],
+      "range": "<=1.4.1",
+      "nodes": [
+        "node_modules/valibot"
+      ],
+      "fixAvailable": {
+        "name": "prisma",
+        "version": "6.19.3",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 3,
+      "high": 0,
+      "critical": 0,
+      "total": 3
+    },
+    "dependencies": {
+      "prod": 340,
+      "dev": 173,
+      "optional": 149,
+      "peer": 54,
+      "peerOptional": 0,
+      "total": 633
+    }
+  }
+}
