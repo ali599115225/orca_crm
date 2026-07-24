@@ -5,6 +5,7 @@
   "from_version": "5.0.7",
   "to_version": "5.0.8",
   "advisory": "GHSA-mh99-v99m-4gvg",
+  "publisher_revision": "fetch-head-v1",
   "automatic_broad_fix_authorized": false,
   "main_or_production_authorized": false
 }
