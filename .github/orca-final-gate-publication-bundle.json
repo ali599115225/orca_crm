@@ -1,48 +1,40 @@
 {
-  "stage": "Z7",
-  "central_sha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
-  "source_ref": "work/orca-z7-source-20260725",
-  "source_sha": "8914c3c572f9e6718ea4d1bb7179eaff9a2ff3f0",
-  "target_branch": "work/orca-z7-current-system-gap-final-20260725",
-  "commit_message": "docs(zero-based): close Z7 current-system gap gate",
+  "stage": "Z8",
+  "central_sha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
+  "source_ref": "work/orca-z8-source-20260725",
+  "source_sha": "ee3cc9b01a91e3d4336a4c2f91fd079cb2fcc64b",
+  "target_branch": "work/orca-z8-execution-authorization-final-20260725",
+  "commit_message": "docs(zero-based): close Z8 execution authorization gate",
   "expected_document_files": 8,
-  "publisher_revision": "verified-central-and-source-refs-v2-security-delta",
+  "publisher_revision": "z8-final-v1",
   "previous_gate": {
-    "id": "Z6",
-    "pull_request": 86,
-    "final_head_sha": "a1db4547fbee72bf1f5b5b27da20d3069960d68b",
-    "central_merge_sha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
+    "id": "Z7",
+    "pull_request": 96,
+    "final_head_sha": "d9ed2dbab36fa916ac25c822cab0b3f1b00ec5b4",
+    "central_merge_sha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
     "orca_ci": "SUCCESS",
     "vercel": "SUCCESS",
-    "scope_files": 11
+    "scope_files": 9
   },
   "stage_summary": {
-    "assessmentUnits": 32,
-    "classifiedGaps": 32,
-    "p0Gaps": 18,
-    "p1Gaps": 12,
-    "p2Gaps": 2,
-    "dispositions": {
-      "KEEP": 4,
-      "ADAPT": 15,
-      "REBUILD": 2,
-      "RETIRE": 2,
-      "MISSING": 2,
-      "DEFER": 6,
-      "NOT_PROVEN": 1
-    },
-    "evidenceArtifactId": 8610070392,
-    "evidenceDigest": "sha256:2d882b4ec10ea362fa2ab42b67ed5d60d13a330c50688573e33914c9c05c0df9",
-    "unpublishedDependencySecurityCandidate": "ed4ea9087b2fe9c6ba1335610080870eb38efd4a"
+    "authorizedPackages": 0,
+    "immediatePackages": 3,
+    "conditionalPackages": 8,
+    "deferredPackages": 3,
+    "registeredPackages": 14,
+    "coveredGapIds": 32,
+    "packagesInExecution": 0,
+    "mainMergeAuthorized": false,
+    "productionActionAuthorized": false
   },
   "document_paths": [
-    "docs/zero-based/Z7/ORCA_Z7_CLASSIFIED_GAP_REGISTER.md",
-    "docs/zero-based/Z7/ORCA_Z7_COMPONENT_DISPOSITION_REGISTER.md",
-    "docs/zero-based/Z7/ORCA_Z7_CURRENT_SYSTEM_INVENTORY.md",
-    "docs/zero-based/Z7/ORCA_Z7_DEPENDENCY_CRITICAL_PATH.md",
-    "docs/zero-based/Z7/ORCA_Z7_GATE_CLOSURE.md",
-    "docs/zero-based/Z7/ORCA_Z7_READINESS_AND_GAP_CLASSIFICATION_METHOD.md",
-    "docs/zero-based/Z7/ORCA_Z7_TARGET_TO_CURRENT_TRACEABILITY.md",
-    "docs/zero-based/Z7/ORCA_Z7_VISUAL_AND_PROVIDER_BLOCKERS.md"
+    "docs/zero-based/Z8/ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md",
+    "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json",
+    "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json",
+    "docs/zero-based/Z8/ORCA_Z8_GATE_CLOSURE.md",
+    "docs/zero-based/Z8/ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md",
+    "docs/zero-based/Z8/ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md",
+    "docs/zero-based/Z8/ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md",
+    "docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md"
   ]
 }
