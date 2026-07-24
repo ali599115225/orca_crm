@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/orca-security-audit-diagnostic.yml
       - package.json
-      - package-lock.json
 
 permissions:
   contents: write
@@ -18,9 +17,9 @@ concurrency:
 
 jobs:
   audit:
-    name: Capture production audit JSON
+    name: Refresh lock and capture production audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout security branch
         uses: actions/checkout@v7
@@ -33,15 +32,25 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Refresh lockfile only
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Verify clean install
+        run: npm ci
+
       - name: Capture production audit
         shell: bash
         run: npm audit --omit=dev --json > ORCA_SECURITY_AUDIT_DIAGNOSTIC.json || true
 
-      - name: Commit diagnostic result
+      - name: Commit generated evidence
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ORCA_SECURITY_AUDIT_DIAGNOSTIC.json
-          git commit -m "chore(security): capture audit diagnostic"
+          git add package-lock.json ORCA_SECURITY_AUDIT_DIAGNOSTIC.json
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "chore(security): refresh lock and audit diagnostic"
           git push origin HEAD:work/orca-security-advisory-20260724-z1-unblock
