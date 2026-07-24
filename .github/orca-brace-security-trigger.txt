@@ -1,1 +1,1 @@
-publish minimal brace-expansion 5.0.8 security fix
+publish final brace-expansion 5.0.8 security fix with G5 contract reconciliation
