@@ -44,6 +44,7 @@ jobs:
               raise SystemExit('Stage must be one of Z3-Z6')
           if not c['target_branch'].startswith('work/orca-'):
               raise SystemExit('Unexpected target branch')
+          Path('/tmp/control.json').write_text(json.dumps(c))
           Path('/tmp/stage').write_text(c['stage'])
           Path('/tmp/central_sha').write_text(c['central_sha'])
           Path('/tmp/target_branch').write_text(c['target_branch'])
@@ -70,12 +71,7 @@ jobs:
           import re
           import subprocess
 
-          control = json.loads(Path('.github/orca-stage-publication-control.json').read_text()) if Path('.github/orca-stage-publication-control.json').exists() else None
-          # The checkout was switched to the central commit, so recover the control from the PR merge ref.
-          if control is None:
-              raw = subprocess.check_output(['git','show','refs/remotes/pull/%s/merge:.github/orca-stage-publication-control.json' % __import__('os').environ['GITHUB_REF'].split('/')[-2]])
-              control = json.loads(raw)
-
+          control = json.loads(Path('/tmp/control.json').read_text())
           stage = control['stage']
           central_sha = control['central_sha']
           target_branch = control['target_branch']
