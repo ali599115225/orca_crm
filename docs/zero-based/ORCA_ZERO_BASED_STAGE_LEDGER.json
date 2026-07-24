@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "authority": "ORCA Zero-Based Z0-Z8 Stage Ledger",
   "repository": "ali599115225/orca_crm",
   "defaultBranch": "main",
@@ -15,7 +15,7 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "Z8_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
+  "currentGate": "Z8_DOCUMENTATION_ONLY_CLOSURE_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
@@ -27,6 +27,18 @@
       "policy": "NO_EMPTY_RETRY; NO_RED_CHECK_BYPASS",
       "resolution": "VERCEL_CAPACITY_AVAILABLE; FINAL_HEAD_REVALIDATION_STARTED",
       "resolvedOn": "2026-07-24"
+    },
+    {
+      "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_Z8",
+      "status": "DEFERRED_TO_FINAL_EXECUTABLE_RELEASE_HEAD",
+      "affectedPullRequests": [
+        99,
+        102
+      ],
+      "scope": "Z8_DOCUMENTATION_ONLY_PREVIEW",
+      "policy": "NO_RETRY_COMMITS; NO_PAID_UPGRADE; NO_RED_CHECK_MISREPRESENTATION",
+      "resolution": "REMOVE VERCEL FROM THE Z8 PLANNING-ONLY MERGE GATE; REQUIRE ONE FINAL PREVIEW ON THE DEFINITIVE EXECUTABLE RELEASE HEAD",
+      "ownerDecisionDate": "2026-07-25"
     }
   ],
   "securityUnblocker": {
@@ -270,7 +282,7 @@
       "baseCentralSha": "11aaaae7d71a9dd91616145aace141255a07300b",
       "pullRequest": 86,
       "planningClosure": true,
-      "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED APPROVAL",
+      "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED_APPROVAL",
       "blockingChecks": {
         "orcaCi": "SUCCESS",
         "vercel": "SUCCESS",
@@ -325,31 +337,35 @@
     {
       "id": "Z8",
       "name": "Execution Authorization",
-      "status": "PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
+      "status": "PASS / CLOSED IN PLANNING — CENTRAL MERGE AUTHORIZED AFTER ORCA CI",
       "methodReviewPreparationSha": "2c74eae12646658b95fc88f92363a606f3690e7c",
       "authorizedPackages": 0,
-      "stageBranch": "work/orca-z8-execution-authorization-final-20260725",
+      "stageBranch": "work/orca-z8-republication-base-20260725",
       "baseCentralSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
       "sourcePublicationRef": "work/orca-z8-source-20260725",
       "sourcePublicationSha": "ee3cc9b01a91e3d4336a4c2f91fd079cb2fcc64b",
-      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "pullRequest": 102,
       "publicationCommitRef": "THIS_SINGLE_COMMIT",
       "publicationScopeFiles": 9,
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": false,
+      "centralMergeAllowed": true,
       "blockingChecks": {
-        "orcaCi": "PENDING_FINAL_HEAD",
-        "vercel": "PENDING_FINAL_HEAD",
-        "mergeAllowed": false
+        "orcaCi": "PENDING_FINAL_DOCUMENTATION_HEAD",
+        "vercel": "DEFERRED_TO_FINAL_EXECUTABLE_RELEASE_HEAD",
+        "mergeAllowedAfterOrcaCi": true
       },
       "immediatePackages": 3,
       "conditionalPackages": 8,
       "deferredPackages": 3,
       "productionActivationAuthorized": false,
       "mainMergeAuthorized": false,
-      "zeroBasedPlanClosurePrepared": true
+      "zeroBasedPlanClosurePrepared": true,
+      "vercelDeferralBasis": "DOCUMENTATION_ONLY_DIFF; NO RUNTIME, PACKAGE, PRISMA, MIGRATION, DATA, PROVIDER, ENVIRONMENT, CREDENTIAL, MAIN OR PRODUCTION CHANGE",
+      "finalExecutablePreviewRequired": true,
+      "packagesInExecution": 0,
+      "automaticNextPackage": "NONE"
     }
   ],
   "unpublishedPreparation": {
@@ -373,7 +389,7 @@
     "subjectPlansMapped": 24,
     "subjectPlansTotal": 24,
     "readyForBuild": false,
-    "currentSystemConformanceAssessed": false
+    "currentSystemConformanceAssessed": true
   },
   "ownerDecisionRequired": [
     "exact_real_estate_activities",
@@ -410,6 +426,7 @@
   "ownerContinuationInstruction": {
     "date": "2026-07-25",
     "instruction": "CLOSE_REMAINING_ZERO_BASED_GATES_SEQUENTIALLY_WITHOUT_PAUSING_FOR_INTERMEDIATE_CONFIRMATION",
-    "interpretation": "CLOSE_TARGET_PLANNING_AND_EVIDENCE_GATES_WITH_SAFE_DEFAULTS_AND_EXPLICIT_DEFERRALS; DO_NOT INVENT OWNER FACTS OR AUTHORIZE MAIN_OR_PRODUCTION"
+    "interpretation": "CLOSE_TARGET_PLANNING_AND_EVIDENCE_GATES_WITH_SAFE_DEFAULTS AND EXPLICIT DEFERRALS; DO NOT INVENT OWNER FACTS OR AUTHORIZE MAIN OR PRODUCTION",
+    "deploymentPolicy": "COMPLETE REPOSITORY MODIFICATIONS AND FIXES FIRST; RUN ONE FINAL VERCEL PREVIEW ONLY ON THE DEFINITIVE EXECUTABLE RELEASE HEAD"
   }
 }
