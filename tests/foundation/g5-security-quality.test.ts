@@ -143,7 +143,7 @@ describe("G5 — Security and quality gate", () => {
     });
 
     expect(packageJson.dependencies).toMatchObject({
-      next: "16.2.10",
+      next: "16.2.11",
       react: "18.3.1",
       "react-dom": "18.3.1",
       "@sentry/nextjs": "10.67.0",
