@@ -1,8 +1,8 @@
 {
-  "stage": "Z5",
-  "central_sha": "3a34e6854347505a3dc4b935c335c697bfc1d008",
-  "target_branch": "work/orca-z5-security-quality-clean-20260725",
-  "previous_gate": "Z4",
-  "previous_pr": 84,
-  "previous_head_sha": "b4a3c5c11ad43c82afbe3714ad566c2e988bf1c9"
+  "stage": "Z6",
+  "central_sha": "11aaaae7d71a9dd91616145aace141255a07300b",
+  "target_branch": "work/orca-z6-operations-continuity-clean-20260725",
+  "previous_gate": "Z5",
+  "previous_pr": 85,
+  "previous_head_sha": "9f762233ab3af4eb7f4761dda2b62ddb3c4a7a27"
 }
