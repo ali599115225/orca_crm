@@ -1,0 +1,193 @@
+name: ORCA Z2 Single Commit Publication PR
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z2-publication-transport-base-20260724
+    paths:
+      - .github/workflows/orca-z2-single-commit-publication-pr.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: orca-z2-single-commit-publication-pr-20260724
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish clean Z2 branch from approved blobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CENTRAL_SHA: 8bef279d2a32b8b054d43f3905a8860dbf0aba6e
+      TARGET_BRANCH: work/orca-z2-domain-contracts-clean-20260724
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout transport branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify clean target is absent
+        shell: bash
+        run: |
+          git cat-file -e "$CENTRAL_SHA^{commit}"
+          if git ls-remote --exit-code --heads origin "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
+            echo "Target branch already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git switch --detach "$CENTRAL_SHA"
+          git switch -c "$TARGET_BRANCH"
+
+      - name: Build exact Z2 publication tree
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64
+          import json
+          import os
+          import urllib.request
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          central_sha = os.environ["CENTRAL_SHA"]
+          target_branch = os.environ["TARGET_BRANCH"]
+          blobs = {
+              "docs/zero-based/ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md": "67fd213d766fb60ef534454e66f3e8ada73d0a4b",
+              "docs/zero-based/Z2/ORCA_DOMAIN_CONTRACT_REGISTRY.md": "dc35b7c9e82c75453852c672ed4c0f748aa48ec9",
+              "docs/zero-based/Z2/ORCA_CUSTOMER_INVENTORY_PROJECT_TOUR_CONTRACTS.md": "a9ea935bed9fcb9110db07d6008acb4e6ce0b5e4",
+              "docs/zero-based/Z2/ORCA_OFFER_CONTRACT_FINANCE_CONTRACTS.md": "0bdf99cc5d8d59f8cb368807ae4a7cbd9e62c8e4",
+              "docs/zero-based/Z2/ORCA_WORKFLOW_COMMUNICATION_DOCUMENT_AI_CONTRACTS.md": "2625de7a0bda82e395068af5e3cae2baaec05181",
+              "docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md": "1588a6f9a37df4fd19ebd524a2169e8732c84794",
+              "docs/zero-based/Z2/ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md": "ea43a575c6f5c10b844a55413a8770d8acbc9b7d",
+              "docs/zero-based/Z2/ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md": "dbe3b84014a06fd10f4efd0f59948032c0dfb139",
+          }
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "orca-z2-publication-pr",
+          }
+          for path, sha in blobs.items():
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}/git/blobs/{sha}",
+                  headers=headers,
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  payload = json.load(response)
+              if payload.get("sha") != sha or payload.get("encoding") != "base64":
+                  raise SystemExit(f"Unexpected blob response for {path}")
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(base64.b64decode(payload["content"]))
+
+          ledger_path = Path("docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json")
+          ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+          ledger["schemaVersion"] = 7
+          ledger["zeroBasedCentralSha"] = central_sha
+          ledger["currentGate"] = "Z2_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE"
+          ledger["lastClosedGate"] = {
+              "id": "Z1",
+              "pullRequest": 75,
+              "finalHeadSha": "0d44b5b37d39d276294990fe612e2b36df43eb8e",
+              "centralMergeSha": central_sha,
+              "orcaCi": "SUCCESS",
+              "vercel": "SUCCESS",
+              "scopeFiles": 6,
+          }
+          stages = {stage["id"]: stage for stage in ledger["stages"]}
+          stages["Z1"].update({
+              "status": "PASS / CLOSED / MERGED TO CENTRAL",
+              "finalHeadSha": "0d44b5b37d39d276294990fe612e2b36df43eb8e",
+              "centralMergeSha": central_sha,
+              "blockingChecks": {"orcaCi": "SUCCESS", "vercel": "SUCCESS", "mergeCompleted": True},
+              "nextAction": "CLOSED; Z2 CLEAN PUBLICATION AUTHORIZED",
+          })
+          stages["Z2"].update({
+              "status": "PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
+              "stageBranch": target_branch,
+              "baseCentralSha": central_sha,
+              "publicationCommitRef": "THIS_SINGLE_COMMIT",
+              "pullRequest": "ASSIGNED_AFTER_SINGLE_COMMIT_PUBLICATION",
+              "approvedSourceFiles": 8,
+              "freshLedgerFiles": 1,
+              "publicationScopeFiles": 9,
+              "domainBoundaries": 11,
+              "originalFunctionalRequirements": 30,
+              "independentReviewRequirements": 10,
+              "ownerPoliciesStillRequired": 3,
+              "ownerPolicyRequirementIds": ["Z2R-003", "Z2R-004", "Z2R-006"],
+              "blockingChecks": {"orcaCi": "PENDING_FINAL_Z2_HEAD", "vercel": "PENDING_FINAL_Z2_HEAD", "mergeAllowed": False},
+              "runtimeChanged": False,
+              "databaseChanged": False,
+              "productionAction": False,
+              "centralMergeAllowed": False,
+              "nextAction": "OPEN INDEPENDENT PR; REQUIRE ORCA CI AND VERCEL PASS ON THE SAME FINAL HEAD",
+          })
+          unpublished = ledger.setdefault("unpublishedPreparation", {})
+          unpublished.update({
+              "published": False,
+              "branchRefCreated": True,
+              "currentPublicationStage": "Z2",
+              "actualPostZ1CentralSha": central_sha,
+              "wholeStackPublicationProhibited": True,
+          })
+          ledger_path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          closure_path = Path("docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md")
+          closure = closure_path.read_text(encoding="utf-8")
+          replacements = [
+              ("- **Version:** 1.0", "- **Version:** 1.1 — Clean Publication Reconciliation"),
+              ("- **Date:** 2026-07-22", "- **Date:** 2026-07-24"),
+              ("- **Status:** `PASS / CLOSED IN STAGE — CENTRAL MERGE REQUIRES PRIOR Z1 MERGE AND GREEN CHECKS`", "- **Status:** `PASS / CLOSED IN STAGE — CENTRAL MERGE REQUIRES FINAL Z2 GREEN CHECKS`"),
+              ("- **Branch:** `work/orca-z2-domain-contracts-20260722`", f"- **Branch:** `{target_branch}`"),
+              ("- **Parent Z1 candidate SHA:** `1428e5fa2c41052016caa1fe284e33cb721ab50c`", f"- **Parent central SHA after Z1 closure:** `{central_sha}`\n- **Z1 closure:** `PR #75 / merged as {central_sha}`\n- **Publication scope:** `8 approved source files + 1 fresh Ledger = 9 files`"),
+              ("| `ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md` v1.1 | 30 Z2 functional requirements linked to domain evidence | PASS |", "| `ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md` v1.1 | 30 Z2 functional requirements linked to domain evidence | PASS |\n| `ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md` | 10 independent domain clarifications | PASS |\n| `ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md` | 10 supplemental requirements; 3 owner-policy items remain open | PASS |"),
+              ("- The Z2 branch is stacked on the Z1 candidate because PR #75 is awaiting a Vercel quota-window reset despite full ORCA CI success.\n- Z2 central merge is prohibited until Z1 is merged into the zero-based central branch and Z2 blocking checks are green.", f"- Z1 is closed and merged into the zero-based central branch as `{central_sha}` with final-head ORCA CI and Vercel success.\n- This clean publication contains exactly nine files and does not inherit the historical Ledger, the Vercel incident report, or any Z3–Z8 artifact.\n- Supplemental requirements Z2R-003, Z2R-004, and Z2R-006 remain owner-policy decisions; publication does not approve them.\n- Z2 central merge is prohibited until ORCA CI and Vercel are green on this exact final Z2 head."),
+              ("## 8. Gate decision", f"## 8. Clean publication reconciliation\n\n- Actual post-Z1 central parent: `{central_sha}`.\n- Z1 status: closed and centrally merged.\n- Z2 publication set: nine files exactly.\n- Original Z2 functional requirements: 30.\n- Independent review requirements: 10.\n- Owner-policy requirements still unapproved: 3 (`Z2R-003`, `Z2R-004`, `Z2R-006`).\n- Current-system implementation conformance remains unassessed until Z7.\n\n## 9. Gate decision"),
+              ("Z2 FUNCTIONAL REQUIREMENTS: 30", "Z2 FUNCTIONAL REQUIREMENTS: 30\nINDEPENDENT REVIEW REQUIREMENTS: 10\nOWNER-POLICY REQUIREMENTS OPEN: 3\nCLEAN PUBLICATION FILES: 9"),
+              ("CENTRAL MERGE CONDITION: Z1 MERGED + Z2 CI/PREVIEW GREEN", "CENTRAL MERGE CONDITION: ORCA CI + VERCEL PASS ON THE SAME FINAL Z2 HEAD"),
+          ]
+          for old, new in replacements:
+              count = closure.count(old)
+              if count != 1:
+                  raise SystemExit(f"Closure replacement expected once, found {count}: {old[:100]}")
+              closure = closure.replace(old, new, 1)
+          closure_path.write_text(closure, encoding="utf-8")
+
+      - name: Verify and publish the single clean commit
+        shell: bash
+        run: |
+          git diff --check
+          python -m json.tool docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json >/dev/null
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' \
+            docs/zero-based/ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md \
+            docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json \
+            docs/zero-based/Z2/ORCA_CUSTOMER_INVENTORY_PROJECT_TOUR_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_DOMAIN_CONTRACT_REGISTRY.md \
+            docs/zero-based/Z2/ORCA_OFFER_CONTRACT_FINANCE_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_WORKFLOW_COMMUNICATION_DOCUMENT_AI_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md \
+            docs/zero-based/Z2/ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md \
+            docs/zero-based/Z2/ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md | sort)"
+          test "$actual" = "$expected"
+          test "$(printf '%s\n' "$actual" | wc -l)" -eq 9
+          ! printf '%s\n' "$actual" | grep -E '(^|/)Z[3-8]/|VERCEL_BUILD_RATE_LIMIT_INCIDENT|package(-lock)?\.json|prisma|migration|\.env'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/zero-based/ORCA_REQUIREMENTS_TRACEABILITY_MATRIX.md \
+            docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json \
+            docs/zero-based/Z2/ORCA_CUSTOMER_INVENTORY_PROJECT_TOUR_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_DOMAIN_CONTRACT_REGISTRY.md \
+            docs/zero-based/Z2/ORCA_OFFER_CONTRACT_FINANCE_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_WORKFLOW_COMMUNICATION_DOCUMENT_AI_CONTRACTS.md \
+            docs/zero-based/Z2/ORCA_Z2_DOMAIN_CONTRACT_GATE_CLOSURE.md \
+            docs/zero-based/Z2/ORCA_Z2_INDEPENDENT_DOMAIN_CONTRACT_REVIEW_ADDENDUM.md \
+            docs/zero-based/Z2/ORCA_Z2_REVIEW_REQUIREMENTS_SUPPLEMENT.md
+          git commit -m "docs(zero-based): publish Z2 domain contracts"
+          test "$(git rev-list --count "$CENTRAL_SHA"..HEAD)" -eq 1
+          test "$(git diff --name-only "$CENTRAL_SHA"..HEAD | wc -l)" -eq 9
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
