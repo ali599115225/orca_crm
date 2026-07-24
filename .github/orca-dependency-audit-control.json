@@ -1,0 +1,6 @@
+{
+  "central_sha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
+  "purpose": "collect production dependency audit evidence only",
+  "automatic_fix_authorized": false,
+  "main_or_production_authorized": false
+}
