@@ -1,7 +1,7 @@
 {
   "stage": "Z7",
   "central_sha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
-  "source_ref": "cc000b96a323553749afe8bb9a7113bb60d1b9ef",
+  "source_ref": "work/orca-z7-source-20260725",
   "target_branch": "work/orca-z7-current-system-gap-clean-20260725",
   "commit_message": "docs(zero-based): close Z7 current-system gap gate",
   "expected_document_files": 8,
