@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 2,
+  "documentId": "ORCA-Z8-EXECUTION-PACKAGE-SCHEMA-001",
+  "date": "2026-07-25",
+  "status": "FINAL_AUTHORIZATION_SCHEMA",
+  "repository": "ali599115225/orca_crm",
+  "mergeDestination": "work/orca-zero-based-execution-20260721",
+  "mainMergeAuthorized": false,
+  "productionActionAuthorized": false,
+  "allowedPackageStates": [
+    "DRAFT",
+    "EVIDENCE_READY",
+    "OWNER_DECISION_PENDING",
+    "AUTHORIZED_NON_PRODUCTION",
+    "IN_EXECUTION",
+    "BLOCKED",
+    "VERIFYING",
+    "VERIFIED_NON_PRODUCTION",
+    "OWNER_ACCEPTED",
+    "EXPIRED",
+    "REVOKED",
+    "REJECTED",
+    "SUPERSEDED",
+    "CLOSED"
+  ],
+  "allowedChangeClasses": [
+    "DOCUMENTATION",
+    "RUNTIME",
+    "UI_VISUAL",
+    "SCHEMA_MIGRATION",
+    "DATA_OPERATION",
+    "INTEGRATION_PROVIDER",
+    "CREDENTIAL_SECRET",
+    "OPERATIONS_INFRASTRUCTURE",
+    "SECURITY_CONTROL",
+    "TEST_EVIDENCE"
+  ],
+  "requiredPackageFields": [
+    "packageId",
+    "version",
+    "state",
+    "targetGapIds",
+    "outcome",
+    "sourceControl",
+    "scope",
+    "exclusions",
+    "preconditions",
+    "acceptance",
+    "recovery",
+    "parallelConflicts",
+    "subAuthorizations",
+    "validity"
+  ],
+  "sourceControlRules": {
+    "exactBaseShaRequiredBeforeExecution": true,
+    "exactFinalHeadRequiredForAcceptance": true,
+    "forcePushAuthorized": false,
+    "autonomousMergeAuthorized": false,
+    "headOrScopeMovementInvalidatesAuthorization": true
+  },
+  "mandatorySubAuthorizations": {
+    "mainMerge": false,
+    "migrationOrDataOperation": false,
+    "providerOrCredentialAction": false,
+    "paidPurchaseOrUpgrade": false,
+    "productionRelease": false
+  },
+  "acceptanceRules": [
+    "the final diff must match the exact path and change-class allowlist",
+    "all blocking checks must pass on the exact final head",
+    "red, pending, skipped, or missing required evidence blocks closure",
+    "requirement-specific negative, concurrency, failure, and recovery evidence is required where applicable",
+    "visual work requires an owner-approved item-level reference and independent verification",
+    "agent narrative and historical reports do not substitute for direct evidence",
+    "residual gaps, temporary artifacts, data state, and provider state must be reconciled before closure"
+  ],
+  "recoveryRules": [
+    "code rollback, feature disable, schema compatibility, data compensation, and provider reconciliation are separate decisions",
+    "rollback is prohibited when it would discard valid data or reintroduce a security defect without separate approval",
+    "every package defines stop triggers and a preserved-evidence safe state"
+  ],
+  "parallelismRules": [
+    "shared files, schemas, contracts, fixtures, visual surfaces, providers, and environments require one designated owner",
+    "a mutable-boundary conflict creates an ordering dependency",
+    "agents may not expand scope or edit adjacent boundaries without an amended package version"
+  ],
+  "authorizationMeaning": {
+    "EVIDENCE_READY": "package definition is complete but execution has not started",
+    "OWNER_DECISION_PENDING": "safe default remains in force and execution is blocked",
+    "AUTHORIZED_NON_PRODUCTION": "only the named non-production scope is authorized; all sub-authorizations remain false",
+    "DEFERRED": "represented by DRAFT or BLOCKED with an explicit trigger and residual risk"
+  },
+  "rules": [
+    "blank or omitted authorization fields mean not authorized",
+    "authorization is single-use, package-specific, version-specific, and time-bounded",
+    "general build authority never implies main, migration, data, provider, secret, purchase, external action, or Production authority",
+    "completion of Z8 authorizes no package to start automatically",
+    "the owner instruction after Z8 determines which EVIDENCE_READY package is activated next"
+  ]
+}
