@@ -1,0 +1,8 @@
+{
+  "stage": "Z3",
+  "central_sha": "b3f1a3ab9c614ce65331ff71b770ff3774ea6489",
+  "target_branch": "work/orca-z3-product-experience-clean-20260725",
+  "previous_gate": "Z2",
+  "previous_pr": 81,
+  "previous_head_sha": "f21f738404081c49d2890df74c7af0eace5947a1"
+}
