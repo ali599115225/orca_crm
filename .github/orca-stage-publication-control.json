@@ -1,8 +1,8 @@
 {
-  "stage": "Z3",
-  "central_sha": "b3f1a3ab9c614ce65331ff71b770ff3774ea6489",
-  "target_branch": "work/orca-z3-product-experience-clean-20260725",
-  "previous_gate": "Z2",
-  "previous_pr": 81,
-  "previous_head_sha": "f21f738404081c49d2890df74c7af0eace5947a1"
+  "stage": "Z4",
+  "central_sha": "d53123869824103e10b19fb2484845d312b3ef2b",
+  "target_branch": "work/orca-z4-data-architecture-clean-20260725",
+  "previous_gate": "Z3",
+  "previous_pr": 83,
+  "previous_head_sha": "8b53fc5d51482dfaefa317c3ec2a88b8f6e96996"
 }
