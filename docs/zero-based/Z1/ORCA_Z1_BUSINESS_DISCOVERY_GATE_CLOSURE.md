@@ -1,12 +1,13 @@
 # ORCA Z1 — Business Discovery Gate Closure
 
 - **Document ID:** ORCA-Z1-CLOSE-001
-- **Version:** 1.1 — CI Revalidation
+- **Version:** 1.2 — Security Base Reconciliation
 - **Date:** 2026-07-22
 - **Status:** `PASS / CLOSED WITH OWNER DECISIONS CARRIED FORWARD`
 - **Repository:** `ali599115225/orca_crm`
 - **Branch:** `work/orca-z1-business-discovery-20260721`
-- **Parent central SHA:** `92c34a0cf578d9462f9325216fffb6b0edb88e77`
+- **Parent central SHA:** `d3bd565fd1d1f5df484814556c056765d45b392a`
+- **Security unblocker:** `PR #76 / merged as d3bd565fd1d1f5df484814556c056765d45b392a`
 - **Production action authorized:** `false`
 
 ## 1. Gate objective
@@ -151,21 +152,23 @@ Work that does not depend on these choices may continue through Z2–Z6 using th
 ## 10. Gate acceptance evidence
 
 - Z0 is merged into the zero-based central branch.
-- Security advisory unblocker was separately fixed and merged into the central branch.
+- Security advisory unblocker PR #76 passed ORCA CI, dependency audit, recovery/build evidence, and final-head Vercel Preview.
+- PR #76 is merged into the zero-based central branch as `d3bd565fd1d1f5df484814556c056765d45b392a`.
 - No Runtime or database file is changed by Z1.
 - No current code is treated as the target business definition.
 - Actual organization and licenses are not invented.
 - Capability, process, persona, scope, and traceability evidence are present.
 - High-risk boundaries remain unchanged.
 
-## 11. CI revalidation note
+## 11. Final base and validation reconciliation
 
-This revision makes no substantive change to the Z1 business contract. It records a clean revalidation trigger after the previous Vercel Preview check was blocked solely by the external Hobby build-rate quota. ORCA CI had already completed successfully. No Runtime, database, provider, environment, `main`, or Production action is introduced.
+This revision aligns the Z1 closure record with the security-unblocked central base. It does not change the Z1 business contract. Central merge still requires ORCA CI and Vercel to be green on this exact final documentation head. No Runtime, database, provider, environment, `main`, or Production action is introduced.
 
 ## 12. Gate decision
 
 ```text
-Z1 BUSINESS DISCOVERY: PASS / CLOSED
+Z1 BUSINESS DISCOVERY: PASS / CLOSED IN STAGE
+SECURITY-UNBLOCKED CENTRAL BASE: RECONCILED
 CAPABILITY MAP: COMPLETE
 REFERENCE ORGANIZATION MODEL: COMPLETE
 PERSONA REGISTRY: COMPLETE
@@ -174,10 +177,11 @@ RECOMMENDED RELEASE 1 SCOPE: COMPLETE
 INITIAL REQUIREMENTS TRACEABILITY: COMPLETE
 OWNER DECISIONS: REGISTERED WITH SAFE DEFAULTS
 CURRENT-SYSTEM CONFORMANCE: NOT ASSESSED UNTIL Z7
+CENTRAL MERGE: REQUIRES FINAL-HEAD GREEN CHECKS
 BUILD AUTHORIZATION: NO
 RUNTIME CHANGE: NONE
 DATABASE CHANGE: NONE
 MAIN MERGE: NOT AUTHORIZED / NOT PERFORMED
 PRODUCTION ACTION: NONE
-NEXT AUTHORIZED GATE: Z2 — DOMAIN CONTRACTS
+NEXT AUTHORIZED GATE AFTER CENTRAL MERGE: Z2 — DOMAIN CONTRACTS
 ```
