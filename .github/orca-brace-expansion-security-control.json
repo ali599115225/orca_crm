@@ -1,0 +1,10 @@
+{
+  "central_sha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
+  "target_branch": "work/orca-brace-expansion-security-fix-20260725",
+  "affected_package": "brace-expansion",
+  "from_version": "5.0.7",
+  "to_version": "5.0.8",
+  "advisory": "GHSA-mh99-v99m-4gvg",
+  "automatic_broad_fix_authorized": false,
+  "main_or_production_authorized": false
+}
