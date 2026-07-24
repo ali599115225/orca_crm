@@ -1,0 +1,188 @@
+name: ORCA Zero-Based Final Gates Publication
+
+on:
+  pull_request:
+    branches:
+      - work/orca-final-gates-publication-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: orca-zero-based-final-gates-publication-20260725
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-final-gates-publication-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BUNDLE_PATH: .github/orca-final-gate-publication-bundle.json
+    steps:
+      - name: Checkout publication control
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate and preserve bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$BUNDLE_PATH"
+          python -m json.tool "$BUNDLE_PATH" >/dev/null
+          cp "$BUNDLE_PATH" /tmp/orca-final-gate-publication-bundle.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('/tmp/orca-final-gate-publication-bundle.json').read_text())
+          required={'stage','central_sha','target_branch','commit_message','expected_document_files','previous_gate','stage_summary','files'}
+          missing=sorted(required-set(b))
+          if missing: raise SystemExit(f'Missing keys: {missing}')
+          if b['stage'] not in {'Z7','Z8'}: raise SystemExit('Only Z7 or Z8 is allowed')
+          if not b['target_branch'].startswith('work/orca-'): raise SystemExit('Unexpected target branch')
+          if len(b['files']) != b['expected_document_files']: raise SystemExit('Document count mismatch')
+          paths=[x['path'] for x in b['files']]
+          if len(paths) != len(set(paths)): raise SystemExit('Duplicate publication paths')
+          prefix=f"docs/zero-based/{b['stage']}/"
+          if not all(p.startswith(prefix) for p in paths): raise SystemExit('Cross-stage publication path detected')
+          Path('/tmp/stage').write_text(b['stage'])
+          Path('/tmp/central_sha').write_text(b['central_sha'])
+          Path('/tmp/target_branch').write_text(b['target_branch'])
+          PY
+
+      - name: Create isolated branch from declared central
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          git fetch --no-tags origin "$CENTRAL_SHA"
+          git cat-file -e "$CENTRAL_SHA^{commit}"
+          if git ls-remote --exit-code --heads origin "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
+            echo "Target branch already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git switch --detach "$CENTRAL_SHA"
+          git switch -c "$TARGET_BRANCH"
+
+      - name: Materialize exact documents and reconcile ledger
+        shell: python
+        run: |
+          import base64, json
+          from pathlib import Path
+
+          bundle=json.loads(Path('/tmp/orca-final-gate-publication-bundle.json').read_text())
+          stage=bundle['stage']
+          central=bundle['central_sha']
+
+          for item in bundle['files']:
+              target=Path(item['path'])
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(base64.b64decode(item['content_b64']))
+
+          ledger_path=Path('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json')
+          ledger=json.loads(ledger_path.read_text())
+          ledger['schemaVersion']=max(int(ledger.get('schemaVersion',0))+1, 9 if stage=='Z7' else 10)
+          ledger['zeroBasedCentralSha']=central
+          ledger['currentGate']=f'{stage}_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE'
+          ledger['mainMergeAuthorized']=False
+          ledger['productionActionAuthorized']=False
+
+          prev=bundle['previous_gate']
+          for row in ledger.get('stages',[]):
+              if row.get('id')==prev['id']:
+                  row['status']='PASS / CLOSED / MERGED TO CENTRAL'
+                  row['pullRequest']=prev['pull_request']
+                  row['finalHeadSha']=prev['final_head_sha']
+                  row['centralMergeSha']=prev['central_merge_sha']
+                  row['centralMergeAllowed']=True
+                  row['blockingChecks']={'orcaCi':prev['orca_ci'],'vercel':prev['vercel'],'mergeCompleted':True}
+
+          current=None
+          for row in ledger.get('stages',[]):
+              if row.get('id')==stage:
+                  current=row
+                  break
+          if current is None:
+              current={'id':stage,'name':'Current-System Gap' if stage=='Z7' else 'Execution Authorization'}
+              ledger.setdefault('stages',[]).append(current)
+
+          summary=bundle['stage_summary']
+          current.update({
+              'status':f'PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE',
+              'stageBranch':bundle['target_branch'],
+              'baseCentralSha':central,
+              'pullRequest':'ASSIGNED_AFTER_PUBLICATION',
+              'publicationCommitRef':'THIS_SINGLE_COMMIT',
+              'publicationScopeFiles':bundle['expected_document_files']+1,
+              'runtimeChanged':False,
+              'databaseChanged':False,
+              'productionAction':False,
+              'centralMergeAllowed':False,
+              'blockingChecks':{'orcaCi':'PENDING_FINAL_HEAD','vercel':'PENDING_FINAL_HEAD','mergeAllowed':False}
+          })
+          if stage=='Z7':
+              current.update({
+                  'currentComponentsClassified':summary['assessmentUnits'],
+                  'gapsRegistered':summary['classifiedGaps'],
+                  'p0Gaps':summary['p0Gaps'],
+                  'p1Gaps':summary['p1Gaps'],
+                  'p2Gaps':summary['p2Gaps'],
+                  'dispositions':summary['dispositions'],
+                  'repositoryEvidenceArtifactId':summary['evidenceArtifactId'],
+                  'repositoryEvidenceDigest':summary['evidenceDigest'],
+                  'unpublishedDependencySecurityCandidate':summary['unpublishedDependencySecurityCandidate'],
+                  'currentImplementationFullyConformant':False,
+                  'z8PreparationAuthorized':True
+              })
+          else:
+              current.update({
+                  'authorizedPackages':summary['authorizedPackages'],
+                  'immediatePackages':summary['immediatePackages'],
+                  'conditionalPackages':summary['conditionalPackages'],
+                  'deferredPackages':summary['deferredPackages'],
+                  'productionActivationAuthorized':False,
+                  'mainMergeAuthorized':False,
+                  'zeroBasedPlanClosurePrepared':True
+              })
+
+          ledger.setdefault('unpublishedPreparation',{})['currentPublicationStage']=stage
+          ledger['unpublishedPreparation']['actualCentralParentSha']=central
+          ledger['lastClosedGate']={
+              'id':prev['id'],
+              'pullRequest':prev['pull_request'],
+              'finalHeadSha':prev['final_head_sha'],
+              'centralMergeSha':prev['central_merge_sha'],
+              'orcaCi':prev['orca_ci'],
+              'vercel':prev['vercel'],
+              'scopeFiles':prev['scope_files']
+          }
+          ledger_path.write_text(json.dumps(ledger,ensure_ascii=False,indent=2)+'\n')
+
+      - name: Verify and push one clean stage commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$(cat /tmp/stage)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          EXPECTED_DOCS="$(python -c "import json;print(json.load(open('/tmp/orca-final-gate-publication-bundle.json'))['expected_document_files'])")"
+          COMMIT_MESSAGE="$(python -c "import json;print(json.load(open('/tmp/orca-final-gate-publication-bundle.json'))['commit_message'])")"
+          git config user.name "ORCA Zero-Based Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add "docs/zero-based/$STAGE" docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json
+          git diff --cached --check
+          mapfile -t changed < <(git diff --cached --name-only)
+          expected_total=$((EXPECTED_DOCS + 1))
+          test "${#changed[@]}" -eq "$expected_total"
+          for path in "${changed[@]}"; do
+            if [[ "$path" != "docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json" && "$path" != docs/zero-based/$STAGE/* ]]; then
+              echo "Unexpected path: $path"
+              exit 1
+            fi
+          done
+          git commit -m "$COMMIT_MESSAGE"
+          test "$(git rev-list --count "$CENTRAL_SHA..HEAD")" -eq 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
