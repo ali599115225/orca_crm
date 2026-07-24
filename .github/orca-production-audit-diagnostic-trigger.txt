@@ -1,0 +1,1 @@
+run production audit diagnostic for Z7 final head
