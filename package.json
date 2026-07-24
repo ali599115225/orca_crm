@@ -69,7 +69,8 @@
         "fast-uri": "4.1.1",
         "find-my-way": "9.7.0",
         "postcss": "$postcss",
-        "sharp": "0.35.3"
+        "sharp": "0.35.3",
+        "valibot": "1.4.2"
     },
     "prisma": {
         "seed": "tsx prisma/seed.ts"
