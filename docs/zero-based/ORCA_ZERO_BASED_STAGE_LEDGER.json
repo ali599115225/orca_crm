@@ -7,7 +7,7 @@
   "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
   "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
   "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
-  "zeroBasedCentralSha": "d53123869824103e10b19fb2484845d312b3ef2b",
+  "zeroBasedCentralSha": "3a34e6854347505a3dc4b935c335c697bfc1d008",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "multiCompanySaasInScope": false,
   "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
@@ -15,7 +15,7 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "Z4_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
+  "currentGate": "Z5_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
@@ -190,7 +190,7 @@
     {
       "id": "Z4",
       "name": "Data, Integration & Architecture",
-      "status": "PASS / CLOSED AS Z4 TARGET PLANNING BASELINE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
+      "status": "PASS / CLOSED / MERGED TO CENTRAL",
       "candidateSha": "5d543ced2f74412adc9eeb036b6614d9ddfb6e73",
       "independentReviewPreparationSha": "136e63d22b53ba5ce540efbd400ae30c03111ac7",
       "originalRequirements": 40,
@@ -199,23 +199,25 @@
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": false,
+      "centralMergeAllowed": true,
       "stageBranch": "work/orca-z4-data-architecture-clean-20260725",
       "baseCentralSha": "d53123869824103e10b19fb2484845d312b3ef2b",
-      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "pullRequest": 84,
       "planningClosure": true,
       "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED APPROVAL",
       "blockingChecks": {
-        "orcaCi": "PENDING_FINAL_HEAD",
-        "vercel": "PENDING_FINAL_HEAD",
-        "mergeAllowed": false
+        "orcaCi": "SUCCESS",
+        "vercel": "SUCCESS",
+        "mergeCompleted": true
       },
-      "ownerAndVendorDecisionsDeferredExplicitly": true
+      "ownerAndVendorDecisionsDeferredExplicitly": true,
+      "finalHeadSha": "b4a3c5c11ad43c82afbe3714ad566c2e988bf1c9",
+      "centralMergeSha": "3a34e6854347505a3dc4b935c335c697bfc1d008"
     },
     {
       "id": "Z5",
       "name": "Security & Quality",
-      "status": "TEXT PLANNING COMPLETE IN STACKED CANDIDATE — DIRECT SUPPLEMENTAL TEST CATALOGUE PREPARED — SEQUENTIAL CLOSURE BLOCKED",
+      "status": "PASS / CLOSED AS Z5 TARGET PLANNING BASELINE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
       "candidateSha": "7153e9b041dc61ba30277044bafc488ed297e3b2",
       "independentReviewAddendumCandidateSha": "da747f57b3cc9eccc27d5ebc6ffff31f18f726c2",
       "supplementalTestCataloguePreparationSha": "a4935db66ebc7de0d965de0117d4466865998de9",
@@ -228,7 +230,18 @@
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": false
+      "centralMergeAllowed": false,
+      "stageBranch": "work/orca-z5-security-quality-clean-20260725",
+      "baseCentralSha": "3a34e6854347505a3dc4b935c335c697bfc1d008",
+      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "planningClosure": true,
+      "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED APPROVAL",
+      "blockingChecks": {
+        "orcaCi": "PENDING_FINAL_HEAD",
+        "vercel": "PENDING_FINAL_HEAD",
+        "mergeAllowed": false
+      },
+      "currentCoverageClaimed": false
     },
     {
       "id": "Z6",
@@ -279,9 +292,9 @@
     },
     "cleanPublicationPlanSha": "cfd4f2ee8e0bce9383ffe3468a37f5b0d2540329",
     "masterPlanComplianceAuditSha": "2b7c483a9ba23ab407d65c55558d630429d0f03e",
-    "currentPublicationStage": "Z4",
+    "currentPublicationStage": "Z5",
     "actualPostZ1CentralSha": "8bef279d2a32b8b054d43f3905a8860dbf0aba6e",
-    "actualCentralParentSha": "d53123869824103e10b19fb2484845d312b3ef2b"
+    "actualCentralParentSha": "3a34e6854347505a3dc4b935c335c697bfc1d008"
   },
   "masterPlanCompliance": {
     "mandatoryRegistersMapped": 25,
