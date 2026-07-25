@@ -3,15 +3,23 @@ import { NextRequest } from "next/server";
 
 vi.mock("server-only", () => ({}));
 
-const authMocks = vi.hoisted(() => ({
-  requireAuth: vi.fn(),
-  hasDatabaseRole: vi.fn(),
-  unauthorizedResponse: vi.fn(() => new Response("unauthorized", { status: 401 })),
-  forbiddenResponse: vi.fn(() => new Response("forbidden", { status: 403 })),
+const authMocks = vi.hoisted(() => ({ requireAuth: vi.fn() }));
+const bootstrapMocks = vi.hoisted(() => ({
+  findUserEmail: vi.fn(),
+  findUserRole: vi.fn(),
+  findTenantActive: vi.fn(),
+}));
+const databaseState = vi.hoisted(() => ({
+  userPresent: true,
+  userTenantId: "tenant-1",
+  role: "ADMIN",
+  tenantActive: true,
 }));
 const sessionMocks = vi.hoisted(() => ({ getSession: vi.fn() }));
 const tenantMocks = vi.hoisted(() => ({
-  runWithTenantContext: vi.fn(async (_context: unknown, operation: () => unknown) => await operation()),
+  runWithTenantContext: vi.fn(
+    async (_context: unknown, operation: () => unknown) => await operation(),
+  ),
   setTenantContext: vi.fn(),
 }));
 const prismaMocks = vi.hoisted(() => ({ invoiceFindFirst: vi.fn() }));
@@ -20,12 +28,15 @@ const qrMocks = vi.hoisted(() => ({
   formatInvoiceLabel: vi.fn(() => "INV-2026-1"),
 }));
 
-vi.mock("@/lib/api-auth-guard", () => ({
-  requireAuth: authMocks.requireAuth,
-  hasDatabaseRole: authMocks.hasDatabaseRole,
-  unauthorizedResponse: authMocks.unauthorizedResponse,
-  forbiddenResponse: authMocks.forbiddenResponse,
+vi.mock("@/lib/system-prisma-boundary", () => ({
+  authBootstrapFindUserEmail: bootstrapMocks.findUserEmail,
+  authBootstrapFindUserRole: bootstrapMocks.findUserRole,
+  authBootstrapFindTenantActive: bootstrapMocks.findTenantActive,
 }));
+vi.mock("@/lib/api-auth-guard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth-guard")>();
+  return { ...actual, requireAuth: authMocks.requireAuth };
+});
 vi.mock("@/lib/session", () => ({ getSession: sessionMocks.getSession }));
 vi.mock("@/lib/tenant-context", () => ({
   runWithTenantContext: tenantMocks.runWithTenantContext,
@@ -35,19 +46,19 @@ vi.mock("@/lib/prisma", () => ({
   prisma: { invoice: { findFirst: prismaMocks.invoiceFindFirst } },
 }));
 vi.mock("qrcode", () => ({ default: { toBuffer: qrMocks.toBuffer } }));
-vi.mock("@/lib/zatca/qr", () => ({ formatInvoiceLabel: qrMocks.formatInvoiceLabel }));
-vi.mock("@/lib/http-error-response", () => ({
-  httpErrorResponse: vi.fn(() => new Response("internal-error", { status: 500 })),
-}));
-vi.mock("@/lib/errors", () => ({
-  ErrorCode: { INTERNAL_ERROR: "INTERNAL_ERROR" },
+vi.mock("@/lib/zatca/qr", () => ({
+  formatInvoiceLabel: qrMocks.formatInvoiceLabel,
 }));
 
 import { GET as readPaylinkStatus } from "@/app/api/v1/invoices/[id]/paylink/status/route";
 import { GET as readInvoicePdf } from "@/app/api/v1/invoices/[id]/pdf/route";
 import { GET as readInvoiceQr } from "@/app/api/v1/invoices/[id]/qr/route";
 
-const SESSION = Object.freeze({ userId: "user-1", tenantId: "tenant-1", role: "ADMIN" });
+const SESSION = Object.freeze({
+  userId: "user-1",
+  tenantId: "tenant-1",
+  role: "ADMIN",
+});
 
 function req(url: string): NextRequest {
   return new NextRequest(url, {
@@ -60,9 +71,27 @@ function req(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  databaseState.userPresent = true;
+  databaseState.userTenantId = SESSION.tenantId;
+  databaseState.role = "ADMIN";
+  databaseState.tenantActive = true;
+
   authMocks.requireAuth.mockResolvedValue(SESSION);
-  authMocks.hasDatabaseRole.mockResolvedValue(true);
   sessionMocks.getSession.mockResolvedValue(SESSION);
+  bootstrapMocks.findUserEmail.mockResolvedValue(null);
+  bootstrapMocks.findUserRole.mockImplementation(
+    async (userId: string, tenantId: string) => {
+      if (!databaseState.userPresent) return null;
+      if (userId !== SESSION.userId) return null;
+      if (tenantId !== databaseState.userTenantId) return null;
+      return { role: databaseState.role };
+    },
+  );
+  bootstrapMocks.findTenantActive.mockImplementation(async (tenantId: string) =>
+    databaseState.tenantActive && tenantId === SESSION.tenantId
+      ? { id: tenantId }
+      : null,
+  );
   prismaMocks.invoiceFindFirst.mockResolvedValue(null);
 });
 
@@ -77,6 +106,16 @@ describe("EXEC-003 P1 sensitive-read contract-level behavior", () => {
     expect(prismaMocks.invoiceFindFirst).not.toHaveBeenCalled();
   });
 
+  it("DIRECT_BEHAVIORAL EXEC-003-C22-O01 returns 403 when the database user is missing", async () => {
+    databaseState.userPresent = false;
+    const response = await readPaylinkStatus(
+      req("http://localhost/api/v1/invoices/invoice-1/paylink/status"),
+      { params: Promise.resolve({ id: "invoice-1" }) },
+    );
+    expect(response.status).toBe(403);
+    expect(prismaMocks.invoiceFindFirst).not.toHaveBeenCalled();
+  });
+
   it("DIRECT_BEHAVIORAL EXEC-003-C22-O01 reaches the tenant-scoped Paylink status lookup", async () => {
     const response = await readPaylinkStatus(
       req("http://localhost/api/v1/invoices/invoice-1/paylink/status"),
@@ -84,7 +123,9 @@ describe("EXEC-003 P1 sensitive-read contract-level behavior", () => {
     );
     expect(response.status).toBe(404);
     expect(prismaMocks.invoiceFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "invoice-1", tenantId: SESSION.tenantId } }),
+      expect.objectContaining({
+        where: { id: "invoice-1", tenantId: SESSION.tenantId },
+      }),
     );
   });
 
@@ -106,7 +147,9 @@ describe("EXEC-003 P1 sensitive-read contract-level behavior", () => {
     );
     expect(response.status).toBe(404);
     expect(prismaMocks.invoiceFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "invoice-1", tenantId: SESSION.tenantId } }),
+      expect.objectContaining({
+        where: { id: "invoice-1", tenantId: SESSION.tenantId },
+      }),
     );
   });
 
@@ -127,7 +170,9 @@ describe("EXEC-003 P1 sensitive-read contract-level behavior", () => {
     );
     expect(response.status).toBe(404);
     expect(prismaMocks.invoiceFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "invoice-1", tenantId: SESSION.tenantId } }),
+      expect.objectContaining({
+        where: { id: "invoice-1", tenantId: SESSION.tenantId },
+      }),
     );
   });
 });
