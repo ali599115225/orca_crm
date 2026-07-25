@@ -136,7 +136,7 @@
       "freezeContract": "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_FREEZE.md",
       "assignmentObject": "lib/auth/exec-003-permission-assignments.ts",
       "sharedGuard": "lib/auth/exec-003-shared-guard.ts",
-      "currentSlice": "SHARED_GUARD_IMPLEMENTED_PENDING_ORCA_CI",
+      "currentSlice": "SHARED_GUARD_IMPLEMENTED",
       "securityInvariant": "NEW RBAC MUST NOT EXPAND LEGACY ACCESS",
       "effectiveAllow": "legacyRoleAllows AND progressivePermissionAllows",
       "frozenContractCount": 25,
