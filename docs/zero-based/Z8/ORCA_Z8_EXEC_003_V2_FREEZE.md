@@ -3,11 +3,13 @@
 - **Document ID:** `ORCA-Z8-EXEC-003-V2-FREEZE-001`
 - **Package:** `EXEC-003 v2`
 - **Date:** `2026-07-25`
-- **Status:** `FROZEN / SHARED GUARD VERIFIED / CONTRACT WIRING SLICE AUTHORIZED`
+- **Status:** `FROZEN / SHARED GUARD VERIFIED / CONTRACT WIRING VERIFIED`
 - **Central base branch:** `work/orca-zero-based-execution-20260721`
 - **Central base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Execution branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Pull Request:** `#108`
+- **Validated executable head:** `ed7433257a334abe783d96dbd51fd3252f828556`
+- **ORCA CI:** `#352 / SUCCESS`
 - **Source gap register:** `docs/zero-based/Z7/ORCA_Z7_CLASSIFIED_GAP_REGISTER.md`
 - **Source package registry:** `docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json`
 - **Assignment object:** `lib/auth/exec-003-permission-assignments.ts`
@@ -24,34 +26,39 @@ effectiveAllow =
   progressivePermissionAllows
 
 unknown permission = DENY
+missing permission = DENY
 non-shared boundary permission = DENY in shared guard
 ```
 
-The progressive permission registry is code-only. It may preserve or narrow a legacy role set. It must never add a role or authentication channel that the current legacy control rejects.
+The progressive permission registry is code-only. It may preserve or narrow a legacy role set. It must never add a role, authentication channel, platform-owner bypass, tenant scope, or trust source that the legacy control rejects.
 
-## 2. Authorized slices
+## 2. Verified slices
 
 ### Slice A — Shared guard
 
 Completed and verified:
 
-1. freeze the exact 25 P0/P1 contracts and their source evidence;
-2. register 32 code-only permission keys and legacy/progressive assignments;
-3. implement the shared database-backed guard using intersection semantics;
-4. add executable G5 fail-closed and non-expansion tests;
-5. activate `EXEC-003 v2 / IN_EXECUTION` in the Z8 registry.
+1. froze the exact 25 P0/P1 contracts and their source evidence;
+2. registered 32 code-only permission keys and legacy/progressive assignments;
+3. implemented the shared database-backed guard using intersection semantics;
+4. added executable G5 fail-closed and non-expansion tests;
+5. activated `EXEC-003 v2 / IN_EXECUTION` in the Z8 registry.
 
 ### Slice B — Contract wiring and direct behavioral evidence
 
-Authorized in the same branch and PR:
+Completed and verified in the same branch and PR:
 
-1. wire only the 27 eligible operations across 20 frozen contracts;
-2. preserve the authentication channel of each legacy contract, including Cookie-only routes;
-3. leave the five excluded operations unchanged;
-4. add direct source-to-contract wiring evidence for all 32 operations;
-5. add Cookie-only behavioral evidence and retain the shared-guard behavioral tests;
-6. update the authoritative wiring matrix and Z8 package state;
-7. validate through targeted tests, TypeScript, GitHub ORCA CI, and diff review.
+1. wired only the 27 eligible operations across 20 frozen contracts;
+2. preserved the authentication channel of each legacy contract, including Cookie-only routes;
+3. left the five excluded operations unchanged;
+4. added direct source-to-contract wiring evidence for all 32 operations;
+5. added Cookie-only behavioral evidence and retained shared-guard behavioral tests;
+6. removed a potential Server Action platform-owner bypass that Legacy C25 never granted;
+7. reduced the direct-test backlog from 59 to 34, crediting exactly the 25 frozen contracts;
+8. reconciled the derived G5, G7, and G8 counts without changing the Production decision;
+9. validated TypeScript, audit, G5–G8, regressions, acceptance, Build, and recovery through ORCA CI #352.
+
+EXEC-003 v2 remains `IN_EXECUTION`. Completion of this slice does not authorize closing the package, merging PR #108, starting EXEC-004, changing main, or performing any Production action.
 
 ## 3. Frozen 25 contracts
 
@@ -95,27 +102,35 @@ Authorized in the same branch and PR:
 
 Rules:
 
-- `DATABASE_RBAC` and eligible authenticated tenant-session operations may use the shared guard.
-- Cookie-only legacy contracts must use the Cookie-only shared-guard entry point; Bearer must not become a new authentication channel.
+- `DATABASE_RBAC` and eligible authenticated tenant-session operations use only their matching shared-guard entry point.
+- Cookie-only legacy contracts use the Cookie-only entry point; Bearer is not accepted as a new authentication channel.
+- Standard request contracts retain the authentication channels already accepted by `requireAuth` and add database-role intersection only.
+- The strict Server Action entry point performs active tenant-user database-role intersection and has no platform-owner bypass.
 - `SIGNED_BOUNDARY` remains signature, timestamp, and replay scoped.
 - `DELEGATED_DATABASE_RBAC` remains guarded at its real downstream server boundary.
 - `SESSION_CLAIM_EXACT` remains literal, including the exact legacy string `Admin`.
+- Permission keys are static typed literals in server code and are never read from Query, Form, Header, Request body, Client state, or URL parameters.
 
 The operation-level source of truth is the assignment object and the wiring matrix.
 
 ## 5. Allowed changed paths for the contract-wiring slice
 
-### Authoritative controls and evidence
+### Authoritative controls, reconciliation, and evidence
 
 ```text
 docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_FREEZE.md
 docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_CONTRACT_WIRING_MATRIX.md
 docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
+docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md
 lib/auth/exec-003-permission-assignments.ts
 lib/auth/exec-003-shared-guard.ts
 tests/foundation/g5-exec-003-shared-guard.test.ts
 tests/foundation/g5-exec-003-cookie-guard.test.ts
 tests/foundation/g5-exec-003-contract-wiring.test.ts
+tests/foundation/g5-security-quality.test.ts
+tests/foundation/g7-remediation-reconciliation.test.ts
+scripts/g8-final-foundation-gate.mjs
+tests/foundation/g8-final-foundation-gate.test.ts
 ```
 
 ### Eligible frozen contract sources
@@ -152,13 +167,28 @@ app/api/revenue-integrity/webhook/[provider]/route.ts
 app/api/v1/leads/webhook/route.ts
 app/actions/aiClient.ts
 app/actions/logs.ts
-app/actions/aiActions.ts
-lib/agents/access.ts
 ```
 
-The last two paths are read-only evidence for delegated authorization and are not frozen contract sources to modify.
+The delegated downstream evidence sources `app/actions/aiActions.ts` and `lib/agents/access.ts` were read but not modified.
 
-## 7. Explicit exclusions
+## 7. Verified evidence accounting
+
+```text
+G4 contracts: 359
+Baseline without direct current test reference: 59
+EXEC-003 v2 credited frozen contracts: 25
+Remaining without direct current test reference: 34
+Remaining P0 security-critical gaps: 0
+Remaining P1 mutation gaps: 0
+Remaining P1 sensitive-read gaps: 0
+Remaining P2 read gaps: 16
+Remaining P3 UI gaps: 16
+Remaining P4 source-state gaps: 2
+```
+
+No unrelated same-file contract receives evidence credit. The log-read Server Action sharing `app/actions/logs.ts` with C18/C19 remains outside EXEC-003 v2 and remains in the lower-priority backlog where applicable.
+
+## 8. Explicit exclusions
 
 ```text
 Prisma schema changes: 0
@@ -176,16 +206,19 @@ Production changes: 0
 Vercel Preview: SKIP_BY_DEFAULT
 ```
 
-## 8. Acceptance for the contract-wiring slice
+## 9. Verified acceptance
 
 - all 27 eligible operations invoke the expected shared-guard entry point with a static typed key;
-- all 20 eligible contracts retain their frozen Legacy role sets;
+- all 20 eligible contracts retain their frozen Legacy role sets and authentication channels;
 - Cookie-only contracts do not accept Bearer as a new channel;
 - missing identity produces 401 and authenticated denial produces 403 where the HTTP contract applies;
-- Legacy denial always wins over a progressive allow;
-- unknown and non-shared keys fail closed;
+- tenant/user scope mismatch is denied by current database-user revalidation;
+- Legacy denial always wins over progressive allow;
+- unknown, missing, and non-shared keys fail closed;
+- strict Server Action authorization has no platform-owner privilege bypass;
 - all five excluded operations remain unchanged and retain their original security models;
 - every operation has a direct test record in the authoritative wiring matrix;
-- G5 evidence count changes only when the named contract-source test passes;
-- targeted tests, TypeScript, Foundation regressions, ORCA CI, and Build pass on the exact final head;
-- no Preview, migration, backfill, main, or Production action occurs.
+- G5 evidence credits exactly 25 frozen contracts and leaves 34 lower-priority gaps;
+- G7 and G8 consume `34 / 0 / 34` without authorizing Production;
+- TypeScript, audit, G5/G6/G7/G8, Foundation regressions, Sentinel regressions, P2 acceptance, Build, and isolated recovery drill passed on executable head `ed7433257a334abe783d96dbd51fd3252f828556` in ORCA CI #352;
+- no Preview, migration, backfill, main, Merge, or Production action occurred.
