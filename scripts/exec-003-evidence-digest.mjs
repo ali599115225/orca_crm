@@ -34,6 +34,7 @@ const REQUIRED_SUPPORT_FILES = Object.freeze([
 
 const CONFIG_FILE_PATTERN = /^vitest\.(?:config|workspace)\.[cm]?[jt]s$/;
 const SOURCE_FILE_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
+const SETUP_PROPERTY_NAMES = new Set(["setupFiles", "globalSetup"]);
 const IGNORED_DIRECTORIES = new Set([
   ".git",
   ".next",
@@ -342,6 +343,33 @@ function resolveStaticStringList(expression, source, sourceFile, root, seen = ne
   throw new Error(`Vitest setup/globalSetup value is not statically auditable`);
 }
 
+function addSetupValues({
+  expression,
+  source,
+  absolute,
+  root,
+  setupFiles,
+  propertyName,
+}) {
+  const values = resolveStaticStringList(
+    expression,
+    source,
+    absolute,
+    root,
+  );
+  for (const value of values) {
+    const setupAbsolute = value.startsWith("@/")
+      ? resolve(root, value.slice(2))
+      : resolve(dirname(absolute), value.replace(/^\.\//, ""));
+    const setupRelative = resolveExistingFile(
+      root,
+      setupAbsolute,
+      `${propertyName} file`,
+    );
+    setupFiles.add(setupRelative);
+  }
+}
+
 export function discoverVitestConfiguration(root = process.cwd()) {
   const configFiles = [...new Set(walkConfigFiles(root))].sort();
   const dependencyFiles = new Set(configFiles);
@@ -375,25 +403,35 @@ export function discoverVitestConfiguration(root = process.cwd()) {
     function visit(node) {
       if (ts.isPropertyAssignment(node)) {
         const propertyName = node.name.getText(source).replaceAll(/["']/g, "");
-        if (propertyName === "setupFiles" || propertyName === "globalSetup") {
-          const values = resolveStaticStringList(
-            node.initializer,
+        if (SETUP_PROPERTY_NAMES.has(propertyName)) {
+          addSetupValues({
+            expression: node.initializer,
             source,
             absolute,
             root,
-          );
-          for (const value of values) {
-            const setupAbsolute = value.startsWith("@/")
-              ? resolve(root, value.slice(2))
-              : resolve(dirname(absolute), value.replace(/^\.\//, ""));
-            const setupRelative = resolveExistingFile(
-              root,
-              setupAbsolute,
-              `${propertyName} file`,
-            );
-            setupFiles.add(setupRelative);
-          }
+            setupFiles,
+            propertyName,
+          });
         }
+      }
+      if (
+        ts.isShorthandPropertyAssignment(node) &&
+        SETUP_PROPERTY_NAMES.has(node.name.text)
+      ) {
+        const initializer = variableInitializer(source, node.name.text);
+        if (!initializer) {
+          throw new Error(
+            `${node.name.text} shorthand has no statically auditable initializer`,
+          );
+        }
+        addSetupValues({
+          expression: initializer,
+          source,
+          absolute,
+          root,
+          setupFiles,
+          propertyName: node.name.text,
+        });
       }
       ts.forEachChild(node, visit);
     }
