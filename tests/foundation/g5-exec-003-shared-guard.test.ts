@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 vi.mock("server-only", () => ({}));
 
 const authMocks = vi.hoisted(() => ({
-  assertServerActionRole: vi.fn(),
   forbiddenResponse: vi.fn(() => new Response("forbidden", { status: 403 })),
   hasDatabaseRole: vi.fn(),
   requireAuth: vi.fn(),
@@ -18,18 +17,23 @@ const tenantMocks = vi.hoisted(() => ({
       operation: () => unknown,
     ) => await operation(),
   ),
+  setTenantContext: vi.fn(),
 }));
 
 vi.mock("@/lib/api-auth-guard", () => ({
-  assertServerActionRole: authMocks.assertServerActionRole,
   forbiddenResponse: authMocks.forbiddenResponse,
   hasDatabaseRole: authMocks.hasDatabaseRole,
   requireAuth: authMocks.requireAuth,
   unauthorizedResponse: authMocks.unauthorizedResponse,
 }));
 
+vi.mock("@/lib/session", () => ({
+  getSession: vi.fn(),
+}));
+
 vi.mock("@/lib/tenant-context", () => ({
   runWithTenantContext: tenantMocks.runWithTenantContext,
+  setTenantContext: tenantMocks.setTenantContext,
 }));
 
 import {
@@ -72,10 +76,17 @@ describe("EXEC-003 v2 frozen permission assignments", () => {
 
     const sourceCounts = new Map<string, number>();
     for (const contract of EXEC_003_PERMISSION_ASSIGNMENTS) {
-      sourceCounts.set(contract.source, (sourceCounts.get(contract.source) ?? 0) + 1);
+      sourceCounts.set(
+        contract.source,
+        (sourceCounts.get(contract.source) ?? 0) + 1,
+      );
     }
-    expect([...sourceCounts.values()].filter((count) => count === 2)).toEqual([2]);
-    expect([...sourceCounts.values()].every((count) => count === 1 || count === 2)).toBe(true);
+    expect([...sourceCounts.values()].filter((count) => count === 2)).toEqual([
+      2,
+    ]);
+    expect(
+      [...sourceCounts.values()].every((count) => count === 1 || count === 2),
+    ).toBe(true);
   });
 
   it("registers one unique code-only permission key per operation", () => {
@@ -98,7 +109,7 @@ describe("EXEC-003 v2 frozen permission assignments", () => {
     }
   });
 
-  it("keeps non-shared boundaries and exact-claim actions fail-closed", () => {
+  it("keeps five non-shared operations fail-closed", () => {
     const nonShared = EXEC_003_OPERATION_ASSIGNMENTS.filter(
       (operation) => !operation.sharedGuardEligible,
     );
@@ -108,8 +119,12 @@ describe("EXEC-003 v2 frozen permission assignments", () => {
         (operation) => operation.progressiveAllowedRoles.length === 0,
       ),
     ).toBe(true);
+  });
 
-    expect(exec003AssignmentForPermission("revenue.webhook.ingest")).toMatchObject({
+  it("preserves signed and exact-claim classifications", () => {
+    expect(
+      exec003AssignmentForPermission("revenue.webhook.ingest"),
+    ).toMatchObject({
       legacyGuardKind: "SIGNED_BOUNDARY",
       sharedGuardEligible: false,
     });
@@ -145,7 +160,7 @@ describe("EXEC-003 v2 effective role intersection", () => {
     ).toEqual(["ADMIN", "SALES_MANAGER"]);
   });
 
-  it("does not add a progressive role that the caller legacy set omitted", () => {
+  it("does not add a progressive role omitted by Legacy", () => {
     expect(
       effectiveRolesForExec003Permission(
         ["SALES_MANAGER"],
@@ -154,25 +169,19 @@ describe("EXEC-003 v2 effective role intersection", () => {
     ).toEqual(["SALES_MANAGER"]);
   });
 
-  it("fails closed for unknown and non-shared permission keys", () => {
-    expect(
-      effectiveRolesForExec003Permission(
-        [...EXEC_003_DATABASE_ROLES],
-        "unknown.permission",
-      ),
-    ).toBeNull();
-    expect(
-      effectiveRolesForExec003Permission(
-        [...EXEC_003_DATABASE_ROLES],
-        "revenue.webhook.ingest",
-      ),
-    ).toBeNull();
-    expect(
-      effectiveRolesForExec003Permission(
-        [...EXEC_003_DATABASE_ROLES],
-        "system.logs.clear",
-      ),
-    ).toBeNull();
+  it("fails closed for unknown and non-shared keys", () => {
+    for (const key of [
+      "unknown.permission",
+      "revenue.webhook.ingest",
+      "system.logs.clear",
+    ]) {
+      expect(
+        effectiveRolesForExec003Permission(
+          [...EXEC_003_DATABASE_ROLES],
+          key,
+        ),
+      ).toBeNull();
+    }
   });
 });
 
@@ -181,7 +190,6 @@ describe("EXEC-003 v2 shared database guard", () => {
     vi.clearAllMocks();
     authMocks.requireAuth.mockResolvedValue(SESSION);
     authMocks.hasDatabaseRole.mockResolvedValue(true);
-    authMocks.assertServerActionRole.mockResolvedValue(SESSION);
   });
 
   it("returns 401 before role checks when authentication is missing", async () => {
@@ -198,14 +206,15 @@ describe("EXEC-003 v2 shared database guard", () => {
     expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
   });
 
-  it("passes only the legacy/progressive intersection to database role revalidation", async () => {
-    const allowed = await hasExec003DatabasePermission(
-      SESSION,
-      ["ADMIN", "SALES_MANAGER", "MARKETING"],
-      "contracts.cancel.execute",
-    );
+  it("passes only the legacy/progressive intersection to database revalidation", async () => {
+    await expect(
+      hasExec003DatabasePermission(
+        SESSION,
+        ["ADMIN", "SALES_MANAGER", "MARKETING"],
+        "contracts.cancel.execute",
+      ),
+    ).resolves.toBe(true);
 
-    expect(allowed).toBe(true);
     expect(authMocks.hasDatabaseRole).toHaveBeenCalledWith(SESSION, [
       "ADMIN",
       "SALES_MANAGER",
@@ -226,17 +235,24 @@ describe("EXEC-003 v2 shared database guard", () => {
   });
 
   it("fails closed before database lookup for a non-shared key", async () => {
-    const allowed = await hasExec003DatabasePermission(
-      SESSION,
-      [...EXEC_003_DATABASE_ROLES],
-      "revenue.webhook.ingest",
-    );
-
-    expect(allowed).toBe(false);
+    await expect(
+      hasExec003DatabasePermission(
+        SESSION,
+        [...EXEC_003_DATABASE_ROLES],
+        "revenue.webhook.ingest",
+      ),
+    ).resolves.toBe(false);
     expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
   });
+});
 
-  it("preserves legacy server-action role semantics for a known key", async () => {
+describe("EXEC-003 v2 strict Server Action guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMocks.hasDatabaseRole.mockResolvedValue(true);
+  });
+
+  it("allows only after current database role survives the intersection", async () => {
     await expect(
       assertExec003ServerActionPermission(
         SESSION,
@@ -245,13 +261,42 @@ describe("EXEC-003 v2 shared database guard", () => {
       ),
     ).resolves.toEqual(SESSION);
 
-    expect(authMocks.assertServerActionRole).toHaveBeenCalledWith(SESSION, [
+    expect(authMocks.hasDatabaseRole).toHaveBeenCalledWith(SESSION, [
       "ADMIN",
       "SALES_MANAGER",
     ]);
+    expect(tenantMocks.setTenantContext).toHaveBeenCalledWith({
+      tenantId: SESSION.tenantId,
+      userId: SESSION.userId,
+    });
   });
 
-  it("rejects a non-shared server-action key before legacy authorization", async () => {
+  it("does not provide a platform-owner bypass when the database denies", async () => {
+    authMocks.hasDatabaseRole.mockResolvedValue(false);
+
+    await expect(
+      assertExec003ServerActionPermission(
+        SESSION,
+        [...EXEC_003_DATABASE_ROLES],
+        "rentals.contracts.read",
+      ),
+    ).rejects.toThrow("FORBIDDEN:rentals.contracts.read");
+
+    expect(tenantMocks.setTenantContext).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing identity before database lookup", async () => {
+    await expect(
+      assertExec003ServerActionPermission(
+        null,
+        [...EXEC_003_DATABASE_ROLES],
+        "rentals.contracts.read",
+      ),
+    ).rejects.toThrow("UNAUTHORIZED");
+    expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-shared key before database authorization", async () => {
     await expect(
       assertExec003ServerActionPermission(
         SESSION,
@@ -259,8 +304,7 @@ describe("EXEC-003 v2 shared database guard", () => {
         "system.logs.clear",
       ),
     ).rejects.toThrow("FORBIDDEN:system.logs.clear");
-
-    expect(authMocks.assertServerActionRole).not.toHaveBeenCalled();
+    expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
   });
 
   it("fails closed for a runtime-unknown permission key", async () => {
@@ -271,7 +315,6 @@ describe("EXEC-003 v2 shared database guard", () => {
         "unknown.permission" as Exec003PermissionKey,
       ),
     ).rejects.toThrow("FORBIDDEN:unknown.permission");
-
-    expect(authMocks.assertServerActionRole).not.toHaveBeenCalled();
+    expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
   });
 });
