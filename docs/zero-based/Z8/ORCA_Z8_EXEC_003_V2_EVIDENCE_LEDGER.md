@@ -5,8 +5,8 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
-- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
+- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
 - **Digest algorithm:** `sha256-path-length-content-v1`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
@@ -14,13 +14,7 @@
 
 ## Executable sources of truth
 
-- `lib/auth/exec-003-permission-assignments.ts`
-- `lib/auth/exec-003-shared-guard.ts`
-- `lib/system-prisma-boundary.ts`
-- `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
-- `tests/foundation/g5-exec-003-evidence-ledger.test.ts`
-- `tests/foundation/g5-exec-003-evidence-identity.test.ts`
-- `scripts/exec-003-evidence-digest.mjs`
+The immutable evidence set contains the Assignment Registry, Shared Guard, AUTH_BOOTSTRAP boundary, all direct behavioral and guard tests, candidate Manifest, semantic gate, evidence identity test, Registry reconciliation test, and both deterministic scripts.
 
 The Manifest provides candidate metadata only. It does not grant direct credit. The semantic gate evaluates each operation and derives the credited set from operations whose validation result has no violation.
 
@@ -39,27 +33,14 @@ Each credited operation has:
 9. no final-guard mock, spy, indirect factory, alias, setup-file override, or intermediary mocked re-export;
 10. no same-file spillover or out-of-freeze credit.
 
-Forbidden final-guard replacements:
-
 ```text
-Eligible Database RBAC: hasDatabaseRole
-C17 delegated boundary: requireAgentAccess
+Eligible Database RBAC final guard: hasDatabaseRole
+C17 delegated final guard: requireAgentAccess
 ```
 
 ## Runtime and entry-point coverage
 
-`authBootstrapFindUserRole` now requires `{ id, tenantId, isActive: true }`. Actual entry-point tests prove inactive-user denial across:
-
-```text
-Route bearer-capable
-Cookie-only Route
-Server Action
-Read operation
-Mutation operation
-Sensitive read
-```
-
-Additional reviewed blockers are proven as follows:
+`authBootstrapFindUserRole` requires `{ id, tenantId, isActive: true }`. Actual entry-point tests prove inactive-user denial across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads.
 
 - C18 and C19 use independent ALLOW and DENY tests.
 - C14-O02 and C15-O02 independently reject Bearer-only requests, never call `requireAuth`, and never execute their mutations.
@@ -90,26 +71,24 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
-These values are derived from semantically validated operations, not from the number of Manifest rows or this Markdown.
+These values are derived from semantically validated operations, not from Manifest row count or this Markdown.
 
 ## Repository-bound identity
 
-The evidence identity records:
-
 ```text
-Validated implementation head: 15230ab21553b0d7992d9c66963d126c6aa16367
-Evidence digest: a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75
+Validated implementation head: f87213676c735c11782751a74435d8d752027b2c
+Evidence digest: 88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f
 Base SHA: 001b2c853e99ea055f161dcd294d968bbf25c9ad
 Checkout mode: PR_MERGE_REF
 ```
 
-CI recomputes the digest from the sorted evidence file set and fails on any addition, omission, content change, duplicate path, unsorted path list, invalid head, or stale `PENDING FINAL VALIDATION` value.
+CI recomputes the digest from the sorted evidence file set and fails on any addition, omission, content change, duplicate path, unsorted path list, invalid head, or stale `PENDING FINAL VALIDATION` value. The deterministic Registry reconciliation preserves every non-EXEC-003 package state.
 
 ## Validation
 
 ```text
-G5 executable tests: 182/182 PASS
-G5 suites: 45/45 PASS
+G5 executable tests: 184/184 PASS
+G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -122,6 +101,7 @@ P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
 Evidence digest verification: PASS
+Registry reconciliation: PASS
 ```
 
 ## Scope
