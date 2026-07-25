@@ -52,44 +52,40 @@ beforeEach(() => {
 });
 
 describe("EXEC-003 exact session-claim boundaries", () => {
-  it("DIRECT_BEHAVIORAL EXEC-003-C18-O01 keeps the exact legacy Admin claim", async () => {
+  it("DIRECT_BEHAVIORAL EXEC-003-C18-O01 ALLOW accepts the exact legacy Admin claim", async () => {
+    await expect(clearSystemLogsAction()).resolves.toEqual({ success: true });
+  });
+
+  it("DIRECT_BEHAVIORAL EXEC-003-C18-O01 DENY rejects the normalized ADMIN claim", async () => {
     logMocks.getSession.mockResolvedValue({
       userId: "user-1",
       tenantId: "tenant-1",
       role: "ADMIN",
     });
+
     await expect(clearSystemLogsAction()).resolves.toEqual({
       success: false,
       error: "Unauthorized access",
     });
-
-    logMocks.getSession.mockResolvedValue({
-      userId: "user-1",
-      tenantId: "tenant-1",
-      role: "Admin",
-    });
-    await expect(clearSystemLogsAction()).resolves.toEqual({ success: true });
+    expect(logMocks.writeFileSync).not.toHaveBeenCalled();
   });
 
-  it("DIRECT_BEHAVIORAL EXEC-003-C19-O01 keeps the exact legacy Admin claim", async () => {
+  it("DIRECT_BEHAVIORAL EXEC-003-C19-O01 ALLOW accepts Admin and reaches the logger", async () => {
+    await expect(triggerMockErrorAction("test")).resolves.toEqual({ success: true });
+    expect(logMocks.loggerError).toHaveBeenCalled();
+  });
+
+  it("DIRECT_BEHAVIORAL EXEC-003-C19-O01 DENY rejects ADMIN before the logger", async () => {
     logMocks.getSession.mockResolvedValue({
       userId: "user-1",
       tenantId: "tenant-1",
       role: "ADMIN",
     });
+
     await expect(triggerMockErrorAction("test")).resolves.toEqual({
       success: false,
       error: "Unauthorized access",
     });
     expect(logMocks.loggerError).not.toHaveBeenCalled();
-
-    logMocks.getSession.mockResolvedValue({
-      userId: "user-1",
-      tenantId: "tenant-1",
-      role: "Admin",
-      name: "Administrator",
-    });
-    await expect(triggerMockErrorAction("test")).resolves.toEqual({ success: true });
-    expect(logMocks.loggerError).toHaveBeenCalled();
   });
 });
