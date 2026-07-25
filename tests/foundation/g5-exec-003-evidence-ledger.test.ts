@@ -693,6 +693,21 @@ function assignmentTargetsExport(
   return false;
 }
 
+function isTrustedDynamicActualBinding(
+  node: ts.BinaryExpression,
+  row: Exec003BehaviorEvidenceCandidate,
+  entryObjects: Set<string>,
+): boolean {
+  return (
+    ts.isIdentifier(node.left) &&
+    node.left.text === row.entryPointLocalName &&
+    ts.isPropertyAccessExpression(node.right) &&
+    ts.isIdentifier(node.right.expression) &&
+    entryObjects.has(node.right.expression.text) &&
+    node.right.name.text === row.entryPointExport
+  );
+}
+
 function entryPointAndGuardViolations(
   source: ts.SourceFile,
   row: Exec003BehaviorEvidenceCandidate,
@@ -796,7 +811,8 @@ function entryPointAndGuardViolations(
     ) {
       if (
         ts.isIdentifier(node.left) &&
-        node.left.text === row.entryPointLocalName
+        node.left.text === row.entryPointLocalName &&
+        !isTrustedDynamicActualBinding(node, row, entryObjects)
       ) {
         violations.push(`${row.operationId} reassigns Entry Point local alias`);
       }
