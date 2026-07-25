@@ -43,17 +43,22 @@ Structural-only frozen contracts: 0
 Out-of-scope contracts credited: 0
 Operation-level spillover: 0
 Remaining gap: 34
-P0 remaining: 0
-P1 mutation remaining: 0
-P1 sensitive read remaining: 0
-P2 remaining: 16
-P3 remaining: 16
-P4 remaining: 2
 ```
 
 Contracts without a direct current test reference: **34**
 
 EXEC-003 v2 direct evidence: **25 contracts**
+
+| Priority class | Contracts without direct current test evidence |
+|---|---:|
+| `P0_SECURITY_CRITICAL_SURFACE` | 0 |
+| `P1_MUTATION_SURFACE` | 0 |
+| `P1_SENSITIVE_READ_SURFACE` | 0 |
+| `P2_READ_SURFACE` | 16 |
+| `P3_UI_SURFACE` | 16 |
+| `P4_SOURCE_STATE` | 2 |
+
+The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
 
 ## Durable dependency risk register
 
