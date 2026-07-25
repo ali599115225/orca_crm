@@ -5,16 +5,10 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
+- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
-- **ORCA CI:** `#385 / SUCCESS`
 - **Checkout mode:** `PR_MERGE_REF`
-- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
-
-CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
-
-The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
-
 
 ## Classification
 
@@ -22,14 +16,28 @@ The final documentation head and its CI identity are recorded in PR #108 after t
 |---|---|---|
 | Contract wiring test | `STRUCTURAL / SOURCE_ASSERTION` | No |
 | Shared/Cookie guard tests | `UNIT_BEHAVIOR` | No |
-| Registered entry-point tests | `DIRECT_BEHAVIORAL` | Yes, through semantic gate |
-| Ledger gate | `INTEGRATION / REGRESSION` | Enforces credit |
+| Manifest rows | `CANDIDATE_DIRECT_BEHAVIORAL` | No, candidate only |
+| Semantically validated entry-point tests | `DIRECT_BEHAVIORAL` | Yes |
+| Ledger gate | `INTEGRATION / REGRESSION` | Decides credit |
+| Evidence identity gate | `REPOSITORY_BOUND_INTEGRITY` | Binds content digest |
 
 ## Wiring result
 
-Eligible contracts invoke the actual Route Handler or Server Action and retain the real `hasDatabaseRole` decision. Lower-layer mocks are limited to session retrieval, `authBootstrapFindUserRole`, `authBootstrapFindTenantActive`, Tenant Context, downstream database/domain operations, and external systems.
+Eligible contracts invoke actual Route Handlers or Server Actions and retain the real `hasDatabaseRole`. Lower-layer mocks are limited to session retrieval, AUTH_BOOTSTRAP persistence boundaries, Tenant Context, downstream domain/database work, and external providers.
 
-C17 retains the real `requireAgentAccess`; only session retrieval, tenant-scoped user lookup, Tenant Context, and the AI provider are mocked.
+The real Database RBAC chain is:
+
+```text
+Entry point
+→ EXEC-003 shared/Cookie/Server Action guard
+→ Legacy and Progressive role intersection
+→ real hasDatabaseRole
+→ authBootstrapFindUserRole(id, tenantId, isActive=true)
+→ authBootstrapFindTenantActive
+→ downstream operation
+```
+
+C17 invokes `generateAIInsight` through the real `requireAgentAccess`; only its lower storage/context/provider dependencies are mocked.
 
 Original boundaries remain:
 
@@ -37,11 +45,27 @@ Original boundaries remain:
 - C17: delegated database RBAC.
 - C18/C19: exact Legacy `Admin`; `ADMIN` denied.
 
-The TypeScript AST gate verifies exact entry-point module/export, ALLOW/DENY invocation, downstream called/not-called assertions, Assignment Registry Permission Key/boundary/Legacy roles, forbidden final-guard mocks, no out-of-freeze credit, and no same-file spillover.
+## Reviewed blocker coverage
+
+| Blocker | Executable result |
+|---|---|
+| Inactive Database user | DENY through real `hasDatabaseRole` |
+| Entry-point inactive-user coverage | bearer route, Cookie route, Server Action, read, mutation, sensitive read |
+| C18 | independent ALLOW `Admin` and DENY `ADMIN` |
+| C19 | independent ALLOW with logger reach and DENY before logger |
+| C14-O02 | independent Bearer-only DENY; `requireAuth` not used; mutation not executed |
+| C15-O02 | independent Bearer-only DENY; `requireAuth` not used; mutation not executed |
+| Legacy allow + Progressive deny | actual frozen C03 entry point returns DENY |
+| Final-guard replacement | prohibited across mocks, doMocks, spies, aliases, setup files, indirect factories and re-exports |
+| Null downstream | explicit response/result assertion contract required |
+| Operation ID drift | method/route/Permission Key/boundary fingerprint pinned |
+| Evidence identity | repository-bound SHA-256 digest verified |
+
+## Derived accounting
 
 ```text
-Frozen contracts: 25/25
-Frozen operations: 32/32
+Starting strict direct credit: 3 contracts / 3 operations
+Starting remaining gap: 56
 Directly tested contracts: 25/25
 Directly tested operations: 32/32
 Full direct behavioral credit: 25 contracts / 32 operations
@@ -49,7 +73,6 @@ Partial contract-entry tests: 0
 Structural-only frozen contracts: 0
 Out-of-scope contracts credited: 0
 Same-file spillover: 0
-Baseline gap: 59
 Remaining gap: 34
 P0 remaining: 0
 P1 mutation remaining: 0
@@ -59,9 +82,11 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
+## Validation
+
 ```text
-G5 executable tests: 157/157 PASS
-G5 suites: 36/36 PASS
+G5 executable tests: 182/182 PASS
+G5 suites: 45/45 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -73,6 +98,7 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence digest verification: PASS
 ```
 
 EXEC-003 remains `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`. Next authorized step: `INDEPENDENT RE-REVIEW ONLY`.
