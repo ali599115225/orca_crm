@@ -89,6 +89,30 @@ describe("EXEC-003 AUTH_BOOTSTRAP active-user boundary", () => {
     });
   });
 
+  it("AUTH_BOOTSTRAP_DATABASE_EXCEPTION returns null and fails closed", async () => {
+    rawMocks.userFindFirst.mockRejectedValueOnce(
+      new Error("simulated database failure"),
+    );
+
+    await expect(
+      authBootstrapFindUserRole(SESSION.userId, SESSION.tenantId),
+    ).resolves.toBeNull();
+
+    expect(rawMocks.userFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: SESSION.userId,
+        tenantId: SESSION.tenantId,
+        isActive: true,
+      },
+      select: { role: true },
+    });
+
+    rawMocks.userFindFirst.mockRejectedValueOnce(
+      new Error("simulated database failure"),
+    );
+    await expect(hasDatabaseRole(SESSION, ["ADMIN"])).resolves.toBe(false);
+  });
+
   it("DATABASE_RBAC_ACTIVE_USER_DENIAL rejects an inactive user", async () => {
     databaseState.userActive = false;
 
