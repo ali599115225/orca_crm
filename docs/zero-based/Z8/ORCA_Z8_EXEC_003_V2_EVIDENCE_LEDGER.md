@@ -1,157 +1,87 @@
 # ORCA Z8 — EXEC-003 v2 Semantic Behavioral Evidence Ledger
 
-- **Document ID:** `ORCA-Z8-EXEC-003-V2-EVIDENCE-LEDGER-001`
 - **Package:** `EXEC-003 v2`
-- **Slice:** `NARROW_EVIDENCE_REMEDIATION`
-- **Package state:** `IN_EXECUTION / BLOCKED`
-- **PR state:** `DRAFT / OPEN / UNMERGED`
-- **Evidence head SHA:** `PENDING FINAL VALIDATION`
-- **ORCA CI:** `PENDING FINAL VALIDATION`
-- **CI checkout mode:** `PENDING FINAL VALIDATION`
-- **Synthetic merge SHA:** `PENDING FINAL VALIDATION`
-- **Base SHA:** `PENDING FINAL VALIDATION`
-- **CI statement:** `PENDING FINAL VALIDATION`
+- **State:** `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`
+- **PR:** `#108 / DRAFT / OPEN / UNMERGED`
+- **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
+- **Base:** `work/orca-zero-based-execution-20260721`
+- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
+- **ORCA CI:** `#385 / SUCCESS`
+- **Checkout mode:** `PR_MERGE_REF`
+- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
 
-## Source of truth
+CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
 
-Direct behavioral credit is derived from the executable typed manifest:
+The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
 
-`tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
 
-The semantic integrity gate is:
+## Executable source of truth
 
-`tests/foundation/g5-exec-003-evidence-ledger.test.ts`
+- `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
+- `tests/foundation/g5-exec-003-evidence-ledger.test.ts`
+- `lib/auth/exec-003-permission-assignments.ts`
 
-Markdown is not used to calculate credit. The gate parses the registered test files as TypeScript AST and verifies that every registered operation:
+The gate parses TypeScript AST. Every Operation ID must bind its actual entry point, contain executable ALLOW and DENY tests, invoke the entry point in both, prove downstream non-execution on DENY and reachability on ALLOW, match the Permission Key/boundary/Legacy role set, avoid final-guard mocks, remain in the frozen scope, and avoid same-file spillover.
 
-1. is one of the frozen operations;
-2. binds the expected actual Route Handler or Server Action;
-3. has an executable ALLOW case;
-4. has an executable DENY case;
-5. proves downstream non-execution on denial when the boundary exposes a downstream operation;
-6. proves downstream reachability after authorization;
-7. does not mock its final security decision;
-8. uses the Assignment Registry permission key, boundary type, and Legacy role set;
-9. cannot receive credit through same-file spillover.
-
-## Evidence classification
-
-| Class | Meaning |
-|---|---|
-| `DIRECT_BEHAVIORAL` | Invokes the actual Route Handler or Server Action and traverses the registered security boundary. |
-| `STRUCTURAL / SOURCE_ASSERTION` | Wiring evidence only; never counted as direct behavioral credit. |
-| `UNIT_BEHAVIOR` | Supporting shared-guard or Cookie-guard behavior; never substitutes for contract-entry evidence. |
-
-## Current independent baseline
-
-The last independent review remains authoritative until the new semantic gate and final CI pass:
+Forbidden final-guard mocks:
 
 ```text
-Strict direct contracts: 4/25
-Strict direct operations: 4/32
-Test gap: 59 → 55
-P0 remaining: 9
-P1 mutation remaining: 6
-P1 sensitive read remaining: 6
+Eligible database-RBAC contracts: hasDatabaseRole
+C17 delegated boundary: requireAgentAccess
+```
+
+The Runtime database role lookup has no separate inactive-user predicate, so no unsupported DB state is invented. Missing user, inactive tenant, tenant mismatch, disallowed/unknown role, and unknown/missing Permission Key fail closed through the actual decision. C17 independently proves inactive-user denial through its real `isActive: true` lookup.
+
+Original boundaries: C02/C09 signed HMAC, C17 delegated RBAC, C18/C19 exact Legacy `Admin`.
+
+```text
+Frozen contracts: 25/25
+Frozen operations: 32/32
+Directly tested contracts: 25/25
+Directly tested operations: 32/32
+Full direct behavioral credit: 25 contracts / 32 operations
+Partial contract-entry tests: 0
+Structural-only frozen contracts: 0
+Out-of-scope contracts credited: 0
+Same-file spillover: 0
+Baseline gap: 59
+Remaining gap: 34
+P0 remaining: 0
+P1 mutation remaining: 0
+P1 sensitive read remaining: 0
 P2 remaining: 16
 P3 remaining: 16
 P4 remaining: 2
 ```
 
-## Pending executable result
-
-The typed manifest registers exactly:
+These values are derived from the imported typed manifest and executable AST evidence, not from this Markdown.
 
 ```text
-Frozen contracts: 25
-Frozen operations: 32
-Eligible database-RBAC contracts: 20
-Excluded contracts under original boundaries: 5
-Excluded boundary types: SIGNED_BOUNDARY, DELEGATED_DATABASE_RBAC, SESSION_CLAIM_EXACT
+G5 executable tests: 157/157 PASS
+G5 suites: 36/36 PASS
+TypeScript: PASS
+Production gate: PASS
+Production dependency audit: PASS
+G5: PASS
+G7: PASS
+G8: PASS
+Foundation regressions: PASS
+Sentinel regressions: PASS
+P2 acceptance: PASS
+Build: PASS
+Isolated recovery drill: PASS
 ```
 
-No new credit is final while identity fields remain `PENDING FINAL VALIDATION`.
-
-## Real security decisions
-
-### Database RBAC
-
-The eligible contract tests keep the real chain:
+## Scope
 
 ```text
-actual Route Handler or Server Action
-→ EXEC-003 shared guard
-→ effective Legacy/progressive role intersection
-→ hasDatabaseRole
-→ authBootstrapFindUserRole
-→ authBootstrapFindTenantActive
-→ downstream operation
-```
-
-`hasDatabaseRole` is forbidden from test mocks. Only session retrieval, AUTH_BOOTSTRAP lookups, tenant context, database/domain operations, and external dependencies may be mocked.
-
-The Runtime AUTH_BOOTSTRAP user-role lookup does not expose a distinct inactive-user predicate. Therefore database-RBAC evidence does not invent an unsupported inactive-user state. Missing user, inactive tenant, tenant mismatch, disallowed role, unknown role, and missing/unknown permission fail closed through the actual decision implementation.
-
-### Delegated boundary C17
-
-C17 invokes `generateAIInsight` with the real `requireAgentAccess`. The tests mock only session retrieval, the tenant-scoped user lookup, tenant context, and the AI provider. They prove missing session, missing user, inactive user, tenant mismatch, disallowed role, and allowed active user behavior.
-
-### Original excluded boundaries
-
-- `C02` and `C09`: real signed/HMAC boundaries.
-- `C17`: real delegated database-RBAC boundary.
-- `C18` and `C19`: exact Legacy claim `Admin`; `ADMIN` remains denied.
-
-These contracts are not connected to the shared database guard.
-
-## Operation registration
-
-The manifest derives Operation IDs in frozen Assignment Registry order:
-
-```text
-EXEC-003-C01-O01
-EXEC-003-C02-O01
-EXEC-003-C03-O01
-EXEC-003-C04-O01
-EXEC-003-C04-O02
-EXEC-003-C05-O01
-EXEC-003-C05-O02
-EXEC-003-C05-O03
-EXEC-003-C06-O01
-EXEC-003-C07-O01
-EXEC-003-C08-O01
-EXEC-003-C09-O01
-EXEC-003-C10-O01
-EXEC-003-C11-O01
-EXEC-003-C11-O02
-EXEC-003-C12-O01
-EXEC-003-C12-O02
-EXEC-003-C13-O01
-EXEC-003-C14-O01
-EXEC-003-C14-O02
-EXEC-003-C15-O01
-EXEC-003-C15-O02
-EXEC-003-C16-O01
-EXEC-003-C17-O01
-EXEC-003-C18-O01
-EXEC-003-C19-O01
-EXEC-003-C20-O01
-EXEC-003-C21-O01
-EXEC-003-C22-O01
-EXEC-003-C23-O01
-EXEC-003-C24-O01
-EXEC-003-C25-O01
-```
-
-## Scope statement
-
-```text
-Runtime changes in this remediation: 0
+Runtime files changed in this remediation: 0
 Prisma changes: 0
 Migrations: 0
 Backfills: 0
 Production data changes: 0
-Provider credential changes: 0
+Provider changes: 0
 Environment changes: 0
 UI changes: 0
 Permission key changes: 0
@@ -164,6 +94,7 @@ Skipped/focused/TODO tests: 0
 EXEC-004 work: 0
 main changes: 0
 Production changes: 0
+Vercel Preview: NOT REQUIRED
 ```
 
-Final credit and CI identity will be recorded only after the final synthetic PR merge CI succeeds against the final branch head and PR base.
+Next authorized step: `INDEPENDENT RE-REVIEW ONLY`.
