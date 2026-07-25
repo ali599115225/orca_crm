@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import type { Exec003DatabaseRole } from "@/lib/auth/exec-003-permission-assignments";
 
 vi.mock("server-only", () => ({}));
 
@@ -18,7 +19,7 @@ const databaseState = vi.hoisted(() => ({
 }));
 const progressiveState = vi.hoisted(() => ({
   permissionKey: null as string | null,
-  roles: null as readonly string[] | null,
+  roles: null as readonly Exec003DatabaseRole[] | null,
 }));
 const sessionMocks = vi.hoisted(() => ({ getSession: vi.fn() }));
 const tenantMocks = vi.hoisted(() => ({
