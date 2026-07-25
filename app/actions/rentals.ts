@@ -1,64 +1,76 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
+import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
+import { assertExec003ServerActionPermission } from "@/lib/auth/exec-003-shared-guard";
 
 export async function getRentalContractsAction() {
   try {
-    const session = await getSession();
-    if (!session) throw new Error("يجب تسجيل الدخول أولاً.");
-    const tenant = await getActiveTenant();
-    
+    const session = await assertExec003ServerActionPermission(
+      await getSession(),
+      EXEC_003_DATABASE_ROLES,
+      "rentals.contracts.read",
+    );
+
     const contracts = await prisma.contract.findMany({
       where: {
         unit: {
           project: {
-            tenantId: tenant.id
-          }
-        }
+            tenantId: session.tenantId,
+          },
+        },
       },
       include: {
         unit: true,
-        installments: true
+        installments: true,
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
 
-    const mappedRentals = contracts.map(c => {
-      const totalPaid = c.installments
-        .filter(i => i.paymentStatus === "Paid")
-        .reduce((sum, i) => sum + Number(i.amountSar), 0);
-      
-      const nextDueInstallment = c.installments
-        .filter(i => i.paymentStatus !== "Paid")
-        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())[0];
+    const mappedRentals = contracts.map((contract) => {
+      const totalPaid = contract.installments
+        .filter((installment) => installment.paymentStatus === "Paid")
+        .reduce(
+          (sum, installment) => sum + Number(installment.amountSar),
+          0,
+        );
+
+      const nextDueInstallment = contract.installments
+        .filter((installment) => installment.paymentStatus !== "Paid")
+        .sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime())[0];
 
       let status = "غير مدفوع";
-      if (totalPaid >= Number(c.totalVolumeSar)) {
+      if (totalPaid >= Number(contract.totalVolumeSar)) {
         status = "مدفوع";
-      } else if (nextDueInstallment && nextDueInstallment.dueDate < new Date()) {
+      } else if (
+        nextDueInstallment &&
+        nextDueInstallment.dueDate < new Date()
+      ) {
         status = "متأخر";
-      } else if (totalPaid > 0) {
-        status = "غير مدفوع"; // could be partially paid, but mock only has 3 states
       }
 
       return {
-        id: c.id,
-        unit: c.unit.unitNumber,
-        tenant: c.buyerName,
-        phone: c.buyerPhone,
-        rent: Number(c.totalVolumeSar),
+        id: contract.id,
+        unit: contract.unit.unitNumber,
+        tenant: contract.buyerName,
+        phone: contract.buyerPhone,
+        rent: Number(contract.totalVolumeSar),
         paid: totalPaid,
-        due: nextDueInstallment ? nextDueInstallment.dueDate.toISOString().split('T')[0] : "مكتمل",
+        due: nextDueInstallment
+          ? nextDueInstallment.dueDate.toISOString().split("T")[0]
+          : "مكتمل",
         status,
-        months: c.installments.length
+        months: contract.installments.length,
       };
     });
 
     return { success: true, rentals: mappedRentals };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching rentals:", error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "تعذر جلب العقود.",
+    };
   }
 }

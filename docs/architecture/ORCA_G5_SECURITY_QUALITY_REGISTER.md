@@ -1,120 +1,108 @@
 # ORCA G5 Security & Quality Register
 
-## Purpose
+## EXEC-003 v2 — Final C17 evidence-dependency closure
 
-This register records the repository security and quality posture established by G5. It is derived from the current source tree and the G4 contract registry. Missing evidence is retained explicitly; it is never converted into a passing result by documentation alone.
+- **State:** `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`
+- **PR:** `#108 / DRAFT / OPEN / UNMERGED`
+- **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
+- **Base:** `work/orca-zero-based-execution-20260721`
+- **Validated implementation head:** `d17acb09354a54aee7946b6de8e67a2a9b55fbd5`
+- **Evidence digest:** `1c65e04339c20ccf1d094620a741862f97e7f033388324843006265109dfc5af`
+- **Digest algorithm:** `sha256-path-length-content-v3-derived-security-dependencies`
+- **Derived evidence files:** `49`
+- **Security dependency files:** `app/actions/aiActions.ts`
+- **Base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
+- **Checkout mode:** `PR_MERGE_REF`
 
-## Repository baseline
+## Security result
 
-- G5 start SHA: `b42c41a9e2c11e1ee8436c6a70425035e45d04aa`
-- G4 contracts: **359**
-- Contracts with direct current test references: **300**
-- Contracts without a direct current test reference: **59**
-- Main baseline: `f7af072c689178d397019648ab5c21336ab259b6`
+The Manifest keeps C17's credited entry point at `@/app/actions/aiClient` / `generateAIInsight` and explicitly registers `@/app/actions/aiActions` as a security dependency. The digest fails closed on a missing, unreadable, duplicated, omitted, outside-repository, or content-mutated dependency.
 
-## Required controls
+The TypeScript AST gate proves:
 
-G5 requires the following controls on every pull request:
+```text
+aiClient imports and invokes analyzeLeadAI
+aiActions imports requireAgentAccess
+analyzeLeadAI awaits requireAgentAccess
+generateAgentJson executes only after authorization succeeds
+DENY suppresses the provider
+```
 
-1. deterministic dependency installation from `package-lock.json`;
-2. Production dependency audit at `moderate` or higher;
-3. TypeScript `--noEmit` typecheck;
-4. G3, G4, and G5 executable foundation gates;
-5. existing core, Sentinel, WhatsApp, tenant-isolation, payment, and P2 acceptance suites;
-6. production build;
-7. CodeQL analysis for Actions, JavaScript/TypeScript, and Python;
-8. Vercel preview/status validation;
-9. no focused tests (`.only`), skipped tests, or test TODOs in the accepted test tree.
+The real `requireAgentAccess` remains the delegated final guard. No C17 Runtime file was modified.
 
-## Dependency posture
+## Direct evidence accounting
 
-G5 replaces unstable or vulnerable dependency resolution with reviewed versions:
+```text
+Frozen contracts: 25
+Frozen operations: 32
+Directly tested contracts: 25/25
+Directly tested operations: 32/32
+Full direct behavioral credit: 25 contracts / 32 operations
+Partial contract-entry tests: 0
+Structural-only frozen contracts: 0
+Out-of-scope contracts credited: 0
+Operation-level spillover: 0
+Remaining gap: 34
+```
 
-- Next.js: `16.2.10`;
-- `@sentry/nextjs`: `10.67.0`;
-- React and React DOM: `18.3.1`;
-- TypeScript: `6.0.3`;
-- React/Node type packages pinned to the lockfile-compatible reviewed versions.
+Contracts without a direct current test reference: **34**
 
-Two narrow transitive overrides are retained:
+EXEC-003 v2 direct evidence: **25 contracts**
 
-- `brace-expansion` → `5.0.7`;
-- `postcss` → the direct project PostCSS specification via `$postcss`.
+| Priority class | Contracts without direct current test evidence |
+|---|---:|
+| `P0_SECURITY_CRITICAL_SURFACE` | 0 |
+| `P1_MUTATION_SURFACE` | 0 |
+| `P1_SENSITIVE_READ_SURFACE` | 0 |
+| `P2_READ_SURFACE` | 16 |
+| `P3_UI_SURFACE` | 16 |
+| `P4_SOURCE_STATE` | 2 |
 
-The overrides exist only to remove advisories still selected by transitive dependency constraints. They must remain covered by typecheck, tests, production build, CodeQL, and the blocking Production dependency audit.
+The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
 
-## Runtime source findings
+## Durable dependency risk register
 
-### Closed findings
-
-| Finding | Previous location | Resolution |
+| Dependency / control | Classification | Current handling |
 |---|---|---|
-| Insecure random Paylink idempotency key | `lib/payments/providers/paylink.ts` | Replaced `Math.random()` with Node `randomUUID()` |
-| Insecure browser payment idempotency key | `components/contracts-payments/ContractsPaymentsCenter.tsx` | Replaced both six-digit random values with `globalThis.crypto.randomUUID()` |
+| Static low-severity findings | `ACCEPTED_LOW_STATIC` | Retained under the production-audit threshold and CI gate. |
+| `brace-expansion` | Reviewed override | Registered with ownership and removal trigger. |
+| `postcss` | Reviewed override | Covered by deterministic install and production audit. |
 
-### Reviewed retained signal
+## Validation contract
 
-| Signal | Location | Disposition |
-|---|---|---|
-| Static `dangerouslySetInnerHTML` | `app/login/LoginClient.tsx` | `ACCEPTED_LOW_STATIC`: the payload is a fixed inline CSS template; the reviewed expression does not include user-controlled content. CSP/style modernization remains optional hardening, not a G5 blocker. |
+```text
+G5 executable tests: 200/200
+G5 suites: 47/47
+TypeScript: PASS
+Production gate: PASS
+Production dependency audit: PASS
+G5/G6/G7/G8: PASS required
+Foundation and Sentinel regressions: PASS required
+P2 acceptance: PASS required
+Build: PASS required
+Isolated recovery drill: PASS required
+Evidence identity and Registry reconciliation: PASS required
+```
 
-G5 blocks any current `CRITICAL` or `HIGH` runtime finding emitted by the repository scanner.
+## Scope
 
-## API boundary review
+```text
+Runtime files changed in this closure: 0
+Runtime security defects remaining: 0
+Prisma schema changes: 0
+Migrations: 0
+Backfills: 0
+Production data changes: 0
+Provider or credential changes: 0
+Environment changes: 0
+UI changes: 0
+Permission key or Legacy role changes: 0
+Authentication channel expansion: 0
+New privilege grants: 0
+EXEC-004 work: 0
+main changes: 0
+Production changes: 0
+Vercel Preview: NOT REQUIRED
+```
 
-The API inventory contains **129** routes. G5 traces authorization/security evidence through local imports rather than inspecting route files in isolation.
-
-Accepted boundary classes:
-
-- authenticated and database-revalidated tenant routes;
-- Platform Owner boundaries;
-- trusted Cron routes protected by shared-secret validation;
-- provider Webhooks protected by HMAC/signature/secret or server-to-server provider verification;
-- OAuth/return callbacks that validate signed state or revalidate the provider transaction;
-- intentionally public health/readiness routes exposing no tenant data.
-
-The following reviewed public or provider-facing boundaries are not treated as missing authentication merely because they do not use a browser session:
-
-- health/readiness routes;
-- Google/WhatsApp OAuth callbacks;
-- Paylink, N-Genius, custom-payment, WhatsApp, leads, and revenue-integrity Webhooks;
-- payment return/callback routes;
-- Cron and deployment-marker routes with secret checks.
-
-Any API outside these categories without direct or transitive security evidence is blocking.
-
-## G4 `NOT_PROVEN` classification
-
-The 59 contracts without direct current test references are classified as follows:
-
-| Priority | Count | G5 disposition |
-|---|---:|---|
-| `P0_SECURITY_CRITICAL_SURFACE` | 11 | Static security/auth boundary must be present now; direct behavioral expansion remains a named quality backlog item and is scored at G8. |
-| `P1_MUTATION_SURFACE` | 8 | Mutation source and tenant/security boundary recorded; direct behavioral expansion remains open unless already covered indirectly by acceptance suites. |
-| `P1_SENSITIVE_READ_SURFACE` | 6 | Sensitive read boundary recorded; direct response/denial tests remain open. |
-| `P2_READ_SURFACE` | 16 | Lower-risk read contract retained as `NOT_PROVEN`; prioritize only when it becomes release-critical or changes. |
-| `P3_UI_SURFACE` | 16 | Owned by visual closure/G8; not falsely marked functionally verified. |
-| `P4_SOURCE_STATE` | 2 | Route/source-state evidence retained; no standalone runtime behavior claimed. |
-
-This classification closes the ambiguity, not the missing behavioral evidence. The 59 contracts remain visible in generated G5 artifacts and feed the final foundation score.
-
-## Tooling review signals
-
-Operational scripts may legitimately use child processes or dynamic SQL APIs. These are not runtime application vulnerabilities by presence alone. They remain review-required and must preserve:
-
-- fixed executable/argument selection or no shell interpolation;
-- dry-run/default-safe behavior where data may change;
-- allowlisted table/column identifiers for dynamic SQL;
-- explicit environment/approval gates;
-- no Production execution as part of repository CI.
-
-## Quality debt retained
-
-- No standalone ESLint configuration currently exists; G5 does not invent a non-functional lint command. Typecheck, executable contracts, acceptance suites, CodeQL, and production build are the enforced current gates.
-- The 59 contracts without direct test references remain a measurable quality backlog.
-- Visual `PARTIAL`, `PARTIAL_DOCUMENTED_ISSUE`, `NOT_PROVEN`, and historical-only statuses remain owned by G8.
-- Operational backup/restore and recovery evidence remains owned by G6.
-
-## Change rule
-
-Any change to dependencies, API boundaries, runtime risk patterns, G4 contract counts, test focus/skip state, or accepted low-risk exceptions must update this register and pass the G5 executable gate. Production deployment and Production data operations are outside G5.
+EXEC-003 remains `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`. The next authorized step is `INDEPENDENT FINAL RE-REVIEW ONLY`.

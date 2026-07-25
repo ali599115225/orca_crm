@@ -114,13 +114,13 @@ describe("G7 — remediation reconciliation and closure", () => {
     expect(result.productionLaunchAuthorized).toBe(false);
   });
 
-  it("carries all direct-test gaps without hiding P0 or P1 release risk", () => {
+  it("carries all remaining direct-test gaps after EXEC-003 without hiding lower-priority debt", () => {
     const result = runG7();
     const p0p1 = result.items.find((item) => item.id === "G7-TEST-001");
     const lower = result.items.find((item) => item.id === "G7-TEST-002");
 
-    expect(result.summary.directTestGaps).toBe(59);
-    expect(result.summary.highPriorityDirectTestGaps).toBe(25);
+    expect(result.summary.directTestGaps).toBe(34);
+    expect(result.summary.highPriorityDirectTestGaps).toBe(0);
     expect(result.summary.lowerPriorityDirectTestGaps).toBe(34);
     expect(p0p1?.status).toBe("PRODUCTION_ACTIVATION_BLOCKER");
     expect(p0p1?.severity).toBe("CRITICAL");

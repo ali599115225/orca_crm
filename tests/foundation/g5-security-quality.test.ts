@@ -70,7 +70,12 @@ let cached: G5Inventory | null = null;
 
 function rebuildInventory(): G5Inventory {
   if (cached) return cached;
-  for (const script of [scripts.g4Inventory, scripts.g4Normalize, scripts.g4Reconcile, scripts.g5Inventory]) {
+  for (const script of [
+    scripts.g4Inventory,
+    scripts.g4Normalize,
+    scripts.g4Reconcile,
+    scripts.g5Inventory,
+  ]) {
     execFileSync(process.execPath, [script], { cwd: ROOT, stdio: "pipe" });
   }
   cached = JSON.parse(readFileSync(g5Path, "utf8")) as G5Inventory;
@@ -83,17 +88,31 @@ describe("G5 — Security and quality gate", () => {
 
     expect(inventory.schemaVersion).toBe(2);
     expect(inventory.summary.g4Contracts).toBe(359);
-    expect(inventory.summary.unprovenContracts).toBe(59);
-    expect(inventory.unprovenContracts).toHaveLength(59);
+    expect(inventory.summary.unprovenContracts).toBe(34);
+    expect(inventory.unprovenContracts).toHaveLength(34);
     expect(inventory.summary.unprovenByPriority).toEqual({
-      P0_SECURITY_CRITICAL_SURFACE: 11,
-      P1_MUTATION_SURFACE: 8,
-      P1_SENSITIVE_READ_SURFACE: 6,
       P2_READ_SURFACE: 16,
       P3_UI_SURFACE: 16,
       P4_SOURCE_STATE: 2,
     });
-    expect(inventory.unprovenContracts.every((contract) => contract.id && contract.priority)).toBe(true);
+    expect(
+      inventory.unprovenContracts.every(
+        (contract) => contract.id && contract.priority,
+      ),
+    ).toBe(true);
+  });
+
+  it("records direct evidence for every EXEC-003 P0/P1 frozen contract", () => {
+    const inventory = rebuildInventory();
+    expect(inventory.summary.unprovenByPriority).not.toHaveProperty(
+      "P0_SECURITY_CRITICAL_SURFACE",
+    );
+    expect(inventory.summary.unprovenByPriority).not.toHaveProperty(
+      "P1_MUTATION_SURFACE",
+    );
+    expect(inventory.summary.unprovenByPriority).not.toHaveProperty(
+      "P1_SENSITIVE_READ_SURFACE",
+    );
   });
 
   it("rejects unreviewed high or critical runtime findings", () => {
@@ -110,16 +129,26 @@ describe("G5 — Security and quality gate", () => {
         path: "app/login/LoginClient.tsx",
       }),
     ]);
-    expect(inventory.runtimeRiskFindings.some((finding) => finding.id === "INSECURE_RANDOM_SECURITY_CONTEXT")).toBe(false);
+    expect(
+      inventory.runtimeRiskFindings.some(
+        (finding) => finding.id === "INSECURE_RANDOM_SECURITY_CONTEXT",
+      ),
+    ).toBe(false);
   });
 
   it("records a security boundary for all APIs", () => {
     const inventory = rebuildInventory();
 
     expect(inventory.summary.apiRoutes).toBe(129);
-    expect(inventory.summary.apiAuthEvidenceByStatus.AUTH_EVIDENCE_NOT_DETECTED ?? 0).toBe(0);
+    expect(
+      inventory.summary.apiAuthEvidenceByStatus.AUTH_EVIDENCE_NOT_DETECTED ?? 0,
+    ).toBe(0);
     expect(inventory.apiAuthEvidence).toHaveLength(129);
-    expect(inventory.apiAuthEvidence.every((api) => api.status !== "AUTH_EVIDENCE_NOT_DETECTED")).toBe(true);
+    expect(
+      inventory.apiAuthEvidence.every(
+        (api) => api.status !== "AUTH_EVIDENCE_NOT_DETECTED",
+      ),
+    ).toBe(true);
   });
 
   it("enforces stable dependency and test controls", () => {
@@ -132,8 +161,16 @@ describe("G5 — Security and quality gate", () => {
       engines: { node: string };
     };
 
-    expect(inventory.dependencySpecs.filter((dependency) => dependency.classification === "UNBOUNDED")).toEqual([]);
-    expect(inventory.summary.testSignals).toMatchObject({ skipped: 0, focused: 0, todo: 0 });
+    expect(
+      inventory.dependencySpecs.filter(
+        (dependency) => dependency.classification === "UNBOUNDED",
+      ),
+    ).toEqual([]);
+    expect(inventory.summary.testSignals).toMatchObject({
+      skipped: 0,
+      focused: 0,
+      todo: 0,
+    });
     expect(inventory.summary.controls).toMatchObject({
       codeql: true,
       dependabot: true,
@@ -154,7 +191,9 @@ describe("G5 — Security and quality gate", () => {
       postcss: "$postcss",
     });
     expect(packageJson.scripts.typecheck).toBe("tsc --noEmit");
-    expect(packageJson.scripts["security:audit"]).toContain("npm audit --omit=dev");
+    expect(packageJson.scripts["security:audit"]).toContain(
+      "npm audit --omit=dev",
+    );
     expect(packageJson.engines.node).toBe("24.x");
   });
 
@@ -166,8 +205,10 @@ describe("G5 — Security and quality gate", () => {
     expect(workflow).toContain("npm run security:audit");
     expect(workflow).toContain("npm run typecheck");
     expect(workflow).toContain("tests/foundation/g5-*.test.ts");
-    expect(register).toContain("Contracts without a direct current test reference: **59**");
-    expect(register).toContain("P0_SECURITY_CRITICAL_SURFACE");
+    expect(register).toContain(
+      "Contracts without a direct current test reference: **34**",
+    );
+    expect(register).toContain("EXEC-003 v2 direct evidence: **25 contracts**");
     expect(register).toContain("ACCEPTED_LOW_STATIC");
     expect(register).toContain("brace-expansion");
     expect(register).toContain("postcss");

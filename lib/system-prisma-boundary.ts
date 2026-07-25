@@ -408,7 +408,7 @@ export async function authBootstrapFindUserRole(
   if (!userId || !tenantId) return null;
   try {
     return await getRawPrisma().user.findFirst({
-      where: { id: userId, tenantId },
+      where: { id: userId, tenantId, isActive: true },
       select: { role: true },
     });
   } catch {
