@@ -7,47 +7,47 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
+- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Digest algorithm:** `sha256-path-length-content-v1`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
-- **ORCA CI:** `#385 / SUCCESS`
 - **Checkout mode:** `PR_MERGE_REF`
-- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
+- **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
 
-CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
+The repository-bound identity binds the reviewed implementation head to an immutable digest of the Assignment Registry, Shared Guard, AUTH_BOOTSTRAP boundary, direct behavioral tests, manifest, semantic gate, and identity verification tooling. Later documentation-only commits must retain the same digest.
 
-The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
+## Runtime security correction
+
+`authBootstrapFindUserRole` now resolves a role only when the user matches all three predicates:
+
+```text
+id = session.userId
+tenantId = session.tenantId
+isActive = true
+```
+
+The real `hasDatabaseRole` decision therefore denies inactive users before downstream execution. No Permission Key, Legacy role set, authentication channel, tenant boundary, or privilege grant changed.
 
 ## Semantic evidence
 
-- Typed manifest: `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
+- Candidate manifest: `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
 - Semantic gate: `tests/foundation/g5-exec-003-evidence-ledger.test.ts`
-- Assignment Registry: `lib/auth/exec-003-permission-assignments.ts`
+- Identity gate: `tests/foundation/g5-exec-003-evidence-identity.test.ts`
+- AUTH_BOOTSTRAP proof: `tests/foundation/g5-exec-003-auth-bootstrap-active-user.test.ts`
+- Inactive-user matrix: `tests/foundation/g5-exec-003-entrypoint-security-matrix.test.ts`
+- Cookie mutation proof: `tests/foundation/g5-exec-003-cookie-mutation-boundary.test.ts`
 
-The semantic gate uses the TypeScript Compiler API to verify executable ALLOW and DENY tests, actual entry-point imports and invocations, downstream reachability and non-execution, exact Permission Keys and Legacy role sets, forbidden final-guard mocks, frozen-scope membership, and no same-file spillover. Markdown never calculates credit.
+The manifest describes `CANDIDATE_DIRECT_BEHAVIORAL` rows. Direct credit is granted only after the TypeScript AST gate validates distinct executable ALLOW and DENY callbacks, actual entry-point binding and invocation, explicit outcome assertions, final-guard integrity, operation fingerprints, inactive-user coverage, no same-file spillover, and frozen-scope membership.
 
-Eligible contracts retain the actual chain:
-
-```text
-Route Handler or Server Action
-→ EXEC-003 guard
-→ Legacy/progressive role intersection
-→ real hasDatabaseRole
-→ authBootstrapFindUserRole
-→ authBootstrapFindTenantActive
-→ downstream operation
-```
-
-C17 invokes `generateAIInsight` with the real `requireAgentAccess`. It proves missing session, missing user, inactive user, tenant mismatch, disallowed role, ALLOW, and provider non-execution/execution ordering.
-
-Original boundaries remain unchanged: C02/C09 signed HMAC, C17 delegated RBAC, C18/C19 exact Legacy `Admin`.
+The gate scans registered tests and configured Vitest setup files for `vi.mock`, `vi.doMock`, `vi.spyOn`, aliases, indirect factories, untrusted object spreading, wrong `vi.importActual` module paths, and mocked intermediary re-exports of `hasDatabaseRole` or `requireAgentAccess`.
 
 ## Derived accounting
 
 ```text
-Frozen contracts: 25/25
-Frozen operations: 32/32
-Directly tested contracts: 25/25
-Directly tested operations: 32/32
+Starting strict direct credit: 3 contracts / 3 operations
+Starting remaining gap: 56
+Final directly tested contracts: 25/25
+Final directly tested operations: 32/32
 Full direct behavioral credit: 25 contracts / 32 operations
 Partial contract-entry tests: 0
 Structural-only frozen contracts: 0
@@ -88,9 +88,11 @@ The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
 
 ## Validation
 
+ORCA CI on the sealed identity recorded:
+
 ```text
-G5 executable tests: 157/157 PASS
-G5 suites: 36/36 PASS
+G5 executable tests: 182/182 PASS
+G5 suites: 45/45 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -107,8 +109,9 @@ Isolated recovery drill: PASS
 ## Scope
 
 ```text
-Runtime files changed in this remediation: 0
-Prisma changes: 0
+Runtime files changed in this remediation: 1
+Runtime change: active-user predicate only
+Prisma schema changes: 0
 Migrations: 0
 Backfills: 0
 Production data changes: 0
