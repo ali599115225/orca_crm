@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "package": "EXEC-003 v2",
   "state": "IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW",
-  "validatedImplementationHead": "PENDING FINAL VALIDATION",
-  "evidenceDigest": "PENDING FINAL VALIDATION",
+  "validatedImplementationHead": "15230ab21553b0d7992d9c66963d126c6aa16367",
+  "evidenceDigest": "a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75",
   "digestAlgorithm": "sha256-path-length-content-v1",
   "evidenceFiles": [
     "lib/auth/exec-003-permission-assignments.ts",
