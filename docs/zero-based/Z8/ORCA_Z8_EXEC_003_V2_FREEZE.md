@@ -5,16 +5,11 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
+- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
-- **ORCA CI:** `#385 / SUCCESS`
 - **Checkout mode:** `PR_MERGE_REF`
-- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
-
-CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
-
-The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
-
+- **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
 
 ## Binding invariant
 
@@ -23,53 +18,48 @@ NEW RBAC MUST NOT EXPAND LEGACY ACCESS
 effectiveAllow = legacyRoleAllows AND progressivePermissionAllows
 unknown permission = DENY
 missing permission = DENY
+inactive user = DENY
 ```
 
 ## Frozen scope
 
-The frozen package contains 25 contracts and 32 operations:
+The package remains frozen at 25 contracts and 32 operations. Eligible scope is 20 contracts / 27 operations. Original excluded boundaries remain C02 and C09 `SIGNED_BOUNDARY`, C17 `DELEGATED_DATABASE_RBAC`, and C18/C19 `SESSION_CLAIM_EXACT`.
+
+Cookie-only contracts remain Cookie-only. C25 has no Platform Owner bypass. Permission Keys and Legacy role sets are unchanged.
+
+## Runtime correction
+
+The only Runtime change in this remediation is the active-user predicate in `authBootstrapFindUserRole`:
 
 ```text
-C01 finance request
-C02 revenue signed webhook
-C03 contract cancel
-C04 contract invoices GET/POST
-C05 payment plan GET/PUT/POST
-C06 restructure
-C07 sign
-C08 Paylink create
-C09 leads signed webhook
-C10 lease invoice
-C11 webhook settings GET/POST
-C12 journal entry GET/POST
-C13 accounting seed
-C14 workflows GET/POST
-C15 maintenance GET/POST
-C16 maintenance PATCH
-C17 generateAIInsight
-C18 clearSystemLogsAction
-C19 triggerMockErrorAction
-C20 payables
-C21 contract PDF
-C22 Paylink status
-C23 invoice PDF
-C24 invoice QR
-C25 getRentalContractsAction
+where: { id: userId, tenantId, isActive: true }
 ```
 
-Eligible: 20 contracts / 27 operations. Original excluded boundaries: C02 and C09 `SIGNED_BOUNDARY`; C17 `DELEGATED_DATABASE_RBAC`; C18 and C19 `SESSION_CLAIM_EXACT`.
-
-Cookie-only contracts stay Cookie-only. C25 has no Platform Owner bypass. Permission Keys remain static typed literals. Legacy role sets are unchanged.
+This closes the material inactive-user authorization defect without changing schema, data, roles, permissions, tenant isolation, or authentication channels.
 
 ## Direct evidence rule
 
-Structural wiring and guard unit tests do not earn direct credit. Direct credit requires an actual entry-point invocation, executable ALLOW and DENY cases, the real final guard, downstream non-execution on DENY, downstream reachability on ALLOW, exact Assignment Registry metadata, and no same-file spillover.
+Direct credit requires:
+
+1. a candidate Manifest row bound to a stable operation fingerprint;
+2. separate executable ALLOW and DENY tests;
+3. actual Route Handler or Server Action invocation in each test;
+4. the real final guard (`hasDatabaseRole` or `requireAgentAccess`);
+5. explicit ALLOW outcome and DENY outcome contracts;
+6. downstream execution only after ALLOW;
+7. inactive-user coverage across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads;
+8. no final-guard mock, same-file spillover, or out-of-freeze credit;
+9. a matching repository-bound evidence digest.
+
+C18 and C19 have independent ALLOW and DENY tests. C14-O02 and C15-O02 have independent Bearer-only denial tests. A frozen C03 entry point proves Legacy allow + Progressive deny = DENY.
+
+## Derived accounting
 
 ```text
-Frozen contracts: 25/25
-Frozen operations: 32/32
-Directly tested contracts: 25/25
-Directly tested operations: 32/32
+Starting strict direct credit: 3 contracts / 3 operations
+Starting remaining gap: 56
+Final directly tested contracts: 25/25
+Final directly tested operations: 32/32
 Full direct behavioral credit: 25 contracts / 32 operations
 Partial contract-entry tests: 0
 Structural-only frozen contracts: 0
@@ -85,9 +75,11 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
+## Validation
+
 ```text
-G5 executable tests: 157/157 PASS
-G5 suites: 36/36 PASS
+G5 executable tests: 182/182 PASS
+G5 suites: 45/45 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -99,13 +91,14 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence digest verification: PASS
 ```
 
 ## Scope
 
 ```text
-Runtime files changed in this remediation: 0
-Prisma changes: 0
+Runtime files changed in this remediation: 1
+Prisma schema changes: 0
 Migrations: 0
 Backfills: 0
 Production data changes: 0
