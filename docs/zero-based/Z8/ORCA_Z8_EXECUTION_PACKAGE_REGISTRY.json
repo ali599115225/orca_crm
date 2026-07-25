@@ -233,10 +233,7 @@
         },
         "validatedExecutableHead": "ed7433257a334abe783d96dbd51fd3252f828556",
         "orcaCiRun": 352,
-        "status": "SUCCESS",
-        "finalDocumentationHead": "PENDING_FINAL_DOCUMENTATION_CI",
-        "finalDocumentationCiRun": null,
-        "finalDocumentationStatus": "PENDING"
+        "status": "SUCCESS"
       }
     },
     {
