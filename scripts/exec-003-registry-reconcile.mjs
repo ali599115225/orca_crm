@@ -96,6 +96,16 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     "Legacy authentication channels, Permission Keys and Legacy role sets are unchanged",
     "C25 has no Platform Owner bypass",
   ];
+
+  // Preserve the established registry wire key exactly. The reconciler accepts
+  // either spelling as input but emits one deterministic representation.
+  const vercelRationale =
+    packageRecord.vercelValidationRationRationale ??
+    packageRecord.vercelValidationRationale ??
+    "Contract-level behavioral evidence is validated by actual entry-point tests, real final authorization decisions, a semantic AST gate, TypeScript, generated inventories, GitHub ORCA CI and diff review. Vercel is not required.";
+  packageRecord.vercelValidationRationRationale = vercelRationale;
+  delete packageRecord.vercelValidationRationale;
+
   packageRecord.directEvidence = {
     baselineUnprovenContracts: 59,
     startingStrictContracts: 3,
