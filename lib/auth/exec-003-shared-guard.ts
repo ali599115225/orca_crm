@@ -10,6 +10,7 @@ import {
   type DatabaseSessionResult,
   type SessionPayload,
 } from "@/lib/api-auth-guard";
+import { getSession } from "@/lib/session";
 import { runWithTenantContext } from "@/lib/tenant-context";
 import {
   exec003ProgressiveRolesForPermission,
@@ -28,8 +29,7 @@ export function effectiveRolesForExec003Permission(
   legacyAllowedRoles: readonly string[],
   permissionKey: string,
 ): readonly Exec003DatabaseRole[] | null {
-  const progressiveRoles =
-    exec003ProgressiveRolesForPermission(permissionKey);
+  const progressiveRoles = exec003ProgressiveRolesForPermission(permissionKey);
 
   if (!progressiveRoles) return null;
 
@@ -37,6 +37,30 @@ export function effectiveRolesForExec003Permission(
   return legacyAllowedRoles.filter(
     (role): role is Exec003DatabaseRole => progressive.has(role),
   );
+}
+
+function normalizeExec003Session(value: unknown): SessionPayload | null {
+  if (!value || typeof value !== "object") return null;
+  const session = value as Record<string, unknown>;
+  if (
+    typeof session.userId !== "string" ||
+    !session.userId ||
+    typeof session.tenantId !== "string" ||
+    !session.tenantId
+  ) {
+    return null;
+  }
+
+  return {
+    userId: session.userId,
+    tenantId: session.tenantId,
+    role: typeof session.role === "string" ? session.role : "",
+    tenantSubdomain:
+      typeof session.tenantSubdomain === "string"
+        ? session.tenantSubdomain
+        : undefined,
+    name: typeof session.name === "string" ? session.name : undefined,
+  };
 }
 
 export async function hasExec003DatabasePermission(
@@ -53,12 +77,13 @@ export async function hasExec003DatabasePermission(
   return await hasDatabaseRole(session, effectiveRoles);
 }
 
-export async function requireExec003DatabasePermissionSession(
+export async function requireExec003DatabasePermissionForSession(
+  value: unknown,
   request: NextRequest,
   legacyAllowedRoles: readonly string[],
   permissionKey: Exec003PermissionKey,
 ): Promise<DatabaseSessionResult> {
-  const session = await requireAuth(request);
+  const session = normalizeExec003Session(value);
   if (!session) {
     return {
       session: null,
@@ -81,25 +106,67 @@ export async function requireExec003DatabasePermissionSession(
   return { session, error: null };
 }
 
-export async function runWithExec003DatabasePermission(
+export async function requireExec003DatabasePermissionSession(
   request: NextRequest,
   legacyAllowedRoles: readonly string[],
   permissionKey: Exec003PermissionKey,
-  operation: (
-    session: SessionPayload,
-  ) => Promise<NextResponse> | NextResponse,
-): Promise<NextResponse> {
-  const auth = await requireExec003DatabasePermissionSession(
+): Promise<DatabaseSessionResult> {
+  return await requireExec003DatabasePermissionForSession(
+    await requireAuth(request),
     request,
     legacyAllowedRoles,
     permissionKey,
   );
+}
+
+async function runAuthorizedOperation(
+  auth: DatabaseSessionResult,
+  operation: (session: SessionPayload) => Promise<NextResponse> | NextResponse,
+): Promise<NextResponse> {
   if (auth.error) return auth.error;
 
   const session = auth.session;
   return await runWithTenantContext(
     { tenantId: session.tenantId, userId: session.userId },
     () => operation(session),
+  );
+}
+
+export async function runWithExec003DatabasePermission(
+  request: NextRequest,
+  legacyAllowedRoles: readonly string[],
+  permissionKey: Exec003PermissionKey,
+  operation: (session: SessionPayload) => Promise<NextResponse> | NextResponse,
+): Promise<NextResponse> {
+  return await runAuthorizedOperation(
+    await requireExec003DatabasePermissionSession(
+      request,
+      legacyAllowedRoles,
+      permissionKey,
+    ),
+    operation,
+  );
+}
+
+/**
+ * Preserves legacy Cookie-only authentication. Using requireAuth(request) on
+ * these contracts would also accept Bearer credentials and could expand the
+ * legacy authentication channel before RBAC is evaluated.
+ */
+export async function runWithExec003CookiePermission(
+  request: NextRequest,
+  legacyAllowedRoles: readonly string[],
+  permissionKey: Exec003PermissionKey,
+  operation: (session: SessionPayload) => Promise<NextResponse> | NextResponse,
+): Promise<NextResponse> {
+  return await runAuthorizedOperation(
+    await requireExec003DatabasePermissionForSession(
+      await getSession(),
+      request,
+      legacyAllowedRoles,
+      permissionKey,
+    ),
+    operation,
   );
 }
 
