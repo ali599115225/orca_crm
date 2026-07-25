@@ -17,7 +17,6 @@ CI validated the synthetic PR merge commit containing the validated evidence hea
 
 The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
 
-
 ## Semantic evidence
 
 - Typed manifest: `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
@@ -63,6 +62,18 @@ P2 remaining: 16
 P3 remaining: 16
 P4 remaining: 2
 ```
+
+Contracts without a direct current test reference: **34**
+
+EXEC-003 v2 direct evidence: **25 contracts**
+
+## Durable dependency risk register
+
+| Dependency / control | Classification | Current handling |
+|---|---|---|
+| Static low-severity findings | `ACCEPTED_LOW_STATIC` | Retained only under the reviewed production-audit threshold and CI gate. |
+| `brace-expansion` | Reviewed package override | Registered with ownership and removal trigger; production audit remains mandatory. |
+| `postcss` | Reviewed package override | Uses the package-managed override and remains covered by deterministic install and audit. |
 
 ## Validation
 
