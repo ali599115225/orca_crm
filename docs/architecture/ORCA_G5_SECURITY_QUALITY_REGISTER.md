@@ -10,11 +10,15 @@ This register records the repository security and quality posture established by
 - G4 contracts: **359**
 - Contracts with current test references: **325**
 - Contracts without a current test reference: **34**
+- Contracts without a direct current test reference: **34**
 - EXEC-003 v2 contract-level direct behavioral evidence: **25 contracts / 32 operations**
+- EXEC-003 v2 direct evidence: **25 contracts**
 - EXEC-003 v2 eligible wired operations: **27 operations / 20 contracts**
 - EXEC-003 v2 excluded operations tested under original boundaries: **5 operations / 5 contracts**
 - Structural-only frozen contracts after remediation: **0**
 - Main baseline: `f7af072c689178d397019648ab5c21336ab259b6`
+
+The compatibility labels “direct current test reference” and “direct evidence” are retained for the generated G5 gate. For EXEC-003, they mean the contract-entry `DIRECT_BEHAVIORAL` evidence bound by the Ledger, not the structural wiring source scan.
 
 The reduction from `59` to `34` is limited to the exact 25 frozen EXEC-003 v2 contracts. It is now supported by tests that invoke each actual Route Handler or Server Action entry point. The previous wiring test remains useful, but it is classified only as `STRUCTURAL / SOURCE_ASSERTION` and does not independently earn direct behavioral credit.
 
