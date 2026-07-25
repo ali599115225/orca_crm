@@ -1,54 +1,63 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { ErrorCode } from "@/lib/errors";
-
-async function authenticateRequest() {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
-  }
-  return null;
-}
+import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
+import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const session = await authenticateRequest();
-  if (!session) {
-    return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
-  }
+  return runWithExec003CookiePermission(
+    request,
+    EXEC_003_DATABASE_ROLES,
+    "contracts.pdf.read",
+    async (session) => {
+      const { id } = await params;
+      const { searchParams } = new URL(request.url);
+      const isDownload = searchParams.get("download") === "1";
 
-  const { searchParams } = new URL(request.url);
-  const isDownload = searchParams.get('download') === '1';
+      try {
+        const contract = await prisma.contract.findFirst({
+          where: { id, tenantId: session.tenantId },
+          include: {
+            unit: {
+              select: {
+                unitNumber: true,
+                projectId: true,
+                type: true,
+                area: true,
+                city: true,
+                district: true,
+              },
+            },
+            tenant: {
+              select: {
+                companyName: true,
+                vatNumber: true,
+                commercialRegistry: true,
+                nationalAddress: true,
+              },
+            },
+            installments: { orderBy: { installmentNumber: "asc" } },
+          },
+        });
 
-  try {
-    const contract = await prisma.contract.findFirst({
-      where: { id, tenantId: session.tenantId as string },
-      include: {
-        unit: { select: { unitNumber: true, projectId: true, type: true, area: true, city: true, district: true } },
-        tenant: { select: { companyName: true, vatNumber: true, commercialRegistry: true, nationalAddress: true } },
-        installments: { orderBy: { installmentNumber: 'asc' } },
-      },
-    });
+        if (!contract) {
+          return NextResponse.json(
+            { error: "العقد غير موجود" },
+            { status: 404 },
+          );
+        }
 
-    if (!contract) {
-      return NextResponse.json({ error: 'العقد غير موجود' }, { status: 404 });
-    }
+        const total = Number(contract.totalVolumeSar);
+        const vatRate = Number(contract.vatRate);
+        const vatAmount = (total * vatRate) / 100;
+        const grandTotal = total + vatAmount;
+        const label = `CONTRACT-${contract.id.substring(0, 8).toUpperCase()}`;
 
-    const total = Number(contract.totalVolumeSar);
-    const vatRate = Number(contract.vatRate);
-    const vatAmount = total * vatRate / 100;
-    const grandTotal = total + vatAmount;
-    const label = `CONTRACT-${contract.id.substring(0, 8).toUpperCase()}`;
-
-    const html = `<!DOCTYPE html>
+        const html = `<!DOCTYPE html>
 <html dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -94,17 +103,17 @@ export async function GET(
       <div class="seller">
         <h3>البائع / Seller</h3>
         <p><strong>${contract.tenant.companyName}</strong></p>
-        <p>الرقم الضريبي: ${contract.tenant.vatNumber || '-'}</p>
-        <p>السجل التجاري: ${contract.tenant.commercialRegistry || '-'}</p>
-        <p>${contract.tenant.nationalAddress || ''}</p>
+        <p>الرقم الضريبي: ${contract.tenant.vatNumber || "-"}</p>
+        <p>السجل التجاري: ${contract.tenant.commercialRegistry || "-"}</p>
+        <p>${contract.tenant.nationalAddress || ""}</p>
       </div>
       <div class="customer">
         <h3>المشتري / Buyer</h3>
         <p><strong>${contract.buyerName}</strong></p>
         <p>رقم الجوال: ${contract.buyerPhone}</p>
         <p>الوحدة: ${contract.unit.unitNumber}</p>
-        <p>النوع: ${contract.unit.type || '-'} | المساحة: ${contract.unit.area || '-'}</p>
-        ${contract.unit.city ? `<p>المدينة: ${contract.unit.city}${contract.unit.district ? ' - ' + contract.unit.district : ''}</p>` : ''}
+        <p>النوع: ${contract.unit.type || "-"} | المساحة: ${contract.unit.area || "-"}</p>
+        ${contract.unit.city ? `<p>المدينة: ${contract.unit.city}${contract.unit.district ? " - " + contract.unit.district : ""}</p>` : ""}
       </div>
     </div>
 
@@ -118,19 +127,21 @@ export async function GET(
       <tbody>
         <tr>
           <td>إجمالي قيمة العقد</td>
-          <td style="text-align: left;">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</td>
+          <td style="text-align: left;">${total.toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</td>
         </tr>
       </tbody>
     </table>
 
     <div class="totals">
-      <div><span>قيمة العقد قبل الضريبة / Contract Value</span><span>${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</span></div>
+      <div><span>قيمة العقد قبل الضريبة / Contract Value</span><span>${total.toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
       <div><span>نسبة الضريبة / VAT Rate</span><span>${vatRate}%</span></div>
-      <div><span>قيمة الضريبة / VAT Amount</span><span>${vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</span></div>
-      <div class="grand-total"><span>الإجمالي شامل الضريبة / Grand Total</span><span>${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</span></div>
+      <div><span>قيمة الضريبة / VAT Amount</span><span>${vatAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
+      <div class="grand-total"><span>الإجمالي شامل الضريبة / Grand Total</span><span>${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
     </div>
 
-    ${contract.installments.length > 0 ? `
+    ${
+      contract.installments.length > 0
+        ? `
     <h3 style="font-size: 16px; color: #1a365d; margin: 20px 0 10px;">جدول الأقساط / Installment Schedule</h3>
     <table>
       <thead>
@@ -143,21 +154,27 @@ export async function GET(
         </tr>
       </thead>
       <tbody>
-        ${contract.installments.map((inst) => `
+        ${contract.installments
+          .map(
+            (installment) => `
         <tr>
-          <td>${inst.installmentNumber}</td>
-          <td style="text-align: left;">${Number(inst.amountSar).toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</td>
-          <td style="text-align: left;">${inst.vatAmount ? Number(inst.vatAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'} SAR</td>
-          <td>${new Date(inst.dueDate).toISOString().split('T')[0]}</td>
-          <td>${inst.paymentStatus}</td>
+          <td>${installment.installmentNumber}</td>
+          <td style="text-align: left;">${Number(installment.amountSar).toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</td>
+          <td style="text-align: left;">${installment.vatAmount ? Number(installment.vatAmount).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "-"} SAR</td>
+          <td>${new Date(installment.dueDate).toISOString().split("T")[0]}</td>
+          <td>${installment.paymentStatus}</td>
         </tr>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </tbody>
     </table>
-    ` : ''}
+    `
+        : ""
+    }
 
     <div style="font-size: 11px; color: #718096; text-align: center;">
-      <p>تاريخ التوقيع: ${(contract.signedAt ? new Date(contract.signedAt).toISOString().split('T')[0] : 'غير موقع')} ${contract.endDate ? '| تاريخ الانتهاء: ' + new Date(contract.endDate).toISOString().split('T')[0] : ''}</p>
+      <p>تاريخ التوقيع: ${contract.signedAt ? new Date(contract.signedAt).toISOString().split("T")[0] : "غير موقع"} ${contract.endDate ? "| تاريخ الانتهاء: " + new Date(contract.endDate).toISOString().split("T")[0] : ""}</p>
       <p>رقم العقد: ${contract.id}</p>
     </div>
 
@@ -170,18 +187,27 @@ export async function GET(
       <button onclick="window.print()" style="padding: 10px 30px; background: #1a365d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">طباعة / Print</button>
     </div>
   </div>
-  ${isDownload ? '<script>window.onload = function() { window.print(); }</script>' : ''}
+  ${isDownload ? "<script>window.onload = function() { window.print(); }</script>" : ""}
 </body>
 </html>`;
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'text/html; charset=utf-8',
-    };
-    if (isDownload) {
-      headers['Content-Disposition'] = `attachment; filename="contract-${label}.html"`;
-    }
-    return new NextResponse(html, { headers });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/contracts/[id]/pdf failed", error, 500);
-  }
+        const headers: Record<string, string> = {
+          "Content-Type": "text/html; charset=utf-8",
+        };
+        if (isDownload) {
+          headers["Content-Disposition"] =
+            `attachment; filename="contract-${label}.html"`;
+        }
+        return new NextResponse(html, { headers });
+      } catch (error: any) {
+        return httpErrorResponse(
+          request,
+          ErrorCode.INTERNAL_ERROR,
+          "GET /api/v1/contracts/[id]/pdf failed",
+          error,
+          500,
+        );
+      }
+    },
+  );
 }
