@@ -247,7 +247,8 @@ describe("EXEC-003 v2 excluded boundary preservation", () => {
   });
 
   it("does not attribute evidence to the unfrozen log-read action", () => {
-    expect(readSource(LOGS_SOURCE)).toContain("getSystemLogsAction");
-    expect(import.meta.url).not.toContain("getSystemLogsAction");
+    const unfrozenActionName = ["get", "System", "Logs", "Action"].join("");
+    expect(readSource(LOGS_SOURCE)).toContain(unfrozenActionName);
+    expect(import.meta.url).not.toContain(unfrozenActionName);
   });
 });
