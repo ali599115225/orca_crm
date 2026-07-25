@@ -5,39 +5,74 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
+- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Digest algorithm:** `sha256-path-length-content-v1`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
-- **ORCA CI:** `#385 / SUCCESS`
 - **Checkout mode:** `PR_MERGE_REF`
-- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
+- **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
 
-CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
+## Executable sources of truth
 
-The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
-
-
-## Executable source of truth
-
+- `lib/auth/exec-003-permission-assignments.ts`
+- `lib/auth/exec-003-shared-guard.ts`
+- `lib/system-prisma-boundary.ts`
 - `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
 - `tests/foundation/g5-exec-003-evidence-ledger.test.ts`
-- `lib/auth/exec-003-permission-assignments.ts`
+- `tests/foundation/g5-exec-003-evidence-identity.test.ts`
+- `scripts/exec-003-evidence-digest.mjs`
 
-The gate parses TypeScript AST. Every Operation ID must bind its actual entry point, contain executable ALLOW and DENY tests, invoke the entry point in both, prove downstream non-execution on DENY and reachability on ALLOW, match the Permission Key/boundary/Legacy role set, avoid final-guard mocks, remain in the frozen scope, and avoid same-file spillover.
+The Manifest provides candidate metadata only. It does not grant direct credit. The semantic gate evaluates each operation and derives the credited set from operations whose validation result has no violation.
 
-Forbidden final-guard mocks:
+## Required semantic proof
+
+Each credited operation has:
+
+1. a stable operation fingerprint covering method, route/contract, Permission Key, and boundary;
+2. distinct executable ALLOW and DENY test names and callbacks;
+3. actual entry-point import/binding and invocation in both tests;
+4. the real final authorization decision;
+5. an explicit ALLOW outcome contract;
+6. an explicit DENY outcome contract;
+7. downstream reachability after ALLOW and non-execution after DENY where a downstream symbol exists;
+8. an explicit response/result contract where no downstream symbol exists;
+9. no final-guard mock, spy, indirect factory, alias, setup-file override, or intermediary mocked re-export;
+10. no same-file spillover or out-of-freeze credit.
+
+Forbidden final-guard replacements:
 
 ```text
-Eligible database-RBAC contracts: hasDatabaseRole
+Eligible Database RBAC: hasDatabaseRole
 C17 delegated boundary: requireAgentAccess
 ```
 
-The Runtime database role lookup has no separate inactive-user predicate, so no unsupported DB state is invented. Missing user, inactive tenant, tenant mismatch, disallowed/unknown role, and unknown/missing Permission Key fail closed through the actual decision. C17 independently proves inactive-user denial through its real `isActive: true` lookup.
+## Runtime and entry-point coverage
 
-Original boundaries: C02/C09 signed HMAC, C17 delegated RBAC, C18/C19 exact Legacy `Admin`.
+`authBootstrapFindUserRole` now requires `{ id, tenantId, isActive: true }`. Actual entry-point tests prove inactive-user denial across:
 
 ```text
-Frozen contracts: 25/25
-Frozen operations: 32/32
+Route bearer-capable
+Cookie-only Route
+Server Action
+Read operation
+Mutation operation
+Sensitive read
+```
+
+Additional reviewed blockers are proven as follows:
+
+- C18 and C19 use independent ALLOW and DENY tests.
+- C14-O02 and C15-O02 independently reject Bearer-only requests, never call `requireAuth`, and never execute their mutations.
+- A frozen C03 entry point proves Legacy allow + Progressive deny = DENY.
+- C02/C09 retain signed boundaries.
+- C17 retains delegated `requireAgentAccess`.
+- C18/C19 retain exact Legacy `Admin` semantics.
+
+## Derived accounting
+
+```text
+Starting strict direct credit: 3 contracts / 3 operations
+Starting remaining gap: 56
 Directly tested contracts: 25/25
 Directly tested operations: 32/32
 Full direct behavioral credit: 25 contracts / 32 operations
@@ -55,11 +90,26 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
-These values are derived from the imported typed manifest and executable AST evidence, not from this Markdown.
+These values are derived from semantically validated operations, not from the number of Manifest rows or this Markdown.
+
+## Repository-bound identity
+
+The evidence identity records:
 
 ```text
-G5 executable tests: 157/157 PASS
-G5 suites: 36/36 PASS
+Validated implementation head: 15230ab21553b0d7992d9c66963d126c6aa16367
+Evidence digest: a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75
+Base SHA: 001b2c853e99ea055f161dcd294d968bbf25c9ad
+Checkout mode: PR_MERGE_REF
+```
+
+CI recomputes the digest from the sorted evidence file set and fails on any addition, omission, content change, duplicate path, unsorted path list, invalid head, or stale `PENDING FINAL VALIDATION` value.
+
+## Validation
+
+```text
+G5 executable tests: 182/182 PASS
+G5 suites: 45/45 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -71,13 +121,16 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence digest verification: PASS
 ```
 
 ## Scope
 
 ```text
-Runtime files changed in this remediation: 0
-Prisma changes: 0
+Runtime files changed in this remediation: 1
+Runtime security defects found: 1
+Runtime fixes applied: 1
+Prisma schema changes: 0
 Migrations: 0
 Backfills: 0
 Production data changes: 0
