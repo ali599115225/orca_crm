@@ -20,14 +20,8 @@ const agentState = vi.hoisted(() => ({
   } | null,
 }));
 
-const sessionMocks = vi.hoisted(() => ({
-  getSession: vi.fn(),
-}));
-
-const prismaMocks = vi.hoisted(() => ({
-  userFindFirst: vi.fn(),
-}));
-
+const sessionMocks = vi.hoisted(() => ({ getSession: vi.fn() }));
+const prismaMocks = vi.hoisted(() => ({ userFindFirst: vi.fn() }));
 const tenantMocks = vi.hoisted(() => ({
   runWithTenantContext: vi.fn(
     async (
@@ -36,27 +30,15 @@ const tenantMocks = vi.hoisted(() => ({
     ) => await operation(),
   ),
 }));
+const providerMocks = vi.hoisted(() => ({ generateAgentJson: vi.fn() }));
 
-const providerMocks = vi.hoisted(() => ({
-  generateAgentJson: vi.fn(),
-}));
-
-vi.mock("@/lib/session", () => ({
-  getSession: sessionMocks.getSession,
-}));
-
+vi.mock("@/lib/session", () => ({ getSession: sessionMocks.getSession }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findFirst: prismaMocks.userFindFirst,
-    },
-  },
+  prisma: { user: { findFirst: prismaMocks.userFindFirst } },
 }));
-
 vi.mock("@/lib/tenant-context", () => ({
   runWithTenantContext: tenantMocks.runWithTenantContext,
 }));
-
 vi.mock("@/lib/agents/gemini-client", () => ({
   generateAgentJson: providerMocks.generateAgentJson,
 }));
@@ -65,11 +47,7 @@ import { generateAIInsight } from "@/app/actions/aiClient";
 
 beforeEach(() => {
   vi.clearAllMocks();
-
-  agentState.session = {
-    tenantId: "tenant-1",
-    userId: "user-1",
-  };
+  agentState.session = { tenantId: "tenant-1", userId: "user-1" };
   agentState.user = {
     id: "user-1",
     tenantId: "tenant-1",
@@ -105,52 +83,51 @@ beforeEach(() => {
   });
 });
 
-async function expectDenied() {
-  const result = await generateAIInsight({ leadScore: 90 });
-
-  expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
-  expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
-}
-
 describe("EXEC-003 delegated database-RBAC boundary", () => {
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 denies a missing session through requireAgentAccess", async () => {
     agentState.session = null;
+    const result = await generateAIInsight({ leadScore: 90 });
 
-    await expectDenied();
     expect(prismaMocks.userFindFirst).not.toHaveBeenCalled();
+    expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 denies a missing tenant user through requireAgentAccess", async () => {
     agentState.user = null;
+    const result = await generateAIInsight({ leadScore: 90 });
 
-    await expectDenied();
     expect(prismaMocks.userFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          id: "user-1",
-          tenantId: "tenant-1",
-          isActive: true,
-        },
+        where: { id: "user-1", tenantId: "tenant-1", isActive: true },
       }),
     );
+    expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 denies an inactive user through requireAgentAccess", async () => {
     if (agentState.user) agentState.user.isActive = false;
+    const result = await generateAIInsight({ leadScore: 90 });
 
-    await expectDenied();
+    expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 denies a tenant mismatch through requireAgentAccess", async () => {
     if (agentState.user) agentState.user.tenantId = "tenant-2";
+    const result = await generateAIInsight({ leadScore: 90 });
 
-    await expectDenied();
+    expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 preserves delegated denial without a shared-guard bypass", async () => {
     if (agentState.user) agentState.user.role = "EXTERNAL";
+    const result = await generateAIInsight({ leadScore: 90 });
 
-    await expectDenied();
+    expect(providerMocks.generateAgentJson).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ confidence: 0, source: "UNAVAILABLE" });
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C17-O01 delegates allow behavior to requireAgentAccess", async () => {
