@@ -1,0 +1,235 @@
+name: ORCA Z8 Final Reconciliation Publisher
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z8-reconciliation-publisher-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: orca-z8-final-reconciliation-publisher-20260725
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-z8-reconciliation-publisher-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CONTROL_PATH: .github/orca-z8-final-reconciliation-control.json
+    steps:
+      - name: Checkout control PR
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool "$CONTROL_PATH" >/dev/null
+          cp "$CONTROL_PATH" /tmp/control.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('/tmp/control.json').read_text())
+          required={'central_sha','target_branch','superseded_pr','superseded_head','exec003_pr','exec003_head','exec003_merge_sha'}
+          missing=sorted(required-set(c))
+          if missing: raise SystemExit(f'Missing keys: {missing}')
+          if c['central_sha']!='b0369b50eb2d49001e5322eea90b3b6dae22a882': raise SystemExit('Unexpected central SHA')
+          if c['superseded_pr']!=99 or c['superseded_head']!='a82bcc937a8f69196b96f742801fe20f2eecaf99': raise SystemExit('Unexpected superseded identity')
+          if c['exec003_pr']!=108 or c['exec003_head']!='abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618': raise SystemExit('Unexpected EXEC-003 identity')
+          if c['exec003_merge_sha']!=c['central_sha']: raise SystemExit('EXEC-003 merge is not current central')
+          Path('/tmp/central_sha').write_text(c['central_sha'])
+          Path('/tmp/target_branch').write_text(c['target_branch'])
+          PY
+
+      - name: Checkout precreated final branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          git fetch --no-tags origin "$TARGET_BRANCH"
+          TARGET_SHA="$(git rev-parse FETCH_HEAD)"
+          test "$TARGET_SHA" = "$CENTRAL_SHA"
+          git switch --detach "$TARGET_SHA"
+          git switch -C "$TARGET_BRANCH"
+
+      - name: Reconcile Z8 documents and ledger
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          central='b0369b50eb2d49001e5322eea90b3b6dae22a882'
+          superseded_head='a82bcc937a8f69196b96f742801fe20f2eecaf99'
+          exec_head='abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618'
+          z8_dir=Path('docs/zero-based/Z8')
+          markdown_files=[
+            z8_dir/'ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md',
+            z8_dir/'ORCA_Z8_GATE_CLOSURE.md',
+            z8_dir/'ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md',
+            z8_dir/'ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md',
+            z8_dir/'ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md',
+            z8_dir/'ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md',
+          ]
+          marker='## Final Vercel-capacity and execution-state reconciliation — 2026-07-25'
+          block=f'''\n\n{marker}\n\n- Superseded Z8 PR: `#99` / `{superseded_head}`; closed without merge after the Vercel Hobby build-rate-limit rejection.\n- Historical retained Z8 publication: PR `#102`; its Vercel failure is not reused as final evidence.\n- Reconciliation base: latest zero-based central `{central}`.\n- EXEC-003 v2: PR `#108` / `{exec_head}` merged at `{central}` after independent final review and ORCA CI `#453` success.\n- Registered execution packages remain `14`; Z7 gap coverage remains `32/32`; packages currently in execution are reconciled to `0`.\n- The prior build-rate-limit condition is recorded as elapsed; this final reconciliation requires a fresh ORCA CI and Vercel result on one new non-empty documentation head.\n- No merge to `main`, Production action, data operation, Prisma/Migration, provider, secret, account, purchase or package execution is authorized.\n'''
+          for path in markdown_files:
+              text=path.read_text()
+              if marker in text: raise SystemExit(f'already reconciled: {path}')
+              path.write_text(text.rstrip()+block+'\n')
+
+          schema_path=z8_dir/'ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json'
+          schema=json.loads(schema_path.read_text())
+          schema['finalReconciliation']={
+            'date':'2026-07-25',
+            'baseCentralSha':central,
+            'supersededPr':99,
+            'supersededHeadSha':superseded_head,
+            'priorBuildRateLimit':'ELAPSED_REQUIRES_FRESH_VALIDATION',
+            'requiredFinalChecks':['ORCA CI','Vercel'],
+            'sameFinalHeadRequired':True,
+            'emptyCommitProhibited':True,
+            'paidUpgradeAuthorized':False,
+            'mainMergeAuthorized':False,
+            'productionActionAuthorized':False,
+          }
+          schema_path.write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n')
+
+          registry_path=z8_dir/'ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json'
+          registry=json.loads(registry_path.read_text())
+          summary=registry['summary']
+          if summary.get('registeredPackages')!=14 or summary.get('coveredGapIds')!=32:
+              raise SystemExit(f'Unexpected registry summary: {summary}')
+          package=next((p for p in registry['packages'] if p.get('packageId')=='EXEC-003'),None)
+          if package is None: raise SystemExit('EXEC-003 not found')
+          package['state']='CLOSED'
+          package['currentSlice']='CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL'
+          if isinstance(package.get('directEvidence'),dict):
+              package['directEvidence']['status']='SUCCESS / INDEPENDENT FINAL REVIEW PASS / CENTRAL MERGE COMPLETE'
+          package['closure']={
+            'pullRequest':108,
+            'finalHeadSha':exec_head,
+            'validatedImplementationHead':'d17acb09354a54aee7946b6de8e67a2a9b55fbd5',
+            'centralMergeSha':central,
+            'orcaCi':'SUCCESS',
+            'orcaCiRun':453,
+            'workflowRunId':30176782092,
+            'independentFinalReview':'PASS',
+            'runtimeSecurityDefectsRemaining':0,
+            'remainingP0P1DirectTestGap':0,
+            'mainAction':False,
+            'productionAction':False,
+            'closedOn':'2026-07-25',
+          }
+          summary['closed']=3
+          summary['evidenceReady']=0
+          summary['ownerDecisionPending']=8
+          summary['deferredOrBlocked']=3
+          summary['inExecution']=0
+          registry['status']='ACTIVE REGISTER / Z0-Z8 CLOSED / NO PACKAGE IN EXECUTION / FINAL VERCEL REVALIDATION'
+          registry['baseCentralSha']=central
+          registry['finalZ8Reconciliation']={
+            'date':'2026-07-25',
+            'supersededPr':99,
+            'supersededHeadSha':superseded_head,
+            'priorBuildRateLimit':'ELAPSED_REQUIRES_FRESH_VALIDATION',
+            'registeredPackages':14,
+            'coveredGapIds':32,
+            'packagesInExecution':0,
+            'exec003ClosedByPr':108,
+            'exec003FinalHeadSha':exec_head,
+            'exec003CentralMergeSha':central,
+            'requiredFinalChecks':['ORCA CI','Vercel'],
+          }
+          registry_path.write_text(json.dumps(registry,ensure_ascii=False,indent=2)+'\n')
+
+          ledger_path=Path('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json')
+          ledger=json.loads(ledger_path.read_text())
+          ledger['schemaVersion']=max(int(ledger.get('schemaVersion',0))+1,11)
+          ledger['zeroBasedCentralSha']=central
+          ledger['currentGate']='Z8_FINAL_RECONCILIATION_VALIDATION'
+          ledger['mainMergeAuthorized']=False
+          ledger['productionActionAuthorized']=False
+          stages=ledger.get('stages',[])
+          for stage in stages:
+              if stage.get('id') in {f'Z{i}' for i in range(8)}:
+                  if 'CLOSED' not in str(stage.get('status','')):
+                      stage['status']='PASS / CLOSED / MERGED TO CENTRAL'
+              if stage.get('id')=='Z8':
+                  stage.update({
+                    'status':'PASS / CLOSED IN STAGE — FRESH ORCA CI AND VERCEL REQUIRED BEFORE CENTRAL MERGE',
+                    'stageBranch':'work/orca-z8-final-reconciliation-20260725',
+                    'baseCentralSha':central,
+                    'pullRequest':'ASSIGNED_AFTER_PUBLICATION',
+                    'publicationCommitRef':'THIS_SINGLE_COMMIT',
+                    'publicationScopeFiles':9,
+                    'registeredPackages':14,
+                    'coveredGapIds':32,
+                    'packagesInExecution':0,
+                    'closedPackages':3,
+                    'ownerDecisionPendingPackages':8,
+                    'deferredOrBlockedPackages':3,
+                    'runtimeChanged':False,
+                    'databaseChanged':False,
+                    'productionAction':False,
+                    'centralMergeAllowed':False,
+                    'blockingChecks':{'orcaCi':'PENDING_FINAL_HEAD','vercel':'PENDING_FINAL_HEAD','mergeAllowed':False},
+                  })
+          ledger['finalZ8Reconciliation']={
+            'date':'2026-07-25',
+            'baseCentralSha':central,
+            'supersededPr':99,
+            'supersededHeadSha':superseded_head,
+            'historicalMergedPr':102,
+            'priorBuildRateLimit':'ELAPSED_REQUIRES_FRESH_VALIDATION',
+            'exec003Pr':108,
+            'exec003FinalHeadSha':exec_head,
+            'exec003CentralMergeSha':central,
+            'registeredPackages':14,
+            'coveredGapIds':32,
+            'packagesInExecution':0,
+            'requiredFinalChecks':['ORCA CI','Vercel'],
+            'sameFinalHeadRequired':True,
+          }
+          ledger_path.write_text(json.dumps(ledger,ensure_ascii=False,indent=2)+'\n')
+
+      - name: Verify exact scope and push one commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          CENTRAL_SHA="$(cat /tmp/central_sha)"
+          TARGET_BRANCH="$(cat /tmp/target_branch)"
+          git config user.name "ORCA Z8 Reconciliation Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/zero-based/Z8 docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json
+          git diff --cached --check
+          mapfile -t changed < <(git diff --cached --name-only)
+          test "${#changed[@]}" -eq 9
+          for path in "${changed[@]}"; do
+            if [[ "$path" != "docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json" && "$path" != docs/zero-based/Z8/* ]]; then
+              echo "Unexpected path: $path"
+              exit 1
+            fi
+          done
+          python -m json.tool docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json >/dev/null
+          python -m json.tool docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json >/dev/null
+          python -m json.tool docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json').read_text())
+          assert r['summary']['registeredPackages']==14
+          assert r['summary']['coveredGapIds']==32
+          assert r['summary']['inExecution']==0
+          assert sum(1 for p in r['packages'] if p['state']=='IN_EXECUTION')==0
+          assert len(r['packages'])==14
+          PY
+          git commit -m "docs(zero-based): reconcile final Z8 closure evidence"
+          test "$(git rev-list --count "$CENTRAL_SHA..HEAD")" -eq 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
