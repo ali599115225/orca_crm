@@ -4,9 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const REGISTRY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
-const IMPLEMENTATION_HEAD = "15230ab21553b0d7992d9c66963d126c6aa16367";
-const EVIDENCE_DIGEST =
-  "a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75";
+const IDENTITY_PATH =
+  "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
 const BASE_SHA = "001b2c853e99ea055f161dcd294d968bbf25c9ad";
 
 const REQUIRED_ALLOWED_PATHS = [
@@ -25,7 +24,20 @@ function uniqueSorted(values) {
   return [...new Set(values)].sort();
 }
 
-export function reconcileExec003Registry(input) {
+function readEvidenceIdentity(root = process.cwd()) {
+  const identity = JSON.parse(
+    readFileSync(resolve(root, IDENTITY_PATH), "utf8"),
+  );
+  if (
+    !/^[0-9a-f]{40}$/.test(identity.validatedImplementationHead) ||
+    !/^[0-9a-f]{64}$/.test(identity.evidenceDigest)
+  ) {
+    throw new Error("EXEC-003 evidence identity is not sealed");
+  }
+  return identity;
+}
+
+export function reconcileExec003Registry(input, identity = readEvidenceIdentity()) {
   const registry = structuredClone(input);
   const packageRecord = registry.packages.find(
     (candidate) => candidate.packageId === "EXEC-003",
@@ -35,8 +47,7 @@ export function reconcileExec003Registry(input) {
   packageRecord.state = "IN_EXECUTION";
   packageRecord.currentSlice =
     "CONTROLLED_SECURITY_REMEDIATION_VALIDATED_AWAITING_INDEPENDENT_RE_REVIEW";
-  packageRecord.evidenceIdentity =
-    "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
+  packageRecord.evidenceIdentity = IDENTITY_PATH;
   packageRecord.evidenceDigestScript = "scripts/exec-003-evidence-digest.mjs";
   packageRecord.registryReconciliation =
     "scripts/exec-003-registry-reconcile.mjs";
@@ -55,7 +66,8 @@ export function reconcileExec003Registry(input) {
     "a frozen C03 entry point proves Legacy allow plus Progressive deny remains DENY",
     "the Manifest is candidate-only and the TypeScript AST gate derives direct credit",
     "the AST gate blocks final-guard mocks, spies, aliases, setup overrides, indirect factories and intermediary re-exports",
-    "the repository-bound evidence digest is verified on later documentation-only heads",
+    "the repository-bound evidence digest includes all executable remediation and reconciliation tooling",
+    "later changes after the validated implementation head are documentation and identity records only",
     "Legacy authentication channels, Permission Keys and Legacy role sets are unchanged",
     "C25 has no Platform Owner bypass",
   ];
@@ -93,14 +105,14 @@ export function reconcileExec003Registry(input) {
     runtimeSecurityDefectsFound: 1,
     runtimeFixesApplied: 1,
     runtimeFilesChanged: 1,
-    validatedImplementationHead: IMPLEMENTATION_HEAD,
-    evidenceDigest: EVIDENCE_DIGEST,
-    digestAlgorithm: "sha256-path-length-content-v1",
-    ciCheckoutMode: "PR_MERGE_REF",
+    validatedImplementationHead: identity.validatedImplementationHead,
+    evidenceDigest: identity.evidenceDigest,
+    digestAlgorithm: identity.digestAlgorithm,
+    ciCheckoutMode: identity.checkoutMode,
     baseSha: BASE_SHA,
     finalCiIdentityLocation: "PR #108 description",
-    g5Tests: "182/182",
-    g5Suites: "45/45",
+    g5Tests: "184/184",
+    g5Suites: "47/47",
     status: "SUCCESS / AWAITING_INDEPENDENT_RE_REVIEW",
   };
 
@@ -119,7 +131,7 @@ if (isMain) {
   const root = process.cwd();
   const current = readFileSync(resolve(root, REGISTRY_PATH), "utf8");
   const expected = stableRegistryJson(
-    reconcileExec003Registry(JSON.parse(current)),
+    reconcileExec003Registry(JSON.parse(current), readEvidenceIdentity(root)),
   );
   if (process.argv.includes("--print")) {
     process.stdout.write(expected);
