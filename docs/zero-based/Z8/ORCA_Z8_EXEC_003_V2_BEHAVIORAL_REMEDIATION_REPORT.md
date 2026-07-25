@@ -7,8 +7,8 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
-- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
+- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
 
@@ -19,8 +19,8 @@
 3. Split C18 and C19 into independent ALLOW and DENY tests.
 4. Added independent Bearer-only denial evidence for C14-O02 and C15-O02.
 5. Strengthened the TypeScript AST gate against final-guard replacement and false-positive expectations.
-6. Added a repository-bound evidence identity based on a deterministic content digest.
-7. Corrected the strict counter only after semantic and identity gates passed.
+6. Added repository-bound evidence identity covering all executable remediation and reconciliation tooling.
+7. Corrected the strict counter only after semantic, identity, and Registry gates passed.
 
 ## Runtime security fix
 
@@ -31,8 +31,6 @@ id = session.userId
 tenantId = session.tenantId
 isActive = true
 ```
-
-Result:
 
 ```text
 active user + active tenant + allowed role = ALLOW
@@ -49,14 +47,13 @@ The fix is limited to one Runtime file. No schema, migration, backfill, data, Pe
 
 - `hasDatabaseRole` remains real in eligible operation evidence.
 - `requireAgentAccess` remains real in C17.
-- C18: exact `Admin` ALLOW and normalized `ADMIN` DENY are separate callbacks.
-- C19: exact `Admin` reaches the logger; normalized `ADMIN` is denied before the logger, in separate callbacks.
-- C14-O02 and C15-O02 reject Bearer-only requests with the original Cookie-only boundary, do not call `requireAuth`, and do not execute their mutations.
+- C18 and C19 use separate ALLOW and DENY callbacks.
+- C14-O02 and C15-O02 reject Bearer-only requests through the original Cookie-only boundary, do not call `requireAuth`, and do not execute mutations.
 - An actual C03 entry point proves Legacy allow + Progressive deny = DENY without changing the permanent Assignment Registry.
 
 ## AST gate result
 
-The semantic gate validates registered tests and configured setup files. It blocks:
+The semantic gate validates registered tests and configured setup files and blocks:
 
 ```text
 vi.mock
@@ -79,10 +76,10 @@ The Manifest uses `CANDIDATE_DIRECT_BEHAVIORAL`; the Gate alone derives final cr
 
 ```text
 Validated implementation head:
-15230ab21553b0d7992d9c66963d126c6aa16367
+f87213676c735c11782751a74435d8d752027b2c
 
 Evidence digest:
-a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75
+88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f
 
 Algorithm:
 sha256-path-length-content-v1
@@ -94,7 +91,7 @@ Checkout mode:
 PR_MERGE_REF
 ```
 
-The identity file is outside its own digest, avoiding a circular reference. CI proves that later documentation-only heads retain the exact evidence digest.
+The identity file is outside its own digest, avoiding a circular reference. Every executable change, including Registry reconciliation tooling, is inside the digest. Later changes after the validated implementation head are identity, Registry and documentation records only.
 
 ## Corrected strict accounting
 
@@ -123,8 +120,8 @@ P4 remaining: 2
 ## Validation
 
 ```text
-G5 executable tests: 182/182 PASS
-G5 suites: 45/45 PASS
+G5 executable tests: 184/184 PASS
+G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -137,6 +134,7 @@ P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
 Evidence digest verification: PASS
+Registry reconciliation: PASS
 ```
 
 ## Scope result
