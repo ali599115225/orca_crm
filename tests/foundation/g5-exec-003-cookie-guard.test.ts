@@ -108,6 +108,23 @@ describe("EXEC-003 v2 cookie-only shared guard", () => {
     ]);
   });
 
+  it("treats a tenant or user scope mismatch as database denial", async () => {
+    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    const operation = vi.fn(() => NextResponse.json({ success: true }));
+
+    const response = await runWithExec003CookiePermission(
+      requestWithBearer(),
+      ["ADMIN"],
+      "contracts.pdf.read",
+      operation,
+    );
+
+    expect(response.status).toBe(403);
+    expect(authMocks.hasDatabaseRole).toHaveBeenCalledWith(SESSION, ["ADMIN"]);
+    expect(operation).not.toHaveBeenCalled();
+    expect(tenantMocks.runWithTenantContext).not.toHaveBeenCalled();
+  });
+
   it("executes only after cookie identity and database permission both allow", async () => {
     const operation = vi.fn(() =>
       NextResponse.json({ success: true }, { status: 201 }),
@@ -139,6 +156,21 @@ describe("EXEC-003 v2 cookie-only shared guard", () => {
       requestWithBearer(),
       ["ADMIN"],
       "unknown.permission" as never,
+      operation,
+    );
+
+    expect(response.status).toBe(403);
+    expect(authMocks.hasDatabaseRole).not.toHaveBeenCalled();
+    expect(operation).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the permission key is missing at runtime", async () => {
+    const operation = vi.fn(() => NextResponse.json({ success: true }));
+
+    const response = await runWithExec003CookiePermission(
+      requestWithBearer(),
+      ["ADMIN"],
+      undefined as never,
       operation,
     );
 
