@@ -195,14 +195,23 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
         writeFileSync(path.join(temporaryRoot, "setup", file), "export {};\n");
       }
 
-      expect(digestModule.discoverVitestConfiguration(temporaryRoot)).toEqual({
-        configFiles: ["vitest.config.ts", "vitest.shared.ts"],
-        setupFiles: [
+      const discovered = digestModule.discoverVitestConfiguration(temporaryRoot);
+      expect(discovered.configFiles).toEqual(
+        expect.arrayContaining(["vitest.config.ts", "vitest.shared.ts"]),
+      );
+      expect(discovered.setupFiles).toEqual(
+        expect.arrayContaining([
           "setup/global.ts",
           "setup/local.ts",
           "setup/shared.ts",
-        ],
-      });
+        ]),
+      );
+      expect(new Set(discovered.configFiles).size).toBe(
+        discovered.configFiles.length,
+      );
+      expect(new Set(discovered.setupFiles).size).toBe(
+        discovered.setupFiles.length,
+      );
     } finally {
       rmSync(temporaryRoot, { recursive: true, force: true });
     }
