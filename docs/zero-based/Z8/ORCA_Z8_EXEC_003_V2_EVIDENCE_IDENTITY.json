@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "package": "EXEC-003 v2",
+  "state": "IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW",
+  "validatedImplementationHead": "PENDING FINAL VALIDATION",
+  "evidenceDigest": "PENDING FINAL VALIDATION",
+  "digestAlgorithm": "sha256-path-length-content-v1",
+  "evidenceFiles": [
+    "lib/auth/exec-003-permission-assignments.ts",
+    "lib/auth/exec-003-shared-guard.ts",
+    "lib/system-prisma-boundary.ts",
+    "scripts/exec-003-evidence-digest.mjs",
+    "tests/foundation/g5-exec-003-auth-bootstrap-active-user.test.ts",
+    "tests/foundation/g5-exec-003-behavior-evidence-manifest.ts",
+    "tests/foundation/g5-exec-003-contract-behavior-p0.test.ts",
+    "tests/foundation/g5-exec-003-contract-behavior-p1-mutation.test.ts",
+    "tests/foundation/g5-exec-003-contract-behavior-p1-sensitive-read.test.ts",
+    "tests/foundation/g5-exec-003-contract-behavior-pilot.test.ts",
+    "tests/foundation/g5-exec-003-contract-wiring.test.ts",
+    "tests/foundation/g5-exec-003-cookie-guard.test.ts",
+    "tests/foundation/g5-exec-003-cookie-mutation-boundary.test.ts",
+    "tests/foundation/g5-exec-003-delegated-boundary-behavior.test.ts",
+    "tests/foundation/g5-exec-003-entrypoint-security-matrix.test.ts",
+    "tests/foundation/g5-exec-003-evidence-identity.test.ts",
+    "tests/foundation/g5-exec-003-evidence-ledger.test.ts",
+    "tests/foundation/g5-exec-003-exact-claim-boundary-behavior.test.ts",
+    "tests/foundation/g5-exec-003-shared-guard.test.ts",
+    "tests/foundation/g5-exec-003-signed-boundary-behavior.test.ts"
+  ],
+  "baseSha": "001b2c853e99ea055f161dcd294d968bbf25c9ad",
+  "checkoutMode": "PR_MERGE_REF"
+}
