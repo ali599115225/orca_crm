@@ -7,15 +7,8 @@ import {
 type ImportMode = "STATIC" | "DYNAMIC_ACTUAL";
 
 type OutcomeAssertionContract =
-  | {
-      kind: "DOWNSTREAM_CALL";
-      symbol: string;
-    }
-  | {
-      kind: "RESPONSE_STATUS";
-      allowStatus: number;
-      denyStatus: number;
-    }
+  | { kind: "DOWNSTREAM_CALL"; symbol: string }
+  | { kind: "RESPONSE_STATUS"; allowStatus: number; denyStatus: number }
   | {
       kind: "RESULT_OBJECT";
       allowRequiredText: readonly string[];
@@ -33,6 +26,7 @@ type EvidenceBinding = {
   requiredAllowCase: string;
   requiredDenyCase: string;
   assertionContract: OutcomeAssertionContract;
+  securityDependencyModules?: readonly string[];
 };
 
 const PILOT = "tests/foundation/g5-exec-003-contract-behavior-pilot.test.ts";
@@ -42,10 +36,8 @@ const P1R = "tests/foundation/g5-exec-003-contract-behavior-p1-sensitive-read.te
 const SIGNED = "tests/foundation/g5-exec-003-signed-boundary-behavior.test.ts";
 const DELEGATED = "tests/foundation/g5-exec-003-delegated-boundary-behavior.test.ts";
 const EXACT = "tests/foundation/g5-exec-003-exact-claim-boundary-behavior.test.ts";
-const COOKIE_MUTATION =
-  "tests/foundation/g5-exec-003-cookie-mutation-boundary.test.ts";
-const ENTRYPOINT_MATRIX =
-  "tests/foundation/g5-exec-003-entrypoint-security-matrix.test.ts";
+const COOKIE_MUTATION = "tests/foundation/g5-exec-003-cookie-mutation-boundary.test.ts";
+const ENTRYPOINT_MATRIX = "tests/foundation/g5-exec-003-entrypoint-security-matrix.test.ts";
 const LOG_ACTIONS_MODULE = ["@/app/actions", "logs"].join("/");
 
 function downstream(symbol: string): OutcomeAssertionContract {
@@ -63,6 +55,7 @@ function binding(
   assertionContract: OutcomeAssertionContract,
   requiredAllowCase: string,
   requiredDenyCase: string,
+  securityDependencyModules: readonly string[] = [],
 ): EvidenceBinding {
   return {
     testFile,
@@ -75,6 +68,7 @@ function binding(
     assertionContract,
     requiredAllowCase,
     requiredDenyCase,
+    securityDependencyModules,
   };
 }
 
@@ -102,7 +96,7 @@ const BINDING_BY_OPERATION: Readonly<Record<string, EvidenceBinding>> = {
   "EXEC-003-C15-O01": binding(P1M, "@/app/api/v1/maintenance/route", "GET", "readMaintenanceTickets", "STATIC", "DIRECT_BEHAVIORAL EXEC-003-C15-O01 reaches tenant-scoped maintenance read", "DIRECT_BEHAVIORAL EXEC-003-C15-O01 rejects Bearer-only maintenance reads", downstream("prismaMocks.ticketFindMany"), "Cookie identity reaches maintenance read", "Bearer-only identity blocks maintenance read"),
   "EXEC-003-C15-O02": binding(COOKIE_MUTATION, "@/app/api/v1/maintenance/route", "POST", "createMaintenanceTicket", "STATIC", "DIRECT_BEHAVIORAL EXEC-003-C15-O02 ALLOW reaches maintenance creation after Cookie authorization", "DIRECT_BEHAVIORAL EXEC-003-C15-O02 DENY rejects Bearer-only maintenance creation", downstream("prismaMocks.ticketCreate"), "Cookie identity reaches maintenance creation", "Bearer-only identity blocks maintenance creation"),
   "EXEC-003-C16-O01": binding(P1M, "@/app/api/v1/maintenance/[id]/route", "PATCH", "updateMaintenanceTicket", "STATIC", "DIRECT_BEHAVIORAL EXEC-003-C16-O01 reaches tenant-scoped maintenance update", "DIRECT_BEHAVIORAL EXEC-003-C16-O01 denies maintenance update before Prisma", downstream("prismaMocks.ticketUpdate"), "Cookie identity reaches maintenance update", "missing Cookie identity blocks maintenance update"),
-  "EXEC-003-C17-O01": binding(DELEGATED, "@/app/actions/aiClient", "generateAIInsight", "generateAIInsight", "STATIC", "DIRECT_BEHAVIORAL EXEC-003-C17-O01 delegates allow behavior to requireAgentAccess", "DIRECT_BEHAVIORAL EXEC-003-C17-O01 preserves delegated denial without a shared-guard bypass", downstream("providerMocks.generateAgentJson"), "allowed active tenant user reaches AI provider", "disallowed role blocks AI provider"),
+  "EXEC-003-C17-O01": binding(DELEGATED, "@/app/actions/aiClient", "generateAIInsight", "generateAIInsight", "STATIC", "DIRECT_BEHAVIORAL EXEC-003-C17-O01 delegates allow behavior to requireAgentAccess", "DIRECT_BEHAVIORAL EXEC-003-C17-O01 preserves delegated denial without a shared-guard bypass", downstream("providerMocks.generateAgentJson"), "allowed active tenant user reaches AI provider", "disallowed role blocks AI provider", ["@/app/actions/aiActions"]),
   "EXEC-003-C18-O01": binding(EXACT, LOG_ACTIONS_MODULE, "clearSystemLogsAction", "clearSystemLogsAction", "DYNAMIC_ACTUAL", "DIRECT_BEHAVIORAL EXEC-003-C18-O01 ALLOW accepts the exact legacy Admin claim", "DIRECT_BEHAVIORAL EXEC-003-C18-O01 DENY rejects the normalized ADMIN claim", { kind: "RESULT_OBJECT", allowRequiredText: ["success: true"], denyRequiredText: ["success: false", "Unauthorized access"] }, "exact Admin claim succeeds", "ADMIN claim is denied"),
   "EXEC-003-C19-O01": binding(EXACT, LOG_ACTIONS_MODULE, "triggerMockErrorAction", "triggerMockErrorAction", "DYNAMIC_ACTUAL", "DIRECT_BEHAVIORAL EXEC-003-C19-O01 ALLOW accepts Admin and reaches the logger", "DIRECT_BEHAVIORAL EXEC-003-C19-O01 DENY rejects ADMIN before the logger", downstream("logMocks.loggerError"), "exact Admin claim reaches logger", "ADMIN claim blocks logger"),
   "EXEC-003-C20-O01": binding(PILOT, "@/app/api/v1/accounting/payables/route", "GET", "readPayables", "STATIC", "DIRECT_BEHAVIORAL C20 reaches the tenant-scoped sensitive read after authorization", "DIRECT_BEHAVIORAL C20 returns 403 for an unknown or database-denied role", downstream("accountingMocks.getSupplierBalances"), "active user and tenant reach payables read", "missing database user blocks payables read"),
@@ -132,6 +126,7 @@ export type Exec003BehaviorEvidenceCandidate = {
   requiredAllowCase: string;
   requiredDenyCase: string;
   securityDecisionDependency: string;
+  securityDependencyModules: readonly string[];
   assertionContract: OutcomeAssertionContract;
   finalGuardModule: string | null;
   forbiddenMockedGuardSymbol: string | null;
@@ -143,12 +138,7 @@ function operationFingerprint(input: {
   permissionKey: string;
   legacyGuardKind: string;
 }): string {
-  return [
-    input.method,
-    input.routeOrContract,
-    input.permissionKey,
-    input.legacyGuardKind,
-  ].join("|");
+  return [input.method, input.routeOrContract, input.permissionKey, input.legacyGuardKind].join("|");
 }
 
 export const EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES: readonly Exec003BehaviorEvidenceCandidate[] =
@@ -157,7 +147,6 @@ export const EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES: readonly Exec003BehaviorEvid
       const operationId = `${contract.contractId}-O${String(index + 1).padStart(2, "0")}`;
       const evidence = BINDING_BY_OPERATION[operationId];
       if (!evidence) throw new Error(`Missing evidence binding for ${operationId}`);
-
       const databaseDecision = operation.sharedGuardEligible;
       const delegated = operation.legacyGuardKind === "DELEGATED_DATABASE_RBAC";
       return Object.freeze({
@@ -188,6 +177,7 @@ export const EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES: readonly Exec003BehaviorEvid
           : databaseDecision
             ? "hasDatabaseRole"
             : operation.legacyGuardKind,
+        securityDependencyModules: evidence.securityDependencyModules ?? [],
         assertionContract: evidence.assertionContract,
         finalGuardModule: delegated
           ? "@/lib/agents/access"
@@ -203,64 +193,20 @@ export const EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES: readonly Exec003BehaviorEvid
     }),
   );
 
-export const EXEC_003_BEHAVIOR_EVIDENCE =
-  EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES;
+export const EXEC_003_BEHAVIOR_EVIDENCE = EXEC_003_BEHAVIOR_EVIDENCE_CANDIDATES;
 
 export const EXEC_003_INACTIVE_USER_ENTRYPOINT_COVERAGE = [
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT bearer-capable mutation C03 denies before downstream",
-    entryPointLocalName: "cancelContract",
-    downstreamSymbol: "domainMocks.cancelDraftContract",
-    coverage: ["ROUTE_BEARER_CAPABLE", "MUTATION"],
-  },
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT Cookie-only read C04 denies before downstream",
-    entryPointLocalName: "listContractInvoices",
-    downstreamSymbol: "prismaMocks.invoiceFindMany",
-    coverage: ["COOKIE_ONLY_ROUTE", "READ"],
-  },
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT sensitive read C20 denies before downstream",
-    entryPointLocalName: "readPayables",
-    downstreamSymbol: "accountingMocks.getSupplierBalances",
-    coverage: ["ROUTE_BEARER_CAPABLE", "READ", "SENSITIVE_READ"],
-  },
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT Server Action C25 denies before downstream",
-    entryPointLocalName: "getRentalContractsAction",
-    downstreamSymbol: "prismaMocks.contractFindMany",
-    coverage: ["SERVER_ACTION", "READ", "SENSITIVE_READ"],
-  },
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT Cookie-only mutation C14-O02 denies before downstream",
-    entryPointLocalName: "createWorkflow",
-    downstreamSymbol: "prismaMocks.workflowCreate",
-    coverage: ["COOKIE_ONLY_ROUTE", "MUTATION"],
-  },
-  {
-    testFile: ENTRYPOINT_MATRIX,
-    testName:
-      "INACTIVE_USER_ENTRY_POINT P1 sensitive read C22 denies before downstream",
-    entryPointLocalName: "readPaylinkStatus",
-    downstreamSymbol: "prismaMocks.invoiceFindFirst",
-    coverage: ["ROUTE_BEARER_CAPABLE", "READ", "SENSITIVE_READ"],
-  },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT bearer-capable mutation C03 denies before downstream", entryPointLocalName: "cancelContract", downstreamSymbol: "domainMocks.cancelDraftContract", coverage: ["ROUTE_BEARER_CAPABLE", "MUTATION"] },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT Cookie-only read C04 denies before downstream", entryPointLocalName: "listContractInvoices", downstreamSymbol: "prismaMocks.invoiceFindMany", coverage: ["COOKIE_ONLY_ROUTE", "READ"] },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT sensitive read C20 denies before downstream", entryPointLocalName: "readPayables", downstreamSymbol: "accountingMocks.getSupplierBalances", coverage: ["ROUTE_BEARER_CAPABLE", "READ", "SENSITIVE_READ"] },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT Server Action C25 denies before downstream", entryPointLocalName: "getRentalContractsAction", downstreamSymbol: "prismaMocks.contractFindMany", coverage: ["SERVER_ACTION", "READ", "SENSITIVE_READ"] },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT Cookie-only mutation C14-O02 denies before downstream", entryPointLocalName: "createWorkflow", downstreamSymbol: "prismaMocks.workflowCreate", coverage: ["COOKIE_ONLY_ROUTE", "MUTATION"] },
+  { testFile: ENTRYPOINT_MATRIX, testName: "INACTIVE_USER_ENTRY_POINT P1 sensitive read C22 denies before downstream", entryPointLocalName: "readPaylinkStatus", downstreamSymbol: "prismaMocks.invoiceFindFirst", coverage: ["ROUTE_BEARER_CAPABLE", "READ", "SENSITIVE_READ"] },
 ] as const;
 
 export const EXEC_003_PROGRESSIVE_DENY_ENTRYPOINT_PROOF = Object.freeze({
   testFile: ENTRYPOINT_MATRIX,
-  testName:
-    "PROGRESSIVE_DENY_ENTRY_POINT C03 keeps Legacy allow AND Progressive deny as DENY",
+  testName: "PROGRESSIVE_DENY_ENTRY_POINT C03 keeps Legacy allow AND Progressive deny as DENY",
   entryPointLocalName: "cancelContract",
   downstreamSymbol: "domainMocks.cancelDraftContract",
   permissionKey: "contracts.cancel.execute" as const,
