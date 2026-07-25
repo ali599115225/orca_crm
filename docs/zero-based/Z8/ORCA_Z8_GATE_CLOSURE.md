@@ -1,9 +1,9 @@
 # ORCA Z8 — Execution Authorization Gate Closure
 
 - **Document ID:** ORCA-Z8-CLOSURE-001
-- **Version:** 1.1
+- **Version:** 1.2
 - **Date:** 2026-07-25
-- **Status:** `PASS / CLOSED IN PLANNING — CENTRAL MERGE AUTHORIZED AFTER ORCA CI`
+- **Status:** `PASS / CLOSED IN PLANNING / VERCEL_HOBBY_POLICY_ACTIVE`
 - **Base central SHA:** `ce0165d7a2ea6ff10acd9fe72e100555a2b3b325`
 - **Pull request:** `#102`
 - **Predecessor:** Z7 / PR #96 / Head `d9ed2dbab36fa916ac25c822cab0b3f1b00ec5b4`
@@ -38,20 +38,21 @@ Convert the evidence-backed Z7 gap register into one authoritative, prioritized 
 | Acceptance/recovery/conflict contract | complete |
 | Owner/visual/provider/data blocker register | complete |
 | `main` and Production separation | explicit and deny-by-default |
+| Vercel Hobby validation policy | active and scope-aware |
 
 ## 4. Package decision
 
 ```text
 REGISTERED PACKAGES: 14
-EVIDENCE_READY FOR NEXT OWNER INSTRUCTION: 3
+CLOSED PACKAGES: 1
+EVIDENCE_READY FOR NEXT OWNER INSTRUCTION: 2
 OWNER_DECISION_PENDING: 8
 DEFERRED/BLOCKED: 3
-AUTHORIZED_NON_PRODUCTION PACKAGES CURRENTLY ACTIVE: 0
 PACKAGES IN EXECUTION: 0
 AUTOMATIC NEXT PACKAGE: NONE
 ```
 
-The three `EVIDENCE_READY` packages are definitions ready to bind to the then-current central SHA. Completion of Z8 does not start them. No execution package begins without a subsequent explicit owner instruction.
+`EXEC-001` closed through PR #104. `EXEC-002` and `EXEC-003` remain ready for controlled non-production execution. No package begins automatically.
 
 ## 5. Unresolved facts preserved without invention
 
@@ -70,56 +71,56 @@ Z8 does not decide:
 
 Each remains linked to a package with a safe default and explicit trigger.
 
-## 6. Final Z8 documentation-only merge gate
+## 6. Documentation and planning merge rule
 
-The final Z8 publication may merge into `work/orca-zero-based-execution-20260721` when:
+Z0–Z8 planning and documentation changes use:
 
-1. the branch is based on the recorded Z7 central baseline;
-2. the diff contains exactly eight Z8 documents, including this closure record, and the updated zero-based ledger;
-3. JSON files parse and the package registry covers all 32 gap IDs;
-4. package counts equal 14 / 3 / 8 / 3 / 0 active;
-5. no Runtime, package, Prisma, migration, data, provider, environment, credential, account, `main` or Production path changed;
-6. ORCA CI passes on the definitive documentation head;
-7. the merge uses that expected head SHA.
+```text
+VERCEL_VALIDATION = NOT_REQUIRED
+```
 
-## 7. Vercel validation policy
+Their merge gate is the exact allowlisted diff, valid JSON/Markdown, relevant targeted checks, GitHub CI and the expected head SHA. Vercel success is not a condition for merging documentation-only changes to the zero-based central branch.
 
-Vercel is **not** treated as passed for PR #102. Its repeated rejection was an external Hobby build-rate limit, not application evidence.
+## 7. Vercel Hobby validation policy
 
-Because Z8 changes documentation only and does not change the executable tree:
+This version supersedes every earlier statement requiring Preview for each PR, commit, push, file or small correction.
 
-- no more Preview-trigger commits are permitted for Z8;
-- no paid upgrade, credential creation or red-check misrepresentation is authorized;
-- Vercel validation is deferred from this planning-only gate;
-- one final Preview remains mandatory on the definitive executable release head after all repository modifications and fixes are complete;
-- Production deployment remains separately prohibited until explicit release authorization.
+1. Z0–Z8 planning and documentation: `NOT_REQUIRED`.
+2. Execution packages during incremental work: `SKIP_BY_DEFAULT`.
+3. Daily evidence: targeted tests, TypeScript where applicable, GitHub CI, diff review, and scope-appropriate security/contract checks.
+4. No Preview is created after each file, commit, push or small repair.
+5. A completed Runtime/UI package may use `REQUIRED_AT_PACKAGE_END` only after all changes are complete, package tests and build pass, and the candidate SHA is stable.
+6. Maximum one package-end Preview when visual or operational validation is materially necessary.
+7. One final Preview is `REQUIRED_AT_FINAL_RELEASE` on the definitive Release Candidate after all intended repair packages are complete.
+8. An automatic GitHub-triggered Vercel attempt is non-blocking when the package value does not require it.
+9. No Push is repeated solely to rerun Preview, and a CI-provable package does not wait for Hobby quota renewal.
+10. A quota-limited non-required attempt is recorded as `VERCEL_VALIDATION = DEFERRED_TO_FINAL_EXECUTABLE_HEAD`.
+11. Production deployment is always `SEPARATE_PRODUCTION_AUTHORIZATION`.
 
-This is a gate-scope correction, not a bypass of executable release validation.
+No paid upgrade, credential creation, account change, `main` merge or Production action is authorized by this policy.
 
 ## 8. Closure interpretation
 
-After ORCA CI success and central merge:
-
 - Z0–Z8 are closed as planning, governance and execution-authorization gates;
 - the zero-based plan is complete;
-- the system is **not** declared fully conformant or Production-ready;
-- the 14-package registry becomes the only approved source for selecting future work;
-- no package begins until a subsequent user instruction;
-- Vercel Preview remains required once, on the final executable release head;
-- all prior delegated work remains stopped unless explicitly selected through a package.
+- the system is not declared fully conformant or Production-ready;
+- the 14-package registry is the approved source for controlled execution;
+- one package closure never authorizes the next package;
+- the final Release Candidate still requires one final Preview;
+- Production remains separately prohibited until explicit owner authorization.
 
 ## 9. Gate decision
 
 ```text
 Z8 TEXT AND PACKAGE CONTRACTS: PASS
 Z8 PLANNING CLOSURE: PASS
-Z8 CENTRAL MERGE: AUTHORIZED AFTER ORCA CI
-VERCEL FOR Z8 DOCUMENTATION-ONLY HEAD: DEFERRED
-FINAL EXECUTABLE VERCEL PREVIEW: REQUIRED
-ZERO-BASED PLAN CLOSURE: EFFECTIVE AFTER CENTRAL MERGE
-RUNTIME CHANGE: NONE
+Z0-Z8 DOCUMENTATION VERCEL: NOT_REQUIRED
+EXECUTION PACKAGE DEFAULT: SKIP_BY_DEFAULT
+PACKAGE-END PREVIEW: MAXIMUM ONE WHEN REQUIRED
+FINAL RELEASE PREVIEW: REQUIRED_AT_FINAL_RELEASE
+PRODUCTION DEPLOYMENT: SEPARATE_PRODUCTION_AUTHORIZATION
+RUNTIME CHANGE IN THIS POLICY UPDATE: NONE
 DATABASE CHANGE: NONE
 MAIN MERGE: NOT AUTHORIZED
 PRODUCTION ACTION: NOT AUTHORIZED
-NEXT ACTION AFTER MERGE: RECONCILE THE CENTRAL LEDGER, ISSUE THE FINAL REPORT, AND WAIT FOR OWNER PACKAGE SELECTION
 ```
