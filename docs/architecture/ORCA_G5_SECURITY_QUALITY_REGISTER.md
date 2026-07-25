@@ -67,6 +67,17 @@ Contracts without a direct current test reference: **34**
 
 EXEC-003 v2 direct evidence: **25 contracts**
 
+| Priority class | Contracts without direct current test evidence |
+|---|---:|
+| `P0_SECURITY_CRITICAL_SURFACE` | 0 |
+| `P1_MUTATION_SURFACE` | 0 |
+| `P1_SENSITIVE_READ_SURFACE` | 0 |
+| `P2_READ_SURFACE` | 16 |
+| `P3_UI_SURFACE` | 16 |
+| `P4_SOURCE_STATE` | 2 |
+
+The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
+
 ## Durable dependency risk register
 
 | Dependency / control | Classification | Current handling |
