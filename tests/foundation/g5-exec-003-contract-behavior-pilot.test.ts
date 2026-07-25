@@ -5,9 +5,19 @@ vi.mock("server-only", () => ({}));
 
 const authMocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
-  hasDatabaseRole: vi.fn(),
-  unauthorizedResponse: vi.fn(() => new Response("unauthorized", { status: 401 })),
-  forbiddenResponse: vi.fn(() => new Response("forbidden", { status: 403 })),
+}));
+
+const bootstrapMocks = vi.hoisted(() => ({
+  findUserEmail: vi.fn(),
+  findUserRole: vi.fn(),
+  findTenantActive: vi.fn(),
+}));
+
+const databaseState = vi.hoisted(() => ({
+  userPresent: true,
+  userTenantId: "exec-003-tenant",
+  role: "ADMIN",
+  tenantActive: true,
 }));
 
 const sessionMocks = vi.hoisted(() => ({
@@ -41,21 +51,19 @@ const accountingMocks = vi.hoisted(() => ({
   getPayablesSummary: vi.fn(),
 }));
 
-vi.mock("@/lib/api-auth-guard", () => ({
-  requireAuth: authMocks.requireAuth,
-  hasDatabaseRole: authMocks.hasDatabaseRole,
-  unauthorizedResponse: authMocks.unauthorizedResponse,
-  forbiddenResponse: authMocks.forbiddenResponse,
-  CONTRACT_WRITE_ROLES: ["ADMIN", "SALES_MANAGER"],
-  TENANT_ROLES: [
-    "ADMIN",
-    "SALES_MANAGER",
-    "SALES_EMPLOYEE",
-    "MARKETING",
-    "READ_ONLY",
-  ],
-  ACCOUNTING_WRITE_ROLES: ["ADMIN"],
+vi.mock("@/lib/system-prisma-boundary", () => ({
+  authBootstrapFindUserEmail: bootstrapMocks.findUserEmail,
+  authBootstrapFindUserRole: bootstrapMocks.findUserRole,
+  authBootstrapFindTenantActive: bootstrapMocks.findTenantActive,
 }));
+
+vi.mock("@/lib/api-auth-guard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth-guard")>();
+  return {
+    ...actual,
+    requireAuth: authMocks.requireAuth,
+  };
+});
 
 vi.mock("@/lib/session", () => ({
   getSession: sessionMocks.getSession,
@@ -89,16 +97,6 @@ vi.mock("@/lib/accounting", () => ({
   getPayablesSummary: accountingMocks.getPayablesSummary,
 }));
 
-vi.mock("@/lib/http-error-response", () => ({
-  httpErrorResponse: vi.fn(
-    () => new Response("internal-error", { status: 500 }),
-  ),
-}));
-
-vi.mock("@/lib/errors", () => ({
-  ErrorCode: { INTERNAL_ERROR: "INTERNAL_ERROR" },
-}));
-
 import { POST as cancelContract } from "@/app/api/v1/contracts/[id]/cancel/route";
 import {
   GET as listContractInvoices,
@@ -106,6 +104,7 @@ import {
 import { GET as readPayables } from "@/app/api/v1/accounting/payables/route";
 import { GET as readContractPdf } from "@/app/api/v1/contracts/[id]/pdf/route";
 import { getRentalContractsAction } from "@/app/actions/rentals";
+import { effectiveRolesForExec003Permission } from "@/lib/auth/exec-003-shared-guard";
 
 const SESSION = Object.freeze({
   userId: "exec-003-user",
@@ -133,9 +132,28 @@ function request(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  databaseState.userPresent = true;
+  databaseState.userTenantId = SESSION.tenantId;
+  databaseState.role = "ADMIN";
+  databaseState.tenantActive = true;
+
   authMocks.requireAuth.mockResolvedValue(SESSION);
-  authMocks.hasDatabaseRole.mockResolvedValue(true);
   sessionMocks.getSession.mockResolvedValue(SESSION);
+  bootstrapMocks.findUserEmail.mockResolvedValue(null);
+  bootstrapMocks.findUserRole.mockImplementation(
+    async (userId: string, tenantId: string) => {
+      if (!databaseState.userPresent) return null;
+      if (userId !== SESSION.userId) return null;
+      if (tenantId !== databaseState.userTenantId) return null;
+      return { role: databaseState.role };
+    },
+  );
+  bootstrapMocks.findTenantActive.mockImplementation(async (tenantId: string) =>
+    databaseState.tenantActive && tenantId === SESSION.tenantId
+      ? { id: tenantId }
+      : null,
+  );
+
   prismaMocks.invoiceFindMany.mockResolvedValue([]);
   prismaMocks.contractFindMany.mockResolvedValue([]);
   domainMocks.cancelDraftContract.mockResolvedValue({ id: "contract-1" });
@@ -158,10 +176,57 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
 
       expect(response.status).toBe(401);
       expect(domainMocks.cancelDraftContract).not.toHaveBeenCalled();
+      expect(bootstrapMocks.findUserRole).not.toHaveBeenCalled();
     });
 
     it("DIRECT_BEHAVIORAL C03 returns 403 when the current database role is denied", async () => {
-      authMocks.hasDatabaseRole.mockResolvedValue(false);
+      databaseState.role = "READ_ONLY";
+
+      const response = await cancelContract(
+        request(
+          "http://localhost/api/v1/contracts/contract-1/cancel",
+          "POST",
+          { reason: "owner request" },
+        ),
+        { params: Promise.resolve({ id: "contract-1" }) },
+      );
+
+      expect(response.status).toBe(403);
+      expect(domainMocks.cancelDraftContract).not.toHaveBeenCalled();
+      expect(bootstrapMocks.findUserRole).toHaveBeenCalledWith(
+        SESSION.userId,
+        SESSION.tenantId,
+      );
+    });
+
+    it("DIRECT_BEHAVIORAL C03 reaches the real mutation boundary after authorization", async () => {
+      const response = await cancelContract(
+        request(
+          "http://localhost/api/v1/contracts/contract-1/cancel",
+          "POST",
+          { reason: "owner request" },
+        ),
+        { params: Promise.resolve({ id: "contract-1" }) },
+      );
+
+      expect(response.status).toBe(200);
+      expect(bootstrapMocks.findUserRole).toHaveBeenCalledWith(
+        SESSION.userId,
+        SESSION.tenantId,
+      );
+      expect(bootstrapMocks.findTenantActive).toHaveBeenCalledWith(
+        SESSION.tenantId,
+      );
+      expect(domainMocks.cancelDraftContract).toHaveBeenCalledWith({
+        tenantId: SESSION.tenantId,
+        userId: SESSION.userId,
+        contractId: "contract-1",
+        reason: "owner request",
+      });
+    });
+
+    it("DIRECT_BEHAVIORAL EXEC-003-C03-O01 denies an inactive tenant before the mutation", async () => {
+      databaseState.tenantActive = false;
 
       const response = await cancelContract(
         request(
@@ -176,7 +241,9 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
       expect(domainMocks.cancelDraftContract).not.toHaveBeenCalled();
     });
 
-    it("DIRECT_BEHAVIORAL C03 reaches the real mutation boundary after authorization", async () => {
+    it("DIRECT_BEHAVIORAL EXEC-003-C03-O01 denies a tenant mismatch before the mutation", async () => {
+      databaseState.userTenantId = "tenant-2";
+
       const response = await cancelContract(
         request(
           "http://localhost/api/v1/contracts/contract-1/cancel",
@@ -186,17 +253,24 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
         { params: Promise.resolve({ id: "contract-1" }) },
       );
 
-      expect(response.status).toBe(200);
-      expect(authMocks.hasDatabaseRole).toHaveBeenCalledWith(SESSION, [
-        "ADMIN",
-        "SALES_MANAGER",
-      ]);
-      expect(domainMocks.cancelDraftContract).toHaveBeenCalledWith({
-        tenantId: SESSION.tenantId,
-        userId: SESSION.userId,
-        contractId: "contract-1",
-        reason: "owner request",
-      });
+      expect(response.status).toBe(403);
+      expect(domainMocks.cancelDraftContract).not.toHaveBeenCalled();
+    });
+
+    it("DIRECT_BEHAVIORAL EXEC-003-C03-O01 denies an unknown database role before the mutation", async () => {
+      databaseState.role = "UNKNOWN_ROLE";
+
+      const response = await cancelContract(
+        request(
+          "http://localhost/api/v1/contracts/contract-1/cancel",
+          "POST",
+          { reason: "owner request" },
+        ),
+        { params: Promise.resolve({ id: "contract-1" }) },
+      );
+
+      expect(response.status).toBe(403);
+      expect(domainMocks.cancelDraftContract).not.toHaveBeenCalled();
     });
   });
 
@@ -215,7 +289,7 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
     });
 
     it("DIRECT_BEHAVIORAL C04 returns 403 before data access when the database denies", async () => {
-      authMocks.hasDatabaseRole.mockResolvedValue(false);
+      databaseState.userPresent = false;
 
       const response = await listContractInvoices(
         request("http://localhost/api/v1/contracts/contract-1/invoices"),
@@ -258,7 +332,7 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
     });
 
     it("DIRECT_BEHAVIORAL C20 returns 403 for an unknown or database-denied role", async () => {
-      authMocks.hasDatabaseRole.mockResolvedValue(false);
+      databaseState.userPresent = false;
 
       const response = await readPayables(
         request("http://localhost/api/v1/accounting/payables"),
@@ -326,7 +400,7 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
         ...SESSION,
         userId: "platform-owner-user",
       });
-      authMocks.hasDatabaseRole.mockResolvedValue(false);
+      databaseState.userPresent = false;
 
       const result = await getRentalContractsAction();
 
@@ -339,9 +413,9 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
       const result = await getRentalContractsAction();
 
       expect(result).toEqual({ success: true, rentals: [] });
-      expect(authMocks.hasDatabaseRole).toHaveBeenCalledWith(
-        SESSION,
-        ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
+      expect(bootstrapMocks.findUserRole).toHaveBeenCalledWith(
+        SESSION.userId,
+        SESSION.tenantId,
       );
       expect(prismaMocks.contractFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -354,6 +428,36 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
           },
         }),
       );
+    });
+  });
+
+  describe("EXEC-003 real role-intersection support", () => {
+    it("keeps Legacy deny effective when the progressive permission would allow the role", () => {
+      expect(
+        effectiveRolesForExec003Permission(
+          ["ADMIN"],
+          "rentals.contracts.read",
+        ),
+      ).toEqual(["ADMIN"]);
+    });
+
+    it("keeps Progressive deny effective when the Legacy role set would allow the role", () => {
+      expect(
+        effectiveRolesForExec003Permission(
+          ["ADMIN", "SALES_MANAGER", "READ_ONLY"],
+          "contracts.cancel.execute",
+        ),
+      ).toEqual(["ADMIN", "SALES_MANAGER"]);
+    });
+
+    it("fails closed for an unknown or missing permission key", () => {
+      expect(
+        effectiveRolesForExec003Permission(
+          ["ADMIN"],
+          "unknown.permission",
+        ),
+      ).toBeNull();
+      expect(effectiveRolesForExec003Permission(["ADMIN"], "")).toBeNull();
     });
   });
 });
