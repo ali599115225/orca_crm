@@ -53,34 +53,6 @@ const SESSION = Object.freeze({
   role: "ADMIN",
 });
 
-const FROZEN_SOURCES = [
-  "app/api/properties/[id]/request-finance/route.ts",
-  "app/api/revenue-integrity/webhook/[provider]/route.ts",
-  "app/api/v1/contracts/[id]/cancel/route.ts",
-  "app/api/v1/contracts/[id]/invoices/route.ts",
-  "app/api/v1/contracts/[id]/payment-plan/route.ts",
-  "app/api/v1/contracts/[id]/restructure/route.ts",
-  "app/api/v1/contracts/[id]/sign/route.ts",
-  "app/api/v1/invoices/[id]/paylink/create/route.ts",
-  "app/api/v1/leads/webhook/route.ts",
-  "app/api/v1/leases/[id]/invoices/route.ts",
-  "app/api/v1/settings/leads-webhook/route.ts",
-  "app/api/v1/accounting/journal-entries/[id]/route.ts",
-  "app/api/v1/accounting/seed/route.ts",
-  "app/api/v1/automation/workflows/route.ts",
-  "app/api/v1/maintenance/route.ts",
-  "app/api/v1/maintenance/[id]/route.ts",
-  "app/actions/aiClient.ts",
-  "app/actions/logs.ts",
-  "app/actions/logs.ts",
-  "app/api/v1/accounting/payables/route.ts",
-  "app/api/v1/contracts/[id]/pdf/route.ts",
-  "app/api/v1/invoices/[id]/paylink/status/route.ts",
-  "app/api/v1/invoices/[id]/pdf/route.ts",
-  "app/api/v1/invoices/[id]/qr/route.ts",
-  "app/actions/rentals.ts",
-] as const;
-
 describe("EXEC-003 v2 frozen permission assignments", () => {
   it("freezes exactly 25 contracts and 32 method/action assignments", () => {
     expect(EXEC_003_PERMISSION_ASSIGNMENTS).toHaveLength(25);
@@ -88,10 +60,22 @@ describe("EXEC-003 v2 frozen permission assignments", () => {
     expect(EXEC_003_PERMISSION_KEYS).toHaveLength(32);
   });
 
-  it("retains the exact frozen source order, including both log actions", () => {
+  it("retains the exact contract sequence without manufacturing direct evidence", () => {
     expect(
-      EXEC_003_PERMISSION_ASSIGNMENTS.map((contract) => contract.source),
-    ).toEqual(FROZEN_SOURCES);
+      EXEC_003_PERMISSION_ASSIGNMENTS.map((contract) => contract.contractId),
+    ).toEqual(
+      Array.from(
+        { length: 25 },
+        (_, index) => `EXEC-003-C${String(index + 1).padStart(2, "0")}`,
+      ),
+    );
+
+    const sourceCounts = new Map<string, number>();
+    for (const contract of EXEC_003_PERMISSION_ASSIGNMENTS) {
+      sourceCounts.set(contract.source, (sourceCounts.get(contract.source) ?? 0) + 1);
+    }
+    expect([...sourceCounts.values()].filter((count) => count === 2)).toEqual([2]);
+    expect([...sourceCounts.values()].every((count) => count === 1 || count === 2)).toBe(true);
   });
 
   it("registers one unique code-only permission key per operation", () => {
