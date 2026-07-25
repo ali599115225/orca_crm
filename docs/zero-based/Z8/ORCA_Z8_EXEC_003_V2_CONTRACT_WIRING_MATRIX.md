@@ -5,8 +5,8 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
-- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
+- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
 
@@ -20,12 +20,11 @@
 | Semantically validated entry-point tests | `DIRECT_BEHAVIORAL` | Yes |
 | Ledger gate | `INTEGRATION / REGRESSION` | Decides credit |
 | Evidence identity gate | `REPOSITORY_BOUND_INTEGRITY` | Binds content digest |
+| Registry reconciliation gate | `PACKAGE_STATE_INTEGRITY` | Preserves all package states |
 
 ## Wiring result
 
 Eligible contracts invoke actual Route Handlers or Server Actions and retain the real `hasDatabaseRole`. Lower-layer mocks are limited to session retrieval, AUTH_BOOTSTRAP persistence boundaries, Tenant Context, downstream domain/database work, and external providers.
-
-The real Database RBAC chain is:
 
 ```text
 Entry point
@@ -39,11 +38,7 @@ Entry point
 
 C17 invokes `generateAIInsight` through the real `requireAgentAccess`; only its lower storage/context/provider dependencies are mocked.
 
-Original boundaries remain:
-
-- C02/C09: signed HMAC.
-- C17: delegated database RBAC.
-- C18/C19: exact Legacy `Admin`; `ADMIN` denied.
+Original boundaries remain C02/C09 signed HMAC, C17 delegated database RBAC, and C18/C19 exact Legacy `Admin` with `ADMIN` denied.
 
 ## Reviewed blocker coverage
 
@@ -60,6 +55,7 @@ Original boundaries remain:
 | Null downstream | explicit response/result assertion contract required |
 | Operation ID drift | method/route/Permission Key/boundary fingerprint pinned |
 | Evidence identity | repository-bound SHA-256 digest verified |
+| Package Registry | deterministic EXEC-003-only reconciliation; EXEC-004 remains pending |
 
 ## Derived accounting
 
@@ -85,8 +81,8 @@ P4 remaining: 2
 ## Validation
 
 ```text
-G5 executable tests: 182/182 PASS
-G5 suites: 45/45 PASS
+G5 executable tests: 184/184 PASS
+G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -99,6 +95,7 @@ P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
 Evidence digest verification: PASS
+Registry reconciliation: PASS
 ```
 
 EXEC-003 remains `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`. Next authorized step: `INDEPENDENT RE-REVIEW ONLY`.
