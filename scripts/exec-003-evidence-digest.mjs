@@ -47,6 +47,13 @@ function normalizeRelative(root, absolutePath) {
   return relative(root, absolutePath).replaceAll("\\", "/");
 }
 
+function isInsideRoot(root, absolutePath) {
+  const rootAbsolute = resolve(root);
+  const candidate = resolve(absolutePath);
+  const rel = relative(rootAbsolute, candidate);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
 function parseFile(absolutePath) {
   return ts.createSourceFile(
     absolutePath,
@@ -99,10 +106,9 @@ function resolveStaticString(expression, source, seen = new Set()) {
   }
   if (ts.isIdentifier(current)) {
     if (seen.has(current.text)) return null;
-    seen.add(current.text);
     const initializer = variableInitializer(source, current.text);
     return initializer
-      ? resolveStaticString(initializer, source, seen)
+      ? resolveStaticString(initializer, source, new Set(seen).add(current.text))
       : null;
   }
   if (
@@ -151,6 +157,34 @@ function resolveStaticString(expression, source, seen = new Set()) {
   return null;
 }
 
+function resolveManifestStaticStringList(expression, source, operationId) {
+  const current = unwrapExpression(expression);
+  if (!ts.isArrayLiteralExpression(current)) {
+    throw new Error(
+      `${operationId} securityDependencyModules must be a static string array`,
+    );
+  }
+  const values = [];
+  for (const element of current.elements) {
+    if (ts.isSpreadElement(element)) {
+      throw new Error(
+        `${operationId} securityDependencyModules may not contain spreads`,
+      );
+    }
+    const value = resolveStaticString(element, source);
+    if (value === null) {
+      throw new Error(
+        `${operationId} securityDependencyModules contains a non-static value`,
+      );
+    }
+    values.push(value);
+  }
+  if (new Set(values).size !== values.length) {
+    throw new Error(`${operationId} contains duplicate security dependencies`);
+  }
+  return values;
+}
+
 function findObjectVariable(source, name) {
   const initializer = variableInitializer(source, name);
   if (!initializer) throw new Error(`Missing ${name} in ${source.fileName}`);
@@ -161,7 +195,7 @@ function findObjectVariable(source, name) {
   return object;
 }
 
-function deriveManifestBindings(root) {
+export function deriveManifestBindings(root = process.cwd()) {
   const manifestAbsolute = resolve(root, MANIFEST_PATH);
   const source = parseFile(manifestAbsolute);
   const object = findObjectVariable(source, "BINDING_BY_OPERATION");
@@ -192,7 +226,16 @@ function deriveManifestBindings(root) {
     if (!testFile || !entryPointModule || !entryPointExport) {
       throw new Error(`${operationId} contains a non-static evidence binding`);
     }
-    bindings.push({ operationId, testFile, entryPointModule, entryPointExport });
+    const securityDependencyModules = call.arguments[10]
+      ? resolveManifestStaticStringList(call.arguments[10], source, operationId)
+      : [];
+    bindings.push({
+      operationId,
+      testFile,
+      entryPointModule,
+      entryPointExport,
+      securityDependencyModules,
+    });
   }
 
   if (bindings.length !== 32) {
@@ -200,6 +243,12 @@ function deriveManifestBindings(root) {
   }
   if (new Set(bindings.map((binding) => binding.operationId)).size !== 32) {
     throw new Error("Duplicate Operation ID in BINDING_BY_OPERATION");
+  }
+  const registeredDependencies = bindings.flatMap(
+    (binding) => binding.securityDependencyModules,
+  );
+  if (new Set(registeredDependencies).size !== registeredDependencies.length) {
+    throw new Error("Duplicate security dependency module in Manifest bindings");
   }
   return bindings;
 }
@@ -226,11 +275,33 @@ function resolveExistingFile(root, input, description) {
   const base = input.startsWith("@/")
     ? resolve(root, input.slice(2))
     : resolve(root, input);
+  if (!isInsideRoot(root, base)) {
+    throw new Error(`${description} escapes repository: ${input}`);
+  }
   const found = fileCandidates(base).find(
-    (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
+    (candidate) =>
+      isInsideRoot(root, candidate) &&
+      existsSync(candidate) &&
+      statSync(candidate).isFile(),
   );
   if (!found) throw new Error(`${description} is missing or unreadable: ${input}`);
   return normalizeRelative(root, found);
+}
+
+export function resolveSecurityDependencyFiles(root, modules) {
+  if (!Array.isArray(modules) || modules.some((value) => typeof value !== "string")) {
+    throw new Error("Security dependency modules must be static strings");
+  }
+  if (new Set(modules).size !== modules.length) {
+    throw new Error("Duplicate security dependency module");
+  }
+  const files = modules.map((module) =>
+    resolveExistingFile(root, module, "security dependency module"),
+  );
+  if (new Set(files).size !== files.length) {
+    throw new Error("Duplicate security dependency file");
+  }
+  return files.sort();
 }
 
 function walkConfigFiles(root, directory = root, depth = 0, result = []) {
@@ -252,46 +323,40 @@ function walkConfigFiles(root, directory = root, depth = 0, result = []) {
 function resolveLocalImport(root, sourceFile, moduleSpecifier) {
   if (!moduleSpecifier.startsWith(".")) return null;
   const base = resolve(dirname(sourceFile), moduleSpecifier);
+  if (!isInsideRoot(root, base)) {
+    throw new Error(`Vitest config import escapes repository: ${moduleSpecifier}`);
+  }
   const found = fileCandidates(base).find(
     (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
   );
   if (!found) {
     throw new Error(`Vitest config import is missing: ${moduleSpecifier}`);
   }
-  if (!found.startsWith(resolve(root))) {
-    throw new Error(`Vitest config import escapes repository: ${moduleSpecifier}`);
-  }
   return found;
 }
 
-function resolveStaticStringList(expression, source, sourceFile, root, seen = new Set()) {
+function resolveStaticStringList(
+  expression,
+  source,
+  sourceFile,
+  root,
+  seen = new Set(),
+) {
   const current = unwrapExpression(expression);
   const direct = resolveStaticString(current, source, new Set(seen));
   if (direct !== null) return [direct];
   if (ts.isArrayLiteralExpression(current)) {
     const values = [];
     for (const element of current.elements) {
-      if (ts.isSpreadElement(element)) {
-        values.push(
-          ...resolveStaticStringList(
-            element.expression,
-            source,
-            sourceFile,
-            root,
-            new Set(seen),
-          ),
-        );
-      } else {
-        values.push(
-          ...resolveStaticStringList(
-            element,
-            source,
-            sourceFile,
-            root,
-            new Set(seen),
-          ),
-        );
-      }
+      values.push(
+        ...resolveStaticStringList(
+          ts.isSpreadElement(element) ? element.expression : element,
+          source,
+          sourceFile,
+          root,
+          new Set(seen),
+        ),
+      );
     }
     return values;
   }
@@ -340,7 +405,7 @@ function resolveStaticStringList(expression, source, sourceFile, root, seen = ne
       }
     }
   }
-  throw new Error(`Vitest setup/globalSetup value is not statically auditable`);
+  throw new Error("Vitest setup/globalSetup value is not statically auditable");
 }
 
 function addSetupValues({
@@ -351,22 +416,14 @@ function addSetupValues({
   setupFiles,
   propertyName,
 }) {
-  const values = resolveStaticStringList(
-    expression,
-    source,
-    absolute,
-    root,
-  );
+  const values = resolveStaticStringList(expression, source, absolute, root);
   for (const value of values) {
     const setupAbsolute = value.startsWith("@/")
       ? resolve(root, value.slice(2))
       : resolve(dirname(absolute), value.replace(/^\.\//, ""));
-    const setupRelative = resolveExistingFile(
-      root,
-      setupAbsolute,
-      `${propertyName} file`,
+    setupFiles.add(
+      resolveExistingFile(root, setupAbsolute, `${propertyName} file`),
     );
-    setupFiles.add(setupRelative);
   }
 }
 
@@ -465,6 +522,13 @@ export function deriveExec003EvidenceFiles(root = process.cwd()) {
       ),
     ),
   ].sort();
+  const securityDependencyModules = bindings.flatMap(
+    (binding) => binding.securityDependencyModules,
+  );
+  const securityDependencyFiles = resolveSecurityDependencyFiles(
+    root,
+    securityDependencyModules,
+  );
   const finalGuardFiles = REQUIRED_SECURITY_MODULES.slice(0, 2)
     .map((module) => resolveExistingFile(root, module, "final/delegated guard"))
     .sort();
@@ -481,6 +545,7 @@ export function deriveExec003EvidenceFiles(root = process.cwd()) {
     ...new Set([
       manifestFile,
       ...entryPointFiles,
+      ...securityDependencyFiles,
       ...manifestTestFiles,
       ...securityCoreFiles,
       ...supportFiles,
@@ -493,6 +558,8 @@ export function deriveExec003EvidenceFiles(root = process.cwd()) {
     manifestOperationCount: bindings.length,
     derivedEvidenceFiles,
     entryPointFiles,
+    securityDependencyModules: [...securityDependencyModules].sort(),
+    securityDependencyFiles,
     finalGuardFiles,
     securityCoreFiles,
     manifestTestFiles,
@@ -504,30 +571,41 @@ export function deriveExec003EvidenceFiles(root = process.cwd()) {
 }
 
 export function assertExec003EvidenceCoverage(result) {
-  const covered = new Set(result.derivedEvidenceFiles);
+  const files = result.derivedEvidenceFiles;
+  if (new Set(files).size !== files.length) {
+    throw new Error("Duplicate file in EXEC-003 derived evidence coverage");
+  }
+  if (JSON.stringify(files) !== JSON.stringify([...files].sort())) {
+    throw new Error("EXEC-003 derived evidence files must be deterministically sorted");
+  }
+  const covered = new Set(files);
   const requiredGroups = [
     ["Entry Point", result.entryPointFiles],
+    ["security dependency", result.securityDependencyFiles],
     ["final/delegated guard", result.finalGuardFiles],
     ["security core", result.securityCoreFiles],
     ["Manifest test", result.manifestTestFiles],
     ["Vitest config", result.configFiles],
     ["Vitest setup", result.setupFiles],
   ];
-  for (const [label, files] of requiredGroups) {
-    for (const file of files) {
+  for (const [label, requiredFiles] of requiredGroups) {
+    for (const file of requiredFiles) {
       if (!covered.has(file)) {
         throw new Error(`${label} omitted from EXEC-003 evidence digest: ${file}`);
       }
     }
   }
   if (result.manifestOperationCount !== 32) {
-    throw new Error(`Digest coverage expected 32 operations`);
+    throw new Error("Digest coverage expected 32 operations");
   }
   return true;
 }
 
 function normalizedContent(root, relativePath) {
   const absolute = resolve(root, relativePath);
+  if (!isInsideRoot(root, absolute)) {
+    throw new Error(`Digest file escapes repository: ${relativePath}`);
+  }
   if (!existsSync(absolute) || !statSync(absolute).isFile()) {
     throw new Error(`Digest file is missing or unreadable: ${relativePath}`);
   }
@@ -558,7 +636,7 @@ export function hashExec003EvidenceFiles(root, evidenceFiles) {
 export function computeExec003EvidenceDigest(root = process.cwd()) {
   const derivation = deriveExec003EvidenceFiles(root);
   return {
-    algorithm: "sha256-path-length-content-v2-derived-manifest",
+    algorithm: "sha256-path-length-content-v3-derived-security-dependencies",
     evidenceDigest: hashExec003EvidenceFiles(
       root,
       derivation.derivedEvidenceFiles,
