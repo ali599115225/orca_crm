@@ -33,6 +33,7 @@ const REQUIRED_SUPPORT_FILES = Object.freeze([
 ]);
 
 const CONFIG_FILE_PATTERN = /^vitest\.(?:config|workspace)\.[cm]?[jt]s$/;
+const SOURCE_FILE_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
 const IGNORED_DIRECTORIES = new Set([
   ".git",
   ".next",
@@ -202,11 +203,8 @@ function deriveManifestBindings(root) {
   return bindings;
 }
 
-function resolveExistingFile(root, input, description) {
-  const base = input.startsWith("@/")
-    ? resolve(root, input.slice(2))
-    : resolve(root, input);
-  const candidates = path.extname(base)
+function fileCandidates(base) {
+  return SOURCE_FILE_PATTERN.test(base)
     ? [base]
     : [
         `${base}.ts`,
@@ -221,7 +219,13 @@ function resolveExistingFile(root, input, description) {
         path.join(base, "index.js"),
         path.join(base, "index.mjs"),
       ];
-  const found = candidates.find(
+}
+
+function resolveExistingFile(root, input, description) {
+  const base = input.startsWith("@/")
+    ? resolve(root, input.slice(2))
+    : resolve(root, input);
+  const found = fileCandidates(base).find(
     (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
   );
   if (!found) throw new Error(`${description} is missing or unreadable: ${input}`);
@@ -247,21 +251,7 @@ function walkConfigFiles(root, directory = root, depth = 0, result = []) {
 function resolveLocalImport(root, sourceFile, moduleSpecifier) {
   if (!moduleSpecifier.startsWith(".")) return null;
   const base = resolve(dirname(sourceFile), moduleSpecifier);
-  const candidates = path.extname(base)
-    ? [base]
-    : [
-        `${base}.ts`,
-        `${base}.tsx`,
-        `${base}.mts`,
-        `${base}.cts`,
-        `${base}.js`,
-        `${base}.mjs`,
-        `${base}.cjs`,
-        path.join(base, "index.ts"),
-        path.join(base, "index.tsx"),
-        path.join(base, "index.js"),
-      ];
-  const found = candidates.find(
+  const found = fileCandidates(base).find(
     (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
   );
   if (!found) {
