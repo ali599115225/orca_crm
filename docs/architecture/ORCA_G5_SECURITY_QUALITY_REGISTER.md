@@ -16,7 +16,7 @@ This register records the repository security and quality posture established by
 - EXEC-003 v2 excluded operations verified unchanged: **5**
 - Main baseline: `f7af072c689178d397019648ab5c21336ab259b6`
 
-The reduction from 59 to 34 is limited to the exact 25 frozen EXEC-003 v2 contracts. The direct-evidence test intentionally avoids attributing evidence to `getSystemLogsAction`, which shares a source file with C18 and C19 but is not part of the frozen package.
+The reduction from 59 to 34 is limited to the exact 25 frozen EXEC-003 v2 contracts. The direct-evidence test intentionally avoids attributing evidence to the unrelated log-read Server Action, which shares a source file with C18 and C19 but is not part of the frozen package.
 
 ## Required controls
 
@@ -97,6 +97,9 @@ The 34 contracts without direct current test references are classified as follow
 
 | Priority | Count | G5 disposition |
 |---|---:|---|
+| `P0_SECURITY_CRITICAL_SURFACE` | 0 | All frozen P0 contracts now have named direct EXEC-003 v2 evidence. |
+| `P1_MUTATION_SURFACE` | 0 | All frozen P1 mutation contracts now have named direct EXEC-003 v2 evidence. |
+| `P1_SENSITIVE_READ_SURFACE` | 0 | All frozen P1 sensitive-read contracts now have named direct EXEC-003 v2 evidence. |
 | `P2_READ_SURFACE` | 16 | Lower-risk read contract retained as `NOT_PROVEN`; prioritize only when it becomes release-critical or changes. |
 | `P3_UI_SURFACE` | 16 | Owned by visual closure/G8; not falsely marked functionally verified. |
 | `P4_SOURCE_STATE` | 2 | Route/source-state evidence retained; no standalone runtime behavior claimed. |
