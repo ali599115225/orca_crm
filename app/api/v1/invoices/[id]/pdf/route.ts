@@ -1,53 +1,56 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { decrypt } from '@/lib/session';
-import { cookies } from 'next/headers';
-import { formatInvoiceLabel } from '@/lib/zatca/qr';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { formatInvoiceLabel } from "@/lib/zatca/qr";
 import { ErrorCode } from "@/lib/errors";
-
-async function authenticateRequest() {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (sessionToken) {
-    const payload = await decrypt(sessionToken);
-    if (payload && payload.tenantId) return payload;
-  }
-  return null;
-}
+import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
+import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const session = await authenticateRequest();
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح بالوصول" }, { status: 401 });
-  }
+  return runWithExec003CookiePermission(
+    request,
+    EXEC_003_DATABASE_ROLES,
+    "invoices.pdf.read",
+    async (session) => {
+      const { id } = await params;
+      const { searchParams } = new URL(request.url);
+      const isDownload = searchParams.get("download") === "1";
 
-  const { searchParams } = new URL(request.url);
-  const isDownload = searchParams.get('download') === '1';
+      try {
+        const invoice = await prisma.invoice.findFirst({
+          where: { id, tenantId: session.tenantId },
+          include: {
+            lease: { select: { unitName: true, tenantName: true } },
+            contract: { select: { buyerName: true, buyerPhone: true } },
+            tenant: {
+              select: {
+                companyName: true,
+                vatNumber: true,
+                commercialRegistry: true,
+                nationalAddress: true,
+              },
+            },
+          },
+        });
 
-  try {
-    const invoice = await prisma.invoice.findFirst({
-      where: { id, tenantId: session.tenantId as string },
-      include: {
-        lease: { select: { unitName: true, tenantName: true } },
-        contract: { select: { buyerName: true, buyerPhone: true } },
-        tenant: { select: { companyName: true, vatNumber: true, commercialRegistry: true, nationalAddress: true } },
-      },
-    });
+        if (!invoice) {
+          return NextResponse.json(
+            { error: "Invoice not found" },
+            { status: 404 },
+          );
+        }
 
-    if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
+        const label = formatInvoiceLabel(
+          invoice.invoicePrefix,
+          invoice.issueDate.getFullYear(),
+          invoice.invoiceNumber,
+        );
+        const qrImg = invoice.qrImage || "";
 
-    const label = formatInvoiceLabel(invoice.invoicePrefix, invoice.issueDate.getFullYear(), invoice.invoiceNumber);
-    const qrImg = invoice.qrImage || '';
-    const now = new Date().toISOString();
-
-    const html = `<!DOCTYPE html>
+        const html = `<!DOCTYPE html>
 <html dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -88,21 +91,21 @@ export async function GET(
 
     <div class="info-bar">
       <span>UUID: ${invoice.zatcaUuid}</span>
-      <span>الحالة: ${invoice.status === 'unpaid' ? 'غير مدفوعة / Unpaid' : 'مدفوعة / Paid'}</span>
+      <span>الحالة: ${invoice.status === "unpaid" ? "غير مدفوعة / Unpaid" : "مدفوعة / Paid"}</span>
     </div>
 
     <div class="meta">
       <div class="seller">
         <h3>البائع / Seller</h3>
         <p><strong>${invoice.tenant.companyName}</strong></p>
-        <p>الرقم الضريبي: ${invoice.tenant.vatNumber || '-'}</p>
-        <p>السجل التجاري: ${invoice.tenant.commercialRegistry || '-'}</p>
-        <p>${invoice.tenant.nationalAddress || ''}</p>
+        <p>الرقم الضريبي: ${invoice.tenant.vatNumber || "-"}</p>
+        <p>السجل التجاري: ${invoice.tenant.commercialRegistry || "-"}</p>
+        <p>${invoice.tenant.nationalAddress || ""}</p>
       </div>
       <div class="customer">
         <h3>المشتري / Customer</h3>
-        <p><strong>${invoice.lease?.tenantName || invoice.contract?.buyerName || 'عميل'}</strong></p>
-        <p>الوحدة: ${invoice.lease?.unitName || '-'}</p>
+        <p><strong>${invoice.lease?.tenantName || invoice.contract?.buyerName || "عميل"}</strong></p>
+        <p>الوحدة: ${invoice.lease?.unitName || "-"}</p>
       </div>
     </div>
 
@@ -115,23 +118,23 @@ export async function GET(
       </thead>
       <tbody>
         <tr>
-          <td>${invoice.lease ? `إيجار الوحدة ${invoice.lease.unitName}` : `فاتورة عقد ${invoice.contractId?.slice(0, 8) || ''}`}</td>
-          <td style="text-align: left;">${Number(invoice.subtotal).toLocaleString('en-US', {minimumFractionDigits:2})} SAR</td>
+          <td>${invoice.lease ? `إيجار الوحدة ${invoice.lease.unitName}` : `فاتورة عقد ${invoice.contractId?.slice(0, 8) || ""}`}</td>
+          <td style="text-align: left;">${Number(invoice.subtotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</td>
         </tr>
       </tbody>
     </table>
 
     <div class="totals">
-      <div><span>المجموع قبل الضريبة / Subtotal</span><span>${Number(invoice.subtotal).toLocaleString('en-US', {minimumFractionDigits:2})} SAR</span></div>
+      <div><span>المجموع قبل الضريبة / Subtotal</span><span>${Number(invoice.subtotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
       <div><span>نسبة الضريبة / VAT Rate</span><span>${invoice.vatRate}%</span></div>
-      <div><span>قيمة الضريبة / VAT Amount</span><span>${Number(invoice.vatAmount).toLocaleString('en-US', {minimumFractionDigits:2})} SAR</span></div>
-      <div class="grand-total"><span>الإجمالي شامل الضريبة / Total</span><span>${Number(invoice.totalAmount).toLocaleString('en-US', {minimumFractionDigits:2})} SAR</span></div>
+      <div><span>قيمة الضريبة / VAT Amount</span><span>${Number(invoice.vatAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
+      <div class="grand-total"><span>الإجمالي شامل الضريبة / Total</span><span>${Number(invoice.totalAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })} SAR</span></div>
     </div>
 
-    ${qrImg ? `<div class="qr-section"><img src="${qrImg}" alt="QR Code" /></div>` : ''}
+    ${qrImg ? `<div class="qr-section"><img src="${qrImg}" alt="QR Code" /></div>` : ""}
 
     <div style="font-size: 11px; color: #718096; text-align: center;">
-      <p>تاريخ الإصدار: ${invoice.issueDate.toISOString().split('T')[0]} | تاريخ الاستحقاق: ${invoice.dueDate.toISOString().split('T')[0]}</p>
+      <p>تاريخ الإصدار: ${invoice.issueDate.toISOString().split("T")[0]} | تاريخ الاستحقاق: ${invoice.dueDate.toISOString().split("T")[0]}</p>
       <p>رقم الفاتورة: ${label} | UUID: ${invoice.zatcaUuid}</p>
     </div>
 
@@ -144,18 +147,27 @@ export async function GET(
       <button onclick="window.print()" style="padding: 10px 30px; background: #1a365d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">طباعة / Print</button>
     </div>
   </div>
-  ${isDownload ? '<script>window.onload = function() { window.print(); }</script>' : ''}
+  ${isDownload ? "<script>window.onload = function() { window.print(); }</script>" : ""}
 </body>
 </html>`;
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'text/html; charset=utf-8',
-    };
-    if (isDownload) {
-      headers['Content-Disposition'] = `attachment; filename="invoice-${label}.html"`;
-    }
-    return new NextResponse(html, { headers });
-  } catch (error: any) {
-    return httpErrorResponse(request, ErrorCode.INTERNAL_ERROR, "GET /api/v1/invoices/[id]/pdf failed", error, 500);
-  }
+        const headers: Record<string, string> = {
+          "Content-Type": "text/html; charset=utf-8",
+        };
+        if (isDownload) {
+          headers["Content-Disposition"] =
+            `attachment; filename="invoice-${label}.html"`;
+        }
+        return new NextResponse(html, { headers });
+      } catch (error: any) {
+        return httpErrorResponse(
+          request,
+          ErrorCode.INTERNAL_ERROR,
+          "GET /api/v1/invoices/[id]/pdf failed",
+          error,
+          500,
+        );
+      }
+    },
+  );
 }
