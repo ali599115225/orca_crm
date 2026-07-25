@@ -2,7 +2,6 @@ import "server-only";
 
 import type { NextRequest, NextResponse } from "next/server";
 import {
-  assertServerActionRole,
   forbiddenResponse,
   hasDatabaseRole,
   requireAuth,
@@ -11,7 +10,7 @@ import {
   type SessionPayload,
 } from "@/lib/api-auth-guard";
 import { getSession } from "@/lib/session";
-import { runWithTenantContext } from "@/lib/tenant-context";
+import { runWithTenantContext, setTenantContext } from "@/lib/tenant-context";
 import {
   exec003ProgressiveRolesForPermission,
   type Exec003DatabaseRole,
@@ -171,24 +170,32 @@ export async function runWithExec003CookiePermission(
 }
 
 /**
- * Server Action variant. It preserves assertServerActionRole's existing
- * configured-platform-owner behavior, but only for a known shared-guard
- * permission. Unknown, signed-boundary, delegated, and exact-claim keys fail
- * closed before the legacy guard is invoked.
+ * Strict Server Action variant for EXEC-003. It deliberately does not use the
+ * platform-owner bypass available in assertServerActionRole because adding
+ * that bypass to a legacy action would expand access. Only an active tenant
+ * user whose current database role survives the legacy/progressive
+ * intersection may proceed.
  */
 export async function assertExec003ServerActionPermission(
   value: unknown,
   legacyAllowedRoles: readonly string[],
   permissionKey: Exec003PermissionKey,
 ): Promise<SessionPayload> {
-  const effectiveRoles = effectiveRolesForExec003Permission(
+  const session = normalizeExec003Session(value);
+  if (!session) throw new Error("UNAUTHORIZED");
+
+  const allowed = await hasExec003DatabasePermission(
+    session,
     legacyAllowedRoles,
     permissionKey,
   );
-
-  if (!effectiveRoles || effectiveRoles.length === 0) {
+  if (!allowed) {
     throw new Error(`FORBIDDEN:${permissionKey}`);
   }
 
-  return await assertServerActionRole(value, effectiveRoles);
+  setTenantContext({
+    tenantId: session.tenantId,
+    userId: session.userId,
+  });
+  return session;
 }
