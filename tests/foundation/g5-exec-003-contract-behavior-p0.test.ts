@@ -5,13 +5,23 @@ vi.mock("server-only", () => ({}));
 
 const authMocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
-  hasDatabaseRole: vi.fn(),
-  unauthorizedResponse: vi.fn(() => new Response("unauthorized", { status: 401 })),
-  forbiddenResponse: vi.fn(() => new Response("forbidden", { status: 403 })),
+}));
+const bootstrapMocks = vi.hoisted(() => ({
+  findUserEmail: vi.fn(),
+  findUserRole: vi.fn(),
+  findTenantActive: vi.fn(),
+}));
+const databaseState = vi.hoisted(() => ({
+  userPresent: true,
+  userTenantId: "tenant-1",
+  role: "ADMIN",
+  tenantActive: true,
 }));
 const sessionMocks = vi.hoisted(() => ({ getSession: vi.fn() }));
 const tenantContextMocks = vi.hoisted(() => ({
-  runWithTenantContext: vi.fn(async (_context: unknown, operation: () => unknown) => await operation()),
+  runWithTenantContext: vi.fn(
+    async (_context: unknown, operation: () => unknown) => await operation(),
+  ),
   setTenantContext: vi.fn(),
 }));
 const prismaMocks = vi.hoisted(() => ({
@@ -44,15 +54,15 @@ const serviceMocks = vi.hoisted(() => ({
   redactPiiFromPayload: vi.fn((value: unknown) => value),
 }));
 
-vi.mock("@/lib/api-auth-guard", () => ({
-  requireAuth: authMocks.requireAuth,
-  hasDatabaseRole: authMocks.hasDatabaseRole,
-  unauthorizedResponse: authMocks.unauthorizedResponse,
-  forbiddenResponse: authMocks.forbiddenResponse,
-  CONTRACT_WRITE_ROLES: ["ADMIN", "SALES_MANAGER"],
-  TENANT_ROLES: ["ADMIN", "SALES_MANAGER", "SALES_EMPLOYEE", "MARKETING", "READ_ONLY"],
-  ACCOUNTING_WRITE_ROLES: ["ADMIN"],
+vi.mock("@/lib/system-prisma-boundary", () => ({
+  authBootstrapFindUserEmail: bootstrapMocks.findUserEmail,
+  authBootstrapFindUserRole: bootstrapMocks.findUserRole,
+  authBootstrapFindTenantActive: bootstrapMocks.findTenantActive,
 }));
+vi.mock("@/lib/api-auth-guard", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth-guard")>();
+  return { ...actual, requireAuth: authMocks.requireAuth };
+});
 vi.mock("@/lib/session", () => ({ getSession: sessionMocks.getSession }));
 vi.mock("@/lib/tenant-context", () => ({
   runWithTenantContext: tenantContextMocks.runWithTenantContext,
@@ -92,28 +102,8 @@ vi.mock("@/lib/zatca/qr", () => ({
   generateQrImage: serviceMocks.generateQrImage,
   formatInvoiceLabel: serviceMocks.formatInvoiceLabel,
 }));
-vi.mock("@/lib/privacy-mask", () => ({ redactPiiFromPayload: serviceMocks.redactPiiFromPayload }));
-vi.mock("@/lib/http-error-response", () => ({
-  httpErrorResponse: vi.fn(() => new Response("internal-error", { status: 500 })),
-}));
-vi.mock("@/lib/errors", () => ({
-  ErrorCode: {
-    INTERNAL_ERROR: "INTERNAL_ERROR",
-    SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
-    NOT_FOUND: "NOT_FOUND",
-    CONFLICT: "CONFLICT",
-    VALIDATION_ERROR: "VALIDATION_ERROR",
-    RATE_LIMITED: "RATE_LIMITED",
-  },
-  publicError: vi.fn((code: string, context: string) => ({ code, context })),
-  statusForErrorCode: vi.fn((code: string) => ({
-    SERVICE_UNAVAILABLE: 503,
-    NOT_FOUND: 404,
-    CONFLICT: 409,
-    VALIDATION_ERROR: 400,
-    RATE_LIMITED: 429,
-    INTERNAL_ERROR: 500,
-  })[code] ?? 500),
+vi.mock("@/lib/privacy-mask", () => ({
+  redactPiiFromPayload: serviceMocks.redactPiiFromPayload,
 }));
 
 import { POST as requestFinance } from "@/app/api/properties/[id]/request-finance/route";
@@ -132,7 +122,11 @@ import {
   POST as rotateLeadsWebhookSecret,
 } from "@/app/api/v1/settings/leads-webhook/route";
 
-const SESSION = Object.freeze({ userId: "user-1", tenantId: "tenant-1", role: "ADMIN" });
+const SESSION = Object.freeze({
+  userId: "user-1",
+  tenantId: "tenant-1",
+  role: "ADMIN",
+});
 
 function req(url: string, method = "GET", body?: unknown): NextRequest {
   return new NextRequest(url, {
@@ -148,9 +142,28 @@ function req(url: string, method = "GET", body?: unknown): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  databaseState.userPresent = true;
+  databaseState.userTenantId = SESSION.tenantId;
+  databaseState.role = "ADMIN";
+  databaseState.tenantActive = true;
+
   authMocks.requireAuth.mockResolvedValue(SESSION);
-  authMocks.hasDatabaseRole.mockResolvedValue(true);
   sessionMocks.getSession.mockResolvedValue(SESSION);
+  bootstrapMocks.findUserEmail.mockResolvedValue(null);
+  bootstrapMocks.findUserRole.mockImplementation(
+    async (userId: string, tenantId: string) => {
+      if (!databaseState.userPresent) return null;
+      if (userId !== SESSION.userId) return null;
+      if (tenantId !== databaseState.userTenantId) return null;
+      return { role: databaseState.role };
+    },
+  );
+  bootstrapMocks.findTenantActive.mockImplementation(async (tenantId: string) =>
+    databaseState.tenantActive && tenantId === SESSION.tenantId
+      ? { id: tenantId }
+      : null,
+  );
+
   serviceMocks.writeAuditLog.mockResolvedValue(undefined);
   serviceMocks.rateLimit.mockResolvedValue({ allowed: true });
   serviceMocks.encryptSecret.mockReturnValue("encrypted-secret");
@@ -161,11 +174,12 @@ beforeEach(() => {
     leadsWebhookKeyId: "key-1",
     leadsWebhookSecretUpdatedAt: new Date("2026-07-25T00:00:00Z"),
   });
-  prismaMocks.transaction.mockImplementation(async (operation: (tx: unknown) => unknown) =>
-    await operation({
-      tenant: { update: prismaMocks.txTenantUpdate },
-      auditLog: { create: prismaMocks.txAuditCreate },
-    }),
+  prismaMocks.transaction.mockImplementation(
+    async (operation: (tx: unknown) => unknown) =>
+      await operation({
+        tenant: { update: prismaMocks.txTenantUpdate },
+        auditLog: { create: prismaMocks.txAuditCreate },
+      }),
   );
   prismaMocks.txTenantUpdate.mockResolvedValue({});
   prismaMocks.txAuditCreate.mockResolvedValue({});
@@ -184,7 +198,13 @@ beforeEach(() => {
       totalAmount: 1000,
       installmentCount: 1,
     },
-    schedule: [{ installmentNumber: 1, amountSar: 1000, dueDate: new Date("2026-08-01") }],
+    schedule: [
+      {
+        installmentNumber: 1,
+        amountSar: 1000,
+        dueDate: new Date("2026-08-01"),
+      },
+    ],
   });
   domainMocks.ensureDefaultPaymentPlan.mockResolvedValue({ id: "plan-1" });
   domainMocks.restructurePaymentPlan.mockResolvedValue({
@@ -201,7 +221,7 @@ afterEach(() => {
 
 describe("EXEC-003 P0 contract-level behavior", () => {
   it("DIRECT_BEHAVIORAL EXEC-003-C01-O01 denies before audit when the database role is rejected", async () => {
-    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    databaseState.userPresent = false;
     const response = await requestFinance(
       req("http://localhost/api/properties/property-1/request-finance", "POST", {
         loanParams: { price: 500000 },
@@ -222,7 +242,11 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     );
     expect(response.status).toBe(200);
     expect(serviceMocks.writeAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: SESSION.tenantId, userId: SESSION.userId, recordId: "property-1" }),
+      expect.objectContaining({
+        tenantId: SESSION.tenantId,
+        userId: SESSION.userId,
+        recordId: "property-1",
+      }),
     );
   });
 
@@ -250,6 +274,16 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     });
   });
 
+  it("DIRECT_BEHAVIORAL EXEC-003-C05-O01 denies payment-plan read before Prisma", async () => {
+    databaseState.userPresent = false;
+    const response = await readPaymentPlan(
+      req("http://localhost/api/v1/contracts/contract-1/payment-plan"),
+      { params: Promise.resolve({ id: "contract-1" }) },
+    );
+    expect(response.status).toBe(403);
+    expect(prismaMocks.paymentPlanFindFirst).not.toHaveBeenCalled();
+  });
+
   it("DIRECT_BEHAVIORAL EXEC-003-C05-O01 reaches the tenant-scoped payment-plan read", async () => {
     const response = await readPaymentPlan(
       req("http://localhost/api/v1/contracts/contract-1/payment-plan"),
@@ -262,9 +296,11 @@ describe("EXEC-003 P0 contract-level behavior", () => {
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C05-O02 denies update before the domain mutation", async () => {
-    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    databaseState.role = "READ_ONLY";
     const response = await updatePaymentPlan(
-      req("http://localhost/api/v1/contracts/contract-1/payment-plan", "PUT", { template: "MONTHLY" }),
+      req("http://localhost/api/v1/contracts/contract-1/payment-plan", "PUT", {
+        template: "MONTHLY",
+      }),
       { params: Promise.resolve({ id: "contract-1" }) },
     );
     expect(response.status).toBe(403);
@@ -273,13 +309,29 @@ describe("EXEC-003 P0 contract-level behavior", () => {
 
   it("DIRECT_BEHAVIORAL EXEC-003-C05-O02 reaches payment-plan update after authorization", async () => {
     const response = await updatePaymentPlan(
-      req("http://localhost/api/v1/contracts/contract-1/payment-plan", "PUT", { template: "MONTHLY" }),
+      req("http://localhost/api/v1/contracts/contract-1/payment-plan", "PUT", {
+        template: "MONTHLY",
+      }),
       { params: Promise.resolve({ id: "contract-1" }) },
     );
     expect(response.status).toBe(200);
     expect(domainMocks.configurePaymentPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: SESSION.tenantId, userId: SESSION.userId, contractId: "contract-1" }),
+      expect.objectContaining({
+        tenantId: SESSION.tenantId,
+        userId: SESSION.userId,
+        contractId: "contract-1",
+      }),
     );
+  });
+
+  it("DIRECT_BEHAVIORAL EXEC-003-C05-O03 denies creation before the domain mutation", async () => {
+    databaseState.role = "READ_ONLY";
+    const response = await createPaymentPlan(
+      req("http://localhost/api/v1/contracts/contract-1/payment-plan", "POST"),
+      { params: Promise.resolve({ id: "contract-1" }) },
+    );
+    expect(response.status).toBe(403);
+    expect(domainMocks.ensureDefaultPaymentPlan).not.toHaveBeenCalled();
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C05-O03 reaches payment-plan creation after authorization", async () => {
@@ -319,14 +371,20 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     );
     expect(response.status).toBe(200);
     expect(domainMocks.restructurePaymentPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: SESSION.tenantId, userId: SESSION.userId, contractId: "contract-1" }),
+      expect.objectContaining({
+        tenantId: SESSION.tenantId,
+        userId: SESSION.userId,
+        contractId: "contract-1",
+      }),
     );
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C07-O01 denies signing before the domain operation", async () => {
-    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    databaseState.role = "READ_ONLY";
     const response = await signContractRoute(
-      req("http://localhost/api/v1/contracts/contract-1/sign", "POST", { confirm: true }),
+      req("http://localhost/api/v1/contracts/contract-1/sign", "POST", {
+        confirm: true,
+      }),
       { params: Promise.resolve({ id: "contract-1" }) },
     );
     expect(response.status).toBe(403);
@@ -335,12 +393,18 @@ describe("EXEC-003 P0 contract-level behavior", () => {
 
   it("DIRECT_BEHAVIORAL EXEC-003-C07-O01 reaches signing after authorization", async () => {
     const response = await signContractRoute(
-      req("http://localhost/api/v1/contracts/contract-1/sign", "POST", { confirm: true }),
+      req("http://localhost/api/v1/contracts/contract-1/sign", "POST", {
+        confirm: true,
+      }),
       { params: Promise.resolve({ id: "contract-1" }) },
     );
     expect(response.status).toBe(200);
     expect(domainMocks.signContract).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: SESSION.tenantId, userId: SESSION.userId, contractId: "contract-1" }),
+      expect.objectContaining({
+        tenantId: SESSION.tenantId,
+        userId: SESSION.userId,
+        contractId: "contract-1",
+      }),
     );
   });
 
@@ -355,7 +419,7 @@ describe("EXEC-003 P0 contract-level behavior", () => {
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C08-O01 returns 403 when Legacy database roles deny", async () => {
-    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    databaseState.role = "READ_ONLY";
     const response = await createPaylink(
       req("http://localhost/api/v1/invoices/invoice-1/paylink/create", "POST"),
       { params: Promise.resolve({ id: "invoice-1" }) },
@@ -372,7 +436,9 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     );
     expect(response.status).toBe(404);
     expect(prismaMocks.invoiceFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "invoice-1", tenantId: SESSION.tenantId } }),
+      expect.objectContaining({
+        where: { id: "invoice-1", tenantId: SESSION.tenantId },
+      }),
     );
   });
 
@@ -399,12 +465,14 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     );
     expect(response.status).toBe(404);
     expect(prismaMocks.rentalLeaseFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "lease-1", tenantId: SESSION.tenantId } }),
+      expect.objectContaining({
+        where: { id: "lease-1", tenantId: SESSION.tenantId },
+      }),
     );
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C11-O01 enforces ADMIN before reading webhook settings", async () => {
-    authMocks.hasDatabaseRole.mockResolvedValue(false);
+    databaseState.role = "SALES_MANAGER";
     const response = await readLeadsWebhookSettings(
       req("http://localhost/api/v1/settings/leads-webhook"),
     );
@@ -418,8 +486,19 @@ describe("EXEC-003 P0 contract-level behavior", () => {
     );
     expect(response.status).toBe(200);
     expect(prismaMocks.tenantFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: SESSION.tenantId, isActive: true } }),
+      expect.objectContaining({
+        where: { id: SESSION.tenantId, isActive: true },
+      }),
     );
+  });
+
+  it("DIRECT_BEHAVIORAL EXEC-003-C11-O02 denies credential rotation before the transaction", async () => {
+    databaseState.role = "SALES_MANAGER";
+    const response = await rotateLeadsWebhookSecret(
+      req("http://localhost/api/v1/settings/leads-webhook", "POST"),
+    );
+    expect(response.status).toBe(403);
+    expect(prismaMocks.transaction).not.toHaveBeenCalled();
   });
 
   it("DIRECT_BEHAVIORAL EXEC-003-C11-O02 reaches credential rotation only after ADMIN authorization", async () => {
