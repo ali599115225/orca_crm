@@ -5,8 +5,10 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
-- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
+- **Validated implementation head:** `d84a1ea5e10a64778c841f59d8049ec1ae25e522`
+- **Evidence digest:** `b6cb250d25d2b939f9a153647e809174e23c8d26783a2f7d17cc9e4d526e6652`
+- **Digest algorithm:** `sha256-path-length-content-v2-derived-manifest`
+- **Derived evidence files:** `48`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
 - **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
@@ -19,6 +21,7 @@ effectiveAllow = legacyRoleAllows AND progressivePermissionAllows
 unknown permission = DENY
 missing permission = DENY
 inactive user = DENY
+database exception = DENY
 ```
 
 ## Frozen scope
@@ -27,29 +30,31 @@ The package remains frozen at 25 contracts and 32 operations. Eligible scope is 
 
 Cookie-only contracts remain Cookie-only. C25 has no Platform Owner bypass. Permission Keys and Legacy role sets are unchanged.
 
-## Runtime correction
+## Runtime boundary
 
-The only Runtime change in this remediation is the active-user predicate in `authBootstrapFindUserRole`:
+The earlier inactive-user correction remains part of the validated evidence set:
 
 ```text
 where: { id: userId, tenantId, isActive: true }
 ```
 
-This closes the material inactive-user authorization defect without changing schema, data, roles, permissions, tenant isolation, or authentication channels.
+The current evidence-gate hardening cycle changed no Runtime file and introduced no Runtime behavior change. It strengthened only evidence derivation, semantic validation, fail-closed exception proof, identity sealing, Registry reconciliation, and records.
 
 ## Direct evidence rule
 
 Direct credit requires:
 
 1. a candidate Manifest row bound to a stable operation fingerprint;
-2. separate executable ALLOW and DENY tests;
+2. separate executable ALLOW and DENY tests owned by the exact `operationId`;
 3. actual Route Handler or Server Action invocation in each test;
-4. the real final guard (`hasDatabaseRole` or `requireAgentAccess`);
-5. explicit ALLOW and DENY outcome contracts;
-6. downstream execution only after ALLOW;
-7. inactive-user coverage across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads;
-8. no final-guard mock, same-file spillover, or out-of-freeze credit;
-9. a matching repository-bound evidence digest covering all executable remediation and reconciliation tooling.
+4. no mock, spy, mutation, reassignment, or replacement of the credited entry point;
+5. the real final guard (`hasDatabaseRole` or `requireAgentAccess`);
+6. explicit ALLOW and DENY outcome contracts;
+7. downstream execution only after ALLOW;
+8. inactive-user coverage across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads;
+9. explicit fail-closed proof when AUTH_BOOTSTRAP persistence throws;
+10. no final-guard mock, same-file spillover, cross-operation spillover, or out-of-freeze credit;
+11. a repository-bound digest derived from the Manifest and covering every entry point, final guard, evidence test, tool, Vitest configuration, and configured setup file.
 
 C18 and C19 have independent ALLOW and DENY tests. C14-O02 and C15-O02 have independent Bearer-only denial tests. A frozen C03 entry point proves Legacy allow + Progressive deny = DENY.
 
@@ -65,6 +70,7 @@ Partial contract-entry tests: 0
 Structural-only frozen contracts: 0
 Out-of-scope contracts credited: 0
 Same-file spillover: 0
+Cross-operation spillover: 0
 Baseline gap: 59
 Remaining gap: 34
 P0 remaining: 0
@@ -78,12 +84,13 @@ P4 remaining: 2
 ## Validation
 
 ```text
-G5 executable tests: 184/184 PASS
+G5 executable tests: 194/194 PASS
 G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
 G5: PASS
+G6: PASS
 G7: PASS
 G8: PASS
 Foundation regressions: PASS
@@ -91,14 +98,16 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence derivation: PASS
 Evidence digest verification: PASS
 Registry reconciliation: PASS
 ```
 
-## Scope
+## Current hardening-cycle scope
 
 ```text
-Runtime files changed in this remediation: 1
+Runtime files changed: 0
+Runtime security defects introduced or fixed: 0
 Prisma schema changes: 0
 Migrations: 0
 Backfills: 0
