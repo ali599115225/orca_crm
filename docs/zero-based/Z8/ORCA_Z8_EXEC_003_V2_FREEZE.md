@@ -5,8 +5,8 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
-- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
+- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
 - **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
@@ -45,11 +45,11 @@ Direct credit requires:
 2. separate executable ALLOW and DENY tests;
 3. actual Route Handler or Server Action invocation in each test;
 4. the real final guard (`hasDatabaseRole` or `requireAgentAccess`);
-5. explicit ALLOW outcome and DENY outcome contracts;
+5. explicit ALLOW and DENY outcome contracts;
 6. downstream execution only after ALLOW;
 7. inactive-user coverage across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads;
 8. no final-guard mock, same-file spillover, or out-of-freeze credit;
-9. a matching repository-bound evidence digest.
+9. a matching repository-bound evidence digest covering all executable remediation and reconciliation tooling.
 
 C18 and C19 have independent ALLOW and DENY tests. C14-O02 and C15-O02 have independent Bearer-only denial tests. A frozen C03 entry point proves Legacy allow + Progressive deny = DENY.
 
@@ -78,8 +78,8 @@ P4 remaining: 2
 ## Validation
 
 ```text
-G5 executable tests: 182/182 PASS
-G5 suites: 45/45 PASS
+G5 executable tests: 184/184 PASS
+G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -92,6 +92,7 @@ P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
 Evidence digest verification: PASS
+Registry reconciliation: PASS
 ```
 
 ## Scope
