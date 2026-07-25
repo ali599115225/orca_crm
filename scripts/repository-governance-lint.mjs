@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 const ROOT = process.cwd();
 const paths = {
   packageJson: resolve(ROOT, "package.json"),
-  workflow: resolve(ROOT, ".github/workflows/orca-ci.yml"),
   gitignore: resolve(ROOT, ".gitignore"),
   overrideRegister: resolve(ROOT, "docs/governance/ORCA_DEPENDENCY_OVERRIDE_REGISTER.json"),
   retentionRegister: resolve(ROOT, "docs/governance/ORCA_REPOSITORY_ARTIFACT_RETENTION_REGISTER.json"),
@@ -21,7 +20,6 @@ for (const [name, path] of Object.entries(paths)) {
 
 if (errors.length === 0) {
   const packageJson = readJson(paths.packageJson);
-  const workflow = readText(paths.workflow);
   const gitignore = readText(paths.gitignore);
   const overrideRegister = readJson(paths.overrideRegister);
   const retentionRegister = readJson(paths.retentionRegister);
@@ -29,8 +27,8 @@ if (errors.length === 0) {
   if (packageJson.scripts?.lint !== "node scripts/repository-governance-lint.mjs") {
     fail("package.json must define the deterministic repository governance lint command.");
   }
-  if (!workflow.includes("npm run lint")) {
-    fail("ORCA CI must execute npm run lint as a blocking step.");
+  if (packageJson.scripts?.pretypecheck !== "npm run lint") {
+    fail("package.json must run lint through pretypecheck so ORCA CI blocks before TypeScript.");
   }
 
   const unsafeScriptText = JSON.stringify(packageJson.scripts ?? {});
