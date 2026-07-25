@@ -4,7 +4,7 @@
   "exec003_pr": 108,
   "exec003_head": "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618",
   "refresh_evidence_digest": true,
-  "publisher_revision": "install-before-digest-v2",
+  "publisher_revision": "full-g5-diagnostic-v3",
   "runtime_authorized": false,
   "main_or_production_authorized": false
 }
