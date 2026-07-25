@@ -1,0 +1,127 @@
+name: Dependency security remediation
+description: Track one verified dependency vulnerability and its minimal safe remediation.
+title: "[Dependency security]: "
+labels:
+  - security
+  - dependencies
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for one verified dependency vulnerability. Do not paste secrets, private registry tokens, customer data, or unredacted Production logs. Report exploitable product vulnerabilities privately through GitHub Security Advisories instead of a public issue.
+
+  - type: input
+    id: affected_ref
+    attributes:
+      label: Affected branch or commit
+      description: Provide the exact branch and full commit SHA where the finding was reproduced.
+      placeholder: work/example @ 0123456789abcdef0123456789abcdef01234567
+    validations:
+      required: true
+
+  - type: input
+    id: package
+    attributes:
+      label: Affected package
+      description: Include the package name, installed version, and whether it is direct or transitive.
+      placeholder: package-name@1.2.3 — direct
+    validations:
+      required: true
+
+  - type: textarea
+    id: advisory
+    attributes:
+      label: Advisory evidence
+      description: List the advisory identifier, severity, affected range, and source URL. Do not rely on a screenshot alone.
+      placeholder: |
+        Advisory:
+        Severity:
+        Affected range:
+        Source:
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependency_path
+    attributes:
+      label: Dependency path and production exposure
+      description: Provide the lockfile dependency path and evidence that the package is included in the production dependency graph.
+      placeholder: |
+        Dependency path:
+        Production exposure evidence:
+    validations:
+      required: true
+
+  - type: input
+    id: safe_version
+    attributes:
+      label: Minimum safe version
+      description: State the smallest verified safe version and its authoritative source.
+      placeholder: 1.2.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: remediation_type
+    attributes:
+      label: Proposed remediation
+      options:
+        - Patch or minor upgrade
+        - Direct dependency pin
+        - Transitive dependency override
+        - Remove unused dependency
+        - No safe version available
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Minimal change scope
+      description: List the exact files expected to change and explain why each is necessary.
+      placeholder: |
+        package.json — reason
+        package-lock.json — reason
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Record the exact commands and expected evidence for the same final commit.
+      value: |
+        - [ ] Clean install succeeds
+        - [ ] Production dependency audit passes
+        - [ ] Typecheck passes
+        - [ ] Relevant tests pass
+        - [ ] Production build passes
+        - [ ] Lockfile contains the verified safe version
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and rollback
+      description: Describe compatibility risks, Runtime impact, and the exact rollback point.
+      placeholder: |
+        Compatibility risk:
+        Runtime impact:
+        Rollback commit or version:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Safety boundaries
+      options:
+        - label: This issue does not authorize changes to main or Production.
+          required: true
+        - label: No database, migration, secret, provider, customer-data, or paid-subscription change is included.
+          required: true
+        - label: The remediation will not use forceful or broad automatic fixes without reviewing the resulting dependency graph.
+          required: true
+        - label: The final decision will be based on checks from the exact final commit, not an earlier run.
+          required: true
