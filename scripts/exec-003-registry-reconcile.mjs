@@ -7,6 +7,9 @@ const REGISTRY_PATH =
 const IDENTITY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
 const BASE_SHA = "001b2c853e99ea055f161dcd294d968bbf25c9ad";
+const DIGEST_ALGORITHM =
+  "sha256-path-length-content-v3-derived-security-dependencies";
+const C17_SECURITY_DEPENDENCY_FILE = "app/actions/aiActions.ts";
 
 const REQUIRED_ALLOWED_PATHS = [
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json",
@@ -17,6 +20,7 @@ const REQUIRED_ALLOWED_PATHS = [
   "tests/foundation/g5-exec-003-evidence-identity.test.ts",
   "tests/foundation/g5-exec-003-evidence-ledger.test.ts",
   "tests/foundation/g5-exec-003-registry-reconciliation.test.ts",
+  "tests/foundation/g5-exec-003-shared-guard.test.ts",
 ];
 
 function uniqueSorted(values) {
@@ -28,12 +32,16 @@ function readEvidenceIdentity(root = process.cwd()) {
     readFileSync(resolve(root, IDENTITY_PATH), "utf8"),
   );
   if (
+    identity.schemaVersion !== 3 ||
     !/^[0-9a-f]{40}$/.test(identity.validatedImplementationHead) ||
     !/^[0-9a-f]{64}$/.test(identity.evidenceDigest) ||
-    identity.digestAlgorithm !==
-      "sha256-path-length-content-v2-derived-manifest" ||
+    identity.digestAlgorithm !== DIGEST_ALGORITHM ||
     !Array.isArray(identity.derivedEvidenceFiles) ||
-    identity.derivedEvidenceFiles.length === 0
+    identity.derivedEvidenceFiles.length === 0 ||
+    !Array.isArray(identity.securityDependencyFiles) ||
+    identity.securityDependencyFiles.length !== 1 ||
+    identity.securityDependencyFiles[0] !== C17_SECURITY_DEPENDENCY_FILE ||
+    !identity.derivedEvidenceFiles.includes(C17_SECURITY_DEPENDENCY_FILE)
   ) {
     throw new Error("EXEC-003 derived evidence identity is not sealed");
   }
@@ -60,7 +68,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
 
   packageRecord.state = "IN_EXECUTION";
   packageRecord.currentSlice =
-    "FINAL_NARROW_EVIDENCE_GATE_REMEDIATION_AWAITING_INDEPENDENT_RE_REVIEW";
+    "FINAL_C17_EVIDENCE_DEPENDENCY_CLOSURE_AWAITING_INDEPENDENT_RE_REVIEW";
   packageRecord.evidenceIdentity = IDENTITY_PATH;
   packageRecord.evidenceDigestScript = "scripts/exec-003-evidence-digest.mjs";
   packageRecord.registryReconciliation =
@@ -71,21 +79,23 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
   ]);
   packageRecord.sliceAcceptance = [
     "25 contracts and 32 operations remain frozen and directly credited only after semantic validation",
-    "the evidence digest derives all frozen Entry Points from the Manifest and includes final guards, delegated guards, security core files, evidence tests, tools and actual Vitest configuration",
-    "missing files, omitted Entry Points, omitted final or delegated guards and unreadable evidence paths fail closed",
+    "the evidence digest derives all frozen Entry Points, explicit security dependency modules, final guards, delegated guards, security core files, evidence tests, tools and actual Vitest configuration from the Manifest",
+    "C17 explicitly registers @/app/actions/aiActions as a security dependency without changing its @/app/actions/aiClient generateAIInsight Entry Point",
+    "app/actions/aiActions.ts is included in securityDependencyFiles and derivedEvidenceFiles and any content change changes the digest",
+    "missing, unreadable, duplicate, outside-repository or omitted security dependencies fail closed",
     "registered actual Entry Point modules and exports remain unmocked and unmodified",
     "test ownership is enforced at Operation ID level and operation-level spillover remains zero",
     "AUTH_BOOTSTRAP database lookup exceptions return null and grant no role",
+    "the C17 AST path proves aiClient imports and invokes analyzeLeadAI, aiActions imports and awaits requireAgentAccess, and generateAgentJson executes only afterward",
     "Tenant Context may be established inside requireAgentAccess solely for the tenant-scoped authorization lookup",
     "no AI provider call, domain operation or post-authorization downstream work executes before requireAgentAccess succeeds",
     "C18 and C19 retain exact-claim boundaries with independent ALLOW and DENY callbacks",
     "C14-O02 and C15-O02 retain Cookie-only mutation boundaries",
     "signed boundaries remain original and out-of-scope credit remains zero",
-    "no Runtime file is changed by the final narrow evidence-gate remediation",
+    "no Runtime file is changed by the final C17 evidence-dependency closure",
     "Legacy authentication channels, Permission Keys and Legacy role sets are unchanged",
     "C25 has no Platform Owner bypass",
   ];
-
   packageRecord.directEvidence = {
     baselineUnprovenContracts: 59,
     startingStrictContracts: 3,
@@ -109,8 +119,18 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     earnedEvidenceClass: "DIRECT_BEHAVIORAL",
     structuralEvidenceClass: "STRUCTURAL / SOURCE_ASSERTION",
     semanticGate: "TYPESCRIPT_AST / PASS",
-    digestCoverage: "DERIVED_FROM_MANIFEST / PASS",
+    digestCoverage:
+      "DERIVED_FROM_MANIFEST_SECURITY_DEPENDENCIES / PASS",
     derivedEvidenceFileCount: identity.derivedEvidenceFiles.length,
+    securityDependencyFileCount: identity.securityDependencyFiles.length,
+    securityDependencyFiles: identity.securityDependencyFiles,
+    c17SecurityDependencyMetadata: "PASS",
+    c17ImportChain: "PASS",
+    c17RequireAgentAccessOrder: "PASS",
+    c17ProviderOrder: "PASS",
+    securityDependencyOmissionNegative: "PASS",
+    securityDependencyMissingNegative: "PASS",
+    securityDependencyContentMutation: "PASS",
     entryPointModuleMocksRejected: "PASS",
     entryPointSpiesRejected: "PASS",
     intermediaryReExportMocksRejected: "PASS",
@@ -130,7 +150,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     ciCheckoutMode: identity.checkoutMode,
     baseSha: BASE_SHA,
     finalCiIdentityLocation: "PR #108 description",
-    g5Tests: "194/194",
+    g5Tests: "200/200",
     status: "SUCCESS / AWAITING_INDEPENDENT_RE_REVIEW",
   };
 
