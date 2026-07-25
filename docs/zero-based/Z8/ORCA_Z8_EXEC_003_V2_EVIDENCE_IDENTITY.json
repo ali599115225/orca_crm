@@ -2,8 +2,8 @@
   "schemaVersion": 3,
   "package": "EXEC-003 v2",
   "state": "IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW",
-  "validatedImplementationHead": "c4ce4f28b095f1df19832341c8f23793e1318c72",
-  "evidenceDigest": "b6cb250d25d2b939f9a153647e809174e23c8d26783a2f7d17cc9e4d526e6652",
+  "validatedImplementationHead": "fcbbdcb59b79e26648cd3d27dae9e999eaf4f245",
+  "evidenceDigest": "6df5603a9759b504b7a8f3dd5b9b078231f4f132de825cb59e911d165d09f94c",
   "digestAlgorithm": "sha256-path-length-content-v3-derived-security-dependencies",
   "derivedEvidenceFiles": [
     "app/actions/aiActions.ts",
