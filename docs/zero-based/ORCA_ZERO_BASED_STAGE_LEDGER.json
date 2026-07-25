@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 9,
+  "schemaVersion": 11,
   "authority": "ORCA Zero-Based Z0-Z8 Stage Ledger",
   "repository": "ali599115225/orca_crm",
   "defaultBranch": "main",
@@ -7,7 +7,7 @@
   "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
   "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
   "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
-  "zeroBasedCentralSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
+  "zeroBasedCentralSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "multiCompanySaasInScope": false,
   "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
@@ -15,7 +15,7 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "Z7_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
+  "currentGate": "Z8_DOCUMENTATION_ONLY_CLOSURE_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
@@ -27,6 +27,18 @@
       "policy": "NO_EMPTY_RETRY; NO_RED_CHECK_BYPASS",
       "resolution": "VERCEL_CAPACITY_AVAILABLE; FINAL_HEAD_REVALIDATION_STARTED",
       "resolvedOn": "2026-07-24"
+    },
+    {
+      "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_Z8",
+      "status": "DEFERRED_TO_FINAL_EXECUTABLE_RELEASE_HEAD",
+      "affectedPullRequests": [
+        99,
+        102
+      ],
+      "scope": "Z8_DOCUMENTATION_ONLY_PREVIEW",
+      "policy": "NO_RETRY_COMMITS; NO_PAID_UPGRADE; NO_RED_CHECK_MISREPRESENTATION",
+      "resolution": "REMOVE VERCEL FROM THE Z8 PLANNING-ONLY MERGE GATE; REQUIRE ONE FINAL PREVIEW ON THE DEFINITIVE EXECUTABLE RELEASE HEAD",
+      "ownerDecisionDate": "2026-07-25"
     }
   ],
   "securityUnblocker": {
@@ -270,7 +282,7 @@
       "baseCentralSha": "11aaaae7d71a9dd91616145aace141255a07300b",
       "pullRequest": 86,
       "planningClosure": true,
-      "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED APPROVAL",
+      "unresolvedOwnerFactsPolicy": "SAFE_DEFAULT_OR_EXPLICIT_DEFERRAL; NO INVENTED_APPROVAL",
       "blockingChecks": {
         "orcaCi": "SUCCESS",
         "vercel": "SUCCESS",
@@ -282,7 +294,7 @@
     {
       "id": "Z7",
       "name": "Current-System Gap",
-      "status": "PASS / CLOSED IN STAGE — FINAL HEAD VALIDATION REQUIRED BEFORE CENTRAL MERGE",
+      "status": "PASS / CLOSED / MERGED TO CENTRAL",
       "methodReviewPreparationSha": "933c154dab7ce013b3745d86d43b826ac683db49",
       "currentComponentsClassified": 32,
       "gapsRegistered": 32,
@@ -290,17 +302,17 @@
       "baseCentralSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b",
       "sourcePublicationRef": "work/orca-z7-source-20260725",
       "sourcePublicationSha": "8914c3c572f9e6718ea4d1bb7179eaff9a2ff3f0",
-      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
+      "pullRequest": 96,
       "publicationCommitRef": "THIS_SINGLE_COMMIT",
       "publicationScopeFiles": 9,
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": false,
+      "centralMergeAllowed": true,
       "blockingChecks": {
-        "orcaCi": "PENDING_FINAL_HEAD",
-        "vercel": "PENDING_FINAL_HEAD",
-        "mergeAllowed": false
+        "orcaCi": "SUCCESS",
+        "vercel": "SUCCESS",
+        "mergeCompleted": true
       },
       "p0Gaps": 18,
       "p1Gaps": 12,
@@ -318,14 +330,42 @@
       "repositoryEvidenceDigest": "sha256:2d882b4ec10ea362fa2ab42b67ed5d60d13a330c50688573e33914c9c05c0df9",
       "unpublishedDependencySecurityCandidate": "ed4ea9087b2fe9c6ba1335610080870eb38efd4a",
       "currentImplementationFullyConformant": false,
-      "z8PreparationAuthorized": true
+      "z8PreparationAuthorized": true,
+      "finalHeadSha": "d9ed2dbab36fa916ac25c822cab0b3f1b00ec5b4",
+      "centralMergeSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325"
     },
     {
       "id": "Z8",
       "name": "Execution Authorization",
-      "status": "TEMPLATE AND EMPTY PACKAGE SCHEMA PREPARED / EXECUTION NOT AUTHORIZED",
+      "status": "PASS / CLOSED IN PLANNING — CENTRAL MERGE AUTHORIZED AFTER ORCA CI",
       "methodReviewPreparationSha": "2c74eae12646658b95fc88f92363a606f3690e7c",
-      "authorizedPackages": 0
+      "authorizedPackages": 0,
+      "stageBranch": "work/orca-z8-republication-base-20260725",
+      "baseCentralSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
+      "sourcePublicationRef": "work/orca-z8-source-20260725",
+      "sourcePublicationSha": "ee3cc9b01a91e3d4336a4c2f91fd079cb2fcc64b",
+      "pullRequest": 102,
+      "publicationCommitRef": "THIS_SINGLE_COMMIT",
+      "publicationScopeFiles": 9,
+      "runtimeChanged": false,
+      "databaseChanged": false,
+      "productionAction": false,
+      "centralMergeAllowed": true,
+      "blockingChecks": {
+        "orcaCi": "PENDING_FINAL_DOCUMENTATION_HEAD",
+        "vercel": "DEFERRED_TO_FINAL_EXECUTABLE_RELEASE_HEAD",
+        "mergeAllowedAfterOrcaCi": true
+      },
+      "immediatePackages": 3,
+      "conditionalPackages": 8,
+      "deferredPackages": 3,
+      "productionActivationAuthorized": false,
+      "mainMergeAuthorized": false,
+      "zeroBasedPlanClosurePrepared": true,
+      "vercelDeferralBasis": "DOCUMENTATION_ONLY_DIFF; NO RUNTIME, PACKAGE, PRISMA, MIGRATION, DATA, PROVIDER, ENVIRONMENT, CREDENTIAL, MAIN OR PRODUCTION CHANGE",
+      "finalExecutablePreviewRequired": true,
+      "packagesInExecution": 0,
+      "automaticNextPackage": "NONE"
     }
   ],
   "unpublishedPreparation": {
@@ -339,9 +379,9 @@
     },
     "cleanPublicationPlanSha": "cfd4f2ee8e0bce9383ffe3468a37f5b0d2540329",
     "masterPlanComplianceAuditSha": "2b7c483a9ba23ab407d65c55558d630429d0f03e",
-    "currentPublicationStage": "Z7",
+    "currentPublicationStage": "Z8",
     "actualPostZ1CentralSha": "8bef279d2a32b8b054d43f3905a8860dbf0aba6e",
-    "actualCentralParentSha": "01cc24f5fd2d0cb0b3259fc922297942ee3fb90b"
+    "actualCentralParentSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325"
   },
   "masterPlanCompliance": {
     "mandatoryRegistersMapped": 25,
@@ -349,7 +389,7 @@
     "subjectPlansMapped": 24,
     "subjectPlansTotal": 24,
     "readyForBuild": false,
-    "currentSystemConformanceAssessed": false
+    "currentSystemConformanceAssessed": true
   },
   "ownerDecisionRequired": [
     "exact_real_estate_activities",
@@ -375,17 +415,18 @@
     "production_release_authorization"
   ],
   "lastClosedGate": {
-    "id": "Z6",
-    "pullRequest": 86,
-    "finalHeadSha": "a1db4547fbee72bf1f5b5b27da20d3069960d68b",
-    "centralMergeSha": "75e0e25ed0247c7da2a4720c6e8aeb27f8bba959",
+    "id": "Z7",
+    "pullRequest": 96,
+    "finalHeadSha": "d9ed2dbab36fa916ac25c822cab0b3f1b00ec5b4",
+    "centralMergeSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
     "orcaCi": "SUCCESS",
     "vercel": "SUCCESS",
-    "scopeFiles": 11
+    "scopeFiles": 9
   },
   "ownerContinuationInstruction": {
     "date": "2026-07-25",
     "instruction": "CLOSE_REMAINING_ZERO_BASED_GATES_SEQUENTIALLY_WITHOUT_PAUSING_FOR_INTERMEDIATE_CONFIRMATION",
-    "interpretation": "CLOSE_TARGET_PLANNING_AND_EVIDENCE_GATES_WITH_SAFE_DEFAULTS_AND_EXPLICIT_DEFERRALS; DO_NOT INVENT OWNER FACTS OR AUTHORIZE MAIN_OR_PRODUCTION"
+    "interpretation": "CLOSE_TARGET_PLANNING_AND_EVIDENCE_GATES_WITH_SAFE_DEFAULTS_AND_EXPLICIT_DEFERRALS; DO_NOT INVENT OWNER FACTS OR AUTHORIZE MAIN_OR_PRODUCTION",
+    "deploymentPolicy": "COMPLETE REPOSITORY MODIFICATIONS AND FIXES FIRST; RUN ONE FINAL VERCEL PREVIEW ONLY ON THE DEFINITIVE EXECUTABLE RELEASE HEAD"
   }
 }
