@@ -213,6 +213,11 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
     expect(identity.securityDependencyFiles).toEqual(
       actual.securityDependencyFiles,
     );
+    if (identity.evidenceDigest !== actual.evidenceDigest) {
+      throw new Error(
+        `EVIDENCE_DIGEST_MISMATCH expected=${identity.evidenceDigest} actual=${actual.evidenceDigest}`,
+      );
+    }
     expect(identity.evidenceDigest).toBe(actual.evidenceDigest);
   });
 
