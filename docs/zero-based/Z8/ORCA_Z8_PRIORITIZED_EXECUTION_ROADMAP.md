@@ -1,10 +1,10 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.1
+- **Version:** 1.2
 - **Date:** 2026-07-25
-- **Status:** `ACTIVE / EXEC-001 CLOSED / VERCEL_HOBBY_POLICY_ACTIVE`
-- **Current central baseline after EXEC-001:** `fb0368785b0c7198c413427329fcfbe81684c616`
+- **Status:** `ACTIVE / EXEC-001 AND EXEC-002 CLOSED / EXEC-003 NEXT`
+- **Current central baseline after EXEC-002:** `05a18a7242f12bb40eb8759e3648888135eb4edc`
 
 ## 1. Sequencing rule
 
@@ -15,10 +15,10 @@ The roadmap orders work by risk reduction and prerequisite value, not by page vi
 | Order | Package | Status | Purpose | Vercel validation |
 |---|---|---|---|---|
 | 1 | EXEC-001 | `CLOSED` via PR #104 | publish the verified dependency-security issue form | `NOT_REQUIRED` |
-| 2 | EXEC-002 | `EVIDENCE_READY` | add lint/supply-chain governance and reconcile repository artifacts | `SKIP_BY_DEFAULT` |
-| 3 | EXEC-003 | `EVIDENCE_READY` | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT`; amend to package-end only for material Runtime correction |
+| 2 | EXEC-002 | `CLOSED` via PR #106 | add blocking governance lint, override ownership and artifact-retention controls | `SKIP_BY_DEFAULT` |
+| 3 | EXEC-003 | `EVIDENCE_READY / NEXT` | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT`; amend to package-end only for material Runtime correction |
 
-EXEC-002 and EXEC-003 are not automatically concurrent. EXEC-003 owns shared security tests and contract registries; other packages may not edit those boundaries concurrently without coordination.
+EXEC-003 owns shared security tests and contract registries. Other packages may not edit those boundaries concurrently without coordination.
 
 ## 3. Wave 1 — owner/domain decisions first
 
@@ -54,8 +54,8 @@ Visual implementation follows the functional package for the same surface. One p
 
 ```text
 EXEC-001 CLOSED
-→ EXEC-002
-→ EXEC-003
+→ EXEC-002 CLOSED
+→ EXEC-003 NEXT
 → EXEC-004
 → EXEC-005 + EXEC-006
 → EXEC-007
@@ -92,11 +92,11 @@ Parallelism is permitted only where package registries show no shared mutable fi
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 1
-READY FOR CONTROLLED EXECUTION: 2
+CLOSED: 2
+READY FOR CONTROLLED EXECUTION: 1
 OWNER/REFERENCE CONDITIONAL: 8
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
-NEXT PACKAGE: EXEC-002 AFTER POLICY MERGE
+NEXT PACKAGE: EXEC-003
 ```

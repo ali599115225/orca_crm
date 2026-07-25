@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "documentId": "ORCA-Z8-EXECUTION-REGISTRY-001",
   "date": "2026-07-25",
-  "status": "ACTIVE_REGISTER / EXEC-001 CLOSED / VERCEL_HOBBY_POLICY_ACTIVE",
-  "baseCentralSha": "fb0368785b0c7198c413427329fcfbe81684c616",
+  "status": "ACTIVE_REGISTER / EXEC-001 AND EXEC-002 CLOSED / VERCEL_HOBBY_POLICY_ACTIVE",
+  "baseCentralSha": "05a18a7242f12bb40eb8759e3648888135eb4edc",
   "sourceGapRegister": "docs/zero-based/Z7/ORCA_Z7_CLASSIFIED_GAP_REGISTER.md",
   "mainMergeAuthorized": false,
   "productionActionAuthorized": false,
@@ -20,8 +20,8 @@
   },
   "summary": {
     "registeredPackages": 14,
-    "closed": 1,
-    "evidenceReady": 2,
+    "closed": 2,
+    "evidenceReady": 1,
     "ownerDecisionPending": 8,
     "deferredOrBlocked": 3,
     "inExecution": 0,
@@ -75,7 +75,7 @@
       "packageId": "EXEC-002",
       "title": "Repository hygiene, lint and supply-chain governance",
       "version": 1,
-      "state": "EVIDENCE_READY",
+      "state": "CLOSED",
       "priority": "P2",
       "targetGapIds": [
         "GAP-Z7-025",
@@ -105,6 +105,20 @@
         "migrationData": false,
         "providerCredential": false,
         "production": false
+      },
+      "closure": {
+        "pullRequest": 106,
+        "finalHeadSha": "7503cf0db7c236a171113c83b9be03ed50472489",
+        "centralMergeSha": "05a18a7242f12bb40eb8759e3648888135eb4edc",
+        "orcaCi": "SUCCESS",
+        "orcaCiRun": 307,
+        "productionDependencyAudit": "SUCCESS",
+        "typecheck": "SUCCESS",
+        "g5ContractTests": "SUCCESS",
+        "build": "SUCCESS",
+        "vercelValidation": "SKIP_BY_DEFAULT",
+        "scopeFiles": 6,
+        "closedOn": "2026-07-25"
       }
     },
     {
