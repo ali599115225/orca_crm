@@ -231,7 +231,8 @@
         "a frozen C03 entry point proves Legacy allow plus Progressive deny remains DENY",
         "the Manifest is candidate-only and the TypeScript AST gate derives direct credit",
         "the AST gate blocks final-guard mocks, spies, aliases, setup overrides, indirect factories and intermediary re-exports",
-        "the repository-bound evidence digest is verified on later documentation-only heads",
+        "the repository-bound evidence digest includes all executable remediation and reconciliation tooling",
+        "later changes after the validated implementation head are documentation and identity records only",
         "Legacy authentication channels, Permission Keys and Legacy role sets are unchanged",
         "C25 has no Platform Owner bypass"
       ],
@@ -289,14 +290,14 @@
         "runtimeSecurityDefectsFound": 1,
         "runtimeFixesApplied": 1,
         "runtimeFilesChanged": 1,
-        "validatedImplementationHead": "15230ab21553b0d7992d9c66963d126c6aa16367",
-        "evidenceDigest": "a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75",
+        "validatedImplementationHead": "f87213676c735c11782751a74435d8d752027b2c",
+        "evidenceDigest": "88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f",
         "digestAlgorithm": "sha256-path-length-content-v1",
         "ciCheckoutMode": "PR_MERGE_REF",
         "baseSha": "001b2c853e99ea055f161dcd294d968bbf25c9ad",
         "finalCiIdentityLocation": "PR #108 description",
-        "g5Tests": "182/182",
-        "g5Suites": "45/45",
+        "g5Tests": "184/184",
+        "g5Suites": "47/47",
         "status": "SUCCESS / AWAITING_INDEPENDENT_RE_REVIEW"
       },
       "evidenceIdentity": "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json",
@@ -313,7 +314,7 @@
         "GAP-Z7-001",
         "GAP-Z7-002"
       ],
-      "outcome": "Retire legacy SaaS product semantics while retaining the security partition and implement approved branch/department/team assignments and scoped authority.",
+      "outcome": "Retire legacy SaAS product semantics while retaining the security partition and implement approved branch/department/team assignments and scoped authority.",
       "preconditions": [
         "OWN-A01",
         "OWN-A02",
