@@ -8,15 +8,34 @@ This register records the repository security and quality posture established by
 
 - G5 start SHA: `b42c41a9e2c11e1ee8436c6a70425035e45d04aa`
 - G4 contracts: **359**
-- Contracts with direct current test references: **325**
-- Contracts without a direct current test reference: **34**
-- EXEC-003 v2 direct evidence: **25 contracts**
-- EXEC-003 v2 frozen operations: **32**
-- EXEC-003 v2 eligible wired operations: **27**
-- EXEC-003 v2 excluded operations verified unchanged: **5**
+- Contracts with current test references: **325**
+- Contracts without a current test reference: **34**
+- EXEC-003 v2 contract-level direct behavioral evidence: **25 contracts / 32 operations**
+- EXEC-003 v2 eligible wired operations: **27 operations / 20 contracts**
+- EXEC-003 v2 excluded operations tested under original boundaries: **5 operations / 5 contracts**
+- Structural-only frozen contracts after remediation: **0**
 - Main baseline: `f7af072c689178d397019648ab5c21336ab259b6`
 
-The reduction from 59 to 34 is limited to the exact 25 frozen EXEC-003 v2 contracts. The direct-evidence test intentionally avoids attributing evidence to the unrelated log-read Server Action, which shares a source file with C18 and C19 but is not part of the frozen package.
+The reduction from `59` to `34` is limited to the exact 25 frozen EXEC-003 v2 contracts. It is now supported by tests that invoke each actual Route Handler or Server Action entry point. The previous wiring test remains useful, but it is classified only as `STRUCTURAL / SOURCE_ASSERTION` and does not independently earn direct behavioral credit.
+
+The authoritative evidence ledger is:
+
+`docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_LEDGER.md`
+
+The evidence head is `3dc4b8d865212716e5bfdb844a85e7d9c90e17ea`. ORCA CI `#365` succeeded using the PR merge ref. CI validated synthetic merge commit `0ea28c491d67fee8356f566a34861daf0b956474`, containing that head SHA, against base SHA `001b2c853e99ea055f161dcd294d968bbf25c9ad`.
+
+## Evidence semantics
+
+| Class | G5 meaning |
+|---|---|
+| `DIRECT_BEHAVIORAL` | Invokes the actual contract entry point and traverses the contract authorization boundary. |
+| `STRUCTURAL` | Validates wiring, inventories, or code structure without invoking the contract entry point. |
+| `SOURCE_ASSERTION` | Reads or matches source text, symbols, imports, literals, or Regex patterns. |
+| `UNIT_BEHAVIOR` | Exercises a unit such as the shared guard independently from a contract. |
+| `INTEGRATION` | Exercises multiple real components or generated inventories together. |
+| `REGRESSION` | Protects established behavior after a defect or compatibility correction. |
+
+A source reference alone may make a contract discoverable by G4, but it is not sufficient for EXEC-003 direct behavioral credit. The EXEC-003 ledger and `g5-exec-003-evidence-ledger.test.ts` bind each credit to an exact test name in an executable test file.
 
 ## Required controls
 
@@ -32,24 +51,24 @@ G5 requires the following controls on every pull request:
 8. Vercel preview/status validation only where the active execution package requires it;
 9. no focused tests (`.only`), skipped tests, or test TODOs in the accepted test tree.
 
-For the current EXEC-003 v2 slice, Vercel is `SKIP_BY_DEFAULT`; GitHub ORCA CI, targeted tests, TypeScript, and diff review are authoritative.
+For EXEC-003 v2, Vercel is `SKIP_BY_DEFAULT`; GitHub ORCA CI, direct contract tests, TypeScript, generated inventories, and diff review are authoritative.
 
 ## Dependency posture
 
-G5 replaces unstable or vulnerable dependency resolution with reviewed versions:
+G5 retains the reviewed dependency baseline:
 
 - Next.js: `16.2.11`;
 - `@sentry/nextjs`: `10.67.0`;
 - React and React DOM: `18.3.1`;
 - TypeScript: `6.0.3`;
-- React/Node type packages pinned to the lockfile-compatible reviewed versions.
+- React/Node type packages pinned to lockfile-compatible reviewed versions.
 
-Two narrow transitive overrides are retained:
+Two narrow transitive overrides remain:
 
 - `brace-expansion` → `5.0.8`;
 - `postcss` → the direct project PostCSS specification via `$postcss`.
 
-The overrides exist only to remove advisories still selected by transitive dependency constraints. They must remain covered by typecheck, tests, production build, CodeQL, and the blocking Production dependency audit.
+They remain covered by typecheck, tests, production build, CodeQL, and the blocking Production dependency audit.
 
 ## Runtime source findings
 
@@ -64,77 +83,88 @@ The overrides exist only to remove advisories still selected by transitive depen
 
 | Signal | Location | Disposition |
 |---|---|---|
-| Static `dangerouslySetInnerHTML` | `app/login/LoginClient.tsx` | `ACCEPTED_LOW_STATIC`: the payload is a fixed inline CSS template; the reviewed expression does not include user-controlled content. CSP/style modernization remains optional hardening, not a G5 blocker. |
+| Static `dangerouslySetInnerHTML` | `app/login/LoginClient.tsx` | `ACCEPTED_LOW_STATIC`: fixed inline CSS with no reviewed user-controlled payload. |
 
 G5 blocks any current `CRITICAL` or `HIGH` runtime finding emitted by the repository scanner.
 
 ## API boundary review
 
-The API inventory contains **129** routes. G5 traces authorization/security evidence through local imports rather than inspecting route files in isolation.
+The API inventory contains **129** routes. Accepted boundary classes include authenticated database-revalidated tenant routes, Platform Owner boundaries, trusted Cron routes, signed provider Webhooks, signed OAuth/return callbacks, and intentionally public health/readiness routes.
 
-Accepted boundary classes:
+Public or provider-facing boundaries are not treated as missing authentication merely because they do not use a browser session. This includes health/readiness, OAuth callbacks, payment and communication Webhooks, payment returns, Cron routes, and deployment markers protected by their appropriate boundary.
 
-- authenticated and database-revalidated tenant routes;
-- Platform Owner boundaries;
-- trusted Cron routes protected by shared-secret validation;
-- provider Webhooks protected by HMAC/signature/secret or server-to-server provider verification;
-- OAuth/return callbacks that validate signed state or revalidate the provider transaction;
-- intentionally public health/readiness routes exposing no tenant data.
+Any API outside the accepted categories without direct or transitive security evidence remains blocking.
 
-The following reviewed public or provider-facing boundaries are not treated as missing authentication merely because they do not use a browser session:
-
-- health/readiness routes;
-- Google/WhatsApp OAuth callbacks;
-- Paylink, N-Genius, custom-payment, WhatsApp, leads, and revenue-integrity Webhooks;
-- payment return/callback routes;
-- Cron and deployment-marker routes with secret checks.
-
-Any API outside these categories without direct or transitive security evidence is blocking.
-
-## G4 `NOT_PROVEN` classification after EXEC-003 v2
-
-The 34 contracts without direct current test references are classified as follows:
+## G4 `NOT_PROVEN` classification after behavioral remediation
 
 | Priority | Count | G5 disposition |
 |---|---:|---|
-| `P0_SECURITY_CRITICAL_SURFACE` | 0 | All frozen P0 contracts now have named direct EXEC-003 v2 evidence. |
-| `P1_MUTATION_SURFACE` | 0 | All frozen P1 mutation contracts now have named direct EXEC-003 v2 evidence. |
-| `P1_SENSITIVE_READ_SURFACE` | 0 | All frozen P1 sensitive-read contracts now have named direct EXEC-003 v2 evidence. |
-| `P2_READ_SURFACE` | 16 | Lower-risk read contract retained as `NOT_PROVEN`; prioritize only when it becomes release-critical or changes. |
-| `P3_UI_SURFACE` | 16 | Owned by visual closure/G8; not falsely marked functionally verified. |
-| `P4_SOURCE_STATE` | 2 | Route/source-state evidence retained; no standalone runtime behavior claimed. |
+| `P0_SECURITY_CRITICAL_SURFACE` | 0 | The 11 frozen P0 contracts have direct contract-entry behavioral evidence. |
+| `P1_MUTATION_SURFACE` | 0 | The 8 frozen P1 mutation contracts have direct contract-entry behavioral evidence. |
+| `P1_SENSITIVE_READ_SURFACE` | 0 | The 6 frozen P1 sensitive-read contracts have direct contract-entry behavioral evidence. |
+| `P2_READ_SURFACE` | 16 | Lower-risk read backlog remains `NOT_PROVEN`. |
+| `P3_UI_SURFACE` | 16 | Visual backlog remains outside EXEC-003. |
+| `P4_SOURCE_STATE` | 2 | Source-state backlog remains outside EXEC-003. |
 
-EXEC-003 v2 removes all previously open `P0_SECURITY_CRITICAL_SURFACE`, `P1_MUTATION_SURFACE`, and `P1_SENSITIVE_READ_SURFACE` entries from the G5 direct-reference backlog through named tests tied to the frozen contracts. This is evidence attribution, not a claim that all future business behavior or Release-1 packages are complete.
+Total remaining: `34`.
+
+No P2, P3, or P4 gap was reduced by an EXEC-003 security test.
 
 ## EXEC-003 v2 evidence boundary
 
-The authoritative records are:
+Authoritative records:
 
 - `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_FREEZE.md`;
 - `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_CONTRACT_WIRING_MATRIX.md`;
+- `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_LEDGER.md`;
+- `tests/foundation/g5-exec-003-contract-behavior-pilot.test.ts`;
+- `tests/foundation/g5-exec-003-contract-behavior-p0.test.ts`;
+- `tests/foundation/g5-exec-003-contract-behavior-p1-mutation.test.ts`;
+- `tests/foundation/g5-exec-003-contract-behavior-p1-sensitive-read.test.ts`;
+- `tests/foundation/g5-exec-003-signed-boundary-behavior.test.ts`;
+- `tests/foundation/g5-exec-003-delegated-boundary-behavior.test.ts`;
+- `tests/foundation/g5-exec-003-exact-claim-boundary-behavior.test.ts`;
+- `tests/foundation/g5-exec-003-evidence-ledger.test.ts`;
 - `tests/foundation/g5-exec-003-shared-guard.test.ts`;
 - `tests/foundation/g5-exec-003-cookie-guard.test.ts`;
-- `tests/foundation/g5-exec-003-contract-wiring.test.ts`.
+- `tests/foundation/g5-exec-003-contract-wiring.test.ts` — `STRUCTURAL / SOURCE_ASSERTION` only.
 
-The 25 credited contracts comprise the 20 eligible contracts wired through the shared guard and the five excluded contracts whose original security boundaries are directly verified unchanged. No unrelated contract receives credit through a same-file source reference.
+The five excluded contracts retain and directly exercise their original boundaries:
+
+- C02 and C09: actual signed/HMAC boundaries;
+- C17: delegated database RBAC through `requireAgentAccess`;
+- C18 and C19: exact Legacy claim `Admin`.
+
+The boundary-specific test split prevents the shared `app/actions/logs.ts` file from granting evidence to the unfrozen `getSystemLogsAction`.
+
+## Validation on the evidence head
+
+ORCA CI `#365` recorded:
+
+- G5 executable tests: `135/135 PASS`, `33/33 suites`;
+- TypeScript: PASS;
+- Production dependency audit: PASS;
+- Production gate: PASS;
+- G5–G8: PASS;
+- Foundation and Sentinel regressions: PASS;
+- P2 acceptance: PASS;
+- Build: PASS;
+- isolated recovery drill: PASS.
+
+This is PR-merge-ref validation, not a claim that GitHub checked out the head commit directly.
 
 ## Tooling review signals
 
-Operational scripts may legitimately use child processes or dynamic SQL APIs. These are not runtime application vulnerabilities by presence alone. They remain review-required and must preserve:
-
-- fixed executable/argument selection or no shell interpolation;
-- dry-run/default-safe behavior where data may change;
-- allowlisted table/column identifiers for dynamic SQL;
-- explicit environment/approval gates;
-- no Production execution as part of repository CI.
+Operational scripts may legitimately use child processes or dynamic SQL APIs. They remain review-required and must preserve fixed executable selection, no unsafe shell interpolation, dry-run/default-safe behavior where data can change, allowlisted identifiers, explicit approval gates, and no Production execution in repository CI.
 
 ## Quality debt retained
 
-- The 34 contracts without direct test references remain a measurable quality backlog.
-- Visual `PARTIAL`, `PARTIAL_DOCUMENTED_ISSUE`, `NOT_PROVEN`, and historical-only statuses remain owned by G8.
-- Operational backup/restore and recovery evidence remains owned by G6.
-- EXEC-003 remains `IN_EXECUTION` until the package registry and final exact-head evidence are reconciled; this register does not authorize Merge, main, or Production.
+- The 34 non-EXEC-003 contracts without direct evidence remain measurable debt.
+- Visual and historical-only evidence remains owned by later visual/release gates.
+- Operational backup/restore evidence remains owned by G6.
+- EXEC-003 remains `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`.
+- This register does not authorize Merge, main, Production, Vercel Preview, or EXEC-004.
 
 ## Change rule
 
-Any change to dependencies, API boundaries, runtime risk patterns, G4 contract counts, test focus/skip state, or accepted low-risk exceptions must update this register and pass the G5 executable gate. Production deployment and Production data operations are outside G5.
+Any change to dependencies, API boundaries, Runtime risks, G4 counts, evidence classifications, test focus/skip state, or accepted exceptions must update this register and pass G5. Production deployment and Production data operations remain outside G5.
