@@ -1,68 +1,117 @@
-# ORCA Z8 — EXEC-003 v2 Behavioral Evidence Remediation Report
+# ORCA Z8 — EXEC-003 v2 Controlled Security Remediation Report
 
-- **Mode:** `CONTROLLED EVIDENCE REMEDIATION`
-- **Source head:** `a087cdce47648656466bea90c3b19d6c302cf07f`
-
+- **Mode:** `CONTROLLED SECURITY REMEDIATION`
+- **Source head:** `aad03d74bb1003c6a979813c3c7626782676ee3b`
 - **Package:** `EXEC-003 v2`
 - **State:** `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated evidence head:** `4db5e74b596eba18334e9cd10712da60d4118d4e`
+- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
+- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
-- **ORCA CI:** `#385 / SUCCESS`
 - **Checkout mode:** `PR_MERGE_REF`
-- **Synthetic merge SHA:** `ad0cdad8098256332d17e046079cad9387479cf2`
 
-CI validated the synthetic PR merge commit containing the validated evidence head SHA against the PR base. Checkout used `refs/pull/108/merge`; it did not check out the head commit directly.
+## Reviewed blockers closed
 
-The final documentation head and its CI identity are recorded in PR #108 after this documentation commit passes CI, avoiding an impossible self-referential SHA.
+1. Fixed the material inactive-user Runtime defect by adding `isActive: true` to `authBootstrapFindUserRole`.
+2. Added actual-entry-point inactive-user proofs across bearer-capable routes, Cookie-only routes, Server Actions, reads, mutations, and sensitive reads.
+3. Split C18 and C19 into independent ALLOW and DENY tests.
+4. Added independent Bearer-only denial evidence for C14-O02 and C15-O02.
+5. Strengthened the TypeScript AST gate against final-guard replacement and false-positive expectations.
+6. Added a repository-bound evidence identity based on a deterministic content digest.
+7. Corrected the strict counter only after semantic and identity gates passed.
 
+## Runtime security fix
 
-## Remediation completed
-
-1. C17 now invokes `generateAIInsight` through the real `requireAgentAccess`.
-2. Eligible contract tests keep the real `hasDatabaseRole`; only AUTH_BOOTSTRAP persistence boundaries and downstream systems are mocked.
-3. A typed 25-contract/32-operation manifest was added.
-4. The Ledger gate now uses TypeScript AST, not `testSource.includes(testName)`.
-5. Stale evidence identities were removed.
-6. Same-file spillover was detected during CI and corrected without Runtime changes.
-
-## Security cases
+Before correction, `authBootstrapFindUserRole` accepted a user matching only `id` and `tenantId`. The corrected boundary requires:
 
 ```text
-Missing session: DENY
-Missing user: DENY
-Inactive user: DENY in C17
-Inactive tenant: DENY
-Tenant mismatch: DENY
-Disallowed role: DENY
-Unknown role: DENY
-Legacy allow + Progressive allow: ALLOW
-Legacy deny + Progressive allow: DENY
-Legacy allow + Progressive deny: DENY
-Unknown permission: DENY
-Missing permission: DENY
-Downstream on DENY: NOT EXECUTED
-Downstream after ALLOW: EXECUTED
-Cookie-only: PRESERVED
-Platform Owner bypass: ABSENT
+id = session.userId
+tenantId = session.tenantId
+isActive = true
 ```
 
-The database AUTH_BOOTSTRAP role lookup does not expose a distinct inactive-user field; the remediation did not invent one. C17 proves inactive-user denial through the real delegated query.
+Result:
 
 ```text
-Frozen contracts: 25/25
-Frozen operations: 32/32
-Directly tested contracts: 25/25
-Directly tested operations: 32/32
+active user + active tenant + allowed role = ALLOW
+inactive user = DENY
+missing user = DENY
+tenant mismatch = DENY
+inactive tenant = DENY
+disallowed role = DENY
+```
+
+The fix is limited to one Runtime file. No schema, migration, backfill, data, Permission Key, Legacy role, authentication channel, tenant-isolation rule, or bypass changed.
+
+## Direct evidence corrections
+
+- `hasDatabaseRole` remains real in eligible operation evidence.
+- `requireAgentAccess` remains real in C17.
+- C18: exact `Admin` ALLOW and normalized `ADMIN` DENY are separate callbacks.
+- C19: exact `Admin` reaches the logger; normalized `ADMIN` is denied before the logger, in separate callbacks.
+- C14-O02 and C15-O02 reject Bearer-only requests with the original Cookie-only boundary, do not call `requireAuth`, and do not execute their mutations.
+- An actual C03 entry point proves Legacy allow + Progressive deny = DENY without changing the permanent Assignment Registry.
+
+## AST gate result
+
+The semantic gate validates registered tests and configured setup files. It blocks:
+
+```text
+vi.mock
+vi.doMock
+vi.spyOn
+aliases of vi
+untrusted object spreading
+indirect mock factories
+wrong vi.importActual module paths
+mocked intermediary re-exports
+same ALLOW and DENY test/callback
+random expectations for null-downstream operations
+same-file spillover
+out-of-freeze credit
+```
+
+The Manifest uses `CANDIDATE_DIRECT_BEHAVIORAL`; the Gate alone derives final credit from validated operations.
+
+## Evidence identity
+
+```text
+Validated implementation head:
+15230ab21553b0d7992d9c66963d126c6aa16367
+
+Evidence digest:
+a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75
+
+Algorithm:
+sha256-path-length-content-v1
+
+Base SHA:
+001b2c853e99ea055f161dcd294d968bbf25c9ad
+
+Checkout mode:
+PR_MERGE_REF
+```
+
+The identity file is outside its own digest, avoiding a circular reference. CI proves that later documentation-only heads retain the exact evidence digest.
+
+## Corrected strict accounting
+
+```text
+Starting strict direct credit: 3/25 contracts
+Starting strict direct operations: 3/32 operations
+Starting remaining gap: 56
+
+Final directly tested contracts: 25/25
+Final directly tested operations: 32/32
 Full direct behavioral credit: 25 contracts / 32 operations
 Partial contract-entry tests: 0
 Structural-only frozen contracts: 0
 Out-of-scope contracts credited: 0
 Same-file spillover: 0
-Baseline gap: 59
-Remaining gap: 34
+
+Test gap: 59 → 34
 P0 remaining: 0
 P1 mutation remaining: 0
 P1 sensitive read remaining: 0
@@ -71,9 +120,11 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
+## Validation
+
 ```text
-G5 executable tests: 157/157 PASS
-G5 suites: 36/36 PASS
+G5 executable tests: 182/182 PASS
+G5 suites: 45/45 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -85,18 +136,16 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence digest verification: PASS
 ```
 
-## Runtime and scope result
+## Scope result
 
 ```text
-Runtime defects found: 0
-Runtime fixes applied: 0
-```
-
-```text
-Runtime files changed in this remediation: 0
-Prisma changes: 0
+Runtime security defects found: 1
+Runtime fixes applied: 1
+Runtime files changed in this remediation: 1
+Prisma schema changes: 0
 Migrations: 0
 Backfills: 0
 Production data changes: 0
