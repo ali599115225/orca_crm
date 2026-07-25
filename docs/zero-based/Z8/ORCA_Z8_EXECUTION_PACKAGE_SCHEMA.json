@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "documentId": "ORCA-Z8-EXECUTION-PACKAGE-SCHEMA-001",
   "date": "2026-07-25",
-  "status": "FINAL_AUTHORIZATION_SCHEMA",
+  "status": "FINAL_AUTHORIZATION_SCHEMA / VERCEL_HOBBY_POLICY_ACTIVE",
   "repository": "ali599115225/orca_crm",
   "mergeDestination": "work/orca-zero-based-execution-20260721",
   "mainMergeAuthorized": false,
@@ -35,6 +35,13 @@
     "SECURITY_CONTROL",
     "TEST_EVIDENCE"
   ],
+  "allowedVercelValidationStates": [
+    "NOT_REQUIRED",
+    "SKIP_BY_DEFAULT",
+    "REQUIRED_AT_PACKAGE_END",
+    "REQUIRED_AT_FINAL_RELEASE",
+    "SEPARATE_PRODUCTION_AUTHORIZATION"
+  ],
   "requiredPackageFields": [
     "packageId",
     "version",
@@ -49,6 +56,7 @@
     "recovery",
     "parallelConflicts",
     "subAuthorizations",
+    "vercelValidation",
     "validity"
   ],
   "sourceControlRules": {
@@ -65,10 +73,30 @@
     "paidPurchaseOrUpgrade": false,
     "productionRelease": false
   },
+  "vercelValidationRules": {
+    "planningAndDocumentationZ0ToZ8": "NOT_REQUIRED",
+    "executionPackageDefault": "SKIP_BY_DEFAULT",
+    "packageEndEligibility": [
+      "all intended package modifications are complete",
+      "package-targeted tests pass",
+      "TypeScript and security or contract checks pass where applicable",
+      "build passes locally or in GitHub CI",
+      "the candidate SHA is stable"
+    ],
+    "packagePreviewLimit": 1,
+    "packagePreviewUse": "Only when completed Runtime, UI, visual or operational behavior materially requires Preview validation.",
+    "finalReleasePreview": "REQUIRED_AT_FINAL_RELEASE",
+    "finalReleasePreviewLimit": 1,
+    "documentationOnlyCentralMerge": "Vercel success is not a required merge condition.",
+    "automaticGitHubIntegrationTrigger": "Non-blocking evidence only; do not push again solely to rerun Preview.",
+    "hobbyQuotaExhaustion": "Record VERCEL_VALIDATION=DEFERRED_TO_FINAL_EXECUTABLE_HEAD and continue with applicable CI evidence.",
+    "productionDeployment": "SEPARATE_PRODUCTION_AUTHORIZATION"
+  },
   "acceptanceRules": [
     "the final diff must match the exact path and change-class allowlist",
-    "all blocking checks must pass on the exact final head",
-    "red, pending, skipped, or missing required evidence blocks closure",
+    "all blocking checks required by the package and its selected Vercel validation state must pass on the exact final head",
+    "a Vercel check marked NOT_REQUIRED or SKIP_BY_DEFAULT is not missing evidence",
+    "red or pending required evidence blocks closure; non-required automatic Preview results do not block documentation-only or CI-provable packages",
     "requirement-specific negative, concurrency, failure, and recovery evidence is required where applicable",
     "visual work requires an owner-approved item-level reference and independent verification",
     "agent narrative and historical reports do not substitute for direct evidence",
@@ -95,6 +123,7 @@
     "authorization is single-use, package-specific, version-specific, and time-bounded",
     "general build authority never implies main, migration, data, provider, secret, purchase, external action, or Production authority",
     "completion of Z8 authorizes no package to start automatically",
-    "the owner instruction after Z8 determines which EVIDENCE_READY package is activated next"
+    "the owner instruction after Z8 determines which EVIDENCE_READY package is activated next",
+    "this Vercel Hobby policy supersedes every earlier requirement for a Preview on each commit, push, pull request, documentation change or small correction"
   ]
 }
