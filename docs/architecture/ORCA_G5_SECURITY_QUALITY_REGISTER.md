@@ -51,6 +51,18 @@ P3 remaining: 16
 P4 remaining: 2
 ```
 
+Contracts without a direct current test reference: **34**
+
+EXEC-003 v2 direct evidence: **25 contracts**
+
+## Durable dependency risk register
+
+| Dependency / control | Classification | Current handling |
+|---|---|---|
+| Static low-severity findings | `ACCEPTED_LOW_STATIC` | Retained under the production-audit threshold and CI gate. |
+| `brace-expansion` | Reviewed override | Registered with ownership and removal trigger. |
+| `postcss` | Reviewed override | Covered by deterministic install and production audit. |
+
 ## Validation contract
 
 ```text
