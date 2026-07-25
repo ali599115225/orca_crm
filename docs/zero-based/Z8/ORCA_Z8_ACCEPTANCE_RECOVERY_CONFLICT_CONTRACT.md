@@ -1,9 +1,9 @@
 # ORCA Z8 — Acceptance, Recovery, and Conflict Contract
 
 - **Document ID:** ORCA-Z8-ACCEPT-001
-- **Version:** 1.0
+- **Version:** 1.1
 - **Date:** 2026-07-25
-- **Status:** `FINAL CONTROL CONTRACT`
+- **Status:** `FINAL CONTROL CONTRACT / VERCEL_HOBBY_POLICY_ACTIVE`
 - **Main merge authorized:** `false`
 - **Production action authorized:** `false`
 
@@ -18,9 +18,10 @@ Before a package changes a file, record:
 5. owner decisions, visual references, environment/provider/account evidence and recovery prerequisites;
 6. shared mutable boundaries and designated owner;
 7. required checks, direct tests, drills, visual evidence and signers;
-8. stop triggers, rollback limits and preserved-evidence safe state;
-9. validity and revocation conditions;
-10. confirmation that all sub-authorizations remain false unless separately recorded.
+8. the package `vercelValidation` value and any package-end escalation trigger;
+9. stop triggers, rollback limits and preserved-evidence safe state;
+10. validity and revocation conditions;
+11. confirmation that all sub-authorizations remain false unless separately recorded.
 
 A package in `EVIDENCE_READY` has passed definition review but has not begun execution.
 
@@ -29,17 +30,40 @@ A package in `EVIDENCE_READY` has passed definition review but has not begun exe
 A package cannot close unless all applicable items pass on the exact final head:
 
 - clean diff limited to the allowlist;
-- installation, schema validation/generation, Production dependency audit, TypeScript and build;
+- installation, schema validation/generation, Production dependency audit, TypeScript and build where applicable to the package;
 - relevant Foundation, domain, negative, concurrency, replay, failure and reconciliation tests;
-- no required check is red, pending, skipped or missing;
+- no required check is red, pending or missing;
+- a Vercel check marked `NOT_REQUIRED` or `SKIP_BY_DEFAULT` is not missing evidence and does not block closure;
 - no new unresolved P0/P1 defect or contract contradiction;
-- required Preview/Staging evidence uses the approved environment and representative fixtures;
+- required Preview/Staging evidence, when the package is `REQUIRED_AT_PACKAGE_END`, uses the approved environment and representative fixtures on one stable final SHA;
 - visual work matches the exact approved reference in structural and detail passes, including RTL, Light/Dark, responsive states, forms, overlays, keyboard and accessibility;
 - temporary workflows, flags, credentials, files and access are removed or explicitly retained;
 - data, documents, jobs, providers and business truth are reconciled where affected;
 - residual gaps and risks are registered with owners and triggers.
 
-## 3. Domain-specific evidence
+## 3. Vercel Hobby validation policy
+
+This section supersedes every earlier requirement for Vercel Preview on each commit, push, pull request, documentation change or small correction.
+
+| Scope | Required value | Rule |
+|---|---|---|
+| Z0–Z8 planning and documentation | `NOT_REQUIRED` | GitHub CI, JSON/Markdown validation and diff review are sufficient. |
+| Execution package during incremental work | `SKIP_BY_DEFAULT` | No Preview is created for each file, commit, push or PR. |
+| Completed Runtime/UI package | `REQUIRED_AT_PACKAGE_END` | At most one Preview after all package changes, tests and build pass and the candidate SHA is stable, and only when visual or operational validation is materially necessary. |
+| Definitive Release Candidate | `REQUIRED_AT_FINAL_RELEASE` | One final Preview after all intended repair packages are complete. |
+| Production deploy/action | `SEPARATE_PRODUCTION_AUTHORIZATION` | Preview or CI success never authorizes Production. |
+
+Daily package evidence is based on targeted tests, TypeScript where applicable, GitHub CI, diff review, and security/contract checks appropriate to the scope.
+
+When the GitHub integration starts Vercel automatically:
+
+- the attempt is not mandatory evidence unless the package value requires it;
+- no new Push is made solely to rerun Preview;
+- documentation-only and CI-provable packages do not wait for Hobby quota renewal;
+- quota rejection is recorded as `VERCEL_VALIDATION = DEFERRED_TO_FINAL_EXECUTABLE_HEAD`;
+- no paid upgrade, account, credential or Production action is implied.
+
+## 4. Domain-specific evidence
 
 | Change class | Minimum evidence |
 |---|---|
@@ -53,7 +77,7 @@ A package cannot close unless all applicable items pass on the exact final head:
 | UI visual | approved item-level reference plus independent visual and accessibility verification |
 | Operations/recovery | isolated backup/restore, measured targets, integrity reconciliation and runbook execution |
 
-## 4. Recovery model
+## 5. Recovery model
 
 Every package distinguishes:
 
@@ -66,7 +90,7 @@ Every package distinguishes:
 
 Rollback is blocked when it would discard valid new data, break a newer schema, lose audit evidence or reintroduce a security defect. Such cases require a separate decision.
 
-## 5. Stop triggers
+## 6. Stop triggers
 
 Execution stops immediately when:
 
@@ -79,7 +103,9 @@ Execution stops immediately when:
 - a parallel package edits the same mutable boundary;
 - rollback/recovery assumptions are invalidated.
 
-## 6. Parallel conflict matrix
+A skipped or quota-limited non-required Preview is not a stop trigger.
+
+## 7. Parallel conflict matrix
 
 | Boundary | Rule |
 |---|---|
@@ -92,7 +118,7 @@ Execution stops immediately when:
 | provider adapters, webhooks and environments | one provider-specific package after account evidence |
 | release branch, staging fixtures and activation evidence | EXEC-013/014 only after prerequisites |
 
-## 7. Closure record
+## 8. Closure record
 
 The final package closure records:
 
@@ -101,6 +127,7 @@ PACKAGE / VERSION
 BASE SHA / FINAL HEAD / PR
 FINAL DIFF MATCHES ALLOWLIST
 CHECKS AND ARTIFACT IDS
+VERCEL_VALIDATION VALUE / RESULT OR DEFERRAL
 CLOSED GAP IDS
 RESIDUAL GAP IDS
 TEMPORARY ARTIFACT DECISION
