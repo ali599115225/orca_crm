@@ -3,7 +3,7 @@
   "package": "EXEC-003 v2",
   "state": "IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW",
   "validatedImplementationHead": "f87213676c735c11782751a74435d8d752027b2c",
-  "evidenceDigest": "PENDING FINAL VALIDATION",
+  "evidenceDigest": "88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f",
   "digestAlgorithm": "sha256-path-length-content-v1",
   "evidenceFiles": [
     "lib/auth/exec-003-permission-assignments.ts",
