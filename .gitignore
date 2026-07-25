@@ -28,3 +28,12 @@ _archive/
 .vercel/
 .env*
 !.env.example
+
+# منتجات الاختبار والأدلة المولدة — تُحفظ كـ CI artifacts ولا تُضاف نسخ جديدة للمستودع
+.unlighthouse/
+unlighthouse-report/
+playwright-report/
+test-results/
+artifacts/
+lighthouse-report*.html
+lighthouse-report*.json

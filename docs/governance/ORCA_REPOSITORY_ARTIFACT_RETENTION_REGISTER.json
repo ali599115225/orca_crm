@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "documentId": "ORCA-EXEC-002-ARTIFACT-RETENTION-001",
+  "date": "2026-07-25",
+  "status": "ACTIVE / NO_SILENT_DELETION",
+  "policy": "Historical evidence and generated work products are not Runtime. They remain explicitly classified until archive hashes and references are verified; new generated copies are ignored by default.",
+  "families": [
+    {
+      "pathPattern": ".unlighthouse/",
+      "classification": "GENERATED_VISUAL_EVIDENCE",
+      "disposition": "RETAIN_TEMPORARILY_PENDING_ARCHIVE",
+      "owner": "Release Engineering",
+      "reviewTrigger": "Archive or remove before EXEC-014 after references and SHA-256 manifests are verified.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "unlighthouse-report/",
+      "classification": "GENERATED_VISUAL_EVIDENCE",
+      "disposition": "RETAIN_TEMPORARILY_PENDING_ARCHIVE",
+      "owner": "Release Engineering",
+      "reviewTrigger": "Archive or remove before EXEC-014 after references and SHA-256 manifests are verified.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "playwright-report/",
+      "classification": "GENERATED_TEST_EVIDENCE",
+      "disposition": "RETAIN_TEMPORARILY_PENDING_ARCHIVE",
+      "owner": "Quality Engineering",
+      "reviewTrigger": "Archive or remove after stable CI artifact retention replaces tracked copies.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "test-results/",
+      "classification": "GENERATED_TEST_EVIDENCE",
+      "disposition": "IGNORE_NEW_OUTPUT",
+      "owner": "Quality Engineering",
+      "reviewTrigger": "Review before final Release Candidate to confirm no tracked result copies remain required.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "artifacts/",
+      "classification": "GENERATED_CI_EVIDENCE",
+      "disposition": "IGNORE_NEW_OUTPUT",
+      "owner": "Release Engineering",
+      "reviewTrigger": "Use GitHub Actions artifact retention instead of committing generated outputs.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "lighthouse-report*.html|json",
+      "classification": "GENERATED_PERFORMANCE_EVIDENCE",
+      "disposition": "RETAIN_TEMPORARILY_PENDING_ARCHIVE",
+      "owner": "Quality Engineering",
+      "reviewTrigger": "Archive or remove before EXEC-014 after authoritative reports are linked.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "scratch/",
+      "classification": "TEMPORARY_WORK_PRODUCT",
+      "disposition": "IGNORE_NEW_OUTPUT",
+      "owner": "Release Engineering",
+      "reviewTrigger": "No tracked scratch file may enter a package PR without explicit allowlist amendment.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "ORCA_PAGE_CLOSURE_WORK/",
+      "classification": "HISTORICAL_PAGE_CLOSURE_EVIDENCE",
+      "disposition": "RETAIN_UNTIL_VISUAL_CONTRACT_MIGRATION",
+      "owner": "Product Owner",
+      "reviewTrigger": "Reconcile per surface during EXEC-011; archive superseded material before EXEC-014.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "root investigation reports and backup configuration copies",
+      "classification": "HISTORICAL_INVESTIGATION_EVIDENCE",
+      "disposition": "RETAIN_TEMPORARILY_PENDING_INDEX",
+      "owner": "Release Engineering",
+      "reviewTrigger": "Index authoritative evidence, hash archive copies and remove duplicates before EXEC-014.",
+      "runtimeImpact": "NONE"
+    },
+    {
+      "pathPattern": "anomalous quoted-path entries",
+      "classification": "ANOMALOUS_WORK_ARTIFACT",
+      "disposition": "QUARANTINE_FOR_MANUAL_REVIEW",
+      "owner": "Release Engineering",
+      "reviewTrigger": "Verify path identity and references before any rename, archive or deletion.",
+      "runtimeImpact": "NONE"
+    }
+  ]
+}
