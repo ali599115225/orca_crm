@@ -265,8 +265,8 @@ if (
 const expectedG7Summary = {
   totalItems: 58,
   generatedVisualItems: 37,
-  directTestGaps: 59,
-  highPriorityDirectTestGaps: 25,
+  directTestGaps: 34,
+  highPriorityDirectTestGaps: 0,
   lowerPriorityDirectTestGaps: 34,
   productionActivationBlockers: 6,
 };
