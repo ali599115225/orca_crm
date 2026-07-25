@@ -7,14 +7,14 @@
 - **PR:** `#108 / DRAFT / OPEN / UNMERGED`
 - **Branch:** `work/orca-gexec-003-v2-shared-guard-20260725`
 - **Base:** `work/orca-zero-based-execution-20260721`
-- **Validated implementation head:** `15230ab21553b0d7992d9c66963d126c6aa16367`
-- **Evidence digest:** `a9f68b74bf6dc739b3afabaa9cfa59466c345e4757fb3533d664033016a4fe75`
+- **Validated implementation head:** `f87213676c735c11782751a74435d8d752027b2c`
+- **Evidence digest:** `88481115ceceae02964061356f76e30c6252456f89ff06e94cf6fd54553a140f`
 - **Digest algorithm:** `sha256-path-length-content-v1`
 - **Validated base SHA:** `001b2c853e99ea055f161dcd294d968bbf25c9ad`
 - **Checkout mode:** `PR_MERGE_REF`
 - **Evidence identity:** `docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json`
 
-The repository-bound identity binds the reviewed implementation head to an immutable digest of the Assignment Registry, Shared Guard, AUTH_BOOTSTRAP boundary, direct behavioral tests, manifest, semantic gate, and identity verification tooling. Later documentation-only commits must retain the same digest.
+The repository-bound identity binds the complete executable remediation and reconciliation toolset to one immutable digest. Changes after the validated implementation head are limited to the identity, registry and documentation records and must retain the same digest.
 
 ## Runtime security correction
 
@@ -33,6 +33,7 @@ The real `hasDatabaseRole` decision therefore denies inactive users before downs
 - Candidate manifest: `tests/foundation/g5-exec-003-behavior-evidence-manifest.ts`
 - Semantic gate: `tests/foundation/g5-exec-003-evidence-ledger.test.ts`
 - Identity gate: `tests/foundation/g5-exec-003-evidence-identity.test.ts`
+- Registry reconciliation gate: `tests/foundation/g5-exec-003-registry-reconciliation.test.ts`
 - AUTH_BOOTSTRAP proof: `tests/foundation/g5-exec-003-auth-bootstrap-active-user.test.ts`
 - Inactive-user matrix: `tests/foundation/g5-exec-003-entrypoint-security-matrix.test.ts`
 - Cookie mutation proof: `tests/foundation/g5-exec-003-cookie-mutation-boundary.test.ts`
@@ -88,11 +89,9 @@ The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
 
 ## Validation
 
-ORCA CI on the sealed identity recorded:
-
 ```text
-G5 executable tests: 182/182 PASS
-G5 suites: 45/45 PASS
+G5 executable tests: 184/184 PASS
+G5 suites: 47/47 PASS
 TypeScript: PASS
 Production gate: PASS
 Production dependency audit: PASS
@@ -104,6 +103,8 @@ Sentinel regressions: PASS
 P2 acceptance: PASS
 Build: PASS
 Isolated recovery drill: PASS
+Evidence digest verification: PASS
+Registry reconciliation: PASS
 ```
 
 ## Scope
