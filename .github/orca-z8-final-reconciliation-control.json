@@ -6,6 +6,7 @@
   "exec003_pr": 108,
   "exec003_head": "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618",
   "exec003_merge_sha": "b0369b50eb2d49001e5322eea90b3b6dae22a882",
+  "publisher_revision": "split-verify-push-v2",
   "empty_commit_authorized": false,
   "paid_upgrade_authorized": false,
   "main_or_production_authorized": false
