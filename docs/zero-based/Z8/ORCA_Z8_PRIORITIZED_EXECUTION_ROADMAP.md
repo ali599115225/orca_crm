@@ -1,10 +1,17 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.2
-- **Date:** 2026-07-25
-- **Status:** `ACTIVE / EXEC-001 AND EXEC-002 CLOSED / EXEC-003 NEXT`
-- **Current central baseline after EXEC-002:** `05a18a7242f12bb40eb8759e3648888135eb4edc`
+- **Version:** 1.3
+- **Date:** 2026-07-26
+- **Status:** `ACTIVE / EXEC-001 / EXEC-002 / EXEC-003 CLOSED / EXEC-004 OWNER_DECISION_PENDING`
+- **Current central baseline after EXEC-003:** `b0369b50eb2d49001e5322eea90b3b6dae22a882`
+
+```text
+EXEC-001: CLOSED
+EXEC-002: CLOSED
+EXEC-003: CLOSED via PR #108
+EXEC-004: OWNER_DECISION_PENDING
+```
 
 ## 1. Sequencing rule
 
@@ -16,7 +23,7 @@ The roadmap orders work by risk reduction and prerequisite value, not by page vi
 |---|---|---|---|---|
 | 1 | EXEC-001 | `CLOSED` via PR #104 | publish the verified dependency-security issue form | `NOT_REQUIRED` |
 | 2 | EXEC-002 | `CLOSED` via PR #106 | add blocking governance lint, override ownership and artifact-retention controls | `SKIP_BY_DEFAULT` |
-| 3 | EXEC-003 | `EVIDENCE_READY / NEXT` | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT`; amend to package-end only for material Runtime correction |
+| 3 | EXEC-003 | `CLOSED` via PR #108 | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT` |
 
 EXEC-003 owns shared security tests and contract registries. Other packages may not edit those boundaries concurrently without coordination.
 
@@ -24,7 +31,7 @@ EXEC-003 owns shared security tests and contract registries. Other packages may 
 
 | Order | Package | Blocking decisions | Vercel validation |
 |---|---|---|---|
-| 4 | EXEC-004 | Release-1 scope, company structure, branches/departments/teams/personas | `REQUIRED_AT_PACKAGE_END` |
+| 4 | EXEC-004 | `OWNER_DECISION_PENDING` — Release-1 scope, company structure, branches/departments/teams/personas | `REQUIRED_AT_PACKAGE_END` |
 | 5 | EXEC-005 | identity/merge survivorship, privacy purpose and consent | `REQUIRED_AT_PACKAGE_END` |
 | 6 | EXEC-006 | commitment priority/expiry, acceptance-reservation truth, inventory/scheduling policy | `REQUIRED_AT_PACKAGE_END` |
 | 7 | EXEC-007 | offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` |
@@ -55,8 +62,8 @@ Visual implementation follows the functional package for the same surface. One p
 ```text
 EXEC-001 CLOSED
 → EXEC-002 CLOSED
-→ EXEC-003 NEXT
-→ EXEC-004
+→ EXEC-003 CLOSED
+→ EXEC-004 OWNER_DECISION_PENDING
 → EXEC-005 + EXEC-006
 → EXEC-007
 → EXEC-008
@@ -92,11 +99,12 @@ Parallelism is permitted only where package registries show no shared mutable fi
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 2
-READY FOR CONTROLLED EXECUTION: 1
+CLOSED: 3
+READY FOR CONTROLLED EXECUTION: 0
 OWNER/REFERENCE CONDITIONAL: 8
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
-NEXT PACKAGE: EXEC-003
+NEXT AUTOMATIC PACKAGE: NONE
+NEXT OWNER DECISION: EXEC-004
 ```
