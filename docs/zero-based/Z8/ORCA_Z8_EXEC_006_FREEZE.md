@@ -10,7 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
-- Scope recheck: the central branch remained exactly at the frozen base before the second and third additive hardening migrations.
+- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening and disambiguation migrations.
 
 ## Owner decisions frozen for this package
 
@@ -88,6 +88,7 @@ The new source of truth consists of:
 - Composite tenant-safe foreign keys and append-only triggers are mandatory where Prisma cannot express the rule.
 - The second migration is limited to strengthening approval shape, immutable identity, and atomic Extend/Reschedule command functions discovered during pre-execution SQL review; it does not expand product scope.
 - The third migration is limited to database verification of independent elevated approvals, effective RentalLease availability, and final-link release protection discovered during strict security review; it does not expand product scope.
+- The fourth migration is a fully-qualified availability function replacement that removes PL/pgSQL name ambiguity while preserving Contract, RentalLease, operational restriction, commitment and fail-closed semantics.
 
 ## Allowed paths
 
@@ -103,11 +104,12 @@ The new source of truth consists of:
 10. `prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql`
 11. `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
 12. `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
-13. `scripts/exec-006-postgres-concurrency.mjs`
-14. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-15. `tests/foundation/g5-exec-006-security.test.ts`
-16. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-17. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+13. `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
+14. `scripts/exec-006-postgres-concurrency.mjs`
+15. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+16. `tests/foundation/g5-exec-006-security.test.ts`
+17. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+18. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
