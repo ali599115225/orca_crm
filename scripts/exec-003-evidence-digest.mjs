@@ -14,7 +14,32 @@ const MANIFEST_PATH =
 
 const EXECUTION_REGISTRY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
-const ADMINISTRATIVE_REGISTRY_FIELDS = Object.freeze(["finalZ8Closure"]);
+const EXEC003_REGISTRY_SHARED_FIELDS = Object.freeze([
+  "schemaVersion",
+  "documentId",
+  "sourceGapRegister",
+  "mainMergeAuthorized",
+  "productionActionAuthorized",
+  "vercelPolicy",
+]);
+
+function projectExec003Registry(registry) {
+  if (!registry || typeof registry !== "object") {
+    throw new Error("EXEC-003 registry digest input must be an object");
+  }
+  const packageRecord = Array.isArray(registry.packages)
+    ? registry.packages.find((candidate) => candidate?.packageId === "EXEC-003")
+    : null;
+  if (!packageRecord) {
+    throw new Error("EXEC-003 package record is missing from registry digest input");
+  }
+  const projection = {};
+  for (const field of EXEC003_REGISTRY_SHARED_FIELDS) {
+    projection[field] = registry[field];
+  }
+  projection.exec003Package = packageRecord;
+  return projection;
+}
 
 const REQUIRED_SECURITY_MODULES = Object.freeze([
   "@/lib/api-auth-guard",
@@ -616,8 +641,7 @@ function normalizedContent(root, relativePath) {
   const content = readFileSync(absolute, "utf8").replaceAll("\r\n", "\n");
   if (relativePath !== EXECUTION_REGISTRY_PATH) return content;
   const registry = JSON.parse(content);
-  for (const field of ADMINISTRATIVE_REGISTRY_FIELDS) delete registry[field];
-  return `${JSON.stringify(registry)}\n`;
+  return `${JSON.stringify(projectExec003Registry(registry))}\n`;
 }
 
 export function hashExec003EvidenceFiles(root, evidenceFiles) {
@@ -644,7 +668,7 @@ export function hashExec003EvidenceFiles(root, evidenceFiles) {
 export function computeExec003EvidenceDigest(root = process.cwd()) {
   const derivation = deriveExec003EvidenceFiles(root);
   return {
-    algorithm: "sha256-path-length-content-v4-final-closure-metadata-excluded",
+    algorithm: "sha256-path-length-content-v5-exec003-registry-projection",
     evidenceDigest: hashExec003EvidenceFiles(
       root,
       derivation.derivedEvidenceFiles,
