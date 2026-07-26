@@ -1,0 +1,9 @@
+{
+  "central_sha": "ff47997382d9032a6e1c27b9488884282867479f",
+  "target_branch": "work/orca-z8-final-closure-v3-20260726",
+  "expected_scope_files": 9,
+  "registered_packages": 14,
+  "covered_gap_ids": 32,
+  "packages_in_execution": 0,
+  "main_or_production_authorized": false
+}
