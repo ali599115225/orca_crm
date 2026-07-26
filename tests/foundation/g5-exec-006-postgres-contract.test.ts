@@ -29,8 +29,16 @@ const lifecycleApprovalHardening = readFileSync(
   "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql",
   "utf8",
 );
+const exactScopeHardening = readFileSync(
+  "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql",
+  "utf8",
+);
 const drill = readFileSync(
   "scripts/exec-006-postgres-concurrency.mjs",
+  "utf8",
+);
+const exactScopeDrill = readFileSync(
+  "scripts/exec-006-postgres-exact-scope.sql",
   "utf8",
 );
 
@@ -56,6 +64,7 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
       "Apply EXEC-006 availability disambiguation",
       "Apply EXEC-006 reconciliation race hardening",
       "Apply EXEC-006 lifecycle approval guard hardening",
+      "Apply EXEC-006 exact persisted scope hardening",
     ];
     let previous = -1;
     for (const name of names) {
@@ -117,6 +126,38 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     );
   });
 
+  it("enforces exact persisted assignment scope", () => {
+    expect(exactScopeHardening).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_assert_scope_assignment"',
+    );
+    expect(exactScopeHardening).toContain("WHEN 'DEPARTMENT' THEN");
+    expect(exactScopeHardening).toContain("WHEN 'TEAM' THEN");
+    expect(exactScopeHardening).toContain(
+      'v_assignment."assigned_resource_type" = \'UNIT\'',
+    );
+    expect(exactScopeHardening).toContain(
+      'v_assignment."assigned_resource_type" = \'UNIT_COMMITMENT\'',
+    );
+    expect(exactScopeHardening).toContain(
+      'v_assignment."assigned_resource_type" = \'TOUR_APPOINTMENT\'',
+    );
+    expect(exactScopeHardening).toContain(
+      'CREATE TRIGGER "00_tour_appointments_v2_staff_exact_scope_guard"',
+    );
+    expect(workflow).toContain("Prove exact persisted assignment scope");
+    expect(workflow).toContain("scripts/exec-006-postgres-exact-scope.sql");
+    expect(exactScopeDrill).toContain(
+      "department assignment unexpectedly authorized branch-wide access",
+    );
+    expect(exactScopeDrill).toContain(
+      "team assignment unexpectedly authorized branch-wide access",
+    );
+    expect(exactScopeDrill).toContain(
+      "wrong resource type unexpectedly authorized Unit access",
+    );
+    expect(exactScopeDrill).toContain("exec006_exact_scope=PASS");
+  });
+
   it("proves independent approval and final contractual blocking", () => {
     expect(authorityAvailability).toContain(
       "exec006_assert_independent_approval",
@@ -124,6 +165,9 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(authorityAvailability).toContain("self approval denied");
     expect(authorityAvailability).toContain(
       "unit_commitments_final_link_release_guard",
+    );
+    expect(exactScopeHardening).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_assert_independent_approval"',
     );
     expect(drill).toContain("self-approved long Hold duration was accepted");
     expect(drill).toContain("independentLongDurationApproval");
