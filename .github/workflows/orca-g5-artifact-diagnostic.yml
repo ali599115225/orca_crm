@@ -1,0 +1,38 @@
+name: ORCA G5 Artifact Diagnostic
+on:
+  pull_request:
+    branches: [work/orca-g5-diagnostic-base-20260726]
+    types: [opened, reopened, synchronize]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  diagnose:
+    if: github.head_ref == 'work/orca-g5-diagnostic-control-20260726'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and print concise G5 failures
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/ali599115225/orca_crm/actions/artifacts/8625397040/zip > /tmp/g5.zip
+          mkdir /tmp/g5
+          unzip -q /tmp/g5.zip -d /tmp/g5
+          node <<'NODE'
+          const fs=require('fs');
+          const file=fs.readdirSync('/tmp/g5').find(x=>x.endsWith('.json'));
+          const r=JSON.parse(fs.readFileSync(`/tmp/g5/${file}`,'utf8'));
+          console.log(`FAILED_SUITES=${r.numFailedTestSuites} FAILED_TESTS=${r.numFailedTests} SUCCESS=${r.success}`);
+          for (const f of r.testResults ?? []) {
+            const failures=(f.assertionResults ?? []).filter(a=>a.status==='failed');
+            if (f.status==='failed' || failures.length) {
+              console.log(`FILE=${f.name}`);
+              for (const a of failures) {
+                console.log(`TEST=${a.fullName}`);
+                for (const m of a.failureMessages ?? []) console.log(m.slice(0,4000));
+              }
+            }
+          }
+          NODE
