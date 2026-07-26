@@ -11,38 +11,18 @@ import {
   getAgentDefinition,
   normalizeAgentType,
 } from "@/lib/agents/registry";
-import { isDedicatedCopyDeployment } from "@/lib/deployment-license";
 
-const PLAN_SLOT_LIMITS: Record<string, number> = {
-  basic: 1,
-  silver: 5,
-  gold: 999_999,
-  platinum: 999_999,
-  professional: 999_999,
-  diamond: 999_999,
-};
-
-function planLimit(plan: string | null | undefined): number {
-  if (isDedicatedCopyDeployment()) return Number.MAX_SAFE_INTEGER;
-  return PLAN_SLOT_LIMITS[(plan || "basic").toLowerCase()] ?? 1;
-}
+const OPERATIONAL_MESSAGE_LIMIT = 99_999;
 
 export async function getAgentSlotsAction() {
   try {
     const access = await requireAgentAccess({ roles: AGENT_READ_ROLES });
-    const [tenant, slots] = await Promise.all([
-      prisma.tenant.findUnique({
-        where: { id: access.tenantId },
-        select: { subscriptionPlan: true },
-      }),
-      prisma.agentSlot.findMany({
-        where: { tenantId: access.tenantId },
-        include: { usageMeter: true },
-        orderBy: { slotNumber: "asc" },
-      }),
-    ]);
+    const slots = await prisma.agentSlot.findMany({
+      where: { tenantId: access.tenantId },
+      include: { usageMeter: true },
+      orderBy: { slotNumber: "asc" },
+    });
 
-    const maxSlots = planLimit(tenant?.subscriptionPlan);
     const activeCount = slots.filter((slot) => slot.isActive).length;
 
     return {
@@ -51,10 +31,11 @@ export async function getAgentSlotsAction() {
         ...slot,
         definition: getAgentDefinition(slot.agentType),
       })),
-      maxSlots,
       activeCount,
-      isAtCap: activeCount >= maxSlots,
-      plan: (tenant?.subscriptionPlan || "basic").toLowerCase(),
+      maxSlots: null,
+      isAtCap: false,
+      plan: null,
+      commercialLimitApplied: false,
     };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -66,27 +47,11 @@ export async function createAgentSlotAction(agentType: string) {
     const access = await requireAgentAccess({ roles: AGENT_MANAGER_ROLES });
     const normalized = normalizeAgentType(agentType || "CHAT_BOT");
     if (!normalized || normalized === "SENTINEL") {
-      return { success: false, error: "نوع الوكيل غير مدعوم لهذا المستأجر." };
+      return { success: false, error: "نوع الوكيل غير مدعوم لهذه الشركة." };
     }
 
     const result = await prisma.$transaction(
       async (tx) => {
-        const tenant = await tx.tenant.findUnique({
-          where: { id: access.tenantId },
-          select: { subscriptionPlan: true },
-        });
-        if (!tenant) throw new Error("Tenant not found.");
-
-        const activeCount = await tx.agentSlot.count({
-          where: { tenantId: access.tenantId, isActive: true },
-        });
-        const maxSlots = planLimit(tenant.subscriptionPlan);
-        if (activeCount >= maxSlots) {
-          throw new Error(
-            `CAP_LOCK:${maxSlots}:${tenant.subscriptionPlan || "basic"}`,
-          );
-        }
-
         const maximum = await tx.agentSlot.aggregate({
           where: { tenantId: access.tenantId },
           _max: { slotNumber: true },
@@ -109,12 +74,7 @@ export async function createAgentSlotAction(agentType: string) {
             tenantId: access.tenantId,
             agentSlotId: slot.id,
             metricType: "MESSAGES",
-            limitValue:
-              tenant.subscriptionPlan?.toLowerCase() === "basic"
-                ? 500
-                : tenant.subscriptionPlan?.toLowerCase() === "silver"
-                  ? 2_000
-                  : 99_999,
+            limitValue: OPERATIONAL_MESSAGE_LIMIT,
             usageValue: 0,
             resetAt,
           },
@@ -127,7 +87,11 @@ export async function createAgentSlotAction(agentType: string) {
             action: "AGENT_SLOT_CREATED",
             tableName: "agent_slots",
             recordId: slot.id,
-            details: JSON.stringify({ agentType: normalized, slotNumber }),
+            details: JSON.stringify({
+              agentType: normalized,
+              slotNumber,
+              commercialPlanLimitApplied: false,
+            }),
           },
         });
 
@@ -140,14 +104,6 @@ export async function createAgentSlotAction(agentType: string) {
     revalidatePath("/operations/agents");
     return { success: true, slot: result };
   } catch (error: any) {
-    if (String(error.message || "").startsWith("CAP_LOCK:")) {
-      const [, limit, plan] = String(error.message).split(":");
-      return {
-        success: false,
-        capLock: true,
-        error: `تم الوصول إلى الحد الأقصى (${limit}) لباقة ${plan}.`,
-      };
-    }
     return { success: false, error: error.message };
   }
 }
@@ -268,7 +224,7 @@ export async function incrementUsageMeterAction(
       return {
         success: false,
         limitExceeded: true,
-        error: `تم استنفاد الحد (${result.limitValue} ${result.metricType}).`,
+        error: `تم استنفاد الحد التشغيلي (${result.limitValue} ${result.metricType}).`,
       };
     }
     return { success: true };
@@ -316,24 +272,6 @@ export async function toggleAgentStatusAction(
     }
     if (!slot) return { success: true, isActive: false };
 
-    if (newStatus && !slot.isActive) {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: access.tenantId },
-        select: { subscriptionPlan: true },
-      });
-      const activeCount = await prisma.agentSlot.count({
-        where: { tenantId: access.tenantId, isActive: true },
-      });
-      const maxSlots = planLimit(tenant?.subscriptionPlan);
-      if (activeCount >= maxSlots) {
-        return {
-          success: false,
-          capLock: true,
-          error: `تم الوصول إلى الحد الأقصى (${maxSlots}) للمقاعد النشطة.`,
-        };
-      }
-    }
-
     const updated = await prisma.agentSlot.update({
       where: { id: slot.id },
       data: { isActive: newStatus },
@@ -346,7 +284,10 @@ export async function toggleAgentStatusAction(
         action: newStatus ? "AGENT_ACTIVATED" : "AGENT_DEACTIVATED",
         tableName: "agent_slots",
         recordId: slot.id,
-        details: JSON.stringify({ agentType: normalized }),
+        details: JSON.stringify({
+          agentType: normalized,
+          commercialPlanLimitApplied: false,
+        }),
       },
     });
 
