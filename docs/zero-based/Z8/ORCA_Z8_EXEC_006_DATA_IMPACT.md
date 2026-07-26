@@ -19,6 +19,7 @@
 | Lead/Opportunity stages | Can contain `RESERVED`, `WON` or similar workflow signals | Customer workflow only; not an exclusive Unit right |
 | Accepted Offer | Commercial intent/workflow | Does not reserve a Unit unless a later caller crosses the EXEC-006 boundary |
 | Contract relation to Unit | Final contractual linkage | Read by Availability Decision as `CONTRACTUALLY_UNAVAILABLE` |
+| Effective RentalLease relation to Unit | Final contractual occupancy linkage | Read by Availability Decision as `CONTRACTUALLY_UNAVAILABLE` while effective |
 
 ## New additive data structures
 
@@ -68,6 +69,8 @@
 - GiST exclusion constraints independently protect commitment and Tour overlaps if application checks are bypassed.
 - Optimistic version checks protect Extend, Release, Approval, Conversion and Tour rescheduling/transitions.
 - Reused idempotency keys return the previous result only when the payload hash matches.
+- Elevated duration approval is verified against a distinct active persisted EXEC-004 assignment inside PostgreSQL.
+- Final Contract or effective RentalLease linkage prevents protected commitment release or cancellation.
 - Audit and History tables reject Update and Delete.
 - Sensitive mutations fail if Audit/History insert cannot complete in the same transaction.
 
@@ -77,7 +80,7 @@ The server function evaluates:
 
 1. presence and consistency of `unit_availability_sources`;
 2. Unit base state;
-3. final Contract linkage;
+3. final Contract or effective RentalLease linkage;
 4. effective operational restrictions;
 5. non-expired exclusive commitments;
 6. current trusted server time.
@@ -142,6 +145,8 @@ EXEC-006 does not implement Offer acceptance, Contract, Invoice, Payment, Refund
 
 - `prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql`
 - `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
+- `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
+- `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
 
 Execution permitted in this package:
 
