@@ -9,6 +9,7 @@ function source(path: string): string {
 const operatingModel = source("lib/platform-operating-model.ts");
 const registrationAction = source("app/actions/register.ts");
 const agentSlotsAction = source("app/actions/agentSlots.ts");
+const agentsApi = source("app/api/v1/agents/route.ts");
 
 describe("EXEC-004 legacy SaaS retirement", () => {
   it("defines one independent company as the canonical operating model", () => {
@@ -59,6 +60,17 @@ describe("EXEC-004 legacy SaaS retirement", () => {
     expect(agentSlotsAction).toContain("limitValue: null");
   });
 
+  it("does not expose a stored package limit as live authority through the agents API", () => {
+    expect(agentsApi).toContain(
+      "recordedLimitValue: slot.usageMeter.limitValue",
+    );
+    expect(agentsApi).toContain("limitValue: null");
+    expect(agentsApi).toContain("commercialLimitApplied: false");
+    expect(agentsApi).not.toContain(
+      "limitValue: slot.usageMeter.limitValue",
+    );
+  });
+
   it("retains tenant isolation and audit on agent-slot mutations", () => {
     expect(agentSlotsAction).toContain(
       "requireAgentAccess({ roles: AGENT_MANAGER_ROLES })",
@@ -66,5 +78,6 @@ describe("EXEC-004 legacy SaaS retirement", () => {
     expect(agentSlotsAction).toContain("tenantId: access.tenantId");
     expect(agentSlotsAction).toContain('action: "AGENT_SLOT_CREATED"');
     expect(agentSlotsAction).toContain('action: "AGENT_SLOT_DEACTIVATED"');
+    expect(agentsApi).toContain("tenantId: access.tenantId");
   });
 });
