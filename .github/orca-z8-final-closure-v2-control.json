@@ -1,0 +1,13 @@
+{
+  "base_central_sha": "ff47997382d9032a6e1c27b9488884282867479f",
+  "target_branch": "work/orca-z8-final-closure-v2-20260726",
+  "superseded_pr": 99,
+  "registry_closure_pr": 118,
+  "digest_boundary_pr": 123,
+  "registered_packages": 14,
+  "covered_gaps": 32,
+  "packages_in_execution": 0,
+  "empty_commit_authorized": false,
+  "paid_upgrade_authorized": false,
+  "main_or_production_authorized": false
+}
