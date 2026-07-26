@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "authority": "ORCA Zero-Based Z0-Z8 Stage Ledger",
   "repository": "ali599115225/orca_crm",
   "defaultBranch": "main",
@@ -7,7 +7,7 @@
   "foundationSourceBranch": "work/orca-central-baseline-execution-20260719",
   "foundationSourceSha": "863768a1b0ea25ee46531921e1a69e852d928f95",
   "zeroBasedCentralBranch": "work/orca-zero-based-execution-20260721",
-  "zeroBasedCentralSha": "9796a0da981bf1bb4233a506d6d20ba877570645",
+  "zeroBasedCentralSha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
   "operatingModel": "SINGLE_INDEPENDENT_COMPANY",
   "multiCompanySaasInScope": false,
   "tenantIdPolicy": "RETAIN_TEMPORARILY_AS_COMPANY_SECURITY_PARTITION",
@@ -15,7 +15,7 @@
   "developerOwnedProductionCredentials": "PROHIBITED",
   "productionActionAuthorized": false,
   "mainMergeAuthorized": false,
-  "currentGate": "ZERO_BASED_Z0_Z8_CLOSED",
+  "currentGate": "Z8_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE",
   "externalBlockers": [
     {
       "id": "VERCEL_HOBBY_BUILD_RATE_LIMIT_PR75",
@@ -89,7 +89,7 @@
     {
       "id": "Z0",
       "name": "Governance & Applicability",
-      "status": "PASS / CLOSED",
+      "status": "PASS / CLOSED / MERGED TO CENTRAL",
       "stageBranch": "work/orca-z0-governance-20260721",
       "pullRequest": 73,
       "centralMergeSha": "92c34a0cf578d9462f9325216fffb6b0edb88e77",
@@ -337,24 +337,24 @@
     {
       "id": "Z8",
       "name": "Execution Authorization",
-      "status": "PASS / CLOSED / MERGED TO CENTRAL",
+      "status": "PASS / CLOSED IN STAGE — FRESH ORCA CI AND VERCEL REQUIRED BEFORE CENTRAL MERGE",
       "methodReviewPreparationSha": "2c74eae12646658b95fc88f92363a606f3690e7c",
       "authorizedPackages": 0,
-      "stageBranch": "work/orca-z8-republication-base-20260725",
-      "baseCentralSha": "ce0165d7a2ea6ff10acd9fe72e100555a2b3b325",
+      "stageBranch": "work/orca-z8-final-closure-20260726",
+      "baseCentralSha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
       "sourcePublicationRef": "work/orca-z8-source-20260725",
       "sourcePublicationSha": "ee3cc9b01a91e3d4336a4c2f91fd079cb2fcc64b",
-      "pullRequest": 102,
+      "pullRequest": "ASSIGNED_AFTER_PUBLICATION",
       "publicationCommitRef": "THIS_SINGLE_COMMIT",
       "publicationScopeFiles": 9,
       "runtimeChanged": false,
       "databaseChanged": false,
       "productionAction": false,
-      "centralMergeAllowed": true,
+      "centralMergeAllowed": false,
       "blockingChecks": {
-        "orcaCi": "SUCCESS",
-        "vercel": "DEFERRED_TO_FINAL_EXECUTABLE_RELEASE_HEAD",
-        "mergeCompleted": true
+        "orcaCi": "PENDING_FINAL_HEAD",
+        "vercel": "PENDING_FINAL_HEAD",
+        "mergeAllowed": false
       },
       "immediatePackages": 3,
       "conditionalPackages": 8,
@@ -368,7 +368,12 @@
       "automaticNextPackage": "NONE",
       "finalHeadSha": "8280e0bd4d50d3cf2d31bc9feaf7f7d919998b95",
       "centralMergeSha": "9796a0da981bf1bb4233a506d6d20ba877570645",
-      "zeroBasedPlanClosed": true
+      "zeroBasedPlanClosed": true,
+      "registeredPackages": 14,
+      "coveredGapIds": 32,
+      "closedPackages": 3,
+      "ownerDecisionPendingPackages": 8,
+      "deferredOrBlockedPackages": 3
     }
   ],
   "unpublishedPreparation": {
@@ -434,5 +439,24 @@
     "interpretation": "CLOSE_TARGET_PLANNING_AND_EVIDENCE_GATES_WITH_SAFE_DEFAULTS_AND_EXPLICIT_DEFERRALS; DO NOT INVENT OWNER FACTS OR AUTHORIZE MAIN_OR_PRODUCTION",
     "deploymentPolicy": "COMPLETE REPOSITORY MODIFICATIONS AND FIXES FIRST; RUN ONE FINAL VERCEL PREVIEW ONLY ON THE DEFINITIVE EXECUTABLE RELEASE HEAD",
     "nextAction": "WAIT_FOR_OWNER_EXECUTION_PACKAGE_SELECTION; NO AUTOMATIC PACKAGE START"
+  },
+  "finalZ8Closure": {
+    "date": "2026-07-26",
+    "baseCentralSha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
+    "supersededPr": 99,
+    "supersededHeadSha": "a82bcc937a8f69196b96f742801fe20f2eecaf99",
+    "registryClosurePr": 118,
+    "registryClosureHeadSha": "1689ea9f48102c9df28fb3c77a22fe895d28348e",
+    "registryClosureCentralSha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
+    "registeredPackages": 14,
+    "coveredGapIds": 32,
+    "packagesInExecution": 0,
+    "requiredFinalChecks": [
+      "ORCA CI",
+      "Vercel"
+    ],
+    "sameFinalHeadRequired": true,
+    "mainMergeAuthorized": false,
+    "productionActionAuthorized": false
   }
 }
