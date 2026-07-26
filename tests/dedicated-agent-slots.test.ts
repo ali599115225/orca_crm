@@ -44,6 +44,8 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import {
   createAgentSlotAction,
   getAgentSlotsAction,
+  getUsageMetersAction,
+  incrementUsageMeterAction,
 } from "@/app/actions/agentSlots";
 
 const DEFAULT_ACCESS = { tenantId: "tenant-1", userId: "user-1" };
@@ -60,8 +62,18 @@ afterEach(() => {
 describe("agentSlots — single-company operation", () => {
   it("returns operational capacity without a commercial plan limit", async () => {
     prismaMock.agentSlot.findMany.mockResolvedValue([
-      { id: "s1", agentType: "CHAT_BOT", isActive: true },
-      { id: "s2", agentType: "MANSOUR", isActive: true },
+      {
+        id: "s1",
+        agentType: "CHAT_BOT",
+        isActive: true,
+        usageMeter: {
+          id: "m1",
+          usageValue: 12,
+          limitValue: 500,
+          metricType: "MESSAGES",
+        },
+      },
+      { id: "s2", agentType: "MANSOUR", isActive: true, usageMeter: null },
     ]);
 
     const result = await getAgentSlotsAction();
@@ -72,6 +84,12 @@ describe("agentSlots — single-company operation", () => {
       maxSlots: null,
       isAtCap: false,
       plan: null,
+      commercialLimitApplied: false,
+    });
+    expect((result as any).slots[0].usageMeter).toMatchObject({
+      usageValue: 12,
+      recordedLimitValue: 500,
+      limitValue: null,
       commercialLimitApplied: false,
     });
     expect(prismaMock.agentSlot.findMany).toHaveBeenCalledWith(
@@ -127,8 +145,86 @@ describe("agentSlots — single-company operation", () => {
     expect(mockTx.usageMeter.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         tenantId: "tenant-1",
-        limitValue: 99_999,
+        limitValue: 2_147_483_647,
       }),
+    });
+  });
+
+  it("does not enforce an old stored package meter limit", async () => {
+    const mockTx = {
+      usageMeter: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "m1",
+          tenantId: "tenant-1",
+          agentSlotId: "s1",
+          usageValue: 500,
+          limitValue: 500,
+          metricType: "MESSAGES",
+        }),
+        update: vi.fn(),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(async (operation: any) =>
+      operation(mockTx),
+    );
+
+    const result = await incrementUsageMeterAction("s1", 1);
+
+    expect(result).toMatchObject({
+      success: true,
+      commercialLimitApplied: false,
+    });
+    expect(mockTx.usageMeter.update).toHaveBeenCalledWith({
+      where: { id: "m1" },
+      data: { usageValue: { increment: 1 } },
+    });
+  });
+
+  it("fails only at the database integer telemetry ceiling", async () => {
+    const mockTx = {
+      usageMeter: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "m1",
+          usageValue: 2_147_483_647,
+          limitValue: 500,
+        }),
+        update: vi.fn(),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(async (operation: any) =>
+      operation(mockTx),
+    );
+
+    const result = await incrementUsageMeterAction("s1", 1);
+
+    expect(result).toMatchObject({
+      success: false,
+      counterOverflow: true,
+    });
+    expect(mockTx.usageMeter.update).not.toHaveBeenCalled();
+  });
+
+  it("reports stored meter limits as historical metadata, not authority", async () => {
+    prismaMock.usageMeter.findMany.mockResolvedValue([
+      {
+        id: "m1",
+        usageValue: 20,
+        limitValue: 500,
+        metricType: "MESSAGES",
+        agentSlot: { id: "s1" },
+      },
+    ]);
+
+    const result = await getUsageMetersAction();
+
+    expect(result).toMatchObject({
+      success: true,
+      commercialLimitApplied: false,
+    });
+    expect((result as any).meters[0]).toMatchObject({
+      recordedLimitValue: 500,
+      limitValue: null,
+      commercialLimitApplied: false,
     });
   });
 
