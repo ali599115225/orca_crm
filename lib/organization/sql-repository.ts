@@ -10,6 +10,8 @@ import {
 import {
   type OrganizationBranchRecord,
   type OrganizationCommandRepository,
+  type OrganizationDepartmentRecord,
+  type OrganizationTeamRecord,
 } from "@/lib/organization/service";
 
 function jsonDetails(value: unknown): string {
@@ -196,6 +198,123 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
         )
       `);
       return branch;
+    });
+  },
+
+  async createDepartmentWithAudit(input): Promise<OrganizationDepartmentRecord> {
+    return rawPrisma.$transaction(async (tx) => {
+      await assertTenantUser(tx, input.tenantId, input.actorUserId);
+      await assertScopedReference(
+        tx,
+        "organization_branches",
+        input.tenantId,
+        input.branchId,
+      );
+
+      const rows = await tx.$queryRaw<OrganizationDepartmentRecord[]>(Prisma.sql`
+        INSERT INTO "organization_departments" (
+          "tenant_id", "branch_id", "code", "name", "is_central"
+        ) VALUES (
+          ${input.tenantId}::uuid,
+          ${input.branchId}::uuid,
+          ${input.code},
+          ${input.name},
+          ${input.isCentral}
+        )
+        RETURNING
+          "id",
+          "tenant_id" AS "tenantId",
+          "branch_id" AS "branchId",
+          "code",
+          "name",
+          "is_central" AS "central",
+          "is_active" AS "active"
+      `);
+      const department = rows[0];
+      if (!department) {
+        throw new Error("ORGANIZATION_DEPARTMENT_CREATE_FAILED");
+      }
+
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "organization_authority_audit" (
+          "tenant_id", "actor_user_id", "action", "target_type",
+          "target_id", "branch_id", "details"
+        ) VALUES (
+          ${input.tenantId}::uuid,
+          ${input.actorUserId}::uuid,
+          'DEPARTMENT_CREATED',
+          'DEPARTMENT',
+          ${department.id}::uuid,
+          ${input.branchId}::uuid,
+          ${jsonDetails({
+            code: input.code,
+            name: input.name,
+            isCentral: input.isCentral,
+          })}::jsonb
+        )
+      `);
+      return department;
+    });
+  },
+
+  async createTeamWithAudit(input): Promise<OrganizationTeamRecord> {
+    return rawPrisma.$transaction(async (tx) => {
+      await assertTenantUser(tx, input.tenantId, input.actorUserId);
+      await assertScopedReference(
+        tx,
+        "organization_branches",
+        input.tenantId,
+        input.branchId,
+      );
+      await assertScopedReference(
+        tx,
+        "organization_departments",
+        input.tenantId,
+        input.departmentId,
+      );
+      await assertAssignmentHierarchy(tx, input);
+
+      const rows = await tx.$queryRaw<OrganizationTeamRecord[]>(Prisma.sql`
+        INSERT INTO "organization_teams" (
+          "tenant_id", "branch_id", "department_id", "code", "name"
+        ) VALUES (
+          ${input.tenantId}::uuid,
+          ${input.branchId}::uuid,
+          ${input.departmentId}::uuid,
+          ${input.code},
+          ${input.name}
+        )
+        RETURNING
+          "id",
+          "tenant_id" AS "tenantId",
+          "branch_id" AS "branchId",
+          "department_id" AS "departmentId",
+          "code",
+          "name",
+          "is_active" AS "active"
+      `);
+      const team = rows[0];
+      if (!team) throw new Error("ORGANIZATION_TEAM_CREATE_FAILED");
+
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "organization_authority_audit" (
+          "tenant_id", "actor_user_id", "action", "target_type",
+          "target_id", "branch_id", "details"
+        ) VALUES (
+          ${input.tenantId}::uuid,
+          ${input.actorUserId}::uuid,
+          'TEAM_CREATED',
+          'TEAM',
+          ${team.id}::uuid,
+          ${input.branchId}::uuid,
+          ${jsonDetails({
+            departmentId: input.departmentId,
+            code: input.code,
+            name: input.name,
+          })}::jsonb
+        )
+      `);
+      return team;
     });
   },
 
