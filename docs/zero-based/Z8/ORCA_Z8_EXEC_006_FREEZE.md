@@ -10,7 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
-- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening, disambiguation and reconciliation migrations.
+- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening, disambiguation, reconciliation and lifecycle-guard migrations.
 
 ## Owner decisions frozen for this package
 
@@ -55,6 +55,7 @@ The new source of truth consists of:
 - Platform Owner and System Administrator receive no automatic commercial Hold/Reservation/Tour authority.
 - Self-approval and missing initiator evidence fail closed.
 - Elevated duration approval is verified against a distinct, active, persisted approver assignment inside PostgreSQL; an arbitrary JSON object is insufficient.
+- Duration validation applies only at creation and actual expiry changes; lifecycle-only transitions such as `EXPIRED`, `RELEASED`, `CANCELLED` or `CONVERTED` cannot be rejected as zero-duration requests.
 - Cross-branch override requires explicit company scope plus a distinct override permission and reason.
 - Actor, tenant and scope supplied by a client are not trusted without session-to-assignment binding at an entry point.
 - Blocking-customer details are redacted unless the actor has explicit audit disclosure authority.
@@ -91,6 +92,7 @@ The new source of truth consists of:
 - The third migration is limited to database verification of independent elevated approvals, effective RentalLease availability, and final-link release protection discovered during strict security review; it does not expand product scope.
 - The fourth migration is a fully-qualified availability function replacement that removes PL/pgSQL name ambiguity while preserving Contract, RentalLease, operational restriction, commitment and fail-closed semantics.
 - The fifth migration replaces only expiry reconciliation locking after a real conversion/expiry race proved that `SKIP LOCKED` could leave an expired row un-reconciled in that invocation.
+- The sixth migration replaces only the approval-policy trigger function so lifecycle state changes are not treated as new duration requests while direct Reservation activation still requires independent approval.
 
 ## Allowed paths
 
@@ -108,11 +110,12 @@ The new source of truth consists of:
 12. `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
 13. `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
 14. `prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql`
-15. `scripts/exec-006-postgres-concurrency.mjs`
-16. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-17. `tests/foundation/g5-exec-006-security.test.ts`
-18. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-19. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+15. `prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql`
+16. `scripts/exec-006-postgres-concurrency.mjs`
+17. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+18. `tests/foundation/g5-exec-006-security.test.ts`
+19. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+20. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
@@ -139,6 +142,7 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 - Expired rows do not block availability before reconciliation.
 - Stale versions and idempotency payload mismatches fail.
 - Long duration cannot be authorized by self-approval or unverified JSON evidence.
+- Lifecycle-only state changes remain valid under the duration guard.
 - Active final Contract or RentalLease linkage blocks availability and protected release.
 - Tours do not reserve units and conflicting employee/unit schedules are denied.
 - Audit and history are append-only and same-tenant safe.
