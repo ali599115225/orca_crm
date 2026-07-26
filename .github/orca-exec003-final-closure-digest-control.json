@@ -1,0 +1,8 @@
+{
+  "base_sha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
+  "target_branch": "work/orca-exec003-final-closure-metadata-digest-fix-20260726",
+  "excluded_administrative_field": "finalZ8Closure",
+  "security_fields_remain_digest_bound": true,
+  "runtime_authorized": false,
+  "main_or_production_authorized": false
+}
