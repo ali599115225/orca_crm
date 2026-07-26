@@ -386,8 +386,7 @@ export function evaluateOrganizationAuthority(
 
   if (
     SEPARATION_OF_DUTIES_PERMISSIONS.has(input.permission) &&
-    input.initiatedByUserId &&
-    input.initiatedByUserId === input.actorUserId
+    (!input.initiatedByUserId || input.initiatedByUserId === input.actorUserId)
   ) {
     return denied("SEPARATION_OF_DUTIES_DENIED");
   }
