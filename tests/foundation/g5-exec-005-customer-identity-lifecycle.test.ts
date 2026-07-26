@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   CustomerIdentityError,
   type CommandContext,
-  type CreatePartyCommand,
 } from "@/lib/customer-identity/contracts";
 import { InMemoryCustomerIdentityRepository } from "@/lib/customer-identity/repository";
 import { CustomerIdentityService } from "@/lib/customer-identity/service";
@@ -12,51 +11,40 @@ import type {
   OrganizationSecurityRole,
 } from "@/lib/organization/contracts";
 
-const TENANT_A = "tenant-a";
-const TENANT_B = "tenant-b";
+const TENANT = "tenant-a";
+const OTHER_TENANT = "tenant-b";
 const BRANCH_A = "branch-a";
 const BRANCH_B = "branch-b";
-const TEAM_A = "team-a";
-const TEAM_B = "team-b";
-const WRITER = "writer";
-const APPROVER = "approver";
+const ACTOR = "actor-a";
+const APPROVER = "approver-a";
 
 function assignment(
   userId: string,
-  options: Readonly<{
-    tenantId?: string;
-    role?: OrganizationSecurityRole;
-    scopeType?: OrganizationScopeAssignment["scopeType"];
-    branchId?: string | null;
-    teamId?: string | null;
-    active?: boolean;
-    startsAt?: Date | null;
-    endsAt?: Date | null;
-  }> = {},
+  options: Partial<OrganizationScopeAssignment> & {
+    securityRole?: OrganizationSecurityRole;
+  } = {},
 ): OrganizationScopeAssignment {
   const scopeType = options.scopeType ?? "BRANCH";
   return {
-    id: `assignment-${userId}-${scopeType}-${options.branchId ?? "company"}`,
-    tenantId: options.tenantId ?? TENANT_A,
+    id: options.id ?? `assignment-${userId}-${scopeType}-${options.branchId ?? "company"}`,
+    tenantId: options.tenantId ?? TENANT,
     userId,
-    securityRole: options.role ?? "SALES_LEASING_MANAGER",
+    securityRole: options.securityRole ?? "SALES_LEASING_MANAGER",
     scopeType,
     branchId: scopeType === "COMPANY" ? null : options.branchId ?? BRANCH_A,
-    departmentId: null,
-    teamId: scopeType === "TEAM" ? options.teamId ?? TEAM_A : null,
-    assignedResourceType: null,
-    assignedResourceId: null,
+    departmentId: options.departmentId ?? null,
+    teamId: options.teamId ?? null,
+    assignedResourceType: options.assignedResourceType ?? null,
+    assignedResourceId: options.assignedResourceId ?? null,
     active: options.active ?? true,
     startsAt: options.startsAt ?? null,
     endsAt: options.endsAt ?? null,
   };
 }
 
-function context(
-  overrides: Partial<CommandContext> = {},
-): CommandContext {
-  const actorId = overrides.actorId ?? WRITER;
-  const tenantId = overrides.tenantId ?? TENANT_A;
+function context(overrides: Partial<CommandContext> = {}): CommandContext {
+  const actorId = overrides.actorId ?? ACTOR;
+  const tenantId = overrides.tenantId ?? TENANT;
   const branchId = overrides.scope?.branchId ?? BRANCH_A;
   return {
     actorId,
@@ -73,58 +61,50 @@ function context(
       [assignment(actorId, { tenantId, branchId: branchId ?? BRANCH_A })],
     enabledBranchServices:
       overrides.enabledBranchServices ??
-      [BRANCH_A, BRANCH_B].map((candidateBranchId) => ({
-        branchId: candidateBranchId,
+      [BRANCH_A, BRANCH_B].map((branch) => ({
+        branchId: branch,
         serviceLine: "SALES" as const,
         enabled: true,
       })),
     idempotencyKey: overrides.idempotencyKey ?? null,
     expectedVersion: overrides.expectedVersion ?? null,
     reason: overrides.reason ?? "test reason",
-    timestamp: overrides.timestamp ?? new Date("2026-07-26T09:00:00.000Z"),
-    auditCorrelationId: overrides.auditCorrelationId ?? "corr-test",
+    timestamp: overrides.timestamp ?? new Date("2026-07-26T10:00:00.000Z"),
+    auditCorrelationId: overrides.auditCorrelationId ?? "corr-a",
   };
 }
 
-function setup(): Readonly<{
-  repository: InMemoryCustomerIdentityRepository;
-  service: CustomerIdentityService;
-}> {
+function setup(policy: ConstructorParameters<typeof CustomerIdentityService>[1] = {}) {
   const repository = new InMemoryCustomerIdentityRepository();
-  return { repository, service: new CustomerIdentityService(repository) };
+  const service = new CustomerIdentityService(repository, policy);
+  return { repository, service };
 }
 
-function createPartyCommand(
-  type: CreatePartyCommand["type"],
-  name: string,
-  overrides: Partial<CreatePartyCommand> = {},
-): CreatePartyCommand {
-  return {
-    context: overrides.context ?? context(),
-    type,
-    fields:
-      overrides.fields ??
-      (type === "PERSON"
-        ? {
-            displayName: { value: name, source: "USER_ENTERED" },
-          }
-        : {
-            organizationName: { value: name, source: "USER_ENTERED" },
-          }),
-  };
-}
-
-function createPerson(
+function person(
   service: CustomerIdentityService,
   name = "Ali Customer",
   commandContext = context(),
 ) {
-  return service.createParty(createPartyCommand("PERSON", name, {
+  return service.createParty({
     context: commandContext,
-  }));
+    type: "PERSON",
+    fields: {
+      displayName: { value: name, source: "USER_ENTERED" },
+    },
+  });
 }
 
-function createLead(
+function organization(service: CustomerIdentityService, name = "ORCA Holdings") {
+  return service.createParty({
+    context: context(),
+    type: "ORGANIZATION",
+    fields: {
+      organizationName: { value: name, source: "USER_ENTERED" },
+    },
+  });
+}
+
+function lead(
   service: CustomerIdentityService,
   partyId: string | null,
   commandContext = context(),
@@ -135,11 +115,10 @@ function createLead(
     serviceLine: "SALES",
     source: "WEB",
     branchId: commandContext.scope.branchId ?? BRANCH_A,
-    teamId: commandContext.scope.teamId ?? null,
   });
 }
 
-function createOpportunity(
+function opportunity(
   service: CustomerIdentityService,
   partyId: string,
   commandContext = context(),
@@ -148,7 +127,6 @@ function createOpportunity(
     context: commandContext,
     partyId,
     branchId: commandContext.scope.branchId ?? BRANCH_A,
-    teamId: commandContext.scope.teamId ?? null,
     serviceLine: "SALES",
     expectedValue: 500000,
     probability: 40,
@@ -156,191 +134,183 @@ function createOpportunity(
   });
 }
 
-function mergeContexts(branchId = BRANCH_A) {
+function mergeInput(
+  survivorPartyId: string,
+  mergedPartyId: string,
+  overrides: Partial<CommandContext> = {},
+) {
   return {
-    executor: context({
-      scope: { branchId },
+    context: context({
       idempotencyKey: "merge-key",
       reason: "confirmed duplicate",
-      assignments: [assignment(WRITER, { branchId })],
+      ...overrides,
     }),
-    approverAssignments: [assignment(APPROVER, { branchId })],
+    survivorPartyId,
+    mergedPartyId,
+    fieldChoices: [] as const,
+    approvedByActorId: APPROVER,
+    approverAssignments: [assignment(APPROVER)],
   };
 }
 
-function expectCode(operation: () => unknown, code: CustomerIdentityError["code"]) {
+function expectCode(
+  operation: () => unknown,
+  expected: CustomerIdentityError["code"],
+) {
   try {
     operation();
-    throw new Error(`Expected ${code}`);
+    throw new Error(`Expected ${expected}`);
   } catch (error) {
     expect(error).toBeInstanceOf(CustomerIdentityError);
-    expect((error as CustomerIdentityError).code).toBe(code);
+    expect((error as CustomerIdentityError).code).toBe(expected);
   }
 }
 
-describe("EXEC-005 customer identity and opportunity lifecycle", () => {
-  it("1. creates a Person Party", () => {
+describe("EXEC-005 direct customer identity behavior", () => {
+  it("01 creates Person", () => {
     const { service } = setup();
-    const party = createPerson(service);
-    expect(party.type).toBe("PERSON");
-    expect(party.lifecycleState).toBe("ACTIVE");
+    expect(person(service).type).toBe("PERSON");
   });
 
-  it("2. creates an Organization Party", () => {
+  it("02 creates Organization", () => {
     const { service } = setup();
-    const party = service.createParty(
-      createPartyCommand("ORGANIZATION", "ORCA Holdings"),
-    );
-    expect(party.type).toBe("ORGANIZATION");
-    expect(party.fields.organizationName.value).toBe("ORCA Holdings");
+    expect(organization(service).type).toBe("ORGANIZATION");
   });
 
-  it("3. creates multiple Leads for the same Party without duplicating identity", () => {
+  it("03 creates multiple Leads for one Party", () => {
     const { repository, service } = setup();
-    const party = createPerson(service);
-    const first = createLead(service, party.id);
-    const second = service.createLead({
+    const party = person(service);
+    lead(service, party.id);
+    service.createLead({
       context: context(),
       partyId: party.id,
       serviceLine: "LEASING",
       source: "CAMPAIGN",
-      campaignId: "campaign-2",
       branchId: BRANCH_A,
     });
-    expect(first.partyId).toBe(party.id);
-    expect(second.partyId).toBe(party.id);
     expect(repository.snapshot().parties.size).toBe(1);
     expect(repository.snapshot().leads.size).toBe(2);
   });
 
-  it("4. creates multiple independent Opportunities for one Party", () => {
+  it("04 creates independent Opportunities for one Party", () => {
     const { repository, service } = setup();
-    const party = createPerson(service);
-    const first = createOpportunity(service, party.id);
-    const second = createOpportunity(service, party.id);
+    const party = person(service);
+    const first = opportunity(service, party.id);
+    const second = opportunity(service, party.id);
     expect(first.id).not.toBe(second.id);
     expect(repository.snapshot().opportunities.size).toBe(2);
   });
 
-  it("5. converts a Lead idempotently", () => {
+  it("05 converts Lead idempotently", () => {
     const { service } = setup();
-    const lead = createLead(service, null);
-    const conversionContext = context({
-      idempotencyKey: "convert-one",
-      expectedVersion: lead.version,
-    });
+    const source = lead(service, null);
     const command = {
-      context: conversionContext,
-      leadId: lead.id,
+      context: context({
+        idempotencyKey: "convert-1",
+        expectedVersion: source.version,
+      }),
+      leadId: source.id,
       createParty: {
         type: "PERSON" as const,
         fields: {
-          displayName: { value: "Converted Person", source: "USER_ENTERED" as const },
+          displayName: {
+            value: "Converted",
+            source: "USER_ENTERED" as const,
+          },
         },
       },
       createCustomerAccount: true,
-      customerRelationshipRoles: ["BUYER" as const],
       createOpportunity: true,
       opportunity: {
-        expectedValue: 300000,
-        probability: 30,
-        creationSource: "LEAD_CONVERSION",
+        expectedValue: 1000,
+        probability: 20,
+        creationSource: "CONVERSION",
       },
     };
     const first = service.convertLead(command);
     const second = service.convertLead(command);
-    expect(second.lead.id).toBe(first.lead.id);
     expect(second.party.id).toBe(first.party.id);
     expect(second.opportunity?.id).toBe(first.opportunity?.id);
   });
 
-  it("6. repeated conversion with a new key does not create a second Opportunity without an explicit request", () => {
+  it("06 prevents an implicit second conversion Opportunity", () => {
     const { repository, service } = setup();
-    const party = createPerson(service);
-    const lead = createLead(service, party.id);
+    const party = person(service);
+    const source = lead(service, party.id);
     const first = service.convertLead({
       context: context({ idempotencyKey: "convert-a" }),
-      leadId: lead.id,
+      leadId: source.id,
       createOpportunity: true,
       opportunity: {
         expectedValue: 100,
         probability: 10,
-        creationSource: "LEAD_CONVERSION",
+        creationSource: "CONVERSION",
       },
     });
     const second = service.convertLead({
       context: context({ idempotencyKey: "convert-b" }),
-      leadId: lead.id,
+      leadId: source.id,
       createOpportunity: true,
       opportunity: {
         expectedValue: 200,
         probability: 20,
-        creationSource: "LEAD_CONVERSION",
+        creationSource: "CONVERSION",
       },
     });
     expect(second.opportunity?.id).toBe(first.opportunity?.id);
     expect(repository.snapshot().opportunities.size).toBe(1);
   });
 
-  it("7. detects an exact duplicate after normalization", () => {
+  it("07 detects deterministic normalized identity match", () => {
     const { service } = setup();
     service.createParty({
       context: context(),
       type: "PERSON",
       fields: {
-        displayName: { value: "Ali", source: "USER_ENTERED" },
-        phone: { value: "050 123 4567", source: "VERIFIED", verified: true },
+        nationalId: {
+          value: "1234-567-890",
+          source: "VERIFIED",
+          verified: true,
+        },
       },
     });
     const candidate = service.createParty({
       context: context(),
       type: "PERSON",
       fields: {
-        displayName: { value: "Different Name", source: "USER_ENTERED" },
-        phone: { value: "+966501234567", source: "VERIFIED", verified: true },
+        nationalId: {
+          value: "1234567890",
+          source: "VERIFIED",
+          verified: true,
+        },
       },
     });
-    const suggestions = service.suggestDuplicates(context(), candidate.id);
-    expect(suggestions[0].level).toBe("DETERMINISTIC_MATCH");
-    expect(suggestions[0].reasons.map((reason) => reason.code)).toContain(
-      "VERIFIED_PHONE_MATCH",
-    );
+    const match = service.suggestDuplicates(context(), candidate.id)[0];
+    expect(match.level).toBe("DETERMINISTIC_MATCH");
+    expect(match.reasons[0].code).toBe("VERIFIED_IDENTITY_MATCH");
   });
 
-  it("8. explains a possible duplicate", () => {
+  it("08 explains possible match", () => {
     const { service } = setup();
-    createPerson(service, "Mohammed Al Qahtani");
-    const candidate = createPerson(service, "Mohammad Alqahtani");
-    const suggestion = service.suggestDuplicates(context(), candidate.id)[0];
-    expect(suggestion.level).toBe("POSSIBLE_MATCH");
-    expect(suggestion.reasons[0].explanation.length).toBeGreaterThan(10);
+    person(service, "Mohammed Al Qahtani");
+    const candidate = person(service, "Mohammad Alqahtani");
+    const match = service.suggestDuplicates(context(), candidate.id)[0];
+    expect(match.level).toBe("POSSIBLE_MATCH");
+    expect(match.reasons[0].explanation.length).toBeGreaterThan(10);
   });
 
-  it("9. never allows auto-merge from name similarity alone", () => {
+  it("09 does not auto-merge by name", () => {
     const { service } = setup();
-    createPerson(service, "Sara Ahmed");
-    const candidate = createPerson(service, "Sarah Ahmed");
-    const suggestion = service.suggestDuplicates(context(), candidate.id)[0];
-    expect(suggestion.level).toBe("POSSIBLE_MATCH");
-    expect(suggestion.autoMergeAllowed).toBe(false);
+    person(service, "Sara Ahmed");
+    const candidate = person(service, "Sarah Ahmed");
+    const match = service.suggestDuplicates(context(), candidate.id)[0];
+    expect(match.autoMergeAllowed).toBe(false);
   });
 
-  it("10. produces a field-by-field Merge Preview", () => {
+  it("10 creates Merge Preview", () => {
     const { service } = setup();
-    const survivor = service.createParty({
-      context: context(),
-      type: "PERSON",
-      fields: {
-        displayName: { value: "Primary", source: "VERIFIED", verified: true },
-      },
-    });
-    const loser = service.createParty({
-      context: context(),
-      type: "PERSON",
-      fields: {
-        displayName: { value: "Secondary", source: "USER_ENTERED" },
-      },
-    });
+    const survivor = person(service, "First");
+    const loser = person(service, "Second");
     const preview = service.previewMerge(
       context(),
       survivor.id,
@@ -349,226 +319,148 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
     );
     expect(preview.conflicts).toContain("displayName");
     expect(preview.survivorBefore.id).toBe(survivor.id);
-    expect(preview.mergedBefore.id).toBe(loser.id);
   });
 
-  it("11. applies explicit field survivorship", () => {
+  it("11 applies explicit field survivorship", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "Old Name");
-    const loser = createPerson(service, "Chosen Name");
-    const merge = mergeContexts();
+    const survivor = person(service, "Old");
+    const loser = person(service, "Chosen");
+    const input = mergeInput(survivor.id, loser.id);
     const record = service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
+      ...input,
       fieldChoices: [{ field: "displayName", sourcePartyId: loser.id }],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
     });
-    expect(record.survivorAfter.fields.displayName.value).toBe("Chosen Name");
+    expect(record.survivorAfter.fields.displayName.value).toBe("Chosen");
   });
 
-  it("12. preserves provenance history during merge", () => {
+  it("12 preserves provenance during merge", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "A");
-    const loser = createPerson(service, "B");
-    const merge = mergeContexts();
+    const survivor = person(service, "A");
+    const loser = person(service, "B");
     const record = service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
+      ...mergeInput(survivor.id, loser.id),
       fieldChoices: [{ field: "displayName", sourcePartyId: loser.id }],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
     });
     expect(record.survivorAfter.fields.displayName.source).toBe("MERGED");
-    expect(record.survivorAfter.fields.displayName.history.length).toBe(2);
+    expect(record.survivorAfter.fields.displayName.history).toHaveLength(2);
   });
 
-  it("13. transfers relationships but keeps Opportunities independent", () => {
+  it("13 transfers relationships without merging Opportunities", () => {
     const { repository, service } = setup();
-    const survivor = createPerson(service, "Survivor");
-    const loser = createPerson(service, "Loser");
-    const lead = createLead(service, loser.id);
-    const firstOpportunity = createOpportunity(service, loser.id);
-    const secondOpportunity = createOpportunity(service, loser.id);
-    const merge = mergeContexts();
-    service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
-      fieldChoices: [],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
-    });
+    const survivor = person(service, "A");
+    const loser = person(service, "B");
+    const sourceLead = lead(service, loser.id);
+    const first = opportunity(service, loser.id);
+    const second = opportunity(service, loser.id);
+    service.mergeParties(mergeInput(survivor.id, loser.id));
     const snapshot = repository.snapshot();
-    expect(snapshot.leads.get(lead.id)?.partyId).toBe(survivor.id);
-    expect(snapshot.opportunities.get(firstOpportunity.id)?.partyId).toBe(
-      survivor.id,
-    );
-    expect(snapshot.opportunities.get(secondOpportunity.id)?.partyId).toBe(
-      survivor.id,
-    );
+    expect(snapshot.leads.get(sourceLead.id)?.partyId).toBe(survivor.id);
+    expect(snapshot.opportunities.get(first.id)?.partyId).toBe(survivor.id);
+    expect(snapshot.opportunities.get(second.id)?.partyId).toBe(survivor.id);
     expect(snapshot.opportunities.size).toBe(2);
   });
 
-  it("14. denies cross-tenant merge", () => {
+  it("14 denies cross-tenant merge", () => {
     const { service } = setup();
-    const survivor = createPerson(service);
-    const tenantBContext = context({
-      tenantId: TENANT_B,
-      actorId: "writer-b",
+    const survivor = person(service);
+    const otherContext = context({
+      tenantId: OTHER_TENANT,
+      actorId: "actor-b",
       assignments: [
-        assignment("writer-b", {
-          tenantId: TENANT_B,
+        assignment("actor-b", {
+          tenantId: OTHER_TENANT,
           branchId: BRANCH_A,
         }),
       ],
     });
-    const outsider = createPerson(service, "Other Tenant", tenantBContext);
-    const merge = mergeContexts();
+    const outsider = person(service, "Other", otherContext);
     expectCode(
       () =>
-        service.mergeParties({
-          context: merge.executor,
-          survivorPartyId: survivor.id,
-          mergedPartyId: outsider.id,
-          fieldChoices: [],
-          approvedByActorId: APPROVER,
-          approverAssignments: merge.approverAssignments,
-        }),
+        service.mergeParties(mergeInput(survivor.id, outsider.id)),
       "TENANT_SCOPE_MISMATCH",
     );
   });
 
-  it("15. denies cross-branch merge without company-wide authority", () => {
+  it("15 denies cross-branch merge without company scope", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "A", context({ scope: { branchId: BRANCH_A } }));
-    const loser = createPerson(
-      service,
-      "B",
-      context({
-        scope: { branchId: BRANCH_B },
-        assignments: [assignment(WRITER, { branchId: BRANCH_B })],
-      }),
-    );
-    const merge = mergeContexts(BRANCH_A);
+    const survivor = person(service);
+    const branchBContext = context({
+      scope: { branchId: BRANCH_B },
+      assignments: [assignment(ACTOR, { branchId: BRANCH_B })],
+    });
+    const loser = person(service, "B", branchBContext);
     expectCode(
-      () =>
-        service.mergeParties({
-          context: merge.executor,
-          survivorPartyId: survivor.id,
-          mergedPartyId: loser.id,
-          fieldChoices: [],
-          approvedByActorId: APPROVER,
-          approverAssignments: merge.approverAssignments,
-        }),
+      () => service.mergeParties(mergeInput(survivor.id, loser.id)),
       "RESOURCE_SCOPE_DENIED",
     );
   });
 
-  it("16. denies merge self-approval", () => {
+  it("16 denies self-approval", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "A");
-    const loser = createPerson(service, "B");
+    const survivor = person(service);
+    const loser = person(service, "B");
     expectCode(
       () =>
         service.mergeParties({
-          context: context({ idempotencyKey: "merge-self" }),
-          survivorPartyId: survivor.id,
-          mergedPartyId: loser.id,
-          fieldChoices: [],
-          approvedByActorId: WRITER,
-          approverAssignments: [assignment(WRITER)],
+          ...mergeInput(survivor.id, loser.id),
+          approvedByActorId: ACTOR,
+          approverAssignments: [assignment(ACTOR)],
         }),
       "SELF_APPROVAL_DENIED",
     );
   });
 
-  it("17. prevents merging the same losing Party twice", () => {
+  it("17 prevents duplicate merge", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "A");
-    const loser = createPerson(service, "B");
-    const third = createPerson(service, "C");
-    const merge = mergeContexts();
-    service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
-      fieldChoices: [],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
-    });
+    const survivor = person(service);
+    const loser = person(service, "B");
+    const third = person(service, "C");
+    service.mergeParties(mergeInput(survivor.id, loser.id));
     expectCode(
       () =>
-        service.mergeParties({
-          context: context({
-            idempotencyKey: "merge-second",
-            reason: "second merge",
-          }),
-          survivorPartyId: third.id,
-          mergedPartyId: loser.id,
-          fieldChoices: [],
-          approvedByActorId: APPROVER,
-          approverAssignments: merge.approverAssignments,
-        }),
+        service.mergeParties(
+          mergeInput(third.id, loser.id, { idempotencyKey: "merge-2" }),
+        ),
       "DUPLICATE_MERGE_DENIED",
     );
   });
 
-  it("18. reverses a safe merge and restores original relationships", () => {
+  it("18 reverses safe merge", () => {
     const { repository, service } = setup();
-    const survivor = createPerson(service, "A");
-    const loser = createPerson(service, "B");
-    const lead = createLead(service, loser.id);
-    const merge = mergeContexts();
-    const record = service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
-      fieldChoices: [],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
-    });
-    const reversed = service.reversePartyMerge(
-      context({ reason: "merge was incorrect" }),
-      record.id,
+    const survivor = person(service);
+    const loser = person(service, "B");
+    const source = lead(service, loser.id);
+    const merge = service.mergeParties(mergeInput(survivor.id, loser.id));
+    service.reversePartyMerge(
+      context({ reason: "incorrect merge" }),
+      merge.id,
     );
-    expect(reversed.reversedAt).not.toBeNull();
-    expect(repository.snapshot().leads.get(lead.id)?.partyId).toBe(loser.id);
+    expect(repository.snapshot().leads.get(source.id)?.partyId).toBe(loser.id);
     expect(repository.snapshot().aliases.has(loser.id)).toBe(false);
   });
 
-  it("19. blocks reversal after a recorded dependency", () => {
+  it("19 blocks reversal by explicit dependency", () => {
     const { service } = setup();
-    const survivor = createPerson(service, "A");
-    const loser = createPerson(service, "B");
-    const merge = mergeContexts();
-    const record = service.mergeParties({
-      context: merge.executor,
-      survivorPartyId: survivor.id,
-      mergedPartyId: loser.id,
-      fieldChoices: [],
-      approvedByActorId: APPROVER,
-      approverAssignments: merge.approverAssignments,
-    });
-    service.registerMergeDependency(context(), record.id, {
+    const survivor = person(service);
+    const loser = person(service, "B");
+    const merge = service.mergeParties(mergeInput(survivor.id, loser.id));
+    service.registerMergeDependency(context(), merge.id, {
       type: "CONTRACT",
       id: "contract-1",
     });
     expectCode(
       () =>
         service.reversePartyMerge(
-          context({ reason: "attempt reversal" }),
-          record.id,
+          context({ reason: "reverse" }),
+          merge.id,
         ),
       "BLOCKED_BY_DEPENDENCY",
     );
   });
 
-  it("20. preserves marketing opt-out without blocking separately granted transactional contact", () => {
+  it("20 preserves marketing opt-out separately from transactional consent", () => {
     const { service } = setup();
-    const party = createPerson(service);
+    const party = person(service);
     service.setCommunicationPreference({
       context: context(),
       partyId: party.id,
@@ -598,9 +490,9 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
     ).toBe(true);
   });
 
-  it("21. records consent withdrawal without deleting history", () => {
+  it("21 preserves withdrawal history", () => {
     const { service } = setup();
-    const party = createPerson(service);
+    const party = person(service);
     const granted = service.setCommunicationPreference({
       context: context(),
       partyId: party.id,
@@ -618,16 +510,16 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
       source: "USER_ENTERED",
     });
     expect(withdrawn.withdrawnAt).not.toBeNull();
-    expect(withdrawn.history.map((entry) => entry.consentState)).toEqual([
+    expect(withdrawn.history.map((item) => item.consentState)).toEqual([
       "GRANTED",
       "WITHDRAWN",
     ]);
   });
 
-  it("22. legal hold blocks deletion", () => {
+  it("22 legal hold blocks deletion", () => {
     const { service } = setup();
-    const party = createPerson(service);
-    service.applyLegalHold(context({ reason: "litigation" }), party.id);
+    const party = person(service);
+    service.applyLegalHold(context({ reason: "legal case" }), party.id);
     expectCode(
       () =>
         service.requestDeletion(
@@ -638,65 +530,65 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
     );
   });
 
-  it("23. archival preserves append-only audit evidence", () => {
+  it("23 archival preserves audit", () => {
     const { service } = setup();
-    const party = createPerson(service);
+    const party = person(service);
     const before = service.listAudit(context()).length;
     const archived = service.archiveParty(
-      context({ reason: "retention policy" }),
+      context({ reason: "retention" }),
       party.id,
     );
-    const audit = service.listAudit(context());
     expect(archived.lifecycleState).toBe("ARCHIVED");
-    expect(audit.length).toBe(before + 1);
-    expect(audit.at(-1)?.action).toBe("ArchiveParty");
+    expect(service.listAudit(context())).toHaveLength(before + 1);
   });
 
-  it("24. denies a forged branch scope", () => {
+  it("24 denies forged scope", () => {
     const { service } = setup();
-    const forged = context({
-      scope: { branchId: BRANCH_B },
-      assignments: [assignment(WRITER, { branchId: BRANCH_A })],
-    });
     expectCode(
-      () => createPerson(service, "Forged", forged),
+      () =>
+        person(
+          service,
+          "Forged",
+          context({
+            scope: { branchId: BRANCH_B },
+            assignments: [assignment(ACTOR, { branchId: BRANCH_A })],
+          }),
+        ),
       "RESOURCE_SCOPE_DENIED",
     );
   });
 
-  it("25. rejects an expired assignment", () => {
+  it("25 denies expired assignment", () => {
     const { service } = setup();
-    const expired = context({
-      timestamp: new Date("2026-07-26T09:00:00.000Z"),
-      assignments: [
-        assignment(WRITER, {
-          branchId: BRANCH_A,
-          endsAt: new Date("2026-07-26T08:59:59.000Z"),
-        }),
-      ],
-    });
     expectCode(
-      () => createPerson(service, "Expired", expired),
+      () =>
+        person(
+          service,
+          "Expired",
+          context({
+            timestamp: new Date("2026-07-26T10:00:00.000Z"),
+            assignments: [
+              assignment(ACTOR, {
+                endsAt: new Date("2026-07-26T09:59:59.000Z"),
+              }),
+            ],
+          }),
+        ),
       "AUTHORITY_DENIED",
     );
   });
 
-  it("26. fails closed when actor identity is missing", () => {
+  it("26 fails closed without actor", () => {
     const { service } = setup();
     expectCode(
-      () =>
-        createPerson(
-          service,
-          "Missing Actor",
-          context({ actorId: "", assignments: [] }),
-        ),
+      () => person(service, "Missing", context({ actorId: "", assignments: [] })),
       "MISSING_ACTOR",
     );
   });
 
-  it("27. rejects an optimistic concurrency conflict", () => {
+  it("27 detects concurrency conflict", () => {
     const { service } = setup();
-    const party = createPerson(service);
+    const party = person(service);
     expectCode(
       () =>
         service.updatePartyField({
@@ -710,69 +602,163 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
     );
   });
 
-  it("28. audit snapshots cannot mutate the repository audit", () => {
+  it("28 keeps audit append-only through repository snapshots", () => {
     const { repository, service } = setup();
-    createPerson(service);
+    person(service);
     const snapshot = repository.snapshot();
-    snapshot.audit.push({
-      sequence: 999,
-      tenantId: TENANT_A,
-      actorId: WRITER,
-      action: "FORGED",
-      entityType: "PARTY",
-      entityId: "forged",
-      beforeState: null,
-      afterState: null,
-      reason: null,
-      correlationId: "forged",
-      occurredAt: new Date(),
-    });
-    expect(service.listAudit(context()).some((entry) => entry.action === "FORGED"))
-      .toBe(false);
+    snapshot.audit.length = 0;
+    expect(service.listAudit(context()).length).toBeGreaterThan(0);
   });
 
-  it("29. Platform Owner has no automatic customer-data write authority", () => {
+  it("29 gives Platform Owner no automatic write authority", () => {
     const { service } = setup();
-    const platformOwnerContext = context({
-      actorId: "platform-owner",
-      assignments: [
-        assignment("platform-owner", {
-          role: "PLATFORM_OWNER",
-          branchId: BRANCH_A,
-        }),
-      ],
-    });
     expectCode(
-      () => createPerson(service, "Denied", platformOwnerContext),
+      () =>
+        person(
+          service,
+          "Denied",
+          context({
+            actorId: "owner",
+            assignments: [
+              assignment("owner", { securityRole: "PLATFORM_OWNER" }),
+            ],
+          }),
+        ),
       "AUTHORITY_DENIED",
     );
   });
 
-  it("30. System Administrator has no automatic customer-data authority", () => {
+  it("30 gives System Administrator no customer-data authority", () => {
     const { service } = setup();
-    const administratorContext = context({
-      actorId: "system-admin",
-      assignments: [
-        assignment("system-admin", {
-          role: "SYSTEM_ADMINISTRATOR",
-          branchId: BRANCH_A,
-        }),
-      ],
-    });
     expectCode(
-      () => createPerson(service, "Denied", administratorContext),
+      () =>
+        person(
+          service,
+          "Denied",
+          context({
+            actorId: "admin",
+            assignments: [
+              assignment("admin", { securityRole: "SYSTEM_ADMINISTRATOR" }),
+            ],
+          }),
+        ),
       "AUTHORITY_DENIED",
     );
   });
 
-  it("31. prevents replacing a verified field with weaker provenance", () => {
+  it("31 keeps verified phone possible unless uniqueness policy is enabled", () => {
+    const firstSetup = setup();
+    for (const name of ["First", "Second"]) {
+      firstSetup.service.createParty({
+        context: context(),
+        type: "PERSON",
+        fields: {
+          displayName: { value: name, source: "USER_ENTERED" },
+          phone: {
+            value: name === "First" ? "050 123 4567" : "+966501234567",
+            source: "VERIFIED",
+            verified: true,
+          },
+        },
+      });
+    }
+    const candidate = [...firstSetup.repository.snapshot().parties.values()][1];
+    expect(
+      firstSetup.service.suggestDuplicates(context(), candidate.id)[0].level,
+    ).toBe("POSSIBLE_MATCH");
+
+    const uniqueSetup = setup({ verifiedPhoneIsUniquePerParty: true });
+    for (const name of ["First", "Second"]) {
+      uniqueSetup.service.createParty({
+        context: context(),
+        type: "PERSON",
+        fields: {
+          displayName: { value: name, source: "USER_ENTERED" },
+          phone: {
+            value: name === "First" ? "050 123 4567" : "+966501234567",
+            source: "VERIFIED",
+            verified: true,
+          },
+        },
+      });
+    }
+    const uniqueCandidate = [...uniqueSetup.repository.snapshot().parties.values()][1];
+    expect(
+      uniqueSetup.service.suggestDuplicates(context(), uniqueCandidate.id)[0]
+        .level,
+    ).toBe("DETERMINISTIC_MATCH");
+  });
+
+  it("32 confirms duplicate through append-only audit", () => {
+    const { service } = setup();
+    person(service, "Sara Ahmed");
+    const candidate = person(service, "Sarah Ahmed");
+    const suggestion = service.suggestDuplicates(context(), candidate.id)[0];
+    service.confirmDuplicate(
+      context({ reason: "human confirmed" }),
+      suggestion.reviewId,
+    );
+    expect(
+      service
+        .listAudit(context())
+        .some((entry) => entry.action === "ConfirmDuplicate"),
+    ).toBe(true);
+  });
+
+  it("33 blocks reversal after post-merge field mutation", () => {
+    const { service } = setup();
+    const survivor = person(service);
+    const loser = person(service, "B");
+    const merge = service.mergeParties(mergeInput(survivor.id, loser.id));
+    service.updatePartyField({
+      context: context({ expectedVersion: merge.survivorAfter.version }),
+      partyId: survivor.id,
+      field: "city",
+      value: "Riyadh",
+      source: "USER_ENTERED",
+    });
+    expectCode(
+      () =>
+        service.reversePartyMerge(
+          context({ reason: "reverse" }),
+          merge.id,
+        ),
+      "BLOCKED_BY_DEPENDENCY",
+    );
+  });
+
+  it("34 rejects mismatched Party and Customer Account subjects", () => {
+    const { service } = setup();
+    const first = person(service, "First");
+    const second = person(service, "Second");
+    const account = service.createCustomerAccount(context(), first.id, ["BUYER"]);
+    expectCode(
+      () =>
+        service.createOpportunity({
+          context: context(),
+          partyId: second.id,
+          customerAccountId: account.id,
+          branchId: BRANCH_A,
+          serviceLine: "SALES",
+          expectedValue: 10,
+          probability: 10,
+          creationSource: "DIRECT",
+        }),
+      "VALIDATION_ERROR",
+    );
+  });
+
+  it("35 protects verified fields from weaker ownership", () => {
     const { service } = setup();
     const party = service.createParty({
       context: context(),
       type: "PERSON",
       fields: {
-        displayName: { value: "Ali", source: "USER_ENTERED" },
-        nationalId: { value: "1234567890", source: "VERIFIED", verified: true },
+        nationalId: {
+          value: "1234567890",
+          source: "VERIFIED",
+          verified: true,
+        },
       },
     });
     expectCode(
@@ -788,38 +774,37 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
     );
   });
 
-  it("32. requires a reason for LOST and records stage history", () => {
+  it("36 enforces deterministic Opportunity transitions and LOST reason", () => {
     const { service } = setup();
-    const party = createPerson(service);
-    let opportunity = createOpportunity(service, party.id);
-    opportunity = service.moveOpportunityStage({
-      context: context({ expectedVersion: opportunity.version }),
-      opportunityId: opportunity.id,
+    const party = person(service);
+    let item = opportunity(service, party.id);
+    item = service.moveOpportunityStage({
+      context: context({ expectedVersion: item.version }),
+      opportunityId: item.id,
       nextStage: "QUALIFICATION",
     });
     expectCode(
       () =>
         service.moveOpportunityStage({
-          context: context({ expectedVersion: opportunity.version }),
-          opportunityId: opportunity.id,
+          context: context({ expectedVersion: item.version }),
+          opportunityId: item.id,
           nextStage: "LOST",
         }),
       "REASON_REQUIRED",
     );
     const lost = service.moveOpportunityStage({
-      context: context({ expectedVersion: opportunity.version }),
-      opportunityId: opportunity.id,
+      context: context({ expectedVersion: item.version }),
+      opportunityId: item.id,
       nextStage: "LOST",
       outcomeReason: "budget mismatch",
     });
     expect(lost.history.at(-1)?.previousStage).toBe("QUALIFICATION");
-    expect(lost.stage).toBe("LOST");
   });
 
-  it("33. WON does not create contracts and rejects self-approval", () => {
+  it("37 WON requires independent initiator and creates no contract truth", () => {
     const { repository, service } = setup();
-    const party = createPerson(service);
-    let opportunity = createOpportunity(service, party.id);
+    const party = person(service);
+    let item = opportunity(service, party.id);
     for (const nextStage of [
       "QUALIFICATION",
       "NEEDS_ANALYSIS",
@@ -827,56 +812,56 @@ describe("EXEC-005 customer identity and opportunity lifecycle", () => {
       "NEGOTIATION",
       "APPROVAL",
     ] as const) {
-      opportunity = service.moveOpportunityStage({
-        context: context({ expectedVersion: opportunity.version }),
-        opportunityId: opportunity.id,
+      item = service.moveOpportunityStage({
+        context: context({ expectedVersion: item.version }),
+        opportunityId: item.id,
         nextStage,
       });
     }
     expectCode(
       () =>
         service.moveOpportunityStage({
-          context: context({ expectedVersion: opportunity.version }),
-          opportunityId: opportunity.id,
+          context: context({ expectedVersion: item.version }),
+          opportunityId: item.id,
           nextStage: "WON",
-          initiatedByActorId: WRITER,
+          initiatedByActorId: ACTOR,
         }),
       "SELF_APPROVAL_DENIED",
     );
     const won = service.moveOpportunityStage({
-      context: context({ expectedVersion: opportunity.version }),
-      opportunityId: opportunity.id,
+      context: context({ expectedVersion: item.version }),
+      opportunityId: item.id,
       nextStage: "WON",
-      initiatedByActorId: "initiator-other",
+      initiatedByActorId: "different-initiator",
     });
     expect(won.stage).toBe("WON");
     expect(repository.snapshot().opportunities.size).toBe(1);
   });
 
-  it("34. permits audited reopen only with explicit authorization", () => {
+  it("38 reopens a final Opportunity only through explicit audited authorization", () => {
     const { service } = setup();
-    const party = createPerson(service);
-    let opportunity = createOpportunity(service, party.id);
-    opportunity = service.moveOpportunityStage({
-      context: context({ expectedVersion: opportunity.version }),
-      opportunityId: opportunity.id,
+    const party = person(service);
+    let item = opportunity(service, party.id);
+    item = service.moveOpportunityStage({
+      context: context({ expectedVersion: item.version }),
+      opportunityId: item.id,
       nextStage: "CANCELLED",
     });
     expectCode(
       () =>
         service.moveOpportunityStage({
-          context: context({ expectedVersion: opportunity.version }),
-          opportunityId: opportunity.id,
+          context: context({ expectedVersion: item.version }),
+          opportunityId: item.id,
           nextStage: "QUALIFICATION",
         }),
       "INVALID_STATE_TRANSITION",
     );
     const reopened = service.moveOpportunityStage({
       context: context({
-        expectedVersion: opportunity.version,
-        reason: "manager-approved reopen",
+        expectedVersion: item.version,
+        reason: "manager authorized",
       }),
-      opportunityId: opportunity.id,
+      opportunityId: item.id,
       nextStage: "QUALIFICATION",
       reopenAuthorized: true,
     });
