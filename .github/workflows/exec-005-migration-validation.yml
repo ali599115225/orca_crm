@@ -53,8 +53,18 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Generate isolated legacy schema SQL
+        run: >-
+          npx prisma migrate diff
+          --from-empty
+          --to-schema prisma/schema.prisma
+          --script
+          --output /tmp/orca-legacy-schema.sql
+
       - name: Create isolated legacy schema
-        run: npx prisma db push
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f /tmp/orca-legacy-schema.sql
 
       - name: Apply EXEC-004 authority prerequisite
         run: >-
