@@ -1,0 +1,80 @@
+name: ORCA EXEC-003 Final Closure Digest Boundary Publisher
+on:
+  pull_request:
+    branches: [work/orca-exec003-final-closure-digest-publisher-base-20260726]
+    types: [opened, reopened, synchronize]
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-exec003-final-closure-digest-publisher-control-20260726'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v6
+        with: {node-version: "24", cache: npm}
+      - name: Checkout clean target and install
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin work/orca-exec003-final-closure-metadata-digest-fix-20260726
+          test "$(git rev-parse FETCH_HEAD)" = "fa45faf262f2bff0e3822d6514b9852dd1f94d6d"
+          git switch --detach FETCH_HEAD
+          git switch -C work/orca-exec003-final-closure-metadata-digest-fix-20260726
+          npm ci
+      - name: Implement narrow administrative metadata boundary
+        shell: python
+        run: |
+          import json, subprocess
+          from pathlib import Path
+          script=Path('scripts/exec-003-evidence-digest.mjs')
+          s=script.read_text()
+          anchor='''const MANIFEST_PATH =\n  "tests/foundation/g5-exec-003-behavior-evidence-manifest.ts";\n'''
+          insert=anchor+'\nconst EXECUTION_REGISTRY_PATH =\n  "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";\nconst ADMINISTRATIVE_REGISTRY_FIELDS = Object.freeze(["finalZ8Closure"]);\n'
+          assert anchor in s and 'ADMINISTRATIVE_REGISTRY_FIELDS' not in s
+          s=s.replace(anchor,insert,1)
+          old='''  return readFileSync(absolute, "utf8").replaceAll("\\r\\n", "\\n");\n}\n'''
+          new='''  const content = readFileSync(absolute, "utf8").replaceAll("\\r\\n", "\\n");\n  if (relativePath !== EXECUTION_REGISTRY_PATH) return content;\n  const registry = JSON.parse(content);\n  for (const field of ADMINISTRATIVE_REGISTRY_FIELDS) delete registry[field];\n  return `${JSON.stringify(registry)}\\n`;\n}\n'''
+          assert old in s
+          s=s.replace(old,new,1)
+          s=s.replace('sha256-path-length-content-v3-derived-security-dependencies','sha256-path-length-content-v4-final-closure-metadata-excluded')
+          script.write_text(s)
+
+          test=Path('tests/foundation/g5-exec-003-evidence-identity.test.ts')
+          t=test.read_text().replace('sha256-path-length-content-v3-derived-security-dependencies','sha256-path-length-content-v4-final-closure-metadata-excluded')
+          addition='''\n\ndescribe("EXEC-003 administrative closure metadata digest boundary", () => {\n  it("excludes only finalZ8Closure while retaining security-relevant registry state", async () => {\n    const digestModule = await loadDigestModule();\n    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-registry-digest-"));\n    try {\n      const relativePath = "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";\n      const absolutePath = path.join(root, relativePath);\n      mkdirSync(path.dirname(absolutePath), { recursive: true });\n      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED" })}\\n`);\n      const baseline = digestModule.hashExec003EvidenceFiles(root, [relativePath]);\n      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED", finalZ8Closure: { date: "2026-07-26" } })}\\n`);\n      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).toBe(baseline);\n      writeFileSync(absolutePath, `${JSON.stringify({ state: "IN_EXECUTION", finalZ8Closure: { date: "2026-07-26" } })}\\n`);\n      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).not.toBe(baseline);\n    } finally {\n      rmSync(root, { recursive: true, force: true });\n    }\n  });\n});\n'''
+          assert 'administrative closure metadata digest boundary' not in t
+          test.write_text(t.rstrip()+addition)
+
+          identity_path=Path('docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json')
+          identity=json.loads(identity_path.read_text())
+          identity['digestAlgorithm']='sha256-path-length-content-v4-final-closure-metadata-excluded'
+          identity_path.write_text(json.dumps(identity,ensure_ascii=False,indent=2)+'\n')
+          digest=json.loads(subprocess.check_output(['node','scripts/exec-003-evidence-digest.mjs'],text=True))
+          identity['evidenceDigest']=digest['evidenceDigest']
+          identity['derivedEvidenceFiles']=digest['derivedEvidenceFiles']
+          identity['securityDependencyFiles']=digest['securityDependencyFiles']
+          identity_path.write_text(json.dumps(identity,ensure_ascii=False,indent=2)+'\n')
+
+          registry=Path('docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json')
+          registry.write_text(subprocess.check_output(['node','scripts/exec-003-registry-reconcile.mjs','--print'],text=True))
+      - name: Verify sealed evidence and full G5
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/exec-003-registry-reconcile.mjs --check
+          npx vitest run tests/foundation/g5-*.test.ts
+          git add scripts/exec-003-evidence-digest.mjs tests/foundation/g5-exec-003-evidence-identity.test.ts docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
+          mapfile -t changed < <(git diff --cached --name-only)
+          test "${#changed[@]}" -eq 4
+      - name: Commit and push one clean fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "ORCA Evidence Boundary Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "fix(exec-003): isolate final closure metadata from evidence digest"
+          test "$(git rev-list --count fa45faf262f2bff0e3822d6514b9852dd1f94d6d..HEAD)" -eq 1
+          git push origin HEAD:refs/heads/work/orca-exec003-final-closure-metadata-digest-fix-20260726
