@@ -35,7 +35,7 @@ const BASE_PERMISSION: Readonly<
   TOUR_RESCHEDULE: "sales.records.write",
   TOUR_COMPLETE: "sales.records.write",
   TOUR_CANCEL: "sales.records.write",
-  COMMITMENT_AUDIT_READ: "organization.audit.read",
+  COMMITMENT_AUDIT_READ: "property.records.read",
 };
 
 const ROLE_PERMISSION_MATRIX: Readonly<
