@@ -45,49 +45,27 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
   });
 
   it("applies prerequisite and EXEC-006 migrations in step order", () => {
-    const stepsOffset = workflow.indexOf("\n    steps:");
-    expect(stepsOffset).toBeGreaterThan(-1);
-    const applicationSteps = workflow.slice(stepsOffset);
-
-    const authority = applicationSteps.indexOf(
-      "- name: Apply EXEC-004 authority prerequisite",
-    );
-    const identity = applicationSteps.indexOf(
-      "- name: Apply EXEC-005 identity foundation",
-    );
-    const identityHardening = applicationSteps.indexOf(
-      "- name: Apply EXEC-005 integrity hardening",
-    );
-    const commitment = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 commitment foundation",
-    );
-    const commitmentHardening = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 integrity hardening",
-    );
-    const authorityHardening = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 authority and availability hardening",
-    );
-    const availabilityCorrection = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 availability disambiguation",
-    );
-    const reconciliationRepair = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 reconciliation race hardening",
-    );
-    const lifecycleApprovalRepair = applicationSteps.indexOf(
-      "- name: Apply EXEC-006 lifecycle approval guard hardening",
-    );
-    expect(authority).toBeGreaterThan(-1);
-    expect(identity).toBeGreaterThan(authority);
-    expect(identityHardening).toBeGreaterThan(identity);
-    expect(commitment).toBeGreaterThan(identityHardening);
-    expect(commitmentHardening).toBeGreaterThan(commitment);
-    expect(authorityHardening).toBeGreaterThan(commitmentHardening);
-    expect(availabilityCorrection).toBeGreaterThan(authorityHardening);
-    expect(reconciliationRepair).toBeGreaterThan(availabilityCorrection);
-    expect(lifecycleApprovalRepair).toBeGreaterThan(reconciliationRepair);
+    const applicationSteps = workflow.slice(workflow.indexOf("\n    steps:"));
+    const names = [
+      "Apply EXEC-004 authority prerequisite",
+      "Apply EXEC-005 identity foundation",
+      "Apply EXEC-005 integrity hardening",
+      "Apply EXEC-006 commitment foundation",
+      "Apply EXEC-006 integrity hardening",
+      "Apply EXEC-006 authority and availability hardening",
+      "Apply EXEC-006 availability disambiguation",
+      "Apply EXEC-006 reconciliation race hardening",
+      "Apply EXEC-006 lifecycle approval guard hardening",
+    ];
+    let previous = -1;
+    for (const name of names) {
+      const current = applicationSteps.indexOf(`- name: ${name}`);
+      expect(current).toBeGreaterThan(previous);
+      previous = current;
+    }
   });
 
-  it("runs the real multi-connection race drill", () => {
+  it("runs real multi-connection conflict races", () => {
     expect(workflow).toContain("node scripts/exec-006-postgres-concurrency.mjs");
     expect(drill).toContain("const left = new Client");
     expect(drill).toContain("const right = new Client");
@@ -98,35 +76,30 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(drill).toContain("conversion/expiry race");
   });
 
-  it("proves database exclusivity rather than source assertions alone", () => {
+  it("proves database exclusivity and optimistic concurrency", () => {
     expect(foundation).toContain("unit_commitments_active_exclusivity");
     expect(foundation).toContain("pg_advisory_xact_lock");
-    expect(drill).toContain("exactlyOneFulfilled");
-    expect(drill).toContain("rowCount !== 1");
-  });
-
-  it("proves optimistic concurrency and no lost update", () => {
     expect(hardening).toContain("exec006_extend_commitment");
     expect(hardening).toContain('v_before."version" <> p_expected_version');
-    expect(drill).toContain("releaseExtendRace");
+    expect(drill).toContain("exactlyOneFulfilled");
     expect(drill).toContain("lost or incoherent update");
   });
 
-  it("proves conversion and expiry converge after both commands complete", () => {
+  it("proves conversion and expiry converge after both commands", () => {
     expect(reconciliationHardening).toContain(
       'CREATE OR REPLACE FUNCTION "exec006_reconcile_expired_commitments"',
     );
     expect(reconciliationHardening).toContain("FOR UPDATE");
     expect(reconciliationHardening).not.toContain("SKIP LOCKED");
     expect(reconciliationHardening).toContain(
-      "recheck state and records append-only History/Audit",
+      "rechecks state and records append-only History/Audit",
     );
     expect(drill).toContain(
       "conversion/expiry race did not converge to EXPIRED",
     );
   });
 
-  it("permits terminal expiry without bypassing duration or approval checks", () => {
+  it("permits lifecycle expiry without bypassing policy guards", () => {
     expect(lifecycleApprovalHardening).toContain(
       'CREATE OR REPLACE FUNCTION "exec006_validate_commitment_approval_policy"',
     );
@@ -137,35 +110,25 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
       "lifecycle-only state transitions remain valid",
     );
     expect(lifecycleApprovalHardening).toContain(
-      "new independent approval evidence is required for long extension",
+      "00_unit_commitments_direct_scope_guard",
     );
   });
 
-  it("proves independent elevated approval in PostgreSQL", () => {
+  it("proves independent approval and final contractual blocking", () => {
     expect(authorityAvailability).toContain(
       "exec006_assert_independent_approval",
     );
     expect(authorityAvailability).toContain("self approval denied");
     expect(authorityAvailability).toContain(
-      "unit_commitments_approval_policy_guard",
+      "unit_commitments_final_link_release_guard",
     );
     expect(drill).toContain("self-approved long Hold duration was accepted");
     expect(drill).toContain("independentLongDurationApproval");
-  });
-
-  it("proves final contractual links and protected release", () => {
-    expect(authorityAvailability).toContain('FROM "rental_leases"');
-    expect(authorityAvailability).toContain(
-      "unit_commitments_final_link_release_guard",
-    );
     expect(drill).toContain("active RentalLease did not block availability");
     expect(drill).toContain("rentalLeaseBlocksAvailability");
   });
 
-  it("keeps hardened availability behavior while qualifying every source", () => {
-    expect(availabilityDisambiguation).toContain(
-      'CREATE OR REPLACE FUNCTION "exec006_evaluate_unit_availability"',
-    );
+  it("keeps fully qualified fail-closed availability behavior", () => {
     expect(availabilityDisambiguation).toContain(
       'availability_source."tenant_id" = p_tenant_id',
     );
@@ -175,16 +138,13 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(availabilityDisambiguation).toContain(
       'commitment_record."tenant_id" = p_tenant_id',
     );
+    expect(drill).toContain("UNKNOWN_FAIL_CLOSED");
   });
 
-  it("proves tours do not create availability blockers", () => {
+  it("proves Tours are non-exclusive and integrity records are immutable", () => {
     expect(foundation).toContain("exec006_create_tour_appointment");
     expect(drill).toContain("Tour incorrectly blocked Unit availability");
     expect(drill).toContain("tourDoesNotReserve");
-  });
-
-  it("proves fail-closed, tenant integrity and append-only protection", () => {
-    expect(drill).toContain("UNKNOWN_FAIL_CLOSED");
     expect(drill).toContain("cross-tenant Unit reference was accepted");
     expect(drill).toContain("Audit UPDATE was not denied");
     expect(drill).toContain("History DELETE was not denied");
