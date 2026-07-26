@@ -32,6 +32,22 @@ type AssignmentRow = {
   endsAt: Date | null;
 };
 
+const assignmentColumns = Prisma.raw(`
+  "id",
+  "tenant_id" AS "tenantId",
+  "user_id" AS "userId",
+  "security_role" AS "securityRole",
+  "scope_type" AS "scopeType",
+  "branch_id" AS "branchId",
+  "department_id" AS "departmentId",
+  "team_id" AS "teamId",
+  "assigned_resource_type" AS "assignedResourceType",
+  "assigned_resource_id" AS "assignedResourceId",
+  "is_active" AS "active",
+  "starts_at" AS "startsAt",
+  "ends_at" AS "endsAt"
+`);
+
 async function assertTenantUser(
   tx: Prisma.TransactionClient,
   tenantId: string,
@@ -117,20 +133,7 @@ export async function loadOrganizationAuthorityContext(
 }> {
   const [assignments, services] = await Promise.all([
     rawPrisma.$queryRaw<AssignmentRow[]>(Prisma.sql`
-      SELECT
-        "id",
-        "tenant_id" AS "tenantId",
-        "user_id" AS "userId",
-        "security_role" AS "securityRole",
-        "scope_type" AS "scopeType",
-        "branch_id" AS "branchId",
-        "department_id" AS "departmentId",
-        "team_id" AS "teamId",
-        "assigned_resource_type" AS "assignedResourceType",
-        "assigned_resource_id" AS "assignedResourceId",
-        "is_active" AS "active",
-        "starts_at" AS "startsAt",
-        "ends_at" AS "endsAt"
+      SELECT ${assignmentColumns}
       FROM "user_scope_assignments"
       WHERE "tenant_id" = ${tenantId}::uuid
         AND "user_id" = ${userId}::uuid
@@ -254,6 +257,17 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
     });
   },
 
+  async findScopeAssignment(input): Promise<OrganizationScopeAssignment | null> {
+    const rows = await rawPrisma.$queryRaw<AssignmentRow[]>(Prisma.sql`
+      SELECT ${assignmentColumns}
+      FROM "user_scope_assignments"
+      WHERE "id" = ${input.assignmentId}::uuid
+        AND "tenant_id" = ${input.tenantId}::uuid
+      LIMIT 1
+    `);
+    return rows[0] ?? null;
+  },
+
   async createScopeAssignmentWithAudit(input): Promise<OrganizationScopeAssignment> {
     return rawPrisma.$transaction(async (tx) => {
       await assertTenantUser(tx, input.tenantId, input.actorUserId);
@@ -298,20 +312,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           ${input.endsAt ?? null},
           ${input.actorUserId}::uuid
         )
-        RETURNING
-          "id",
-          "tenant_id" AS "tenantId",
-          "user_id" AS "userId",
-          "security_role" AS "securityRole",
-          "scope_type" AS "scopeType",
-          "branch_id" AS "branchId",
-          "department_id" AS "departmentId",
-          "team_id" AS "teamId",
-          "assigned_resource_type" AS "assignedResourceType",
-          "assigned_resource_id" AS "assignedResourceId",
-          "is_active" AS "active",
-          "starts_at" AS "startsAt",
-          "ends_at" AS "endsAt"
+        RETURNING ${assignmentColumns}
       `);
       const assignment = rows[0];
       if (!assignment) throw new Error("ORGANIZATION_ASSIGNMENT_CREATE_FAILED");
@@ -351,20 +352,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
         WHERE "id" = ${input.assignmentId}::uuid
           AND "tenant_id" = ${input.tenantId}::uuid
           AND "is_active" = TRUE
-        RETURNING
-          "id",
-          "tenant_id" AS "tenantId",
-          "user_id" AS "userId",
-          "security_role" AS "securityRole",
-          "scope_type" AS "scopeType",
-          "branch_id" AS "branchId",
-          "department_id" AS "departmentId",
-          "team_id" AS "teamId",
-          "assigned_resource_type" AS "assignedResourceType",
-          "assigned_resource_id" AS "assignedResourceId",
-          "is_active" AS "active",
-          "starts_at" AS "startsAt",
-          "ends_at" AS "endsAt"
+        RETURNING ${assignmentColumns}
       `);
       const assignment = rows[0];
       if (!assignment) throw new Error("ORGANIZATION_ASSIGNMENT_NOT_FOUND");
