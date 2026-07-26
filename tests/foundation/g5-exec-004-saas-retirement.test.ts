@@ -40,7 +40,9 @@ describe("EXEC-004 legacy SaaS retirement", () => {
     expect(registrationAction).toContain(
       'legacySaasBlockedResult(\n    "PUBLIC_TENANT_REGISTRATION"',
     );
-    expect(registrationAction).not.toMatch(/prisma\.|cookies\(|setSession|payment|checkout/i);
+    expect(registrationAction).not.toMatch(
+      /prisma\.|cookies\(|setSession|payment|checkout/i,
+    );
   });
 
   it("removes subscription-plan reads and commercial cap decisions from agent slots", () => {
@@ -48,8 +50,13 @@ describe("EXEC-004 legacy SaaS retirement", () => {
     expect(agentSlotsAction).not.toContain("PLAN_SLOT_LIMITS");
     expect(agentSlotsAction).not.toContain("CAP_LOCK");
     expect(agentSlotsAction).not.toContain("isDedicatedCopyDeployment");
+    expect(agentSlotsAction).not.toContain(
+      "meter.usageValue + amount > meter.limitValue",
+    );
     expect(agentSlotsAction).toContain("commercialLimitApplied: false");
     expect(agentSlotsAction).toContain("commercialPlanLimitApplied: false");
+    expect(agentSlotsAction).toContain("recordedLimitValue: meter.limitValue");
+    expect(agentSlotsAction).toContain("limitValue: null");
   });
 
   it("retains tenant isolation and audit on agent-slot mutations", () => {
