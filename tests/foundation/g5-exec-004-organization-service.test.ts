@@ -3,6 +3,8 @@ import {
   assignOrganizationScope,
   configureOrganizationBranchService,
   createOrganizationBranch,
+  createOrganizationDepartment,
+  createOrganizationTeam,
   OrganizationAuthorityError,
   revokeOrganizationScope,
   type OrganizationCommandContext,
@@ -51,6 +53,24 @@ function repository(
       tenantId: "tenant-1",
       code: "RUH",
       name: "فرع الرياض",
+      active: true,
+    }),
+    createDepartmentWithAudit: vi.fn().mockResolvedValue({
+      id: "department-1",
+      tenantId: "tenant-1",
+      branchId: null,
+      code: "FIN",
+      name: "المالية",
+      central: true,
+      active: true,
+    }),
+    createTeamWithAudit: vi.fn().mockResolvedValue({
+      id: "team-1",
+      tenantId: "tenant-1",
+      branchId: null,
+      departmentId: "department-1",
+      code: "AR",
+      name: "التحصيل",
       active: true,
     }),
     configureBranchServiceWithAudit: vi.fn().mockResolvedValue({
@@ -108,8 +128,86 @@ describe("EXEC-004 organization commands", () => {
         code: "!",
         name: "فرع",
       }),
-    ).rejects.toThrow("INVALID_BRANCH_CODE");
+    ).rejects.toThrow("INVALID_ORGANIZATION_CODE");
     expect(repo.createBranchWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("creates a central department without a branch parent", async () => {
+    const repo = repository();
+
+    await createOrganizationDepartment(context(), repo, {
+      code: " fin ",
+      name: " المالية ",
+      isCentral: true,
+    });
+
+    expect(repo.createDepartmentWithAudit).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      actorUserId: "admin-1",
+      branchId: null,
+      code: "FIN",
+      name: "المالية",
+      isCentral: true,
+    });
+  });
+
+  it("requires a branch parent for a non-central department", async () => {
+    const repo = repository();
+
+    await expect(
+      createOrganizationDepartment(context(), repo, {
+        code: "SAL",
+        name: "المبيعات",
+        isCentral: false,
+      }),
+    ).rejects.toThrow("INVALID_DEPARTMENT_SCOPE");
+    expect(repo.createDepartmentWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a central department with a branch parent", async () => {
+    const repo = repository();
+
+    await expect(
+      createOrganizationDepartment(context(), repo, {
+        code: "FIN",
+        name: "المالية",
+        isCentral: true,
+        branchId: "branch-1",
+      }),
+    ).rejects.toThrow("INVALID_DEPARTMENT_SCOPE");
+    expect(repo.createDepartmentWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("creates a team under an explicit department hierarchy", async () => {
+    const repo = repository();
+
+    await createOrganizationTeam(context(), repo, {
+      code: " ar ",
+      name: " التحصيل ",
+      departmentId: "department-1",
+    });
+
+    expect(repo.createTeamWithAudit).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      actorUserId: "admin-1",
+      branchId: null,
+      departmentId: "department-1",
+      code: "AR",
+      name: "التحصيل",
+    });
+  });
+
+  it("requires a department before team persistence", async () => {
+    const repo = repository();
+
+    await expect(
+      createOrganizationTeam(context(), repo, {
+        code: "AR",
+        name: "التحصيل",
+        departmentId: "",
+      }),
+    ).rejects.toThrow("DEPARTMENT_REQUIRED");
+    expect(repo.createTeamWithAudit).not.toHaveBeenCalled();
   });
 
   it("lets a company-scoped general manager configure a branch service", async () => {
@@ -131,7 +229,7 @@ describe("EXEC-004 organization commands", () => {
     });
   });
 
-  it("does not let a branch manager activate commercial service lines", async () => {
+  it("does not let a branch manager activate service lines", async () => {
     const repo = repository();
     const branchManager: OrganizationScopeAssignment = {
       ...ADMIN_ASSIGNMENT,
@@ -213,6 +311,20 @@ describe("EXEC-004 organization commands", () => {
         departmentId: "department-1",
       }),
     ).rejects.toThrow("INVALID_ASSIGNMENT_SCOPE");
+    expect(repo.createScopeAssignmentWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a role at an invalid scope", async () => {
+    const repo = repository();
+
+    await expect(
+      assignOrganizationScope(context(), repo, {
+        userId: "user-2",
+        securityRole: "SYSTEM_ADMINISTRATOR",
+        scopeType: "BRANCH",
+        branchId: "branch-1",
+      }),
+    ).rejects.toMatchObject({ code: "ROLE_SCOPE_DENIED" });
     expect(repo.createScopeAssignmentWithAudit).not.toHaveBeenCalled();
   });
 
