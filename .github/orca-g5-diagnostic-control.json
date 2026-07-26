@@ -1,6 +1,7 @@
 {
   "source_job": 89737995008,
   "source_run": 30181233808,
+  "diagnostic_revision": "errors-only-v2",
   "read_only": true,
   "merge_authorized": false
 }
