@@ -152,6 +152,7 @@ NEXT ELIGIBLE PACKAGE: EXEC-007 AFTER OWNER DECISION AND SCOPE FREEZE
 - Implementation PR: `#135`.
 - Merge to the zero-based central branch: `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`.
 - Closure branch: `work/orca-exec-006-closure-20260726`.
+- Closure PR: `#136`.
 - Implementation scope: `22` files, all within the renewed frozen allowlist.
 - ORCA CI: `#599 / SUCCESS`, workflow run ID `30206068819`.
 - Disposable PostgreSQL migration validation: `#45 / SUCCESS`, workflow run ID `30206068820`.

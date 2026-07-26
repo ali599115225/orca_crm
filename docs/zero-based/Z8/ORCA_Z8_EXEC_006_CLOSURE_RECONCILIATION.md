@@ -11,6 +11,7 @@
 - Final implementation/review head: `967ea4a2b79624facece53f55e2356e8673fe07b`.
 - Central implementation merge: `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`.
 - Closure branch: `work/orca-exec-006-closure-20260726`.
+- Closure PR: `#136`.
 - Closure scope: this report, Execution Package Registry and Prioritized Execution Roadmap only.
 
 ## Implementation evidence
