@@ -176,6 +176,18 @@ describe("EXEC-004 organization authority", () => {
     });
   });
 
+  it("blocks approval when initiator evidence is missing", () => {
+    expect(
+      decide({
+        permission: "finance.refund.approve",
+        assignments: [assignment({ securityRole: "FINANCE_MANAGER" })],
+      }),
+    ).toMatchObject({
+      allowed: false,
+      code: "SEPARATION_OF_DUTIES_DENIED",
+    });
+  });
+
   it("matches department assignments only to the exact department", () => {
     const departmentAssignment = assignment({
       securityRole: "OPERATIONS_MANAGER",
