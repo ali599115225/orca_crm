@@ -21,6 +21,10 @@ const availabilityDisambiguation = readFileSync(
   "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql",
   "utf8",
 );
+const reconciliationHardening = readFileSync(
+  "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
+  "utf8",
+);
 const drill = readFileSync(
   "scripts/exec-006-postgres-concurrency.mjs",
   "utf8",
@@ -62,6 +66,9 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     const availabilityCorrection = applicationSteps.indexOf(
       "- name: Apply EXEC-006 availability disambiguation",
     );
+    const reconciliationRepair = applicationSteps.indexOf(
+      "- name: Apply EXEC-006 reconciliation race hardening",
+    );
     expect(authority).toBeGreaterThan(-1);
     expect(identity).toBeGreaterThan(authority);
     expect(identityHardening).toBeGreaterThan(identity);
@@ -69,6 +76,7 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(commitmentHardening).toBeGreaterThan(commitment);
     expect(authorityHardening).toBeGreaterThan(commitmentHardening);
     expect(availabilityCorrection).toBeGreaterThan(authorityHardening);
+    expect(reconciliationRepair).toBeGreaterThan(availabilityCorrection);
   });
 
   it("runs the real multi-connection race drill", () => {
@@ -94,6 +102,20 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(hardening).toContain('v_before."version" <> p_expected_version');
     expect(drill).toContain("releaseExtendRace");
     expect(drill).toContain("lost or incoherent update");
+  });
+
+  it("proves conversion and expiry converge after both commands complete", () => {
+    expect(reconciliationHardening).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_reconcile_expired_commitments"',
+    );
+    expect(reconciliationHardening).toContain("FOR UPDATE");
+    expect(reconciliationHardening).not.toContain("SKIP LOCKED");
+    expect(reconciliationHardening).toContain(
+      "recheck state and records append-only History/Audit",
+    );
+    expect(drill).toContain(
+      "conversion/expiry race did not converge to EXPIRED",
+    );
   });
 
   it("proves independent elevated approval in PostgreSQL", () => {
