@@ -64,8 +64,12 @@ describe("EXEC-005 database integrity hardening", () => {
     expect(workflow).toContain("name: EXEC-005 Migration Validation");
     expect(workflow).toContain("permissions:\n  contents: read");
     expect(workflow).toContain("postgres:16");
-    expect(workflow).toContain("npx prisma db push");
-    expect(workflow).not.toContain("--skip-generate");
+    expect(workflow).toContain("npx prisma migrate diff");
+    expect(workflow).toContain("--from-empty");
+    expect(workflow).toContain("--to-schema prisma/schema.prisma");
+    expect(workflow).toContain("--script");
+    expect(workflow).not.toContain("prisma db push");
+    expect(workflow).not.toContain("prisma migrate deploy");
     expect(workflow).toContain(
       "20260726043000_exec_004_organization_authority/migration.sql",
     );
