@@ -3,7 +3,7 @@
   "target_branch": "work/orca-exec003-final-closure-metadata-digest-fix-20260726",
   "excluded_administrative_field": "finalZ8Closure",
   "security_fields_remain_digest_bound": true,
-  "publisher_revision": "robust-v2",
+  "publisher_revision": "reconciler-aligned-v3",
   "runtime_authorized": false,
   "main_or_production_authorized": false
 }
