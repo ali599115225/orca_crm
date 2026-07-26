@@ -5,6 +5,7 @@ on:
     paths:
       - "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql"
       - "prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql"
+      - "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql"
       - "scripts/exec-006-postgres-concurrency.mjs"
       - "tests/foundation/g5-exec-006-postgres-contract.test.ts"
       - ".github/workflows/exec-006-migration-validation.yml"
@@ -94,12 +95,17 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
           -f prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql
 
+      - name: Apply EXEC-006 authority and availability hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql
+
       - name: Validate schema objects and guards
         shell: bash
         run: |
           set -euo pipefail
           test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('unit_commitment_policies','unit_availability_sources','unit_operational_restrictions','unit_commitments','unit_commitment_history','unit_commitment_audit','unit_commitment_idempotency','tour_appointments_v2','tour_appointment_history')")" -eq 9
-          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard')")" -ge 8
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard')")" -ge 10
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
@@ -134,10 +140,28 @@ jobs:
               RAISE EXCEPTION 'missing atomic extension function';
             END IF;
             IF NOT EXISTS (
+              SELECT 1 FROM pg_proc
+              WHERE proname = 'exec006_assert_independent_approval'
+            ) THEN
+              RAISE EXCEPTION 'missing independent approval verifier';
+            END IF;
+            IF NOT EXISTS (
               SELECT 1 FROM pg_trigger
               WHERE tgname = 'unit_commitment_audit_no_mutation'
             ) THEN
               RAISE EXCEPTION 'missing append-only audit guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = 'unit_commitments_approval_policy_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing approval policy guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = 'unit_commitments_final_link_release_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing final-link release guard';
             END IF;
           END;
           $$;
