@@ -200,7 +200,7 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
     expect(identity).toMatchObject({
       schemaVersion: 3,
       package: "EXEC-003 v2",
-      state: "IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW",
+      state: "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL",
       digestAlgorithm:
         "sha256-path-length-content-v3-derived-security-dependencies",
       baseSha: "001b2c853e99ea055f161dcd294d968bbf25c9ad",
