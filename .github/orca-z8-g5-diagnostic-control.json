@@ -1,0 +1,5 @@
+{
+  "target_head": "1db2709a4a81efc5b41aee1e3d59b7f2026be9ae",
+  "purpose": "diagnose deterministic G5 failure only",
+  "merge_authorized": false
+}
