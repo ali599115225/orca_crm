@@ -44,7 +44,7 @@ Job Title
 - `DENY BY DEFAULT`.
 - No cross-branch access without an explicit matching assignment.
 - A technical system administrator has no automatic financial or contractual authority.
-- Refund and discount approval must not be self-approved.
+- Refund and discount approvals require explicit initiator evidence and must not be self-approved.
 - Sensitive organization changes are attributable and append-only audited.
 - External integrations remain customer-owned and disabled or not configured by default.
 
@@ -52,6 +52,7 @@ Job Title
 
 ```text
 app/actions/agentSlots.ts
+app/api/v1/agents/route.ts
 lib/organization/authority.ts
 lib/organization/contracts.ts
 lib/organization/service.ts
@@ -72,20 +73,22 @@ No other file is authorized in the implementation candidate. Registry and roadma
 ## Acceptance
 
 1. Public registration, subscription changes, checkout, add-ons, leasing, billing cron, package limits and upgrade navigation remain unreachable.
-2. Agent slots no longer read or enforce commercial `subscriptionPlan` limits.
+2. Agent slots and the agents API no longer read, enforce or expose stored commercial `subscriptionPlan` limits as live authority.
 3. Every authority decision starts denied and requires:
    - matching tenant partition;
    - active user assignment;
    - explicit security-role permission;
    - exact company/branch/department/team/resource scope;
    - enabled branch service when applicable;
-   - separation-of-duties compliance.
-4. Cross-tenant and cross-branch negative tests pass.
-5. System administrator and Platform Owner do not receive automatic financial write authority.
-6. The migration is additive, has no backfill, and is not executed against any database in this package.
-7. Targeted tests, applicable G5/G8 gates, TypeScript, Build and production dependency audit pass on the final reviewed head.
-8. Exact diff contains only the allowlist above.
-9. `main`, Production, customer data, live providers and secrets remain untouched.
+   - separation-of-duties evidence.
+4. Approval requests fail closed when initiator evidence is absent or identifies the approver.
+5. Cross-tenant, cross-branch, forged-revocation and invalid-delegation negative tests pass.
+6. System administrator and Platform Owner do not receive automatic financial write authority.
+7. The migration is additive, has no backfill, and is not executed against any database in this package.
+8. Database triggers reject cross-tenant hierarchy, user, manager, assignment and audit relationships.
+9. Targeted tests, applicable G5/G8 gates, TypeScript, Build and production dependency audit pass on the final reviewed head.
+10. Exact diff contains only the allowlist above.
+11. `main`, Production, customer data, live providers and secrets remain untouched.
 
 ## Vercel policy
 
