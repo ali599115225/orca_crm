@@ -1,0 +1,80 @@
+name: ORCA Z8 G5 Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z8-g5-diagnostic-base-20260725
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'work/orca-z8-g5-diagnostic-control-20260725'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Generate prerequisite inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/g4-contract-inventory.mjs
+          node scripts/g4-contract-normalize.mjs
+          node scripts/g4-contract-reconcile.mjs
+          node scripts/g5-security-quality-inventory.mjs
+      - name: Run isolated G5 tests
+        id: g5
+        continue-on-error: true
+        shell: bash
+        run: |
+          npx vitest run tests/foundation/g5-*.test.ts --reporter=json --outputFile=/tmp/g5-results.json
+      - name: Comment concise diagnostic
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('/tmp/g5-results.json', 'utf8'));
+            const failures = [];
+            for (const file of results.testResults || []) {
+              for (const assertion of file.assertionResults || []) {
+                if (assertion.status === 'failed') {
+                  failures.push({
+                    file: file.name,
+                    title: assertion.fullName || assertion.title,
+                    messages: assertion.failureMessages || []
+                  });
+                }
+              }
+            }
+            const body = [
+              '## ORCA Z8 G5 Diagnostic',
+              '',
+              `- totalTests: ${results.numTotalTests}`,
+              `- passed: ${results.numPassedTests}`,
+              `- failed: ${results.numFailedTests}`,
+              '',
+              '```json',
+              JSON.stringify(failures, null, 2).slice(0, 60000),
+              '```'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+      - name: Preserve diagnostic failure state
+        if: steps.g5.outcome != 'success'
+        run: exit 1
