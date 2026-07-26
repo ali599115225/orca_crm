@@ -125,5 +125,25 @@
     "completion of Z8 authorizes no package to start automatically",
     "the owner instruction after Z8 determines which EVIDENCE_READY package is activated next",
     "this Vercel Hobby policy supersedes every earlier requirement for a Preview on each commit, push, pull request, documentation change or small correction"
-  ]
+  ],
+  "finalClosure": {
+    "date": "2026-07-26",
+    "baseCentralSha": "ff47997382d9032a6e1c27b9488884282867479f",
+    "supersededPr": 99,
+    "supersededHeadSha": "a82bcc937a8f69196b96f742801fe20f2eecaf99",
+    "registryClosurePr": 118,
+    "digestBoundaryPr": 123,
+    "registeredPackages": 14,
+    "coveredGapIds": 32,
+    "packagesInExecution": 0,
+    "requiredFinalChecks": [
+      "ORCA CI",
+      "Vercel"
+    ],
+    "sameFinalHeadRequired": true,
+    "emptyCommitProhibited": true,
+    "paidUpgradeAuthorized": false,
+    "mainMergeAuthorized": false,
+    "productionActionAuthorized": false
+  }
 }
