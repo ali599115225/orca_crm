@@ -12,7 +12,16 @@ import {
   normalizeAgentType,
 } from "@/lib/agents/registry";
 
-const OPERATIONAL_MESSAGE_LIMIT = 99_999;
+const MAX_TELEMETRY_COUNT = 2_147_483_647;
+
+function withoutCommercialMeterLimit<T extends { limitValue: number }>(meter: T) {
+  return {
+    ...meter,
+    recordedLimitValue: meter.limitValue,
+    limitValue: null,
+    commercialLimitApplied: false,
+  };
+}
 
 export async function getAgentSlotsAction() {
   try {
@@ -29,6 +38,9 @@ export async function getAgentSlotsAction() {
       success: true,
       slots: slots.map((slot) => ({
         ...slot,
+        usageMeter: slot.usageMeter
+          ? withoutCommercialMeterLimit(slot.usageMeter)
+          : null,
         definition: getAgentDefinition(slot.agentType),
       })),
       activeCount,
@@ -74,7 +86,7 @@ export async function createAgentSlotAction(agentType: string) {
             tenantId: access.tenantId,
             agentSlotId: slot.id,
             metricType: "MESSAGES",
-            limitValue: OPERATIONAL_MESSAGE_LIMIT,
+            limitValue: MAX_TELEMETRY_COUNT,
             usageValue: 0,
             resetAt,
           },
@@ -175,7 +187,11 @@ export async function getUsageMetersAction() {
       where: { tenantId: access.tenantId },
       include: { agentSlot: true },
     });
-    return { success: true, meters };
+    return {
+      success: true,
+      meters: meters.map(withoutCommercialMeterLimit),
+      commercialLimitApplied: false,
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -200,12 +216,8 @@ export async function incrementUsageMeterAction(
           },
         });
         if (!meter) return { kind: "missing" as const };
-        if (meter.usageValue + amount > meter.limitValue) {
-          return {
-            kind: "limit" as const,
-            limitValue: meter.limitValue,
-            metricType: meter.metricType,
-          };
+        if (meter.usageValue > MAX_TELEMETRY_COUNT - amount) {
+          return { kind: "overflow" as const };
         }
 
         await tx.usageMeter.update({
@@ -220,14 +232,14 @@ export async function incrementUsageMeterAction(
     if (result.kind === "missing") {
       return { success: false, error: "مقياس الاستخدام غير موجود." };
     }
-    if (result.kind === "limit") {
+    if (result.kind === "overflow") {
       return {
         success: false,
-        limitExceeded: true,
-        error: `تم استنفاد الحد التشغيلي (${result.limitValue} ${result.metricType}).`,
+        counterOverflow: true,
+        error: "تعذر تحديث عداد الاستخدام التشغيلي بأمان.",
       };
     }
-    return { success: true };
+    return { success: true, commercialLimitApplied: false };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
