@@ -17,6 +17,10 @@ const authorityAvailability = readFileSync(
   "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql",
   "utf8",
 );
+const availabilityDisambiguation = readFileSync(
+  "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql",
+  "utf8",
+);
 const drill = readFileSync(
   "scripts/exec-006-postgres-concurrency.mjs",
   "utf8",
@@ -55,12 +59,16 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     const authorityHardening = applicationSteps.indexOf(
       "- name: Apply EXEC-006 authority and availability hardening",
     );
+    const availabilityCorrection = applicationSteps.indexOf(
+      "- name: Apply EXEC-006 availability disambiguation",
+    );
     expect(authority).toBeGreaterThan(-1);
     expect(identity).toBeGreaterThan(authority);
     expect(identityHardening).toBeGreaterThan(identity);
     expect(commitment).toBeGreaterThan(identityHardening);
     expect(commitmentHardening).toBeGreaterThan(commitment);
     expect(authorityHardening).toBeGreaterThan(commitmentHardening);
+    expect(availabilityCorrection).toBeGreaterThan(authorityHardening);
   });
 
   it("runs the real multi-connection race drill", () => {
@@ -107,6 +115,21 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     );
     expect(drill).toContain("active RentalLease did not block availability");
     expect(drill).toContain("rentalLeaseBlocksAvailability");
+  });
+
+  it("keeps hardened availability behavior while qualifying every source", () => {
+    expect(availabilityDisambiguation).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_evaluate_unit_availability"',
+    );
+    expect(availabilityDisambiguation).toContain(
+      'availability_source."tenant_id" = p_tenant_id',
+    );
+    expect(availabilityDisambiguation).toContain(
+      'rental_record."tenant_id" = p_tenant_id',
+    );
+    expect(availabilityDisambiguation).toContain(
+      'commitment_record."tenant_id" = p_tenant_id',
+    );
   });
 
   it("proves tours do not create availability blockers", () => {
