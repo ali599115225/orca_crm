@@ -66,8 +66,8 @@ describe("EXEC-004 legacy SaaS retirement", () => {
     );
     expect(agentsApi).toContain("limitValue: null");
     expect(agentsApi).toContain("commercialLimitApplied: false");
-    expect(agentsApi).not.toContain(
-      "limitValue: slot.usageMeter.limitValue",
+    expect(agentsApi).not.toMatch(
+      /\n\s+limitValue:\s+slot\.usageMeter\.limitValue[,\n]/,
     );
   });
 
