@@ -8,7 +8,7 @@ const IDENTITY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
 const BASE_SHA = "001b2c853e99ea055f161dcd294d968bbf25c9ad";
 const DIGEST_ALGORITHM =
-  "sha256-path-length-content-v4-final-closure-metadata-excluded";
+  "sha256-path-length-content-v5-exec003-registry-projection";
 const C17_SECURITY_DEPENDENCY_FILE = "app/actions/aiActions.ts";
 
 const REQUIRED_ALLOWED_PATHS = [
@@ -48,23 +48,63 @@ function readEvidenceIdentity(root = process.cwd()) {
   return identity;
 }
 
+function countState(packages, state) {
+  return packages.filter((packageRecord) => packageRecord.state === state).length;
+}
+
+function countDeferredOrBlocked(packages) {
+  const deferredStates = new Set([
+    "BLOCKED",
+    "DEFERRED",
+    "DEFERRED_OR_BLOCKED",
+  ]);
+  return packages.filter((packageRecord) => deferredStates.has(packageRecord.state))
+    .length;
+}
+
+function contiguousClosedPackageNumber(packages) {
+  const states = new Map(
+    packages.map((packageRecord) => [packageRecord.packageId, packageRecord.state]),
+  );
+  let lastClosed = 0;
+  for (let index = 1; index <= packages.length; index += 1) {
+    const packageId = `EXEC-${String(index).padStart(3, "0")}`;
+    if (states.get(packageId) !== "CLOSED") break;
+    lastClosed = index;
+  }
+  return lastClosed;
+}
+
+function currentRegistryStatus(packages, inExecution) {
+  if (inExecution > 0) {
+    return `ACTIVE REGISTER / ${inExecution} PACKAGE${inExecution === 1 ? "" : "S"} IN EXECUTION`;
+  }
+  const lastClosed = contiguousClosedPackageNumber(packages);
+  if (lastClosed > 0) {
+    return `ACTIVE REGISTER / EXEC-001 THROUGH EXEC-${String(lastClosed).padStart(3, "0")} CLOSED / NO PACKAGE IN EXECUTION`;
+  }
+  return "ACTIVE REGISTER / NO PACKAGE IN EXECUTION";
+}
+
+function laterPackageSnapshot(packages) {
+  return JSON.stringify(
+    packages
+      .filter((packageRecord) => packageRecord.packageId !== "EXEC-003")
+      .map((packageRecord) => [packageRecord.packageId, packageRecord]),
+  );
+}
+
 export function reconcileExec003Registry(input, identity = readEvidenceIdentity()) {
   const registry = structuredClone(input);
   if (!Array.isArray(registry.packages) || registry.packages.length !== 14) {
     throw new Error("Execution Package Registry must retain 14 package records");
   }
 
+  const laterPackagesBefore = laterPackageSnapshot(registry.packages);
   const packageRecord = registry.packages.find(
     (candidate) => candidate.packageId === "EXEC-003",
   );
-  const nextPackage = registry.packages.find(
-    (candidate) => candidate.packageId === "EXEC-004",
-  );
   if (!packageRecord) throw new Error("EXEC-003 package record is missing");
-  if (!nextPackage) throw new Error("EXEC-004 package record is missing");
-  if (nextPackage.state !== "OWNER_DECISION_PENDING") {
-    throw new Error("EXEC-004 must remain OWNER_DECISION_PENDING");
-  }
 
   packageRecord.state = "CLOSED";
   packageRecord.currentSlice =
@@ -80,6 +120,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
   packageRecord.sliceAcceptance = [
     "25 contracts and 32 operations remain frozen and directly credited only after semantic validation",
     "the evidence digest derives all frozen Entry Points, explicit security dependency modules, final guards, delegated guards, security core files, evidence tests, tools and actual Vitest configuration from the Manifest",
+    "the registry digest projects only EXEC-003 and shared authorization fields so later package lifecycle changes cannot rewrite sealed EXEC-003 evidence",
     "C17 explicitly registers @/app/actions/aiActions as a security dependency without changing its @/app/actions/aiClient generateAIInsight Entry Point",
     "app/actions/aiActions.ts is included in securityDependencyFiles and derivedEvidenceFiles and any content change changes the digest",
     "missing, unreadable, duplicate, outside-repository or omitted security dependencies fail closed",
@@ -97,8 +138,6 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     "C25 has no Platform Owner bypass",
   ];
 
-  // Preserve the established registry wire key exactly. The reconciler accepts
-  // either spelling as input but emits one deterministic representation.
   const vercelRationale =
     packageRecord.vercelValidationRationRationale ??
     packageRecord.vercelValidationRationale ??
@@ -129,8 +168,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     earnedEvidenceClass: "DIRECT_BEHAVIORAL",
     structuralEvidenceClass: "STRUCTURAL / SOURCE_ASSERTION",
     semanticGate: "TYPESCRIPT_AST / PASS",
-    digestCoverage:
-      "DERIVED_FROM_MANIFEST_SECURITY_DEPENDENCIES / PASS",
+    digestCoverage: "DERIVED_FROM_MANIFEST_SECURITY_DEPENDENCIES / PASS",
     derivedEvidenceFileCount: identity.derivedEvidenceFiles.length,
     securityDependencyFileCount: identity.securityDependencyFiles.length,
     securityDependencyFiles: identity.securityDependencyFiles,
@@ -164,11 +202,52 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     status: "SUCCESS / INDEPENDENT FINAL REVIEW PASS / CENTRAL MERGE COMPLETE",
   };
 
-  packageRecord.closure = { pullRequest: 108, finalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618", validatedImplementationHead: identity.validatedImplementationHead, centralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882", orcaCi: "SUCCESS", orcaCiRun: 453, workflowRunId: 30176782092, independentFinalReview: "PASS", runtimeSecurityDefectsRemaining: 0, remainingP0P1DirectTestGap: 0, mainAction: false, productionAction: false, closedOn: "2026-07-25" };
-  registry.summary = { ...registry.summary, closed: 3, evidenceReady: 0, ownerDecisionPending: 8, deferredOrBlocked: 3, inExecution: 0 };
-  registry.status = "ACTIVE REGISTER / Z0-Z8 CLOSED / NO PACKAGE IN EXECUTION";
-  registry.baseCentralSha = "b0369b50eb2d49001e5322eea90b3b6dae22a882";
-  registry.finalZ8Reconciliation = { date: "2026-07-25", exec003ClosedByPr: 108, exec003FinalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618", exec003CentralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882", registeredPackages: 14, coveredGapIds: 32, packagesInExecution: 0 };
+  packageRecord.closure = {
+    pullRequest: 108,
+    finalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618",
+    validatedImplementationHead: identity.validatedImplementationHead,
+    centralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882",
+    orcaCi: "SUCCESS",
+    orcaCiRun: 453,
+    workflowRunId: 30176782092,
+    independentFinalReview: "PASS",
+    runtimeSecurityDefectsRemaining: 0,
+    remainingP0P1DirectTestGap: 0,
+    mainAction: false,
+    productionAction: false,
+    closedOn: "2026-07-25",
+  };
+
+  if (laterPackageSnapshot(registry.packages) !== laterPackagesBefore) {
+    throw new Error("EXEC-003 reconciliation must not mutate any later package");
+  }
+
+  const closed = countState(registry.packages, "CLOSED");
+  const evidenceReady = countState(registry.packages, "EVIDENCE_READY");
+  const ownerDecisionPending = countState(
+    registry.packages,
+    "OWNER_DECISION_PENDING",
+  );
+  const inExecution = countState(registry.packages, "IN_EXECUTION");
+  registry.summary = {
+    ...registry.summary,
+    registeredPackages: registry.packages.length,
+    closed,
+    evidenceReady,
+    ownerDecisionPending,
+    deferredOrBlocked: countDeferredOrBlocked(registry.packages),
+    inExecution,
+  };
+  registry.status = currentRegistryStatus(registry.packages, inExecution);
+  registry.finalZ8Reconciliation ??= {
+    date: "2026-07-25",
+    exec003ClosedByPr: 108,
+    exec003FinalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618",
+    exec003CentralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882",
+    registeredPackages: 14,
+    coveredGapIds: 32,
+    packagesInExecution: 0,
+  };
 
   return registry;
 }

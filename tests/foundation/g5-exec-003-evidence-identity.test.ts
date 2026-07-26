@@ -202,7 +202,7 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
       package: "EXEC-003 v2",
       state: "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL",
       digestAlgorithm:
-        "sha256-path-length-content-v4-final-closure-metadata-excluded",
+        "sha256-path-length-content-v5-exec003-registry-projection",
       baseSha: "001b2c853e99ea055f161dcd294d968bbf25c9ad",
       checkoutMode: "PR_MERGE_REF",
     });
@@ -462,20 +462,89 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
   });
 });
 
-describe("EXEC-003 administrative closure metadata digest boundary", () => {
-  it("excludes only finalZ8Closure while retaining security-relevant registry state", async () => {
+describe("EXEC-003 registry projection digest boundary", () => {
+  function writeRegistry(root: string, value: unknown): string {
+    const relativePath =
+      "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
+    const absolutePath = path.join(root, relativePath);
+    mkdirSync(path.dirname(absolutePath), { recursive: true });
+    writeFileSync(absolutePath, `${JSON.stringify(value)}\n`);
+    return relativePath;
+  }
+
+  function baseRegistry() {
+    return {
+      schemaVersion: 2,
+      documentId: "ORCA-Z8-EXECUTION-REGISTRY-001",
+      date: "2026-07-25",
+      status: "ACTIVE",
+      baseCentralSha: "base-a",
+      sourceGapRegister: "docs/zero-based/Z7/ORCA_Z7_CLASSIFIED_GAP_REGISTER.md",
+      mainMergeAuthorized: false,
+      productionActionAuthorized: false,
+      vercelPolicy: { executionPackageDefault: "SKIP_BY_DEFAULT" },
+      summary: { closed: 3, ownerDecisionPending: 8 },
+      packages: [
+        { packageId: "EXEC-003", state: "CLOSED", securityInvariant: "SEALED" },
+        { packageId: "EXEC-004", state: "OWNER_DECISION_PENDING" },
+      ],
+    };
+  }
+
+  it("ignores later-package lifecycle and administrative progression", async () => {
     const digestModule = await loadDigestModule();
-    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-registry-digest-"));
+    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-registry-projection-"));
     try {
-      const relativePath = "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
-      const absolutePath = path.join(root, relativePath);
-      mkdirSync(path.dirname(absolutePath), { recursive: true });
-      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED" })}\n`);
+      const baselineRegistry = baseRegistry();
+      const relativePath = writeRegistry(root, baselineRegistry);
       const baseline = digestModule.hashExec003EvidenceFiles(root, [relativePath]);
-      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED", finalZ8Closure: { date: "2026-07-26" } })}\n`);
-      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).toBe(baseline);
-      writeFileSync(absolutePath, `${JSON.stringify({ state: "IN_EXECUTION", finalZ8Closure: { date: "2026-07-26" } })}\n`);
-      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).not.toBe(baseline);
+
+      const progressed = structuredClone(baselineRegistry);
+      progressed.date = "2026-07-26";
+      progressed.status = "EXEC-004 CLOSED";
+      progressed.baseCentralSha = "base-b";
+      progressed.summary = { closed: 4, ownerDecisionPending: 7 };
+      progressed.packages[1].state = "CLOSED";
+      (progressed as Record<string, unknown>).finalZ8Closure = { date: "2026-07-26" };
+      writeRegistry(root, progressed);
+
+      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).toBe(
+        baseline,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("changes when the sealed EXEC-003 package record changes", async () => {
+    const digestModule = await loadDigestModule();
+    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-package-projection-"));
+    try {
+      const registry = baseRegistry();
+      const relativePath = writeRegistry(root, registry);
+      const baseline = digestModule.hashExec003EvidenceFiles(root, [relativePath]);
+      registry.packages[0].state = "IN_EXECUTION";
+      writeRegistry(root, registry);
+      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).not.toBe(
+        baseline,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("changes when shared main or Production authorization changes", async () => {
+    const digestModule = await loadDigestModule();
+    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-shared-auth-projection-"));
+    try {
+      const registry = baseRegistry();
+      const relativePath = writeRegistry(root, registry);
+      const baseline = digestModule.hashExec003EvidenceFiles(root, [relativePath]);
+      registry.mainMergeAuthorized = true;
+      writeRegistry(root, registry);
+      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).not.toBe(
+        baseline,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
