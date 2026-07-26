@@ -29,21 +29,26 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
   });
 
   it("applies authority and identity prerequisites before EXEC-006", () => {
-    const authority = workflow.indexOf(
+    const stepsOffset = workflow.indexOf("\n    steps:");
+    expect(stepsOffset).toBeGreaterThan(-1);
+    const applicationSteps = workflow.slice(stepsOffset);
+
+    const authority = applicationSteps.indexOf(
       "20260726043000_exec_004_organization_authority",
     );
-    const identity = workflow.indexOf(
+    const identity = applicationSteps.indexOf(
       "20260726123000_exec_005_customer_identity_lifecycle",
     );
-    const identityHardening = workflow.indexOf(
+    const identityHardening = applicationSteps.indexOf(
       "20260726124500_exec_005_customer_identity_integrity_hardening",
     );
-    const commitment = workflow.indexOf(
+    const commitment = applicationSteps.indexOf(
       "20260726160000_exec_006_unit_commitment_reservation_tours",
     );
-    const commitmentHardening = workflow.indexOf(
+    const commitmentHardening = applicationSteps.indexOf(
       "20260726161000_exec_006_unit_commitment_integrity_hardening",
     );
+
     expect(authority).toBeGreaterThan(-1);
     expect(identity).toBeGreaterThan(authority);
     expect(identityHardening).toBeGreaterThan(identity);
