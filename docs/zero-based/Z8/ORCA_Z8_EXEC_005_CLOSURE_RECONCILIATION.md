@@ -10,6 +10,8 @@
 - Final implementation head: `6a327d67648f795f64b13d766672bd0f4911e8f1`
 - Implementation merge SHA: `10d4b5fc00bb9dad35a3c381dd72f6be685db09a`
 - Closure branch: `work/orca-exec-005-closure-v2-20260726`
+- Closure PR: `#134`
+- Superseded temporary generation PR: `#133 / NOT FOR MERGE`
 
 ## Implementation evidence
 
@@ -76,26 +78,33 @@ No browser-only behavior or UI change was introduced. ORCA CI, Build, TypeScript
 - EXEC-001 through EXEC-004: not reopened.
 - EXEC-006: not started.
 
-## Registry transition
+## Registry reconciliation result
 
-The closure PR must make only the following lifecycle reconciliation:
-
-- `EXEC-005.state`: `OWNER_DECISION_PENDING` → `CLOSED`.
-- Registry summary: closed packages `4` → `5`; owner-decision-pending `7` → `6`; in execution remains `0`.
+- `EXEC-005.state`: `CLOSED`.
+- Registry summary: closed packages `5`; owner-decision-pending `6`; deferred/blocked `3`; in execution `0`.
 - Registry status: `EXEC-001 THROUGH EXEC-005 CLOSED / NO PACKAGE IN EXECUTION`.
-- EXEC-003 evidence projection and digest remain unchanged.
-- Later package states, including EXEC-006, remain unchanged.
-- Roadmap records EXEC-005 closure without authorizing the next package.
+- EXEC-003 evidence record and every non-EXEC-005 package record were preserved byte-for-byte by the reconciliation generator.
+- EXEC-006 remains `OWNER_DECISION_PENDING` and was not started.
+- Roadmap version `1.4` records EXEC-005 closure and retains an explicit owner-decision gate before EXEC-006.
+
+## Clean publication
+
+The temporary PR #133 generated the reconciled Registry and Roadmap with no repository-write permission during generation. The resulting files were published to the clean branch, which starts from the implementation merge and contains only:
+
+1. `docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json`
+2. `docs/zero-based/Z8/ORCA_Z8_EXEC_005_CLOSURE_RECONCILIATION.md`
+3. `docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md`
+
+No temporary Workflow or reconciliation script is present in PR #134.
 
 ## Closure acceptance
 
 Closure is complete only after:
 
-1. Registry and Roadmap reconciliation preserve all unrelated package records.
-2. EXEC-003 sealed evidence remains valid.
-3. ORCA CI succeeds on the exact final closure head.
-4. Closure diff contains documentation/governance files only.
-5. Closure PR merges to `work/orca-zero-based-execution-20260721` with expected-head protection.
-6. The final central head is re-read and verified.
+1. EXEC-003 sealed evidence remains valid under G8.
+2. ORCA CI succeeds on the exact final closure head.
+3. Closure diff remains the three documentation/governance files listed above.
+4. Closure PR merges to `work/orca-zero-based-execution-20260721` with expected-head protection.
+5. The final central head is re-read and verified.
 
-Current state: `CLOSURE RECONCILIATION IN PROGRESS`.
+Current state: `FINAL CLEAN CANDIDATE / EXACT-HEAD CI REQUIRED`.
