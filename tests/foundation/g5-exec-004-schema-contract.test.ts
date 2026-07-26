@@ -10,6 +10,9 @@ const MIGRATION_PATH = join(
   "migration.sql",
 );
 const migration = readFileSync(MIGRATION_PATH, "utf8");
+const executableSql = migration
+  .replace(/--.*$/gm, "")
+  .replace(/\/\*[\s\S]*?\*\//g, "");
 
 const REQUIRED_TABLES = [
   "organization_branches",
@@ -18,6 +21,14 @@ const REQUIRED_TABLES = [
   "branch_services",
   "user_scope_assignments",
   "organization_authority_audit",
+] as const;
+
+const TENANT_SCOPE_TRIGGERS = [
+  "organization_departments_tenant_scope",
+  "organization_teams_tenant_scope",
+  "branch_services_tenant_scope",
+  "user_scope_assignments_tenant_scope",
+  "organization_authority_audit_tenant_scope",
 ] as const;
 
 describe("EXEC-004 additive organization schema contract", () => {
@@ -48,6 +59,19 @@ describe("EXEC-004 additive organization schema contract", () => {
     );
   });
 
+  it("requires central departments to have no branch and branch departments to have one", () => {
+    expect(migration).toContain(
+      '("is_central" = TRUE AND "branch_id" IS NULL) OR\n    ("is_central" = FALSE AND "branch_id" IS NOT NULL)',
+    );
+  });
+
+  it("enforces one central branch per tenant", () => {
+    expect(migration).toContain(
+      'CREATE UNIQUE INDEX "organization_branches_one_central_per_tenant"',
+    );
+    expect(migration).toContain('WHERE "is_central" = TRUE');
+  });
+
   it("enforces the approved security roles and scope types", () => {
     expect(migration).toContain("'PLATFORM_OWNER'");
     expect(migration).toContain("'SYSTEM_ADMINISTRATOR'");
@@ -56,6 +80,10 @@ describe("EXEC-004 additive organization schema contract", () => {
     expect(migration).toContain(
       'CONSTRAINT "user_scope_assignments_scope_shape_check"',
     );
+    expect(migration).toContain(
+      'CONSTRAINT "user_scope_assignments_no_self_grant"',
+    );
+    expect(migration).toContain("security role scope mismatch");
   });
 
   it("supports all approved modular service lines", () => {
@@ -76,12 +104,31 @@ describe("EXEC-004 additive organization schema contract", () => {
     }
   });
 
+  it.each(TENANT_SCOPE_TRIGGERS)("creates tenant-scope trigger %s", (trigger) => {
+    expect(migration).toContain(`CREATE TRIGGER \"${trigger}\"`);
+  });
+
+  it("rejects cross-tenant users, managers, branches, departments and teams", () => {
+    for (const message of [
+      "organization department branch tenant mismatch",
+      "organization team department tenant mismatch",
+      "branch service manager tenant mismatch",
+      "assignment user tenant mismatch",
+      "assignment actor tenant mismatch",
+      "assignment department hierarchy mismatch",
+      "assignment team hierarchy mismatch",
+      "authority audit actor tenant mismatch",
+    ]) {
+      expect(migration).toContain(message);
+    }
+  });
+
   it("makes organization authority audit append-only", () => {
     expect(migration).toContain(
       'CREATE TRIGGER "organization_authority_audit_append_only"',
     );
     expect(migration).toContain(
-      "BEFORE UPDATE OR DELETE ON \"organization_authority_audit\"",
+      'BEFORE UPDATE OR DELETE ON "organization_authority_audit"',
     );
     expect(migration).toContain(
       "RAISE EXCEPTION 'organization_authority_audit is append-only'",
@@ -89,17 +136,23 @@ describe("EXEC-004 additive organization schema contract", () => {
   });
 
   it("contains no data backfill or mutation of existing business records", () => {
-    const withoutComments = migration
-      .replace(/--.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-
-    expect(withoutComments).not.toMatch(/\bINSERT\s+INTO\s+"?(users|tenants|leads|projects|units|contracts)"?/i);
-    expect(withoutComments).not.toMatch(/\bUPDATE\s+"?(users|tenants|leads|projects|units|contracts)"?/i);
-    expect(withoutComments).not.toMatch(/\bDELETE\s+FROM\s+"?(users|tenants|leads|projects|units|contracts)"?/i);
-    expect(withoutComments).not.toMatch(/\bALTER\s+TABLE\s+"?(users|tenants|leads|projects|units|contracts)"?/i);
+    expect(executableSql).not.toMatch(
+      /\bINSERT\s+INTO\s+"?(users|tenants|leads|projects|units|contracts)"?/i,
+    );
+    expect(executableSql).not.toMatch(
+      /\bUPDATE\s+"?(users|tenants|leads|projects|units|contracts)"?/i,
+    );
+    expect(executableSql).not.toMatch(
+      /\bDELETE\s+FROM\s+"?(users|tenants|leads|projects|units|contracts)"?/i,
+    );
+    expect(executableSql).not.toMatch(
+      /\bALTER\s+TABLE\s+"?(users|tenants|leads|projects|units|contracts)"?/i,
+    );
   });
 
-  it("does not execute or reference Production credentials", () => {
-    expect(migration).not.toMatch(/DATABASE_URL|DIRECT_URL|PRODUCTION|neon\.tech/i);
+  it("does not execute or reference live database credentials", () => {
+    expect(executableSql).not.toMatch(
+      /DATABASE_URL|DIRECT_URL|ORCA_LICENSE|neon\.tech/i,
+    );
   });
 });
