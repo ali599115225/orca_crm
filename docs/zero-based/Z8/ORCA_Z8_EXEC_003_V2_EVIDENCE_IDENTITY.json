@@ -3,8 +3,8 @@
   "package": "EXEC-003 v2",
   "state": "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL",
   "validatedImplementationHead": "d17acb09354a54aee7946b6de8e67a2a9b55fbd5",
-  "evidenceDigest": "828da7f6dc108c721efcb28eb7d535bd0fae97bb31b15d1caa84e0cbdaaa9c71",
-  "digestAlgorithm": "sha256-path-length-content-v4-final-closure-metadata-excluded",
+  "evidenceDigest": "f7a2cfd83a73b4eebcf703441b0428be56519717b8d9391818f130002c6c99df",
+  "digestAlgorithm": "sha256-path-length-content-v5-exec003-registry-projection",
   "derivedEvidenceFiles": [
     "app/actions/aiActions.ts",
     "app/actions/aiClient.ts",

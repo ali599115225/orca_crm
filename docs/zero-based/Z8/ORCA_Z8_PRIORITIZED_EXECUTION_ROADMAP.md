@@ -1,14 +1,16 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.2
-- **Date:** 2026-07-25
-- **Status:** `ACTIVE / EXEC-001 AND EXEC-002 CLOSED / EXEC-003 NEXT`
-- **Current central baseline after EXEC-002:** `05a18a7242f12bb40eb8759e3648888135eb4edc`
+- **Version:** 1.3
+- **Date:** 2026-07-26
+- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-004 CLOSED / NO PACKAGE IN EXECUTION`
+- **Current central baseline after EXEC-004:** `8643f1858cd453c53bee60cc4184dfab2f7cebdb`
 
 ## 1. Sequencing rule
 
 The roadmap orders work by risk reduction and prerequisite value, not by page visibility. A later wave cannot begin merely because its code is convenient; its package preconditions and mutable-boundary conflicts must be closed.
+
+Closing one package does not authorize the next package. Owner/domain decisions, an exact base SHA, a frozen allowlist and package-specific acceptance remain mandatory before a new implementation branch starts.
 
 ## 2. Wave 0 — controlled execution
 
@@ -16,29 +18,31 @@ The roadmap orders work by risk reduction and prerequisite value, not by page vi
 |---|---|---|---|---|
 | 1 | EXEC-001 | `CLOSED` via PR #104 | publish the verified dependency-security issue form | `NOT_REQUIRED` |
 | 2 | EXEC-002 | `CLOSED` via PR #106 | add blocking governance lint, override ownership and artifact-retention controls | `SKIP_BY_DEFAULT` |
-| 3 | EXEC-003 | `EVIDENCE_READY / NEXT` | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT`; amend to package-end only for material Runtime correction |
+| 3 | EXEC-003 | `CLOSED` via PR #108 | close direct P0/P1 security, authority, webhook and cron evidence | `SKIP_BY_DEFAULT` |
 
-EXEC-003 owns shared security tests and contract registries. Other packages may not edit those boundaries concurrently without coordination.
+EXEC-003 owns its sealed shared-security evidence and contract registries. Later packages may consume those boundaries but may not silently alter their evidence identity or expand legacy access.
 
 ## 3. Wave 1 — owner/domain decisions first
 
-| Order | Package | Blocking decisions | Vercel validation |
+| Order | Package | Status / blocking decisions | Vercel validation |
 |---|---|---|---|
-| 4 | EXEC-004 | Release-1 scope, company structure, branches/departments/teams/personas | `REQUIRED_AT_PACKAGE_END` |
-| 5 | EXEC-005 | identity/merge survivorship, privacy purpose and consent | `REQUIRED_AT_PACKAGE_END` |
-| 6 | EXEC-006 | commitment priority/expiry, acceptance-reservation truth, inventory/scheduling policy | `REQUIRED_AT_PACKAGE_END` |
-| 7 | EXEC-007 | offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` |
-| 8 | EXEC-008 | templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` |
+| 4 | EXEC-004 | `CLOSED` via PR #128 — company structure, branches/departments/teams/personas and scoped authority approved and implemented | `SKIP_BY_DEFAULT`; exact-head CI and Build proved the non-visual Runtime contract |
+| 5 | EXEC-005 | `OWNER_DECISION_PENDING` — identity/merge survivorship, privacy purpose and consent | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 6 | EXEC-006 | `OWNER_DECISION_PENDING` — commitment priority/expiry, acceptance-reservation truth, inventory/scheduling policy | `REQUIRED_AT_PACKAGE_END` only when CI cannot fully prove the journey |
+| 7 | EXEC-007 | `OWNER_DECISION_PENDING` — offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 8 | EXEC-008 | `OWNER_DECISION_PENDING` — templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
 
-EXEC-004 precedes all packages that depend on scoped authority. EXEC-006 precedes EXEC-007 and the inventory-dependent portion of EXEC-008. No migration is implied by approving a domain policy.
+EXEC-004 now provides the approved organization and authority foundation. It does not automatically wire every existing business record to a branch or execute the prepared additive migration. Any later package that consumes branch scope must freeze its exact resource mapping, migration/data authorization and denial evidence independently.
+
+EXEC-006 precedes EXEC-007 and the inventory-dependent portion of EXEC-008. No migration is implied by approving a domain policy.
 
 ## 4. Wave 2 — operational truth and protected data
 
-| Order | Package | Dependency | Vercel validation |
+| Order | Package | Status / dependency | Vercel validation |
 |---|---|---|---|
-| 9 | EXEC-009 | approved workflow/communication policy; provider activation remains off | `REQUIRED_AT_PACKAGE_END` |
-| 10 | EXEC-010 | privacy/retention/KPI/export policy and document-boundary design | `REQUIRED_AT_PACKAGE_END` |
-| 11 | EXEC-011 | one owner-approved visual reference per page/tab/overlay after its functional contract stabilizes | `REQUIRED_AT_PACKAGE_END` |
+| 9 | EXEC-009 | `OWNER_DECISION_PENDING` — approved workflow/communication policy; provider activation remains off | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 10 | EXEC-010 | `OWNER_DECISION_PENDING` — privacy/retention/KPI/export policy and document-boundary design | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 11 | EXEC-011 | `OWNER_DECISION_PENDING` — one owner-approved visual reference per page/tab/overlay after its functional contract stabilizes | `REQUIRED_AT_PACKAGE_END` for the completed visual surface only |
 
 Visual implementation follows the functional package for the same surface. One page or one tab is the maximum visual contract unit; unapproved adjacent surfaces remain untouched. One Preview is allowed only after the entire selected surface contract is complete, tested, built and frozen on a stable SHA.
 
@@ -55,9 +59,10 @@ Visual implementation follows the functional package for the same surface. One p
 ```text
 EXEC-001 CLOSED
 → EXEC-002 CLOSED
-→ EXEC-003 NEXT
-→ EXEC-004
-→ EXEC-005 + EXEC-006
+→ EXEC-003 CLOSED
+→ EXEC-004 CLOSED
+→ OWNER DECISION GATE
+→ EXEC-005 + EXEC-006 when separately authorized
 → EXEC-007
 → EXEC-008
 → EXEC-009 + EXEC-010
@@ -76,6 +81,7 @@ Parallelism is permitted only where package registries show no shared mutable fi
 - Daily acceptance relies on targeted tests, TypeScript where needed, GitHub CI, diff review, and scope-appropriate security/contract checks.
 - No Preview is created for every file, commit, Push or PR.
 - A completed Runtime/UI package may receive at most one Preview after all package changes are complete, tests/build pass and the candidate SHA is stable.
+- A Preview is not required when the package introduces no browser-only behavior and exact-head CI, direct tests and Build fully prove the contract.
 - One final Preview is required only for the definitive Release Candidate after all intended repair packages are complete.
 - Automatic non-required Preview attempts are non-blocking; no retry-only Push is allowed.
 - Hobby quota limitation is recorded as `VERCEL_VALIDATION = DEFERRED_TO_FINAL_EXECUTABLE_HEAD`.
@@ -87,27 +93,41 @@ Parallelism is permitted only where package registries show no shared mutable fi
 - A package blocked by an owner decision remains blocked; agents cannot choose a business policy.
 - A package that exceeds its allowlist or change budget pauses and returns for amendment.
 - No package proceeds from non-production verification to `main` or Production automatically.
+- A prepared migration is not an executed migration. Migration, backfill and customer-data operations require separate authorization and recovery evidence.
 
 ## 9. Roadmap result
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 2
-READY FOR CONTROLLED EXECUTION: 1
-OWNER/REFERENCE CONDITIONAL: 8
+CLOSED: 4
+READY FOR CONTROLLED EXECUTION: 0
+OWNER/REFERENCE CONDITIONAL: 7
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
-NEXT PACKAGE: EXEC-003
+NEXT AUTOMATIC PACKAGE: NONE
+NEXT ELIGIBLE PACKAGE: EXEC-005 AFTER OWNER DECISION AND SCOPE FREEZE
 ```
 
-## Final post-capacity closure reconciliation — 2026-07-26
+## 10. EXEC-004 closure reconciliation — 2026-07-26
 
-- Final reconciliation base: `ff47997382d9032a6e1c27b9488884282867479f` after PR `#123` isolated administrative closure metadata from the sealed EXEC-003 digest.
+- Implementation base: `6a24e57d75f17550fe0fd5755889aef9a5cacdc9`.
+- Final reviewed implementation head: `d547caaeaa48de592229a51c5c252e32d4aacd02`.
+- Implementation PR: `#128`.
+- Squash merge to the zero-based central branch: `8643f1858cd453c53bee60cc4184dfab2f7cebdb`.
+- Exact implementation scope: `15` files.
+- ORCA CI: `#512 / SUCCESS` on the exact final head.
+- Verify, Production gate, production dependency audit, TypeScript, G5, G8, focused/foundation/regression tests and Build: `SUCCESS`.
+- Isolated recovery drill: `SUCCESS` after one infrastructure-only Docker Hub retry; no repository change was made for the transient pull timeout.
+- Vercel: `SKIP_BY_DEFAULT`; no browser-only contract was introduced and no Preview was necessary.
+- Prepared additive migration: `NOT EXECUTED`.
+- Backfill and customer-data action: `NOT PERFORMED`.
+- `main`, Production, providers, secrets, accounts and purchases: `UNTOUCHED`.
+- EXEC-004 closes no authority for EXEC-005; the next package remains owner-decision gated.
+
+## Historical Z8 post-capacity closure — 2026-07-26
+
+- Final Z8 reconciliation base was `ff47997382d9032a6e1c27b9488884282867479f` after PR `#123` isolated administrative closure metadata from the sealed EXEC-003 digest.
 - Superseded Z8 PR `#99` / `a82bcc937a8f69196b96f742801fe20f2eecaf99` remains closed without merge.
-- Historical PR `#102` is not reused as final Vercel evidence.
-- Registered execution packages: `14`; Z7 gaps covered: `32/32`; packages in execution: `0`.
-- Z0–Z8 are closed as planning, assessment and execution-authorization gates; no package starts automatically.
-- Fresh ORCA CI and Vercel success are required on this same non-empty final head before merge.
-- `main`, Production, data, Prisma/Migrations, providers, secrets, accounts and purchases remain unauthorized.
-
+- Historical PR `#102` is not reused as final evidence.
+- Z0–Z8 remain closed as planning, assessment and execution-authorization gates; no package starts automatically.
