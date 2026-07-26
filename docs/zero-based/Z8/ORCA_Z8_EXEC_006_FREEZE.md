@@ -10,7 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
-- Scope recheck: the central branch remained exactly at the frozen base before adding the second additive hardening migration.
+- Scope recheck: the central branch remained exactly at the frozen base before the second and third additive hardening migrations.
 
 ## Owner decisions frozen for this package
 
@@ -29,6 +29,7 @@
 
 - `Unit.status` is a mutable legacy text field and cannot remain the exclusive availability source.
 - `Contract.reservationExpiresAt` mixes historic reservation semantics into the contract boundary.
+- `RentalLease` is a final contractual linkage and must block availability while effective.
 - legacy Lead, Opportunity and Offer statuses can imply interest or progress but do not establish exclusive inventory rights.
 - legacy `Tour` has limited states, no explicit timezone/history aggregate and no database overlap guard.
 - current scheduling uses a serializable transaction but inserts a Tour without employee/unit exclusion protection.
@@ -53,6 +54,7 @@ The new source of truth consists of:
 - Branch identity is taken from the persisted unit/project scope, never trusted from a request body.
 - Platform Owner and System Administrator receive no automatic commercial Hold/Reservation/Tour authority.
 - Self-approval and missing initiator evidence fail closed.
+- Elevated duration approval is verified against a distinct, active, persisted approver assignment inside PostgreSQL; an arbitrary JSON object is insufficient.
 - Cross-branch override requires explicit company scope plus a distinct override permission and reason.
 - Actor, tenant and scope supplied by a client are not trusted without session-to-assignment binding at an entry point.
 - Blocking-customer details are redacted unless the actor has explicit audit disclosure authority.
@@ -85,6 +87,7 @@ The new source of truth consists of:
 - Validation occurs only on disposable PostgreSQL 16 in GitHub Actions.
 - Composite tenant-safe foreign keys and append-only triggers are mandatory where Prisma cannot express the rule.
 - The second migration is limited to strengthening approval shape, immutable identity, and atomic Extend/Reschedule command functions discovered during pre-execution SQL review; it does not expand product scope.
+- The third migration is limited to database verification of independent elevated approvals, effective RentalLease availability, and final-link release protection discovered during strict security review; it does not expand product scope.
 
 ## Allowed paths
 
@@ -99,11 +102,12 @@ The new source of truth consists of:
 9. `lib/unit-commitment/sql-repository.ts`
 10. `prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql`
 11. `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
-12. `scripts/exec-006-postgres-concurrency.mjs`
-13. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-14. `tests/foundation/g5-exec-006-security.test.ts`
-15. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-16. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+12. `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
+13. `scripts/exec-006-postgres-concurrency.mjs`
+14. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+15. `tests/foundation/g5-exec-006-security.test.ts`
+16. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+17. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
@@ -118,7 +122,7 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 ## Direct evidence and required gates
 
 - Direct behavioral tests cover availability, Hold, Reservation, conversion, expiry/reconciliation, Tour lifecycle, timezone, scope, self-approval, concurrency semantics, versioning, idempotency, append-only history and disclosure redaction.
-- Disposable PostgreSQL tests prove exclusion constraints and real concurrent race outcomes.
+- Disposable PostgreSQL tests prove exclusion constraints, independent elevated approval, effective RentalLease blocking and real concurrent race outcomes.
 - EXEC-004 authority and EXEC-005 identity regression suites remain green.
 - Schema contract, G5, G8, lint, TypeScript, build, production dependency audit, P2 acceptance and isolated recovery are required.
 - Exact-head ORCA CI and final diff/allowlist review are required before merge.
@@ -129,6 +133,8 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 - Hold conversion and expiry cannot produce two active truths.
 - Expired rows do not block availability before reconciliation.
 - Stale versions and idempotency payload mismatches fail.
+- Long duration cannot be authorized by self-approval or unverified JSON evidence.
+- Active final Contract or RentalLease linkage blocks availability and protected release.
 - Tours do not reserve units and conflicting employee/unit schedules are denied.
 - Audit and history are append-only and same-tenant safe.
 - No known Runtime defect exists inside the frozen boundary.
