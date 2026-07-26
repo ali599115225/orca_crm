@@ -94,7 +94,24 @@ Known privilege expansions remaining: `0`.
 
 `SKIP_BY_DEFAULT / NON_BLOCKING`.
 
-No browser-only behavior was introduced. Automatic Vercel failure reflected the Hobby build-rate limit and did not invalidate direct tests, disposable PostgreSQL validation, TypeScript, Build, recovery or ORCA CI. No retry-only Push, Preview or Production deployment was performed.
+No browser-only behavior was introduced. Automatic Vercel failure reflected the Hobby build-rate limit and did not invalidate direct tests, disposable PostgreSQL validation, TypeScript, Build, recovery or ORCA CI. No retry-only Push or Production deployment was performed. The original Preview assertion was later found incorrect and is superseded by the evidence correction below.
+
+## POST-CLOSURE VERCEL EVIDENCE CORRECTION
+
+This post-closure correction supersedes only the prior Preview assertion; it does not reopen or alter the package closure.
+
+- Multiple automatic Vercel Preview Deployments occurred while EXEC-006 was being implemented.
+- A successful automatic Deployment is associated with the central implementation merge SHA `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`.
+- The observed automatic Deployments used `target=null` and non-`main` branches.
+- There is no evidence of a Production Deployment.
+- The Vercel failure on the closing head of PR `#136` resulted from the Hobby build-rate limit.
+- The prior assertion that no Preview occurred was incorrect and is corrected by this section.
+- Exact-head ORCA CI run `599`, closure ORCA CI run `603` and EXEC-006 Migration Validation run `45` remained `SUCCESS`.
+- EXEC-006 remains `CLOSED`.
+- No Production Migration, Backfill or customer-data action was executed.
+- Git was disconnected from Vercel manually to prevent additional automatic previews.
+- Repository control `git.deploymentEnabled=false` was added to disable automatic Git deployments for all branches.
+- Reconnecting Git requires separate authorization after this correction is merged.
 
 ## Protected actions confirmation
 
