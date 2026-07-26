@@ -1,29 +1,37 @@
-name: EXEC-005 Closure Artifact
+name: EXEC-005 Closure Publisher
 
 on:
-  pull_request:
+  push:
+    branches:
+      - work/orca-exec-005-closure-reconciliation-20260726
     paths:
-      - "scripts/exec-005-closure-reconcile.mjs"
       - ".github/workflows/exec-005-closure-artifact.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  publish:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
+      - name: Checkout temporary reconciliation branch
         uses: actions/checkout@v7
-      - name: Generate reconciled governance files
-        run: node scripts/exec-005-closure-reconcile.mjs
-      - name: Upload reconciled files
-        uses: actions/upload-artifact@v4
         with:
-          name: exec-005-closure-reconciliation
-          path: |
-            docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
-            docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
-          if-no-files-found: error
-          retention-days: 1
+          fetch-depth: 0
+      - name: Generate reconciled governance files
+        run: |
+          node scripts/exec-005-closure-reconcile.mjs
+          cp docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json /tmp/registry.json
+          cp docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md /tmp/roadmap.md
+      - name: Publish to clean closure branch
+        run: |
+          git fetch origin work/orca-exec-005-closure-v2-20260726
+          git checkout -B work/orca-exec-005-closure-v2-20260726 origin/work/orca-exec-005-closure-v2-20260726
+          cp /tmp/registry.json docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
+          cp /tmp/roadmap.md docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
+          git commit -m "docs(exec-005): reconcile registry and roadmap"
+          git push origin HEAD:work/orca-exec-005-closure-v2-20260726
