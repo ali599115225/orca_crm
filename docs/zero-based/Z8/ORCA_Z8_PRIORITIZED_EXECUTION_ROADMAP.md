@@ -110,7 +110,7 @@ NEXT AUTOMATIC PACKAGE: NONE
 NEXT ELIGIBLE PACKAGE: EXEC-006 AFTER OWNER DECISION AND SCOPE FREEZE
 ```
 
-## 11. EXEC-004 closure reconciliation — 2026-07-26
+## 10. EXEC-004 closure reconciliation — 2026-07-26
 
 - Implementation base: `6a24e57d75f17550fe0fd5755889aef9a5cacdc9`.
 - Final reviewed implementation head: `d547caaeaa48de592229a51c5c252e32d4aacd02`.
@@ -126,7 +126,7 @@ NEXT ELIGIBLE PACKAGE: EXEC-006 AFTER OWNER DECISION AND SCOPE FREEZE
 - `main`, Production, providers, secrets, accounts and purchases: `UNTOUCHED`.
 - EXEC-004 closes no authority for EXEC-005; the next package remains owner-decision gated.
 
-## 10. EXEC-005 closure reconciliation — 2026-07-26
+## 11. EXEC-005 closure reconciliation — 2026-07-26
 
 - Central base before implementation: `991afec099880565043ef578ba8084b2ece809ad`.
 - Final implementation head: `6a327d67648f795f64b13d766672bd0f4911e8f1`.
