@@ -10,7 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
-- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening and disambiguation migrations.
+- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening, disambiguation and reconciliation migrations.
 
 ## Owner decisions frozen for this package
 
@@ -67,6 +67,7 @@ The new source of truth consists of:
 - Tour schedules use GiST exclusion constraints for active employee overlaps and, by default, active unit overlaps.
 - Idempotency is protected by a tenant/operation/key unique constraint and payload hash comparison.
 - Conversion, expiry, release and extension use atomic conditional updates with version checks.
+- Expiry reconciliation selects a bounded candidate page, then locks and rechecks each row without `SKIP LOCKED`; a concurrent conversion cannot leave an expired commitment in a blocking lifecycle state after both commands complete.
 
 ## Compatibility strategy
 
@@ -89,6 +90,7 @@ The new source of truth consists of:
 - The second migration is limited to strengthening approval shape, immutable identity, and atomic Extend/Reschedule command functions discovered during pre-execution SQL review; it does not expand product scope.
 - The third migration is limited to database verification of independent elevated approvals, effective RentalLease availability, and final-link release protection discovered during strict security review; it does not expand product scope.
 - The fourth migration is a fully-qualified availability function replacement that removes PL/pgSQL name ambiguity while preserving Contract, RentalLease, operational restriction, commitment and fail-closed semantics.
+- The fifth migration replaces only expiry reconciliation locking after a real conversion/expiry race proved that `SKIP LOCKED` could leave an expired row un-reconciled in that invocation.
 
 ## Allowed paths
 
@@ -105,11 +107,12 @@ The new source of truth consists of:
 11. `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
 12. `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
 13. `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
-14. `scripts/exec-006-postgres-concurrency.mjs`
-15. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-16. `tests/foundation/g5-exec-006-security.test.ts`
-17. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-18. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+14. `prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql`
+15. `scripts/exec-006-postgres-concurrency.mjs`
+16. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+17. `tests/foundation/g5-exec-006-security.test.ts`
+18. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+19. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
@@ -132,7 +135,7 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 ## Acceptance criteria
 
 - Two incompatible exclusive commitments cannot both succeed, including real concurrent PostgreSQL requests.
-- Hold conversion and expiry cannot produce two active truths.
+- Hold conversion and expiry cannot produce two active truths or leave an expired `ACTIVE` row after both commands complete.
 - Expired rows do not block availability before reconciliation.
 - Stale versions and idempotency payload mismatches fail.
 - Long duration cannot be authorized by self-approval or unverified JSON evidence.
