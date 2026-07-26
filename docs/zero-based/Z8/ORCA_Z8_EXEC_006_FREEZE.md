@@ -10,7 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
-- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening, disambiguation, reconciliation and lifecycle-guard migrations.
+- Scope recheck: the central branch remained exactly at the frozen base before all additive hardening, disambiguation, reconciliation, lifecycle-guard and exact-scope migrations.
 
 ## Owner decisions frozen for this package
 
@@ -52,6 +52,9 @@ The new source of truth consists of:
 - Deny by default.
 - Same tenant and exact persisted assignment scope are mandatory.
 - Branch identity is taken from the persisted unit/project scope, never trusted from a request body.
+- `DEPARTMENT` and `TEAM` assignments cannot be treated as branch-wide when an EXEC-006 resource does not persist their exact identifiers.
+- `ASSIGNED_RESOURCE` authority requires the declared resource type and identifier to match the persisted Unit, Unit Commitment or Tour Appointment.
+- Scheduled Tour staff must have exact Company, Branch or typed assigned-resource coverage; a narrower Department/Team assignment cannot authorize branch-wide scheduling.
 - Platform Owner and System Administrator receive no automatic commercial Hold/Reservation/Tour authority.
 - Self-approval and missing initiator evidence fail closed.
 - Elevated duration approval is verified against a distinct, active, persisted approver assignment inside PostgreSQL; an arbitrary JSON object is insufficient.
@@ -93,6 +96,7 @@ The new source of truth consists of:
 - The fourth migration is a fully-qualified availability function replacement that removes PL/pgSQL name ambiguity while preserving Contract, RentalLease, operational restriction, commitment and fail-closed semantics.
 - The fifth migration replaces only expiry reconciliation locking after a real conversion/expiry race proved that `SKIP LOCKED` could leave an expired row un-reconciled in that invocation.
 - The sixth migration replaces only the approval-policy trigger function so lifecycle state changes are not treated as new duration requests while direct Reservation activation still requires independent approval.
+- The seventh migration closes the final-review exact-scope defect by denying unprovable Department/Team expansion, validating typed assigned resources against persisted tables and guarding Tour staff scope. It does not expand roles, product behavior or Runtime wiring.
 
 ## Allowed paths
 
@@ -111,11 +115,15 @@ The new source of truth consists of:
 13. `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
 14. `prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql`
 15. `prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql`
-16. `scripts/exec-006-postgres-concurrency.mjs`
-17. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-18. `tests/foundation/g5-exec-006-security.test.ts`
-19. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-20. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+16. `prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql`
+17. `scripts/exec-006-postgres-concurrency.mjs`
+18. `scripts/exec-006-postgres-exact-scope.sql`
+19. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+20. `tests/foundation/g5-exec-006-security.test.ts`
+21. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+22. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+
+The seventh migration and its focused disposable SQL proof were admitted after the required final read-only review identified a concrete privilege-expansion defect inside the frozen security invariant. The central branch was rechecked and remained at the frozen base before admitting these two paths.
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
@@ -130,7 +138,7 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 ## Direct evidence and required gates
 
 - Direct behavioral tests cover availability, Hold, Reservation, conversion, expiry/reconciliation, Tour lifecycle, timezone, scope, self-approval, concurrency semantics, versioning, idempotency, append-only history and disclosure redaction.
-- Disposable PostgreSQL tests prove exclusion constraints, independent elevated approval, effective RentalLease blocking and real concurrent race outcomes.
+- Disposable PostgreSQL tests prove exclusion constraints, independent elevated approval, effective RentalLease blocking, exact assignment scope and real concurrent race outcomes.
 - EXEC-004 authority and EXEC-005 identity regression suites remain green.
 - Schema contract, G5, G8, lint, TypeScript, build, production dependency audit, P2 acceptance and isolated recovery are required.
 - Exact-head ORCA CI and final diff/allowlist review are required before merge.
@@ -143,6 +151,7 @@ Any additional path requires a documented scope reason and a renewed conflict ch
 - Stale versions and idempotency payload mismatches fail.
 - Long duration cannot be authorized by self-approval or unverified JSON evidence.
 - Lifecycle-only state changes remain valid under the duration guard.
+- Department/Team assignments do not expand to Branch scope and wrong assigned-resource types fail closed.
 - Active final Contract or RentalLease linkage blocks availability and protected release.
 - Tours do not reserve units and conflicting employee/unit schedules are denied.
 - Audit and history are append-only and same-tenant safe.
