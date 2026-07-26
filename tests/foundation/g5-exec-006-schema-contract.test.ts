@@ -5,6 +5,14 @@ const migration = readFileSync(
   "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql",
   "utf8",
 );
+const reconciliationHardening = readFileSync(
+  "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
+  "utf8",
+);
+const exactScopeHardening = readFileSync(
+  "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql",
+  "utf8",
+);
 const freeze = readFileSync(
   "docs/zero-based/Z8/ORCA_Z8_EXEC_006_FREEZE.md",
   "utf8",
@@ -70,10 +78,19 @@ describe("EXEC-006 schema and frozen-boundary contract", () => {
     expect(service).not.toContain('state: "AVAILABLE", reasonCode: "UNKNOWN');
   });
 
-  it("binds sensitive SQL commands to persisted assignment evidence", () => {
-    expect(migration).toContain("exec006_assert_scope_assignment");
-    expect(migration).toContain("missing or expired persisted scope assignment");
-    expect(migration).toContain("technical role has no automatic commercial authority");
+  it("binds sensitive SQL commands to exact persisted assignment evidence", () => {
+    expect(exactScopeHardening).toContain("exec006_assert_scope_assignment");
+    expect(exactScopeHardening).toContain(
+      "persisted assignment does not exactly cover resource scope",
+    );
+    expect(exactScopeHardening).toContain("WHEN 'DEPARTMENT' THEN");
+    expect(exactScopeHardening).toContain("WHEN 'TEAM' THEN");
+    expect(exactScopeHardening).toContain(
+      'v_assignment."assigned_resource_type" = \'UNIT\'',
+    );
+    expect(exactScopeHardening).toContain(
+      'CREATE TRIGGER "00_tour_appointments_v2_staff_exact_scope_guard"',
+    );
     expect(authority).toContain("ROLE_PERMISSION_MATRIX");
   });
 
@@ -85,11 +102,14 @@ describe("EXEC-006 schema and frozen-boundary contract", () => {
     expect(service).toContain("CONCURRENCY_CONFLICT");
   });
 
-  it("implements resumable same-tenant expiry reconciliation", () => {
-    expect(migration).toContain("exec006_reconcile_expired_commitments");
-    expect(migration).toContain("FOR UPDATE SKIP LOCKED");
-    expect(migration).toContain("p_cursor");
-    expect(migration).toContain("p_limit > 500");
+  it("implements resumable same-tenant expiry reconciliation without skip-lock escape", () => {
+    expect(reconciliationHardening).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_reconcile_expired_commitments"',
+    );
+    expect(reconciliationHardening).toContain("FOR UPDATE");
+    expect(reconciliationHardening).not.toMatch(/FOR UPDATE\s+SKIP LOCKED/i);
+    expect(reconciliationHardening).toContain("p_cursor");
+    expect(reconciliationHardening).toContain("p_limit > 500");
     expect(service).toContain("nextCursor");
   });
 
@@ -102,8 +122,11 @@ describe("EXEC-006 schema and frozen-boundary contract", () => {
   });
 
   it("contains no destructive legacy schema operation", () => {
-    expect(migration).not.toMatch(/DROP\s+(?:TABLE|COLUMN)/i);
-    expect(migration).not.toMatch(/TRUNCATE\s+/i);
-    expect(migration).not.toMatch(/DELETE\s+FROM\s+"(?:units|contracts|tours|leads|opportunities|offers)"/i);
+    const finalSql = [migration, reconciliationHardening, exactScopeHardening].join("\n");
+    expect(finalSql).not.toMatch(/DROP\s+(?:TABLE|COLUMN)/i);
+    expect(finalSql).not.toMatch(/TRUNCATE\s+/i);
+    expect(finalSql).not.toMatch(
+      /DELETE\s+FROM\s+"(?:units|contracts|tours|leads|opportunities|offers)"/i,
+    );
   });
 });
