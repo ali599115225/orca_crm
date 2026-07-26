@@ -1,10 +1,10 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.4
+- **Version:** 1.5
 - **Date:** 2026-07-26
-- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-005 CLOSED / NO PACKAGE IN EXECUTION`
-- **Current central baseline after EXEC-005 implementation:** `10d4b5fc00bb9dad35a3c381dd72f6be685db09a`
+- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-006 CLOSED / NO PACKAGE IN EXECUTION`
+- **Current central baseline after EXEC-006 implementation:** `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`
 
 ## 1. Sequencing rule
 
@@ -28,13 +28,13 @@ EXEC-003 owns its sealed shared-security evidence and contract registries. Later
 |---|---|---|---|
 | 4 | EXEC-004 | `CLOSED` via PR #128 — company structure, branches/departments/teams/personas and scoped authority approved and implemented | `SKIP_BY_DEFAULT`; exact-head CI and Build proved the non-visual Runtime contract |
 | 5 | EXEC-005 | `CLOSED` via PR #132 — Party identity, Lead/Opportunity lifecycle, duplicate review, merge/reversal, consent and retention foundation | `SKIP_BY_DEFAULT`; exact-head CI, Build and disposable migration validation proved the non-visual contract |
-| 6 | EXEC-006 | `OWNER_DECISION_PENDING` — commitment priority/expiry, acceptance-reservation truth, inventory/scheduling policy | `REQUIRED_AT_PACKAGE_END` only when CI cannot fully prove the journey |
-| 7 | EXEC-007 | `OWNER_DECISION_PENDING` — offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 6 | EXEC-006 | `CLOSED` via PR #135 — authoritative Unit availability, exclusive Hold/Reservation, atomic conversion/expiry, exact persisted scope and conflict-safe Tour scheduling | `SKIP_BY_DEFAULT`; exact-head ORCA CI, Build and disposable PostgreSQL race/scope validation proved the non-visual contract |
+| 7 | EXEC-007 | `OWNER_DECISION_PENDING / NOT STARTED` — offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
 | 8 | EXEC-008 | `OWNER_DECISION_PENDING` — templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
 
 EXEC-004 now provides the approved organization and authority foundation. It does not automatically wire every existing business record to a branch or execute the prepared additive migration. Any later package that consumes branch scope must freeze its exact resource mapping, migration/data authorization and denial evidence independently.
 
-EXEC-006 precedes EXEC-007 and the inventory-dependent portion of EXEC-008. No migration is implied by approving a domain policy.
+EXEC-006 is closed. It does not authorize EXEC-007, execute prepared migrations against Production/customer data, or claim legacy UI/API paths are migrated. EXEC-007 remains owner-decision gated and not started.
 
 ## 4. Wave 2 — operational truth and protected data
 
@@ -62,9 +62,9 @@ EXEC-001 CLOSED
 → EXEC-003 CLOSED
 → EXEC-004 CLOSED
 → EXEC-005 CLOSED
+→ EXEC-006 CLOSED
 → OWNER DECISION GATE
-→ EXEC-006 when separately authorized
-→ EXEC-007
+→ EXEC-007 when separately authorized
 → EXEC-008
 → EXEC-009 + EXEC-010
 → EXEC-011 per stabilized surface
@@ -100,14 +100,14 @@ Parallelism is permitted only where package registries show no shared mutable fi
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 5
+CLOSED: 6
 READY FOR CONTROLLED EXECUTION: 0
-OWNER/REFERENCE CONDITIONAL: 6
+OWNER/REFERENCE CONDITIONAL: 5
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
 NEXT AUTOMATIC PACKAGE: NONE
-NEXT ELIGIBLE PACKAGE: EXEC-006 AFTER OWNER DECISION AND SCOPE FREEZE
+NEXT ELIGIBLE PACKAGE: EXEC-007 AFTER OWNER DECISION AND SCOPE FREEZE
 ```
 
 ## 10. EXEC-004 closure reconciliation — 2026-07-26
@@ -142,7 +142,27 @@ NEXT ELIGIBLE PACKAGE: EXEC-006 AFTER OWNER DECISION AND SCOPE FREEZE
 - Prepared additive migrations: Production and customer data `NOT EXECUTED`.
 - Backfill: `NOT PERFORMED`.
 - `main`, Production, providers, secrets and customer data: `UNTOUCHED`.
-- EXEC-006 remains `NOT STARTED / OWNER_DECISION_PENDING`; closure grants no automatic authorization.
+- EXEC-006 remained `NOT STARTED / OWNER_DECISION_PENDING` at EXEC-005 closure; that historical state is preserved here.
+
+## 12. EXEC-006 closure reconciliation — 2026-07-26
+
+- Central base before implementation: `5774f64ad42fb77a387c28d6f5c8fac29c31450b`.
+- Reviewed executable head: `bec25027a6519792690cbe2a5cdf48e19f78c4f4`.
+- Final implementation/review head: `967ea4a2b79624facece53f55e2356e8673fe07b`.
+- Implementation PR: `#135`.
+- Merge to the zero-based central branch: `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`.
+- Closure branch: `work/orca-exec-006-closure-20260726`.
+- Implementation scope: `22` files, all within the renewed frozen allowlist.
+- ORCA CI: `#599 / SUCCESS`, workflow run ID `30206068819`.
+- Disposable PostgreSQL migration validation: `#45 / SUCCESS`, workflow run ID `30206068820`.
+- Seven additive migrations prepared; Production/customer-data execution: `NOT PERFORMED`.
+- Direct evidence includes Unit availability, Hold/Reservation lifecycle, atomic conversion/expiry, idempotency, optimistic concurrency, append-only audit/history, Tour conflicts, independent approval, final contractual blocking and exact persisted assignment scope.
+- Material final-review finding `F-EXEC006-001` (Department/Team Branch expansion and untyped assigned resource) was remediated and directly proven in disposable PostgreSQL.
+- Strict final review: `PASS / NON_INDEPENDENT`; known Runtime security defects and privilege expansions remaining: `0`.
+- Vercel: `SKIP_BY_DEFAULT`; automatic Hobby rate-limit failure was non-blocking and no retry-only Push or Preview was used.
+- Backfill and customer-data action: `NOT PERFORMED`.
+- `main`, Production, providers, secrets, accounts and subscriptions: `UNTOUCHED`.
+- EXEC-007 remains `OWNER_DECISION_PENDING / NOT STARTED`; closure grants no automatic authorization.
 
 ## Historical Z8 post-capacity closure — 2026-07-26
 
