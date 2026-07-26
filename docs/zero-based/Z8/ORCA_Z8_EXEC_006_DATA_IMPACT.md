@@ -70,6 +70,8 @@
 - Optimistic version checks protect Extend, Release, Approval, Conversion and Tour rescheduling/transitions.
 - Reused idempotency keys return the previous result only when the payload hash matches.
 - Elevated duration approval is verified against a distinct active persisted EXEC-004 assignment inside PostgreSQL.
+- Duration policy is re-evaluated only on creation or a real expiry change; terminal lifecycle transitions are not misclassified as new duration requests.
+- Expiry reconciliation selects a bounded candidate page, waits for a concurrent transition, rechecks persisted state under lock and records History/Audit exactly once.
 - Final Contract or effective RentalLease linkage prevents protected commitment release or cancellation.
 - Audit and History tables reject Update and Delete.
 - Sensitive mutations fail if Audit/History insert cannot complete in the same transaction.
@@ -139,7 +141,7 @@ EXEC-006 does not implement Offer acceptance, Contract, Invoice, Payment, Refund
 
 ## Operational scheduling
 
-`ReconcileExpiredCommitments` is directly callable, same-tenant, cursor/batch limited, resumable, idempotent and audited. No Vercel Cron or Production scheduler is created or activated. External scheduling remains outside the closed claim.
+`ReconcileExpiredCommitments` is directly callable, same-tenant, cursor/batch limited, resumable, idempotent and audited. It waits and rechecks a selected expired row when a concurrent conversion owns its lock, so both commands converge without leaving an expired blocking lifecycle state. No Vercel Cron or Production scheduler is created or activated. External scheduling remains outside the closed claim.
 
 ## Migration files and execution status
 
@@ -147,6 +149,8 @@ EXEC-006 does not implement Offer acceptance, Contract, Invoice, Payment, Refund
 - `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
 - `prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql`
 - `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
+- `prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql`
+- `prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql`
 
 Execution permitted in this package:
 
