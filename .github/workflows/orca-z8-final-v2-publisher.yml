@@ -1,0 +1,232 @@
+name: ORCA Z8 Final v2 Publisher
+
+on:
+  pull_request:
+    branches:
+      - work/orca-z8-final-v2-publisher-base-20260726
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: orca-z8-final-v2-publisher-20260726
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-z8-final-v2-publisher-control-20260726'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CONTROL_PATH: .github/orca-z8-final-v2-control.json
+      TARGET_BRANCH: work/orca-z8-final-revalidation-20260726
+      CENTRAL_SHA: fa45faf262f2bff0e3822d6514b9852dd1f94d6d
+    steps:
+      - name: Checkout technical control
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate control and checkout clean target
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool "$CONTROL_PATH" >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('.github/orca-z8-final-v2-control.json').read_text())
+          assert c['central_sha']=='fa45faf262f2bff0e3822d6514b9852dd1f94d6d'
+          assert c['target_branch']=='work/orca-z8-final-revalidation-20260726'
+          assert c['expected_scope_files']==9
+          assert c['main_or_production_authorized'] is False
+          PY
+          git fetch --no-tags origin "$TARGET_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$CENTRAL_SHA"
+          git switch --detach FETCH_HEAD
+          git switch -C "$TARGET_BRANCH"
+
+      - name: Reconcile exact Z8 closure documents
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          central='fa45faf262f2bff0e3822d6514b9852dd1f94d6d'
+          exec_head='1689ea9f48102c9df28fb3c77a22fe895d28348e'
+          target='work/orca-z8-final-revalidation-20260726'
+          vercel='dpl_942D77YFjbcpm7cGhBzAWuzqtwvz'
+
+          registry_path=Path('docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json')
+          registry=json.loads(registry_path.read_text())
+          assert len(registry['packages'])==14
+          assert registry['summary']['registeredPackages']==14
+          assert registry['summary']['coveredGapIds']==32
+          assert registry['summary']['inExecution']==0
+          assert not any(p.get('state')=='IN_EXECUTION' for p in registry['packages'])
+          exec3=next(p for p in registry['packages'] if p['packageId']=='EXEC-003')
+          assert exec3['state']=='CLOSED'
+          registry['status']='ACTIVE REGISTER / Z0-Z8 CLOSED / FINAL EXACT-HEAD REVALIDATION PREPARED / NO PACKAGE IN EXECUTION'
+          registry['baseCentralSha']=central
+          registry['finalZ8ClosureRevalidation']={
+            'date':'2026-07-26',
+            'baseCentralSha':central,
+            'targetBranch':target,
+            'supersededPullRequests':[99,102,112],
+            'exec003ClosurePullRequest':118,
+            'exec003FinalHeadSha':exec_head,
+            'exec003CentralMergeSha':central,
+            'exec003OrcaCiRun':471,
+            'exec003OrcaCi':'SUCCESS',
+            'exec003VercelDeployment':vercel,
+            'exec003Vercel':'SUCCESS',
+            'registeredPackages':14,
+            'coveredGapIds':32,
+            'packagesInExecution':0,
+            'mainMergeAuthorized':False,
+            'productionActionAuthorized':False,
+            'finalCandidateValidation':'REQUIRED_ON_THIS_SINGLE_COMMIT'
+          }
+          registry_path.write_text(json.dumps(registry,ensure_ascii=False,indent=2)+'\n')
+
+          schema_path=Path('docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json')
+          schema=json.loads(schema_path.read_text())
+          schema['finalZ8Revalidation']={
+            'date':'2026-07-26',
+            'baseCentralSha':central,
+            'targetBranch':target,
+            'requiredScopeFiles':9,
+            'requiredOrcaCi':'SUCCESS_ON_EXACT_FINAL_HEAD',
+            'requiredVercel':'SUCCESS_ON_EXACT_FINAL_HEAD',
+            'mergeMethod':'merge',
+            'expectedHeadShaRequired':True,
+            'registeredPackages':14,
+            'coveredGapIds':32,
+            'packagesInExecution':0,
+            'automaticPackageStart':False,
+            'mainMergeAuthorized':False,
+            'productionActionAuthorized':False
+          }
+          schema_path.write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n')
+
+          ledger_path=Path('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json')
+          ledger=json.loads(ledger_path.read_text())
+          ledger['schemaVersion']=max(int(ledger.get('schemaVersion',0))+1,13)
+          ledger['zeroBasedCentralSha']=central
+          ledger['currentGate']='Z8_FINAL_EXACT_HEAD_REVALIDATION_BEFORE_CENTRAL_MERGE'
+          ledger['mainMergeAuthorized']=False
+          ledger['productionActionAuthorized']=False
+          for blocker in ledger.get('externalBlockers',[]):
+            if blocker.get('id')=='VERCEL_HOBBY_BUILD_RATE_LIMIT_Z8':
+              blocker.update({
+                'status':'RESOLVED_FOR_FINAL_REVALIDATION',
+                'resolution':'VERCEL_CAPACITY_AVAILABLE; EXACT-HEAD PREVIEW SUCCEEDED FOR EXEC-003 CLOSURE AND IS REQUIRED AGAIN FOR FINAL Z8 CANDIDATE',
+                'resolutionEvidence':vercel,
+                'resolvedOn':'2026-07-26'
+              })
+          z8=next(s for s in ledger['stages'] if s['id']=='Z8')
+          z8.update({
+            'status':'PASS / CLOSED IN STAGE / FINAL EXACT-HEAD REVALIDATION REQUIRED BEFORE CENTRAL MERGE',
+            'stageBranch':target,
+            'baseCentralSha':central,
+            'pullRequest':'ASSIGNED_AFTER_PUBLICATION',
+            'publicationCommitRef':'THIS_SINGLE_COMMIT',
+            'publicationScopeFiles':9,
+            'centralMergeAllowed':False,
+            'blockingChecks':{
+              'orcaCi':'REQUIRED_ON_EXACT_FINAL_HEAD',
+              'vercel':'REQUIRED_ON_EXACT_FINAL_HEAD',
+              'mergeCompleted':False
+            },
+            'registeredPackages':14,
+            'coveredGapIds':32,
+            'packagesInExecution':0,
+            'automaticNextPackage':'NONE',
+            'mainMergeAuthorized':False,
+            'productionActivationAuthorized':False,
+            'supersededPullRequests':[99,102,112],
+            'exec003Closure':{
+              'pullRequest':118,
+              'finalHeadSha':exec_head,
+              'centralMergeSha':central,
+              'orcaCiRun':471,
+              'orcaCi':'SUCCESS',
+              'vercelDeployment':vercel,
+              'vercel':'SUCCESS'
+            }
+          })
+          ledger['unpublishedPreparation']['currentPublicationStage']='Z8_FINAL_REVALIDATION'
+          ledger['unpublishedPreparation']['actualCentralParentSha']=central
+          ledger['lastClosedGate']={
+            'id':'Z8',
+            'pullRequest':'ASSIGNED_AFTER_PUBLICATION',
+            'finalHeadSha':'THIS_SINGLE_COMMIT',
+            'centralMergeSha':'PENDING_AFTER_EXACT_HEAD_CHECKS',
+            'orcaCi':'REQUIRED_ON_EXACT_FINAL_HEAD',
+            'vercel':'REQUIRED_ON_EXACT_FINAL_HEAD',
+            'scopeFiles':9
+          }
+          ledger_path.write_text(json.dumps(ledger,ensure_ascii=False,indent=2)+'\n')
+
+          marker='<!-- ORCA-Z8-FINAL-REVALIDATION-20260726 -->'
+          section=f'''\n\n{marker}\n## Final exact-head revalidation reconciliation — 2026-07-26\n\n- Latest zero-based central parent: `{central}`.\n- EXEC-003 closure was sealed through PR #118 at `{exec_head}` and merged centrally at `{central}` after ORCA CI #471 and Vercel `{vercel}` succeeded on the same head.\n- Superseded Z8 candidates #99, #102 and #112 are not used as final validation evidence.\n- The execution registry contains **14 packages**, covers **32/32 Z7 gaps**, and has **0 packages in execution**.\n- This document belongs to the one-commit, nine-file final Z8 candidate on `{target}`.\n- Merge requires fresh ORCA CI and Vercel success on that exact final head using merge with expected-head protection.\n- `main`, Production, data, Prisma/Migrations, providers, secrets, accounts and paid upgrades remain unauthorized.\n- No execution package starts automatically after Z8 closure.\n'''
+          markdown_paths=[
+            'docs/zero-based/Z8/ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md',
+            'docs/zero-based/Z8/ORCA_Z8_GATE_CLOSURE.md',
+            'docs/zero-based/Z8/ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md',
+            'docs/zero-based/Z8/ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md',
+            'docs/zero-based/Z8/ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md',
+            'docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md'
+          ]
+          for raw in markdown_paths:
+            p=Path(raw)
+            text=p.read_text()
+            if marker in text:
+              text=text.split(marker,1)[0].rstrip()
+            p.write_text(text+section)
+
+      - name: Validate exact scope and deterministic contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json >/dev/null
+          python -m json.tool docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json >/dev/null
+          python -m json.tool docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json >/dev/null
+          node scripts/exec-003-registry-reconcile.mjs --check
+          git add \
+            docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json \
+            docs/zero-based/Z8/ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md \
+            docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json \
+            docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json \
+            docs/zero-based/Z8/ORCA_Z8_GATE_CLOSURE.md \
+            docs/zero-based/Z8/ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md \
+            docs/zero-based/Z8/ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md \
+            docs/zero-based/Z8/ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md \
+            docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
+          git diff --cached --check
+          mapfile -t changed < <(git diff --cached --name-only)
+          test "${#changed[@]}" -eq 9
+          printf '%s\n' "${changed[@]}" > /tmp/changed-files.txt
+          diff -u <(sort /tmp/changed-files.txt) <(cat <<'EOF' | sort
+          docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json
+          docs/zero-based/Z8/ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md
+          docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
+          docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json
+          docs/zero-based/Z8/ORCA_Z8_GATE_CLOSURE.md
+          docs/zero-based/Z8/ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md
+          docs/zero-based/Z8/ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md
+          docs/zero-based/Z8/ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md
+          docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
+          EOF
+          )
+
+      - name: Commit and push one clean final candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "ORCA Z8 Final Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "docs(zero-based): finalize Z8 exact-head revalidation"
+          test "$(git rev-list --count "$CENTRAL_SHA..HEAD")" -eq 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
