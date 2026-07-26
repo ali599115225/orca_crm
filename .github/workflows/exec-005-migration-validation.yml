@@ -1,0 +1,119 @@
+name: EXEC-005 Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - "prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql"
+      - "prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql"
+      - ".github/workflows/exec-005-migration-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exec-005-migration-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Disposable PostgreSQL validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_exec005
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_exec005"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec005?sslmode=disable
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec005?sslmode=disable
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate isolated legacy schema SQL
+        run: >-
+          npx prisma migrate diff
+          --from-empty
+          --to-schema prisma/schema.prisma
+          --script
+          --output /tmp/orca-legacy-schema.sql
+
+      - name: Create isolated legacy schema
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f /tmp/orca-legacy-schema.sql
+
+      - name: Apply EXEC-004 authority prerequisite
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726043000_exec_004_organization_authority/migration.sql
+
+      - name: Apply EXEC-005 identity foundation
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
+
+      - name: Apply EXEC-005 integrity hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
+
+      - name: Validate schema objects and append-only guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'customer_%'")" -ge 17
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE 'customer_%' AND NOT tgisinternal")" -ge 15
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint WHERE conname = 'customer_party_merges_sod_check'
+            ) THEN
+              RAISE EXCEPTION 'missing merge separation-of-duties constraint';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_proc WHERE proname = 'exec005_validate_opportunity_tenant'
+            ) THEN
+              RAISE EXCEPTION 'missing opportunity tenant guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger WHERE tgname = 'customer_identity_audit_no_update'
+            ) THEN
+              RAISE EXCEPTION 'missing append-only audit trigger';
+            END IF;
+          END;
+          $$;
+          SQL
+
+      - name: Confirm no non-disposable action
+        run: |
+          printf '%s\n' \
+            'database=disposable-github-actions-postgres' \
+            'production=false' \
+            'customer_data=false' \
+            'backfill=false' \
+            'deployment=false'
