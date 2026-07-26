@@ -70,6 +70,9 @@
 - Optimistic version checks protect Extend, Release, Approval, Conversion and Tour rescheduling/transitions.
 - Reused idempotency keys return the previous result only when the payload hash matches.
 - Elevated duration approval is verified against a distinct active persisted EXEC-004 assignment inside PostgreSQL.
+- Exact-scope hardening preserves only Company, exact Branch or verified typed-resource authority. Department/Team assignments fail closed because EXEC-006 records do not persist their identifiers and therefore cannot prove exact coverage.
+- `ASSIGNED_RESOURCE` authorization validates both the declared type and identifier against the persisted Unit, Unit Commitment or Tour Appointment table.
+- Scheduled Tour staff must have exact Company, Branch or typed Unit/Tour coverage; a Department/Team assignment cannot silently expand to the full Branch.
 - Duration policy is re-evaluated only on creation or a real expiry change; terminal lifecycle transitions are not misclassified as new duration requests.
 - Expiry reconciliation selects a bounded candidate page, waits for a concurrent transition, rechecks persisted state under lock and records History/Audit exactly once.
 - Final Contract or effective RentalLease linkage prevents protected commitment release or cancellation.
@@ -151,10 +154,19 @@ EXEC-006 does not implement Offer acceptance, Contract, Invoice, Payment, Refund
 - `prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql`
 - `prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql`
 - `prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql`
+- `prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql`
 
 Execution permitted in this package:
 
 - disposable PostgreSQL 16 in GitHub Actions only.
+
+Disposable proof includes:
+
+- real commitment and Tour concurrency races;
+- independent approval and final-link denial;
+- Department/Team branch-expansion denial;
+- wrong assigned-resource type denial and exact Unit resource positive control;
+- exact Tour staff-scope denial and positive control.
 
 Execution prohibited:
 
