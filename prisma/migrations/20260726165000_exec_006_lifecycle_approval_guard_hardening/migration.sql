@@ -1,8 +1,49 @@
--- EXEC-006 lifecycle/approval trigger hardening.
+-- EXEC-006 lifecycle/approval and direct tenant-reference hardening.
 -- Replaces only the approval-policy trigger function after disposable
 -- PostgreSQL demonstrated that a status-only EXPIRED transition was being
 -- misclassified as a zero-duration request.
+-- Adds an explicitly ordered Unit/Branch/source guard before all other
+-- commitment triggers so direct SQL cannot cross Tenant boundaries.
 -- No Production execution, customer-data mutation or Backfill is authorized.
+
+CREATE FUNCTION "exec006_assert_direct_commitment_scope"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "units" AS persisted_unit
+    WHERE persisted_unit."tenant_id" = NEW."tenant_id"
+      AND persisted_unit."id" = NEW."unit_id"
+  ) THEN
+    RAISE EXCEPTION 'cross-tenant Unit reference mismatch';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "organization_branches" AS persisted_branch
+    WHERE persisted_branch."tenant_id" = NEW."tenant_id"
+      AND persisted_branch."id" = NEW."branch_id"
+  ) THEN
+    RAISE EXCEPTION 'cross-tenant Branch reference mismatch';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "unit_availability_sources" AS availability_source
+    WHERE availability_source."tenant_id" = NEW."tenant_id"
+      AND availability_source."unit_id" = NEW."unit_id"
+      AND availability_source."branch_id" = NEW."branch_id"
+  ) THEN
+    RAISE EXCEPTION 'missing or mismatched same-tenant availability source';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "00_unit_commitments_direct_scope_guard"
+BEFORE INSERT OR UPDATE ON "unit_commitments"
+FOR EACH ROW EXECUTE FUNCTION "exec006_assert_direct_commitment_scope"();
 
 CREATE OR REPLACE FUNCTION "exec006_validate_commitment_approval_policy"()
 RETURNS TRIGGER AS $$
@@ -115,5 +156,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+COMMENT ON FUNCTION "exec006_assert_direct_commitment_scope" IS
+  'Runs first for every direct commitment mutation and rejects Unit, Branch or availability-source references outside the same Tenant.';
 COMMENT ON FUNCTION "exec006_validate_commitment_approval_policy" IS
   'Validates bounded duration only on creation/expiry changes and validates independent approval on direct Reservation activation; lifecycle-only state transitions remain valid.';
