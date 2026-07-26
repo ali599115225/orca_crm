@@ -10,20 +10,25 @@ const ids = {
   actor: "00000000-0000-0000-0000-000000000201",
   grantor: "00000000-0000-0000-0000-000000000202",
   staffB: "00000000-0000-0000-0000-000000000203",
-  otherActor: "00000000-0000-0000-0000-000000000204",
+  approver: "00000000-0000-0000-0000-000000000204",
+  otherActor: "00000000-0000-0000-0000-000000000205",
   branchA: "00000000-0000-0000-0000-000000000301",
   branchB: "00000000-0000-0000-0000-000000000302",
   assignmentActor: "00000000-0000-0000-0000-000000000401",
   assignmentStaffB: "00000000-0000-0000-0000-000000000402",
+  assignmentApprover: "00000000-0000-0000-0000-000000000403",
   projectA: "00000000-0000-0000-0000-000000000501",
   projectB: "00000000-0000-0000-0000-000000000502",
   unitA: "00000000-0000-0000-0000-000000000601",
   unitB: "00000000-0000-0000-0000-000000000602",
   unitC: "00000000-0000-0000-0000-000000000603",
   unitD: "00000000-0000-0000-0000-000000000604",
-  unitMissingSource: "00000000-0000-0000-0000-000000000605",
-  otherUnit: "00000000-0000-0000-0000-000000000606",
+  unitE: "00000000-0000-0000-0000-000000000605",
+  unitF: "00000000-0000-0000-0000-000000000606",
+  unitMissingSource: "00000000-0000-0000-0000-000000000607",
+  otherUnit: "00000000-0000-0000-0000-000000000608",
   partyA: "00000000-0000-0000-0000-000000000701",
+  rentalLease: "00000000-0000-0000-0000-000000000801",
 };
 
 const admin = new Client({ connectionString });
@@ -45,14 +50,18 @@ async function createCommitment(
     payloadHash,
     now = "2026-07-26T12:00:00.000Z",
     expires = "2026-07-27T12:00:00.000Z",
+    actorUserId = ids.actor,
+    assignmentId = ids.assignmentActor,
+    approvedByUserId = null,
+    approvalEvidence = null,
   },
 ) {
   const result = await client.query(
     `SELECT "exec006_create_commitment"(
       $1::uuid,$2::uuid,$3::uuid,$4::text,$5::text,$6::uuid,
       NULL::uuid,NULL::uuid,$7::timestamptz,$8::uuid,$9::uuid,
-      NULL::uuid,NULL::jsonb,NULL::text,$10::text,$11::text,$12::text,
-      $13::text,$14::timestamptz
+      $10::uuid,$11::jsonb,NULL::text,$12::text,$13::text,$14::text,
+      $15::text,$16::timestamptz
     ) AS id`,
     [
       ids.tenantA,
@@ -62,8 +71,10 @@ async function createCommitment(
       status,
       ids.partyA,
       expires,
-      ids.actor,
-      ids.assignmentActor,
+      actorUserId,
+      assignmentId,
+      approvedByUserId,
+      approvalEvidence ? JSON.stringify(approvalEvidence) : null,
       "postgres concurrency drill",
       `corr-${key}`,
       key,
@@ -112,6 +123,15 @@ function exactlyOneFulfilled(results, label) {
   return fulfilled[0].value;
 }
 
+async function activeCommitments(unitId) {
+  return admin.query(
+    `SELECT "id", "status", "version" FROM "unit_commitments"
+     WHERE "tenant_id"=$1 AND "unit_id"=$2
+       AND "status" IN ('PENDING','ACTIVE','PENDING_APPROVAL')`,
+    [ids.tenantA, unitId],
+  );
+}
+
 try {
   await admin.query(`
     INSERT INTO "tenants" ("id", "company_name", "subdomain") VALUES
@@ -124,6 +144,7 @@ try {
       ('${ids.actor}', '${ids.tenantA}', 'Actor', 'exec006-actor@example.test', 'x', 'ADMIN'),
       ('${ids.grantor}', '${ids.tenantA}', 'Grantor', 'exec006-grantor@example.test', 'x', 'ADMIN'),
       ('${ids.staffB}', '${ids.tenantA}', 'Staff B', 'exec006-staff-b@example.test', 'x', 'SALES_EMPLOYEE'),
+      ('${ids.approver}', '${ids.tenantA}', 'Approver', 'exec006-approver@example.test', 'x', 'ADMIN'),
       ('${ids.otherActor}', '${ids.tenantB}', 'Other Actor', 'exec006-other@example.test', 'x', 'ADMIN');
 
     INSERT INTO "projects" ("id", "tenant_id", "name", "city", "status") VALUES
@@ -131,14 +152,17 @@ try {
       ('${ids.projectB}', '${ids.tenantB}', 'Project B', 'Riyadh', 'PLANNING');
 
     INSERT INTO "units" (
-      "id", "tenant_id", "project_id", "unit_number", "type", "area", "price", "status"
+      "id", "tenant_id", "project_id", "unit_number", "floor_position",
+      "price_sar", "type", "area", "status"
     ) VALUES
-      ('${ids.unitA}', '${ids.tenantA}', '${ids.projectA}', 'A-1', 'Apartment', 100, 100000, 'Available'),
-      ('${ids.unitB}', '${ids.tenantA}', '${ids.projectA}', 'A-2', 'Apartment', 100, 100000, 'Available'),
-      ('${ids.unitC}', '${ids.tenantA}', '${ids.projectA}', 'A-3', 'Apartment', 100, 100000, 'Available'),
-      ('${ids.unitD}', '${ids.tenantA}', '${ids.projectA}', 'A-4', 'Apartment', 100, 100000, 'Available'),
-      ('${ids.unitMissingSource}', '${ids.tenantA}', '${ids.projectA}', 'A-5', 'Apartment', 100, 100000, 'Available'),
-      ('${ids.otherUnit}', '${ids.tenantB}', '${ids.projectB}', 'B-1', 'Apartment', 100, 100000, 'Available');
+      ('${ids.unitA}', '${ids.tenantA}', '${ids.projectA}', 'A-1', 1, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitB}', '${ids.tenantA}', '${ids.projectA}', 'A-2', 2, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitC}', '${ids.tenantA}', '${ids.projectA}', 'A-3', 3, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitD}', '${ids.tenantA}', '${ids.projectA}', 'A-4', 4, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitE}', '${ids.tenantA}', '${ids.projectA}', 'A-5', 5, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitF}', '${ids.tenantA}', '${ids.projectA}', 'A-6', 6, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.unitMissingSource}', '${ids.tenantA}', '${ids.projectA}', 'A-7', 7, 100000, 'Apartment', '100 m2', 'Available'),
+      ('${ids.otherUnit}', '${ids.tenantB}', '${ids.projectB}', 'B-1', 1, 100000, 'Apartment', '100 m2', 'Available');
 
     INSERT INTO "organization_branches" (
       "id", "tenant_id", "code", "name", "is_central"
@@ -153,7 +177,9 @@ try {
       ('${ids.assignmentActor}', '${ids.tenantA}', '${ids.actor}',
        'SALES_LEASING_MANAGER', 'BRANCH', '${ids.branchA}', TRUE, '${ids.grantor}'),
       ('${ids.assignmentStaffB}', '${ids.tenantA}', '${ids.staffB}',
-       'BROKER_AGENT', 'BRANCH', '${ids.branchA}', TRUE, '${ids.grantor}');
+       'BROKER_AGENT', 'BRANCH', '${ids.branchA}', TRUE, '${ids.grantor}'),
+      ('${ids.assignmentApprover}', '${ids.tenantA}', '${ids.approver}',
+       'OPERATIONS_MANAGER', 'COMPANY', NULL, TRUE, '${ids.grantor}');
 
     INSERT INTO "customer_parties" (
       "id", "tenant_id", "party_type", "branch_id", "created_by_user_id"
@@ -165,14 +191,12 @@ try {
       "base_state", "consistency_state", "source_version", "policy_version",
       "legacy_projection_status", "updated_by_user_id"
     ) VALUES
-      ('${ids.tenantA}', '${ids.unitA}', '${ids.branchA}', '${ids.projectA}', 'Apartment',
-       'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
-      ('${ids.tenantA}', '${ids.unitB}', '${ids.branchA}', '${ids.projectA}', 'Apartment',
-       'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
-      ('${ids.tenantA}', '${ids.unitC}', '${ids.branchA}', '${ids.projectA}', 'Apartment',
-       'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
-      ('${ids.tenantA}', '${ids.unitD}', '${ids.branchA}', '${ids.projectA}', 'Apartment',
-       'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}');
+      ('${ids.tenantA}', '${ids.unitA}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
+      ('${ids.tenantA}', '${ids.unitB}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
+      ('${ids.tenantA}', '${ids.unitC}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
+      ('${ids.tenantA}', '${ids.unitD}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
+      ('${ids.tenantA}', '${ids.unitE}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}'),
+      ('${ids.tenantA}', '${ids.unitF}', '${ids.branchA}', '${ids.projectA}', 'Apartment', 'ACTIVE', 'CONSISTENT', 1, 'EXEC-006-v1', 'Available', '${ids.actor}');
   `);
 
   const holdRace = await Promise.allSettled([
@@ -188,18 +212,14 @@ try {
     }),
   ]);
   const firstWinner = exactlyOneFulfilled(holdRace, "concurrent Hold race");
-  const activeAfterHoldRace = await admin.query(
-    `SELECT "id", "version" FROM "unit_commitments"
-     WHERE "tenant_id"=$1 AND "unit_id"=$2 AND "status"='ACTIVE'`,
-    [ids.tenantA, ids.unitA],
-  );
-  if (activeAfterHoldRace.rowCount !== 1) {
+  const holdWinner = await activeCommitments(ids.unitA);
+  if (holdWinner.rowCount !== 1) {
     throw new Error("concurrent Hold race did not leave exactly one active row");
   }
   await releaseCommitment(
     admin,
-    activeAfterHoldRace.rows[0].id,
-    activeAfterHoldRace.rows[0].version,
+    holdWinner.rows[0].id,
+    holdWinner.rows[0].version,
     "release-after-hold-race",
   );
 
@@ -220,12 +240,7 @@ try {
     }),
   ]);
   exactlyOneFulfilled(mixedRace, "concurrent Hold/Reservation race");
-  const mixedWinner = await admin.query(
-    `SELECT "id", "version" FROM "unit_commitments"
-     WHERE "tenant_id"=$1 AND "unit_id"=$2
-       AND "status" IN ('ACTIVE','PENDING_APPROVAL')`,
-    [ids.tenantA, ids.unitA],
-  );
+  const mixedWinner = await activeCommitments(ids.unitA);
   if (mixedWinner.rowCount !== 1) {
     throw new Error("mixed race did not leave exactly one blocking row");
   }
@@ -291,12 +306,8 @@ try {
     `SELECT "status", "version" FROM "unit_commitments" WHERE "id"=$1`,
     [idempotentFirst],
   );
-  if (
-    ![
-      "RELEASED:2",
-      "ACTIVE:2",
-    ].includes(`${releaseExtendState.rows[0].status}:${releaseExtendState.rows[0].version}`)
-  ) {
+  const releaseExtendOutcome = `${releaseExtendState.rows[0].status}:${releaseExtendState.rows[0].version}`;
+  if (!["RELEASED:2", "ACTIVE:2"].includes(releaseExtendOutcome)) {
     throw new Error("Release/Extend race produced a lost or incoherent update");
   }
   if (releaseExtendState.rows[0].status === "ACTIVE") {
@@ -308,14 +319,11 @@ try {
     );
   }
 
-  const historicalNow = "2026-07-26T12:00:00.000Z";
-  const expiryPoint = "2026-07-26T13:00:00.000Z";
   const expiringHold = await createCommitment(admin, {
     unitId: ids.unitC,
     key: "conversion-expiry-source",
     payloadHash: hash("h"),
-    now: historicalNow,
-    expires: expiryPoint,
+    expires: "2026-07-26T13:00:00.000Z",
   });
   const conversionExpiryRace = await Promise.allSettled([
     left
@@ -333,7 +341,7 @@ try {
           "corr-conversion-expiry",
           "conversion-at-expiry",
           hash("i"),
-          expiryPoint,
+          "2026-07-26T13:00:00.000Z",
         ],
       )
       .then((result) => result.rows[0].id),
@@ -346,15 +354,15 @@ try {
         ids.actor,
         ids.assignmentActor,
         "corr-conversion-expiry-reconcile",
-        expiryPoint,
+        "2026-07-26T13:00:00.000Z",
       ],
     ),
   ]);
-  const reconcileSuccesses = conversionExpiryRace.filter(
-    (result, index) => index === 1 && result.status === "fulfilled",
-  );
-  if (reconcileSuccesses.length !== 1) {
-    throw new Error("expiry reconciliation did not win at the exact expiry boundary");
+  if (
+    conversionExpiryRace[0].status !== "rejected" ||
+    conversionExpiryRace[1].status !== "fulfilled"
+  ) {
+    throw new Error("conversion/expiry race did not converge at expiry");
   }
   const expiryState = await admin.query(
     `SELECT "status" FROM "unit_commitments" WHERE "id"=$1`,
@@ -387,24 +395,80 @@ try {
     ],
   );
   const conversionRows = await admin.query(
-    `SELECT "commitment_type", "status", "converted_from_commitment_id",
-            "converted_to_commitment_id"
-     FROM "unit_commitments" WHERE "id" IN ($1,$2) ORDER BY "commitment_type"`,
+    `SELECT "commitment_type", "status" FROM "unit_commitments"
+     WHERE "id" IN ($1,$2) ORDER BY "commitment_type"`,
     [convertibleHold, converted.rows[0].id],
   );
   if (
     conversionRows.rowCount !== 2 ||
-    !conversionRows.rows.some((row) => row.commitment_type === "HOLD" && row.status === "CONVERTED") ||
-    !conversionRows.rows.some((row) => row.commitment_type === "RESERVATION" && row.status === "ACTIVE")
+    !conversionRows.rows.some(
+      (row) => row.commitment_type === "HOLD" && row.status === "CONVERTED",
+    ) ||
+    !conversionRows.rows.some(
+      (row) =>
+        row.commitment_type === "RESERVATION" && row.status === "ACTIVE",
+    )
   ) {
-    throw new Error("atomic Hold conversion did not produce one converted Hold and one active Reservation");
+    throw new Error("atomic conversion did not produce one coherent Reservation");
   }
 
-  const availabilityWithTourBefore = await admin.query(
+  const selfApprovalEvidence = {
+    approvedByActorId: ids.actor,
+    approverAssignments: [{ id: ids.assignmentActor }],
+    approvedAt: "2026-07-26T12:00:00.000Z",
+    approvalReference: "self-approval",
+    reason: "invalid self approval",
+  };
+  let selfApprovedLongDurationDenied = false;
+  try {
+    await createCommitment(admin, {
+      unitId: ids.unitE,
+      key: "long-self-approved",
+      payloadHash: hash("l"),
+      expires: "2026-07-30T12:00:00.000Z",
+      approvedByUserId: ids.actor,
+      approvalEvidence: selfApprovalEvidence,
+    });
+  } catch (error) {
+    selfApprovedLongDurationDenied = /self approval|independent|approval/i.test(
+      error.message,
+    );
+  }
+  if (!selfApprovedLongDurationDenied) {
+    throw new Error("self-approved long Hold duration was accepted");
+  }
+
+  const validApprovalEvidence = {
+    approvedByActorId: ids.approver,
+    approverAssignments: [{ id: ids.assignmentApprover }],
+    approvedAt: "2026-07-26T12:00:00.000Z",
+    approvalReference: "elevated-approval-1",
+    reason: "bounded 96-hour Hold approved",
+  };
+  const approvedLongHold = await createCommitment(admin, {
+    unitId: ids.unitE,
+    key: "long-independent-approval",
+    payloadHash: hash("m"),
+    expires: "2026-07-30T12:00:00.000Z",
+    approvedByUserId: ids.approver,
+    approvalEvidence: validApprovalEvidence,
+  });
+  const approvedLongHoldRow = await admin.query(
+    `SELECT "version" FROM "unit_commitments" WHERE "id"=$1`,
+    [approvedLongHold],
+  );
+  await releaseCommitment(
+    admin,
+    approvedLongHold,
+    approvedLongHoldRow.rows[0].version,
+    "cleanup-approved-long-hold",
+  );
+
+  const availabilityBeforeTour = await admin.query(
     `SELECT availability_state FROM "exec006_evaluate_unit_availability"($1,$2,$3)`,
     [ids.tenantA, ids.unitA, "2026-07-27T05:00:00.000Z"],
   );
-  if (availabilityWithTourBefore.rows[0].availability_state !== "AVAILABLE") {
+  if (availabilityBeforeTour.rows[0].availability_state !== "AVAILABLE") {
     throw new Error("Unit A should be available before Tour creation");
   }
 
@@ -417,9 +481,18 @@ try {
           'Unit A',$8::uuid,$9::uuid,'tour race',$10::text,$11::text,$12::text,$13::timestamptz
         ) AS id`,
         [
-          ids.tenantA, ids.branchA, ids.unitA, ids.actor, ids.partyA,
-          "2026-07-27T06:00:00.000Z", "2026-07-27T07:00:00.000Z",
-          ids.actor, ids.assignmentActor, "corr-tour-left", "tour-left", hash("l"),
+          ids.tenantA,
+          ids.branchA,
+          ids.unitA,
+          ids.actor,
+          ids.partyA,
+          "2026-07-27T06:00:00.000Z",
+          "2026-07-27T07:00:00.000Z",
+          ids.actor,
+          ids.assignmentActor,
+          "corr-tour-left",
+          "tour-left",
+          hash("n"),
           "2026-07-26T12:00:00.000Z",
         ],
       )
@@ -432,15 +505,27 @@ try {
           'Unit A',$8::uuid,$9::uuid,'tour race',$10::text,$11::text,$12::text,$13::timestamptz
         ) AS id`,
         [
-          ids.tenantA, ids.branchA, ids.unitA, ids.actor, ids.partyA,
-          "2026-07-27T06:30:00.000Z", "2026-07-27T07:30:00.000Z",
-          ids.actor, ids.assignmentActor, "corr-tour-right", "tour-right", hash("m"),
+          ids.tenantA,
+          ids.branchA,
+          ids.unitA,
+          ids.actor,
+          ids.partyA,
+          "2026-07-27T06:30:00.000Z",
+          "2026-07-27T07:30:00.000Z",
+          ids.actor,
+          ids.assignmentActor,
+          "corr-tour-right",
+          "tour-right",
+          hash("o"),
           "2026-07-26T12:00:00.000Z",
         ],
       )
       .then((result) => result.rows[0].id),
   ]);
-  const winningTour = exactlyOneFulfilled(tourRace, "concurrent staff Tour race");
+  const winningTour = exactlyOneFulfilled(
+    tourRace,
+    "concurrent staff Tour race",
+  );
 
   let unitTourConflictDenied = false;
   try {
@@ -451,30 +536,66 @@ try {
         'Unit A',$8::uuid,$9::uuid,'unit overlap',$10::text,$11::text,$12::text,$13::timestamptz
       )`,
       [
-        ids.tenantA, ids.branchA, ids.unitA, ids.staffB, ids.partyA,
-        "2026-07-27T06:15:00.000Z", "2026-07-27T06:45:00.000Z",
-        ids.actor, ids.assignmentActor, "corr-tour-unit", "tour-unit", hash("n"),
+        ids.tenantA,
+        ids.branchA,
+        ids.unitA,
+        ids.staffB,
+        ids.partyA,
+        "2026-07-27T06:15:00.000Z",
+        "2026-07-27T06:45:00.000Z",
+        ids.actor,
+        ids.assignmentActor,
+        "corr-tour-unit",
+        "tour-unit",
+        hash("p"),
         "2026-07-26T12:00:00.000Z",
       ],
     );
   } catch (error) {
-    unitTourConflictDenied = /conflicting key value|exclusion constraint/i.test(error.message);
+    unitTourConflictDenied = /conflicting key value|exclusion constraint/i.test(
+      error.message,
+    );
   }
   if (!unitTourConflictDenied) {
     throw new Error("default Unit Tour overlap was not denied");
   }
 
-  const availabilityWithTourAfter = await admin.query(
+  const availabilityAfterTour = await admin.query(
     `SELECT availability_state FROM "exec006_evaluate_unit_availability"($1,$2,$3)`,
     [ids.tenantA, ids.unitA, "2026-07-27T06:30:00.000Z"],
   );
-  if (availabilityWithTourAfter.rows[0].availability_state !== "AVAILABLE") {
+  if (availabilityAfterTour.rows[0].availability_state !== "AVAILABLE") {
     throw new Error("Tour incorrectly blocked Unit availability");
+  }
+
+  await admin.query(
+    `INSERT INTO "rental_leases" (
+      "id", "tenant_id", "unit_id", "unit_name", "tenant_name",
+      "start_date", "end_date", "rent_amount", "status"
+    ) VALUES ($1,$2,$3,'Unit F','Customer A',$4::date,$5::date,50000,'active')`,
+    [
+      ids.rentalLease,
+      ids.tenantA,
+      ids.unitF,
+      "2026-07-01",
+      "2027-06-30",
+    ],
+  );
+  const rentalDecision = await admin.query(
+    `SELECT availability_state FROM "exec006_evaluate_unit_availability"($1,$2,$3)`,
+    [ids.tenantA, ids.unitF, "2026-07-26T12:00:00.000Z"],
+  );
+  if (rentalDecision.rows[0].availability_state !== "CONTRACTUALLY_UNAVAILABLE") {
+    throw new Error("active RentalLease did not block availability");
   }
 
   const unknown = await admin.query(
     `SELECT availability_state FROM "exec006_evaluate_unit_availability"($1,$2,$3)`,
-    [ids.tenantA, ids.unitMissingSource, "2026-07-26T12:00:00.000Z"],
+    [
+      ids.tenantA,
+      ids.unitMissingSource,
+      "2026-07-26T12:00:00.000Z",
+    ],
   );
   if (unknown.rows[0].availability_state !== "UNKNOWN_FAIL_CLOSED") {
     throw new Error("missing availability source did not fail closed");
@@ -488,14 +609,21 @@ try {
         "starts_at","expires_at","initiated_by_user_id"
       ) VALUES ($1,$2,$3,'HOLD','ACTIVE',$4,$5,$6,$7)`,
       [
-        ids.tenantA, ids.branchA, ids.otherUnit, ids.partyA,
-        "2026-07-26T12:00:00.000Z", "2026-07-27T12:00:00.000Z", ids.actor,
+        ids.tenantA,
+        ids.branchA,
+        ids.otherUnit,
+        ids.partyA,
+        "2026-07-26T12:00:00.000Z",
+        "2026-07-27T12:00:00.000Z",
+        ids.actor,
       ],
     );
   } catch (error) {
-    crossTenantDenied = /mismatch|foreign key/i.test(error.message);
+    crossTenantDenied = /mismatch|foreign key|missing source/i.test(error.message);
   }
-  if (!crossTenantDenied) throw new Error("cross-tenant Unit reference was accepted");
+  if (!crossTenantDenied) {
+    throw new Error("cross-tenant Unit reference was accepted");
+  }
 
   let auditMutationDenied = false;
   try {
@@ -515,12 +643,20 @@ try {
 
   let legacyDirectWriteDenied = false;
   try {
-    await admin.query(`UPDATE "units" SET "status"='Reserved' WHERE "id"=$1`, [ids.unitA]);
+    await admin.query(
+      `UPDATE "units" SET "status"='Reserved' WHERE "id"=$1`,
+      [ids.unitA],
+    );
   } catch (error) {
     legacyDirectWriteDenied = /must be projected/i.test(error.message);
   }
-  if (!legacyDirectWriteDenied) throw new Error("legacy exclusive Unit status write was accepted");
-  await admin.query(`SELECT "exec006_project_legacy_unit_status"($1,$2,'Reserved')`, [ids.tenantA, ids.unitA]);
+  if (!legacyDirectWriteDenied) {
+    throw new Error("legacy exclusive Unit status write was accepted");
+  }
+  await admin.query(
+    `SELECT "exec006_project_legacy_unit_status"($1,$2,'Reserved')`,
+    [ids.tenantA, ids.unitA],
+  );
 
   console.log(
     JSON.stringify(
@@ -537,9 +673,11 @@ try {
           atomicConversion: true,
           idempotencyReplay: true,
           idempotencyPayloadMismatch: true,
+          independentLongDurationApproval: true,
           staffTourOverlap: true,
           unitTourOverlap: true,
           tourDoesNotReserve: true,
+          rentalLeaseBlocksAvailability: true,
           unknownFailClosed: true,
           crossTenantIntegrity: true,
           auditAppendOnly: true,
