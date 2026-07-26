@@ -1,10 +1,10 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.3
+- **Version:** 1.4
 - **Date:** 2026-07-26
-- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-004 CLOSED / NO PACKAGE IN EXECUTION`
-- **Current central baseline after EXEC-004:** `8643f1858cd453c53bee60cc4184dfab2f7cebdb`
+- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-005 CLOSED / NO PACKAGE IN EXECUTION`
+- **Current central baseline after EXEC-005 implementation:** `10d4b5fc00bb9dad35a3c381dd72f6be685db09a`
 
 ## 1. Sequencing rule
 
@@ -27,7 +27,7 @@ EXEC-003 owns its sealed shared-security evidence and contract registries. Later
 | Order | Package | Status / blocking decisions | Vercel validation |
 |---|---|---|---|
 | 4 | EXEC-004 | `CLOSED` via PR #128 — company structure, branches/departments/teams/personas and scoped authority approved and implemented | `SKIP_BY_DEFAULT`; exact-head CI and Build proved the non-visual Runtime contract |
-| 5 | EXEC-005 | `OWNER_DECISION_PENDING` — identity/merge survivorship, privacy purpose and consent | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 5 | EXEC-005 | `CLOSED` via PR #132 — Party identity, Lead/Opportunity lifecycle, duplicate review, merge/reversal, consent and retention foundation | `SKIP_BY_DEFAULT`; exact-head CI, Build and disposable migration validation proved the non-visual contract |
 | 6 | EXEC-006 | `OWNER_DECISION_PENDING` — commitment priority/expiry, acceptance-reservation truth, inventory/scheduling policy | `REQUIRED_AT_PACKAGE_END` only when CI cannot fully prove the journey |
 | 7 | EXEC-007 | `OWNER_DECISION_PENDING` — offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
 | 8 | EXEC-008 | `OWNER_DECISION_PENDING` — templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
@@ -61,8 +61,9 @@ EXEC-001 CLOSED
 → EXEC-002 CLOSED
 → EXEC-003 CLOSED
 → EXEC-004 CLOSED
+→ EXEC-005 CLOSED
 → OWNER DECISION GATE
-→ EXEC-005 + EXEC-006 when separately authorized
+→ EXEC-006 when separately authorized
 → EXEC-007
 → EXEC-008
 → EXEC-009 + EXEC-010
@@ -99,17 +100,17 @@ Parallelism is permitted only where package registries show no shared mutable fi
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 4
+CLOSED: 5
 READY FOR CONTROLLED EXECUTION: 0
-OWNER/REFERENCE CONDITIONAL: 7
+OWNER/REFERENCE CONDITIONAL: 6
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
 NEXT AUTOMATIC PACKAGE: NONE
-NEXT ELIGIBLE PACKAGE: EXEC-005 AFTER OWNER DECISION AND SCOPE FREEZE
+NEXT ELIGIBLE PACKAGE: EXEC-006 AFTER OWNER DECISION AND SCOPE FREEZE
 ```
 
-## 10. EXEC-004 closure reconciliation — 2026-07-26
+## 11. EXEC-004 closure reconciliation — 2026-07-26
 
 - Implementation base: `6a24e57d75f17550fe0fd5755889aef9a5cacdc9`.
 - Final reviewed implementation head: `d547caaeaa48de592229a51c5c252e32d4aacd02`.
@@ -124,6 +125,24 @@ NEXT ELIGIBLE PACKAGE: EXEC-005 AFTER OWNER DECISION AND SCOPE FREEZE
 - Backfill and customer-data action: `NOT PERFORMED`.
 - `main`, Production, providers, secrets, accounts and purchases: `UNTOUCHED`.
 - EXEC-004 closes no authority for EXEC-005; the next package remains owner-decision gated.
+
+## 10. EXEC-005 closure reconciliation — 2026-07-26
+
+- Central base before implementation: `991afec099880565043ef578ba8084b2ece809ad`.
+- Final implementation head: `6a327d67648f795f64b13d766672bd0f4911e8f1`.
+- Implementation PR: `#132`.
+- Squash merge to the zero-based central branch: `10d4b5fc00bb9dad35a3c381dd72f6be685db09a`.
+- Closure PR: `#134` on clean branch `work/orca-exec-005-closure-v2-20260726`.
+- Implementation scope: `14` files, all within the frozen allowlist.
+- ORCA CI: `#532 / SUCCESS`.
+- Disposable PostgreSQL migration validation: `#9 / SUCCESS`.
+- Direct behavior: `38` named cases plus schema and integrity contracts.
+- Strict self-review: `PASS / NON_INDEPENDENT`.
+- Vercel: `SKIP_BY_DEFAULT`; no browser-only surface and no Preview.
+- Prepared additive migrations: Production and customer data `NOT EXECUTED`.
+- Backfill: `NOT PERFORMED`.
+- `main`, Production, providers, secrets and customer data: `UNTOUCHED`.
+- EXEC-006 remains `NOT STARTED / OWNER_DECISION_PENDING`; closure grants no automatic authorization.
 
 ## Historical Z8 post-capacity closure — 2026-07-26
 
