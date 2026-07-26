@@ -123,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('unit_commitment_policies','unit_availability_sources','unit_operational_restrictions','unit_commitments','unit_commitment_history','unit_commitment_audit','unit_commitment_idempotency','tour_appointments_v2','tour_appointment_history')")" -eq 9
-          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard')")" -ge 10
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard','00_unit_commitments_direct_scope_guard')")" -ge 11
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
@@ -190,6 +190,71 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/exec-006-postgres-concurrency.mjs 2>&1 | tee /tmp/exec006-postgres-result.txt
+
+      - name: Prove final-link release denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            v_commitment_id UUID := '00000000-0000-0000-0000-000000000901';
+            v_status TEXT;
+            v_denied BOOLEAN := FALSE;
+          BEGIN
+            INSERT INTO "unit_commitments" (
+              "id", "tenant_id", "branch_id", "unit_id", "commitment_type",
+              "status", "party_id", "starts_at", "expires_at",
+              "initiated_by_user_id", "reason", "created_at", "updated_at"
+            ) VALUES (
+              v_commitment_id,
+              '00000000-0000-0000-0000-000000000101',
+              '00000000-0000-0000-0000-000000000301',
+              '00000000-0000-0000-0000-000000000606',
+              'HOLD',
+              'ACTIVE',
+              '00000000-0000-0000-0000-000000000701',
+              '2026-07-26T12:00:00Z',
+              '2026-07-27T12:00:00Z',
+              '00000000-0000-0000-0000-000000000201',
+              'disposable final-link release test',
+              '2026-07-26T12:00:00Z',
+              '2026-07-26T12:00:00Z'
+            );
+
+            BEGIN
+              UPDATE "unit_commitments"
+              SET
+                "status" = 'RELEASED',
+                "version" = "version" + 1,
+                "reason" = 'attempted release with active RentalLease',
+                "updated_at" = '2026-07-26T12:30:00Z'
+              WHERE "id" = v_commitment_id;
+            EXCEPTION WHEN OTHERS THEN
+              IF position(
+                'final contractual link prevents commitment release'
+                IN SQLERRM
+              ) > 0 THEN
+                v_denied := TRUE;
+              ELSE
+                RAISE;
+              END IF;
+            END;
+
+            IF NOT v_denied THEN
+              RAISE EXCEPTION 'final-link release guard did not deny release';
+            END IF;
+
+            SELECT commitment_record."status" INTO v_status
+            FROM "unit_commitments" AS commitment_record
+            WHERE commitment_record."id" = v_commitment_id;
+
+            IF v_status <> 'ACTIVE' THEN
+              RAISE EXCEPTION 'denied final-link release changed commitment state';
+            END IF;
+          END;
+          $$;
+          SQL
 
       - name: Run EXEC-006 PostgreSQL contract test
         run: >-
