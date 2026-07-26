@@ -1,0 +1,71 @@
+name: ORCA Z8 Final Closure v2 Publisher
+on:
+  pull_request:
+    branches: [work/orca-z8-final-closure-v2-publisher-base-20260726]
+    types: [opened, reopened, synchronize]
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: github.head_ref == 'work/orca-z8-final-closure-v2-publisher-control-20260726'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v6
+        with: {node-version: "24", cache: npm}
+      - name: Checkout exact target
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin work/orca-z8-final-closure-v2-20260726
+          test "$(git rev-parse FETCH_HEAD)" = "ff47997382d9032a6e1c27b9488884282867479f"
+          git switch --detach FETCH_HEAD
+          git switch -C work/orca-z8-final-closure-v2-20260726
+          npm ci
+      - name: Apply final nine-file Z8 closure
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          central='ff47997382d9032a6e1c27b9488884282867479f'
+          z=Path('docs/zero-based/Z8')
+          marker='## Final post-capacity closure reconciliation — 2026-07-26'
+          block=f'''\n\n{marker}\n\n- Final reconciliation base: `{central}` after PR `#123` isolated administrative closure metadata from the sealed EXEC-003 digest.\n- Superseded Z8 PR `#99` / `a82bcc937a8f69196b96f742801fe20f2eecaf99` remains closed without merge.\n- Historical PR `#102` is not reused as final Vercel evidence.\n- Registered execution packages: `14`; Z7 gaps covered: `32/32`; packages in execution: `0`.\n- Z0–Z8 are closed as planning, assessment and execution-authorization gates; no package starts automatically.\n- Fresh ORCA CI and Vercel success are required on this same non-empty final head before merge.\n- `main`, Production, data, Prisma/Migrations, providers, secrets, accounts and purchases remain unauthorized.\n'''
+          for name in ['ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md','ORCA_Z8_GATE_CLOSURE.md','ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md','ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md','ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md','ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md']:
+            p=z/name; text=p.read_text(); assert marker not in text; p.write_text(text.rstrip()+block+'\n')
+          schema_path=z/'ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json'; schema=json.loads(schema_path.read_text())
+          schema['finalClosure']={'date':'2026-07-26','baseCentralSha':central,'supersededPr':99,'supersededHeadSha':'a82bcc937a8f69196b96f742801fe20f2eecaf99','registryClosurePr':118,'digestBoundaryPr':123,'registeredPackages':14,'coveredGapIds':32,'packagesInExecution':0,'requiredFinalChecks':['ORCA CI','Vercel'],'sameFinalHeadRequired':True,'emptyCommitProhibited':True,'paidUpgradeAuthorized':False,'mainMergeAuthorized':False,'productionActionAuthorized':False}
+          schema_path.write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n')
+          registry_path=z/'ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json'; registry=json.loads(registry_path.read_text())
+          assert len(registry['packages'])==14 and registry['summary']['coveredGapIds']==32 and registry['summary']['inExecution']==0
+          assert not [p for p in registry['packages'] if p['state']=='IN_EXECUTION']
+          registry['finalZ8Closure']={'date':'2026-07-26','baseCentralSha':central,'supersededPr':99,'registryClosurePr':118,'digestBoundaryPr':123,'registeredPackages':14,'coveredGapIds':32,'packagesInExecution':0,'requiredFinalChecks':['ORCA CI','Vercel'],'sameFinalHeadRequired':True,'mainMergeAuthorized':False,'productionActionAuthorized':False}
+          registry_path.write_text(json.dumps(registry,ensure_ascii=False,separators=(',',':'))+'\n')
+          ledger_path=Path('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json'); ledger=json.loads(ledger_path.read_text())
+          ledger['schemaVersion']=max(int(ledger.get('schemaVersion',0))+1,12); ledger['zeroBasedCentralSha']=central; ledger['currentGate']='Z8_FINAL_HEAD_VALIDATION_BEFORE_CENTRAL_MERGE'; ledger['mainMergeAuthorized']=False; ledger['productionActionAuthorized']=False
+          for stage in ledger['stages']:
+            if stage['id'] in {f'Z{i}' for i in range(8)}: stage['status']='PASS / CLOSED / MERGED TO CENTRAL'
+            if stage['id']=='Z8': stage.update({'status':'PASS / CLOSED IN STAGE — FRESH ORCA CI AND VERCEL REQUIRED BEFORE CENTRAL MERGE','stageBranch':'work/orca-z8-final-closure-v2-20260726','baseCentralSha':central,'pullRequest':'ASSIGNED_AFTER_PUBLICATION','publicationCommitRef':'THIS_SINGLE_COMMIT','publicationScopeFiles':9,'registeredPackages':14,'coveredGapIds':32,'packagesInExecution':0,'closedPackages':3,'ownerDecisionPendingPackages':8,'deferredOrBlockedPackages':3,'runtimeChanged':False,'databaseChanged':False,'productionAction':False,'centralMergeAllowed':False,'blockingChecks':{'orcaCi':'PENDING_FINAL_HEAD','vercel':'PENDING_FINAL_HEAD','mergeAllowed':False}})
+          ledger['finalZ8Closure']={'date':'2026-07-26','baseCentralSha':central,'supersededPr':99,'registryClosurePr':118,'digestBoundaryPr':123,'registeredPackages':14,'coveredGapIds':32,'packagesInExecution':0,'requiredFinalChecks':['ORCA CI','Vercel'],'sameFinalHeadRequired':True,'mainMergeAuthorized':False,'productionActionAuthorized':False}
+          ledger_path.write_text(json.dumps(ledger,ensure_ascii=False,indent=2)+'\n')
+      - name: Verify gates and publish one commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/exec-003-registry-reconcile.mjs --check
+          npx vitest run tests/foundation/g5-*.test.ts
+          git add docs/zero-based/Z8 docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json
+          python - <<'PY'
+          import json,subprocess
+          expected={'docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json','docs/zero-based/Z8/ORCA_Z8_ACCEPTANCE_RECOVERY_CONFLICT_CONTRACT.md','docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json','docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_SCHEMA.json','docs/zero-based/Z8/ORCA_Z8_GATE_CLOSURE.md','docs/zero-based/Z8/ORCA_Z8_INDEPENDENT_EXECUTION_AUTHORIZATION_REVIEW_ADDENDUM.md','docs/zero-based/Z8/ORCA_Z8_MAIN_PRODUCTION_ACTIVATION_SEPARATION.md','docs/zero-based/Z8/ORCA_Z8_OWNER_VISUAL_PROVIDER_DATA_BLOCKERS.md','docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md'}
+          actual=set(subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()); assert actual==expected,(actual,expected)
+          r=json.load(open('docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json')); assert len(r['packages'])==14 and r['summary']['coveredGapIds']==32 and r['summary']['inExecution']==0 and not [p for p in r['packages'] if p['state']=='IN_EXECUTION']
+          l=json.load(open('docs/zero-based/ORCA_ZERO_BASED_STAGE_LEDGER.json')); stages={x['id']:x for x in l['stages']}; assert all('CLOSED' in stages[f'Z{i}']['status'] for i in range(9))
+          PY
+          git config user.name "ORCA Z8 Final Publisher"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "docs(zero-based): close final Z8 authorization gate"
+          test "$(git rev-list --count ff47997382d9032a6e1c27b9488884282867479f..HEAD)" -eq 1
+          git push origin HEAD:refs/heads/work/orca-z8-final-closure-v2-20260726
