@@ -310,11 +310,6 @@ function validateAssignmentScope(input: {
       hasResourceId);
 
   if (!valid) throw new Error("INVALID_ASSIGNMENT_SCOPE");
-
-  const allowedScopes = ROLE_SCOPE_TYPES[
-    input.scopeType ? (undefined as never) : (undefined as never)
-  ];
-  void allowedScopes;
 }
 
 function validateRoleScope(
