@@ -12,10 +12,8 @@ import {
   type OrganizationCommandRepository,
 } from "@/lib/organization/service";
 
-const UUID_NIL = "00000000-0000-0000-0000-000000000000";
-
-function jsonDetails(value: unknown): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+function jsonDetails(value: unknown): string {
+  return JSON.stringify(value);
 }
 
 type AssignmentRow = {
@@ -67,6 +65,47 @@ async function assertScopedReference(
     LIMIT 1
   `);
   if (rows.length !== 1) throw new Error("ORGANIZATION_SCOPE_REFERENCE_NOT_FOUND");
+}
+
+async function assertAssignmentHierarchy(
+  tx: Prisma.TransactionClient,
+  input: {
+    tenantId: string;
+    branchId?: string | null;
+    departmentId?: string | null;
+    teamId?: string | null;
+  },
+): Promise<void> {
+  if (input.departmentId) {
+    const departments = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "organization_departments"
+      WHERE "id" = ${input.departmentId}::uuid
+        AND "tenant_id" = ${input.tenantId}::uuid
+        AND "branch_id" IS NOT DISTINCT FROM ${input.branchId ?? null}::uuid
+        AND "is_active" = TRUE
+      LIMIT 1
+    `);
+    if (departments.length !== 1) {
+      throw new Error("ORGANIZATION_DEPARTMENT_BRANCH_MISMATCH");
+    }
+  }
+
+  if (input.teamId) {
+    const teams = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "organization_teams"
+      WHERE "id" = ${input.teamId}::uuid
+        AND "tenant_id" = ${input.tenantId}::uuid
+        AND "department_id" IS NOT DISTINCT FROM ${input.departmentId ?? null}::uuid
+        AND "branch_id" IS NOT DISTINCT FROM ${input.branchId ?? null}::uuid
+        AND "is_active" = TRUE
+      LIMIT 1
+    `);
+    if (teams.length !== 1) {
+      throw new Error("ORGANIZATION_TEAM_HIERARCHY_MISMATCH");
+    }
+  }
 }
 
 export async function loadOrganizationAuthorityContext(
@@ -150,7 +189,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           'BRANCH',
           ${branch.id}::uuid,
           ${branch.id}::uuid,
-          ${jsonDetails({ code: input.code, name: input.name, isCentral: input.isCentral })}
+          ${jsonDetails({ code: input.code, name: input.name, isCentral: input.isCentral })}::jsonb
         )
       `);
       return branch;
@@ -177,7 +216,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           ${input.tenantId}::uuid,
           ${input.branchId}::uuid,
           ${input.serviceLine},
-          ${input.managerUserId ?? UUID_NIL}::uuid,
+          ${input.managerUserId ?? null}::uuid,
           ${input.enabled}
         )
         ON CONFLICT ("tenant_id", "branch_id", "service_line")
@@ -192,16 +231,6 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
       `);
       const service = rows[0];
       if (!service) throw new Error("ORGANIZATION_SERVICE_CONFIG_FAILED");
-
-      if (!input.managerUserId) {
-        await tx.$executeRaw(Prisma.sql`
-          UPDATE "branch_services"
-          SET "manager_user_id" = NULL
-          WHERE "tenant_id" = ${input.tenantId}::uuid
-            AND "branch_id" = ${input.branchId}::uuid
-            AND "service_line" = ${input.serviceLine}
-        `);
-      }
 
       await tx.$executeRaw(Prisma.sql`
         INSERT INTO "organization_authority_audit" (
@@ -218,7 +247,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
             serviceLine: input.serviceLine,
             enabled: input.enabled,
             managerUserId: input.managerUserId ?? null,
-          })}
+          })}::jsonb
         )
       `);
       return service;
@@ -247,6 +276,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
         input.tenantId,
         input.teamId,
       );
+      await assertAssignmentHierarchy(tx, input);
 
       const rows = await tx.$queryRaw<AssignmentRow[]>(Prisma.sql`
         INSERT INTO "user_scope_assignments" (
@@ -259,11 +289,11 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           ${input.userId}::uuid,
           ${input.securityRole},
           ${input.scopeType},
-          ${input.branchId ?? UUID_NIL}::uuid,
-          ${input.departmentId ?? UUID_NIL}::uuid,
-          ${input.teamId ?? UUID_NIL}::uuid,
+          ${input.branchId ?? null}::uuid,
+          ${input.departmentId ?? null}::uuid,
+          ${input.teamId ?? null}::uuid,
           ${input.assignedResourceType ?? null},
-          ${input.assignedResourceId ?? UUID_NIL}::uuid,
+          ${input.assignedResourceId ?? null}::uuid,
           ${input.startsAt ?? null},
           ${input.endsAt ?? null},
           ${input.actorUserId}::uuid
@@ -287,16 +317,6 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
       if (!assignment) throw new Error("ORGANIZATION_ASSIGNMENT_CREATE_FAILED");
 
       await tx.$executeRaw(Prisma.sql`
-        UPDATE "user_scope_assignments"
-        SET
-          "branch_id" = NULLIF("branch_id", ${UUID_NIL}::uuid),
-          "department_id" = NULLIF("department_id", ${UUID_NIL}::uuid),
-          "team_id" = NULLIF("team_id", ${UUID_NIL}::uuid),
-          "assigned_resource_id" = NULLIF("assigned_resource_id", ${UUID_NIL}::uuid)
-        WHERE "id" = ${assignment.id}::uuid
-      `);
-
-      await tx.$executeRaw(Prisma.sql`
         INSERT INTO "organization_authority_audit" (
           "tenant_id", "actor_user_id", "action", "target_type",
           "target_id", "branch_id", "details"
@@ -306,7 +326,7 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           'SCOPE_ASSIGNMENT_CREATED',
           'USER_SCOPE_ASSIGNMENT',
           ${assignment.id}::uuid,
-          ${input.branchId ?? UUID_NIL}::uuid,
+          ${input.branchId ?? null}::uuid,
           ${jsonDetails({
             userId: input.userId,
             securityRole: input.securityRole,
@@ -315,24 +335,10 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
             teamId: input.teamId ?? null,
             assignedResourceType: input.assignedResourceType ?? null,
             assignedResourceId: input.assignedResourceId ?? null,
-          })}
+          })}::jsonb
         )
       `);
-      if (!input.branchId) {
-        await tx.$executeRaw(Prisma.sql`
-          UPDATE "organization_authority_audit"
-          SET "branch_id" = NULL
-          WHERE "target_id" = ${assignment.id}::uuid
-            AND "action" = 'SCOPE_ASSIGNMENT_CREATED'
-        `);
-      }
-      return {
-        ...assignment,
-        branchId: input.branchId ?? null,
-        departmentId: input.departmentId ?? null,
-        teamId: input.teamId ?? null,
-        assignedResourceId: input.assignedResourceId ?? null,
-      };
+      return assignment;
     });
   },
 
@@ -373,18 +379,10 @@ export const organizationSqlRepository: OrganizationCommandRepository = {
           'SCOPE_ASSIGNMENT_REVOKED',
           'USER_SCOPE_ASSIGNMENT',
           ${assignment.id}::uuid,
-          ${assignment.branchId ?? UUID_NIL}::uuid,
-          ${jsonDetails({ userId: assignment.userId, securityRole: assignment.securityRole })}
+          ${assignment.branchId}::uuid,
+          ${jsonDetails({ userId: assignment.userId, securityRole: assignment.securityRole })}::jsonb
         )
       `);
-      if (!assignment.branchId) {
-        await tx.$executeRaw(Prisma.sql`
-          UPDATE "organization_authority_audit"
-          SET "branch_id" = NULL
-          WHERE "target_id" = ${assignment.id}::uuid
-            AND "action" = 'SCOPE_ASSIGNMENT_REVOKED'
-        `);
-      }
       return assignment;
     });
   },
