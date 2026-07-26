@@ -3,6 +3,7 @@ import {
   type AuditEntry,
   type CommandContext,
   type CommunicationPreference,
+  type ConvertLeadCommand,
   type CreateLeadCommand,
   type CreateOpportunityCommand,
   type CreatePartyCommand,
@@ -26,7 +27,6 @@ import {
   type ResourceScope,
   type SetCommunicationPreferenceCommand,
   type UpdatePartyFieldCommand,
-  type ConvertLeadCommand,
 } from "@/lib/customer-identity/contracts";
 import {
   assertCustomerAuthority,
@@ -42,6 +42,16 @@ import {
   type CustomerIdentityRepository,
 } from "@/lib/customer-identity/repository";
 
+export type CustomerIdentityPolicy = Readonly<{
+  verifiedEmailIsUniquePerParty: boolean;
+  verifiedPhoneIsUniquePerParty: boolean;
+}>;
+
+const DEFAULT_POLICY: CustomerIdentityPolicy = {
+  verifiedEmailIsUniquePerParty: true,
+  verifiedPhoneIsUniquePerParty: false,
+};
+
 const PROTECTED_FIELDS = new Set([
   "nationalId",
   "residencyId",
@@ -51,15 +61,6 @@ const PROTECTED_FIELDS = new Set([
   "consentSource",
   "doNotContact",
 ]);
-
-const STRONG_MATCH_FIELDS = [
-  "nationalId",
-  "residencyId",
-  "commercialRegistry",
-  "externalId",
-  "email",
-  "phone",
-] as const;
 
 const FINAL_OPPORTUNITY_STAGES = new Set<OpportunityStage>([
   "WON",
@@ -124,14 +125,16 @@ function assertExpectedVersion(
   expectedVersion: number | null | undefined,
   actualVersion: number,
 ): void {
-  if (expectedVersion !== null && expectedVersion !== undefined) {
-    if (expectedVersion !== actualVersion) {
-      throw new CustomerIdentityError(
-        "CONCURRENCY_CONFLICT",
-        "Expected version does not match current version",
-        { expectedVersion, actualVersion },
-      );
-    }
+  if (
+    expectedVersion !== null &&
+    expectedVersion !== undefined &&
+    expectedVersion !== actualVersion
+  ) {
+    throw new CustomerIdentityError(
+      "CONCURRENCY_CONFLICT",
+      "Expected version does not match current version",
+      { expectedVersion, actualVersion },
+    );
   }
 }
 
@@ -261,6 +264,28 @@ function requireOpportunity(
   return opportunity;
 }
 
+function requireAccount(
+  state: CustomerIdentityState,
+  tenantId: string,
+  accountId: string,
+): CustomerAccount {
+  const account = state.customerAccounts.get(accountId);
+  if (!account) {
+    throw new CustomerIdentityError(
+      "NOT_FOUND",
+      "Customer Account was not found",
+      { accountId },
+    );
+  }
+  if (account.tenantId !== tenantId) {
+    throw new CustomerIdentityError(
+      "TENANT_SCOPE_MISMATCH",
+      "Customer Account tenant does not match command tenant",
+    );
+  }
+  return account;
+}
+
 function writeAudit(
   state: CustomerIdentityState,
   context: CommandContext,
@@ -284,13 +309,26 @@ function writeAudit(
   });
 }
 
+function assertSubjectConsistency(
+  partyId: string | null,
+  account: CustomerAccount | null,
+): string | null {
+  if (partyId && account && account.partyId !== partyId) {
+    throw new CustomerIdentityError(
+      "VALIDATION_ERROR",
+      "Party and Customer Account refer to different identity roots",
+      { partyId, accountPartyId: account.partyId },
+    );
+  }
+  return partyId ?? account?.partyId ?? null;
+}
+
 function createPartyInState(
   state: CustomerIdentityState,
   command: CreatePartyCommand,
 ): Party {
-  validateCommandContext(command.context);
   const context = command.context;
-  const branchId = context.scope.branchId ?? null;
+  validateCommandContext(context);
   assertCustomerAuthority(context, "WRITE", {
     ...context.scope,
     resourceType: "PARTY",
@@ -301,7 +339,7 @@ function createPartyInState(
   if (state.aliases.has(id)) {
     throw new CustomerIdentityError(
       "ALIAS_REUSE_DENIED",
-      "A merged alias cannot be reused as a new Party ID",
+      "A merged alias cannot be reused as a Party identifier",
     );
   }
 
@@ -317,7 +355,7 @@ function createPartyInState(
     tenantId: context.tenantId,
     type: command.type,
     lifecycleState: "ACTIVE",
-    branchId,
+    branchId: context.scope.branchId ?? null,
     departmentId: context.scope.departmentId ?? null,
     teamId: context.scope.teamId ?? null,
     fields,
@@ -382,16 +420,16 @@ function createOpportunityInState(
       "Opportunity requires a Party or Customer Account",
     );
   }
-  if (command.probability < 0 || command.probability > 100) {
-    throw new CustomerIdentityError(
-      "VALIDATION_ERROR",
-      "Opportunity probability must be between 0 and 100",
-    );
-  }
   if (command.expectedValue < 0) {
     throw new CustomerIdentityError(
       "VALIDATION_ERROR",
       "Opportunity expected value cannot be negative",
+    );
+  }
+  if (command.probability < 0 || command.probability > 100) {
+    throw new CustomerIdentityError(
+      "VALIDATION_ERROR",
+      "Opportunity probability must be between 0 and 100",
     );
   }
 
@@ -403,33 +441,32 @@ function createOpportunityInState(
     resourceId: "NEW",
   });
 
-  const partyId = command.partyId
-    ? requireParty(state, context.tenantId, command.partyId).id
+  const party = command.partyId
+    ? requireParty(state, context.tenantId, command.partyId)
     : null;
   const account = command.customerAccountId
-    ? state.customerAccounts.get(command.customerAccountId)
+    ? requireAccount(state, context.tenantId, command.customerAccountId)
     : null;
-  if (command.customerAccountId && !account) {
-    throw new CustomerIdentityError(
-      "NOT_FOUND",
-      "Customer Account was not found",
-    );
-  }
-  if (account && account.tenantId !== context.tenantId) {
-    throw new CustomerIdentityError(
-      "TENANT_SCOPE_MISMATCH",
-      "Customer Account tenant does not match command tenant",
-    );
-  }
+  const effectivePartyId = assertSubjectConsistency(party?.id ?? null, account);
   if (command.sourceLeadId) {
-    requireLead(state, context.tenantId, command.sourceLeadId);
+    const sourceLead = requireLead(
+      state,
+      context.tenantId,
+      command.sourceLeadId,
+    );
+    if (sourceLead.partyId && sourceLead.partyId !== effectivePartyId) {
+      throw new CustomerIdentityError(
+        "VALIDATION_ERROR",
+        "Source Lead and Opportunity refer to different Parties",
+      );
+    }
   }
 
   const timestamp = now(context);
   const opportunity: CustomerOpportunity = {
     id: nextEntityId(state, "opportunity"),
     tenantId: context.tenantId,
-    partyId: partyId ?? account?.partyId ?? null,
+    partyId: effectivePartyId,
     customerAccountId: account?.id ?? null,
     sourceLeadId: command.sourceLeadId ?? null,
     legacyOpportunityId: command.legacyOpportunityId ?? null,
@@ -464,63 +501,71 @@ function createOpportunityInState(
   return opportunity;
 }
 
-function duplicateReasons(candidate: Party, other: Party): DuplicateReason[] {
+function duplicateReasons(
+  candidate: Party,
+  other: Party,
+  policy: CustomerIdentityPolicy,
+): DuplicateReason[] {
   const reasons: DuplicateReason[] = [];
-
-  for (const field of STRONG_MATCH_FIELDS) {
+  const match = (field: string): boolean => {
     const left = candidate.fields[field];
     const right = other.fields[field];
-    if (
-      !left?.normalizedValue ||
-      !right?.normalizedValue ||
-      left.normalizedValue !== right.normalizedValue
-    ) {
-      continue;
-    }
+    return Boolean(
+      left?.normalizedValue &&
+        right?.normalizedValue &&
+        left.normalizedValue === right.normalizedValue,
+    );
+  };
+  const verifiedMatch = (field: string): boolean =>
+    match(field) &&
+    Boolean(candidate.fields[field]?.verified && other.fields[field]?.verified);
 
-    if (field === "nationalId" || field === "residencyId") {
-      if (left.verified && right.verified) {
-        reasons.push({
-          field,
-          code: "VERIFIED_IDENTITY_MATCH",
-          explanation: "Verified normalized identity identifiers match",
-        });
-      }
-    } else if (field === "commercialRegistry") {
-      if (left.verified && right.verified) {
-        reasons.push({
-          field,
-          code: "VERIFIED_COMMERCIAL_REGISTRY_MATCH",
-          explanation: "Verified normalized commercial registries match",
-        });
-      }
-    } else if (field === "externalId") {
-      if (left.verified && right.verified) {
-        reasons.push({
-          field,
-          code: "TRUSTED_EXTERNAL_ID_MATCH",
-          explanation: "Trusted normalized external identifiers match",
-        });
-      }
-    } else if (field === "email") {
-      reasons.push({
-        field,
-        code:
-          left.verified && right.verified
-            ? "VERIFIED_EMAIL_MATCH"
-            : "UNVERIFIED_EMAIL_MATCH",
-        explanation: "Normalized email values match",
-      });
-    } else if (field === "phone") {
-      reasons.push({
-        field,
-        code:
-          left.verified && right.verified
-            ? "VERIFIED_PHONE_MATCH"
-            : "UNVERIFIED_PHONE_MATCH",
-        explanation: "Normalized phone values match",
-      });
-    }
+  if (verifiedMatch("nationalId") || verifiedMatch("residencyId")) {
+    reasons.push({
+      field: verifiedMatch("nationalId") ? "nationalId" : "residencyId",
+      code: "VERIFIED_IDENTITY_MATCH",
+      explanation: "Verified normalized identity identifiers match",
+    });
+  }
+  if (verifiedMatch("commercialRegistry")) {
+    reasons.push({
+      field: "commercialRegistry",
+      code: "VERIFIED_COMMERCIAL_REGISTRY_MATCH",
+      explanation: "Verified normalized commercial registries match",
+    });
+  }
+  if (verifiedMatch("externalId")) {
+    reasons.push({
+      field: "externalId",
+      code: "TRUSTED_EXTERNAL_ID_MATCH",
+      explanation: "Trusted normalized external identifiers match",
+    });
+  }
+  if (match("email")) {
+    const deterministic =
+      policy.verifiedEmailIsUniquePerParty && verifiedMatch("email");
+    reasons.push({
+      field: "email",
+      code: deterministic
+        ? "VERIFIED_EMAIL_MATCH"
+        : "UNVERIFIED_EMAIL_MATCH",
+      explanation: deterministic
+        ? "Verified normalized emails match under the configured uniqueness policy"
+        : "Normalized emails match and require human review",
+    });
+  }
+  if (match("phone")) {
+    const deterministic =
+      policy.verifiedPhoneIsUniquePerParty && verifiedMatch("phone");
+    reasons.push({
+      field: "phone",
+      code: deterministic
+        ? "VERIFIED_PHONE_MATCH"
+        : "UNVERIFIED_PHONE_MATCH",
+      explanation: deterministic
+        ? "Verified normalized phones match under the configured uniqueness policy"
+        : "Normalized phones match but shared-number policy requires human review",
+    });
   }
 
   const nameFields =
@@ -548,9 +593,7 @@ function duplicateReasons(candidate: Party, other: Party): DuplicateReason[] {
     ["city", "CITY_MATCH"],
     ["employer", "EMPLOYER_MATCH"],
   ] as const) {
-    const left = candidate.fields[field]?.normalizedValue;
-    const right = other.fields[field]?.normalizedValue;
-    if (left && right && left === right) {
+    if (match(field)) {
       reasons.push({
         field,
         code,
@@ -558,7 +601,6 @@ function duplicateReasons(candidate: Party, other: Party): DuplicateReason[] {
       });
     }
   }
-
   return reasons;
 }
 
@@ -574,8 +616,33 @@ function isDeterministic(reasons: readonly DuplicateReason[]): boolean {
   );
 }
 
+function stateReferencesParty(value: unknown, partyId: string): boolean {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) {
+    return value.some((entry) => stateReferencesParty(entry, partyId));
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    record.partyId === partyId ||
+    record.survivorPartyId === partyId ||
+    record.mergedPartyId === partyId
+  ) {
+    return true;
+  }
+  return Object.values(record).some((entry) =>
+    stateReferencesParty(entry, partyId),
+  );
+}
+
 export class CustomerIdentityService {
-  constructor(private readonly repository: CustomerIdentityRepository) {}
+  private readonly policy: CustomerIdentityPolicy;
+
+  constructor(
+    private readonly repository: CustomerIdentityRepository,
+    policy: Partial<CustomerIdentityPolicy> = {},
+  ) {
+    this.policy = { ...DEFAULT_POLICY, ...policy };
+  }
 
   createParty(command: CreatePartyCommand): Party {
     return this.repository.transaction((state) =>
@@ -584,12 +651,9 @@ export class CustomerIdentityService {
   }
 
   getParty(context: CommandContext, partyId: string): Party {
-    return this.repository.read((state) => {
-      const party = requireParty(
-        state as CustomerIdentityState,
-        context.tenantId,
-        partyId,
-      );
+    return this.repository.read((readonlyState) => {
+      const state = readonlyState as CustomerIdentityState;
+      const party = requireParty(state, context.tenantId, partyId);
       assertCustomerAuthority(context, "READ", resourceForParty(party));
       return party;
     });
@@ -687,31 +751,21 @@ export class CustomerIdentityService {
         resourceType: "LEAD",
         resourceId: "NEW",
       });
-
       const party = command.partyId
         ? requireParty(state, context.tenantId, command.partyId)
         : null;
       const account = command.customerAccountId
-        ? state.customerAccounts.get(command.customerAccountId)
+        ? requireAccount(state, context.tenantId, command.customerAccountId)
         : null;
-      if (command.customerAccountId && !account) {
-        throw new CustomerIdentityError(
-          "NOT_FOUND",
-          "Customer Account was not found",
-        );
-      }
-      if (account && account.tenantId !== context.tenantId) {
-        throw new CustomerIdentityError(
-          "TENANT_SCOPE_MISMATCH",
-          "Customer Account tenant does not match command tenant",
-        );
-      }
-
+      const effectivePartyId = assertSubjectConsistency(
+        party?.id ?? null,
+        account,
+      );
       const timestamp = now(context);
       const lead: CustomerLead = {
         id: nextEntityId(state, "lead"),
         tenantId: context.tenantId,
-        partyId: party?.id ?? account?.partyId ?? null,
+        partyId: effectivePartyId,
         customerAccountId: account?.id ?? null,
         legacyLeadId: command.legacyLeadId ?? null,
         serviceLine: command.serviceLine,
@@ -851,26 +905,59 @@ export class CustomerIdentityService {
       assertCustomerAuthority(context, "CONVERT", resourceForLead(lead));
       assertExpectedVersion(context.expectedVersion, lead.version);
 
-      if (lead.conversion && !command.allowAdditionalOpportunityExplicit) {
-        const existingParty = requireParty(
+      if (lead.conversion) {
+        const party = requireParty(
           state,
           context.tenantId,
           lead.conversion.partyId,
         );
-        const existingAccount = lead.conversion.customerAccountId
-          ? state.customerAccounts.get(lead.conversion.customerAccountId) ?? null
+        const account = lead.conversion.customerAccountId
+          ? requireAccount(
+              state,
+              context.tenantId,
+              lead.conversion.customerAccountId,
+            )
           : null;
-        const existingOpportunity = lead.conversion.opportunityId
-          ? state.opportunities.get(lead.conversion.opportunityId) ?? null
+        let opportunity = lead.conversion.opportunityId
+          ? requireOpportunity(
+              state,
+              context.tenantId,
+              lead.conversion.opportunityId,
+            )
           : null;
-        const existingResult = {
+        if (command.allowAdditionalOpportunityExplicit) {
+          if (!command.createOpportunity || !command.opportunity) {
+            throw new CustomerIdentityError(
+              "VALIDATION_ERROR",
+              "Explicit additional conversion requires Opportunity input",
+            );
+          }
+          opportunity = createOpportunityInState(state, {
+            context,
+            partyId: party.id,
+            customerAccountId: account?.id ?? null,
+            sourceLeadId: lead.id,
+            branchId: lead.branchId,
+            departmentId: lead.departmentId,
+            teamId: lead.teamId,
+            ownerUserId: lead.ownerUserId,
+            serviceLine: lead.serviceLine,
+            projectId: command.opportunity.projectId ?? lead.projectId,
+            unitId: command.opportunity.unitId ?? lead.unitId,
+            expectedValue: command.opportunity.expectedValue,
+            probability: command.opportunity.probability,
+            expectedCloseAt: command.opportunity.expectedCloseAt,
+            creationSource: command.opportunity.creationSource,
+          });
+        }
+        const result = {
           lead,
-          party: existingParty,
-          customerAccount: existingAccount,
-          opportunity: existingOpportunity,
+          party,
+          customerAccount: account,
+          opportunity,
         };
-        state.idempotencyResults.set(cacheKey, existingResult);
-        return existingResult;
+        state.idempotencyResults.set(cacheKey, result);
+        return result;
       }
 
       let party = lead.partyId
@@ -897,11 +984,11 @@ export class CustomerIdentityService {
         });
       }
 
-      let customerAccount = lead.customerAccountId
-        ? state.customerAccounts.get(lead.customerAccountId) ?? null
+      let account = lead.customerAccountId
+        ? requireAccount(state, context.tenantId, lead.customerAccountId)
         : null;
-      if (!customerAccount && command.createCustomerAccount) {
-        customerAccount = createCustomerAccountInState(
+      if (!account && command.createCustomerAccount) {
+        account = createCustomerAccountInState(
           state,
           context,
           party,
@@ -920,7 +1007,7 @@ export class CustomerIdentityService {
         opportunity = createOpportunityInState(state, {
           context,
           partyId: party.id,
-          customerAccountId: customerAccount?.id ?? null,
+          customerAccountId: account?.id ?? null,
           sourceLeadId: lead.id,
           branchId: lead.branchId,
           departmentId: lead.departmentId,
@@ -939,13 +1026,13 @@ export class CustomerIdentityService {
       const converted: CustomerLead = {
         ...lead,
         partyId: party.id,
-        customerAccountId: customerAccount?.id ?? null,
+        customerAccountId: account?.id ?? null,
         stage: "CONVERTED",
         conversion: {
           convertedAt: now(context),
           convertedByActorId: context.actorId,
           partyId: party.id,
-          customerAccountId: customerAccount?.id ?? null,
+          customerAccountId: account?.id ?? null,
           opportunityId: opportunity?.id ?? null,
           idempotencyKey: key,
         },
@@ -965,7 +1052,7 @@ export class CustomerIdentityService {
       const result = {
         lead: converted,
         party,
-        customerAccount,
+        customerAccount: account,
         opportunity,
       };
       state.idempotencyResults.set(cacheKey, result);
@@ -1001,7 +1088,7 @@ export class CustomerIdentityService {
         if (!command.reopenAuthorized || command.nextStage !== "QUALIFICATION") {
           throw new CustomerIdentityError(
             "INVALID_STATE_TRANSITION",
-            "Final Opportunity stage requires an authorized audited reopen",
+            "A final Opportunity requires an authorized audited reopen",
           );
         }
         requireReason(context, "ReopenOpportunity");
@@ -1097,7 +1184,6 @@ export class CustomerIdentityService {
         resourceId: opportunity.id,
       });
       assertExpectedVersion(context.expectedVersion, opportunity.version);
-
       const timestamp = now(context);
       const updated: CustomerOpportunity = {
         ...opportunity,
@@ -1157,7 +1243,6 @@ export class CustomerIdentityService {
         "MERGE_PREVIEW",
         resourceForParty(candidate),
       );
-
       const suggestions: DuplicateSuggestion[] = [];
       for (const other of state.parties.values()) {
         if (
@@ -1167,13 +1252,14 @@ export class CustomerIdentityService {
         ) {
           continue;
         }
-        const reasons = duplicateReasons(candidate, other);
+        const reasons = duplicateReasons(candidate, other, this.policy);
         if (reasons.length === 0) continue;
         const level = isDeterministic(reasons)
           ? "DETERMINISTIC_MATCH"
           : "POSSIBLE_MATCH";
+        const reviewId = nextEntityId(state, "duplicate-review");
         const suggestion: DuplicateSuggestion = {
-          reviewId: nextEntityId(state, "duplicate-review"),
+          reviewId,
           tenantId: context.tenantId,
           candidatePartyId: candidate.id,
           matchedPartyId: other.id,
@@ -1183,21 +1269,11 @@ export class CustomerIdentityService {
           minimalDisclosure: {
             level,
             reasonCodes: reasons.map((reason) => reason.code),
-            reviewId: "",
+            reviewId,
           },
         };
-        const completeSuggestion: DuplicateSuggestion = {
-          ...suggestion,
-          minimalDisclosure: {
-            ...suggestion.minimalDisclosure,
-            reviewId: suggestion.reviewId,
-          },
-        };
-        state.duplicateSuggestions.set(
-          completeSuggestion.reviewId,
-          completeSuggestion,
-        );
-        suggestions.push(completeSuggestion);
+        state.duplicateSuggestions.set(reviewId, suggestion);
+        suggestions.push(suggestion);
       }
       writeAudit(
         state,
@@ -1216,7 +1292,7 @@ export class CustomerIdentityService {
     context: CommandContext,
     reviewId: string,
   ): DuplicateSuggestion {
-    return this.repository.read((state) => {
+    return this.repository.transaction((state) => {
       const suggestion = state.duplicateSuggestions.get(reviewId);
       if (!suggestion) {
         throw new CustomerIdentityError(
@@ -1231,7 +1307,7 @@ export class CustomerIdentityService {
         );
       }
       const candidate = requireParty(
-        state as CustomerIdentityState,
+        state,
         context.tenantId,
         suggestion.candidatePartyId,
       );
@@ -1239,6 +1315,16 @@ export class CustomerIdentityService {
         context,
         "MERGE_PREVIEW",
         resourceForParty(candidate),
+      );
+      requireReason(context, "ConfirmDuplicate");
+      writeAudit(
+        state,
+        context,
+        "ConfirmDuplicate",
+        "DUPLICATE_REVIEW",
+        reviewId,
+        null,
+        suggestion,
       );
       return suggestion;
     });
@@ -1250,9 +1336,9 @@ export class CustomerIdentityService {
     mergedPartyId: string,
     fieldChoices: readonly MergeFieldChoice[],
   ): MergePreview {
-    return this.repository.read((state) =>
+    return this.repository.read((readonlyState) =>
       this.previewMergeInState(
-        state as CustomerIdentityState,
+        readonlyState as CustomerIdentityState,
         context,
         survivorPartyId,
         mergedPartyId,
@@ -1309,15 +1395,6 @@ export class CustomerIdentityService {
       { requireCompanyScope: crossBranch },
     );
 
-    const conflicts = [...new Set([
-      ...Object.keys(survivor.fields),
-      ...Object.keys(merged.fields),
-    ])].filter((field) => {
-      const left = survivor.fields[field]?.normalizedValue;
-      const right = merged.fields[field]?.normalizedValue;
-      return Boolean(left && right && left !== right);
-    });
-
     for (const choice of fieldChoices) {
       if (
         choice.sourcePartyId !== survivor.id &&
@@ -1325,11 +1402,22 @@ export class CustomerIdentityService {
       ) {
         throw new CustomerIdentityError(
           "VALIDATION_ERROR",
-          "Field choice must reference one of the two merge Parties",
+          "Field choice must reference one of the merge Parties",
           { field: choice.field },
         );
       }
     }
+
+    const conflicts = [
+      ...new Set([
+        ...Object.keys(survivor.fields),
+        ...Object.keys(merged.fields),
+      ]),
+    ].filter((field) => {
+      const left = survivor.fields[field]?.normalizedValue;
+      const right = merged.fields[field]?.normalizedValue;
+      return Boolean(left && right && left !== right);
+    });
 
     return {
       tenantId: context.tenantId,
@@ -1414,25 +1502,22 @@ export class CustomerIdentityService {
       const choices = new Map(
         command.fieldChoices.map((choice) => [choice.field, choice.sourcePartyId]),
       );
-      const fieldNames = new Set([
+      const fields: Record<string, PartyField> = {};
+      for (const field of new Set([
         ...Object.keys(preview.survivorBefore.fields),
         ...Object.keys(preview.mergedBefore.fields),
-      ]);
-      const mergedFields: Record<string, PartyField> = {};
-      for (const field of fieldNames) {
+      ])) {
         const sourcePartyId =
           choices.get(field) ?? preview.survivorBefore.id;
-        const source =
-          sourcePartyId === preview.mergedBefore.id
+        const selected =
+          (sourcePartyId === preview.mergedBefore.id
             ? preview.mergedBefore.fields[field]
-            : preview.survivorBefore.fields[field];
-        const fallback =
-          sourcePartyId === preview.mergedBefore.id
+            : preview.survivorBefore.fields[field]) ??
+          (sourcePartyId === preview.mergedBefore.id
             ? preview.survivorBefore.fields[field]
-            : preview.mergedBefore.fields[field];
-        const selected = source ?? fallback;
+            : preview.mergedBefore.fields[field]);
         if (!selected) continue;
-        mergedFields[field] = {
+        fields[field] = {
           ...selected,
           source:
             sourcePartyId === preview.mergedBefore.id
@@ -1455,7 +1540,7 @@ export class CustomerIdentityService {
 
       const survivorAfter: Party = {
         ...preview.survivorBefore,
-        fields: mergedFields,
+        fields,
         aliases: [
           ...new Set([
             ...preview.survivorBefore.aliases,
@@ -1480,50 +1565,37 @@ export class CustomerIdentityService {
         state.aliases.set(alias, survivorAfter.id);
       }
 
-      for (const id of preview.relationshipsToTransfer.customerAccountIds) {
-        const record = state.customerAccounts.get(id);
-        if (record) {
-          state.customerAccounts.set(id, {
-            ...record,
-            partyId: survivorAfter.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
+      const transfer = <T extends { partyId: string | null; version: number }>(
+        map: Map<string, T>,
+        ids: readonly string[],
+      ): void => {
+        for (const id of ids) {
+          const record = map.get(id);
+          if (record) {
+            map.set(id, {
+              ...record,
+              partyId: survivorAfter.id,
+              version: record.version + 1,
+              ...(Object.hasOwn(record, "updatedAt")
+                ? { updatedAt: timestamp }
+                : {}),
+            });
+          }
         }
-      }
-      for (const id of preview.relationshipsToTransfer.leadIds) {
-        const record = state.leads.get(id);
-        if (record) {
-          state.leads.set(id, {
-            ...record,
-            partyId: survivorAfter.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
-        }
-      }
-      for (const id of preview.relationshipsToTransfer.opportunityIds) {
-        const record = state.opportunities.get(id);
-        if (record) {
-          state.opportunities.set(id, {
-            ...record,
-            partyId: survivorAfter.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
-        }
-      }
-      for (const id of preview.relationshipsToTransfer
-        .communicationPreferenceIds) {
-        const record = state.communicationPreferences.get(id);
-        if (record) {
-          state.communicationPreferences.set(id, {
-            ...record,
-            partyId: survivorAfter.id,
-            version: record.version + 1,
-          });
-        }
-      }
+      };
+      transfer(
+        state.customerAccounts,
+        preview.relationshipsToTransfer.customerAccountIds,
+      );
+      transfer(state.leads, preview.relationshipsToTransfer.leadIds);
+      transfer(
+        state.opportunities,
+        preview.relationshipsToTransfer.opportunityIds,
+      );
+      transfer(
+        state.communicationPreferences,
+        preview.relationshipsToTransfer.communicationPreferenceIds,
+      );
 
       const mergeRecord: PartyMergeRecord = {
         id: nextEntityId(state, "party-merge"),
@@ -1617,10 +1689,44 @@ export class CustomerIdentityService {
       if (merge.blockingDependencies.length > 0) {
         throw new CustomerIdentityError(
           "BLOCKED_BY_DEPENDENCY",
-          "Party merge reversal is blocked by later dependencies",
+          "Party merge reversal is blocked by recorded dependencies",
           { dependencies: merge.blockingDependencies },
         );
       }
+
+      const mergeAudit = state.audit.find(
+        (entry) =>
+          entry.action === "MergeParties" && entry.entityId === merge.id,
+      );
+      const laterChanges = mergeAudit
+        ? state.audit.filter(
+            (entry) =>
+              entry.sequence > mergeAudit.sequence &&
+              entry.action !== "RegisterMergeDependency" &&
+              (entry.entityId === merge.survivorPartyId ||
+                entry.entityId === merge.mergedPartyId ||
+                stateReferencesParty(
+                  entry.afterState,
+                  merge.survivorPartyId,
+                ) ||
+                stateReferencesParty(entry.afterState, merge.mergedPartyId)),
+          )
+        : [];
+      if (laterChanges.length > 0) {
+        throw new CustomerIdentityError(
+          "BLOCKED_BY_DEPENDENCY",
+          "Party merge reversal would overwrite post-merge values or relationships",
+          {
+            dependencies: laterChanges.map((entry) => ({
+              type: entry.entityType,
+              id: entry.entityId,
+              action: entry.action,
+              auditSequence: entry.sequence,
+            })),
+          },
+        );
+      }
+
       const crossBranch =
         merge.preview.survivorBefore.branchId !==
         merge.preview.mergedBefore.branchId;
@@ -1645,52 +1751,37 @@ export class CustomerIdentityService {
         state.aliases.delete(alias);
       }
 
-      for (const id of merge.preview.relationshipsToTransfer
-        .customerAccountIds) {
-        const record = state.customerAccounts.get(id);
-        if (record) {
-          state.customerAccounts.set(id, {
-            ...record,
-            partyId: merge.preview.mergedBefore.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
+      const restore = <T extends { partyId: string | null; version: number }>(
+        map: Map<string, T>,
+        ids: readonly string[],
+      ): void => {
+        for (const id of ids) {
+          const record = map.get(id);
+          if (record) {
+            map.set(id, {
+              ...record,
+              partyId: merge.preview.mergedBefore.id,
+              version: record.version + 1,
+              ...(Object.hasOwn(record, "updatedAt")
+                ? { updatedAt: timestamp }
+                : {}),
+            });
+          }
         }
-      }
-      for (const id of merge.preview.relationshipsToTransfer.leadIds) {
-        const record = state.leads.get(id);
-        if (record) {
-          state.leads.set(id, {
-            ...record,
-            partyId: merge.preview.mergedBefore.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
-        }
-      }
-      for (const id of merge.preview.relationshipsToTransfer
-        .opportunityIds) {
-        const record = state.opportunities.get(id);
-        if (record) {
-          state.opportunities.set(id, {
-            ...record,
-            partyId: merge.preview.mergedBefore.id,
-            version: record.version + 1,
-            updatedAt: timestamp,
-          });
-        }
-      }
-      for (const id of merge.preview.relationshipsToTransfer
-        .communicationPreferenceIds) {
-        const record = state.communicationPreferences.get(id);
-        if (record) {
-          state.communicationPreferences.set(id, {
-            ...record,
-            partyId: merge.preview.mergedBefore.id,
-            version: record.version + 1,
-          });
-        }
-      }
+      };
+      restore(
+        state.customerAccounts,
+        merge.preview.relationshipsToTransfer.customerAccountIds,
+      );
+      restore(state.leads, merge.preview.relationshipsToTransfer.leadIds);
+      restore(
+        state.opportunities,
+        merge.preview.relationshipsToTransfer.opportunityIds,
+      );
+      restore(
+        state.communicationPreferences,
+        merge.preview.relationshipsToTransfer.communicationPreferenceIds,
+      );
 
       const reversed: PartyMergeRecord = {
         ...merge,
@@ -1781,19 +1872,18 @@ export class CustomerIdentityService {
     channel: CommunicationPreference["channel"],
     purpose: CommunicationPreference["purpose"],
   ): boolean {
-    return this.repository.read((state) => {
-      const party = requireParty(
-        state as CustomerIdentityState,
-        context.tenantId,
-        partyId,
-      );
+    return this.repository.read((readonlyState) => {
+      const state = readonlyState as CustomerIdentityState;
+      const party = requireParty(state, context.tenantId, partyId);
       assertCustomerAuthority(context, "READ", resourceForParty(party));
+      const branchId = context.scope.branchId ?? null;
       const preference = [...state.communicationPreferences.values()]
         .filter(
           (record) =>
             record.partyId === party.id &&
             record.channel === channel &&
-            record.purpose === purpose,
+            record.purpose === purpose &&
+            (record.branchId === null || record.branchId === branchId),
         )
         .sort((left, right) => right.version - left.version)[0];
       return Boolean(
@@ -1803,10 +1893,7 @@ export class CustomerIdentityService {
     });
   }
 
-  applyLegalHold(
-    context: CommandContext,
-    partyId: string,
-  ): Party {
+  applyLegalHold(context: CommandContext, partyId: string): Party {
     return this.repository.transaction((state) => {
       const party = requireParty(state, context.tenantId, partyId);
       assertCustomerAuthority(
@@ -1836,10 +1923,7 @@ export class CustomerIdentityService {
     });
   }
 
-  requestDeletion(
-    context: CommandContext,
-    partyId: string,
-  ): Party {
+  requestDeletion(context: CommandContext, partyId: string): Party {
     return this.repository.transaction((state) => {
       const party = requireParty(state, context.tenantId, partyId);
       assertCustomerAuthority(
