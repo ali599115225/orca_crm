@@ -202,7 +202,7 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
       package: "EXEC-003 v2",
       state: "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL",
       digestAlgorithm:
-        "sha256-path-length-content-v3-derived-security-dependencies",
+        "sha256-path-length-content-v4-final-closure-metadata-excluded",
       baseSha: "001b2c853e99ea055f161dcd294d968bbf25c9ad",
       checkoutMode: "PR_MERGE_REF",
     });
@@ -458,6 +458,26 @@ describe("EXEC-003 v2 repository-bound evidence identity", () => {
       );
     } finally {
       rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("EXEC-003 administrative closure metadata digest boundary", () => {
+  it("excludes only finalZ8Closure while retaining security-relevant registry state", async () => {
+    const digestModule = await loadDigestModule();
+    const root = mkdtempSync(path.join(os.tmpdir(), "orca-exec003-registry-digest-"));
+    try {
+      const relativePath = "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
+      const absolutePath = path.join(root, relativePath);
+      mkdirSync(path.dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED" })}\n`);
+      const baseline = digestModule.hashExec003EvidenceFiles(root, [relativePath]);
+      writeFileSync(absolutePath, `${JSON.stringify({ state: "CLOSED", finalZ8Closure: { date: "2026-07-26" } })}\n`);
+      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).toBe(baseline);
+      writeFileSync(absolutePath, `${JSON.stringify({ state: "IN_EXECUTION", finalZ8Closure: { date: "2026-07-26" } })}\n`);
+      expect(digestModule.hashExec003EvidenceFiles(root, [relativePath])).not.toBe(baseline);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

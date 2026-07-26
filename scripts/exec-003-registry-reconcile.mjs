@@ -8,7 +8,7 @@ const IDENTITY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
 const BASE_SHA = "001b2c853e99ea055f161dcd294d968bbf25c9ad";
 const DIGEST_ALGORITHM =
-  "sha256-path-length-content-v3-derived-security-dependencies";
+  "sha256-path-length-content-v4-final-closure-metadata-excluded";
 const C17_SECURITY_DEPENDENCY_FILE = "app/actions/aiActions.ts";
 
 const REQUIRED_ALLOWED_PATHS = [

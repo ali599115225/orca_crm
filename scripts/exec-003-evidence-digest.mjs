@@ -12,6 +12,10 @@ import ts from "typescript";
 const MANIFEST_PATH =
   "tests/foundation/g5-exec-003-behavior-evidence-manifest.ts";
 
+const EXECUTION_REGISTRY_PATH =
+  "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
+const ADMINISTRATIVE_REGISTRY_FIELDS = Object.freeze(["finalZ8Closure"]);
+
 const REQUIRED_SECURITY_MODULES = Object.freeze([
   "@/lib/api-auth-guard",
   "@/lib/agents/access",
@@ -609,7 +613,11 @@ function normalizedContent(root, relativePath) {
   if (!existsSync(absolute) || !statSync(absolute).isFile()) {
     throw new Error(`Digest file is missing or unreadable: ${relativePath}`);
   }
-  return readFileSync(absolute, "utf8").replaceAll("\r\n", "\n");
+  const content = readFileSync(absolute, "utf8").replaceAll("\r\n", "\n");
+  if (relativePath !== EXECUTION_REGISTRY_PATH) return content;
+  const registry = JSON.parse(content);
+  for (const field of ADMINISTRATIVE_REGISTRY_FIELDS) delete registry[field];
+  return `${JSON.stringify(registry)}\n`;
 }
 
 export function hashExec003EvidenceFiles(root, evidenceFiles) {
@@ -636,7 +644,7 @@ export function hashExec003EvidenceFiles(root, evidenceFiles) {
 export function computeExec003EvidenceDigest(root = process.cwd()) {
   const derivation = deriveExec003EvidenceFiles(root);
   return {
-    algorithm: "sha256-path-length-content-v3-derived-security-dependencies",
+    algorithm: "sha256-path-length-content-v4-final-closure-metadata-excluded",
     evidenceDigest: hashExec003EvidenceFiles(
       root,
       derivation.derivedEvidenceFiles,
