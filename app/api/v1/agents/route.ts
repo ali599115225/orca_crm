@@ -75,7 +75,9 @@ export async function GET() {
             usageMeter: slot.usageMeter
               ? {
                   metricType: slot.usageMeter.metricType,
-                  limitValue: slot.usageMeter.limitValue,
+                  recordedLimitValue: slot.usageMeter.limitValue,
+                  limitValue: null,
+                  commercialLimitApplied: false,
                   usageValue: slot.usageMeter.usageValue,
                   resetAt: slot.usageMeter.resetAt,
                 }
@@ -98,6 +100,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: payload,
+      commercialLimitApplied: false,
       permissions: {
         canManage: ["ADMIN", "SALES_MANAGER"].includes(access.role),
       },
