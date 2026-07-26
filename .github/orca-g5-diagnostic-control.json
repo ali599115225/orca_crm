@@ -1,7 +1,6 @@
 {
-  "artifact_id": 8625526892,
-  "source_run": 30180958694,
-  "source_head": "afe128db833615857251809ea2a39bf040664fdb",
+  "source_job": 89737995008,
+  "source_run": 30181233808,
   "read_only": true,
   "merge_authorized": false
 }
