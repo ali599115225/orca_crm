@@ -1,0 +1,31 @@
+name: EXEC-005 Closure Artifact
+
+on:
+  push:
+    branches:
+      - work/orca-exec-005-closure-reconciliation-20260726
+    paths:
+      - "scripts/exec-005-closure-reconcile.mjs"
+      - ".github/workflows/exec-005-closure-artifact.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Generate reconciled governance files
+        run: node scripts/exec-005-closure-reconcile.mjs
+      - name: Upload reconciled files
+        uses: actions/upload-artifact@v4
+        with:
+          name: exec-005-closure-reconciliation
+          path: |
+            docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json
+            docs/zero-based/Z8/ORCA_Z8_PRIORITIZED_EXECUTION_ROADMAP.md
+          if-no-files-found: error
+          retention-days: 1
