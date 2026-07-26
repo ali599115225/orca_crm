@@ -1,0 +1,9 @@
+{
+  "central_sha": "fa45faf262f2bff0e3822d6514b9852dd1f94d6d",
+  "target_branch": "work/orca-z8-final-revalidation-20260726",
+  "expected_scope_files": 9,
+  "registered_packages": 14,
+  "covered_gap_ids": 32,
+  "packages_in_execution": 0,
+  "main_or_production_authorized": false
+}
