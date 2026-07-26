@@ -13,6 +13,10 @@ const hardening = readFileSync(
   "prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql",
   "utf8",
 );
+const authorityAvailability = readFileSync(
+  "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql",
+  "utf8",
+);
 const drill = readFileSync(
   "scripts/exec-006-postgres-concurrency.mjs",
   "utf8",
@@ -28,32 +32,35 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(workflow).toContain("backfill=false");
   });
 
-  it("applies authority and identity prerequisites before EXEC-006", () => {
+  it("applies prerequisite and EXEC-006 migrations in step order", () => {
     const stepsOffset = workflow.indexOf("\n    steps:");
     expect(stepsOffset).toBeGreaterThan(-1);
     const applicationSteps = workflow.slice(stepsOffset);
 
     const authority = applicationSteps.indexOf(
-      "20260726043000_exec_004_organization_authority",
+      "- name: Apply EXEC-004 authority prerequisite",
     );
     const identity = applicationSteps.indexOf(
-      "20260726123000_exec_005_customer_identity_lifecycle",
+      "- name: Apply EXEC-005 identity foundation",
     );
     const identityHardening = applicationSteps.indexOf(
-      "20260726124500_exec_005_customer_identity_integrity_hardening",
+      "- name: Apply EXEC-005 integrity hardening",
     );
     const commitment = applicationSteps.indexOf(
-      "20260726160000_exec_006_unit_commitment_reservation_tours",
+      "- name: Apply EXEC-006 commitment foundation",
     );
     const commitmentHardening = applicationSteps.indexOf(
-      "20260726161000_exec_006_unit_commitment_integrity_hardening",
+      "- name: Apply EXEC-006 integrity hardening",
     );
-
+    const authorityHardening = applicationSteps.indexOf(
+      "- name: Apply EXEC-006 authority and availability hardening",
+    );
     expect(authority).toBeGreaterThan(-1);
     expect(identity).toBeGreaterThan(authority);
     expect(identityHardening).toBeGreaterThan(identity);
     expect(commitment).toBeGreaterThan(identityHardening);
     expect(commitmentHardening).toBeGreaterThan(commitment);
+    expect(authorityHardening).toBeGreaterThan(commitmentHardening);
   });
 
   it("runs the real multi-connection race drill", () => {
@@ -79,6 +86,27 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(hardening).toContain('v_before."version" <> p_expected_version');
     expect(drill).toContain("releaseExtendRace");
     expect(drill).toContain("lost or incoherent update");
+  });
+
+  it("proves independent elevated approval in PostgreSQL", () => {
+    expect(authorityAvailability).toContain(
+      "exec006_assert_independent_approval",
+    );
+    expect(authorityAvailability).toContain("self approval denied");
+    expect(authorityAvailability).toContain(
+      "unit_commitments_approval_policy_guard",
+    );
+    expect(drill).toContain("self-approved long Hold duration was accepted");
+    expect(drill).toContain("independentLongDurationApproval");
+  });
+
+  it("proves final contractual links and protected release", () => {
+    expect(authorityAvailability).toContain('FROM "rental_leases"');
+    expect(authorityAvailability).toContain(
+      "unit_commitments_final_link_release_guard",
+    );
+    expect(drill).toContain("active RentalLease did not block availability");
+    expect(drill).toContain("rentalLeaseBlocksAvailability");
   });
 
   it("proves tours do not create availability blockers", () => {
