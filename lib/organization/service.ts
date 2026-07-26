@@ -1,6 +1,6 @@
 import {
+  canGrantOrganizationRole,
   evaluateOrganizationAuthority,
-  roleHasOrganizationPermission,
 } from "@/lib/organization/authority";
 import {
   type EnabledBranchService,
@@ -48,6 +48,10 @@ export interface OrganizationCommandRepository {
     enabled: boolean;
     managerUserId?: string | null;
   }): Promise<EnabledBranchService>;
+  findScopeAssignment(input: {
+    tenantId: string;
+    assignmentId: string;
+  }): Promise<OrganizationScopeAssignmentRecord | null>;
   createScopeAssignmentWithAudit(input: {
     tenantId: string;
     actorUserId: string;
@@ -79,26 +83,70 @@ export class OrganizationAuthorityError extends Error {
   }
 }
 
+function authorityInput(
+  context: OrganizationCommandContext,
+  permission: OrganizationPermissionKey,
+  resource: OrganizationResourceScope,
+  assignments: readonly OrganizationScopeAssignment[],
+  initiatedByUserId?: string | null,
+): OrganizationAuthorityInput {
+  return {
+    actorUserId: context.actorUserId,
+    actorTenantId: context.actorTenantId,
+    permission,
+    resource,
+    assignments,
+    enabledBranchServices: context.enabledBranchServices,
+    initiatedByUserId,
+    now: context.now,
+  };
+}
+
 function requireAuthority(
   context: OrganizationCommandContext,
   permission: OrganizationPermissionKey,
   resource: OrganizationResourceScope,
   initiatedByUserId?: string | null,
 ): void {
-  const input: OrganizationAuthorityInput = {
-    actorUserId: context.actorUserId,
-    actorTenantId: context.actorTenantId,
-    permission,
-    resource,
-    assignments: context.assignments,
-    enabledBranchServices: context.enabledBranchServices,
-    initiatedByUserId,
-    now: context.now,
-  };
-  const decision = evaluateOrganizationAuthority(input);
+  const decision = evaluateOrganizationAuthority(
+    authorityInput(
+      context,
+      permission,
+      resource,
+      context.assignments,
+      initiatedByUserId,
+    ),
+  );
 
   if (!decision.allowed) {
     throw new OrganizationAuthorityError(decision.code);
+  }
+}
+
+function requireRoleDelegationAuthority(
+  context: OrganizationCommandContext,
+  targetRole: OrganizationSecurityRole,
+  resource: OrganizationResourceScope,
+): void {
+  requireAuthority(context, "organization.assignment.manage", resource);
+
+  const canDelegate = context.assignments.some((assignment) => {
+    if (!canGrantOrganizationRole(assignment.securityRole, targetRole)) {
+      return false;
+    }
+
+    return evaluateOrganizationAuthority(
+      authorityInput(
+        context,
+        "organization.assignment.manage",
+        resource,
+        [assignment],
+      ),
+    ).allowed;
+  });
+
+  if (!canDelegate) {
+    throw new OrganizationAuthorityError("ROLE_DELEGATION_DENIED");
   }
 }
 
@@ -125,6 +173,50 @@ function assignmentResource(input: {
         ? input.assignedResourceId
         : null,
   };
+}
+
+function validateAssignmentScope(input: {
+  scopeType: OrganizationScopeType;
+  branchId?: string | null;
+  departmentId?: string | null;
+  teamId?: string | null;
+  assignedResourceType?: string | null;
+  assignedResourceId?: string | null;
+}): void {
+  const hasBranch = Boolean(input.branchId);
+  const hasDepartment = Boolean(input.departmentId);
+  const hasTeam = Boolean(input.teamId);
+  const hasResourceType = Boolean(input.assignedResourceType);
+  const hasResourceId = Boolean(input.assignedResourceId);
+
+  const valid =
+    (input.scopeType === "COMPANY" &&
+      !hasBranch &&
+      !hasDepartment &&
+      !hasTeam &&
+      !hasResourceType &&
+      !hasResourceId) ||
+    (input.scopeType === "BRANCH" &&
+      hasBranch &&
+      !hasDepartment &&
+      !hasTeam &&
+      !hasResourceType &&
+      !hasResourceId) ||
+    (input.scopeType === "DEPARTMENT" &&
+      hasDepartment &&
+      !hasTeam &&
+      !hasResourceType &&
+      !hasResourceId) ||
+    (input.scopeType === "TEAM" &&
+      hasDepartment &&
+      hasTeam &&
+      !hasResourceType &&
+      !hasResourceId) ||
+    (input.scopeType === "ASSIGNED_RESOURCE" &&
+      hasResourceType &&
+      hasResourceId);
+
+  if (!valid) throw new Error("INVALID_ASSIGNMENT_SCOPE");
 }
 
 export async function createOrganizationBranch(
@@ -198,33 +290,19 @@ export async function assignOrganizationScope(
   if (input.userId === context.actorUserId) {
     throw new OrganizationAuthorityError("SELF_ASSIGNMENT_DENIED");
   }
+  if (input.startsAt && input.endsAt && input.endsAt <= input.startsAt) {
+    throw new Error("INVALID_ASSIGNMENT_WINDOW");
+  }
+  validateAssignmentScope(input);
 
-  requireAuthority(
+  requireRoleDelegationAuthority(
     context,
-    "organization.assignment.manage",
+    input.securityRole,
     assignmentResource({
       tenantId: context.actorTenantId,
       ...input,
     }),
   );
-
-  if (
-    !roleHasOrganizationPermission(
-      input.securityRole,
-      "organization.read",
-    )
-  ) {
-    throw new Error("INVALID_SECURITY_ROLE");
-  }
-  if (input.startsAt && input.endsAt && input.endsAt <= input.startsAt) {
-    throw new Error("INVALID_ASSIGNMENT_WINDOW");
-  }
-  if (
-    input.scopeType === "ASSIGNED_RESOURCE" &&
-    (!input.assignedResourceType || !input.assignedResourceId)
-  ) {
-    throw new Error("ASSIGNED_RESOURCE_REQUIRED");
-  }
 
   return repository.createScopeAssignmentWithAudit({
     tenantId: context.actorTenantId,
@@ -236,25 +314,36 @@ export async function assignOrganizationScope(
 export async function revokeOrganizationScope(
   context: OrganizationCommandContext,
   repository: OrganizationCommandRepository,
-  input: {
-    assignmentId: string;
-    assignmentOwnerUserId: string;
-    resource: OrganizationResourceScope;
-  },
+  input: { assignmentId: string },
 ): Promise<OrganizationScopeAssignmentRecord> {
-  if (input.assignmentOwnerUserId === context.actorUserId) {
+  const target = await repository.findScopeAssignment({
+    tenantId: context.actorTenantId,
+    assignmentId: input.assignmentId,
+  });
+  if (!target || !target.active) {
+    throw new Error("ORGANIZATION_ASSIGNMENT_NOT_FOUND");
+  }
+  if (target.userId === context.actorUserId) {
     throw new OrganizationAuthorityError("SELF_REVOCATION_DENIED");
   }
 
-  requireAuthority(
+  requireRoleDelegationAuthority(
     context,
-    "organization.assignment.manage",
-    input.resource,
+    target.securityRole,
+    assignmentResource({
+      tenantId: target.tenantId,
+      scopeType: target.scopeType,
+      branchId: target.branchId,
+      departmentId: target.departmentId,
+      teamId: target.teamId,
+      assignedResourceType: target.assignedResourceType,
+      assignedResourceId: target.assignedResourceId,
+    }),
   );
 
   return repository.revokeScopeAssignmentWithAudit({
     tenantId: context.actorTenantId,
     actorUserId: context.actorUserId,
-    assignmentId: input.assignmentId,
+    assignmentId: target.id,
   });
 }
