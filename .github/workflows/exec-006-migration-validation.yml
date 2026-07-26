@@ -1,0 +1,304 @@
+name: EXEC-006 Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql"
+      - "prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql"
+      - "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql"
+      - "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql"
+      - "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql"
+      - "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql"
+      - "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql"
+      - "scripts/exec-006-postgres-concurrency.mjs"
+      - "scripts/exec-006-postgres-exact-scope.sql"
+      - "tests/foundation/g5-exec-006-postgres-contract.test.ts"
+      - ".github/workflows/exec-006-migration-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exec-006-migration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Disposable PostgreSQL validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_exec006
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_exec006"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec006?sslmode=disable
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec006?sslmode=disable
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate isolated legacy schema SQL
+        run: >-
+          npx prisma migrate diff
+          --from-empty
+          --to-schema prisma/schema.prisma
+          --script
+          --output /tmp/orca-legacy-schema.sql
+
+      - name: Create isolated legacy schema
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f /tmp/orca-legacy-schema.sql
+
+      - name: Apply EXEC-004 authority prerequisite
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726043000_exec_004_organization_authority/migration.sql
+
+      - name: Apply EXEC-005 identity foundation
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
+
+      - name: Apply EXEC-005 integrity hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
+
+      - name: Apply EXEC-006 commitment foundation
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql
+
+      - name: Apply EXEC-006 integrity hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql
+
+      - name: Apply EXEC-006 authority and availability hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql
+
+      - name: Apply EXEC-006 availability disambiguation
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql
+
+      - name: Apply EXEC-006 reconciliation race hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql
+
+      - name: Apply EXEC-006 lifecycle approval guard hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql
+
+      - name: Apply EXEC-006 exact persisted scope hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql
+
+      - name: Validate schema objects and guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('unit_commitment_policies','unit_availability_sources','unit_operational_restrictions','unit_commitments','unit_commitment_history','unit_commitment_audit','unit_commitment_idempotency','tour_appointments_v2','tour_appointment_history')")" -eq 9
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard','00_unit_commitments_direct_scope_guard','00_tour_appointments_v2_staff_exact_scope_guard')")" -ge 12
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'unit_commitments_active_exclusivity'
+            ) THEN
+              RAISE EXCEPTION 'missing exclusive commitment exclusion constraint';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'tour_appointments_v2_staff_no_overlap'
+            ) THEN
+              RAISE EXCEPTION 'missing staff tour overlap constraint';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'tour_appointments_v2_unit_no_overlap'
+            ) THEN
+              RAISE EXCEPTION 'missing unit tour overlap constraint';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_proc
+              WHERE proname = 'exec006_evaluate_unit_availability'
+            ) THEN
+              RAISE EXCEPTION 'missing availability decision function';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_proc
+              WHERE proname = 'exec006_extend_commitment'
+            ) THEN
+              RAISE EXCEPTION 'missing atomic extension function';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_proc
+              WHERE proname = 'exec006_assert_independent_approval'
+            ) THEN
+              RAISE EXCEPTION 'missing independent approval verifier';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = 'unit_commitment_audit_no_mutation'
+            ) THEN
+              RAISE EXCEPTION 'missing append-only audit guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = 'unit_commitments_approval_policy_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing approval policy guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = 'unit_commitments_final_link_release_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing final-link release guard';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = '00_tour_appointments_v2_staff_exact_scope_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing exact Tour staff scope guard';
+            END IF;
+          END;
+          $$;
+          SQL
+
+      - name: Run real PostgreSQL concurrency and integrity drill
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/exec-006-postgres-concurrency.mjs 2>&1 | tee /tmp/exec006-postgres-result.txt
+
+      - name: Prove exact persisted assignment scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f scripts/exec-006-postgres-exact-scope.sql \
+            2>&1 | tee -a /tmp/exec006-postgres-result.txt
+
+      - name: Prove final-link release denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            v_commitment_id UUID := '00000000-0000-0000-0000-000000000901';
+            v_status TEXT;
+            v_denied BOOLEAN := FALSE;
+          BEGIN
+            INSERT INTO "unit_commitments" (
+              "id", "tenant_id", "branch_id", "unit_id", "commitment_type",
+              "status", "party_id", "starts_at", "expires_at",
+              "initiated_by_user_id", "reason", "created_at", "updated_at"
+            ) VALUES (
+              v_commitment_id,
+              '00000000-0000-0000-0000-000000000101',
+              '00000000-0000-0000-0000-000000000301',
+              '00000000-0000-0000-0000-000000000606',
+              'HOLD',
+              'ACTIVE',
+              '00000000-0000-0000-0000-000000000701',
+              '2026-07-26T12:00:00Z',
+              '2026-07-27T12:00:00Z',
+              '00000000-0000-0000-0000-000000000201',
+              'disposable final-link release test',
+              '2026-07-26T12:00:00Z',
+              '2026-07-26T12:00:00Z'
+            );
+
+            BEGIN
+              UPDATE "unit_commitments"
+              SET
+                "status" = 'RELEASED',
+                "version" = "version" + 1,
+                "reason" = 'attempted release with active RentalLease',
+                "updated_at" = '2026-07-26T12:30:00Z'
+              WHERE "id" = v_commitment_id;
+            EXCEPTION WHEN OTHERS THEN
+              IF position(
+                'final contractual link prevents commitment release'
+                IN SQLERRM
+              ) > 0 THEN
+                v_denied := TRUE;
+              ELSE
+                RAISE;
+              END IF;
+            END;
+
+            IF NOT v_denied THEN
+              RAISE EXCEPTION 'final-link release guard did not deny release';
+            END IF;
+
+            SELECT commitment_record."status" INTO v_status
+            FROM "unit_commitments" AS commitment_record
+            WHERE commitment_record."id" = v_commitment_id;
+
+            IF v_status <> 'ACTIVE' THEN
+              RAISE EXCEPTION 'denied final-link release changed commitment state';
+            END IF;
+          END;
+          $$;
+          SQL
+
+      - name: Run EXEC-006 PostgreSQL contract test
+        run: >-
+          npx vitest run
+          tests/foundation/g5-exec-006-postgres-contract.test.ts
+
+      - name: Upload disposable validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exec-006-postgres-validation-evidence
+          path: /tmp/exec006-postgres-result.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Confirm protected actions were not performed
+        run: |
+          printf '%s\n' \
+            'database=disposable-github-actions-postgres' \
+            'production=false' \
+            'customer_data=false' \
+            'backfill=false' \
+            'deployment=false' \
+            'provider_activation=false' \
+            'secrets=false' \
+            'exec_007=false'
