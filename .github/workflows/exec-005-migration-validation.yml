@@ -54,7 +54,7 @@ jobs:
         run: npm ci
 
       - name: Create isolated legacy schema
-        run: npx prisma db push --skip-generate
+        run: npx prisma db push
 
       - name: Apply EXEC-004 authority prerequisite
         run: >-
