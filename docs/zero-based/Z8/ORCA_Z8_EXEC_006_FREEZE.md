@@ -10,6 +10,7 @@
 - Owner decision status: approved by the package instruction that opened this execution cycle.
 - Prerequisite packages: `EXEC-001` through `EXEC-005` are `CLOSED`.
 - Packages in execution before this branch: `0`.
+- Scope recheck: the central branch remained exactly at the frozen base before adding the second additive hardening migration.
 
 ## Owner decisions frozen for this package
 
@@ -83,6 +84,7 @@ The new source of truth consists of:
 - No legacy-column deletion.
 - Validation occurs only on disposable PostgreSQL 16 in GitHub Actions.
 - Composite tenant-safe foreign keys and append-only triggers are mandatory where Prisma cannot express the rule.
+- The second migration is limited to strengthening approval shape, immutable identity, and atomic Extend/Reschedule command functions discovered during pre-execution SQL review; it does not expand product scope.
 
 ## Allowed paths
 
@@ -96,11 +98,12 @@ The new source of truth consists of:
 8. `lib/unit-commitment/service.ts`
 9. `lib/unit-commitment/sql-repository.ts`
 10. `prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql`
-11. `scripts/exec-006-postgres-concurrency.mjs`
-12. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
-13. `tests/foundation/g5-exec-006-security.test.ts`
-14. `tests/foundation/g5-exec-006-schema-contract.test.ts`
-15. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
+11. `prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql`
+12. `scripts/exec-006-postgres-concurrency.mjs`
+13. `tests/foundation/g5-exec-006-unit-commitment.test.ts`
+14. `tests/foundation/g5-exec-006-security.test.ts`
+15. `tests/foundation/g5-exec-006-schema-contract.test.ts`
+16. `tests/foundation/g5-exec-006-postgres-contract.test.ts`
 
 Any additional path requires a documented scope reason and a renewed conflict check against the central branch before modification.
 
