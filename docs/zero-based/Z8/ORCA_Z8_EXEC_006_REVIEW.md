@@ -12,6 +12,7 @@
 - PR state at review: `DRAFT / OPEN / UNMERGED`.
 - Central comparison: `ahead 56 / behind 0`; merge base equals the frozen central base.
 - Changed files at reviewed executable head: `21`.
+- Document-only final head after adding this review: `22` changed files.
 
 ## Governing review condition
 
@@ -21,7 +22,7 @@ The governing EXEC-006 freeze and prioritized roadmap require a final read-only 
 
 Result: `PASS`.
 
-All 21 changed files are inside the renewed allowlist in `ORCA_Z8_EXEC_006_FREEZE.md`:
+The reviewed executable head contained 21 changed files, all inside the renewed allowlist in `ORCA_Z8_EXEC_006_FREEZE.md`. Adding this review report creates a document-only final head with 22 changed files, also entirely inside the allowlist:
 
 - one disposable GitHub Actions workflow;
 - three package documents including this review;
