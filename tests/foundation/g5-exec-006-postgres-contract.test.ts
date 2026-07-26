@@ -25,6 +25,10 @@ const reconciliationHardening = readFileSync(
   "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
   "utf8",
 );
+const approvalTransitionHardening = readFileSync(
+  "prisma/migrations/20260726165000_exec_006_approval_transition_hardening/migration.sql",
+  "utf8",
+);
 const drill = readFileSync(
   "scripts/exec-006-postgres-concurrency.mjs",
   "utf8",
@@ -69,6 +73,9 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     const reconciliationRepair = applicationSteps.indexOf(
       "- name: Apply EXEC-006 reconciliation race hardening",
     );
+    const approvalTransitionRepair = applicationSteps.indexOf(
+      "- name: Apply EXEC-006 approval transition hardening",
+    );
     expect(authority).toBeGreaterThan(-1);
     expect(identity).toBeGreaterThan(authority);
     expect(identityHardening).toBeGreaterThan(identity);
@@ -77,6 +84,7 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     expect(authorityHardening).toBeGreaterThan(commitmentHardening);
     expect(availabilityCorrection).toBeGreaterThan(authorityHardening);
     expect(reconciliationRepair).toBeGreaterThan(availabilityCorrection);
+    expect(approvalTransitionRepair).toBeGreaterThan(reconciliationRepair);
   });
 
   it("runs the real multi-connection race drill", () => {
@@ -115,6 +123,21 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
     );
     expect(drill).toContain(
       "conversion/expiry race did not converge to EXPIRED",
+    );
+  });
+
+  it("permits terminal expiry without bypassing duration or approval checks", () => {
+    expect(approvalTransitionHardening).toContain(
+      'CREATE OR REPLACE FUNCTION "exec006_validate_commitment_approval_policy"',
+    );
+    expect(approvalTransitionHardening).toContain(
+      'NEW."expires_at" IS DISTINCT FROM OLD."expires_at"',
+    );
+    expect(approvalTransitionHardening).toContain(
+      "terminal status updates remain valid",
+    );
+    expect(approvalTransitionHardening).toContain(
+      "new independent approval evidence is required for long extension",
     );
   });
 
