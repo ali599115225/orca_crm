@@ -147,7 +147,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/exec-006-postgres-concurrency.mjs | tee /tmp/exec006-postgres-result.txt
+          node scripts/exec-006-postgres-concurrency.mjs 2>&1 | tee /tmp/exec006-postgres-result.txt
 
       - name: Run EXEC-006 PostgreSQL contract test
         run: >-
