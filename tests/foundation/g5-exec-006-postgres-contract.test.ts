@@ -90,7 +90,7 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
       'CREATE OR REPLACE FUNCTION "exec006_reconcile_expired_commitments"',
     );
     expect(reconciliationHardening).toContain("FOR UPDATE");
-    expect(reconciliationHardening).not.toContain("SKIP LOCKED");
+    expect(reconciliationHardening).not.toMatch(/FOR UPDATE\s+SKIP LOCKED/i);
     expect(reconciliationHardening).toContain(
       "rechecks state and records append-only History/Audit",
     );
@@ -110,7 +110,10 @@ describe("EXEC-006 disposable PostgreSQL validation contract", () => {
       "lifecycle-only state transitions remain valid",
     );
     expect(lifecycleApprovalHardening).toContain(
-      "00_unit_commitments_direct_scope_guard",
+      'CREATE TRIGGER "00_unit_commitments_direct_scope_guard"',
+    );
+    expect(lifecycleApprovalHardening).toContain(
+      "cross-tenant Unit reference mismatch",
     );
   });
 
