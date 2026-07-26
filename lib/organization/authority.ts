@@ -163,6 +163,72 @@ export const ORGANIZATION_ROLE_PERMISSIONS = {
   Record<OrganizationSecurityRole, readonly OrganizationPermissionKey[]>
 >;
 
+export const ORGANIZATION_ROLE_GRANTS = {
+  PLATFORM_OWNER: [
+    "GENERAL_MANAGER",
+    "OPERATIONS_MANAGER",
+    "BRANCH_MANAGER",
+    "SALES_LEASING_MANAGER",
+    "BROKER_AGENT",
+    "PROPERTY_MANAGER",
+    "FACILITY_MAINTENANCE_MANAGER",
+    "MAINTENANCE_COORDINATOR",
+    "TECHNICIAN_CONTRACTOR",
+    "FINANCE_MANAGER",
+    "ACCOUNTANT_COLLECTOR",
+    "CUSTOMER_SERVICE_REPRESENTATIVE",
+    "COMPLIANCE_AUDIT",
+    "SYSTEM_ADMINISTRATOR",
+  ],
+  GENERAL_MANAGER: [
+    "OPERATIONS_MANAGER",
+    "BRANCH_MANAGER",
+    "SALES_LEASING_MANAGER",
+    "BROKER_AGENT",
+    "PROPERTY_MANAGER",
+    "FACILITY_MAINTENANCE_MANAGER",
+    "MAINTENANCE_COORDINATOR",
+    "TECHNICIAN_CONTRACTOR",
+    "FINANCE_MANAGER",
+    "ACCOUNTANT_COLLECTOR",
+    "CUSTOMER_SERVICE_REPRESENTATIVE",
+    "COMPLIANCE_AUDIT",
+    "SYSTEM_ADMINISTRATOR",
+  ],
+  OPERATIONS_MANAGER: [
+    "BRANCH_MANAGER",
+    "SALES_LEASING_MANAGER",
+    "BROKER_AGENT",
+    "PROPERTY_MANAGER",
+    "FACILITY_MAINTENANCE_MANAGER",
+    "MAINTENANCE_COORDINATOR",
+    "TECHNICIAN_CONTRACTOR",
+    "CUSTOMER_SERVICE_REPRESENTATIVE",
+  ],
+  BRANCH_MANAGER: [
+    "SALES_LEASING_MANAGER",
+    "BROKER_AGENT",
+    "PROPERTY_MANAGER",
+    "FACILITY_MAINTENANCE_MANAGER",
+    "MAINTENANCE_COORDINATOR",
+    "TECHNICIAN_CONTRACTOR",
+    "CUSTOMER_SERVICE_REPRESENTATIVE",
+  ],
+  SALES_LEASING_MANAGER: [],
+  BROKER_AGENT: [],
+  PROPERTY_MANAGER: [],
+  FACILITY_MAINTENANCE_MANAGER: [],
+  MAINTENANCE_COORDINATOR: [],
+  TECHNICIAN_CONTRACTOR: [],
+  FINANCE_MANAGER: [],
+  ACCOUNTANT_COLLECTOR: [],
+  CUSTOMER_SERVICE_REPRESENTATIVE: [],
+  COMPLIANCE_AUDIT: [],
+  SYSTEM_ADMINISTRATOR: [],
+} as const satisfies Readonly<
+  Record<OrganizationSecurityRole, readonly OrganizationSecurityRole[]>
+>;
+
 const PERMISSION_SERVICE_LINE: Partial<
   Record<OrganizationPermissionKey, OrganizationServiceLine>
 > = {
@@ -177,6 +243,7 @@ const PERMISSION_SERVICE_LINE: Partial<
   "finance.records.write": "FINANCE_AND_COLLECTION",
   "finance.refund.initiate": "FINANCE_AND_COLLECTION",
   "finance.refund.approve": "FINANCE_AND_COLLECTION",
+  "discount.approve": "SALES",
   "export.execute": "REPORTING",
 };
 
@@ -189,7 +256,20 @@ export function roleHasOrganizationPermission(
   role: OrganizationSecurityRole,
   permission: OrganizationPermissionKey,
 ): boolean {
-  return ORGANIZATION_ROLE_PERMISSIONS[role].includes(permission as never);
+  const permissions = ORGANIZATION_ROLE_PERMISSIONS[
+    role
+  ] as readonly OrganizationPermissionKey[];
+  return permissions.includes(permission);
+}
+
+export function canGrantOrganizationRole(
+  grantorRole: OrganizationSecurityRole,
+  targetRole: OrganizationSecurityRole,
+): boolean {
+  const grants = ORGANIZATION_ROLE_GRANTS[
+    grantorRole
+  ] as readonly OrganizationSecurityRole[];
+  return grants.includes(targetRole);
 }
 
 function isAssignmentActive(
