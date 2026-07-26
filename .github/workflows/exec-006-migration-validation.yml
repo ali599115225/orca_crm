@@ -8,7 +8,7 @@ on:
       - "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql"
       - "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql"
       - "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql"
-      - "prisma/migrations/20260726165000_exec_006_approval_transition_hardening/migration.sql"
+      - "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql"
       - "scripts/exec-006-postgres-concurrency.mjs"
       - "tests/foundation/g5-exec-006-postgres-contract.test.ts"
       - ".github/workflows/exec-006-migration-validation.yml"
@@ -113,10 +113,10 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
           -f prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql
 
-      - name: Apply EXEC-006 approval transition hardening
+      - name: Apply EXEC-006 lifecycle approval guard hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726165000_exec_006_approval_transition_hardening/migration.sql
+          -f prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql
 
       - name: Validate schema objects and guards
         shell: bash
