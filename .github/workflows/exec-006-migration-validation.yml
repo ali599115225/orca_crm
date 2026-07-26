@@ -9,7 +9,9 @@ on:
       - "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql"
       - "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql"
       - "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql"
+      - "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql"
       - "scripts/exec-006-postgres-concurrency.mjs"
+      - "scripts/exec-006-postgres-exact-scope.sql"
       - "tests/foundation/g5-exec-006-postgres-contract.test.ts"
       - ".github/workflows/exec-006-migration-validation.yml"
   workflow_dispatch:
@@ -118,12 +120,17 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
           -f prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql
 
+      - name: Apply EXEC-006 exact persisted scope hardening
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1
+          -f prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql
+
       - name: Validate schema objects and guards
         shell: bash
         run: |
           set -euo pipefail
           test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('unit_commitment_policies','unit_availability_sources','unit_operational_restrictions','unit_commitments','unit_commitment_history','unit_commitment_audit','unit_commitment_idempotency','tour_appointments_v2','tour_appointment_history')")" -eq 9
-          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard','00_unit_commitments_direct_scope_guard')")" -ge 11
+          test "$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE '%exec006%' OR tgname IN ('unit_commitment_history_no_mutation','unit_commitment_audit_no_mutation','tour_appointment_history_no_mutation','unit_commitments_integrity_guard','unit_commitments_identity_guard','tour_appointments_v2_integrity_guard','tour_appointments_v2_identity_guard','unit_commitments_approval_policy_guard','unit_commitments_final_link_release_guard','00_unit_commitments_direct_scope_guard','00_tour_appointments_v2_staff_exact_scope_guard')")" -ge 12
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
@@ -181,6 +188,12 @@ jobs:
             ) THEN
               RAISE EXCEPTION 'missing final-link release guard';
             END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_trigger
+              WHERE tgname = '00_tour_appointments_v2_staff_exact_scope_guard'
+            ) THEN
+              RAISE EXCEPTION 'missing exact Tour staff scope guard';
+            END IF;
           END;
           $$;
           SQL
@@ -190,6 +203,14 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/exec-006-postgres-concurrency.mjs 2>&1 | tee /tmp/exec006-postgres-result.txt
+
+      - name: Prove exact persisted assignment scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f scripts/exec-006-postgres-exact-scope.sql \
+            2>&1 | tee -a /tmp/exec006-postgres-result.txt
 
       - name: Prove final-link release denial
         shell: bash
