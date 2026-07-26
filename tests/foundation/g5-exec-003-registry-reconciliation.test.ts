@@ -31,7 +31,7 @@ describe("EXEC-003 v2 execution-package registry reconciliation", () => {
     });
   });
 
-  it("preserves every non-EXEC-003 package state and keeps EXEC-004 pending", () => {
+  it("closes EXEC-003, preserves later package states, and keeps EXEC-004 pending", () => {
     const registry = readRegistry();
     const states = Object.fromEntries(
       registry.packages.map((packageRecord) => [
@@ -40,10 +40,11 @@ describe("EXEC-003 v2 execution-package registry reconciliation", () => {
       ]),
     );
 
+    expect(registry).toMatchObject({ summary: { registeredPackages: 14, coveredGapIds: 32, inExecution: 0 } });
     expect(states).toMatchObject({
       "EXEC-001": "CLOSED",
       "EXEC-002": "CLOSED",
-      "EXEC-003": "IN_EXECUTION",
+      "EXEC-003": "CLOSED",
       "EXEC-004": "OWNER_DECISION_PENDING",
       "EXEC-005": "OWNER_DECISION_PENDING",
       "EXEC-006": "OWNER_DECISION_PENDING",

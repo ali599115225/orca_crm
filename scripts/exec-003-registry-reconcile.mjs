@@ -66,9 +66,9 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     throw new Error("EXEC-004 must remain OWNER_DECISION_PENDING");
   }
 
-  packageRecord.state = "IN_EXECUTION";
+  packageRecord.state = "CLOSED";
   packageRecord.currentSlice =
-    "FINAL_C17_EVIDENCE_DEPENDENCY_CLOSURE_AWAITING_INDEPENDENT_RE_REVIEW";
+    "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL";
   packageRecord.evidenceIdentity = IDENTITY_PATH;
   packageRecord.evidenceDigestScript = "scripts/exec-003-evidence-digest.mjs";
   packageRecord.registryReconciliation =
@@ -161,8 +161,14 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     baseSha: BASE_SHA,
     finalCiIdentityLocation: "PR #108 description",
     g5Tests: "200/200",
-    status: "SUCCESS / AWAITING_INDEPENDENT_RE_REVIEW",
+    status: "SUCCESS / INDEPENDENT FINAL REVIEW PASS / CENTRAL MERGE COMPLETE",
   };
+
+  packageRecord.closure = { pullRequest: 108, finalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618", validatedImplementationHead: identity.validatedImplementationHead, centralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882", orcaCi: "SUCCESS", orcaCiRun: 453, workflowRunId: 30176782092, independentFinalReview: "PASS", runtimeSecurityDefectsRemaining: 0, remainingP0P1DirectTestGap: 0, mainAction: false, productionAction: false, closedOn: "2026-07-25" };
+  registry.summary = { ...registry.summary, closed: 3, evidenceReady: 0, ownerDecisionPending: 8, deferredOrBlocked: 3, inExecution: 0 };
+  registry.status = "ACTIVE REGISTER / Z0-Z8 CLOSED / NO PACKAGE IN EXECUTION";
+  registry.baseCentralSha = "b0369b50eb2d49001e5322eea90b3b6dae22a882";
+  registry.finalZ8Reconciliation = { date: "2026-07-25", exec003ClosedByPr: 108, exec003FinalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618", exec003CentralMergeSha: "b0369b50eb2d49001e5322eea90b3b6dae22a882", registeredPackages: 14, coveredGapIds: 32, packagesInExecution: 0 };
 
   return registry;
 }
