@@ -6,10 +6,37 @@ const REGISTRY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXECUTION_PACKAGE_REGISTRY.json";
 const IDENTITY_PATH =
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json";
-const BASE_SHA = "001b2c853e99ea055f161dcd294d968bbf25c9ad";
 const DIGEST_ALGORITHM =
   "sha256-path-length-content-v3-derived-security-dependencies";
 const C17_SECURITY_DEPENDENCY_FILE = "app/actions/aiActions.ts";
+const CENTRAL_MERGE_SHA = "b0369b50eb2d49001e5322eea90b3b6dae22a882";
+
+const EXPECTED_STATES = Object.freeze({
+  "EXEC-001": "CLOSED",
+  "EXEC-002": "CLOSED",
+  "EXEC-003": "CLOSED",
+  "EXEC-004": "OWNER_DECISION_PENDING",
+  "EXEC-005": "OWNER_DECISION_PENDING",
+  "EXEC-006": "OWNER_DECISION_PENDING",
+  "EXEC-007": "OWNER_DECISION_PENDING",
+  "EXEC-008": "OWNER_DECISION_PENDING",
+  "EXEC-009": "OWNER_DECISION_PENDING",
+  "EXEC-010": "OWNER_DECISION_PENDING",
+  "EXEC-011": "OWNER_DECISION_PENDING",
+  "EXEC-012": "BLOCKED",
+  "EXEC-013": "BLOCKED",
+  "EXEC-014": "BLOCKED",
+});
+
+const EXPECTED_SUMMARY = Object.freeze({
+  registeredPackages: 14,
+  closed: 3,
+  evidenceReady: 0,
+  ownerDecisionPending: 8,
+  deferredOrBlocked: 3,
+  inExecution: 0,
+  coveredGapIds: 32,
+});
 
 const REQUIRED_ALLOWED_PATHS = [
   "docs/zero-based/Z8/ORCA_Z8_EXEC_003_V2_EVIDENCE_IDENTITY.json",
@@ -33,6 +60,8 @@ function readEvidenceIdentity(root = process.cwd()) {
   );
   if (
     identity.schemaVersion !== 3 ||
+    identity.package !== "EXEC-003 v2" ||
+    identity.packageClosureState !== "CLOSED" ||
     !/^[0-9a-f]{40}$/.test(identity.validatedImplementationHead) ||
     !/^[0-9a-f]{64}$/.test(identity.evidenceDigest) ||
     identity.digestAlgorithm !== DIGEST_ALGORITHM ||
@@ -43,9 +72,24 @@ function readEvidenceIdentity(root = process.cwd()) {
     identity.securityDependencyFiles[0] !== C17_SECURITY_DEPENDENCY_FILE ||
     !identity.derivedEvidenceFiles.includes(C17_SECURITY_DEPENDENCY_FILE)
   ) {
-    throw new Error("EXEC-003 derived evidence identity is not sealed");
+    throw new Error("EXEC-003 closed evidence identity is not sealed");
   }
   return identity;
+}
+
+function assertPackageStateMatrix(packages) {
+  const actual = Object.fromEntries(
+    packages.map((packageRecord) => [packageRecord.packageId, packageRecord.state]),
+  );
+  if (Object.keys(actual).length !== Object.keys(EXPECTED_STATES).length) {
+    throw new Error("Execution Package Registry must retain 14 unique package records");
+  }
+  for (const [packageId, expectedState] of Object.entries(EXPECTED_STATES)) {
+    if (packageId === "EXEC-003") continue;
+    if (actual[packageId] !== expectedState) {
+      throw new Error(`${packageId} must remain ${expectedState}`);
+    }
+  }
 }
 
 export function reconcileExec003Registry(input, identity = readEvidenceIdentity()) {
@@ -53,22 +97,23 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
   if (!Array.isArray(registry.packages) || registry.packages.length !== 14) {
     throw new Error("Execution Package Registry must retain 14 package records");
   }
+  if (new Set(registry.packages.map((record) => record.packageId)).size !== 14) {
+    throw new Error("Execution Package Registry contains duplicate package IDs");
+  }
+  assertPackageStateMatrix(registry.packages);
 
   const packageRecord = registry.packages.find(
     (candidate) => candidate.packageId === "EXEC-003",
   );
-  const nextPackage = registry.packages.find(
-    (candidate) => candidate.packageId === "EXEC-004",
-  );
   if (!packageRecord) throw new Error("EXEC-003 package record is missing");
-  if (!nextPackage) throw new Error("EXEC-004 package record is missing");
-  if (nextPackage.state !== "OWNER_DECISION_PENDING") {
-    throw new Error("EXEC-004 must remain OWNER_DECISION_PENDING");
-  }
 
-  packageRecord.state = "IN_EXECUTION";
-  packageRecord.currentSlice =
-    "FINAL_C17_EVIDENCE_DEPENDENCY_CLOSURE_AWAITING_INDEPENDENT_RE_REVIEW";
+  registry.status =
+    "ACTIVE_REGISTER / EXEC-001 / EXEC-002 / EXEC-003 CLOSED / EXEC-004 OWNER_DECISION_PENDING / VERCEL_HOBBY_POLICY_ACTIVE";
+  registry.baseCentralSha = CENTRAL_MERGE_SHA;
+  registry.summary = { ...EXPECTED_SUMMARY };
+
+  packageRecord.state = "CLOSED";
+  packageRecord.currentSlice = "OWNER_PACKAGE_CLOSED";
   packageRecord.evidenceIdentity = IDENTITY_PATH;
   packageRecord.evidenceDigestScript = "scripts/exec-003-evidence-digest.mjs";
   packageRecord.registryReconciliation =
@@ -77,28 +122,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     ...(packageRecord.allowedPaths ?? []),
     ...REQUIRED_ALLOWED_PATHS,
   ]);
-  packageRecord.sliceAcceptance = [
-    "25 contracts and 32 operations remain frozen and directly credited only after semantic validation",
-    "the evidence digest derives all frozen Entry Points, explicit security dependency modules, final guards, delegated guards, security core files, evidence tests, tools and actual Vitest configuration from the Manifest",
-    "C17 explicitly registers @/app/actions/aiActions as a security dependency without changing its @/app/actions/aiClient generateAIInsight Entry Point",
-    "app/actions/aiActions.ts is included in securityDependencyFiles and derivedEvidenceFiles and any content change changes the digest",
-    "missing, unreadable, duplicate, outside-repository or omitted security dependencies fail closed",
-    "registered actual Entry Point modules and exports remain unmocked and unmodified",
-    "test ownership is enforced at Operation ID level and operation-level spillover remains zero",
-    "AUTH_BOOTSTRAP database lookup exceptions return null and grant no role",
-    "the C17 AST path proves aiClient imports and invokes analyzeLeadAI, aiActions imports and awaits requireAgentAccess, and generateAgentJson executes only afterward",
-    "Tenant Context may be established inside requireAgentAccess solely for the tenant-scoped authorization lookup",
-    "no AI provider call, domain operation or post-authorization downstream work executes before requireAgentAccess succeeds",
-    "C18 and C19 retain exact-claim boundaries with independent ALLOW and DENY callbacks",
-    "C14-O02 and C15-O02 retain Cookie-only mutation boundaries",
-    "signed boundaries remain original and out-of-scope credit remains zero",
-    "no Runtime file is changed by the final C17 evidence-dependency closure",
-    "Legacy authentication channels, Permission Keys and Legacy role sets are unchanged",
-    "C25 has no Platform Owner bypass",
-  ];
 
-  // Preserve the established registry wire key exactly. The reconciler accepts
-  // either spelling as input but emits one deterministic representation.
   const vercelRationale =
     packageRecord.vercelValidationRationRationale ??
     packageRecord.vercelValidationRationale ??
@@ -129,8 +153,7 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     earnedEvidenceClass: "DIRECT_BEHAVIORAL",
     structuralEvidenceClass: "STRUCTURAL / SOURCE_ASSERTION",
     semanticGate: "TYPESCRIPT_AST / PASS",
-    digestCoverage:
-      "DERIVED_FROM_MANIFEST_SECURITY_DEPENDENCIES / PASS",
+    digestCoverage: "DERIVED_FROM_MANIFEST_SECURITY_DEPENDENCIES / PASS",
     derivedEvidenceFileCount: identity.derivedEvidenceFiles.length,
     securityDependencyFileCount: identity.securityDependencyFiles.length,
     securityDependencyFiles: identity.securityDependencyFiles,
@@ -158,10 +181,32 @@ export function reconcileExec003Registry(input, identity = readEvidenceIdentity(
     evidenceDigest: identity.evidenceDigest,
     digestAlgorithm: identity.digestAlgorithm,
     ciCheckoutMode: identity.checkoutMode,
-    baseSha: BASE_SHA,
+    baseSha: identity.baseSha,
     finalCiIdentityLocation: "PR #108 description",
     g5Tests: "200/200",
-    status: "SUCCESS / AWAITING_INDEPENDENT_RE_REVIEW",
+    status: "SUCCESS / CLOSED",
+  };
+
+  packageRecord.closure = {
+    pullRequest: 108,
+    finalHeadSha: "abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618",
+    centralMergeSha: CENTRAL_MERGE_SHA,
+    orcaCi: "SUCCESS",
+    orcaCiRun: 453,
+    validatedImplementationHead: identity.validatedImplementationHead,
+    evidenceDigest: identity.evidenceDigest,
+    digestAlgorithm: identity.digestAlgorithm,
+    directContracts: 25,
+    directOperations: 32,
+    remainingGap: 34,
+    g5Tests: "200/200",
+    typecheck: "SUCCESS",
+    build: "SUCCESS",
+    recoveryDrill: "SUCCESS",
+    runtimeDefectsRemaining: 0,
+    vercelValidation: "SKIP_BY_DEFAULT",
+    scopeFiles: 53,
+    closedOn: "2026-07-26",
   };
 
   return registry;

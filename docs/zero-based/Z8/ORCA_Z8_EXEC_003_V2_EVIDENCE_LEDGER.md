@@ -1,16 +1,24 @@
 # ORCA Z8 — EXEC-003 v2 Semantic Behavioral Evidence Ledger
 
-- **State:** `IN_EXECUTION / AWAITING INDEPENDENT RE-REVIEW`
-- **PR:** `#108 / DRAFT / OPEN / UNMERGED`
+- **Package state:** `CLOSED`
+- **Implementation PR:** `#108 / MERGED`
+- **Implementation final head:** `abc43ab5e1a76b5f2d99f5deb0f5d1e35451a618`
+- **Central merge SHA:** `b0369b50eb2d49001e5322eea90b3b6dae22a882`
 - **Validated implementation head:** `d17acb09354a54aee7946b6de8e67a2a9b55fbd5`
+- **Independent final review:** `PASS — READY_FOR_OWNER_PACKAGE_CLOSURE`
+- **ORCA CI:** `#453 / SUCCESS`
 - **Evidence digest:** `1c65e04339c20ccf1d094620a741862f97e7f033388324843006265109dfc5af`
 - **Algorithm:** `sha256-path-length-content-v3-derived-security-dependencies`
 - **Derived files:** `49`
 - **Explicit security dependency:** `app/actions/aiActions.ts`
 
+## Identity semantics
+
+The `state` field in the sealed Evidence Identity remains the historical evidence-capture state used by the independent review. Package lifecycle closure is recorded separately as `packageClosureState: CLOSED` with PR, merge, CI and review metadata. This preserves the reviewed evidence snapshot while making the package lifecycle unambiguous.
+
 ## Sources of truth
 
-Direct credit is derived from the frozen operation Manifest only after the TypeScript AST gate validates the exact operation's entry point, ALLOW test, DENY test, final guard, outcome assertion, and downstream behavior. Manifest membership alone grants no credit.
+Direct credit is derived from the frozen operation Manifest only after the TypeScript AST gate validates the exact operation's entry point, ALLOW test, DENY test, final guard, outcome assertion and downstream behavior. Manifest membership alone grants no credit.
 
 For C17, the Manifest retains `@/app/actions/aiClient` / `generateAIInsight` and declares `@/app/actions/aiActions` as an additional security dependency. The identity gate verifies both the entry point and the deeper authorization-bearing module.
 
@@ -25,7 +33,7 @@ Each credited operation has:
 5. the real final authorization decision;
 6. explicit ALLOW and DENY outcome evidence;
 7. downstream reachability only after ALLOW;
-8. zero same-file, cross-operation, or out-of-freeze spillover.
+8. zero same-file, cross-operation or out-of-freeze spillover.
 
 C17 additionally proves:
 
@@ -61,10 +69,9 @@ Out-of-scope contracts credited: 0
 Operation-level spillover: 0
 Remaining gap: 34
 P0/P1 remaining: 0
+Runtime defects remaining: 0
 ```
 
-## Scope
+## Closure reconciliation scope
 
-The C17 evidence-dependency closure changed no Runtime file and introduced no Runtime behavior change. No Prisma schema, Migration, Backfill, Production data, provider credential, environment, UI, Permission Key, Legacy role, authentication channel, main, Production, or EXEC-004 change is authorized or performed.
-
-Next authorized step: `INDEPENDENT FINAL RE-REVIEW ONLY`.
+The closure reconciliation changes only registry, evidence-control tests/tools and closure documentation. It changes no Runtime file and introduces no Runtime behavior change. No Prisma schema, Migration, Backfill, Production data, provider credential, environment, UI, Permission Key, Legacy role, authentication channel, `main`, Production, Vercel Preview or EXEC-004 work is authorized or performed.
