@@ -2280,3 +2280,762 @@ model Document {
   @@index([tenantId, checksumSha256], map: "idx_documents_tenant_checksum")
   @@map("documents")
 }
+
+// EXEC-007 — immutable offer versions, pricing, approval and conditional acceptance.
+// PostgreSQL-specific constraints, partial indexes and triggers live in the additive migration.
+
+enum Exec007OfferKind {
+  SALE
+  LEASE
+}
+
+enum Exec007RecordOrigin {
+  EXEC007
+}
+
+enum Exec007OfferState {
+  DRAFT
+  OPEN
+  PREPARATION_REQUESTED
+  CLOSED
+  ARCHIVED
+}
+
+enum Exec007OfferVersionState {
+  DRAFT
+  DISCARDED
+  PENDING_APPROVAL
+  APPROVED
+  APPROVAL_REJECTED
+  ISSUED
+  SUPERSEDED
+  WITHDRAWN
+  EXPIRED
+  DECLINED
+  CONDITIONALLY_ACCEPTED
+}
+
+enum Exec007ApprovalType {
+  STANDARD
+  EXCEPTION
+  FINANCIAL_REVIEW
+}
+
+enum Exec007ApprovalDecisionState {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  STALE
+}
+
+enum Exec007CustomerPrincipalStatus {
+  ACTIVE
+  LOCKED
+  REVOKED
+}
+
+enum Exec007CustomerIdentityType {
+  VERIFIED_PHONE
+  VERIFIED_EMAIL
+  EXTERNAL_SUBJECT
+}
+
+enum Exec007CustomerIdentityStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum Exec007SubjectGrantStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum Exec007CustomerSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum Exec007AuthChallengeType {
+  OTP
+  MAGIC_LINK
+}
+
+enum Exec007AuthChallengeStatus {
+  PENDING
+  CONSUMED
+  EXPIRED
+  REVOKED
+}
+
+enum Exec007AssuranceLevel {
+  CUSTOMER_VIEW_VERIFIED
+  CUSTOMER_DECISION_STEP_UP
+}
+
+enum Exec007DecisionAction {
+  ACCEPT
+  DECLINE
+}
+
+enum Exec007DecisionIntentState {
+  PENDING
+  CONFIRMED
+  EXPIRED
+  REVOKED
+}
+
+enum Exec007AcceptanceCompletionState {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum Exec007PreparationRequestType {
+  SALE_CONTRACT_PREPARATION_REQUEST
+  LEASE_PREPARATION_REQUEST
+}
+
+enum Exec007PreparationRequestState {
+  REQUESTED
+}
+
+enum Exec007CutoverMode {
+  LEGACY_ONLY
+  EXEC007_READY
+  EXEC007_ACTIVE
+  RECOVERY_STOP
+}
+
+enum Exec007LegalHoldStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum Exec007RetentionDispositionStatus {
+  SCHEDULED
+  BLOCKED
+  DISPOSED
+}
+
+enum Exec007SecurityPurposeCode {
+  AUTH_ABUSE_INVESTIGATION
+  ACCEPTANCE_REPLAY_INVESTIGATION
+  SUSPECTED_ACCOUNT_TAKEOVER
+  SECURITY_INCIDENT_RESPONSE
+}
+
+enum Exec007TaxBasis {
+  INCLUSIVE
+  EXCLUSIVE
+}
+
+enum Exec007PayerType {
+  CUSTOMER
+  OWNER
+  BROKER
+  OTHER_NON_CUSTOMER
+}
+
+enum Exec007PricingSourceType {
+  SALE_PROJECT_PRICE_BOOK
+  SALE_UNIT_PRICE_BOOK
+  LEASE_RENT_SCHEDULE
+}
+
+enum Exec007ServiceLine {
+  SALES
+  LEASING
+}
+
+model CustomerPrincipal {
+  id          String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String                         @map("tenant_id") @db.Uuid
+  status      Exec007CustomerPrincipalStatus @default(ACTIVE)
+  authVersion Int                            @default(1) @map("auth_version")
+  createdAt   DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime                       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_customer_principals_tenant_id")
+  @@map("exec007_customer_principals")
+}
+
+model CustomerPrincipalIdentity {
+  id                       String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String                          @map("tenant_id") @db.Uuid
+  principalId              String                          @map("principal_id") @db.Uuid
+  identityType             Exec007CustomerIdentityType     @map("identity_type")
+  status                   Exec007CustomerIdentityStatus   @default(ACTIVE)
+  normalizedIdentifierHash String                          @map("normalized_identifier_hash")
+  verifiedAt               DateTime                        @map("verified_at") @db.Timestamptz
+  revokedAt                DateTime?                       @map("revoked_at") @db.Timestamptz
+  createdAt                DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_customer_principal_identities_tenant_id")
+  @@unique([tenantId, identityType, normalizedIdentifierHash], map: "uq_exec007_customer_principal_identities_identifier")
+  @@map("exec007_customer_principal_identities")
+}
+
+model CustomerPrincipalSubjectGrant {
+  id                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                    @map("tenant_id") @db.Uuid
+  principalId       String                    @map("principal_id") @db.Uuid
+  actorPartyId      String                    @map("actor_party_id") @db.Uuid
+  subjectPartyId    String                    @map("subject_party_id") @db.Uuid
+  customerAccountId String?                   @map("customer_account_id") @db.Uuid
+  status            Exec007SubjectGrantStatus @default(ACTIVE)
+  grantVersion      Int                       @default(1) @map("grant_version")
+  branchId          String                    @map("branch_id") @db.Uuid
+  serviceLine       Exec007ServiceLine        @map("service_line")
+  resourceScope     Json                      @default("{}") @map("resource_scope") @db.JsonB
+  effectiveAt       DateTime                  @default(now()) @map("effective_at") @db.Timestamptz
+  expiresAt         DateTime?                 @map("expires_at") @db.Timestamptz
+  revokedAt         DateTime?                 @map("revoked_at") @db.Timestamptz
+  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_subject_grants_tenant_id")
+  @@map("exec007_customer_principal_subject_grants")
+}
+
+model CustomerSession {
+  id                 String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String                       @map("tenant_id") @db.Uuid
+  principalId        String                       @map("principal_id") @db.Uuid
+  subjectGrantId     String                       @map("subject_grant_id") @db.Uuid
+  status             Exec007CustomerSessionStatus @default(ACTIVE)
+  assuranceLevel     Exec007AssuranceLevel         @map("assurance_level")
+  sessionTokenHash   String                       @map("session_token_hash")
+  authVersion        Int                          @map("auth_version")
+  grantVersion       Int                          @map("grant_version")
+  lastSeenAt         DateTime                     @map("last_seen_at") @db.Timestamptz
+  decisionStepUpAt   DateTime?                    @map("decision_step_up_at") @db.Timestamptz
+  idleExpiresAt      DateTime                     @map("idle_expires_at") @db.Timestamptz
+  absoluteExpiresAt  DateTime                     @map("absolute_expires_at") @db.Timestamptz
+  revokedAt          DateTime?                    @map("revoked_at") @db.Timestamptz
+  createdAt          DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_sessions_tenant_id")
+  @@unique([tenantId, sessionTokenHash], map: "uq_exec007_sessions_token_hash")
+  @@index([tenantId, status, idleExpiresAt, absoluteExpiresAt], map: "idx_exec007_customer_sessions_expiry")
+  @@map("exec007_customer_sessions")
+}
+
+model CustomerAuthChallenge {
+  id            String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String                     @map("tenant_id") @db.Uuid
+  principalId   String?                    @map("principal_id") @db.Uuid
+  identityType  Exec007CustomerIdentityType @map("identity_type")
+  challengeType Exec007AuthChallengeType    @map("challenge_type")
+  status        Exec007AuthChallengeStatus  @default(PENDING)
+  action        Exec007DecisionAction?
+  tokenHash     String                     @map("token_hash")
+  attemptCount  Int                        @default(0) @map("attempt_count")
+  expiresAt     DateTime                   @map("expires_at") @db.Timestamptz
+  consumedAt    DateTime?                  @map("consumed_at") @db.Timestamptz
+  createdAt     DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_challenges_tenant_id")
+  @@unique([tenantId, tokenHash], map: "uq_exec007_challenges_token_hash")
+  @@index([tenantId, status, expiresAt], map: "idx_exec007_auth_challenges_expiry")
+  @@map("exec007_customer_auth_challenges")
+}
+
+model CommercialOffer {
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String              @map("tenant_id") @db.Uuid
+  opportunityId          String              @map("opportunity_id") @db.Uuid
+  unitId                 String              @map("unit_id") @db.Uuid
+  branchId               String              @map("branch_id") @db.Uuid
+  subjectPartyId         String              @map("subject_party_id") @db.Uuid
+  customerAccountId      String?             @map("customer_account_id") @db.Uuid
+  offerKind              Exec007OfferKind    @map("offer_kind")
+  serviceLine            Exec007ServiceLine  @map("service_line")
+  recordOrigin           Exec007RecordOrigin @default(EXEC007) @map("record_origin")
+  state                  Exec007OfferState   @default(DRAFT)
+  currentIssuedVersionId String?             @map("current_issued_version_id") @db.Uuid
+  legacyOfferId          String?             @map("legacy_offer_id") @db.Uuid
+  createdByUserId        String              @map("created_by_user_id") @db.Uuid
+  version                Int                 @default(1)
+  closeReason            String?             @map("close_reason")
+  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_offers_tenant_id")
+  @@map("exec007_commercial_offers")
+}
+
+model OfferVersion {
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String                   @map("tenant_id") @db.Uuid
+  offerId                 String                   @map("offer_id") @db.Uuid
+  versionNumber           Int                      @map("version_number")
+  state                   Exec007OfferVersionState @default(DRAFT)
+  isCurrent               Boolean                  @default(false) @map("is_current")
+  offerKind               Exec007OfferKind         @map("offer_kind")
+  subjectPartyId          String                   @map("subject_party_id") @db.Uuid
+  customerAccountId       String?                  @map("customer_account_id") @db.Uuid
+  branchId                String                   @map("branch_id") @db.Uuid
+  unitId                  String                   @map("unit_id") @db.Uuid
+  opportunityId           String                   @map("opportunity_id") @db.Uuid
+  contentPayload          Json                     @default("{}") @map("content_payload") @db.JsonB
+  scopeSnapshot           Json                     @default("{}") @map("scope_snapshot") @db.JsonB
+  subjectSnapshot         Json                     @default("{}") @map("subject_snapshot") @db.JsonB
+  confirmationTextVersion String                   @map("confirmation_text_version")
+  canonicalizationVersion String                   @default("EXEC007-CANON-1") @map("canonicalization_version")
+  contentHash             String                   @map("content_hash")
+  pricingHash             String                   @map("pricing_hash")
+  termsHash               String                   @map("terms_hash")
+  validityPolicyVersion   String                   @map("validity_policy_version")
+  validUntilLocalDate     DateTime?                @map("valid_until_local_date") @db.Date
+  validityTimeZone        String                   @default("Asia/Riyadh") @map("validity_time_zone")
+  validUntilUtc           DateTime?                @map("valid_until_utc") @db.Timestamptz
+  issuedAtUtc             DateTime?                @map("issued_at_utc") @db.Timestamptz
+  withdrawalReason        String?                  @map("withdrawal_reason")
+  createdByUserId         String                   @map("created_by_user_id") @db.Uuid
+  lastCommercialEditorId  String                   @map("last_commercial_editor_id") @db.Uuid
+  rowVersion              Int                      @default(1) @map("row_version")
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_offer_versions_tenant_id")
+  @@unique([tenantId, offerId, versionNumber], map: "uq_exec007_offer_versions_offer_number")
+  @@index([tenantId, offerId, state, isCurrent], map: "idx_exec007_offer_versions_current_lookup")
+  @@map("exec007_offer_versions")
+}
+
+model PricingPolicyVersion {
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                   @map("tenant_id") @db.Uuid
+  sourceType            Exec007PricingSourceType @map("source_type")
+  scopeType             String                   @map("scope_type")
+  scopeId               String                   @map("scope_id") @db.Uuid
+  versionNumber         Int                      @map("version_number")
+  currency              String                   @default("SAR")
+  floorAmount           Decimal?                 @map("floor_amount") @db.Decimal(18, 2)
+  ceilingAmount         Decimal?                 @map("ceiling_amount") @db.Decimal(18, 2)
+  maxDiscountRate       Decimal?                 @map("max_discount_rate") @db.Decimal(18, 6)
+  standardValidityDays  Int                      @map("standard_validity_days")
+  normalMaxValidityDays Int                      @default(30) @map("normal_max_validity_days")
+  effectiveFrom         DateTime                 @map("effective_from") @db.Timestamptz
+  effectiveTo           DateTime?                @map("effective_to") @db.Timestamptz
+  policyPayload         Json                     @default("{}") @map("policy_payload") @db.JsonB
+  createdByUserId       String                   @map("created_by_user_id") @db.Uuid
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_pricing_policy_tenant_id")
+  @@unique([tenantId, sourceType, scopeType, scopeId, versionNumber], map: "uq_exec007_pricing_policy_scope_version")
+  @@index([tenantId, sourceType, scopeType, scopeId, effectiveFrom, effectiveTo], map: "idx_exec007_pricing_policy_effective_scope")
+  @@map("exec007_pricing_policy_versions")
+}
+
+model OfferPricingSnapshot {
+  id                          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                    String                   @map("tenant_id") @db.Uuid
+  offerVersionId              String                   @map("offer_version_id") @db.Uuid
+  offerKind                   Exec007OfferKind         @map("offer_kind")
+  policyVersionId             String                   @map("policy_version_id") @db.Uuid
+  sourceType                  Exec007PricingSourceType @map("source_type")
+  sourceRecordId              String                   @map("source_record_id") @db.Uuid
+  sourceVersion               String                   @map("source_version")
+  currency                    String                   @default("SAR")
+  taxBasis                    Exec007TaxBasis          @map("tax_basis")
+  baseAmount                  Decimal                  @map("base_amount") @db.Decimal(18, 2)
+  discountAmount              Decimal                  @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxAmount                   Decimal                  @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  feeAmount                   Decimal                  @default(0) @map("fee_amount") @db.Decimal(18, 2)
+  commissionAmount            Decimal                  @default(0) @map("commission_amount") @db.Decimal(18, 2)
+  customerTotal               Decimal                  @map("customer_total") @db.Decimal(18, 2)
+  periodicRent                Decimal?                 @map("periodic_rent") @db.Decimal(18, 2)
+  depositAmount               Decimal?                 @map("deposit_amount") @db.Decimal(18, 2)
+  escalationRate              Decimal?                 @map("escalation_rate") @db.Decimal(18, 6)
+  manualAdjustmentAmount      Decimal?                 @map("manual_adjustment_amount") @db.Decimal(18, 2)
+  manualAdjustmentRate        Decimal?                 @map("manual_adjustment_rate") @db.Decimal(18, 6)
+  manualAdjustmentReason      String?                  @map("manual_adjustment_reason")
+  adjustmentInitiatorId       String?                  @map("adjustment_initiator_id") @db.Uuid
+  exceptionApprovalDecisionId String?                  @map("exception_approval_decision_id") @db.Uuid
+  resolutionTrace             Json                     @default("{}") @map("resolution_trace") @db.JsonB
+  pricingHash                 String                   @map("pricing_hash")
+  createdAt                   DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_pricing_snapshots_tenant_id")
+  @@unique([tenantId, offerVersionId], map: "uq_exec007_pricing_snapshot_version")
+  @@map("exec007_offer_pricing_snapshots")
+}
+
+model OfferPricingComponent {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String            @map("tenant_id") @db.Uuid
+  pricingSnapshotId    String            @map("pricing_snapshot_id") @db.Uuid
+  componentCode        String            @map("component_code")
+  label                String
+  amount               Decimal           @db.Decimal(18, 2)
+  rate                 Decimal?          @db.Decimal(18, 6)
+  payerType            Exec007PayerType  @map("payer_type")
+  taxBasis             Exec007TaxBasis?  @map("tax_basis")
+  isCustomerObligation Boolean           @map("is_customer_obligation")
+  ordinal              Int
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_pricing_components_tenant_id")
+  @@unique([tenantId, pricingSnapshotId, componentCode], map: "uq_exec007_pricing_component_code")
+  @@map("exec007_offer_pricing_components")
+}
+
+model OfferApprovalRequirement {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  offerVersionId     String              @map("offer_version_id") @db.Uuid
+  approvalType       Exec007ApprovalType @map("approval_type")
+  requirementKey     String              @map("requirement_key")
+  policyVersionId    String?             @map("policy_version_id") @db.Uuid
+  requiredPermission String              @map("required_permission")
+  branchId           String              @map("branch_id") @db.Uuid
+  serviceLine        Exec007ServiceLine  @map("service_line")
+  resourceScope      Json                @map("resource_scope") @db.JsonB
+  contentHash        String              @map("content_hash")
+  pricingHash        String              @map("pricing_hash")
+  termsHash          String              @map("terms_hash")
+  initiatorUserId    String              @map("initiator_user_id") @db.Uuid
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_approval_requirements_tenant_id")
+  @@unique([tenantId, offerVersionId, approvalType, requirementKey], map: "uq_exec007_approval_requirement_type")
+  @@map("exec007_offer_approval_requirements")
+}
+
+model OfferApprovalDecision {
+  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String                       @map("tenant_id") @db.Uuid
+  requirementId  String                       @map("requirement_id") @db.Uuid
+  offerVersionId String                       @map("offer_version_id") @db.Uuid
+  state          Exec007ApprovalDecisionState @default(PENDING)
+  actorUserId    String                       @map("actor_user_id") @db.Uuid
+  assignmentId   String                       @map("assignment_id") @db.Uuid
+  reason         String
+  evidenceHash   String                       @map("evidence_hash")
+  decidedAt      DateTime                     @default(now()) @map("decided_at") @db.Timestamptz
+  createdAt      DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_approval_decisions_tenant_id")
+  @@index([tenantId, offerVersionId, state], map: "idx_exec007_approvals_effective_version")
+  @@map("exec007_offer_approval_decisions")
+}
+
+model AcceptanceIntent {
+  id                String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                     @map("tenant_id") @db.Uuid
+  offerVersionId    String                     @map("offer_version_id") @db.Uuid
+  customerSessionId String                     @map("customer_session_id") @db.Uuid
+  principalId       String                     @map("principal_id") @db.Uuid
+  subjectPartyId    String                     @map("subject_party_id") @db.Uuid
+  customerAccountId String?                    @map("customer_account_id") @db.Uuid
+  action            Exec007DecisionAction      @default(ACCEPT)
+  state             Exec007DecisionIntentState @default(PENDING)
+  nonceHash         String                     @map("nonce_hash")
+  contentHash       String                     @map("content_hash")
+  pricingHash       String                     @map("pricing_hash")
+  termsHash         String                     @map("terms_hash")
+  expiresAt         DateTime                   @map("expires_at") @db.Timestamptz
+  confirmedAt       DateTime?                  @map("confirmed_at") @db.Timestamptz
+  createdAt         DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_acceptance_intents_tenant_id")
+  @@unique([tenantId, nonceHash], map: "uq_exec007_acceptance_intent_nonce")
+  @@index([tenantId, state, expiresAt], map: "idx_exec007_acceptance_intents_expiry")
+  @@map("exec007_acceptance_intents")
+}
+
+model DeclineIntent {
+  id                String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String                     @map("tenant_id") @db.Uuid
+  offerVersionId    String                     @map("offer_version_id") @db.Uuid
+  customerSessionId String                     @map("customer_session_id") @db.Uuid
+  principalId       String                     @map("principal_id") @db.Uuid
+  subjectPartyId    String                     @map("subject_party_id") @db.Uuid
+  customerAccountId String?                    @map("customer_account_id") @db.Uuid
+  action            Exec007DecisionAction      @default(DECLINE)
+  state             Exec007DecisionIntentState @default(PENDING)
+  nonceHash         String                     @map("nonce_hash")
+  contentHash       String                     @map("content_hash")
+  pricingHash       String                     @map("pricing_hash")
+  termsHash         String                     @map("terms_hash")
+  expiresAt         DateTime                   @map("expires_at") @db.Timestamptz
+  confirmedAt       DateTime?                  @map("confirmed_at") @db.Timestamptz
+  createdAt         DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_decline_intents_tenant_id")
+  @@unique([tenantId, nonceHash], map: "uq_exec007_decline_intent_nonce")
+  @@index([tenantId, state, expiresAt], map: "idx_exec007_decline_intents_expiry")
+  @@map("exec007_decline_intents")
+}
+
+model AcceptanceEvidence {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String                @map("tenant_id") @db.Uuid
+  acceptanceIntentId      String                @map("acceptance_intent_id") @db.Uuid
+  offerVersionId          String                @map("offer_version_id") @db.Uuid
+  principalId             String                @map("principal_id") @db.Uuid
+  subjectPartyId          String                @map("subject_party_id") @db.Uuid
+  customerAccountId       String?               @map("customer_account_id") @db.Uuid
+  contentHash             String                @map("content_hash")
+  pricingHash             String                @map("pricing_hash")
+  termsHash               String                @map("terms_hash")
+  evidenceHash            String                @map("evidence_hash")
+  networkHmac             String?               @map("network_hmac")
+  hmacKeyVersion          String                @map("hmac_key_version")
+  confirmationTextVersion String                @map("confirmation_text_version")
+  canonicalizationVersion String                @default("EXEC007-CANON-1") @map("canonicalization_version")
+  assuranceLevel          Exec007AssuranceLevel @map("assurance_level")
+  serverConfirmedAt       DateTime              @default(now()) @map("server_confirmed_at") @db.Timestamptz
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_acceptance_evidence_tenant_id")
+  @@unique([tenantId, acceptanceIntentId], map: "uq_exec007_acceptance_evidence_intent")
+  @@map("exec007_acceptance_evidence")
+}
+
+model DeclineEvidence {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String                @map("tenant_id") @db.Uuid
+  declineIntentId         String                @map("decline_intent_id") @db.Uuid
+  offerVersionId          String                @map("offer_version_id") @db.Uuid
+  principalId             String                @map("principal_id") @db.Uuid
+  subjectPartyId          String                @map("subject_party_id") @db.Uuid
+  customerAccountId       String?               @map("customer_account_id") @db.Uuid
+  contentHash             String                @map("content_hash")
+  pricingHash             String                @map("pricing_hash")
+  termsHash               String                @map("terms_hash")
+  evidenceHash            String                @map("evidence_hash")
+  networkHmac             String?               @map("network_hmac")
+  hmacKeyVersion          String                @map("hmac_key_version")
+  confirmationTextVersion String                @map("confirmation_text_version")
+  canonicalizationVersion String                @default("EXEC007-CANON-1") @map("canonicalization_version")
+  assuranceLevel          Exec007AssuranceLevel @map("assurance_level")
+  serverConfirmedAt       DateTime              @default(now()) @map("server_confirmed_at") @db.Timestamptz
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_decline_evidence_tenant_id")
+  @@unique([tenantId, declineIntentId], map: "uq_exec007_decline_evidence_intent")
+  @@map("exec007_decline_evidence")
+}
+
+model AcceptanceCompletionAttempt {
+  id                    String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                           @map("tenant_id") @db.Uuid
+  offerVersionId        String                           @map("offer_version_id") @db.Uuid
+  acceptanceEvidenceId  String                           @map("acceptance_evidence_id") @db.Uuid
+  subjectPartyId        String                           @map("subject_party_id") @db.Uuid
+  customerAccountId     String?                          @map("customer_account_id") @db.Uuid
+  holdId                String                           @map("hold_id") @db.Uuid
+  reservationId         String?                          @map("reservation_id") @db.Uuid
+  state                 Exec007AcceptanceCompletionState @default(PENDING)
+  failureCode           String?                          @map("failure_code")
+  failureDetail         String?                          @map("failure_detail")
+  expectedOfferVersion  Int                              @map("expected_offer_version")
+  expectedHoldVersion   Int                              @map("expected_hold_version")
+  idempotencyKeyHash    String                           @map("idempotency_key_hash")
+  completedAt           DateTime?                        @map("completed_at") @db.Timestamptz
+  createdAt             DateTime                         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_completion_attempts_tenant_id")
+  @@map("exec007_acceptance_completion_attempts")
+}
+
+model PreparationRequest {
+  id                  String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String                         @map("tenant_id") @db.Uuid
+  completionAttemptId String                         @map("completion_attempt_id") @db.Uuid
+  reservationId       String                         @map("reservation_id") @db.Uuid
+  offerId             String                         @map("offer_id") @db.Uuid
+  offerVersionId      String                         @map("offer_version_id") @db.Uuid
+  offerKind           Exec007OfferKind               @map("offer_kind")
+  requestType         Exec007PreparationRequestType  @map("request_type")
+  state               Exec007PreparationRequestState @default(REQUESTED)
+  subjectPartyId      String                         @map("subject_party_id") @db.Uuid
+  customerAccountId   String?                        @map("customer_account_id") @db.Uuid
+  createdAt           DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_preparation_requests_tenant_id")
+  @@unique([tenantId, completionAttemptId], map: "uq_exec007_preparation_request_completion")
+  @@map("exec007_preparation_requests")
+}
+
+model OfferStateHistory {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  offerId       String            @map("offer_id") @db.Uuid
+  fromState     Exec007OfferState? @map("from_state")
+  toState       Exec007OfferState  @map("to_state")
+  actorUserId   String?           @map("actor_user_id") @db.Uuid
+  reason        String?
+  correlationId String            @map("correlation_id")
+  occurredAt    DateTime          @default(now()) @map("occurred_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_offer_state_history_tenant_id")
+  @@map("exec007_offer_state_history")
+}
+
+model OfferVersionStateHistory {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String                    @map("tenant_id") @db.Uuid
+  offerVersionId String                    @map("offer_version_id") @db.Uuid
+  fromState      Exec007OfferVersionState? @map("from_state")
+  toState        Exec007OfferVersionState  @map("to_state")
+  actorUserId    String?                   @map("actor_user_id") @db.Uuid
+  reason         String?
+  correlationId  String                    @map("correlation_id")
+  occurredAt     DateTime                  @default(now()) @map("occurred_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_offer_version_state_history_tenant_id")
+  @@map("exec007_offer_version_state_history")
+}
+
+model IdempotencyRecord {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  operation          String
+  idempotencyKeyHash String   @map("idempotency_key_hash")
+  payloadHash        String   @map("payload_hash")
+  resultType         String   @map("result_type")
+  resultId           String?  @map("result_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_idempotency_tenant_id")
+  @@unique([tenantId, operation, idempotencyKeyHash], map: "uq_exec007_idempotency_operation_key")
+  @@map("exec007_idempotency_records")
+}
+
+model DelegatedBusinessOperation {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  operation             String
+  businessActorUserId   String    @map("business_actor_user_id") @db.Uuid
+  technicalActorId      String    @map("technical_actor_id")
+  assignmentId          String    @map("assignment_id") @db.Uuid
+  resourceType          String    @map("resource_type")
+  resourceId            String    @map("resource_id") @db.Uuid
+  payloadHash           String    @map("payload_hash")
+  correlationId         String    @map("correlation_id")
+  idempotencyKeyHash    String    @map("idempotency_key_hash")
+  expiresAt             DateTime  @map("expires_at") @db.Timestamptz
+  consumedAt            DateTime? @map("consumed_at") @db.Timestamptz
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_delegated_operations_tenant_id")
+  @@map("exec007_delegated_business_operations")
+}
+
+model RecordRetentionAssignment {
+  id                            String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                      String                                @map("tenant_id") @db.Uuid
+  recordType                    String                                @map("record_type")
+  recordId                      String                                @map("record_id") @db.Uuid
+  policyVersion                 String                                @map("policy_version")
+  retentionStartedAt            DateTime                              @map("retention_started_at") @db.Timestamptz
+  downstreamRelationshipEndedAt DateTime?                             @map("downstream_relationship_ended_at") @db.Timestamptz
+  scheduledDispositionAt        DateTime                              @map("scheduled_disposition_at") @db.Timestamptz
+  dispositionStatus             Exec007RetentionDispositionStatus     @default(SCHEDULED) @map("disposition_status")
+  legalHoldStatus               Exec007LegalHoldStatus                @default(RELEASED) @map("legal_hold_status")
+  version                       Int                                   @default(1)
+  createdAt                     DateTime                              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                     DateTime                              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_retention_assignments_tenant_id")
+  @@unique([tenantId, recordType, recordId], map: "uq_exec007_retention_record")
+  @@index([tenantId, dispositionStatus, scheduledDispositionAt], map: "idx_exec007_retention_due")
+  @@map("exec007_retention_assignments")
+}
+
+model CustomerSecurityEvent {
+  id                    String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                       @map("tenant_id") @db.Uuid
+  principalId           String?                      @map("principal_id") @db.Uuid
+  eventType             String                       @map("event_type")
+  purposeCode           Exec007SecurityPurposeCode   @map("purpose_code")
+  rawIp                 String?                      @map("raw_ip") @db.Inet
+  networkHmac           String?                      @map("network_hmac")
+  recordedAt            DateTime                     @default(now()) @map("recorded_at") @db.Timestamptz
+  scheduledDeletionAt   DateTime                     @map("scheduled_deletion_at") @db.Timestamptz
+  legalHoldStatus       Exec007LegalHoldStatus       @default(RELEASED) @map("legal_hold_status")
+  metadata              Json                         @default("{}") @db.JsonB
+
+  @@unique([tenantId, id], map: "uq_exec007_security_events_tenant_id")
+  @@index([tenantId, scheduledDeletionAt], map: "idx_exec007_security_events_deletion")
+  @@map("exec007_customer_security_events")
+}
+
+model SecurityEventReadAudit {
+  id              String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String                     @map("tenant_id") @db.Uuid
+  securityEventId String                     @map("security_event_id") @db.Uuid
+  readerUserId    String                     @map("reader_user_id") @db.Uuid
+  assignmentId    String                     @map("assignment_id") @db.Uuid
+  purposeCode     Exec007SecurityPurposeCode  @map("purpose_code")
+  reason          String
+  correlationId   String                     @map("correlation_id")
+  readAt          DateTime                   @default(now()) @map("read_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_security_event_reads_tenant_id")
+  @@map("exec007_security_event_reads")
+}
+
+model DispositionAudit {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  recordType    String   @map("record_type")
+  recordId      String   @map("record_id") @db.Uuid
+  action        String
+  policyVersion String   @map("policy_version")
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  reason        String
+  evidenceHash  String   @map("evidence_hash")
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_exec007_disposition_audit_tenant_id")
+  @@map("exec007_disposition_audit")
+}
+
+model LegalHoldRecord {
+  id                    String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                    @map("tenant_id") @db.Uuid
+  retentionAssignmentId String                    @map("retention_assignment_id") @db.Uuid
+  status                Exec007LegalHoldStatus    @default(ACTIVE)
+  reason                String
+  placedByUserId        String                    @map("placed_by_user_id") @db.Uuid
+  placedAt              DateTime                  @default(now()) @map("placed_at") @db.Timestamptz
+  releasedByUserId      String?                   @map("released_by_user_id") @db.Uuid
+  releasedAt            DateTime?                 @map("released_at") @db.Timestamptz
+  releaseReason         String?                   @map("release_reason")
+
+  @@unique([tenantId, id], map: "uq_exec007_legal_hold_records_tenant_id")
+  @@map("exec007_legal_hold_records")
+}
+
+model Exec007CutoverControl {
+  singletonKey        Int                 @id @default(1) @map("singleton_key") @db.SmallInt
+  mode                Exec007CutoverMode  @default(LEGACY_ONLY)
+  authorizedReleaseSha String?            @map("authorized_release_sha")
+  firstExec007WriteAt DateTime?           @map("first_exec007_write_at") @db.Timestamptz
+  version             Int                 @default(1)
+  updatedByUserId     String?             @map("updated_by_user_id") @db.Uuid
+  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("exec007_cutover_control")
+}
+
+model Exec007CutoverTransitionHistory {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fromMode             Exec007CutoverMode @map("from_mode")
+  toMode               Exec007CutoverMode @map("to_mode")
+  authorizedReleaseSha String?            @map("authorized_release_sha")
+  expectedVersion      Int                @map("expected_version")
+  actorUserId          String             @map("actor_user_id") @db.Uuid
+  reason               String
+  evidenceHash         String             @map("evidence_hash")
+  transitionedAt       DateTime           @default(now()) @map("transitioned_at") @db.Timestamptz
+
+  @@index([transitionedAt, id], map: "idx_exec007_cutover_history_time")
+  @@map("exec007_cutover_transition_history")
+}
