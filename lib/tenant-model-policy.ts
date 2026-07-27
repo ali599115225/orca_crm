@@ -69,6 +69,33 @@ const REQUIRED_TENANT_MODEL_VALUES = [
   "MarketingCampaign",
   "MarketingCampaignChannel",
   "Document",
+  "CustomerPrincipal",
+  "CustomerPrincipalIdentity",
+  "CustomerPrincipalSubjectGrant",
+  "CustomerSession",
+  "CustomerAuthChallenge",
+  "CommercialOffer",
+  "OfferVersion",
+  "PricingPolicyVersion",
+  "OfferPricingSnapshot",
+  "OfferPricingComponent",
+  "OfferApprovalRequirement",
+  "OfferApprovalDecision",
+  "AcceptanceIntent",
+  "DeclineIntent",
+  "AcceptanceEvidence",
+  "DeclineEvidence",
+  "AcceptanceCompletionAttempt",
+  "PreparationRequest",
+  "OfferStateHistory",
+  "OfferVersionStateHistory",
+  "IdempotencyRecord",
+  "DelegatedBusinessOperation",
+  "RecordRetentionAssignment",
+  "CustomerSecurityEvent",
+  "SecurityEventReadAudit",
+  "DispositionAudit",
+  "LegalHoldRecord",
 ] as const;
 
 const OPTIONAL_TENANT_MODEL_VALUES = [
@@ -90,7 +117,7 @@ export type TenantModelPolicyName = RequiredTenantModel | OptionalTenantModel;
 const REQUIRED_TENANT_MODEL_SET = new Set<string>(REQUIRED_TENANT_MODELS);
 const OPTIONAL_TENANT_MODEL_SET = new Set<string>(OPTIONAL_TENANT_MODELS);
 
-if (REQUIRED_TENANT_MODELS.length !== 70) {
+if (REQUIRED_TENANT_MODELS.length !== 97) {
   throw new Error(`Invalid required tenant model registry size: ${REQUIRED_TENANT_MODELS.length}`);
 }
 
