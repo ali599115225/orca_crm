@@ -1,0 +1,173 @@
+name: EXEC-007 Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/exec-007-migration-validation.yml"
+      - "prisma/**"
+      - "scripts/exec-007-*"
+      - "tests/foundation/g5-exec-007-*.test.ts"
+      - "features/customer-portal/**"
+      - "lib/customer-portal/**"
+      - "lib/commercial-offers/**"
+      - "lib/pricing/**"
+      - "lib/approvals/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exec-007-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline-diagnosis:
+    name: Node 24 and PostgreSQL 16 baseline diagnosis
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_exec007_baseline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_exec007_baseline"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_baseline?sslmode=disable
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_baseline?sslmode=disable
+      PGPASSWORD: postgres
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/exec-007-baseline
+
+      - name: Record environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "node=$(node --version)"
+            echo "npm=$(npm --version)"
+            echo "head=$(git rev-parse HEAD)"
+            echo "parent=$(git rev-parse HEAD^)"
+            echo "postgres=$(psql \"$DATABASE_URL\" -tAc 'SHOW server_version;' | xargs)"
+          } | tee artifacts/exec-007-baseline/environment.txt
+
+      - name: Install dependencies
+        id: npm_ci
+        continue-on-error: true
+        run: npm ci 2>&1 | tee artifacts/exec-007-baseline/npm-ci.log
+
+      - name: Prisma validate
+        id: prisma_validate
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npx prisma validate 2>&1 | tee artifacts/exec-007-baseline/prisma-validate.log
+
+      - name: Prisma generate
+        id: prisma_generate
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npx prisma generate 2>&1 | tee artifacts/exec-007-baseline/prisma-generate.log
+
+      - name: Repository governance lint
+        id: lint
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npm run lint 2>&1 | tee artifacts/exec-007-baseline/lint.log
+
+      - name: Typecheck
+        id: typecheck
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npm run typecheck 2>&1 | tee artifacts/exec-007-baseline/typecheck.log
+
+      - name: G5 contract baseline
+        id: g5
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npx vitest run tests/foundation/g5-*.test.ts 2>&1 | tee artifacts/exec-007-baseline/g5.log
+
+      - name: Full baseline test suite
+        id: full_test
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- --reporter=verbose 2>&1 | tee artifacts/exec-007-baseline/npm-test.log
+
+      - name: Production build
+        id: build
+        if: steps.npm_ci.outcome == 'success'
+        continue-on-error: true
+        run: npm run build 2>&1 | tee artifacts/exec-007-baseline/build.log
+
+      - name: Write gate summary
+        if: always()
+        shell: bash
+        run: |
+          cat > artifacts/exec-007-baseline/gate-summary.txt <<'EOF'
+          npm_ci=${{ steps.npm_ci.outcome }}
+          prisma_validate=${{ steps.prisma_validate.outcome }}
+          prisma_generate=${{ steps.prisma_generate.outcome }}
+          lint=${{ steps.lint.outcome }}
+          typecheck=${{ steps.typecheck.outcome }}
+          g5=${{ steps.g5.outcome }}
+          full_test=${{ steps.full_test.outcome }}
+          build=${{ steps.build.outcome }}
+          EOF
+          cat artifacts/exec-007-baseline/gate-summary.txt
+
+      - name: Upload exact baseline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exec-007-baseline-diagnosis
+          path: artifacts/exec-007-baseline/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce baseline verdict
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for outcome in \
+            "${{ steps.npm_ci.outcome }}" \
+            "${{ steps.prisma_validate.outcome }}" \
+            "${{ steps.prisma_generate.outcome }}" \
+            "${{ steps.lint.outcome }}" \
+            "${{ steps.typecheck.outcome }}" \
+            "${{ steps.g5.outcome }}" \
+            "${{ steps.full_test.outcome }}" \
+            "${{ steps.build.outcome }}"; do
+            if [ "$outcome" != "success" ]; then
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "EXEC-007 baseline diagnosis found one or more failing gates."
+            exit 1
+          fi
