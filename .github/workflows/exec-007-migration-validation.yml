@@ -217,6 +217,17 @@ jobs:
           test "$(wc -l < evidence/changed-paths.txt | xargs)" -eq 1
           grep -Fxq '.github/workflows/exec-007-migration-validation.yml' evidence/changed-paths.txt
 
+      - name: Package exact candidate source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C head archive \
+            --format=zip \
+            --output=../evidence/exec-007-candidate-source.zip \
+            HEAD
+          sha256sum evidence/exec-007-candidate-source.zip \
+            | tee evidence/exec-007-candidate-source.sha256
+
       - name: Upload baseline differential evidence
         if: always()
         uses: actions/upload-artifact@v4
