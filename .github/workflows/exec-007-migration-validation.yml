@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/exec-007-migration-validation.yml"
       - "prisma/**"
+      - "scripts/exec-007-*"
       - "lib/offer-management/**"
       - "lib/customer-portal/**"
       - "lib/exec-007-cutover/**"
@@ -178,6 +179,8 @@ jobs:
             test "$(psql "$url" -tAc 'SELECT mode FROM exec007_cutover_control WHERE singleton_key=1')" = 'LEGACY_ONLY'
             test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_name='fk_exec007_offers_tenant_opportunity'")" -eq 1
             test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname IN ('trg_exec007_offer_identity_immutable','trg_exec007_offer_version_immutable','trg_exec007_completion_reservation_guard','trg_exec007_cutover_transition','trg_exec007_legacy_offer_write_guard')")" -eq 5
+            psql "$url" -v ON_ERROR_STOP=1 -f head/scripts/exec-007-postgres-privacy-retention.sql
+            DATABASE_URL="$url" node head/scripts/exec-007-postgres-concurrency.mjs
           done
       - name: Exact EXEC-007 tests
         working-directory: head
@@ -189,7 +192,7 @@ jobs:
           git -C head diff --name-only "$REQUIRED_BASE_SHA...HEAD" | tee evidence/changed-paths.txt
           while IFS= read -r path; do
             case "$path" in
-              .github/workflows/exec-007-migration-validation.yml|prisma/schema.prisma|prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql|lib/offer-management/*|lib/customer-portal/*|lib/exec-007-cutover/*|lib/tenant-model-policy.ts|tests/r01-tenant-model-policy.test.ts|tests/r01f-isolation-regression.test.ts|tests/foundation/g5-exec-007-*.test.ts) ;;
+              .github/workflows/exec-007-migration-validation.yml|prisma/schema.prisma|prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql|scripts/exec-007-postgres-concurrency.mjs|scripts/exec-007-postgres-privacy-retention.sql|lib/offer-management/*|lib/customer-portal/*|lib/exec-007-cutover/*|lib/tenant-model-policy.ts|tests/r01-tenant-model-policy.test.ts|tests/r01f-isolation-regression.test.ts|tests/foundation/g5-exec-007-*.test.ts) ;;
               *) echo "UNAUTHORIZED_PATH=$path"; exit 1 ;;
             esac
           done < evidence/changed-paths.txt
