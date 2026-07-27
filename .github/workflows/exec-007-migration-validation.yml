@@ -144,7 +144,7 @@ jobs:
           npx vitest run tests/r01-tenant-model-policy.test.ts tests/r01f-isolation-regression.test.ts
           npx vitest run tests/foundation/g5-*.test.ts
           npm run build
-      - name: Apply prerequisite chain and EXEC-007 migration twice
+      - name: Apply prerequisite chain and EXEC-007 migration to two isolated databases
         shell: bash
         run: |
           set -euo pipefail
@@ -178,8 +178,13 @@ jobs:
             test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'exec007_%'")" -eq 29
             test "$(psql "$url" -tAc 'SELECT mode FROM exec007_cutover_control WHERE singleton_key=1')" = 'LEGACY_ONLY'
             test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_name='fk_exec007_offers_tenant_opportunity'")" -eq 1
-            test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname IN ('trg_exec007_offer_identity_immutable','trg_exec007_offer_version_immutable','trg_exec007_completion_reservation_guard','trg_exec007_cutover_transition','trg_exec007_legacy_offer_write_guard')")" -eq 5
-            psql "$url" -v ON_ERROR_STOP=1 -f head/scripts/exec-007-postgres-privacy-retention.sql
+            test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname IN ('trg_exec007_offer_identity_immutable','trg_exec007_offer_version_immutable','trg_exec007_pricing_component_immutable','trg_exec007_legal_hold_sync','trg_exec007_completion_reservation_guard','trg_exec007_cutover_transition','trg_exec007_legacy_offer_write_guard')")" -eq 7
+            test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname LIKE 'trg_exec007_00_write_gate_%' OR tgname='trg_exec007_mark_first_write_offer'")" -eq 27
+            psql "$url" -v ON_ERROR_STOP=1 \
+              -c 'BEGIN' \
+              -f head/scripts/exec-007-postgres-privacy-retention.sql \
+              -c 'ROLLBACK'
+            test "$(psql "$url" -tAc 'SELECT mode FROM exec007_cutover_control WHERE singleton_key=1')" = 'LEGACY_ONLY'
             DATABASE_URL="$url" node head/scripts/exec-007-postgres-concurrency.mjs
           done
       - name: Exact EXEC-007 tests

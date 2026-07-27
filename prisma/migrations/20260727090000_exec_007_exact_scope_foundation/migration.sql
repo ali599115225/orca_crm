@@ -638,13 +638,81 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION "fn_exec007_guard_offer_version_immutable"() RETURNS trigger AS $$
 BEGIN
-  IF TG_OP='DELETE' AND OLD."state" <> 'DRAFT' THEN RAISE EXCEPTION 'EXEC-007 frozen version cannot be deleted' USING ERRCODE='55000'; END IF;
-  IF TG_OP='UPDATE' AND OLD."state" <> 'DRAFT' THEN
-    IF (NEW."content_payload",NEW."scope_snapshot",NEW."subject_snapshot",NEW."content_hash",NEW."pricing_hash",NEW."terms_hash",NEW."valid_until_utc",NEW."offer_kind",NEW."unit_id",NEW."opportunity_id") IS DISTINCT FROM (OLD."content_payload",OLD."scope_snapshot",OLD."subject_snapshot",OLD."content_hash",OLD."pricing_hash",OLD."terms_hash",OLD."valid_until_utc",OLD."offer_kind",OLD."unit_id",OLD."opportunity_id") THEN
+  IF TG_OP='DELETE' THEN
+    IF OLD."state" <> 'DRAFT' THEN
+      RAISE EXCEPTION 'EXEC-007 frozen version cannot be deleted' USING ERRCODE='55000';
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  IF OLD."state" <> 'DRAFT' THEN
+    IF (
+      NEW."tenant_id", NEW."offer_id", NEW."version_number", NEW."offer_kind",
+      NEW."subject_party_id", NEW."customer_account_id", NEW."branch_id",
+      NEW."unit_id", NEW."opportunity_id", NEW."content_payload",
+      NEW."scope_snapshot", NEW."subject_snapshot", NEW."confirmation_text_version",
+      NEW."canonicalization_version", NEW."content_hash", NEW."pricing_hash",
+      NEW."terms_hash", NEW."validity_policy_version", NEW."valid_until_local_date",
+      NEW."validity_time_zone", NEW."valid_until_utc", NEW."issued_at_utc",
+      NEW."created_by_user_id", NEW."last_commercial_editor_id", NEW."created_at"
+    ) IS DISTINCT FROM (
+      OLD."tenant_id", OLD."offer_id", OLD."version_number", OLD."offer_kind",
+      OLD."subject_party_id", OLD."customer_account_id", OLD."branch_id",
+      OLD."unit_id", OLD."opportunity_id", OLD."content_payload",
+      OLD."scope_snapshot", OLD."subject_snapshot", OLD."confirmation_text_version",
+      OLD."canonicalization_version", OLD."content_hash", OLD."pricing_hash",
+      OLD."terms_hash", OLD."validity_policy_version", OLD."valid_until_local_date",
+      OLD."validity_time_zone", OLD."valid_until_utc", OLD."issued_at_utc",
+      OLD."created_by_user_id", OLD."last_commercial_editor_id", OLD."created_at"
+    ) THEN
       RAISE EXCEPTION 'EXEC-007 governed version fields are frozen' USING ERRCODE='55000';
     END IF;
+    IF NEW."row_version" <> OLD."row_version" + 1 THEN
+      RAISE EXCEPTION 'EXEC-007 offer version expected row version mismatch' USING ERRCODE='40001';
+    END IF;
   END IF;
-  RETURN COALESCE(NEW,OLD);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION "fn_exec007_guard_pricing_freeze"() RETURNS trigger AS $$
+DECLARE
+  v_snapshot_id UUID;
+  v_tenant_id UUID;
+  v_version_state "Exec007OfferVersionState";
+BEGIN
+  IF TG_OP='DELETE' THEN
+    v_tenant_id := OLD."tenant_id";
+  ELSE
+    v_tenant_id := NEW."tenant_id";
+  END IF;
+
+  IF TG_TABLE_NAME='exec007_offer_pricing_snapshots' THEN
+    IF TG_OP='DELETE' THEN v_snapshot_id := OLD."id"; ELSE v_snapshot_id := NEW."id"; END IF;
+    SELECT v."state" INTO v_version_state
+      FROM "exec007_offer_versions" v
+      JOIN "exec007_offer_pricing_snapshots" s
+        ON s."tenant_id"=v."tenant_id" AND s."offer_version_id"=v."id"
+     WHERE s."tenant_id"=v_tenant_id
+       AND s."id"=v_snapshot_id;
+  ELSE
+    IF TG_OP='DELETE' THEN v_snapshot_id := OLD."pricing_snapshot_id"; ELSE v_snapshot_id := NEW."pricing_snapshot_id"; END IF;
+    SELECT v."state" INTO v_version_state
+      FROM "exec007_offer_versions" v
+      JOIN "exec007_offer_pricing_snapshots" s
+        ON s."tenant_id"=v."tenant_id" AND s."offer_version_id"=v."id"
+     WHERE s."tenant_id"=v_tenant_id
+       AND s."id"=v_snapshot_id;
+  END IF;
+
+  IF v_version_state IS NULL THEN
+    RAISE EXCEPTION 'EXEC-007 pricing snapshot version binding missing' USING ERRCODE='23503';
+  END IF;
+  IF v_version_state <> 'DRAFT' THEN
+    RAISE EXCEPTION 'EXEC-007 frozen pricing snapshot and components are immutable' USING ERRCODE='55000';
+  END IF;
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -673,12 +741,72 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION "fn_exec007_guard_legal_hold_disposition"() RETURNS trigger AS $$
+CREATE UNIQUE INDEX "uq_exec007_one_active_legal_hold"
+  ON "exec007_legal_hold_records" ("tenant_id", "retention_assignment_id")
+  WHERE "status"='ACTIVE';
+
+CREATE OR REPLACE FUNCTION "fn_exec007_sync_legal_hold_status"() RETURNS trigger AS $$
+DECLARE
+  v_tenant_id UUID;
+  v_assignment_id UUID;
+  v_expected "Exec007LegalHoldStatus";
 BEGIN
-  IF OLD."legal_hold_status"='ACTIVE' AND (TG_OP='DELETE' OR NEW."disposition_status"='DISPOSED') THEN
+  IF TG_OP='DELETE' THEN
+    v_tenant_id := OLD."tenant_id";
+    v_assignment_id := OLD."retention_assignment_id";
+  ELSE
+    v_tenant_id := NEW."tenant_id";
+    v_assignment_id := NEW."retention_assignment_id";
+  END IF;
+  IF TG_OP='DELETE' THEN
+    RAISE EXCEPTION 'EXEC-007 legal hold records cannot be deleted; release them explicitly' USING ERRCODE='55000';
+  END IF;
+  IF TG_OP='UPDATE' AND OLD."status"='RELEASED' AND NEW."status" <> OLD."status" THEN
+    RAISE EXCEPTION 'EXEC-007 released legal hold cannot be reactivated' USING ERRCODE='55000';
+  END IF;
+
+  SELECT CASE WHEN EXISTS (
+    SELECT 1 FROM "exec007_legal_hold_records" h
+     WHERE h."tenant_id"=v_tenant_id
+       AND h."retention_assignment_id"=v_assignment_id
+       AND h."status"='ACTIVE'
+  ) THEN 'ACTIVE'::"Exec007LegalHoldStatus" ELSE 'RELEASED'::"Exec007LegalHoldStatus" END
+  INTO v_expected;
+
+  UPDATE "exec007_retention_assignments"
+     SET "legal_hold_status"=v_expected,
+         "version"="version"+1,
+         "updated_at"=transaction_timestamp()
+   WHERE "tenant_id"=v_tenant_id AND "id"=v_assignment_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'EXEC-007 legal hold retention assignment missing' USING ERRCODE='23503';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION "fn_exec007_guard_legal_hold_disposition"() RETURNS trigger AS $$
+DECLARE
+  v_active_hold BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM "exec007_legal_hold_records" h
+     WHERE h."tenant_id"=OLD."tenant_id"
+       AND h."retention_assignment_id"=OLD."id"
+       AND h."status"='ACTIVE'
+  ) INTO v_active_hold;
+
+  IF TG_OP='UPDATE' AND NEW."legal_hold_status" IS DISTINCT FROM
+     (CASE WHEN v_active_hold THEN 'ACTIVE'::"Exec007LegalHoldStatus" ELSE 'RELEASED'::"Exec007LegalHoldStatus" END) THEN
+    RAISE EXCEPTION 'EXEC-007 legal hold status is inconsistent with authoritative hold records' USING ERRCODE='55000';
+  END IF;
+  IF (v_active_hold OR OLD."legal_hold_status"='ACTIVE')
+     AND (TG_OP='DELETE' OR NEW."disposition_status"='DISPOSED') THEN
     RAISE EXCEPTION 'EXEC-007 active legal hold blocks disposition' USING ERRCODE='55000';
   END IF;
-  IF TG_OP='UPDATE' AND NEW."disposition_status"='DISPOSED' AND OLD."downstream_relationship_ended_at" IS NULL THEN
+  IF TG_OP='UPDATE'
+     AND NEW."disposition_status"='DISPOSED'
+     AND NEW."downstream_relationship_ended_at" IS NULL THEN
     RAISE EXCEPTION 'EXEC-007 downstream relationship end is unresolved' USING ERRCODE='55000';
   END IF;
   RETURN COALESCE(NEW,OLD);
@@ -687,20 +815,37 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION "fn_exec007_guard_cutover_transition"() RETURNS trigger AS $$
 BEGIN
-  IF NEW."version" <> OLD."version"+1 THEN RAISE EXCEPTION 'EXEC-007 cutover expected version mismatch' USING ERRCODE='40001'; END IF;
-  IF OLD."first_exec007_write_at" IS NOT NULL AND NEW."first_exec007_write_at" IS DISTINCT FROM OLD."first_exec007_write_at" THEN RAISE EXCEPTION 'EXEC-007 first-write latch is immutable' USING ERRCODE='55000'; END IF;
-  IF NOT ((OLD."mode"='LEGACY_ONLY' AND NEW."mode"='EXEC007_READY') OR (OLD."mode"='EXEC007_READY' AND NEW."mode" IN ('LEGACY_ONLY','EXEC007_ACTIVE')) OR (OLD."mode"='EXEC007_ACTIVE' AND NEW."mode"='RECOVERY_STOP') OR (OLD."mode"='RECOVERY_STOP' AND NEW."mode"='EXEC007_ACTIVE') OR OLD."mode"=NEW."mode") THEN
+  IF NEW."version"=OLD."version"
+     AND NEW."mode"=OLD."mode"
+     AND OLD."mode"='EXEC007_ACTIVE'
+     AND OLD."first_exec007_write_at" IS NULL
+     AND NEW."first_exec007_write_at" IS NOT NULL
+     AND NEW."authorized_release_sha" IS NOT DISTINCT FROM OLD."authorized_release_sha"
+     AND NEW."updated_by_user_id" IS NOT DISTINCT FROM OLD."updated_by_user_id" THEN
+    NEW."updated_at" := transaction_timestamp();
+    RETURN NEW;
+  END IF;
+
+  IF NEW."version" <> OLD."version"+1 THEN
+    RAISE EXCEPTION 'EXEC-007 cutover expected version mismatch' USING ERRCODE='40001';
+  END IF;
+  IF OLD."first_exec007_write_at" IS NOT NULL
+     AND NEW."first_exec007_write_at" IS DISTINCT FROM OLD."first_exec007_write_at" THEN
+    RAISE EXCEPTION 'EXEC-007 first-write latch is immutable' USING ERRCODE='55000';
+  END IF;
+  IF NOT (
+    (OLD."mode"='LEGACY_ONLY' AND NEW."mode"='EXEC007_READY') OR
+    (OLD."mode"='EXEC007_READY' AND NEW."mode" IN ('LEGACY_ONLY','EXEC007_ACTIVE')) OR
+    (OLD."mode"='EXEC007_ACTIVE' AND NEW."mode"='RECOVERY_STOP') OR
+    (OLD."mode"='RECOVERY_STOP' AND NEW."mode"='EXEC007_ACTIVE') OR
+    OLD."mode"=NEW."mode"
+  ) THEN
     RAISE EXCEPTION 'EXEC-007 invalid cutover transition % -> %',OLD."mode",NEW."mode" USING ERRCODE='55000';
   END IF;
-  IF NEW."mode" IN ('EXEC007_READY','EXEC007_ACTIVE') AND NEW."authorized_release_sha" IS NULL THEN RAISE EXCEPTION 'EXEC-007 release SHA required' USING ERRCODE='23514'; END IF;
+  IF NEW."mode" IN ('EXEC007_READY','EXEC007_ACTIVE') AND NEW."authorized_release_sha" IS NULL THEN
+    RAISE EXCEPTION 'EXEC-007 release SHA required' USING ERRCODE='23514';
+  END IF;
   NEW."updated_at" := transaction_timestamp();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION "fn_exec007_mark_first_write"() RETURNS trigger AS $$
-BEGIN
-  UPDATE "exec007_cutover_control" SET "first_exec007_write_at"=COALESCE("first_exec007_write_at",transaction_timestamp()), "updated_at"=transaction_timestamp() WHERE "singleton_key"=1 AND "mode"='EXEC007_ACTIVE';
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -711,6 +856,19 @@ BEGIN
   SELECT "mode" INTO v_mode FROM "exec007_cutover_control" WHERE "singleton_key"=1;
   IF p_write_class='EXEC007' AND v_mode <> 'EXEC007_ACTIVE' THEN RAISE EXCEPTION 'EXEC-007 writes denied in mode %',v_mode USING ERRCODE='42501'; END IF;
   IF p_write_class='LEGACY' AND v_mode <> 'LEGACY_ONLY' THEN RAISE EXCEPTION 'Legacy commercial writes denied in mode %',v_mode USING ERRCODE='42501'; END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION "fn_exec007_guard_exec007_write"() RETURNS trigger AS $$
+BEGIN
+  PERFORM "fn_exec007_assert_write_mode"('EXEC007');
+  UPDATE "exec007_cutover_control"
+     SET "first_exec007_write_at"=transaction_timestamp()
+   WHERE "singleton_key"=1
+     AND "mode"='EXEC007_ACTIVE'
+     AND "first_exec007_write_at" IS NULL;
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -738,7 +896,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp;
 
 CREATE TRIGGER "trg_exec007_offer_identity_immutable" BEFORE UPDATE ON "exec007_commercial_offers" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_offer_identity_immutable"();
 CREATE TRIGGER "trg_exec007_offer_version_immutable" BEFORE UPDATE OR DELETE ON "exec007_offer_versions" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_offer_version_immutable"();
-CREATE TRIGGER "trg_exec007_pricing_snapshot_immutable" BEFORE UPDATE OR DELETE ON "exec007_offer_pricing_snapshots" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_immutable_row"();
+CREATE TRIGGER "trg_exec007_pricing_snapshot_immutable" BEFORE UPDATE OR DELETE ON "exec007_offer_pricing_snapshots" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_pricing_freeze"();
+CREATE TRIGGER "trg_exec007_pricing_component_immutable" BEFORE INSERT OR UPDATE OR DELETE ON "exec007_offer_pricing_components" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_pricing_freeze"();
 CREATE TRIGGER "trg_exec007_approval_decision_immutable" BEFORE UPDATE OR DELETE ON "exec007_offer_approval_decisions" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_immutable_row"();
 CREATE TRIGGER "trg_exec007_acceptance_evidence_immutable" BEFORE UPDATE OR DELETE ON "exec007_acceptance_evidence" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_immutable_row"();
 CREATE TRIGGER "trg_exec007_decline_evidence_immutable" BEFORE UPDATE OR DELETE ON "exec007_decline_evidence" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_immutable_row"();
@@ -749,13 +908,33 @@ CREATE TRIGGER "trg_exec007_approval_sod" BEFORE INSERT ON "exec007_offer_approv
 CREATE TRIGGER "trg_exec007_completion_reservation_guard" BEFORE INSERT OR UPDATE OF "reservation_id","state" ON "exec007_acceptance_completion_attempts" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_assert_reservation_reference"();
 CREATE TRIGGER "trg_exec007_preparation_reservation_guard" BEFORE INSERT OR UPDATE OF "reservation_id" ON "exec007_preparation_requests" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_assert_reservation_reference"();
 CREATE TRIGGER "trg_exec007_retention_legal_hold" BEFORE UPDATE OR DELETE ON "exec007_retention_assignments" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_legal_hold_disposition"();
+CREATE TRIGGER "trg_exec007_legal_hold_sync" AFTER INSERT OR UPDATE OR DELETE ON "exec007_legal_hold_records" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_sync_legal_hold_status"();
 CREATE TRIGGER "trg_exec007_cutover_transition" BEFORE UPDATE ON "exec007_cutover_control" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_cutover_transition"();
 CREATE TRIGGER "trg_exec007_legacy_offer_write_guard" BEFORE INSERT OR UPDATE OR DELETE ON "offers" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_legacy_offer_write"();
+CREATE TRIGGER "trg_exec007_mark_first_write_offer" BEFORE INSERT OR UPDATE OR DELETE ON "exec007_commercial_offers" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_exec007_write"();
 
-CREATE TRIGGER "trg_exec007_mark_first_write_offer" AFTER INSERT ON "exec007_commercial_offers" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_mark_first_write"();
-CREATE TRIGGER "trg_exec007_mark_first_write_version" AFTER INSERT ON "exec007_offer_versions" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_mark_first_write"();
-CREATE TRIGGER "trg_exec007_mark_first_write_evidence" AFTER INSERT ON "exec007_acceptance_evidence" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_mark_first_write"();
-CREATE TRIGGER "trg_exec007_mark_first_write_completion" AFTER INSERT ON "exec007_acceptance_completion_attempts" FOR EACH ROW EXECUTE FUNCTION "fn_exec007_mark_first_write"();
+DO $$
+DECLARE
+  v_table TEXT;
+  v_trigger TEXT;
+BEGIN
+  FOR v_table IN
+    SELECT tablename
+      FROM pg_tables
+     WHERE schemaname='public'
+       AND left(tablename,8)='exec007_'
+       AND tablename NOT IN ('exec007_cutover_control','exec007_cutover_transition_history','exec007_commercial_offers')
+     ORDER BY tablename
+  LOOP
+    v_trigger := 'trg_exec007_00_write_gate_' || substr(md5(v_table),1,12);
+    EXECUTE format(
+      'CREATE TRIGGER %I BEFORE INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION "fn_exec007_guard_exec007_write"()',
+      v_trigger,
+      v_table
+    );
+  END LOOP;
+END;
+$$;
 
 COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_actor_party" ON "exec007_customer_principal_subject_grants" IS 'Physical correction: canonical EXEC-005 table customer_parties.';
 COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_customer_account" ON "exec007_customer_principal_subject_grants" IS 'Physical correction: canonical EXEC-005 table customer_accounts_v2.';
