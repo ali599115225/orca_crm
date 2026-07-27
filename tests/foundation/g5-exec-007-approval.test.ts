@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertIndependentApproval } from "@/lib/offer-management/approval";
+import { approvalsAreEffective, assertIndependentApproval } from "@/lib/offer-management/approval";
 
 const requirement = {
   id: "r",
@@ -26,6 +26,12 @@ describe("EXEC-007 approvals and SoD", () => {
         permissions: new Set(["offer.approve_exception"]),
       }),
     ).not.toThrow();
+  });
+
+  it("T-APP-02 requires every frozen approval requirement before issuance", () => {
+    const second = { ...requirement, id: "r2", requirementKey: "manual" };
+    expect(approvalsAreEffective([requirement, second], new Set(["r", "r2"]))).toBe(true);
+    expect(approvalsAreEffective([requirement, second], new Set(["r"]))).toBe(false);
   });
 
   it("T-SOD-02/T-SOD-03/T-SOD-04 rejects creator, editor and initiator", () => {
