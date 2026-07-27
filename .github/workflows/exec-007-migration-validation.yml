@@ -57,12 +57,14 @@ jobs:
         with:
           ref: ${{ env.REQUIRED_BASE_SHA }}
           path: base
+          fetch-depth: 1
 
       - name: Checkout exact candidate head
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: head
+          fetch-depth: 0
 
       - name: Set up Node.js 24
         uses: actions/setup-node@v6
@@ -211,7 +213,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git -C head diff --name-only "$REQUIRED_BASE_SHA" HEAD | tee evidence/changed-paths.txt
+          git -C head diff --name-only "$REQUIRED_BASE_SHA...HEAD" | tee evidence/changed-paths.txt
           test "$(wc -l < evidence/changed-paths.txt | xargs)" -eq 1
           grep -Fxq '.github/workflows/exec-007-migration-validation.yml' evidence/changed-paths.txt
 
