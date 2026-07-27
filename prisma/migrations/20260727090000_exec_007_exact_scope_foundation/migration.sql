@@ -936,6 +936,293 @@ BEGIN
 END;
 $$;
 
+
+CREATE OR REPLACE FUNCTION "fn_exec007_complete_conditional_acceptance"(
+  p_tenant_id UUID,
+  p_offer_version_id UUID,
+  p_principal_id UUID,
+  p_subject_grant_id UUID,
+  p_session_id UUID,
+  p_challenge_id UUID,
+  p_hold_id UUID,
+  p_actor_user_id UUID,
+  p_assignment_id UUID,
+  p_expected_hold_version INTEGER,
+  p_reservation_expires_at TIMESTAMPTZ,
+  p_acceptance_method TEXT,
+  p_evidence_payload JSONB,
+  p_evidence_hash TEXT,
+  p_correlation_id TEXT,
+  p_idempotency_key_hash TEXT,
+  p_payload_hash TEXT,
+  p_now TIMESTAMPTZ DEFAULT transaction_timestamp()
+) RETURNS TABLE (
+  acceptance_intent_id UUID,
+  acceptance_evidence_id UUID,
+  completion_attempt_id UUID,
+  reservation_id UUID,
+  preparation_request_id UUID
+) AS $$
+DECLARE
+  v_offer "exec007_commercial_offers"%ROWTYPE;
+  v_version "exec007_offer_versions"%ROWTYPE;
+  v_principal "exec007_customer_principals"%ROWTYPE;
+  v_grant "exec007_customer_principal_subject_grants"%ROWTYPE;
+  v_session "exec007_customer_sessions"%ROWTYPE;
+  v_challenge "exec007_customer_auth_challenges"%ROWTYPE;
+  v_hold "unit_commitments"%ROWTYPE;
+  v_snapshot "exec007_offer_pricing_snapshots"%ROWTYPE;
+  v_existing "exec007_idempotency_records"%ROWTYPE;
+  v_intent_id UUID := gen_random_uuid();
+  v_evidence_id UUID := gen_random_uuid();
+  v_completion_id UUID := gen_random_uuid();
+  v_reservation_id UUID;
+  v_preparation_id UUID := gen_random_uuid();
+  v_request_type "Exec007PreparationRequestType";
+  v_result RECORD;
+BEGIN
+  IF p_tenant_id IS NULL OR p_offer_version_id IS NULL OR p_principal_id IS NULL OR
+     p_subject_grant_id IS NULL OR p_session_id IS NULL OR p_challenge_id IS NULL OR
+     p_hold_id IS NULL OR p_actor_user_id IS NULL OR p_assignment_id IS NULL THEN
+    RAISE EXCEPTION 'EXEC-007 conditional acceptance references are required' USING ERRCODE='22004';
+  END IF;
+  IF p_expected_hold_version < 1 OR p_reservation_expires_at <= p_now THEN
+    RAISE EXCEPTION 'EXEC-007 conditional acceptance version or reservation expiry is invalid' USING ERRCODE='22023';
+  END IF;
+  IF p_acceptance_method IS NULL OR btrim(p_acceptance_method)='' OR
+     p_correlation_id IS NULL OR btrim(p_correlation_id)='' THEN
+    RAISE EXCEPTION 'EXEC-007 acceptance method and correlation are required' USING ERRCODE='22023';
+  END IF;
+  IF p_evidence_hash !~ '^[0-9a-f]{64}$' OR p_idempotency_key_hash !~ '^[0-9a-f]{64}$' OR p_payload_hash !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'EXEC-007 conditional acceptance hashes must be lowercase SHA-256' USING ERRCODE='22023';
+  END IF;
+  IF jsonb_typeof(p_evidence_payload) IS DISTINCT FROM 'object' OR
+     p_evidence_payload->>'action' IS DISTINCT FROM 'ACCEPT' OR
+     p_evidence_payload->>'offerVersionId' IS DISTINCT FROM p_offer_version_id::TEXT OR
+     p_evidence_payload->>'challengeId' IS DISTINCT FROM p_challenge_id::TEXT THEN
+    RAISE EXCEPTION 'EXEC-007 evidence payload is not bound to the exact ACCEPT challenge and OfferVersion' USING ERRCODE='23514';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_tenant_id::TEXT || ':EXEC007:ACCEPT:' || p_idempotency_key_hash, 0));
+
+  SELECT * INTO v_existing
+    FROM "exec007_idempotency_records"
+   WHERE "tenant_id"=p_tenant_id
+     AND "operation"='CONDITIONAL_ACCEPTANCE'
+     AND "idempotency_key_hash"=p_idempotency_key_hash
+   FOR UPDATE;
+  IF FOUND THEN
+    IF v_existing."payload_hash" <> p_payload_hash THEN
+      RAISE EXCEPTION 'EXEC-007 idempotency payload mismatch' USING ERRCODE='22000';
+    END IF;
+    SELECT i."id" AS intent_id, e."id" AS evidence_id, c."id" AS completion_id,
+           c."reservation_id", r."id" AS preparation_id
+      INTO v_result
+      FROM "exec007_acceptance_completion_attempts" c
+      JOIN "exec007_acceptance_evidence" e
+        ON e."tenant_id"=c."tenant_id" AND e."id"=c."acceptance_evidence_id"
+      JOIN "exec007_acceptance_intents" i
+        ON i."tenant_id"=e."tenant_id" AND i."id"=e."acceptance_intent_id"
+      JOIN "exec007_preparation_requests" r
+        ON r."tenant_id"=c."tenant_id" AND r."completion_attempt_id"=c."id"
+     WHERE c."tenant_id"=p_tenant_id AND c."id"=v_existing."result_id" AND c."state"='COMPLETED';
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'EXEC-007 idempotent result is incomplete' USING ERRCODE='55000';
+    END IF;
+    RETURN QUERY SELECT v_result.intent_id,v_result.evidence_id,v_result.completion_id,v_result.reservation_id,v_result.preparation_id;
+    RETURN;
+  END IF;
+
+  PERFORM "fn_exec007_assert_write_mode"('EXEC007');
+
+  SELECT * INTO v_version
+    FROM "exec007_offer_versions"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_offer_version_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_version."state" <> 'ISSUED' OR NOT v_version."is_current" OR
+     v_version."valid_until_utc" IS NULL OR v_version."valid_until_utc" <= p_now THEN
+    RAISE EXCEPTION 'EXEC-007 exact OfferVersion is not currently acceptable' USING ERRCODE='55000';
+  END IF;
+
+  SELECT * INTO v_offer
+    FROM "exec007_commercial_offers"
+   WHERE "tenant_id"=p_tenant_id AND "id"=v_version."offer_id"
+   FOR UPDATE;
+  IF NOT FOUND OR v_offer."state" <> 'OPEN' OR v_offer."current_issued_version_id" IS DISTINCT FROM v_version."id" OR
+     v_offer."unit_id" IS DISTINCT FROM v_version."unit_id" OR v_offer."opportunity_id" IS DISTINCT FROM v_version."opportunity_id" OR
+     v_offer."subject_party_id" IS DISTINCT FROM v_version."subject_party_id" OR
+     v_offer."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
+     v_offer."branch_id" IS DISTINCT FROM v_version."branch_id" OR v_offer."offer_kind" IS DISTINCT FROM v_version."offer_kind" THEN
+    RAISE EXCEPTION 'EXEC-007 commercial offer and exact version binding mismatch' USING ERRCODE='23514';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM "exec007_offer_approval_requirements" req
+     WHERE req."tenant_id"=p_tenant_id AND req."offer_version_id"=v_version."id"
+       AND NOT EXISTS (
+         SELECT 1 FROM "exec007_offer_approval_decisions" dec
+          WHERE dec."tenant_id"=req."tenant_id" AND dec."requirement_id"=req."id" AND dec."state"='APPROVED'
+       )
+  ) THEN
+    RAISE EXCEPTION 'EXEC-007 commercial authority approval is incomplete' USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_snapshot
+    FROM "exec007_offer_pricing_snapshots"
+   WHERE "tenant_id"=p_tenant_id AND "offer_version_id"=v_version."id";
+  IF NOT FOUND OR v_snapshot."pricing_hash" <> v_version."pricing_hash" OR v_snapshot."offer_kind" <> v_version."offer_kind" THEN
+    RAISE EXCEPTION 'EXEC-007 pricing snapshot binding mismatch' USING ERRCODE='23514';
+  END IF;
+
+  SELECT * INTO v_principal
+    FROM "exec007_customer_principals"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_principal_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_principal."status" <> 'ACTIVE' THEN
+    RAISE EXCEPTION 'EXEC-007 customer principal is inactive' USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_grant
+    FROM "exec007_customer_principal_subject_grants"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_subject_grant_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_grant."principal_id" <> p_principal_id OR v_grant."status" <> 'ACTIVE' OR
+     v_grant."effective_at" > p_now OR (v_grant."expires_at" IS NOT NULL AND v_grant."expires_at" <= p_now) OR
+     v_grant."revoked_at" IS NOT NULL OR v_grant."subject_party_id" <> v_version."subject_party_id" OR
+     v_grant."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
+     v_grant."branch_id" <> v_version."branch_id" OR v_grant."service_line" <> v_offer."service_line" THEN
+    RAISE EXCEPTION 'EXEC-007 subject grant does not authorize this exact offer version' USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_session
+    FROM "exec007_customer_sessions"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_session_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_session."principal_id" <> p_principal_id OR v_session."subject_grant_id" <> p_subject_grant_id OR
+     v_session."status" <> 'ACTIVE' OR v_session."assurance_level" <> 'CUSTOMER_DECISION_STEP_UP' OR
+     v_session."auth_version" <> v_principal."auth_version" OR v_session."grant_version" <> v_grant."grant_version" OR
+     v_session."decision_step_up_at" IS NULL OR v_session."decision_step_up_at" > p_now OR
+     v_session."revoked_at" IS NOT NULL OR v_session."absolute_expires_at" <= p_now OR v_session."idle_expires_at" <= p_now THEN
+    RAISE EXCEPTION 'EXEC-007 customer session is not authorized for decision acceptance' USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_challenge
+    FROM "exec007_customer_auth_challenges"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_challenge_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_challenge."principal_id" IS DISTINCT FROM p_principal_id OR
+     v_challenge."action" IS DISTINCT FROM 'ACCEPT' OR v_challenge."status" <> 'PENDING' OR
+     v_challenge."expires_at" <= p_now OR v_challenge."consumed_at" IS NOT NULL THEN
+    RAISE EXCEPTION 'EXEC-007 acceptance challenge is invalid, expired, revoked, or consumed' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM "exec007_customer_principal_identities" ident
+     WHERE ident."tenant_id"=p_tenant_id AND ident."principal_id"=p_principal_id
+       AND ident."identity_type"=v_challenge."identity_type" AND ident."status"='ACTIVE'
+       AND ident."verified_at" <= p_now AND ident."revoked_at" IS NULL
+  ) THEN
+    RAISE EXCEPTION 'EXEC-007 challenge identity is not actively verified' USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_hold
+    FROM "unit_commitments"
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_hold_id
+   FOR UPDATE;
+  IF NOT FOUND OR v_hold."commitment_type" <> 'HOLD' OR v_hold."status" <> 'ACTIVE' OR
+     v_hold."expires_at" <= p_now OR v_hold."version" <> p_expected_hold_version OR
+     v_hold."unit_id" <> v_version."unit_id" OR v_hold."branch_id" <> v_version."branch_id" OR
+     v_hold."party_id" IS DISTINCT FROM v_version."subject_party_id" OR
+     v_hold."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
+     v_hold."opportunity_id" IS DISTINCT FROM v_version."opportunity_id" THEN
+    RAISE EXCEPTION 'EXEC-007 active hold does not match the exact offer subject and scope' USING ERRCODE='55000';
+  END IF;
+
+  INSERT INTO "exec007_acceptance_intents" (
+    "id","tenant_id","offer_version_id","customer_session_id","principal_id","subject_party_id","customer_account_id",
+    "action","state","nonce_hash","content_hash","pricing_hash","terms_hash","expires_at"
+  ) VALUES (
+    v_intent_id,p_tenant_id,v_version."id",p_session_id,p_principal_id,v_version."subject_party_id",v_version."customer_account_id",
+    'ACCEPT','PENDING',p_idempotency_key_hash,v_version."content_hash",v_version."pricing_hash",v_version."terms_hash",
+    LEAST(v_version."valid_until_utc",v_challenge."expires_at")
+  );
+
+  INSERT INTO "exec007_acceptance_evidence" (
+    "id","tenant_id","acceptance_intent_id","offer_version_id","principal_id","subject_party_id","customer_account_id",
+    "content_hash","pricing_hash","terms_hash","evidence_hash","network_hmac","hmac_key_version",
+    "confirmation_text_version","canonicalization_version","assurance_level","server_confirmed_at"
+  ) VALUES (
+    v_evidence_id,p_tenant_id,v_intent_id,v_version."id",p_principal_id,v_version."subject_party_id",v_version."customer_account_id",
+    v_version."content_hash",v_version."pricing_hash",v_version."terms_hash",p_evidence_hash,NULL,'EXEC007-NET-1',
+    v_version."confirmation_text_version",v_version."canonicalization_version",v_session."assurance_level",p_now
+  );
+
+  v_reservation_id := "exec006_convert_hold_to_reservation"(
+    p_tenant_id,p_hold_id,p_actor_user_id,p_assignment_id,p_expected_hold_version,p_reservation_expires_at,
+    v_evidence_id::TEXT,'EXEC-007 conditional acceptance',p_correlation_id,p_idempotency_key_hash,p_payload_hash,p_now
+  );
+
+  IF NOT EXISTS (
+    SELECT 1 FROM "unit_commitments" r
+     WHERE r."tenant_id"=p_tenant_id AND r."id"=v_reservation_id
+       AND r."commitment_type"='RESERVATION' AND r."status"='ACTIVE'
+       AND r."converted_from_commitment_id"=p_hold_id
+       AND r."unit_id"=v_version."unit_id" AND r."branch_id"=v_version."branch_id"
+       AND r."party_id" IS NOT DISTINCT FROM v_version."subject_party_id"
+       AND r."customer_account_id" IS NOT DISTINCT FROM v_version."customer_account_id"
+       AND r."opportunity_id" IS NOT DISTINCT FROM v_version."opportunity_id"
+  ) THEN
+    RAISE EXCEPTION 'EXEC-007 reservation conversion did not produce the exact ACTIVE RESERVATION' USING ERRCODE='55000';
+  END IF;
+
+  INSERT INTO "exec007_acceptance_completion_attempts" (
+    "id","tenant_id","offer_version_id","acceptance_evidence_id","subject_party_id","customer_account_id","hold_id",
+    "reservation_id","state","expected_offer_version","expected_hold_version","idempotency_key_hash","completed_at"
+  ) VALUES (
+    v_completion_id,p_tenant_id,v_version."id",v_evidence_id,v_version."subject_party_id",v_version."customer_account_id",p_hold_id,
+    v_reservation_id,'COMPLETED',v_version."row_version",p_expected_hold_version,p_idempotency_key_hash,p_now
+  );
+
+  v_request_type := CASE WHEN v_version."offer_kind"='SALE'
+    THEN 'SALE_CONTRACT_PREPARATION_REQUEST'::"Exec007PreparationRequestType"
+    ELSE 'LEASE_PREPARATION_REQUEST'::"Exec007PreparationRequestType" END;
+  INSERT INTO "exec007_preparation_requests" (
+    "id","tenant_id","completion_attempt_id","reservation_id","offer_id","offer_version_id","offer_kind","request_type",
+    "state","subject_party_id","customer_account_id"
+  ) VALUES (
+    v_preparation_id,p_tenant_id,v_completion_id,v_reservation_id,v_offer."id",v_version."id",v_version."offer_kind",v_request_type,
+    'REQUESTED',v_version."subject_party_id",v_version."customer_account_id"
+  );
+
+  UPDATE "exec007_acceptance_intents"
+     SET "state"='CONFIRMED',"confirmed_at"=p_now
+   WHERE "tenant_id"=p_tenant_id AND "id"=v_intent_id AND "state"='PENDING';
+  UPDATE "exec007_customer_auth_challenges"
+     SET "status"='CONSUMED',"consumed_at"=p_now
+   WHERE "tenant_id"=p_tenant_id AND "id"=p_challenge_id AND "status"='PENDING' AND "consumed_at" IS NULL;
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 challenge consumption race detected' USING ERRCODE='40001'; END IF;
+  UPDATE "exec007_offer_versions"
+     SET "state"='CONDITIONALLY_ACCEPTED',"is_current"=FALSE,"row_version"="row_version"+1,"updated_at"=p_now
+   WHERE "tenant_id"=p_tenant_id AND "id"=v_version."id" AND "state"='ISSUED' AND "row_version"=v_version."row_version";
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 OfferVersion acceptance race detected' USING ERRCODE='40001'; END IF;
+  UPDATE "exec007_commercial_offers"
+     SET "state"='PREPARATION_REQUESTED',"version"="version"+1,"updated_at"=p_now
+   WHERE "tenant_id"=p_tenant_id AND "id"=v_offer."id" AND "state"='OPEN' AND "version"=v_offer."version";
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 commercial offer acceptance race detected' USING ERRCODE='40001'; END IF;
+
+  INSERT INTO "exec007_offer_version_state_history" ("tenant_id","offer_version_id","from_state","to_state","actor_user_id","reason","correlation_id","occurred_at")
+  VALUES (p_tenant_id,v_version."id",'ISSUED','CONDITIONALLY_ACCEPTED',p_actor_user_id,'Customer conditional acceptance',p_correlation_id,p_now);
+  INSERT INTO "exec007_offer_state_history" ("tenant_id","offer_id","from_state","to_state","actor_user_id","reason","correlation_id","occurred_at")
+  VALUES (p_tenant_id,v_offer."id",'OPEN','PREPARATION_REQUESTED',p_actor_user_id,'Customer conditional acceptance completed',p_correlation_id,p_now);
+
+  INSERT INTO "exec007_idempotency_records" (
+    "tenant_id","operation","idempotency_key_hash","payload_hash","result_type","result_id"
+  ) VALUES (p_tenant_id,'CONDITIONAL_ACCEPTANCE',p_idempotency_key_hash,p_payload_hash,'ACCEPTANCE_COMPLETION',v_completion_id);
+
+  RETURN QUERY SELECT v_intent_id,v_evidence_id,v_completion_id,v_reservation_id,v_preparation_id;
+END;
+$$ LANGUAGE plpgsql;
+
 COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_actor_party" ON "exec007_customer_principal_subject_grants" IS 'Physical correction: canonical EXEC-005 table customer_parties.';
 COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_customer_account" ON "exec007_customer_principal_subject_grants" IS 'Physical correction: canonical EXEC-005 table customer_accounts_v2.';
 COMMENT ON CONSTRAINT "fk_exec007_offers_tenant_opportunity" ON "exec007_commercial_offers" IS 'Physical correction: canonical EXEC-005 table customer_opportunities_v2.';
