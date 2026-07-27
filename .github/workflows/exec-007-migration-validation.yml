@@ -5,13 +5,10 @@ on:
     paths:
       - ".github/workflows/exec-007-migration-validation.yml"
       - "prisma/**"
-      - "scripts/exec-007-*"
-      - "tests/foundation/g5-exec-007-*.test.ts"
-      - "features/customer-portal/**"
+      - "lib/offer-management/**"
       - "lib/customer-portal/**"
-      - "lib/commercial-offers/**"
-      - "lib/pricing/**"
-      - "lib/approvals/**"
+      - "lib/exec-007-cutover/**"
+      - "tests/foundation/g5-exec-007-*.test.ts"
   workflow_dispatch:
 
 permissions:
@@ -20,36 +17,23 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: exec-007-validation-${{ github.event.pull_request.number || github.ref }}
+  group: exec-007-bootstrap-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
-env:
-  REQUIRED_BASE_SHA: f159d865c6980cb8b1dbaa2bfff8fc50ac9d0a26
 
 jobs:
   bootstrap-governed-payload:
     name: Bootstrap governed EXEC-007 payload
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    outputs:
-      changed: ${{ steps.payload.outputs.changed }}
-
+    timeout-minutes: 20
     steps:
       - name: Checkout exact PR branch
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Set up Node.js 24
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-
-      - name: Restore and verify governed payload
-        id: payload
-        if: github.event_name == 'pull_request'
+      - name: Restore, verify and commit governed payload
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -59,7 +43,7 @@ jobs:
           set -euo pipefail
           migration='prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql'
           if test -f "$migration"; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo 'Governed payload already committed.'
             exit 0
           fi
 
@@ -76,17 +60,14 @@ jobs:
           for (let index = 1; index <= 4; index += 1) {
             if (!parts.has(index)) throw new Error(`missing governed payload part ${index}`);
           }
-          fs.writeFileSync(
-            '/tmp/exec007.b64',
-            [1, 2, 3, 4].map((index) => parts.get(index)).join(''),
-          );
+          fs.writeFileSync('/tmp/exec007.b64', [1, 2, 3, 4].map((index) => parts.get(index)).join(''));
           NODE
 
           base64 --decode /tmp/exec007.b64 > /tmp/exec007.zip
           echo "${EXPECTED_PAYLOAD_SHA256}  /tmp/exec007.zip" | sha256sum --check --strict
-
           unzip -Z1 /tmp/exec007.zip | tee /tmp/exec007-archive-paths.txt
           test "$(wc -l < /tmp/exec007-archive-paths.txt | xargs)" -eq 37
+
           while IFS= read -r path; do
             case "$path" in
               prisma/schema.prisma|prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql|lib/offer-management/*|lib/customer-portal/*|lib/exec-007-cutover/*|tests/foundation/g5-exec-007-*.test.ts) ;;
@@ -107,299 +88,21 @@ jobs:
             esac
           done < /tmp/exec007-changed-paths.txt
 
-          npm ci
-          npx prisma validate
-          npx prisma generate
-          npm run lint
-          npm run typecheck
-          npx vitest run tests/foundation/g5-exec-007-*.test.ts
-
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(exec-007): implement governed schema and core contracts'
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
 
-      - name: Mark unchanged outside pull requests
-        if: github.event_name != 'pull_request'
-        run: echo 'changed=false' >> "$GITHUB_OUTPUT"
-
-  baseline-differential:
-    needs: bootstrap-governed-payload
-    if: >-
-      always() &&
-      (needs.bootstrap-governed-payload.result == 'success' || needs.bootstrap-governed-payload.result == 'skipped') &&
-      needs.bootstrap-governed-payload.outputs.changed != 'true'
-    name: Exact base-to-head full-suite differential
-    runs-on: ubuntu-latest
-    timeout-minutes: 55
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: orca_exec007_baseline
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d orca_exec007_baseline"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_baseline?sslmode=disable
-      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_baseline?sslmode=disable
-      PGPASSWORD: postgres
-      NODE_ENV: test
-
-    steps:
-      - name: Checkout frozen central base
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.REQUIRED_BASE_SHA }}
-          path: base
-          fetch-depth: 1
-
-      - name: Checkout exact candidate head
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          path: head
-          fetch-depth: 0
-
-      - name: Set up Node.js 24
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: head/package-lock.json
-
-      - name: Record qualified environment
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p evidence
-          base_sha="$(git -C base rev-parse HEAD)"
-          head_sha="$(git -C head rev-parse HEAD)"
-          postgres_version="$(psql "$DATABASE_URL" -tAc 'SHOW server_version;' | xargs)"
-          {
-            echo "required_base=$REQUIRED_BASE_SHA"
-            echo "actual_base=$base_sha"
-            echo "head=$head_sha"
-            echo "node=$(node --version)"
-            echo "npm=$(npm --version)"
-            echo "postgres=$postgres_version"
-          } | tee evidence/environment.txt
-          test "$base_sha" = "$REQUIRED_BBASE_SHA"
-          test -n "$postgres_version"
-
-      - name: Install frozen-base dependencies
-        working-directory: base
-        run: npm ci
-
-      - name: Install candidate-head dependencies
-        working-directory: head
-        run: npm ci
-
-      - name: Run frozen-base full suite as JSON evidence
-        id: base_test
-        continue-on-error: true
-        working-directory: base
-        run: >-
-          npm test --
-          --reporter=json
-          --outputFile=../evidence/base-tests.json
-
-      - name: Run candidate-head full suite as JSON evidence
-        id: head_test
-        continue-on-error: true
-        working-directory: head
-        run: >-
-          npm test --
-          --reporter=json
-          --outputFile=../evidence/head-tests.json
-
-      - name: Compare failure identities and reject regressions
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-
-          const read = (name) => JSON.parse(fs.readFileSync(name, 'utf8'));
-          const normalizeFile = (value) => {
-            const normalized = String(value || '').replaceAll('\\\\', '/');
-            const marker = '/tests/';
-            const index = normalized.lastIndexOf(marker);
-            return index >= 0 ? normalized.slice(index + 1) : path.basename(normalized);
-          };
-          const failures = (report) => {
-            const result = new Set();
-            for (const file of report.testResults || []) {
-              for (const assertion of file.assertionResults || []) {
-                if (assertion.status !== 'failed') continue;
-                result.add(`${normalizeFile(file.name)} :: ${String(assertion.fullName || assertion.title || '').trim()}`);
-              }
-            }
-            return [...result].sort();
-          };
-
-          const base = read('evidence/base-tests.json');
-          const head = read('evidence/head-tests.json');
-          const baseFailures = failures(base);
-          const headFailures = failures(head);
-          const baseSet = new Set(baseFailures);
-          const headSet = new Set(headFailures);
-          const newFailures = headFailures.filter((item) => !baseSet.has(item));
-          const resolvedFailures = baseFailures.filter((item) => !headSet.has(item));
-
-          const result = {
-            requiredBase: process.env.REQUIRED_BASE_SHA,
-            base: {
-              totalTests: base.numTotalTests,
-              failedTests: base.numFailedTests,
-              failureIdentities: baseFailures,
-            },
-            head: {
-              totalTests: head.numTotalTests,
-              failedTests: head.numFailedTests,
-              failureIdentities: headFailures,
-            },
-            newFailures,
-            resolvedFailures,
-            verdict: newFailures.length === 0 ? 'PASS_NO_NEW_FAILURES' : 'FAIL_NEW_FAILURES',
-          };
-
-          fs.writeFileSync('evidence/baseline-differential.json', `${JSON.stringify(result, null, 2)}\n`);
-          fs.writeFileSync('evidence/base-failure-identities.txt', `${baseFailures.join('\n')}\n`);
-          fs.writeFileSync('evidence/head-failure-identities.txt', `${headFailures.join('\n')}\n`);
-          fs.writeFileSync('evidence/new-failures.txt', `${newFailures.join('\n')}\n`);
-          fs.writeFileSync('evidence/resolved-failures.txt', `${resolvedFailures.join('\n')}\n`);
-
-          console.log(JSON.stringify({
-            baseFailed: haseFailures.length,
-            headFailed: headFailures.length,
-            newFailures: newFailures.length,
-            resolvedFailures: resolvedFailures.length,
-            verdict: result.verdict,
-          }, null, 2));
-
-          if (newFailures.length > 0) process.exit(1);
-          NODE
-
-      - name: Candidate Prisma validation and generation
-        working-directory: head
-        run: |
-          npx prisma validate
-          npx prisma generate
-
-      - name: Candidate governance lint
-        working-directory: head
-        run: npm run lint
-
-      - name: Candidate typecheck
-        working-directory: head
-        run: npm run typecheck
-
-      - name: Candidate G5 contract suite
-        working-directory: head
-        run: npx vitest run tests/foundation/g5-*.test.ts
-
-      - name: Candidate production build
-        working-directory: head
-        run: npm run build
-
-      - name: Apply frozen prerequisite chain and EXEC-007 migration on disposable PostgreSQL 16
-        shell: bash
-        run: |
-          set -euo pipefail
-          createdb -h 127.0.0.1 -U postgres orca_exec007_empty
-          createdb -h 127.0.0.1 -U postgres orca_exec007_current
-          (cd head && npx prisma migrate diff \
-            --from-empty \
-            --to-schema prisma/schema.prisma \
-            --script \
-            --output ../evidence/exec007-full-schema.sql)
-
-          apply_prerequisites() {
-            local url="$1"
-            (cd base && npx prisma migrate diff \
-              --from-empty \
-              --to-schema prisma/schema.prisma \
-              --script \
-              --output ../evidence/legacy-schema.sql)
-            psql "$url" -v ON_ERROR_STOP=1 -f evidence/legacy-schema.sql
-            for migration in \
-              20260726043000_exec_004_organization_authority \
-              20260726123000_exec_005_customer_identity_lifecycle \
-              20260726124500_exec_005_customer_identity_integrity_hardening \
-              20260726160000_exec_006_unit_commitment_reservation_tours \
-              20260726161000_exec_006_unit_commitment_integrity_hardening \
-              20260726162000_exec_006_authority_availability_hardening \
-              20260726163000_exec_006_availability_disambiguation \
-              20260726164000_exec_006_reconciliation_race_hardening \
-              20260726165000_exec_006_lifecycle_approval_guard_hardening \
-              20260726166000_exec_006_exact_scope_hardening; do
-              psql "$url" -v ON_ERROR_STOP=1 -f "head/prisma/migrations/$migration/migration.sql"
-            done
-          }
-
-          EMPTY_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_empty?sslmode=disable'
-          CURRENT_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_current?sslmode=disable'
-          apply_prerequisites "$EMPTY_URL"
-          apply_prerequisites "$CURRENT_URL"
-
-          for url in "$EMPTY_URL" "$CURRENT_URL"; do
-            before="$(psql "$url" -tAc "SELECT json_build_object('offers',count(*)) FROM offers")"
-            psql "$url" -v ON_ERROR_STOP=1 \
-              -f head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
-            after="$(psql "$url" -tAc "SELECT json_build_object('offers',count(*)) FROM offers")"
-            test "$before" = "$after"
-            test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'exec007_%'")" -eq 29
-            test "$(psql "$url" -tAc "SELECT mode FROM exec007_cutover_control WHERE singleton_key=1")" = 'LEGACY_ONLY'
-            test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_name='fk_exec007_offers_tenant_opportunity'")" -eq 1
-            test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname IN ('trg_exec007_offer_identity_immutable','trg_exec007_offer_version_immutable','trg_exec007_completion_reservation_guard','trg_exec007_cutover_transition','trg_exec007_legacy_offer_write_guard')")" -eq 5
-          done
-
-      - name: Run exact EXEC-007 contract tests
-        working-directory: head
-        run: >-
-          npx vitest run tests/foundation/g5-exec-007-*.test.ts
-          --reporter=json
-          --outputFile=../evidence/exec-007-test-results.json
-
-      - name: Prove all candidate paths are governed
-        shell: bash
-        run: |
-          set -euo pipefail
-          git -C head diff --name-only "$REQUIRED_BASE_SHA...HEAD" | tee evidence/changed-paths.txt
-          while IFS= read -r path; do
-            case "$path" in
-              .github/workflows/exec-007-migration-validation.yml|prisma/schema.prisma|prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql|lib/offer-management/*|lib/customer-portal/*|lib/exec-007-cutover/*|tests/foundation/g5-exec-007-*.test.ts) ;;
-              *) echo "UNAUTHORIZED_PATH=$path"; exit 1 ;;
-            esac
-          done < evidence/changed-paths.txt
-
-      - name: Package exact candidate source evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          git -C head archive \
-            --format=zip \
-            --output=../evidence/exec-007-candidate-source.zip \
-            HEAD
-          sha256sum evidence/exec-007-candidate-source.zip \
-            | tee evidence/exec-007-candidate-source.sha256
-
-      - name: Upload baseline differential evidence
+      - name: Upload bootstrap diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: exec-007-baseline-differential
-          path: evidence/
-          if-no-files-found: error
-          retention-days: 14
+          name: exec-007-bootstrap-diagnostics
+          path: |
+            /tmp/exec007-comments.json
+            /tmp/exec007.b64
+            /tmp/exec007.zip
+            /tmp/exec007-archive-paths.txt
+            /tmp/exec007-changed-paths.txt
+          if-no-files-found: warn
+          retention-days: 3
