@@ -34,7 +34,7 @@ describe("EXEC-007 pricing", () => {
     expect(() => resolvePricingPolicy("LEASE", [salePolicy], now)).toThrow(/no effective/);
   });
 
-  it("T-PRICE-04/T-PRICE-09 builds explicit SALE components and customer-only total", () => {
+  it("T-PRICE-04/T-PRICE-08/T-PRICE-09 builds explicit tax/payer components and customer-only total", () => {
     const result = buildPricingSnapshot({
       offerKind: "SALE",
       policy: salePolicy,
@@ -47,6 +47,9 @@ describe("EXEC-007 pricing", () => {
     expect(result.components[0]?.amount).toBe("1000.01");
     expect(result.customerTotal).toBe("1000.01");
     expect(result.currency).toBe("SAR");
+    expect(result.taxBasis).toBe("EXCLUSIVE");
+    expect(result.components[0]?.payerType).toBe("CUSTOMER");
+    expect(result.components[1]?.isCustomerObligation).toBe(false);
   });
 
   it("T-PRICE-05 rejects missing and cross-kind LEASE components", () => {
