@@ -26,4 +26,29 @@ describe("EXEC-007 frozen schema contract", () => {
     expect(migration).toContain('CREATE TABLE "exec007_offer_approval_requirements"');
     expect(migration).toContain('CREATE TABLE "exec007_offer_approval_decisions"');
   });
+
+  it("freezes the Batch 3 split-custody and challenge-binding schema inventory", () => {
+    for (const objectName of [
+      "orca_exec007_secure.exec007_db_authorization_keys",
+      "public.exec007_db_authorization_nonces",
+      "public.fn_exec007_get_security_event_authority_metadata",
+      "public.fn_exec007_verify_db_authorization_context",
+      "public.fn_exec007_consume_db_authorization_nonce",
+      "public.fn_exec007_guard_security_event_read",
+      "fk_exec007_challenge_session_binding",
+      "fk_exec007_challenge_grant_binding",
+      "fk_exec007_challenge_offer_version_binding",
+      "trg_exec007_security_event_read_audit_append_only",
+    ]) {
+      expect(migration).toContain(objectName);
+    }
+  });
+
+  it("keeps the Batch 3 security-event migration fail-closed and backfill-free", () => {
+    expect(migration).toContain("EXEC007_SECURITY_EVENT_EXISTING_DATA_REQUIRES_SEPARATE_AUTHORITY");
+    expect(migration).toContain("v_row_count<>0");
+    expect(migration).not.toMatch(/UPDATE\s+public\.exec007_customer_security_events\s+SET/i);
+    expect(migration).not.toMatch(/INSERT\s+INTO\s+public\.exec007_customer_security_events\s*\([^)]*SELECT/i);
+  });
+
 });

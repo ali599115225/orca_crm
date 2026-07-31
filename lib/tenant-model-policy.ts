@@ -93,6 +93,7 @@ const REQUIRED_TENANT_MODEL_VALUES = [
   "DelegatedBusinessOperation",
   "RecordRetentionAssignment",
   "CustomerSecurityEvent",
+  "DbAuthorizationNonce",
   "SecurityEventReadAudit",
   "DispositionAudit",
   "LegalHoldRecord",
@@ -117,7 +118,7 @@ export type TenantModelPolicyName = RequiredTenantModel | OptionalTenantModel;
 const REQUIRED_TENANT_MODEL_SET = new Set<string>(REQUIRED_TENANT_MODELS);
 const OPTIONAL_TENANT_MODEL_SET = new Set<string>(OPTIONAL_TENANT_MODELS);
 
-if (REQUIRED_TENANT_MODELS.length !== 97) {
+if (REQUIRED_TENANT_MODELS.length !== 98) {
   throw new Error(`Invalid required tenant model registry size: ${REQUIRED_TENANT_MODELS.length}`);
 }
 

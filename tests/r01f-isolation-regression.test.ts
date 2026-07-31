@@ -20,8 +20,8 @@ import path from "node:path";
 
 describe("R01-F isolation regression coverage", () => {
   describe("model classification counts", () => {
-    it("classifies exactly 97 required tenant models", () => {
-      expect(REQUIRED_TENANT_MODELS).toHaveLength(97);
+    it("classifies exactly 98 required tenant models", () => {
+      expect(REQUIRED_TENANT_MODELS).toHaveLength(98);
     });
 
     it("classifies exactly 3 optional tenant models", () => {
@@ -31,7 +31,7 @@ describe("R01-F isolation regression coverage", () => {
     it("has no unclassified tenant models", () => {
       const allClassified = [...REQUIRED_TENANT_MODELS, ...OPTIONAL_TENANT_MODELS];
       const uniqueModels = new Set(allClassified);
-      expect(uniqueModels.size).toBe(100);
+      expect(uniqueModels.size).toBe(101);
     });
   });
 

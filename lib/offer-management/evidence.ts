@@ -97,9 +97,10 @@ export async function completeConditionalAcceptance(
   if (
     input.evidencePayload.action !== "ACCEPT" ||
     input.evidencePayload.offerVersionId !== input.offerVersionId ||
-    input.evidencePayload.challengeId !== input.challengeId
+    input.evidencePayload.challengeId !== input.challengeId ||
+    input.evidencePayload.payloadProofHash !== input.payloadHash
   ) {
-    throw new Error("evidencePayload must bind ACCEPT to the exact OfferVersion and challenge");
+    throw new Error("evidencePayload must bind ACCEPT to the exact OfferVersion, challenge, and payload proof");
   }
 
   const result = await executor.query<{

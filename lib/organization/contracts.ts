@@ -88,6 +88,7 @@ export const ORGANIZATION_PERMISSION_KEYS = [
   "discount.approve",
   "export.execute",
   "system.configure",
+  "security.customer_event_raw_ip.read",
 ] as const;
 
 export type OrganizationPermissionKey =
@@ -132,6 +133,7 @@ export type OrganizationAuthorityDecision = Readonly<{
     | "TENANT_SCOPE_MISMATCH"
     | "NO_ACTIVE_ASSIGNMENT"
     | "ROLE_PERMISSION_DENIED"
+    | "ROLE_SCOPE_DENIED"
     | "RESOURCE_SCOPE_DENIED"
     | "SERVICE_DISABLED"
     | "SEPARATION_OF_DUTIES_DENIED";

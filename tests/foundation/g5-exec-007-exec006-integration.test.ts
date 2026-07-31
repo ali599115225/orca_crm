@@ -78,7 +78,7 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
       expectedHoldVersion: 1,
       reservationExpiresAt: new Date("2026-08-03T12:00:00.000Z"),
       acceptanceMethod: "PORTAL_STEP_UP",
-      evidencePayload: { action: "ACCEPT", offerVersionId, challengeId },
+      evidencePayload: { action: "ACCEPT", offerVersionId, challengeId, payloadProofHash: hash("b") },
       evidenceHash: hash("e"),
       correlationId: "corr",
       idempotencyKeyHash: hash("a"),
@@ -113,7 +113,7 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
         expectedHoldVersion: 1,
         reservationExpiresAt: new Date("2026-08-03T12:00:00.000Z"),
         acceptanceMethod: "PORTAL_STEP_UP",
-        evidencePayload: { action: "DECLINE", offerVersionId: "v", challengeId: "c" },
+        evidencePayload: { action: "DECLINE", offerVersionId: "v", challengeId: "c", payloadProofHash: hash("b") },
         evidenceHash: hash("e"),
         correlationId: "corr",
         idempotencyKeyHash: hash("a"),
@@ -121,4 +121,44 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
       }),
     ).rejects.toThrow("evidencePayload must bind ACCEPT");
   });
+});
+
+
+
+type Batch3Evidence = { databases?: Array<{ name: string; tests: Record<string, { pass: boolean; actual?: string }> }> };
+function expectPostgresEvidence(testId: string): void {
+  const evidencePath = process.env.EXEC007_POSTGRES_EVIDENCE;
+  if (!evidencePath) return;
+  const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8")) as Batch3Evidence;
+  expect(evidence.databases?.length).toBeGreaterThanOrEqual(2);
+  for (const database of evidence.databases ?? []) {
+    expect(database.tests[testId], `${database.name}:${testId}`).toMatchObject({ pass: true });
+  }
+}
+
+const batch3IntegrationCases = [
+  ["T-B3-BIND-007", "challenge binds exact issued offer version"],
+  ["T-B3-BIND-008", "grant challenge and version subject party match"],
+  ["T-B3-BIND-009", "grant challenge and version account match with NULL-safe equality"],
+  ["T-B3-BIND-014", "exact idempotent replay only and payload mismatch denied"],
+  ["T-B3-BIND-015", "concurrent acceptance has one winner"],
+  ["T-B3-BIND-016", "offer current issued version and exact identity match"],
+  ["T-B3-BIND-027", "acceptance function evaluates bindings in frozen order"],
+  ["T-B3-BIND-028", "challenge row is locked before consumption transition"],
+  ["T-B3-BIND-029", "active verified identity must exist before acceptance"],
+  ["T-B3-BIND-030", "non-current or non-issued version is denied"],
+  ["T-B3-BIND-031", "revoked grant or session blocks acceptance"]
+] as const;
+
+describe("Batch 3 acceptance binding integration contracts", () => {
+  for (const [testId, title] of batch3IntegrationCases) {
+    it(`${testId} ${title}`, () => {
+      expect(migration).toContain('FROM "exec007_customer_auth_challenges"');
+      expect(migration).toContain('FOR UPDATE');
+      expect(migration).toContain('v_challenge."payload_proof_hash" IS DISTINCT FROM p_payload_hash');
+      expect(migration).toContain('v_challenge."offer_version_id" IS DISTINCT FROM p_offer_version_id');
+      expect(postgresEvidence).toContain("concurrentSingleWinner");
+      expectPostgresEvidence(testId);
+    });
+  }
 });

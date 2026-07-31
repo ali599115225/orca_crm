@@ -38,3 +38,21 @@ export interface CustomerSessionContract {
   idleExpiresAt: Date;
   absoluteExpiresAt: Date;
 }
+
+
+export interface CustomerDecisionChallengeContract {
+  id: string;
+  tenantId: string;
+  principalId: string;
+  sessionId: string;
+  subjectGrantId: string;
+  subjectPartyId: string;
+  customerAccountId: string | null;
+  offerVersionId: string;
+  action: "ACCEPT" | "DECLINE";
+  tokenHash: string;
+  payloadProofHash: string;
+  status: "PENDING" | "CONSUMED" | "EXPIRED" | "REVOKED";
+  expiresAt: Date;
+  consumedAt: Date | null;
+}

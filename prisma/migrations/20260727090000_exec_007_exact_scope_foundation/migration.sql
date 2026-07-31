@@ -1112,9 +1112,15 @@ BEGIN
    WHERE "tenant_id"=p_tenant_id AND "id"=p_challenge_id
    FOR UPDATE;
   IF NOT FOUND OR v_challenge."principal_id" IS DISTINCT FROM p_principal_id OR
+     v_challenge."session_id" IS DISTINCT FROM p_session_id OR
+     v_challenge."subject_grant_id" IS DISTINCT FROM p_subject_grant_id OR
+     v_challenge."subject_party_id" IS DISTINCT FROM v_version."subject_party_id" OR
+     v_challenge."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
+     v_challenge."offer_version_id" IS DISTINCT FROM p_offer_version_id OR
+     v_challenge."payload_proof_hash" IS DISTINCT FROM p_payload_hash OR
      v_challenge."action" IS DISTINCT FROM 'ACCEPT' OR v_challenge."status" <> 'PENDING' OR
      v_challenge."expires_at" <= p_now OR v_challenge."consumed_at" IS NOT NULL THEN
-    RAISE EXCEPTION 'EXEC-007 acceptance challenge is invalid, expired, revoked, or consumed' USING ERRCODE='42501';
+    RAISE EXCEPTION 'EXEC-007 acceptance challenge is invalid, expired, revoked, consumed, or structurally unbound' USING ERRCODE='42501';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM "exec007_customer_principal_identities" ident
@@ -1227,3 +1233,630 @@ COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_actor_party" ON "exec007
 COMMENT ON CONSTRAINT "fk_exec007_subject_grants_tenant_customer_account" ON "exec007_customer_principal_subject_grants" IS 'Physical correction: canonical EXEC-005 table customer_accounts_v2.';
 COMMENT ON CONSTRAINT "fk_exec007_offers_tenant_opportunity" ON "exec007_commercial_offers" IS 'Physical correction: canonical EXEC-005 table customer_opportunities_v2.';
 COMMENT ON CONSTRAINT "fk_exec007_completion_reservation" ON "exec007_acceptance_completion_attempts" IS 'Physical correction: EXEC-006 reservation is a unit_commitments row with commitment_type=RESERVATION; trigger enforces type/status.';
+
+-- EXEC-007 Batch 3: split-custody database authorization, exact challenge binding,
+-- and purpose-bound Raw-IP access. Additive migration; no data backfill.
+
+DO $exec007_roles$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_exec007_owner') THEN
+    CREATE ROLE orca_exec007_owner NOLOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_exec007_key_owner') THEN
+    CREATE ROLE orca_exec007_key_owner NOLOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_migration') THEN
+    CREATE ROLE orca_migration LOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_runtime') THEN
+    CREATE ROLE orca_runtime LOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_support_readonly') THEN
+    CREATE ROLE orca_support_readonly NOLOGIN NOINHERIT;
+  END IF;
+END
+$exec007_roles$;
+
+ALTER ROLE orca_exec007_owner NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER ROLE orca_exec007_key_owner NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER ROLE orca_migration LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER ROLE orca_runtime LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER ROLE orca_support_readonly NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
+REVOKE orca_exec007_key_owner FROM orca_exec007_owner, orca_migration, orca_runtime, orca_support_readonly;
+REVOKE orca_exec007_owner FROM orca_runtime, orca_support_readonly;
+GRANT orca_exec007_owner TO orca_migration WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+CREATE SCHEMA IF NOT EXISTS orca_exec007_secure AUTHORIZATION orca_exec007_key_owner;
+REVOKE ALL ON SCHEMA orca_exec007_secure FROM PUBLIC, orca_migration, orca_runtime, orca_support_readonly;
+
+CREATE TABLE orca_exec007_secure.exec007_db_authorization_keys (
+  key_version TEXT PRIMARY KEY,
+  secret_bytes BYTEA NOT NULL,
+  status TEXT NOT NULL,
+  active_slot SMALLINT,
+  grace_slot SMALLINT,
+  activated_at TIMESTAMPTZ,
+  grace_until TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  retired_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
+  CONSTRAINT ck_exec007_db_auth_key_version CHECK (key_version ~ '^DB-AUTH-K[1-9][0-9]*$'),
+  CONSTRAINT ck_exec007_db_auth_key_secret_32 CHECK (octet_length(secret_bytes)=32),
+  CONSTRAINT ck_exec007_db_auth_key_status CHECK (status IN ('ACTIVE','GRACE','REVOKED','RETIRED')),
+  CONSTRAINT ck_exec007_db_auth_key_active_slot_shape CHECK (
+    (status='ACTIVE' AND active_slot=1 AND grace_slot IS NULL) OR
+    (status<>'ACTIVE' AND active_slot IS NULL)
+  ),
+  CONSTRAINT ck_exec007_db_auth_key_grace_slot_shape CHECK (
+    (status='GRACE' AND grace_slot IN (1,2)) OR
+    (status<>'GRACE' AND grace_slot IS NULL)
+  ),
+  CONSTRAINT ck_exec007_db_auth_key_timestamp_shape CHECK (
+    created_at <= updated_at AND
+    ((status='ACTIVE' AND activated_at IS NOT NULL AND grace_until IS NULL AND revoked_at IS NULL AND retired_at IS NULL) OR
+     (status='GRACE' AND activated_at IS NOT NULL AND grace_until IS NOT NULL AND grace_until>activated_at AND revoked_at IS NULL AND retired_at IS NULL) OR
+     (status='REVOKED' AND revoked_at IS NOT NULL AND retired_at IS NULL) OR
+     (status='RETIRED' AND retired_at IS NOT NULL AND revoked_at IS NULL))
+  )
+);
+ALTER TABLE orca_exec007_secure.exec007_db_authorization_keys OWNER TO orca_exec007_key_owner;
+CREATE UNIQUE INDEX ux_exec007_db_auth_one_active
+  ON orca_exec007_secure.exec007_db_authorization_keys(active_slot) WHERE status='ACTIVE';
+CREATE UNIQUE INDEX ux_exec007_db_auth_grace_slot
+  ON orca_exec007_secure.exec007_db_authorization_keys(grace_slot) WHERE status='GRACE';
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_constant_time_equal_32(p_left BYTEA,p_right BYTEA)
+RETURNS BOOLEAN
+LANGUAGE plpgsql IMMUTABLE STRICT
+SET search_path=pg_catalog
+AS $fn$
+DECLARE v_diff INTEGER:=0; v_index INTEGER;
+BEGIN
+  IF octet_length(p_left)<>32 OR octet_length(p_right)<>32 THEN RETURN FALSE; END IF;
+  FOR v_index IN 0..31 LOOP
+    v_diff := v_diff | (get_byte(p_left,v_index) # get_byte(p_right,v_index));
+  END LOOP;
+  RETURN v_diff=0;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION orca_exec007_secure.fn_exec007_verify_hmac(
+  p_key_version TEXT,p_envelope TEXT,p_signature TEXT
+) RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,orca_exec007_secure
+AS $fn$
+DECLARE v_key BYTEA; v_status TEXT; v_grace_until TIMESTAMPTZ; v_actual BYTEA; v_active_count INTEGER;
+BEGIN
+  IF to_regprocedure('public.hmac(bytea,bytea,text)') IS NULL THEN
+    RAISE EXCEPTION 'EXEC007_HMAC_UNAVAILABLE' USING ERRCODE='0A000';
+  END IF;
+  IF p_key_version !~ '^DB-AUTH-K[1-9][0-9]*$' OR p_signature !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_INVALID' USING ERRCODE='28000';
+  END IF;
+  SELECT count(*) INTO v_active_count FROM orca_exec007_secure.exec007_db_authorization_keys WHERE status='ACTIVE';
+  IF v_active_count<>1 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_ACTIVE_CARDINALITY' USING ERRCODE='55000'; END IF;
+  SELECT secret_bytes,status,grace_until INTO v_key,v_status,v_grace_until
+  FROM orca_exec007_secure.exec007_db_authorization_keys WHERE key_version=p_key_version;
+  IF NOT FOUND OR v_status IN ('REVOKED','RETIRED') OR
+     (v_status='GRACE' AND v_grace_until<=transaction_timestamp()) OR
+     v_status NOT IN ('ACTIVE','GRACE') THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_KEY_REJECTED' USING ERRCODE='28000';
+  END IF;
+  EXECUTE 'SELECT public.hmac(convert_to($1,''UTF8''),$2,''sha256'')' INTO v_actual USING p_envelope,v_key;
+  RETURN public.fn_exec007_constant_time_equal_32(v_actual,decode(p_signature,'hex'));
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION orca_exec007_secure.fn_exec007_bootstrap_db_authorization_key(
+  p_key_version TEXT,p_secret_bytes BYTEA
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,orca_exec007_secure
+AS $fn$
+DECLARE v_total INTEGER; v_active INTEGER;
+BEGIN
+  PERFORM pg_advisory_xact_lock(7420070301);
+  SELECT count(*),count(*) FILTER (WHERE status='ACTIVE') INTO v_total,v_active
+  FROM orca_exec007_secure.exec007_db_authorization_keys;
+  IF v_total<>0 OR v_active<>0 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_BOOTSTRAP_REQUIRES_EMPTY_STORE' USING ERRCODE='55000'; END IF;
+  INSERT INTO orca_exec007_secure.exec007_db_authorization_keys
+    (key_version,secret_bytes,status,active_slot,activated_at)
+  VALUES (p_key_version,p_secret_bytes,'ACTIVE',1,transaction_timestamp());
+  SELECT count(*) FILTER (WHERE status='ACTIVE'),count(*) FILTER (WHERE status='GRACE')
+    INTO v_active,v_total FROM orca_exec007_secure.exec007_db_authorization_keys;
+  IF v_active<>1 OR v_total<>0 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_BOOTSTRAP_POSTCONDITION' USING ERRCODE='55000'; END IF;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION orca_exec007_secure.fn_exec007_retire_expired_db_authorization_keys()
+RETURNS INTEGER
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,orca_exec007_secure
+AS $fn$
+DECLARE v_count INTEGER; v_now TIMESTAMPTZ;
+BEGIN
+  PERFORM pg_advisory_xact_lock(7420070301);
+  v_now := clock_timestamp();
+  UPDATE orca_exec007_secure.exec007_db_authorization_keys
+     SET status='RETIRED',grace_slot=NULL,retired_at=v_now,updated_at=v_now
+   WHERE status='GRACE' AND grace_until<=v_now;
+  GET DIAGNOSTICS v_count=ROW_COUNT;
+  RETURN v_count;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION orca_exec007_secure.fn_exec007_rotate_db_authorization_key(
+  p_key_version TEXT,p_secret_bytes BYTEA
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,orca_exec007_secure
+AS $fn$
+DECLARE v_active_key TEXT; v_active_count INTEGER; v_grace_count INTEGER; v_slot SMALLINT; v_now TIMESTAMPTZ;
+BEGIN
+  PERFORM pg_advisory_xact_lock(7420070301);
+  v_now := clock_timestamp();
+  UPDATE orca_exec007_secure.exec007_db_authorization_keys
+     SET status='RETIRED',grace_slot=NULL,retired_at=v_now,updated_at=v_now
+   WHERE status='GRACE' AND grace_until<=v_now;
+  SELECT count(*) INTO v_active_count FROM orca_exec007_secure.exec007_db_authorization_keys WHERE status='ACTIVE';
+  IF v_active_count<>1 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_ROTATION_REQUIRES_ONE_ACTIVE' USING ERRCODE='55000'; END IF;
+  IF EXISTS (SELECT 1 FROM orca_exec007_secure.exec007_db_authorization_keys WHERE key_version=p_key_version) THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_KEY_VERSION_REUSE' USING ERRCODE='23505';
+  END IF;
+  SELECT slot INTO v_slot FROM (VALUES (1::smallint),(2::smallint)) AS slots(slot)
+   WHERE NOT EXISTS (SELECT 1 FROM orca_exec007_secure.exec007_db_authorization_keys k WHERE k.status='GRACE' AND k.grace_slot=slot)
+   ORDER BY slot LIMIT 1;
+  IF v_slot IS NULL THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_NO_GRACE_SLOT' USING ERRCODE='55000'; END IF;
+  SELECT key_version INTO v_active_key FROM orca_exec007_secure.exec007_db_authorization_keys WHERE status='ACTIVE' FOR UPDATE;
+  UPDATE orca_exec007_secure.exec007_db_authorization_keys
+     SET status='GRACE',active_slot=NULL,grace_slot=v_slot,grace_until=v_now+interval '24 hours',updated_at=v_now
+   WHERE key_version=v_active_key;
+  INSERT INTO orca_exec007_secure.exec007_db_authorization_keys
+    (key_version,secret_bytes,status,active_slot,activated_at,created_at,updated_at)
+  VALUES (p_key_version,p_secret_bytes,'ACTIVE',1,v_now,v_now,v_now);
+  SELECT count(*) FILTER (WHERE status='ACTIVE'),count(*) FILTER (WHERE status='GRACE')
+    INTO v_active_count,v_grace_count FROM orca_exec007_secure.exec007_db_authorization_keys;
+  IF v_active_count<>1 OR v_grace_count>2 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_ROTATION_POSTCONDITION' USING ERRCODE='55000'; END IF;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION orca_exec007_secure.fn_exec007_revoke_db_authorization_key(
+  p_key_version TEXT,p_emergency_fail_closed BOOLEAN
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,orca_exec007_secure
+AS $fn$
+DECLARE v_status TEXT; v_now TIMESTAMPTZ;
+BEGIN
+  PERFORM pg_advisory_xact_lock(7420070301);
+  v_now := clock_timestamp();
+  SELECT status INTO v_status FROM orca_exec007_secure.exec007_db_authorization_keys WHERE key_version=p_key_version FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_KEY_UNKNOWN' USING ERRCODE='28000'; END IF;
+  IF v_status='ACTIVE' AND NOT coalesce(p_emergency_fail_closed,FALSE) THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_ACTIVE_REVOKE_REQUIRES_EMERGENCY' USING ERRCODE='55000';
+  END IF;
+  IF v_status IN ('REVOKED','RETIRED') THEN RETURN; END IF;
+  UPDATE orca_exec007_secure.exec007_db_authorization_keys
+     SET status='REVOKED',active_slot=NULL,grace_slot=NULL,grace_until=NULL,revoked_at=v_now,updated_at=v_now
+   WHERE key_version=p_key_version;
+END
+$fn$;
+
+ALTER FUNCTION orca_exec007_secure.fn_exec007_verify_hmac(TEXT,TEXT,TEXT) OWNER TO orca_exec007_key_owner;
+ALTER FUNCTION orca_exec007_secure.fn_exec007_bootstrap_db_authorization_key(TEXT,BYTEA) OWNER TO orca_exec007_key_owner;
+ALTER FUNCTION orca_exec007_secure.fn_exec007_rotate_db_authorization_key(TEXT,BYTEA) OWNER TO orca_exec007_key_owner;
+ALTER FUNCTION orca_exec007_secure.fn_exec007_revoke_db_authorization_key(TEXT,BOOLEAN) OWNER TO orca_exec007_key_owner;
+ALTER FUNCTION orca_exec007_secure.fn_exec007_retire_expired_db_authorization_keys() OWNER TO orca_exec007_key_owner;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA orca_exec007_secure FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly,orca_exec007_owner;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA orca_exec007_secure FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly,orca_exec007_owner;
+GRANT USAGE ON SCHEMA orca_exec007_secure TO orca_exec007_owner;
+GRANT EXECUTE ON FUNCTION orca_exec007_secure.fn_exec007_verify_hmac(TEXT,TEXT,TEXT) TO orca_exec007_owner;
+GRANT EXECUTE ON FUNCTION public.fn_exec007_constant_time_equal_32(BYTEA,BYTEA) TO orca_exec007_key_owner;
+
+ALTER TABLE public.exec007_customer_security_events
+  ADD COLUMN branch_id UUID,
+  ADD COLUMN service_line public."Exec007ServiceLine",
+  ADD COLUMN offer_version_id UUID;
+
+DO $security_event_preflight$
+DECLARE v_row_count BIGINT; v_principal_null BIGINT; v_branch_null BIGINT; v_service_null BIGINT; v_offer_violation BIGINT;
+BEGIN
+  SELECT count(*),count(*) FILTER (WHERE principal_id IS NULL),count(*) FILTER (WHERE branch_id IS NULL),
+         count(*) FILTER (WHERE service_line IS NULL),
+         count(*) FILTER (WHERE offer_version_id IS NOT NULL)
+  INTO v_row_count,v_principal_null,v_branch_null,v_service_null,v_offer_violation
+  FROM public.exec007_customer_security_events;
+  IF v_row_count<>0 OR v_principal_null<>0 OR v_branch_null<>0 OR v_service_null<>0 OR v_offer_violation<>0 THEN
+    RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_EXISTING_DATA_REQUIRES_SEPARATE_AUTHORITY' USING ERRCODE='55000';
+  END IF;
+END
+$security_event_preflight$;
+
+ALTER TABLE public.exec007_customer_security_events ALTER COLUMN principal_id SET NOT NULL;
+ALTER TABLE public.exec007_customer_security_events DROP CONSTRAINT ck_exec007_security_event_ip_purpose;
+ALTER TABLE public.exec007_customer_security_events
+  ADD CONSTRAINT fk_exec007_security_event_branch FOREIGN KEY(tenant_id,branch_id)
+    REFERENCES public.organization_branches(tenant_id,id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT fk_exec007_security_event_offer_version FOREIGN KEY(tenant_id,offer_version_id)
+    REFERENCES public.exec007_offer_versions(tenant_id,id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT ck_exec007_security_event_type CHECK(event_type IN (
+    'AUTHENTICATION_FAILURE','AUTHENTICATION_LOCKOUT','ACCOUNT_TAKEOVER_SIGNAL',
+    'ACCEPTANCE_CHALLENGE_FAILURE','ACCEPTANCE_REPLAY_DETECTED')),
+  ADD CONSTRAINT ck_exec007_security_event_purpose_pair CHECK(
+    (event_type IN ('AUTHENTICATION_FAILURE','AUTHENTICATION_LOCKOUT') AND purpose_code='AUTH_ABUSE_INVESTIGATION') OR
+    (event_type='ACCOUNT_TAKEOVER_SIGNAL' AND purpose_code='SUSPECTED_ACCOUNT_TAKEOVER') OR
+    (event_type IN ('ACCEPTANCE_CHALLENGE_FAILURE','ACCEPTANCE_REPLAY_DETECTED') AND purpose_code='ACCEPTANCE_REPLAY_INVESTIGATION')),
+  ADD CONSTRAINT ck_exec007_security_event_scope_shape CHECK(
+    ((event_type IN ('AUTHENTICATION_FAILURE','AUTHENTICATION_LOCKOUT','ACCOUNT_TAKEOVER_SIGNAL')) AND
+      offer_version_id IS NULL AND ((branch_id IS NULL AND service_line IS NULL) OR (branch_id IS NOT NULL AND service_line IS NOT NULL))) OR
+    ((event_type IN ('ACCEPTANCE_CHALLENGE_FAILURE','ACCEPTANCE_REPLAY_DETECTED')) AND
+      branch_id IS NOT NULL AND service_line IS NOT NULL AND offer_version_id IS NOT NULL));
+CREATE INDEX idx_exec007_security_events_authority_lookup
+  ON public.exec007_customer_security_events(tenant_id,id,principal_id,branch_id,service_line);
+CREATE INDEX idx_exec007_security_events_offer_version
+  ON public.exec007_customer_security_events(tenant_id,offer_version_id) WHERE offer_version_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_validate_security_event_authority_fields()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path=pg_catalog,public AS $fn$
+BEGIN
+  IF NEW.branch_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.branch_services bs
+    WHERE bs.tenant_id=NEW.tenant_id AND bs.branch_id=NEW.branch_id
+      AND bs.service_line=NEW.service_line::text AND bs.enabled=TRUE
+  ) THEN
+    RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_BRANCH_SERVICE_DISABLED' USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+CREATE TRIGGER trg_exec007_security_event_authority_validate
+BEFORE INSERT OR UPDATE ON public.exec007_customer_security_events
+FOR EACH ROW EXECUTE FUNCTION public.fn_exec007_validate_security_event_authority_fields();
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_guard_security_event_authority_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF (NEW.tenant_id,NEW.principal_id,NEW.branch_id,NEW.service_line,NEW.offer_version_id,NEW.event_type,NEW.purpose_code)
+     IS DISTINCT FROM
+     (OLD.tenant_id,OLD.principal_id,OLD.branch_id,OLD.service_line,OLD.offer_version_id,OLD.event_type,OLD.purpose_code) THEN
+    RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_AUTHORITY_IMMUTABLE' USING ERRCODE='55000';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+CREATE TRIGGER trg_exec007_security_event_authority_immutable
+BEFORE UPDATE ON public.exec007_customer_security_events
+FOR EACH ROW EXECUTE FUNCTION public.fn_exec007_guard_security_event_authority_immutable();
+
+ALTER TABLE public.exec007_customer_principal_subject_grants
+  ADD CONSTRAINT uq_exec007_subject_grants_binding UNIQUE(tenant_id,id,principal_id,subject_party_id);
+ALTER TABLE public.exec007_customer_sessions
+  ADD CONSTRAINT uq_exec007_sessions_binding UNIQUE(tenant_id,id,principal_id,subject_grant_id);
+ALTER TABLE public.exec007_offer_versions
+  ADD CONSTRAINT uq_exec007_offer_versions_binding UNIQUE(tenant_id,id,subject_party_id);
+
+ALTER TABLE public.exec007_customer_auth_challenges
+  ADD COLUMN session_id UUID,
+  ADD COLUMN subject_grant_id UUID,
+  ADD COLUMN subject_party_id UUID,
+  ADD COLUMN customer_account_id UUID,
+  ADD COLUMN offer_version_id UUID,
+  ADD COLUMN payload_proof_hash TEXT,
+  ADD CONSTRAINT ck_exec007_challenge_payload_proof_hash CHECK(payload_proof_hash IS NULL OR payload_proof_hash ~ '^[0-9a-f]{64}$'),
+  ADD CONSTRAINT ck_exec007_challenge_binding_shape CHECK(
+    (action IS NULL AND session_id IS NULL AND subject_grant_id IS NULL AND subject_party_id IS NULL AND
+      customer_account_id IS NULL AND offer_version_id IS NULL AND payload_proof_hash IS NULL) OR
+    (action IS NOT NULL AND principal_id IS NOT NULL AND session_id IS NOT NULL AND subject_grant_id IS NOT NULL AND
+      subject_party_id IS NOT NULL AND offer_version_id IS NOT NULL AND payload_proof_hash IS NOT NULL)),
+  ADD CONSTRAINT fk_exec007_challenge_session_binding FOREIGN KEY(tenant_id,session_id,principal_id,subject_grant_id)
+    REFERENCES public.exec007_customer_sessions(tenant_id,id,principal_id,subject_grant_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT fk_exec007_challenge_grant_binding FOREIGN KEY(tenant_id,subject_grant_id,principal_id,subject_party_id)
+    REFERENCES public.exec007_customer_principal_subject_grants(tenant_id,id,principal_id,subject_party_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT fk_exec007_challenge_offer_version_binding FOREIGN KEY(tenant_id,offer_version_id,subject_party_id)
+    REFERENCES public.exec007_offer_versions(tenant_id,id,subject_party_id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_validate_challenge_binding()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path=pg_catalog,public AS $fn$
+DECLARE v_grant_account UUID; v_version_account UUID;
+BEGIN
+  IF NEW.action IS NULL THEN RETURN NEW; END IF;
+  SELECT customer_account_id INTO v_grant_account FROM public.exec007_customer_principal_subject_grants
+    WHERE tenant_id=NEW.tenant_id AND id=NEW.subject_grant_id;
+  SELECT customer_account_id INTO v_version_account FROM public.exec007_offer_versions
+    WHERE tenant_id=NEW.tenant_id AND id=NEW.offer_version_id;
+  IF v_grant_account IS DISTINCT FROM NEW.customer_account_id OR
+     v_version_account IS DISTINCT FROM NEW.customer_account_id THEN
+    RAISE EXCEPTION 'EXEC007_CHALLENGE_CUSTOMER_ACCOUNT_BINDING_MISMATCH' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+CREATE TRIGGER trg_exec007_challenge_binding_validate
+BEFORE INSERT OR UPDATE ON public.exec007_customer_auth_challenges
+FOR EACH ROW EXECUTE FUNCTION public.fn_exec007_validate_challenge_binding();
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_guard_challenge_binding_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF (NEW.tenant_id,NEW.principal_id,NEW.session_id,NEW.subject_grant_id,NEW.subject_party_id,NEW.customer_account_id,
+      NEW.offer_version_id,NEW.action,NEW.token_hash,NEW.payload_proof_hash)
+     IS DISTINCT FROM
+     (OLD.tenant_id,OLD.principal_id,OLD.session_id,OLD.subject_grant_id,OLD.subject_party_id,OLD.customer_account_id,
+      OLD.offer_version_id,OLD.action,OLD.token_hash,OLD.payload_proof_hash) THEN
+    RAISE EXCEPTION 'EXEC007_CHALLENGE_BINDING_IMMUTABLE' USING ERRCODE='55000';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+CREATE TRIGGER trg_exec007_challenge_binding_immutable
+BEFORE UPDATE ON public.exec007_customer_auth_challenges
+FOR EACH ROW EXECUTE FUNCTION public.fn_exec007_guard_challenge_binding_immutable();
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_guard_security_event_read_audit_append_only()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
+BEGIN
+  RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_READ_AUDIT_APPEND_ONLY' USING ERRCODE='55000';
+END
+$fn$;
+CREATE TRIGGER trg_exec007_security_event_read_audit_append_only
+BEFORE UPDATE OR DELETE ON public.exec007_security_event_reads
+FOR EACH ROW EXECUTE FUNCTION public.fn_exec007_guard_security_event_read_audit_append_only();
+
+CREATE TABLE public.exec007_db_authorization_nonces (
+  tenant_id UUID NOT NULL,
+  nonce_hash TEXT NOT NULL,
+  actor_user_id UUID NOT NULL,
+  assignment_id UUID NOT NULL,
+  permission_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
+  CONSTRAINT pk_exec007_db_authorization_nonces PRIMARY KEY(tenant_id,nonce_hash),
+  CONSTRAINT uq_exec007_db_authorization_nonces UNIQUE(tenant_id,nonce_hash),
+  CONSTRAINT ck_exec007_db_authorization_nonce_hash CHECK(nonce_hash ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT ck_exec007_db_authorization_nonce_permission CHECK(permission_key='security.customer_event_raw_ip.read'),
+  CONSTRAINT fk_exec007_db_authorization_nonce_actor FOREIGN KEY(tenant_id,actor_user_id)
+    REFERENCES public.users(tenant_id,id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_exec007_db_authorization_nonce_assignment FOREIGN KEY(tenant_id,assignment_id)
+    REFERENCES public.user_scope_assignments(tenant_id,id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TYPE public.exec007_db_authorization_context AS (
+  version TEXT,key_version TEXT,tenant_id UUID,actor_user_id UUID,assignment_id UUID,
+  permission_key TEXT,scope_type TEXT,branch_id UUID,service_line public."Exec007ServiceLine",
+  security_event_id UUID,purpose_code public."Exec007SecurityPurposeCode",correlation_id TEXT,
+  issued_at TIMESTAMPTZ,expires_at TIMESTAMPTZ,nonce TEXT
+);
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_get_security_event_authority_metadata(
+  p_tenant_id UUID,p_security_event_id UUID
+) RETURNS TABLE(
+  security_event_id UUID,tenant_id UUID,principal_id UUID,branch_id UUID,
+  service_line public."Exec007ServiceLine",offer_version_id UUID,event_type TEXT,occurred_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $fn$
+BEGIN
+  RETURN QUERY SELECT e.id,e.tenant_id,e.principal_id,e.branch_id,e.service_line,e.offer_version_id,e.event_type,e.recorded_at
+  FROM public.exec007_customer_security_events e
+  WHERE e.tenant_id=p_tenant_id AND e.id=p_security_event_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_NOT_FOUND' USING ERRCODE='P0002'; END IF;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_verify_db_authorization_context()
+RETURNS public.exec007_db_authorization_context
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $fn$
+DECLARE
+  v_envelope TEXT:=current_setting('orca.db_auth.envelope',true);
+  v_signature TEXT:=current_setting('orca.db_auth.signature',true);
+  v_key_guc TEXT:=current_setting('orca.db_auth.key_version',true);
+  v_lines TEXT[]; v_names TEXT[]:=ARRAY['version','key_version','tenant_id','actor_user_id','assignment_id','permission_key','scope_type','branch_id','service_line','security_event_id','purpose_code','correlation_id','issued_at','expires_at','nonce'];
+  v_values TEXT[]:=ARRAY[]::TEXT[]; v_index INTEGER; v_line TEXT; v_value TEXT;
+  v_context public.exec007_db_authorization_context; v_now TIMESTAMPTZ:=transaction_timestamp();
+BEGIN
+  IF v_envelope IS NULL OR v_envelope='' OR v_signature IS NULL OR v_signature='' OR v_key_guc IS NULL OR v_key_guc='' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_CONTEXT_MISSING' USING ERRCODE='28000';
+  END IF;
+  IF octet_length(v_envelope)>2048 OR octet_length(v_signature)>2048 OR octet_length(v_key_guc)>2048 THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_CONTEXT_TOO_LONG' USING ERRCODE='22001';
+  END IF;
+  IF position(E'\r' in v_envelope)>0 OR right(v_envelope,1)=E'\n' OR
+     length(v_envelope)-length(replace(v_envelope,E'\n',''))<>14 THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_CANONICAL_SHAPE' USING ERRCODE='22023';
+  END IF;
+  v_lines:=string_to_array(v_envelope,E'\n');
+  IF array_length(v_lines,1)<>15 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_FIELD_COUNT' USING ERRCODE='22023'; END IF;
+  FOR v_index IN 1..15 LOOP
+    v_line:=v_lines[v_index];
+    IF v_line !~ ('^'||v_names[v_index]||'=') THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_FIELD_ORDER' USING ERRCODE='22023'; END IF;
+    v_value:=substr(v_line,length(v_names[v_index])+2);
+    IF position('=' in v_value)>0 THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_FIELD_SYNTAX' USING ERRCODE='22023'; END IF;
+    v_values:=array_append(v_values,v_value);
+  END LOOP;
+  IF v_values[12] IS NULL OR v_values[12]='' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_CORRELATION_REQUIRED' USING ERRCODE='22004';
+  END IF;
+  IF v_values[1]<>'ORCA-DB-AUTH-1' OR v_values[2]!~'^DB-AUTH-K[1-9][0-9]*$' OR v_values[2]<>v_key_guc OR
+     v_values[6]!~'^[a-z0-9_.-]+$' OR v_values[7] NOT IN ('COMPANY','BRANCH') OR
+     v_values[11] NOT IN ('AUTH_ABUSE_INVESTIGATION','ACCEPTANCE_REPLAY_INVESTIGATION','SUSPECTED_ACCOUNT_TAKEOVER','SECURITY_INCIDENT_RESPONSE') OR
+     v_values[12]='~' OR v_values[15]!~'^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_CANONICAL_VALUE' USING ERRCODE='22023';
+  END IF;
+  IF (v_values[7]='COMPANY' AND ((v_values[8]='~' AND v_values[9]<>'~') OR (v_values[8]<>'~' AND v_values[9]='~'))) OR
+     (v_values[7]='BRANCH' AND (v_values[8]='~' OR v_values[9]='~')) THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_SCOPE_SHAPE' USING ERRCODE='22023';
+  END IF;
+  IF octet_length(v_values[1])>32 OR octet_length(v_values[2])>32 OR octet_length(v_values[6])>96 OR
+     octet_length(v_values[7])>32 OR octet_length(v_values[9])>32 OR octet_length(v_values[11])>64 OR
+     octet_length(v_values[12])>147 THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_FIELD_TOO_LONG' USING ERRCODE='22001';
+  END IF;
+  IF v_values[3]!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OR
+     v_values[4]!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OR
+     v_values[5]!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OR
+     (v_values[8]<>'~' AND v_values[8]!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') OR
+     v_values[10]!~'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_UUID_FORMAT' USING ERRCODE='22023';
+  END IF;
+  IF v_values[13]!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$' OR
+     v_values[14]!~'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_TIMESTAMP_FORMAT' USING ERRCODE='22023';
+  END IF;
+  IF normalize(v_values[12],NFC)<>v_values[12] THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_NON_NFC' USING ERRCODE='22023'; END IF;
+  IF NOT orca_exec007_secure.fn_exec007_verify_hmac(v_values[2],v_envelope,v_signature) THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_SIGNATURE_INVALID' USING ERRCODE='28000';
+  END IF;
+  v_context.version:=v_values[1]; v_context.key_version:=v_values[2]; v_context.tenant_id:=v_values[3]::uuid;
+  v_context.actor_user_id:=v_values[4]::uuid; v_context.assignment_id:=v_values[5]::uuid; v_context.permission_key:=v_values[6];
+  v_context.scope_type:=v_values[7]; v_context.branch_id:=CASE WHEN v_values[8]='~' THEN NULL ELSE v_values[8]::uuid END;
+  v_context.service_line:=CASE WHEN v_values[9]='~' THEN NULL ELSE v_values[9]::public."Exec007ServiceLine" END;
+  v_context.security_event_id:=v_values[10]::uuid; v_context.purpose_code:=v_values[11]::public."Exec007SecurityPurposeCode";
+  v_context.correlation_id:=v_values[12]; v_context.issued_at:=v_values[13]::timestamptz; v_context.expires_at:=v_values[14]::timestamptz; v_context.nonce:=v_values[15];
+  IF v_context.expires_at<=v_context.issued_at OR v_context.expires_at<=v_now OR
+     v_context.expires_at-v_context.issued_at>interval '30 seconds' OR
+     v_context.issued_at>v_now+interval '5 seconds' OR v_context.issued_at<v_now-interval '5 seconds' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_TTL_INVALID' USING ERRCODE='28000';
+  END IF;
+  IF v_context.permission_key<>'security.customer_event_raw_ip.read' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_PERMISSION_MISMATCH' USING ERRCODE='42501';
+  END IF;
+  IF v_context.purpose_code='SECURITY_INCIDENT_RESPONSE' THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_PURPOSE_BLOCKED' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.users u JOIN public.tenants t ON t.id=u.tenant_id
+    WHERE u.tenant_id=v_context.tenant_id AND u.id=v_context.actor_user_id AND u.is_active AND t.is_active) THEN
+    RAISE EXCEPTION 'EXEC007_DB_AUTH_ACTOR_INVALID' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.user_scope_assignments a
+    JOIN public.exec007_customer_security_events e ON e.tenant_id=a.tenant_id AND e.id=v_context.security_event_id
+    WHERE a.tenant_id=v_context.tenant_id AND a.id=v_context.assignment_id AND a.user_id=v_context.actor_user_id
+      AND a.security_role='COMPLIANCE_AUDIT' AND a.scope_type=v_context.scope_type
+      AND a.scope_type IN ('COMPANY','BRANCH') AND a.is_active
+      AND (a.starts_at IS NULL OR a.starts_at<=v_now) AND (a.ends_at IS NULL OR a.ends_at>v_now)
+      AND ((a.scope_type='COMPANY' AND v_context.branch_id IS NOT DISTINCT FROM e.branch_id) OR
+           (a.scope_type='BRANCH' AND a.branch_id=e.branch_id AND v_context.branch_id=e.branch_id))
+      AND v_context.service_line IS NOT DISTINCT FROM e.service_line
+      AND v_context.purpose_code=e.purpose_code
+      AND (e.branch_id IS NULL OR EXISTS(SELECT 1 FROM public.branch_services bs
+        WHERE bs.tenant_id=e.tenant_id AND bs.branch_id=e.branch_id AND bs.service_line=e.service_line::text AND bs.enabled))
+  ) THEN RAISE EXCEPTION 'EXEC007_DB_AUTH_AUTHORITY_MISMATCH' USING ERRCODE='42501'; END IF;
+  RETURN v_context;
+EXCEPTION WHEN invalid_text_representation OR datetime_field_overflow THEN
+  RAISE EXCEPTION 'EXEC007_DB_AUTH_CANONICAL_CAST' USING ERRCODE='22023';
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_consume_db_authorization_nonce(
+  p_context public.exec007_db_authorization_context
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+BEGIN
+  INSERT INTO public.exec007_db_authorization_nonces(tenant_id,nonce_hash,actor_user_id,assignment_id,permission_key)
+  VALUES(p_context.tenant_id,encode(public.digest(p_context.nonce,'sha256'),'hex'),p_context.actor_user_id,p_context.assignment_id,p_context.permission_key);
+EXCEPTION WHEN unique_violation THEN
+  RAISE EXCEPTION 'EXEC007_DB_AUTH_NONCE_REPLAY' USING ERRCODE='28000';
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.fn_exec007_guard_security_event_read(p_reason TEXT)
+RETURNS INET
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
+DECLARE v_context public.exec007_db_authorization_context; v_ip INET;
+BEGIN
+  IF p_reason IS NULL OR btrim(p_reason)='' THEN RAISE EXCEPTION 'EXEC007_SECURITY_READ_REASON_REQUIRED' USING ERRCODE='22004'; END IF;
+  v_context:=public.fn_exec007_verify_db_authorization_context();
+  PERFORM public.fn_exec007_consume_db_authorization_nonce(v_context);
+  SELECT e.raw_ip INTO v_ip FROM public.exec007_customer_security_events e
+  WHERE e.tenant_id=v_context.tenant_id AND e.id=v_context.security_event_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC007_SECURITY_EVENT_NOT_FOUND' USING ERRCODE='P0002'; END IF;
+  INSERT INTO public.exec007_security_event_reads(tenant_id,security_event_id,reader_user_id,assignment_id,purpose_code,reason,correlation_id)
+  VALUES(v_context.tenant_id,v_context.security_event_id,v_context.actor_user_id,v_context.assignment_id,v_context.purpose_code,p_reason,v_context.correlation_id);
+  RETURN v_ip;
+END
+$fn$;
+
+-- Replace the pre-Batch-3 guard signature after all dependent source has moved to the context guard.
+DROP FUNCTION public.fn_exec007_guard_security_event_read(UUID,UUID,UUID,UUID,public."Exec007SecurityPurposeCode",TEXT,TEXT);
+
+ALTER FUNCTION public.fn_exec007_constant_time_equal_32(BYTEA,BYTEA) OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_get_security_event_authority_metadata(UUID,UUID) OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_verify_db_authorization_context() OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_consume_db_authorization_nonce(public.exec007_db_authorization_context) OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_guard_security_event_read(TEXT) OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_validate_security_event_authority_fields() OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_guard_security_event_authority_immutable() OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_validate_challenge_binding() OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_guard_challenge_binding_immutable() OWNER TO orca_exec007_owner;
+ALTER FUNCTION public.fn_exec007_guard_security_event_read_audit_append_only() OWNER TO orca_exec007_owner;
+ALTER TABLE public.exec007_db_authorization_nonces OWNER TO orca_exec007_owner;
+ALTER TYPE public.exec007_db_authorization_context OWNER TO orca_exec007_owner;
+
+DO $exec007_ordinary_owners$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT c.oid::regclass AS object_name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+           WHERE n.nspname='public' AND c.relkind IN ('r','p','S') AND c.relname LIKE 'exec007_%'
+  LOOP EXECUTE format('ALTER %s %s OWNER TO orca_exec007_owner',
+    CASE WHEN (SELECT relkind FROM pg_class WHERE oid=r.object_name::oid)='S' THEN 'SEQUENCE' ELSE 'TABLE' END,r.object_name); END LOOP;
+  FOR r IN SELECT p.oid::regprocedure AS object_name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+           WHERE n.nspname='public' AND p.proname LIKE 'fn_exec007_%'
+  LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO orca_exec007_owner',r.object_name); END LOOP;
+END
+$exec007_ordinary_owners$;
+
+REVOKE ALL ON FUNCTION public.fn_exec007_constant_time_equal_32(BYTEA,BYTEA) FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_verify_db_authorization_context() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_consume_db_authorization_nonce(public.exec007_db_authorization_context) FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_validate_security_event_authority_fields() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_guard_security_event_authority_immutable() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_validate_challenge_binding() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_guard_challenge_binding_immutable() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_guard_security_event_read_audit_append_only() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_get_security_event_authority_metadata(UUID,UUID) FROM PUBLIC,orca_migration,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_verify_db_authorization_context() FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_consume_db_authorization_nonce(public.exec007_db_authorization_context) FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON FUNCTION public.fn_exec007_guard_security_event_read(TEXT) FROM PUBLIC,orca_migration,orca_support_readonly;
+GRANT EXECUTE ON FUNCTION public.fn_exec007_get_security_event_authority_metadata(UUID,UUID) TO orca_runtime;
+GRANT EXECUTE ON FUNCTION public.fn_exec007_guard_security_event_read(TEXT) TO orca_runtime;
+
+DO $exec007_database_acl$
+BEGIN
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO orca_runtime,orca_migration',current_database());
+  EXECUTE format('REVOKE CREATE ON DATABASE %I FROM PUBLIC,orca_runtime,orca_migration,orca_support_readonly',current_database());
+END
+$exec007_database_acl$;
+GRANT USAGE,CREATE ON SCHEMA public TO orca_exec007_owner;
+REVOKE ALL ON TABLE public.users,public.tenants,public.user_scope_assignments,public.branch_services
+  FROM orca_exec007_owner;
+GRANT SELECT(id,tenant_id,is_active) ON TABLE public.users TO orca_exec007_owner;
+GRANT SELECT(id,is_active) ON TABLE public.tenants TO orca_exec007_owner;
+GRANT SELECT(tenant_id,id,user_id,security_role,scope_type,branch_id,is_active,starts_at,ends_at)
+  ON TABLE public.user_scope_assignments TO orca_exec007_owner;
+GRANT SELECT(tenant_id,branch_id,service_line,enabled)
+  ON TABLE public.branch_services TO orca_exec007_owner;
+GRANT USAGE ON SCHEMA public TO orca_runtime,orca_migration,orca_support_readonly;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC,orca_runtime,orca_migration,orca_support_readonly;
+GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO orca_runtime;
+GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO orca_runtime;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO orca_support_readonly;
+REVOKE ALL ON public.exec007_customer_security_events,public.exec007_security_event_reads,public.exec007_db_authorization_nonces
+  FROM PUBLIC,orca_runtime,orca_support_readonly,orca_migration;
+GRANT INSERT(id,tenant_id,principal_id,event_type,purpose_code,raw_ip,network_hmac,recorded_at,scheduled_deletion_at,legal_hold_status,metadata,branch_id,service_line,offer_version_id)
+  ON public.exec007_customer_security_events TO orca_runtime;
+REVOKE UPDATE,DELETE ON public.exec007_customer_security_events FROM orca_runtime;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA orca_exec007_secure FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly;
+REVOKE ALL ON ALL TABLES IN SCHEMA orca_exec007_secure FROM PUBLIC,orca_migration,orca_runtime,orca_support_readonly,orca_exec007_owner;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_owner REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_key_owner REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_key_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC;
