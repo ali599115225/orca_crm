@@ -83,11 +83,12 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
       correlationId: "corr",
       idempotencyKeyHash: hash("a"),
       payloadHash: hash("b"),
-      now: new Date("2026-07-27T12:15:00.000Z"),
     });
 
     expect(query).toHaveBeenCalledTimes(1);
     expect(String(query.mock.calls[0][0])).toContain("fn_exec007_complete_conditional_acceptance");
+    expect(String(query.mock.calls[0][0])).not.toContain("$18::timestamptz");
+    expect(query.mock.calls[0][1]).toHaveLength(17);
     expect(result).toEqual({
       acceptanceIntentId: "intent",
       acceptanceEvidenceId: "evidence",
@@ -143,7 +144,7 @@ const batch3IntegrationCases = [
   ["T-B3-BIND-014", "exact idempotent replay only and payload mismatch denied"],
   ["T-B3-BIND-015", "concurrent acceptance has one winner"],
   ["T-B3-BIND-016", "offer current issued version and exact identity match"],
-  ["T-B3-BIND-027", "acceptance function evaluates bindings in frozen order"],
+  ["T-B3-BIND-027", "acceptance uses trusted database transaction time and exposes no caller time parameter"],
   ["T-B3-BIND-028", "challenge row is locked before consumption transition"],
   ["T-B3-BIND-029", "active verified identity must exist before acceptance"],
   ["T-B3-BIND-030", "non-current or non-issued version is denied"],
@@ -157,6 +158,11 @@ describe("Batch 3 acceptance binding integration contracts", () => {
       expect(migration).toContain('FOR UPDATE');
       expect(migration).toContain('v_challenge."payload_proof_hash" IS DISTINCT FROM p_payload_hash');
       expect(migration).toContain('v_challenge."offer_version_id" IS DISTINCT FROM p_offer_version_id');
+      if (title.startsWith("acceptance uses trusted database transaction time")) {
+        expect(migration).toContain("v_now TIMESTAMPTZ := transaction_timestamp()");
+        expect(migration).not.toContain("p_now TIMESTAMPTZ");
+        expect(postgresEvidence).toContain("callerTimeOverrideRejected");
+      }
       expect(postgresEvidence).toContain("concurrentSingleWinner");
       expectPostgresEvidence(testId);
     });

@@ -44,7 +44,7 @@ const batch3MigrationContracts = [
   ["T-B3-DBROLE-017", "orca_runtime completes representative normal application CRUD and approved functions"],
   ["T-B3-DBROLE-018", "isolated CI switches runtime and migration connections then restores pre-existing role"],
   ["T-B3-DBROLE-019", "orca_migration SET ROLE orca_exec007_key_owner is denied"],
-  ["T-B3-DBROLE-021", "orca_migration can SET ROLE orca_exec007_owner but receives no secure schema table access"],
+  ["T-B3-DBROLE-021", "orca_migration cannot SET ROLE the ordinary owner, read raw_ip, replace guards, or disable triggers"],
   ["T-B3-DBROLE-022", "key bootstrap function creates exactly one ACTIVE key from an empty store"],
   ["T-B3-DBROLE-023", "unique ACTIVE slot rejects a second ACTIVE row"],
   ["T-B3-DBROLE-024", "two serialized rotations produce one ACTIVE and no more than two GRACE rows"],
@@ -88,6 +88,11 @@ describe("Batch 3 split-owner and ACL executable contracts", () => {
       expect(migration).toContain("fn_exec007_verify_hmac");
       expect(migration).toContain("fn_exec007_guard_security_event_read");
       expect(migration).toContain("REVOKE ALL");
+      if (title.startsWith("orca_migration cannot SET ROLE the ordinary owner")) {
+        expect(migration).not.toContain("GRANT orca_exec007_owner TO orca_migration");
+        expect(migration).toContain("REVOKE orca_exec007_owner FROM orca_migration");
+        expect(migration).toContain("EXEC007_MIGRATION_OWNER_ESCALATION_REMAINS");
+      }
       expectPostgresEvidence(testId);
     });
   }
