@@ -1,0 +1,58 @@
+name: ORCA Batch 3 Old Signature Payload Builder
+
+on:
+  pull_request:
+    branches:
+      - work/orca-exec-007-implementation-20260727
+    types: [reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  build-old-signature-payload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: abaec6c7b2873b6439bc12f9af369ad784ed7beb
+          fetch-depth: 0
+      - name: Add explicit old signature removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout -B automation/orca-b3-old-signature-payload-20260801 abaec6c7b2873b6439bc12f9af369ad784ed7beb
+          python <<'PY'
+          from pathlib import Path
+          path = Path('prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql')
+          text = path.read_text()
+          needle = '''
+
+CREATE OR REPLACE FUNCTION "fn_exec007_complete_conditional_acceptance"(
+'''
+          replacement = '''
+
+-- PostgreSQL treats a changed input signature as a separate overload. Remove
+-- the pre-correction caller-time signature explicitly so previously migrated
+-- databases cannot continue invoking acceptance with caller-controlled time.
+DROP FUNCTION IF EXISTS public."fn_exec007_complete_conditional_acceptance"(
+  UUID,UUID,UUID,UUID,UUID,UUID,UUID,UUID,UUID,
+  INTEGER,TIMESTAMPTZ,TEXT,JSONB,TEXT,TEXT,TEXT,TEXT,TIMESTAMPTZ
+);
+
+CREATE OR REPLACE FUNCTION "fn_exec007_complete_conditional_acceptance"(
+'''
+          if text.count(needle) != 1:
+              raise SystemExit(f'expected one acceptance function marker, found {text.count(needle)}')
+          path.write_text(text.replace(needle, replacement))
+          PY
+          grep -q 'DROP FUNCTION IF EXISTS public."fn_exec007_complete_conditional_acceptance"' prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
+          test "$(git diff --name-only)" = "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"
+          git diff --check
+          git config user.name "ORCA Governed Migration Payload Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
+          git commit -m "chore(exec-007): transport old acceptance signature removal"
+          test "$(git diff --name-only HEAD^..HEAD)" = "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"
+          git push --force origin HEAD:refs/heads/automation/orca-b3-old-signature-payload-20260801
