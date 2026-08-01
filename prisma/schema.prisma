@@ -2496,6 +2496,7 @@ model CustomerPrincipalSubjectGrant {
   createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_exec007_subject_grants_tenant_id")
+  @@unique([tenantId, id, principalId, subjectPartyId], map: "uq_exec007_subject_grants_binding")
   @@map("exec007_customer_principal_subject_grants")
 }
 
@@ -2517,24 +2518,31 @@ model CustomerSession {
   createdAt          DateTime                     @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_exec007_sessions_tenant_id")
+  @@unique([tenantId, id, principalId, subjectGrantId], map: "uq_exec007_sessions_binding")
   @@unique([tenantId, sessionTokenHash], map: "uq_exec007_sessions_token_hash")
   @@index([tenantId, status, idleExpiresAt, absoluteExpiresAt], map: "idx_exec007_customer_sessions_expiry")
   @@map("exec007_customer_sessions")
 }
 
 model CustomerAuthChallenge {
-  id            String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String                     @map("tenant_id") @db.Uuid
-  principalId   String?                    @map("principal_id") @db.Uuid
-  identityType  Exec007CustomerIdentityType @map("identity_type")
-  challengeType Exec007AuthChallengeType    @map("challenge_type")
-  status        Exec007AuthChallengeStatus  @default(PENDING)
-  action        Exec007DecisionAction?
-  tokenHash     String                     @map("token_hash")
-  attemptCount  Int                        @default(0) @map("attempt_count")
-  expiresAt     DateTime                   @map("expires_at") @db.Timestamptz
-  consumedAt    DateTime?                  @map("consumed_at") @db.Timestamptz
-  createdAt     DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  id                 String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String                      @map("tenant_id") @db.Uuid
+  principalId        String?                     @map("principal_id") @db.Uuid
+  sessionId          String?                     @map("session_id") @db.Uuid
+  subjectGrantId     String?                     @map("subject_grant_id") @db.Uuid
+  subjectPartyId     String?                     @map("subject_party_id") @db.Uuid
+  customerAccountId  String?                     @map("customer_account_id") @db.Uuid
+  offerVersionId     String?                     @map("offer_version_id") @db.Uuid
+  identityType       Exec007CustomerIdentityType @map("identity_type")
+  challengeType      Exec007AuthChallengeType    @map("challenge_type")
+  status             Exec007AuthChallengeStatus  @default(PENDING)
+  action             Exec007DecisionAction?
+  tokenHash          String                      @map("token_hash")
+  payloadProofHash   String?                     @map("payload_proof_hash")
+  attemptCount       Int                         @default(0) @map("attempt_count")
+  expiresAt          DateTime                    @map("expires_at") @db.Timestamptz
+  consumedAt         DateTime?                   @map("consumed_at") @db.Timestamptz
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_exec007_challenges_tenant_id")
   @@unique([tenantId, tokenHash], map: "uq_exec007_challenges_token_hash")
@@ -2600,6 +2608,7 @@ model OfferVersion {
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_exec007_offer_versions_tenant_id")
+  @@unique([tenantId, id, subjectPartyId], map: "uq_exec007_offer_versions_binding")
   @@unique([tenantId, offerId, versionNumber], map: "uq_exec007_offer_versions_offer_number")
   @@index([tenantId, offerId, state, isCurrent], map: "idx_exec007_offer_versions_current_lookup")
   @@map("exec007_offer_versions")
@@ -2951,7 +2960,10 @@ model RecordRetentionAssignment {
 model CustomerSecurityEvent {
   id                    String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId              String                       @map("tenant_id") @db.Uuid
-  principalId           String?                      @map("principal_id") @db.Uuid
+  principalId           String                       @map("principal_id") @db.Uuid
+  branchId              String?                      @map("branch_id") @db.Uuid
+  serviceLine           Exec007ServiceLine?          @map("service_line")
+  offerVersionId        String?                      @map("offer_version_id") @db.Uuid
   eventType             String                       @map("event_type")
   purposeCode           Exec007SecurityPurposeCode   @map("purpose_code")
   rawIp                 String?                      @map("raw_ip") @db.Inet
@@ -2962,8 +2974,22 @@ model CustomerSecurityEvent {
   metadata              Json                         @default("{}") @db.JsonB
 
   @@unique([tenantId, id], map: "uq_exec007_security_events_tenant_id")
+  @@index([tenantId, id, principalId, branchId, serviceLine], map: "idx_exec007_security_events_authority_lookup")
+  @@index([tenantId, offerVersionId], map: "idx_exec007_security_events_offer_version")
   @@index([tenantId, scheduledDeletionAt], map: "idx_exec007_security_events_deletion")
   @@map("exec007_customer_security_events")
+}
+
+model DbAuthorizationNonce {
+  tenantId      String   @map("tenant_id") @db.Uuid
+  nonceHash     String   @map("nonce_hash")
+  actorUserId   String   @map("actor_user_id") @db.Uuid
+  assignmentId  String   @map("assignment_id") @db.Uuid
+  permissionKey String   @map("permission_key")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([tenantId, nonceHash], map: "pk_exec007_db_authorization_nonces")
+  @@map("exec007_db_authorization_nonces")
 }
 
 model SecurityEventReadAudit {

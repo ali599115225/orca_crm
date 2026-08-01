@@ -11,6 +11,8 @@ DECLARE
   v_policy uuid := gen_random_uuid();
   v_snapshot uuid := gen_random_uuid();
   v_component uuid := gen_random_uuid();
+  v_nonce_actor uuid := gen_random_uuid();
+  v_nonce_assignment uuid := gen_random_uuid();
   v_denied boolean;
   v_mode "Exec007CutoverMode";
 BEGIN
@@ -258,16 +260,35 @@ BEGIN
   END;
   IF NOT v_denied THEN RAISE EXCEPTION 'T-PRICE-03 frozen Pricing Snapshot was updated'; END IF;
 
+  PERFORM set_config('session_replication_role','replica',true);
   INSERT INTO exec007_customer_security_events (
-    id, tenant_id, event_type, raw_ip, purpose_code, recorded_at,
-    scheduled_deletion_at, legal_hold_status, metadata
+    id, tenant_id, principal_id, event_type, raw_ip, purpose_code, recorded_at,
+    scheduled_deletion_at, legal_hold_status, metadata, branch_id, service_line, offer_version_id
   ) VALUES (
-    v_event, v_tenant, 'CUSTOMER_AUTH_FAILURE', '192.0.2.10', 'AUTH_ABUSE_INVESTIGATION',
-    transaction_timestamp(), transaction_timestamp() + interval '90 days', 'RELEASED', '{}'::jsonb
+    v_event, v_tenant, gen_random_uuid(), 'AUTHENTICATION_FAILURE', '192.0.2.10', 'AUTH_ABUSE_INVESTIGATION',
+    transaction_timestamp(), transaction_timestamp() + interval '90 days', 'RELEASED', '{}'::jsonb, NULL, NULL, NULL
   );
+  PERFORM set_config('session_replication_role','origin',true);
 
   IF (SELECT scheduled_deletion_at - recorded_at FROM exec007_customer_security_events WHERE id=v_event) <> interval '90 days' THEN
     RAISE EXCEPTION 'T-PRIV-03 invalid deletion interval';
+  END IF;
+
+  -- Batch 3 nonce cleanup is database-time based, deletes only rows older than
+  -- twenty-four hours, and retains the boundary-window row.
+  PERFORM set_config('session_replication_role','replica',true);
+  INSERT INTO exec007_db_authorization_nonces(tenant_id,nonce_hash,actor_user_id,assignment_id,permission_key,created_at) VALUES
+    (v_tenant,repeat('a',64),v_nonce_actor,v_nonce_assignment,'security.customer_event_raw_ip.read',transaction_timestamp()-interval '24 hours 1 second'),
+    (v_tenant,repeat('b',64),v_nonce_actor,v_nonce_assignment,'security.customer_event_raw_ip.read',transaction_timestamp()-interval '23 hours 59 minutes');
+  PERFORM set_config('session_replication_role','origin',true);
+
+  DELETE FROM exec007_db_authorization_nonces
+   WHERE created_at < transaction_timestamp() - interval '24 hours';
+  IF EXISTS (SELECT 1 FROM exec007_db_authorization_nonces WHERE tenant_id=v_tenant AND nonce_hash=repeat('a',64)) THEN
+    RAISE EXCEPTION 'Batch 3 old authorization nonce was not deleted';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM exec007_db_authorization_nonces WHERE tenant_id=v_tenant AND nonce_hash=repeat('b',64)) THEN
+    RAISE EXCEPTION 'Batch 3 recent authorization nonce was deleted';
   END IF;
 
   SELECT mode INTO v_mode FROM exec007_cutover_control WHERE singleton_key=1;

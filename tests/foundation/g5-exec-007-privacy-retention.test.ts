@@ -25,3 +25,32 @@ describe("EXEC-007 restricted network evidence", () => {
     expect(migration).toContain('WHERE "legal_hold_status" <> \'ACTIVE\'');
   });
 });
+
+
+
+type Batch3Evidence = { databases?: Array<{ name: string; tests: Record<string, { pass: boolean; actual?: string }> }> };
+function expectPostgresEvidence(testId: string): void {
+  const evidencePath = process.env.EXEC007_POSTGRES_EVIDENCE;
+  if (!evidencePath) return;
+  const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8")) as Batch3Evidence;
+  expect(evidence.databases?.length).toBeGreaterThanOrEqual(2);
+  for (const database of evidence.databases ?? []) {
+    expect(database.tests[testId], `${database.name}:${testId}`).toMatchObject({ pass: true });
+  }
+}
+
+const nonceRetentionCases = [
+  ["T-B3-RAWIP-043", "cleanup deletes rows older than database_now minus twenty-four hours"],
+  ["T-B3-RAWIP-044", "cleanup retains rows inside twenty-four-hour window"]
+] as const;
+
+describe("Batch 3 authorization nonce retention contracts", () => {
+  for (const [testId, title] of nonceRetentionCases) {
+    it(`${testId} ${title}`, () => {
+      const retentionSql = fs.readFileSync(path.join(process.cwd(), "scripts/exec-007-postgres-privacy-retention.sql"), "utf8");
+      expect(retentionSql).toContain("exec007_db_authorization_nonces");
+      expect(retentionSql).toContain("interval '24 hours'");
+      expectPostgresEvidence(testId);
+    });
+  }
+});
