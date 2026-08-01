@@ -1,0 +1,2 @@
+Synchronize trigger for the governed migration payload builder.
+No merge is authorized.
