@@ -1186,6 +1186,7 @@ async function runBatch3DatabaseValidation(bindingSignals) {
       Object.entries(bindingSignals).map(([key, value]) => [key, value === true]),
     );
     checks.bindingSignals = Object.values(bindingSignals).every(Boolean);
+    checks.trustedDatabaseTime = bindingSignals.trustedDatabaseTime === true;
     checks.challengeShapes = checks.challengeSchema && checks.decisionCompleteShape && checks.authenticationNullShape;
   } catch (error) {
     executionError = error;
