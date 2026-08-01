@@ -34,7 +34,8 @@ concurrency:
 
 env:
   REQUIRED_BASE_SHA: f159d865c6980cb8b1dbaa2bfff8fc50ac9d0a26
-  REQUIRED_STARTING_HEAD: 4f5276cc3eee6e037e1d0d9206e96244681746a5
+  REQUIRED_BATCH3_PARENT: 4f5276cc3eee6e037e1d0d9206e96244681746a5
+  REQUIRED_CORRECTION_PARENT: 976f4d545b57bd7f9e830641dff343fbc9c23b00
   POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_validation?sslmode=disable
   BOOTSTRAP_PASSWORD: exec007-bootstrap-ci-only
   NODE_ENV: test
@@ -90,17 +91,22 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           test "$(git -C base rev-parse HEAD)" = "$REQUIRED_BASE_SHA"
-          git -C head cat-file -e "$REQUIRED_STARTING_HEAD^{commit}"
-          git -C head merge-base --is-ancestor "$REQUIRED_STARTING_HEAD" HEAD
-          test "$(git -C head rev-list --count "$REQUIRED_STARTING_HEAD..HEAD")" -eq 1
+          git -C head cat-file -e "$REQUIRED_BATCH3_PARENT^{commit}"
+          git -C head cat-file -e "$REQUIRED_CORRECTION_PARENT^{commit}"
+          git -C head merge-base --is-ancestor "$REQUIRED_BATCH3_PARENT" HEAD
+          git -C head merge-base --is-ancestor "$REQUIRED_CORRECTION_PARENT" HEAD
+          test "$(git -C head rev-list --count "$REQUIRED_CORRECTION_PARENT..HEAD")" -eq 1
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH3_PARENT..HEAD")" -eq 2
           pg_version_num="$(psql "$POSTGRES_ADMIN_URL" -tAc "SHOW server_version_num" | xargs)"
           test "$pg_version_num" -ge 160000
           test "$pg_version_num" -lt 170000
           {
             echo "base=$(git -C base rev-parse HEAD)"
-            echo "starting_head=$REQUIRED_STARTING_HEAD"
+            echo "batch3_parent=$REQUIRED_BATCH3_PARENT"
+            echo "correction_parent=$REQUIRED_CORRECTION_PARENT"
             echo "head=$(git -C head rev-parse HEAD)"
-            echo "implementation_commits=$(git -C head rev-list --count "$REQUIRED_STARTING_HEAD..HEAD")"
+            echo "correction_commits=$(git -C head rev-list --count "$REQUIRED_CORRECTION_PARENT..HEAD")"
+            echo "implementation_commits=$(git -C head rev-list --count "$REQUIRED_BATCH3_PARENT..HEAD")"
             echo "node=$(node --version)"
             echo "npm=$(npm --version)"
             echo "postgres=$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version;' | xargs)"
@@ -336,7 +342,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git -C head diff --name-only "$REQUIRED_STARTING_HEAD...HEAD" | sort | tee evidence/batch3-changed-paths.txt
+          git -C head diff --name-only "$REQUIRED_BATCH3_PARENT...HEAD" | sort | tee evidence/batch3-changed-paths.txt
           cat > evidence/batch3-allowed-paths.txt <<'PATHS'
           .github/workflows/exec-007-migration-validation.yml
           lib/customer-portal/contracts.ts
@@ -362,7 +368,7 @@ jobs:
           sort -o evidence/batch3-allowed-paths.txt evidence/batch3-allowed-paths.txt
           cmp -s evidence/batch3-changed-paths.txt evidence/batch3-allowed-paths.txt
           test "$(wc -l < evidence/batch3-changed-paths.txt)" -eq 20
-          git -C head diff --check "$REQUIRED_STARTING_HEAD...HEAD"
+          git -C head diff --check "$REQUIRED_BATCH3_PARENT...HEAD"
 
       - name: Cleanup isolated PostgreSQL databases and roles
         if: always()
@@ -415,9 +421,11 @@ jobs:
           const paths = fs.readFileSync('evidence/batch3-changed-paths.txt','utf8').trim().split(/\n/).filter(Boolean);
           const result = {
             verdict: 'PASS',
-            startingHead: process.env.REQUIRED_STARTING_HEAD,
+            batch3Parent: process.env.REQUIRED_BATCH3_PARENT,
+            correctionParent: process.env.REQUIRED_CORRECTION_PARENT,
             candidateHead: require('node:child_process').execFileSync('git',['-C','head','rev-parse','HEAD'],{encoding:'utf8'}).trim(),
-            implementationCommits: Number(require('node:child_process').execFileSync('git',['-C','head','rev-list','--count',`${process.env.REQUIRED_STARTING_HEAD}..HEAD`],{encoding:'utf8'}).trim()),
+            correctionCommits: Number(require('node:child_process').execFileSync('git',['-C','head','rev-list','--count',`${process.env.REQUIRED_CORRECTION_PARENT}..HEAD`],{encoding:'utf8'}).trim()),
+            implementationCommits: Number(require('node:child_process').execFileSync('git',['-C','head','rev-list','--count',`${process.env.REQUIRED_BATCH3_PARENT}..HEAD`],{encoding:'utf8'}).trim()),
             changedPaths: paths.length,
             governedTestIds: testIds.total,
             governedUniqueTestIds: testIds.unique,
@@ -433,7 +441,7 @@ jobs:
             findingsClosedByExecutor: [],
             findingsPendingIndependentReview: ['EXEC007-IFR-004','EXEC007-IFR-006'],
           };
-          if (result.implementationCommits!==1 || result.changedPaths!==20 || result.governedTestIds!==152 ||
+          if (result.correctionCommits!==1 || result.implementationCommits!==2 || result.changedPaths!==20 || result.governedTestIds!==152 ||
               result.postgresDatabases!==2 || result.postgresTestsPerDatabase.some((n)=>n!==152) ||
               result.pgcryptoAbsent!=='PASS' || result.exactTestFailures!==0 || result.baselineDifferential!=='PASS_NO_NEW_FAILURES' ||
               result.newFailureIdentities!==0 || result.cleanup!=='PASS') {
@@ -450,7 +458,7 @@ jobs:
         run: |
           set -euo pipefail
           git -C head archive --format=zip --output=../evidence/exec-007-candidate-source.zip HEAD
-          git -C head diff --binary "$REQUIRED_STARTING_HEAD...HEAD" > evidence/exec-007-batch3.patch
+          git -C head diff --binary "$REQUIRED_BATCH3_PARENT...HEAD" > evidence/exec-007-batch3.patch
           sha256sum evidence/exec-007-candidate-source.zip evidence/exec-007-batch3.patch evidence/mechanical-execution-validator.json \
             | tee evidence/exec-007-candidate-artifacts.sha256
 

@@ -11,7 +11,7 @@ const left = new Client({ connectionString });
 const right = new Client({ connectionString });
 await Promise.all([admin.connect(), left.connect(), right.connect()]);
 
-const now = new Date("2026-07-27T12:00:00.000Z");
+const now = new Date();
 const iso = (minutes) => new Date(now.getTime() + minutes * 60_000).toISOString();
 const hash = (character) => character.repeat(64);
 const sha256 = (value) => createHash("sha256").update(String(value)).digest("hex");
@@ -265,7 +265,6 @@ function args(fixture, key, payload = hash("1"), evidencePayload = null) {
     `corr-${key}`,
     hash(key),
     payload,
-    now.toISOString(),
   ];
 }
 
@@ -273,7 +272,7 @@ async function accept(client, fixture, key, payload = hash("1"), evidencePayload
   const result = await client.query(
     `SELECT * FROM fn_exec007_complete_conditional_acceptance(
       $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,$8::uuid,$9::uuid,
-      $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text,$18::timestamptz
+      $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text
     )`,
     args(fixture, key, payload, evidencePayload),
   );
@@ -590,7 +589,7 @@ async function runBatch3DatabaseValidation(bindingSignals) {
         (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'fn_exec007_%' AND pg_get_userbyid(p.proowner)<>'orca_exec007_owner') AS wrong_public_function_owners
     `);
     checks.roleGraph = catalog.rows[0].roles === 5 && catalog.rows[0].no_login_roles === 3 &&
-      catalog.rows[0].hardened_roles === 5 && catalog.rows[0].migration_membership === 1 &&
+      catalog.rows[0].hardened_roles === 5 && catalog.rows[0].migration_membership === 0 &&
       catalog.rows[0].key_owner_memberships === 0 && catalog.rows[0].key_table_owner === 1 &&
       catalog.rows[0].secure_function_owners === 5 && catalog.rows[0].wrong_public_function_owners === 0;
 
@@ -775,14 +774,17 @@ async function runBatch3DatabaseValidation(bindingSignals) {
     }
     checks.ordinaryOwnerLifecycleDenied = ownerLifecycleCalls.every(Boolean);
 
-    await migration.query("BEGIN");
+    await admin.query("BEGIN");
     try {
-      await migration.query("SET LOCAL ROLE orca_exec007_owner");
-      await migration.query("SAVEPOINT key_owner_denial");
-      const denied = await expectSqlState(() => migration.query("SET ROLE orca_exec007_key_owner"), ["42501"]);
-      await migration.query("ROLLBACK TO SAVEPOINT key_owner_denial");
-      const identity = (await migration.query("SELECT current_user,session_user")).rows[0];
-      await migration.query("ROLLBACK");
+      // A superuser-backed bootstrap session can assume any role. Switch
+      // session authorization first so SET ROLE is evaluated as the
+      // NOLOGIN ordinary owner itself rather than as the bootstrap user.
+      await admin.query("SET SESSION AUTHORIZATION orca_exec007_owner");
+      await admin.query("SAVEPOINT key_owner_denial");
+      const denied = await expectSqlState(() => admin.query("SET ROLE orca_exec007_key_owner"), ["42501"]);
+      await admin.query("ROLLBACK TO SAVEPOINT key_owner_denial");
+      const identity = (await admin.query("SELECT current_user,session_user")).rows[0];
+      await admin.query("ROLLBACK");
       diagnostics.ordinaryOwnerRoleProbe = {
         denied,
         currentUser: identity?.current_user ?? null,
@@ -791,28 +793,42 @@ async function runBatch3DatabaseValidation(bindingSignals) {
       checks.ordinaryOwnerCannotSetKeyOwner =
         denied &&
         identity?.current_user === "orca_exec007_owner" &&
-        identity?.session_user === "orca_migration";
+        identity?.session_user === "orca_exec007_owner";
     } catch (error) {
-      await migration.query("ROLLBACK");
+      await admin.query("ROLLBACK");
       throw error;
     }
 
-    await migration.query("BEGIN");
-    try {
-      await migration.query("SET LOCAL ROLE orca_exec007_owner");
-      await migration.query("CREATE TABLE public.exec007_ci_ordinary_owner_probe(id integer)");
-      await migration.query("SAVEPOINT secure_denial");
-      const secureDenied = await expectSqlState(() => migration.query("SELECT secret_bytes FROM orca_exec007_secure.exec007_db_authorization_keys"), ["42501"]);
-      await migration.query("ROLLBACK TO SAVEPOINT secure_denial");
-      await migration.query("DROP TABLE public.exec007_ci_ordinary_owner_probe");
-      await migration.query("RESET ROLE");
-      const restored = (await migration.query("SELECT current_user")).rows[0].current_user === "orca_migration";
-      await migration.query("ROLLBACK");
-      checks.migrationOrdinaryOwner = secureDenied && restored;
-    } catch (error) {
-      await migration.query("ROLLBACK");
-      throw error;
-    }
+    const migrationOwnerEscalationDenied = await expectSqlState(
+      () => migration.query("SET ROLE orca_exec007_owner"),
+      ["42501"],
+    );
+    const migrationRawIpDenied = await expectSqlState(
+      () => migration.query("SELECT raw_ip FROM public.exec007_customer_security_events WHERE tenant_id=$1 AND id=$2", [ids.tenantA, securityEvent]),
+      ["42501"],
+    );
+    const migrationGuardReplaceDenied = await expectSqlState(
+      () => migration.query(`CREATE OR REPLACE FUNCTION public.fn_exec007_guard_security_event_read(TEXT)
+        RETURNS INET LANGUAGE sql AS 'SELECT NULL::inet'`),
+      ["42501"],
+    );
+    const migrationTriggerDisableDenied = await expectSqlState(
+      () => migration.query("ALTER TABLE public.exec007_customer_security_events DISABLE TRIGGER trg_exec007_security_event_authority_validate"),
+      ["42501"],
+    );
+    const migrationIdentity = (await migration.query("SELECT current_user,session_user")).rows[0];
+    diagnostics.migrationOwnerEscalationProbe = {
+      ownerEscalationDenied: migrationOwnerEscalationDenied,
+      rawIpDenied: migrationRawIpDenied,
+      guardReplaceDenied: migrationGuardReplaceDenied,
+      triggerDisableDenied: migrationTriggerDisableDenied,
+      currentUser: migrationIdentity?.current_user ?? null,
+      sessionUser: migrationIdentity?.session_user ?? null,
+    };
+    checks.migrationOrdinaryOwner =
+      migrationOwnerEscalationDenied && migrationRawIpDenied && migrationGuardReplaceDenied &&
+      migrationTriggerDisableDenied && migrationIdentity?.current_user === "orca_migration" &&
+      migrationIdentity?.session_user === "orca_migration";
     checks.migrationCannotSetKeyOwner = await expectSqlState(() => migration.query("SET ROLE orca_exec007_key_owner"), ["42501"]);
 
     await runtime.query("BEGIN");
@@ -1245,7 +1261,7 @@ async function runBatch3DatabaseValidation(bindingSignals) {
         7:"bindingSignals",8:"versionBindingFkDenied",9:"accountBindingDenied",10:"bindingSignals",11:"bindingSignals",12:"bindingSignals",
         13:"bindingSignals",14:"bindingSignals",15:"bindingSignals",16:"bindingSignals",17:"crossTenantChallengeDenied",18:"decisionPrincipalRequired",
         19:"accountBindingDenied",20:"sessionBindingFkDenied",21:"grantBindingFkDenied",22:"versionBindingFkDenied",23:"payloadProofFormatDenied",
-        24:"bindingImmutable",25:"decisionCompleteShape",26:"authenticationNullShape",27:"bindingSignals",28:"bindingSignals",
+        24:"bindingImmutable",25:"decisionCompleteShape",26:"authenticationNullShape",27:"trustedDatabaseTime",28:"bindingSignals",
         29:"bindingSignals",30:"bindingSignals",31:"bindingSignals",32:"challengeSchema",
       })[n];
     }
@@ -1405,6 +1421,16 @@ try {
   const consumedChallengeRejected = await expectRejected(() => accept(admin, consumed, "7"), /challenge is invalid/i);
   const expired = await createFixture(units[4], { challengeStatus: "EXPIRED", challengeExpires: iso(-1) });
   const expiredChallengeRejected = await expectRejected(() => accept(admin, expired, "8"), /challenge is invalid/i);
+  const callerTimeOverrideRejected = await expectSqlState(
+    () => admin.query(
+      `SELECT * FROM fn_exec007_complete_conditional_acceptance(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,$8::uuid,$9::uuid,
+        $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text,$18::timestamptz
+      )`,
+      [...args(expired, "8"), iso(-120)],
+    ),
+    ["42883"],
+  );
   const revoked = await createFixture(units[5], { challengeStatus: "REVOKED" });
   const revokedChallengeRejected = await expectRejected(() => accept(admin, revoked, "9"), /challenge is invalid/i);
   const wrongAction = await createFixture(units[6], { challengeAction: "DECLINE" });
@@ -1433,7 +1459,7 @@ try {
     () => admin.query(
       `SELECT * FROM fn_exec007_complete_conditional_acceptance(
         $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,$8::uuid,$9::uuid,
-        $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text,$18::timestamptz
+        $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text
       )`,
       tenantArgs,
     ),
@@ -1516,6 +1542,7 @@ try {
     concurrentWinner: concurrentSingleWinner,
     currentIssuedVersion: atomicSuccessFourRecords,
     validationOrder: wrongActionRejected && versionPayloadMismatchRejected,
+    trustedDatabaseTime: expiredChallengeRejected && callerTimeOverrideRejected,
     challengeRowLock: concurrentSingleWinner,
     verifiedIdentity: atomicSuccessFourRecords,
     currentVersionRequired: nonCurrentVersionRejected,
@@ -1539,6 +1566,7 @@ try {
     idempotencyMismatchRejected,
     consumedChallengeRejected,
     expiredChallengeRejected,
+    callerTimeOverrideRejected,
     revokedChallengeRejected,
     wrongActionRejected,
     versionPayloadMismatchRejected,

@@ -954,8 +954,7 @@ CREATE OR REPLACE FUNCTION "fn_exec007_complete_conditional_acceptance"(
   p_evidence_hash TEXT,
   p_correlation_id TEXT,
   p_idempotency_key_hash TEXT,
-  p_payload_hash TEXT,
-  p_now TIMESTAMPTZ DEFAULT transaction_timestamp()
+  p_payload_hash TEXT
 ) RETURNS TABLE (
   acceptance_intent_id UUID,
   acceptance_evidence_id UUID,
@@ -980,13 +979,14 @@ DECLARE
   v_preparation_id UUID := gen_random_uuid();
   v_request_type "Exec007PreparationRequestType";
   v_result RECORD;
+  v_now TIMESTAMPTZ := transaction_timestamp();
 BEGIN
   IF p_tenant_id IS NULL OR p_offer_version_id IS NULL OR p_principal_id IS NULL OR
      p_subject_grant_id IS NULL OR p_session_id IS NULL OR p_challenge_id IS NULL OR
      p_hold_id IS NULL OR p_actor_user_id IS NULL OR p_assignment_id IS NULL THEN
     RAISE EXCEPTION 'EXEC-007 conditional acceptance references are required' USING ERRCODE='22004';
   END IF;
-  IF p_expected_hold_version < 1 OR p_reservation_expires_at <= p_now THEN
+  IF p_expected_hold_version < 1 OR p_reservation_expires_at <= v_now THEN
     RAISE EXCEPTION 'EXEC-007 conditional acceptance version or reservation expiry is invalid' USING ERRCODE='22023';
   END IF;
   IF p_acceptance_method IS NULL OR btrim(p_acceptance_method)='' OR
@@ -1040,7 +1040,7 @@ BEGIN
    WHERE "tenant_id"=p_tenant_id AND "id"=p_offer_version_id
    FOR UPDATE;
   IF NOT FOUND OR v_version."state" <> 'ISSUED' OR NOT v_version."is_current" OR
-     v_version."valid_until_utc" IS NULL OR v_version."valid_until_utc" <= p_now THEN
+     v_version."valid_until_utc" IS NULL OR v_version."valid_until_utc" <= v_now THEN
     RAISE EXCEPTION 'EXEC-007 exact OfferVersion is not currently acceptable' USING ERRCODE='55000';
   END IF;
 
@@ -1088,7 +1088,7 @@ BEGIN
    WHERE "tenant_id"=p_tenant_id AND "id"=p_subject_grant_id
    FOR UPDATE;
   IF NOT FOUND OR v_grant."principal_id" <> p_principal_id OR v_grant."status" <> 'ACTIVE' OR
-     v_grant."effective_at" > p_now OR (v_grant."expires_at" IS NOT NULL AND v_grant."expires_at" <= p_now) OR
+     v_grant."effective_at" > v_now OR (v_grant."expires_at" IS NOT NULL AND v_grant."expires_at" <= v_now) OR
      v_grant."revoked_at" IS NOT NULL OR v_grant."subject_party_id" <> v_version."subject_party_id" OR
      v_grant."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
      v_grant."branch_id" <> v_version."branch_id" OR v_grant."service_line" <> v_offer."service_line" THEN
@@ -1102,8 +1102,8 @@ BEGIN
   IF NOT FOUND OR v_session."principal_id" <> p_principal_id OR v_session."subject_grant_id" <> p_subject_grant_id OR
      v_session."status" <> 'ACTIVE' OR v_session."assurance_level" <> 'CUSTOMER_DECISION_STEP_UP' OR
      v_session."auth_version" <> v_principal."auth_version" OR v_session."grant_version" <> v_grant."grant_version" OR
-     v_session."decision_step_up_at" IS NULL OR v_session."decision_step_up_at" > p_now OR
-     v_session."revoked_at" IS NOT NULL OR v_session."absolute_expires_at" <= p_now OR v_session."idle_expires_at" <= p_now THEN
+     v_session."decision_step_up_at" IS NULL OR v_session."decision_step_up_at" > v_now OR
+     v_session."revoked_at" IS NOT NULL OR v_session."absolute_expires_at" <= v_now OR v_session."idle_expires_at" <= v_now THEN
     RAISE EXCEPTION 'EXEC-007 customer session is not authorized for decision acceptance' USING ERRCODE='42501';
   END IF;
 
@@ -1119,14 +1119,14 @@ BEGIN
      v_challenge."offer_version_id" IS DISTINCT FROM p_offer_version_id OR
      v_challenge."payload_proof_hash" IS DISTINCT FROM p_payload_hash OR
      v_challenge."action" IS DISTINCT FROM 'ACCEPT' OR v_challenge."status" <> 'PENDING' OR
-     v_challenge."expires_at" <= p_now OR v_challenge."consumed_at" IS NOT NULL THEN
+     v_challenge."expires_at" <= v_now OR v_challenge."consumed_at" IS NOT NULL THEN
     RAISE EXCEPTION 'EXEC-007 acceptance challenge is invalid, expired, revoked, consumed, or structurally unbound' USING ERRCODE='42501';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM "exec007_customer_principal_identities" ident
      WHERE ident."tenant_id"=p_tenant_id AND ident."principal_id"=p_principal_id
        AND ident."identity_type"=v_challenge."identity_type" AND ident."status"='ACTIVE'
-       AND ident."verified_at" <= p_now AND ident."revoked_at" IS NULL
+       AND ident."verified_at" <= v_now AND ident."revoked_at" IS NULL
   ) THEN
     RAISE EXCEPTION 'EXEC-007 challenge identity is not actively verified' USING ERRCODE='42501';
   END IF;
@@ -1136,7 +1136,7 @@ BEGIN
    WHERE "tenant_id"=p_tenant_id AND "id"=p_hold_id
    FOR UPDATE;
   IF NOT FOUND OR v_hold."commitment_type" <> 'HOLD' OR v_hold."status" <> 'ACTIVE' OR
-     v_hold."expires_at" <= p_now OR v_hold."version" <> p_expected_hold_version OR
+     v_hold."expires_at" <= v_now OR v_hold."version" <> p_expected_hold_version OR
      v_hold."unit_id" <> v_version."unit_id" OR v_hold."branch_id" <> v_version."branch_id" OR
      v_hold."party_id" IS DISTINCT FROM v_version."subject_party_id" OR
      v_hold."customer_account_id" IS DISTINCT FROM v_version."customer_account_id" OR
@@ -1160,12 +1160,12 @@ BEGIN
   ) VALUES (
     v_evidence_id,p_tenant_id,v_intent_id,v_version."id",p_principal_id,v_version."subject_party_id",v_version."customer_account_id",
     v_version."content_hash",v_version."pricing_hash",v_version."terms_hash",p_evidence_hash,NULL,'EXEC007-NET-1',
-    v_version."confirmation_text_version",v_version."canonicalization_version",v_session."assurance_level",p_now
+    v_version."confirmation_text_version",v_version."canonicalization_version",v_session."assurance_level",v_now
   );
 
   v_reservation_id := "exec006_convert_hold_to_reservation"(
     p_tenant_id,p_hold_id,p_actor_user_id,p_assignment_id,p_expected_hold_version,p_reservation_expires_at,
-    v_evidence_id::TEXT,'EXEC-007 conditional acceptance',p_correlation_id,p_idempotency_key_hash,p_payload_hash,p_now
+    v_evidence_id::TEXT,'EXEC-007 conditional acceptance',p_correlation_id,p_idempotency_key_hash,p_payload_hash,v_now
   );
 
   IF NOT EXISTS (
@@ -1186,7 +1186,7 @@ BEGIN
     "reservation_id","state","expected_offer_version","expected_hold_version","idempotency_key_hash","completed_at"
   ) VALUES (
     v_completion_id,p_tenant_id,v_version."id",v_evidence_id,v_version."subject_party_id",v_version."customer_account_id",p_hold_id,
-    v_reservation_id,'COMPLETED',v_version."row_version",p_expected_hold_version,p_idempotency_key_hash,p_now
+    v_reservation_id,'COMPLETED',v_version."row_version",p_expected_hold_version,p_idempotency_key_hash,v_now
   );
 
   v_request_type := CASE WHEN v_version."offer_kind"='SALE'
@@ -1201,25 +1201,25 @@ BEGIN
   );
 
   UPDATE "exec007_acceptance_intents"
-     SET "state"='CONFIRMED',"confirmed_at"=p_now
+     SET "state"='CONFIRMED',"confirmed_at"=v_now
    WHERE "tenant_id"=p_tenant_id AND "id"=v_intent_id AND "state"='PENDING';
   UPDATE "exec007_customer_auth_challenges"
-     SET "status"='CONSUMED',"consumed_at"=p_now
+     SET "status"='CONSUMED',"consumed_at"=v_now
    WHERE "tenant_id"=p_tenant_id AND "id"=p_challenge_id AND "status"='PENDING' AND "consumed_at" IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 challenge consumption race detected' USING ERRCODE='40001'; END IF;
   UPDATE "exec007_offer_versions"
-     SET "state"='CONDITIONALLY_ACCEPTED',"is_current"=FALSE,"row_version"="row_version"+1,"updated_at"=p_now
+     SET "state"='CONDITIONALLY_ACCEPTED',"is_current"=FALSE,"row_version"="row_version"+1,"updated_at"=v_now
    WHERE "tenant_id"=p_tenant_id AND "id"=v_version."id" AND "state"='ISSUED' AND "row_version"=v_version."row_version";
   IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 OfferVersion acceptance race detected' USING ERRCODE='40001'; END IF;
   UPDATE "exec007_commercial_offers"
-     SET "state"='PREPARATION_REQUESTED',"version"="version"+1,"updated_at"=p_now
+     SET "state"='PREPARATION_REQUESTED',"version"="version"+1,"updated_at"=v_now
    WHERE "tenant_id"=p_tenant_id AND "id"=v_offer."id" AND "state"='OPEN' AND "version"=v_offer."version";
   IF NOT FOUND THEN RAISE EXCEPTION 'EXEC-007 commercial offer acceptance race detected' USING ERRCODE='40001'; END IF;
 
   INSERT INTO "exec007_offer_version_state_history" ("tenant_id","offer_version_id","from_state","to_state","actor_user_id","reason","correlation_id","occurred_at")
-  VALUES (p_tenant_id,v_version."id",'ISSUED','CONDITIONALLY_ACCEPTED',p_actor_user_id,'Customer conditional acceptance',p_correlation_id,p_now);
+  VALUES (p_tenant_id,v_version."id",'ISSUED','CONDITIONALLY_ACCEPTED',p_actor_user_id,'Customer conditional acceptance',p_correlation_id,v_now);
   INSERT INTO "exec007_offer_state_history" ("tenant_id","offer_id","from_state","to_state","actor_user_id","reason","correlation_id","occurred_at")
-  VALUES (p_tenant_id,v_offer."id",'OPEN','PREPARATION_REQUESTED',p_actor_user_id,'Customer conditional acceptance completed',p_correlation_id,p_now);
+  VALUES (p_tenant_id,v_offer."id",'OPEN','PREPARATION_REQUESTED',p_actor_user_id,'Customer conditional acceptance completed',p_correlation_id,v_now);
 
   INSERT INTO "exec007_idempotency_records" (
     "tenant_id","operation","idempotency_key_hash","payload_hash","result_type","result_id"
@@ -1265,7 +1265,6 @@ ALTER ROLE orca_support_readonly NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREA
 
 REVOKE orca_exec007_key_owner FROM orca_exec007_owner, orca_migration, orca_runtime, orca_support_readonly;
 REVOKE orca_exec007_owner FROM orca_runtime, orca_support_readonly;
-GRANT orca_exec007_owner TO orca_migration WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
@@ -1860,3 +1859,15 @@ ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_owner REVOKE ALL ON TABLES FROM P
 ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_key_owner REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE orca_exec007_key_owner REVOKE ALL ON FUNCTIONS FROM PUBLIC;
+
+-- Migration setup is complete. Remove the only path that could impersonate the ordinary EXEC-007 owner.
+REVOKE orca_exec007_owner FROM orca_migration;
+
+DO $exec007_final_role_graph$
+BEGIN
+  IF pg_has_role('orca_migration','orca_exec007_owner','MEMBER') OR
+     pg_has_role('orca_migration','orca_exec007_owner','SET') THEN
+    RAISE EXCEPTION 'EXEC007_MIGRATION_OWNER_ESCALATION_REMAINS' USING ERRCODE='55000';
+  END IF;
+END
+$exec007_final_role_graph$;

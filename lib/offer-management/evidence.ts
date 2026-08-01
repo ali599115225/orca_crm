@@ -57,7 +57,6 @@ export interface ConditionalAcceptanceInput {
   correlationId: string;
   idempotencyKeyHash: string;
   payloadHash: string;
-  now?: Date;
 }
 
 export interface ConditionalAcceptanceResult {
@@ -112,7 +111,7 @@ export async function completeConditionalAcceptance(
   }>(
     `SELECT * FROM fn_exec007_complete_conditional_acceptance(
       $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid,$8::uuid,$9::uuid,
-      $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text,$18::timestamptz
+      $10::integer,$11::timestamptz,$12::text,$13::jsonb,$14::text,$15::text,$16::text,$17::text
     )`,
     [
       input.tenantId,
@@ -132,7 +131,6 @@ export async function completeConditionalAcceptance(
       input.correlationId,
       input.idempotencyKeyHash,
       input.payloadHash,
-      input.now ?? new Date(),
     ],
   );
 
