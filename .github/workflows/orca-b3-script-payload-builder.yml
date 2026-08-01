@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - work/orca-exec-007-implementation-20260727
-    types: [reopened]
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
