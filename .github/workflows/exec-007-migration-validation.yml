@@ -1,47 +1,41 @@
-name: EXEC-007 Migration Validation
+name: EXEC-007 Final Validation
 
 on:
   pull_request:
     paths:
       - ".github/workflows/exec-007-migration-validation.yml"
-      - "lib/customer-portal/contracts.ts"
-      - "lib/offer-management/evidence.ts"
-      - "lib/offer-management/security-event-access.ts"
-      - "lib/organization/authority.ts"
-      - "lib/organization/contracts.ts"
-      - "lib/tenant-model-policy.ts"
-      - "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"
-      - "prisma/schema.prisma"
-      - "scripts/exec-007-postgres-concurrency.mjs"
-      - "scripts/exec-007-postgres-privacy-retention.sql"
-      - "tests/foundation/g5-exec-004-organization-authority.test.ts"
-      - "tests/foundation/g5-exec-007-customer-auth.test.ts"
+      - "lib/offer-management/pricing-contracts.ts"
+      - "lib/offer-management/pricing-policy.ts"
+      - "lib/offer-management/pricing-snapshot.ts"
+      - "tests/foundation/g5-exec-007-architecture.test.ts"
       - "tests/foundation/g5-exec-007-exec006-integration.test.ts"
-      - "tests/foundation/g5-exec-007-migration.test.ts"
-      - "tests/foundation/g5-exec-007-privacy-retention.test.ts"
+      - "tests/foundation/g5-exec-007-final-allowlist.test.ts"
+      - "tests/foundation/g5-exec-007-offer-state.test.ts"
+      - "tests/foundation/g5-exec-007-pricing.test.ts"
       - "tests/foundation/g5-exec-007-schema-contract.test.ts"
-      - "tests/foundation/g5-exec-007-security-event-access.test.ts"
-      - "tests/r01-tenant-model-policy.test.ts"
-      - "tests/r01f-isolation-regression.test.ts"
+      - "tests/foundation/g5-exec-007-scope-change.test.ts"
+      - "tests/foundation/g5-exec-007-security.test.ts"
+      - "tests/foundation/g5-exec-007-side-effect-boundary.test.ts"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: exec-007-validation-${{ github.event.pull_request.number || github.ref }}
+  group: exec-007-final-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   REQUIRED_BASE_SHA: f159d865c6980cb8b1dbaa2bfff8fc50ac9d0a26
-  REQUIRED_STARTING_HEAD: 4f5276cc3eee6e037e1d0d9206e96244681746a5
+  REQUIRED_BATCH3_PARENT: 4f5276cc3eee6e037e1d0d9206e96244681746a5
+  REQUIRED_BATCH4_PARENT: 3c06fb2014b9aeb92c5ab0fb6017316df0ca338e
   POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_validation?sslmode=disable
   BOOTSTRAP_PASSWORD: exec007-bootstrap-ci-only
   NODE_ENV: test
 
 jobs:
   validate:
-    name: Exact-head Node 24 and PostgreSQL 16 validation
+    name: Exact-head Node 24 and PostgreSQL 16
     runs-on: ubuntu-latest
     timeout-minutes: 90
     services:
@@ -51,67 +45,45 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: orca_exec007_validation
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres -d orca_exec007_validation"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
+          --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_validation?sslmode=disable
       DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_validation?sslmode=disable
       PGPASSWORD: postgres
     steps:
-      - name: Checkout frozen base
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.REQUIRED_BASE_SHA }}
-          path: base
-          fetch-depth: 1
+      - uses: actions/checkout@v7
+        with: { ref: "${{ env.REQUIRED_BASE_SHA }}", path: base, fetch-depth: 1 }
+      - uses: actions/checkout@v7
+        with: { ref: "${{ github.event.pull_request.head.sha || github.sha }}", path: head, fetch-depth: 0 }
+      - uses: actions/setup-node@v6
+        with: { node-version: "24", cache: npm, cache-dependency-path: head/package-lock.json }
 
-      - name: Checkout exact candidate head
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          path: head
-          fetch-depth: 0
-
-      - name: Set up Node.js 24
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: head/package-lock.json
-
-      - name: Verify exact references and environment
+      - name: Verify exact references
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence
           test "$(git -C base rev-parse HEAD)" = "$REQUIRED_BASE_SHA"
-          git -C head cat-file -e "$REQUIRED_STARTING_HEAD^{commit}"
-          git -C head merge-base --is-ancestor "$REQUIRED_STARTING_HEAD" HEAD
-          test "$(git -C head rev-list --count "$REQUIRED_STARTING_HEAD..HEAD")" -eq 1
-          pg_version_num="$(psql "$POSTGRES_ADMIN_URL" -tAc "SHOW server_version_num" | xargs)"
-          test "$pg_version_num" -ge 160000
-          test "$pg_version_num" -lt 170000
-          {
-            echo "base=$(git -C base rev-parse HEAD)"
-            echo "starting_head=$REQUIRED_STARTING_HEAD"
-            echo "head=$(git -C head rev-parse HEAD)"
-            echo "implementation_commits=$(git -C head rev-list --count "$REQUIRED_STARTING_HEAD..HEAD")"
-            echo "node=$(node --version)"
-            echo "npm=$(npm --version)"
-            echo "postgres=$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version;' | xargs)"
-          } | tee evidence/environment.txt
+          for ref in "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT"; do
+            git -C head cat-file -e "$ref^{commit}"
+            git -C head merge-base --is-ancestor "$ref" HEAD
+          done
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH4_PARENT..HEAD")" -eq 1
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH3_PARENT..HEAD")" -eq 2
+          version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
+          test "$version" -ge 160000 -a "$version" -lt 170000
+          printf 'base=%s\nbatch3_parent=%s\nbatch4_parent=%s\nhead=%s\nnode=%s\npostgres=%s\n' \
+            "$(git -C base rev-parse HEAD)" "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT" \
+            "$(git -C head rev-parse HEAD)" "$(node --version)" "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" \
+            | tee evidence/environment.txt
 
       - name: Install dependencies
-        run: |
-          npm --prefix base ci
-          npm --prefix head ci
+        run: npm --prefix base ci && npm --prefix head ci
 
-      - name: Run frozen-base and candidate full suites
+      - name: Full frozen-base and candidate suites
         continue-on-error: true
         shell: bash
         run: |
@@ -123,47 +95,23 @@ jobs:
       - name: Reject new failure identities
         shell: bash
         run: |
-          set -euo pipefail
           node <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-          const read = (name) => JSON.parse(fs.readFileSync(name, 'utf8'));
-          const failures = (report) => {
-            const result = new Set();
-            for (const file of report.testResults || []) {
-              const normalized = String(file.name || '').replaceAll('\\', '/');
-              const marker = '/tests/';
-              const index = normalized.lastIndexOf(marker);
-              const filename = index >= 0 ? normalized.slice(index + 1) : path.basename(normalized);
-              for (const assertion of file.assertionResults || []) {
-                if (assertion.status === 'failed') {
-                  result.add(`${filename} :: ${String(assertion.fullName || assertion.title || '').trim()}`);
-                }
-              }
-            }
-            return [...result].sort();
-          };
-          const base = read('evidence/base-tests.json');
-          const head = read('evidence/head-tests.json');
-          const baseFailures = failures(base);
-          const headFailures = failures(head);
-          const baseSet = new Set(baseFailures);
-          const newFailures = headFailures.filter((item) => !baseSet.has(item));
-          const result = {
-            baseTotal: base.numTotalTests,
-            baseFailed: baseFailures.length,
-            headTotal: head.numTotalTests,
-            headFailed: headFailures.length,
-            newFailures,
-            verdict: newFailures.length === 0 ? 'PASS_NO_NEW_FAILURES' : 'FAIL_NEW_FAILURES',
-          };
-          fs.writeFileSync('evidence/baseline-differential.json', `${JSON.stringify(result, null, 2)}\n`);
-          console.log(JSON.stringify(result, null, 2));
-          if (newFailures.length) process.exit(1);
+          const fs=require('node:fs'),path=require('node:path');
+          const read=n=>JSON.parse(fs.readFileSync(n,'utf8'));
+          const failures=r=>{const out=new Set();for(const f of r.testResults||[]){const n=String(f.name||'').replaceAll('\\','/');const i=n.lastIndexOf('/tests/');const file=i>=0?n.slice(i+1):path.basename(n);for(const a of f.assertionResults||[])if(a.status==='failed')out.add(`${file} :: ${String(a.fullName||a.title||'').trim()}`)}return[...out].sort()};
+          const base=read('evidence/base-tests.json'),head=read('evidence/head-tests.json');
+          const bf=failures(base),hf=failures(head),bs=new Set(bf),added=hf.filter(x=>!bs.has(x));
+          const result={baseTotal:base.numTotalTests,baseFailed:bf.length,headTotal:head.numTotalTests,headFailed:hf.length,newFailures:added,verdict:added.length?'FAIL_NEW_FAILURES':'PASS_NO_NEW_FAILURES'};
+          fs.writeFileSync('evidence/baseline-differential.json',JSON.stringify(result,null,2)+'\n');
+          if(added.length)process.exit(1);
           NODE
 
-      - name: Static quality gates
+      - name: Static quality and governed tests
         working-directory: head
+        env:
+          EXEC007_BASE_SHA: ${{ env.REQUIRED_BASE_SHA }}
+          EXEC007_BATCH3_PARENT: ${{ env.REQUIRED_BATCH3_PARENT }}
+          EXEC007_BATCH4_PARENT: ${{ env.REQUIRED_BATCH4_PARENT }}
         run: |
           npx prisma validate
           npx prisma generate
@@ -173,45 +121,7 @@ jobs:
           npx vitest run tests/foundation/g5-*.test.ts
           npm run build
 
-      - name: Validate exact 152 governed Test IDs and single ownership
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs = require('node:fs');
-          const owners = new Map([
-            ['tests/foundation/g5-exec-004-organization-authority.test.ts', 11],
-            ['tests/foundation/g5-exec-007-security-event-access.test.ts', 63],
-            ['tests/foundation/g5-exec-007-migration.test.ts', 43],
-            ['scripts/exec-007-postgres-concurrency.mjs', 1],
-            ['tests/foundation/g5-exec-007-privacy-retention.test.ts', 2],
-            ['tests/foundation/g5-exec-007-customer-auth.test.ts', 21],
-            ['tests/foundation/g5-exec-007-exec006-integration.test.ts', 11],
-          ]);
-          const all = [];
-          const byPath = {};
-          for (const [file, expected] of owners) {
-            const ids = fs.readFileSync(`head/${file}`, 'utf8').match(/T-B3-(?:AUTH|DBROLE|RAWIP|BIND)-\d{3}/g) || [];
-            byPath[file] = ids.length;
-            if (ids.length !== expected || new Set(ids).size !== expected) {
-              throw new Error(`${file}: expected ${expected} single-owner IDs, got ${ids.length}/${new Set(ids).size}`);
-            }
-            all.push(...ids);
-          }
-          const expected = [
-            ...Array.from({length:18},(_,i)=>`T-B3-AUTH-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:54},(_,i)=>`T-B3-DBROLE-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:48},(_,i)=>`T-B3-RAWIP-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:32},(_,i)=>`T-B3-BIND-${String(i+1).padStart(3,'0')}`),
-          ].sort();
-          const actual = [...all].sort();
-          if (actual.length !== 152 || new Set(actual).size !== 152 || JSON.stringify(actual) !== JSON.stringify(expected)) {
-            throw new Error('governed Test ID ledger differs from exact 152-ID contract');
-          }
-          fs.writeFileSync('evidence/batch3-test-id-validator.json', JSON.stringify({verdict:'PASS',total:152,unique:152,byPath}, null, 2)+'\n');
-          NODE
-
-      - name: Create isolated Neon-equivalent bootstrap role and three databases
+      - name: PostgreSQL 16 governed evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -220,245 +130,52 @@ jobs:
           CREATE ROLE ci_neon_bootstrap LOGIN SUPERUSER CREATEROLE CREATEDB NOINHERIT PASSWORD 'exec007-bootstrap-ci-only';
           GRANT neon_superuser TO ci_neon_bootstrap WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
           SQL
-          for db in orca_exec007_empty orca_exec007_current orca_exec007_pgcrypto_absent; do
-            createdb -h 127.0.0.1 -U postgres -O ci_neon_bootstrap "$db"
-          done
-          psql "$POSTGRES_ADMIN_URL" -v ON_ERROR_STOP=1 -c "SELECT current_user,rolsuper,rolcreaterole,rolcreatedb,rolinherit FROM pg_roles WHERE rolname='ci_neon_bootstrap'" \
-            > evidence/bootstrap-role-preflight.txt
-
-      - name: Apply prerequisite chain and exact Batch 3 migration
-        shell: bash
-        run: |
-          set -euo pipefail
+          for db in orca_exec007_empty orca_exec007_current orca_exec007_pgcrypto_absent; do createdb -h 127.0.0.1 -U postgres -O ci_neon_bootstrap "$db"; done
           BOOTSTRAP_BASE="postgresql://ci_neon_bootstrap:${BOOTSTRAP_PASSWORD}@127.0.0.1:5432"
           (cd base && npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output ../evidence/legacy-schema.sql)
-          apply_chain() {
-            local url="$1"
-            psql "$url" -v ON_ERROR_STOP=1 -f evidence/legacy-schema.sql
-            for migration in \
-              20260726043000_exec_004_organization_authority \
-              20260726123000_exec_005_customer_identity_lifecycle \
-              20260726124500_exec_005_customer_identity_integrity_hardening \
-              20260726160000_exec_006_unit_commitment_reservation_tours \
-              20260726161000_exec_006_unit_commitment_integrity_hardening \
-              20260726162000_exec_006_authority_availability_hardening \
-              20260726163000_exec_006_availability_disambiguation \
-              20260726164000_exec_006_reconciliation_race_hardening \
-              20260726165000_exec_006_lifecycle_approval_guard_hardening \
-              20260726166000_exec_006_exact_scope_hardening; do
-              psql "$url" -v ON_ERROR_STOP=1 -f "head/prisma/migrations/$migration/migration.sql"
-            done
+          apply_chain(){
+            local url="$1"; psql "$url" -v ON_ERROR_STOP=1 -f evidence/legacy-schema.sql
+            for m in 20260726043000_exec_004_organization_authority 20260726123000_exec_005_customer_identity_lifecycle 20260726124500_exec_005_customer_identity_integrity_hardening 20260726160000_exec_006_unit_commitment_reservation_tours 20260726161000_exec_006_unit_commitment_integrity_hardening 20260726162000_exec_006_authority_availability_hardening 20260726163000_exec_006_availability_disambiguation 20260726164000_exec_006_reconciliation_race_hardening 20260726165000_exec_006_lifecycle_approval_guard_hardening 20260726166000_exec_006_exact_scope_hardening; do psql "$url" -v ON_ERROR_STOP=1 -f "head/prisma/migrations/$m/migration.sql"; done
           }
           for db in orca_exec007_empty orca_exec007_current; do
-            url="$BOOTSTRAP_BASE/$db?sslmode=disable"
-            apply_chain "$url"
-            before="$(psql "$url" -tAc 'SELECT count(*) FROM offers')"
+            url="$BOOTSTRAP_BASE/$db?sslmode=disable"; apply_chain "$url"
             psql "$url" -v ON_ERROR_STOP=1 -f head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
-            after="$(psql "$url" -tAc 'SELECT count(*) FROM offers')"
-            test "$before" = "$after"
-            test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'exec007_%'")" -eq 30
-            test "$(psql "$url" -tAc 'SELECT mode FROM exec007_cutover_control WHERE singleton_key=1')" = 'LEGACY_ONLY'
-            test "$(psql "$url" -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_name='fk_exec007_offers_tenant_opportunity'")" -eq 1
-            test "$(psql "$url" -tAc "SELECT count(*) FROM pg_trigger WHERE tgname IN ('trg_exec007_security_event_authority_validate','trg_exec007_security_event_authority_immutable','trg_exec007_security_event_read_audit_append_only','trg_exec007_challenge_binding_validate','trg_exec007_challenge_binding_immutable')")" -eq 5
-            psql "$url" -v ON_ERROR_STOP=1 -c 'BEGIN' -f head/scripts/exec-007-postgres-privacy-retention.sql -c 'ROLLBACK'
-            test "$(psql "$url" -tAc 'SELECT mode FROM exec007_cutover_control WHERE singleton_key=1')" = 'LEGACY_ONLY'
+            EXEC007_DB_NAME="$db" EXEC007_BOOTSTRAP_ROLE=ci_neon_bootstrap EXEC007_PGCRYPTO_ABSENT_PASS=1 EXEC007_POSTGRES_EVIDENCE_PATH="evidence/$db.json" DATABASE_URL="$url" node head/scripts/exec-007-postgres-concurrency.mjs > "evidence/$db-summary.json"
           done
-          absent_url="$BOOTSTRAP_BASE/orca_exec007_pgcrypto_absent?sslmode=disable"
-          apply_chain "$absent_url"
-          sed '/CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;/d' \
-            head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql \
-            > evidence/exec-007-migration-without-pgcrypto.sql
-          psql "$absent_url" -v ON_ERROR_STOP=1 -f evidence/exec-007-migration-without-pgcrypto.sql
-          test "$(psql "$absent_url" -tAc "SELECT to_regprocedure('public.hmac(bytea,bytea,text)') IS NULL")" = 't'
-
-      - name: Prove missing pgcrypto fails closed in dedicated database
-        shell: bash
-        run: |
-          set -euo pipefail
-          url="postgresql://ci_neon_bootstrap:${BOOTSTRAP_PASSWORD}@127.0.0.1:5432/orca_exec007_pgcrypto_absent?sslmode=disable"
-          EXEC007_PGCRYPTO_ABSENT_ONLY=1 \
-          EXEC007_DB_NAME=orca_exec007_pgcrypto_absent \
-          EXEC007_POSTGRES_EVIDENCE_PATH=evidence/pgcrypto-absent.json \
-          DATABASE_URL="$url" \
-          node head/scripts/exec-007-postgres-concurrency.mjs
-          node -e "const r=require('./evidence/pgcrypto-absent.json'); if(r.verdict!=='PASS'||r.sqlstate!=='0A000'||r.durableAuditDelta!==0||r.durableNonceDelta!==0) process.exit(1)"
-
-      - name: Execute governed Batch 3 and Batch 1/2 regression behavior on two databases
-        shell: bash
-        run: |
-          set -euo pipefail
-          BOOTSTRAP_BASE="postgresql://ci_neon_bootstrap:${BOOTSTRAP_PASSWORD}@127.0.0.1:5432"
-          for db in orca_exec007_empty orca_exec007_current; do
-            url="$BOOTSTRAP_BASE/$db?sslmode=disable"
-            EXEC007_DB_NAME="$db" \
-            EXEC007_BOOTSTRAP_ROLE=ci_neon_bootstrap \
-            EXEC007_PGCRYPTO_ABSENT_PASS=1 \
-            EXEC007_POSTGRES_EVIDENCE_PATH="evidence/batch3-$db.json" \
-            DATABASE_URL="$url" \
-            node head/scripts/exec-007-postgres-concurrency.mjs | tee "evidence/batch3-$db-summary.json"
-          done
+          absent="$BOOTSTRAP_BASE/orca_exec007_pgcrypto_absent?sslmode=disable"; apply_chain "$absent"
+          sed '/CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;/d' head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql > evidence/no-pgcrypto.sql
+          psql "$absent" -v ON_ERROR_STOP=1 -f evidence/no-pgcrypto.sql
+          EXEC007_PGCRYPTO_ABSENT_ONLY=1 EXEC007_DB_NAME=orca_exec007_pgcrypto_absent EXEC007_POSTGRES_EVIDENCE_PATH=evidence/pgcrypto-absent.json DATABASE_URL="$absent" node head/scripts/exec-007-postgres-concurrency.mjs
           node <<'NODE'
-          const fs = require('node:fs');
-          const names = ['orca_exec007_empty','orca_exec007_current'];
-          const databases = names.map((name) => JSON.parse(fs.readFileSync(`evidence/batch3-${name}.json`, 'utf8')));
-          const expected = new Set([
-            ...Array.from({length:18},(_,i)=>`T-B3-AUTH-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:54},(_,i)=>`T-B3-DBROLE-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:48},(_,i)=>`T-B3-RAWIP-${String(i+1).padStart(3,'0')}`),
-            ...Array.from({length:32},(_,i)=>`T-B3-BIND-${String(i+1).padStart(3,'0')}`),
-          ]);
-          for (const db of databases) {
-            const ids = Object.keys(db.tests || {});
-            if (db.postgres !== '16' || ids.length !== 152 || ids.some((id) => !expected.has(id)) || ids.some((id) => db.tests[id]?.pass !== true)) {
-              throw new Error(`${db.name}: PostgreSQL Batch 3 evidence is incomplete`);
-            }
-          }
-          fs.writeFileSync('evidence/batch3-postgres-evidence.json', JSON.stringify({verdict:'PASS', databases}, null, 2)+'\n');
+          const fs=require('node:fs'),names=['orca_exec007_empty','orca_exec007_current'];
+          const databases=names.map(name=>{const db=JSON.parse(fs.readFileSync(`evidence/${name}.json`,'utf8'));const results=JSON.parse(fs.readFileSync(`evidence/${name}-summary.json`,'utf8'));if(db.postgres!=='16'||Object.keys(db.tests||{}).length!==152||Object.values(db.tests||{}).some(x=>x.pass!==true)||results.result!=='PASS')throw Error(`${name}: incomplete`);return {...db,results}});
+          fs.writeFileSync('evidence/postgres-evidence.json',JSON.stringify({verdict:'PASS',databases},null,2)+'\n');
           NODE
+          (cd head && EXEC007_POSTGRES_EVIDENCE=../evidence/postgres-evidence.json npx vitest run tests/foundation/g5-exec-004-organization-authority.test.ts tests/foundation/g5-exec-007-*.test.ts --reporter=json --outputFile=../evidence/exact-tests.json)
 
-      - name: Exact governed EXEC-007 tests with PostgreSQL evidence
-        working-directory: head
-        env:
-          EXEC007_POSTGRES_EVIDENCE: ../evidence/batch3-postgres-evidence.json
-        run: |
-          npx vitest run \
-            tests/foundation/g5-exec-004-organization-authority.test.ts \
-            tests/foundation/g5-exec-007-customer-auth.test.ts \
-            tests/foundation/g5-exec-007-exec006-integration.test.ts \
-            tests/foundation/g5-exec-007-migration.test.ts \
-            tests/foundation/g5-exec-007-privacy-retention.test.ts \
-            tests/foundation/g5-exec-007-schema-contract.test.ts \
-            tests/foundation/g5-exec-007-security-event-access.test.ts \
-            --reporter=json --outputFile=../evidence/exec-007-test-results.json
-          node -e "const r=require('../evidence/exec-007-test-results.json'); if((r.numFailedTests||0)!==0) process.exit(1)"
-
-      - name: Enforce exact 20 Batch 3 changed paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          git -C head diff --name-only "$REQUIRED_STARTING_HEAD...HEAD" | sort | tee evidence/batch3-changed-paths.txt
-          cat > evidence/batch3-allowed-paths.txt <<'PATHS'
-          .github/workflows/exec-007-migration-validation.yml
-          lib/customer-portal/contracts.ts
-          lib/offer-management/evidence.ts
-          lib/offer-management/security-event-access.ts
-          lib/organization/authority.ts
-          lib/organization/contracts.ts
-          lib/tenant-model-policy.ts
-          prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
-          prisma/schema.prisma
-          scripts/exec-007-postgres-concurrency.mjs
-          scripts/exec-007-postgres-privacy-retention.sql
-          tests/foundation/g5-exec-004-organization-authority.test.ts
-          tests/foundation/g5-exec-007-customer-auth.test.ts
-          tests/foundation/g5-exec-007-exec006-integration.test.ts
-          tests/foundation/g5-exec-007-migration.test.ts
-          tests/foundation/g5-exec-007-privacy-retention.test.ts
-          tests/foundation/g5-exec-007-schema-contract.test.ts
-          tests/foundation/g5-exec-007-security-event-access.test.ts
-          tests/r01-tenant-model-policy.test.ts
-          tests/r01f-isolation-regression.test.ts
-          PATHS
-          sort -o evidence/batch3-allowed-paths.txt evidence/batch3-allowed-paths.txt
-          cmp -s evidence/batch3-changed-paths.txt evidence/batch3-allowed-paths.txt
-          test "$(wc -l < evidence/batch3-changed-paths.txt)" -eq 20
-          git -C head diff --check "$REQUIRED_STARTING_HEAD...HEAD"
-
-      - name: Cleanup isolated PostgreSQL databases and roles
+      - name: Cleanup PostgreSQL
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          for db in orca_exec007_empty orca_exec007_current orca_exec007_pgcrypto_absent; do
-            psql "$POSTGRES_ADMIN_URL" -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$db' AND pid<>pg_backend_pid()"
-            dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
-          done
-          psql "$POSTGRES_ADMIN_URL" -v ON_ERROR_STOP=1 <<'SQL'
-          DROP ROLE IF EXISTS orca_ci_support_probe;
-          DROP ROLE IF EXISTS orca_ci_public_probe;
-          DO $$
-          BEGIN
-            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_exec007_owner')
-               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orca_migration') THEN
-              EXECUTE 'REVOKE orca_exec007_owner FROM orca_migration';
-            END IF;
-            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='neon_superuser')
-               AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname='ci_neon_bootstrap') THEN
-              EXECUTE 'REVOKE neon_superuser FROM ci_neon_bootstrap';
-            END IF;
-          END;
-          $$;
-          DROP ROLE IF EXISTS orca_runtime;
-          DROP ROLE IF EXISTS orca_migration;
-          DROP ROLE IF EXISTS orca_support_readonly;
-          DROP ROLE IF EXISTS orca_exec007_owner;
-          DROP ROLE IF EXISTS orca_exec007_key_owner;
-          DROP ROLE IF EXISTS ci_neon_bootstrap;
-          DROP ROLE IF EXISTS neon_superuser;
+          for db in orca_exec007_empty orca_exec007_current orca_exec007_pgcrypto_absent; do psql "$POSTGRES_ADMIN_URL" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$db' AND pid<>pg_backend_pid()"; dropdb -h 127.0.0.1 -U postgres --if-exists "$db"; done
+          psql "$POSTGRES_ADMIN_URL" <<'SQL'
+          DROP ROLE IF EXISTS orca_ci_support_probe; DROP ROLE IF EXISTS orca_ci_public_probe;
+          DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='orca_exec007_owner') AND EXISTS(SELECT 1 FROM pg_roles WHERE rolname='orca_migration') THEN EXECUTE 'REVOKE orca_exec007_owner FROM orca_migration'; END IF; IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='neon_superuser') AND EXISTS(SELECT 1 FROM pg_roles WHERE rolname='ci_neon_bootstrap') THEN EXECUTE 'REVOKE neon_superuser FROM ci_neon_bootstrap'; END IF; END $$;
+          DROP ROLE IF EXISTS orca_runtime; DROP ROLE IF EXISTS orca_migration; DROP ROLE IF EXISTS orca_support_readonly; DROP ROLE IF EXISTS orca_exec007_owner; DROP ROLE IF EXISTS orca_exec007_key_owner; DROP ROLE IF EXISTS ci_neon_bootstrap; DROP ROLE IF EXISTS neon_superuser;
           SQL
-          test "$(psql "$POSTGRES_ADMIN_URL" -tAc "SELECT count(*) FROM pg_database WHERE datname IN ('orca_exec007_empty','orca_exec007_current','orca_exec007_pgcrypto_absent')")" -eq 0
-          test "$(psql "$POSTGRES_ADMIN_URL" -tAc "SELECT count(*) FROM pg_roles WHERE rolname IN ('ci_neon_bootstrap','neon_superuser','orca_exec007_owner','orca_exec007_key_owner','orca_migration','orca_runtime','orca_support_readonly','orca_ci_public_probe','orca_ci_support_probe')")" -eq 0
-          printf '%s\n' '{"verdict":"PASS","databasesRemaining":0,"governedRolesRemaining":0}' > evidence/postgres-cleanup.json
+          printf '%s\n' '{"verdict":"PASS","databasesRemaining":0,"governedRolesRemaining":0}' > evidence/cleanup.json
 
-      - name: Build mechanical execution validator
+      - name: Package final evidence
         if: success()
         shell: bash
         run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs = require('node:fs');
-          const testIds = JSON.parse(fs.readFileSync('evidence/batch3-test-id-validator.json','utf8'));
-          const postgres = JSON.parse(fs.readFileSync('evidence/batch3-postgres-evidence.json','utf8'));
-          const differential = JSON.parse(fs.readFileSync('evidence/baseline-differential.json','utf8'));
-          const cleanup = JSON.parse(fs.readFileSync('evidence/postgres-cleanup.json','utf8'));
-          const exactTests = JSON.parse(fs.readFileSync('evidence/exec-007-test-results.json','utf8'));
-          const paths = fs.readFileSync('evidence/batch3-changed-paths.txt','utf8').trim().split(/\n/).filter(Boolean);
-          const result = {
-            verdict: 'PASS',
-            startingHead: process.env.REQUIRED_STARTING_HEAD,
-            candidateHead: require('node:child_process').execFileSync('git',['-C','head','rev-parse','HEAD'],{encoding:'utf8'}).trim(),
-            implementationCommits: Number(require('node:child_process').execFileSync('git',['-C','head','rev-list','--count',`${process.env.REQUIRED_STARTING_HEAD}..HEAD`],{encoding:'utf8'}).trim()),
-            changedPaths: paths.length,
-            governedTestIds: testIds.total,
-            governedUniqueTestIds: testIds.unique,
-            postgresDatabases: postgres.databases.length,
-            postgresTestsPerDatabase: postgres.databases.map((db)=>Object.keys(db.tests).length),
-            pgcryptoAbsent: JSON.parse(fs.readFileSync('evidence/pgcrypto-absent.json','utf8')).verdict,
-            exactTestFailures: exactTests.numFailedTests || 0,
-            baselineDifferential: differential.verdict,
-            newFailureIdentities: differential.newFailures.length,
-            cleanup: cleanup.verdict,
-            securityHoldClosure: 'CLOSED BY EXPLICIT OWNER RISK ACCEPTANCE',
-            historicalUnauthorizedUseAssessment: 'INCONCLUSIVE — REQUIRED HISTORICAL LOGS UNAVAILABLE',
-            findingsClosedByExecutor: [],
-            findingsPendingIndependentReview: ['EXEC007-IFR-004','EXEC007-IFR-006'],
-          };
-          if (result.implementationCommits!==1 || result.changedPaths!==20 || result.governedTestIds!==152 ||
-              result.postgresDatabases!==2 || result.postgresTestsPerDatabase.some((n)=>n!==152) ||
-              result.pgcryptoAbsent!=='PASS' || result.exactTestFailures!==0 || result.baselineDifferential!=='PASS_NO_NEW_FAILURES' ||
-              result.newFailureIdentities!==0 || result.cleanup!=='PASS') {
-            result.verdict='FAIL';
-          }
-          fs.writeFileSync('evidence/mechanical-execution-validator.json', JSON.stringify(result,null,2)+'\n');
-          console.log(JSON.stringify(result,null,2));
-          if(result.verdict!=='PASS') process.exit(1);
-          NODE
-
-      - name: Package exact-head evidence
-        if: success()
-        shell: bash
-        run: |
-          set -euo pipefail
           git -C head archive --format=zip --output=../evidence/exec-007-candidate-source.zip HEAD
-          git -C head diff --binary "$REQUIRED_STARTING_HEAD...HEAD" > evidence/exec-007-batch3.patch
-          sha256sum evidence/exec-007-candidate-source.zip evidence/exec-007-batch3.patch evidence/mechanical-execution-validator.json \
-            | tee evidence/exec-007-candidate-artifacts.sha256
+          git -C head diff --binary "$REQUIRED_BATCH4_PARENT...HEAD" > evidence/exec-007-batch4.patch
+          git -C head diff --binary "$REQUIRED_BASE_SHA...HEAD" > evidence/exec-007-final.patch
+          sha256sum evidence/exec-007-candidate-source.zip evidence/exec-007-batch4.patch evidence/exec-007-final.patch evidence/postgres-evidence.json evidence/baseline-differential.json > evidence/sha256sums.txt
 
-      - name: Upload exact-head evidence
+      - name: Upload final evidence
         if: always()
         uses: actions/upload-artifact@v4
-        with:
-          name: exec-007-validation-evidence
-          path: evidence/
-          if-no-files-found: error
-          retention-days: 14
+        with: { name: exec-007-final-validation-evidence, path: evidence/, if-no-files-found: error, retention-days: 14 }

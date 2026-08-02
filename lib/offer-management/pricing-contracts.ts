@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import type { OfferKind } from "./contracts";
+import type { OfferKind, ServiceLine } from "./contracts";
 
 export type TaxBasis = "INCLUSIVE" | "EXCLUSIVE";
 export type PayerType = "CUSTOMER" | "OWNER" | "BROKER" | "OTHER_NON_CUSTOMER";
@@ -7,6 +7,7 @@ export type PricingSourceType =
   | "SALE_PROJECT_PRICE_BOOK"
   | "SALE_UNIT_PRICE_BOOK"
   | "LEASE_RENT_SCHEDULE";
+export type PricingScopeType = "UNIT" | "PROJECT" | "BRANCH" | "TENANT";
 
 export interface PricingComponentInput {
   code: string;
@@ -24,6 +25,8 @@ export interface PricingPolicyContract {
   sourceType: PricingSourceType;
   sourceRecordId: string;
   sourceVersion: string;
+  scopeType: PricingScopeType;
+  scopeId: string;
   offerKind: OfferKind;
   floorAmount?: Prisma.Decimal.Value | null;
   maxDiscountRate?: Prisma.Decimal.Value | null;
@@ -33,9 +36,36 @@ export interface PricingPolicyContract {
   effectiveTo?: Date | null;
 }
 
+export interface PricingPolicyResolutionContext {
+  tenantId: string;
+  offerKind: OfferKind;
+  serviceLine: ServiceLine;
+  unitId: string;
+  projectId: string;
+  branchId: string;
+  trustedAt: Date;
+}
+
+export interface PricingResolutionLevelTrace {
+  scopeType: PricingScopeType;
+  scopeId: string;
+  eligiblePolicyIds: readonly string[];
+}
+
+export interface PricingResolutionTrace {
+  selectedScopeType: PricingScopeType;
+  selectedScopeId: string;
+  selectedPolicyId: string;
+  evaluatedLevels: readonly PricingResolutionLevelTrace[];
+}
+
+export interface ResolvedPricingPolicy extends PricingPolicyContract {
+  resolutionTrace: PricingResolutionTrace;
+}
+
 export interface PricingSnapshotInput {
   offerKind: OfferKind;
-  policy: PricingPolicyContract;
+  policy: ResolvedPricingPolicy;
   taxBasis: TaxBasis;
   components: readonly PricingComponentInput[];
   manualAdjustment?: {

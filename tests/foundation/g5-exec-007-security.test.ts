@@ -26,7 +26,7 @@ describe("EXEC-007 security boundary", () => {
     expect(issued.token).not.toBe(issued.tokenHash);
   });
 
-  it("T-PRIV-01 excludes raw IP, cookies and tokens from immutable core evidence", () => {
+  it("excludes raw IP, cookies and tokens from immutable core evidence", () => {
     const evidenceBlock = migration.slice(
       migration.indexOf('CREATE TABLE "exec007_acceptance_evidence"'),
       migration.indexOf('CREATE TABLE "exec007_decline_evidence"'),

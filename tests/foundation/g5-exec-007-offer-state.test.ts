@@ -14,7 +14,7 @@ const identity = {
 };
 
 describe("EXEC-007 exact offer identity", () => {
-  it("T-OD-01/T-OD-02/T-OD-03 accepts one opportunity, one unit and matching kind", () => {
+  it("T-OD-01/T-OD-02 accepts one opportunity, one unit and matching kind", () => {
     expect(() => assertExactOfferIdentity(identity)).not.toThrow();
   });
 

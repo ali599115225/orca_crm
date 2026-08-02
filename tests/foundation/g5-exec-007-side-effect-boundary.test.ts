@@ -24,7 +24,7 @@ describe("EXEC-007 downstream side-effect boundary", () => {
     expect(migration).not.toMatch(/UPDATE\s+"units"[\s\S]{0,120}"status"/i);
   });
 
-  it("T-PREP-02 stops at a preparation request after reservation", () => {
+  it("stops at a preparation request after reservation", () => {
     expect(migration).toContain('CREATE TABLE "exec007_preparation_requests"');
     expect(migration).not.toMatch(/INSERT\s+INTO\s+"contracts"/i);
   });

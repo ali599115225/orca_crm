@@ -31,13 +31,17 @@ function assertComponentShape(input: PricingSnapshotInput): void {
   for (const code of prohibited) {
     if (codes.has(code)) throw new Error(`cross-kind pricing component prohibited: ${code}`);
   }
-  const expectedSource =
-    input.offerKind === "LEASE" ? "LEASE_RENT_SCHEDULE" : input.policy.sourceType;
-  if (input.offerKind === "LEASE" && expectedSource !== input.policy.sourceType) {
+  if (input.offerKind === "LEASE" && input.policy.sourceType !== "LEASE_RENT_SCHEDULE") {
     throw new Error("LEASE requires a versioned rent schedule");
   }
   if (input.offerKind === "SALE" && input.policy.sourceType === "LEASE_RENT_SCHEDULE") {
     throw new Error("SALE cannot use a lease rent schedule");
+  }
+  for (const component of input.components) {
+    const expectedCustomerObligation = component.payerType === "CUSTOMER";
+    if (component.isCustomerObligation !== expectedCustomerObligation) {
+      throw new Error(`pricing component ${component.code} payer and customer-obligation flags conflict`);
+    }
   }
 }
 
@@ -57,7 +61,7 @@ export function buildPricingSnapshot(input: PricingSnapshotInput) {
   assertComponentShape(input);
   const components = input.components.map(normalizeComponent);
   const customerTotal = components
-    .filter((component) => component.isCustomerObligation)
+    .filter((component) => component.payerType === "CUSTOMER")
     .reduce((total, component) => total.plus(component.amount), new Decimal(0))
     .toDecimalPlaces(MONEY_SCALE, Decimal.ROUND_HALF_UP);
 
@@ -76,6 +80,7 @@ export function buildPricingSnapshot(input: PricingSnapshotInput) {
     sourceRecordId: input.policy.sourceRecordId,
     sourceVersion: input.policy.sourceVersion,
     policyVersionId: input.policy.id,
+    resolutionTrace: input.policy.resolutionTrace,
     components,
     customerTotal: customerTotal.toFixed(2),
     manualAdjustment: input.manualAdjustment

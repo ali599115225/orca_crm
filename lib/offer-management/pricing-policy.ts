@@ -1,28 +1,80 @@
 import { Prisma } from "@prisma/client";
-import type { OfferKind } from "./contracts";
-import type { PricingPolicyContract } from "./pricing-contracts";
+import type {
+  PricingPolicyContract,
+  PricingPolicyResolutionContext,
+  PricingResolutionLevelTrace,
+  PricingScopeType,
+  PricingSourceType,
+  ResolvedPricingPolicy,
+} from "./pricing-contracts";
+
+const EXPECTED_SERVICE_LINE = {
+  SALE: "SALES",
+  LEASE: "LEASING",
+} as const;
+
+function sourceTypeForLevel(
+  offerKind: PricingPolicyResolutionContext["offerKind"],
+  scopeType: PricingScopeType,
+): PricingSourceType {
+  if (offerKind === "LEASE") return "LEASE_RENT_SCHEDULE";
+  return scopeType === "UNIT" ? "SALE_UNIT_PRICE_BOOK" : "SALE_PROJECT_PRICE_BOOK";
+}
 
 export function resolvePricingPolicy(
-  offerKind: OfferKind,
+  context: PricingPolicyResolutionContext,
   policies: readonly PricingPolicyContract[],
-  now: Date,
-): PricingPolicyContract {
+): ResolvedPricingPolicy {
+  if (context.serviceLine !== EXPECTED_SERVICE_LINE[context.offerKind]) {
+    throw new Error("offer kind and pricing service line must match");
+  }
+
+  const levels: ReadonlyArray<{ scopeType: PricingScopeType; scopeId: string }> = [
+    { scopeType: "UNIT", scopeId: context.unitId },
+    { scopeType: "PROJECT", scopeId: context.projectId },
+    { scopeType: "BRANCH", scopeId: context.branchId },
+    { scopeType: "TENANT", scopeId: context.tenantId },
+  ];
   const eligible = policies.filter(
     (policy) =>
-      policy.offerKind === offerKind &&
-      policy.effectiveFrom <= now &&
-      (!policy.effectiveTo || now < policy.effectiveTo),
+      policy.tenantId === context.tenantId &&
+      policy.offerKind === context.offerKind &&
+      policy.effectiveFrom <= context.trustedAt &&
+      (!policy.effectiveTo || context.trustedAt < policy.effectiveTo),
   );
-  const precedence = offerKind === "SALE"
-    ? ["SALE_UNIT_PRICE_BOOK", "SALE_PROJECT_PRICE_BOOK"]
-    : ["LEASE_RENT_SCHEDULE"];
-  for (const sourceType of precedence) {
-    const selected = eligible
-      .filter((policy) => policy.sourceType === sourceType)
-      .sort((left, right) => right.effectiveFrom.getTime() - left.effectiveFrom.getTime())[0];
-    if (selected) return selected;
+  const evaluatedLevels: PricingResolutionLevelTrace[] = [];
+
+  for (const level of levels) {
+    const expectedSourceType = sourceTypeForLevel(context.offerKind, level.scopeType);
+    const matches = eligible.filter(
+      (policy) =>
+        policy.scopeType === level.scopeType &&
+        policy.scopeId === level.scopeId &&
+        policy.sourceType === expectedSourceType,
+    );
+    evaluatedLevels.push({
+      scopeType: level.scopeType,
+      scopeId: level.scopeId,
+      eligiblePolicyIds: matches.map((policy) => policy.id).sort(),
+    });
+    if (matches.length > 1) {
+      throw new Error(`ambiguous effective pricing policy at ${level.scopeType} precedence`);
+    }
+    const selected = matches[0];
+    if (selected) {
+      return {
+        ...selected,
+        resolutionTrace: {
+          selectedScopeType: level.scopeType,
+          selectedScopeId: level.scopeId,
+          selectedPolicyId: selected.id,
+          evaluatedLevels,
+        },
+      };
+    }
   }
-  throw new Error(`no effective versioned ${offerKind} pricing policy`);
+
+  throw new Error(`no effective versioned ${context.offerKind} pricing policy`);
 }
 
 export function requiresPricingException(

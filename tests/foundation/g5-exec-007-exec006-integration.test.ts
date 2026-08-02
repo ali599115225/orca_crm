@@ -17,7 +17,63 @@ const postgresEvidence = fs.readFileSync(
 );
 const hash = (character: string) => character.repeat(64);
 
+type Batch3Evidence = { databases?: Array<{
+  name: string;
+  tests: Record<string, { pass: boolean; actual?: string }>;
+  checks?: Record<string, boolean>;
+  results?: Record<string, boolean | string>;
+}> };
+
+const originalHoldEvidence: Record<number, readonly string[]> = {
+  1: ["results.successPath", "results.reservationActive"],
+  2: ["results.reservationRollback", "results.preparationRollback"],
+  3: ["results.atomicSuccessFourRecords", "results.concurrentSingleWinner"],
+};
+
+function readEvidence(): Batch3Evidence | null {
+  const evidencePath = process.env.EXEC007_POSTGRES_EVIDENCE;
+  if (!evidencePath) return null;
+  return JSON.parse(fs.readFileSync(evidencePath, "utf8")) as Batch3Evidence;
+}
+
+function expectHoldEvidence(sequence: 1 | 2 | 3): void {
+  const evidence = readEvidence();
+  if (!evidence) return;
+  expect(evidence.databases?.length).toBeGreaterThanOrEqual(2);
+  for (const database of evidence.databases ?? []) {
+    for (const key of originalHoldEvidence[sequence]) {
+      const [section, property] = key.split(".");
+      const source = section === "checks" ? database.checks : database.results;
+      expect(source?.[property!], `${database.name}:hold-${sequence}:${key}`).toBe(true);
+    }
+  }
+}
+
+function expectPostgresEvidence(testId: string): void {
+  const evidence = readEvidence();
+  if (!evidence) return;
+  expect(evidence.databases?.length).toBeGreaterThanOrEqual(2);
+  for (const database of evidence.databases ?? []) {
+    expect(database.tests[testId], `${database.name}:${testId}`).toMatchObject({ pass: true });
+  }
+}
+
 describe("EXEC-007 governed atomic integration with EXEC-006", () => {
+  it("T-HOLD-01 requires one matching active Hold and rejects non-active, expired, version-mismatched, or identity-mismatched Holds", () => {
+    expect(migration).toContain(`v_hold."commitment_type" <> 'HOLD'`);
+    expect(migration).toContain(`v_hold."status" <> 'ACTIVE'`);
+    expect(migration).toContain('v_hold."expires_at" <= v_now');
+    expect(migration).toContain('v_hold."version" <> p_expected_hold_version');
+    expect(migration).toContain('v_hold."unit_id" <> v_version."unit_id"');
+    expectHoldEvidence(1);
+  });
+
+  it("T-HOLD-02 converts the matching Hold atomically and rolls back reservation or preparation failures", () => {
+    expect(postgresEvidence).toContain("reservationRollback");
+    expect(postgresEvidence).toContain("preparationRollback");
+    expectHoldEvidence(2);
+  });
+
   it("T-HOLD-03 defines one atomic PostgreSQL acceptance boundary", () => {
     expect(migration).toContain('CREATE OR REPLACE FUNCTION "fn_exec007_complete_conditional_acceptance"');
     expect(migration).toContain('"exec006_convert_hold_to_reservation"(');
@@ -28,16 +84,17 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
     expect(migration).toContain('"operation"=\'CONDITIONAL_ACCEPTANCE\'');
     expect(migration).toContain("CUSTOMER_DECISION_STEP_UP");
     expect(migration).toContain("exec007_customer_principal_identities");
-    expect(migration).not.toContain('p_now TIMESTAMPTZ');
-    expect(migration).toContain('v_now TIMESTAMPTZ;');
-    expect(migration).toContain('v_now := clock_timestamp();');
-    expect(migration).not.toContain('v_now TIMESTAMPTZ := transaction_timestamp()');
-    expect(migration.indexOf('v_now := clock_timestamp();')).toBeGreaterThan(
-      migration.indexOf('PERFORM pg_advisory_xact_lock'),
+    expect(migration).not.toContain("p_now TIMESTAMPTZ");
+    expect(migration).toContain("v_now TIMESTAMPTZ;");
+    expect(migration).toContain("v_now := clock_timestamp();");
+    expect(migration).not.toContain("v_now TIMESTAMPTZ := transaction_timestamp()");
+    expect(migration.indexOf("v_now := clock_timestamp();")).toBeGreaterThan(
+      migration.indexOf("PERFORM pg_advisory_xact_lock"),
     );
+    expectHoldEvidence(3);
   });
 
-  it("T-HOLD-03 PostgreSQL evidence covers success, rollback, replay, concurrency, and tenant isolation", () => {
+  it("PostgreSQL evidence covers success, rollback, replay, concurrency, and tenant isolation", () => {
     for (const marker of [
       "atomicSuccessFourRecords",
       "reservationRollback",
@@ -131,19 +188,6 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
   });
 });
 
-
-
-type Batch3Evidence = { databases?: Array<{ name: string; tests: Record<string, { pass: boolean; actual?: string }> }> };
-function expectPostgresEvidence(testId: string): void {
-  const evidencePath = process.env.EXEC007_POSTGRES_EVIDENCE;
-  if (!evidencePath) return;
-  const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8")) as Batch3Evidence;
-  expect(evidence.databases?.length).toBeGreaterThanOrEqual(2);
-  for (const database of evidence.databases ?? []) {
-    expect(database.tests[testId], `${database.name}:${testId}`).toMatchObject({ pass: true });
-  }
-}
-
 const batch3IntegrationCases = [
   ["T-B3-BIND-007", "challenge binds exact issued offer version"],
   ["T-B3-BIND-008", "grant challenge and version subject party match"],
@@ -151,21 +195,21 @@ const batch3IntegrationCases = [
   ["T-B3-BIND-014", "exact idempotent replay only and payload mismatch denied"],
   ["T-B3-BIND-015", "concurrent acceptance has one winner"],
   ["T-B3-BIND-016", "offer current issued version and exact identity match"],
-  ["T-B3-BIND-027", "acceptance uses trusted database transaction time and exposes no caller time parameter"],
+  ["T-B3-BIND-027", "acceptance uses trusted database clock time and exposes no caller time parameter"],
   ["T-B3-BIND-028", "challenge row is locked before consumption transition"],
   ["T-B3-BIND-029", "active verified identity must exist before acceptance"],
   ["T-B3-BIND-030", "non-current or non-issued version is denied"],
-  ["T-B3-BIND-031", "revoked grant or session blocks acceptance"]
+  ["T-B3-BIND-031", "revoked grant or session blocks acceptance"],
 ] as const;
 
 describe("Batch 3 acceptance binding integration contracts", () => {
   for (const [testId, title] of batch3IntegrationCases) {
     it(`${testId} ${title}`, () => {
       expect(migration).toContain('FROM "exec007_customer_auth_challenges"');
-      expect(migration).toContain('FOR UPDATE');
+      expect(migration).toContain("FOR UPDATE");
       expect(migration).toContain('v_challenge."payload_proof_hash" IS DISTINCT FROM p_payload_hash');
       expect(migration).toContain('v_challenge."offer_version_id" IS DISTINCT FROM p_offer_version_id');
-      if (title.startsWith("acceptance uses trusted database transaction time")) {
+      if (title.startsWith("acceptance uses trusted database clock time")) {
         expect(migration).toContain("v_now TIMESTAMPTZ;");
         expect(migration).toContain("v_now := clock_timestamp();");
         expect(migration).not.toContain("v_now TIMESTAMPTZ := transaction_timestamp()");

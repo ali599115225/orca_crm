@@ -39,7 +39,7 @@ const assignment = {
 };
 
 describe("EXEC-007 scope revalidation", () => {
-  it("T-CHG-01/T-AUTH-03 reloads exact active assignment and semantic permission", () => {
+  it("T-CHG-01 reloads exact active assignment and semantic permission", () => {
     expect(() => assertExactAuthority(context, assignment, identity, "offer.issue")).not.toThrow();
     expect(() => assertExactAuthority(context, { ...assignment, active: false }, identity, "offer.issue")).toThrow(/inactive/);
   });
