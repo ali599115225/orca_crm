@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import type { ResolvedPricingPolicy } from "@/lib/offer-management/pricing-contracts";
 import { isPolicyEffective } from "@/lib/offer-management/pricing-snapshot";
 
 const migration = fs.readFileSync(
@@ -8,17 +9,31 @@ const migration = fs.readFileSync(
   "utf8",
 );
 
-const policy = {
+const policy: ResolvedPricingPolicy = {
   id: "p",
   tenantId: "t",
-  sourceType: "SALE_PROJECT_PRICE_BOOK" as const,
+  sourceType: "SALE_PROJECT_PRICE_BOOK",
   sourceRecordId: "r",
   sourceVersion: "v1",
-  offerKind: "SALE" as const,
+  scopeType: "PROJECT",
+  scopeId: "project-a",
+  offerKind: "SALE",
   standardValidityDays: 15,
-  normalMaxValidityDays: 30 as const,
+  normalMaxValidityDays: 30,
   effectiveFrom: new Date("2026-07-01T00:00:00Z"),
   effectiveTo: new Date("2026-08-01T00:00:00Z"),
+  resolutionTrace: {
+    selectedScopeType: "PROJECT",
+    selectedScopeId: "project-a",
+    selectedPolicyId: "p",
+    evaluatedLevels: [
+      {
+        scopeType: "PROJECT",
+        scopeId: "project-a",
+        eligiblePolicyIds: ["p"],
+      },
+    ],
+  },
 };
 
 describe("EXEC-007 date and validity contract", () => {

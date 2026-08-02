@@ -71,6 +71,7 @@ const BATCH4_EXACT_PATHS = new Set<string>([
   "lib/offer-management/pricing-policy.ts",
   "lib/offer-management/pricing-snapshot.ts",
   "tests/foundation/g5-exec-007-architecture.test.ts",
+  "tests/foundation/g5-exec-007-decimal.test.ts",
   "tests/foundation/g5-exec-007-exec006-integration.test.ts",
   "tests/foundation/g5-exec-007-final-allowlist.test.ts",
   "tests/foundation/g5-exec-007-offer-state.test.ts",
@@ -79,6 +80,14 @@ const BATCH4_EXACT_PATHS = new Set<string>([
   "tests/foundation/g5-exec-007-scope-change.test.ts",
   "tests/foundation/g5-exec-007-security.test.ts",
   "tests/foundation/g5-exec-007-side-effect-boundary.test.ts",
+  "tests/foundation/g5-exec-007-validity.test.ts",
+]);
+
+const BATCH4_CORRECTION_EXACT_PATHS = new Set<string>([
+  ".github/workflows/exec-007-migration-validation.yml",
+  "tests/foundation/g5-exec-007-decimal.test.ts",
+  "tests/foundation/g5-exec-007-final-allowlist.test.ts",
+  "tests/foundation/g5-exec-007-validity.test.ts",
 ]);
 
 export function normalizeRepositoryPath(candidate: string): string | null {
@@ -150,9 +159,13 @@ describe("EXEC-007 path-exact final allowlist gate", () => {
     const base = process.env.EXEC007_BASE_SHA;
     const batch3Parent = process.env.EXEC007_BATCH3_PARENT;
     const batch4Parent = process.env.EXEC007_BATCH4_PARENT;
-    if (!base || !batch3Parent || !batch4Parent) return;
+    const correctionParent = process.env.EXEC007_BATCH4_CORRECTION_PARENT;
+    if (!base || !batch3Parent || !batch4Parent || !correctionParent) return;
+    expect(BATCH4_EXACT_PATHS.size).toBe(15);
+    expect(BATCH4_CORRECTION_EXACT_PATHS.size).toBe(4);
     expect(gitPaths(`${base}...HEAD`)).toEqual([...EXEC007_EXACT_AUTHORIZED_PATHS].sort());
     expect(gitPaths(`${batch4Parent}...HEAD`)).toEqual([...BATCH4_EXACT_PATHS].sort());
+    expect(gitPaths(`${correctionParent}...HEAD`)).toEqual([...BATCH4_CORRECTION_EXACT_PATHS].sort());
     expect(gitPaths(`${batch3Parent}...${batch4Parent}`)).toHaveLength(20);
   });
 });

@@ -8,6 +8,7 @@ on:
       - "lib/offer-management/pricing-policy.ts"
       - "lib/offer-management/pricing-snapshot.ts"
       - "tests/foundation/g5-exec-007-architecture.test.ts"
+      - "tests/foundation/g5-exec-007-decimal.test.ts"
       - "tests/foundation/g5-exec-007-exec006-integration.test.ts"
       - "tests/foundation/g5-exec-007-final-allowlist.test.ts"
       - "tests/foundation/g5-exec-007-offer-state.test.ts"
@@ -16,6 +17,7 @@ on:
       - "tests/foundation/g5-exec-007-scope-change.test.ts"
       - "tests/foundation/g5-exec-007-security.test.ts"
       - "tests/foundation/g5-exec-007-side-effect-boundary.test.ts"
+      - "tests/foundation/g5-exec-007-validity.test.ts"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +31,7 @@ env:
   REQUIRED_BASE_SHA: f159d865c6980cb8b1dbaa2bfff8fc50ac9d0a26
   REQUIRED_BATCH3_PARENT: 4f5276cc3eee6e037e1d0d9206e96244681746a5
   REQUIRED_BATCH4_PARENT: 3c06fb2014b9aeb92c5ab0fb6017316df0ca338e
+  REQUIRED_BATCH4_CORRECTION_PARENT: eba1ee9e99bd00eafb74b336f42646857591e20f
   POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec007_validation?sslmode=disable
   BOOTSTRAP_PASSWORD: exec007-bootstrap-ci-only
   NODE_ENV: test
@@ -67,16 +70,17 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           test "$(git -C base rev-parse HEAD)" = "$REQUIRED_BASE_SHA"
-          for ref in "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT"; do
+          for ref in "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT" "$REQUIRED_BATCH4_CORRECTION_PARENT"; do
             git -C head cat-file -e "$ref^{commit}"
             git -C head merge-base --is-ancestor "$ref" HEAD
           done
-          test "$(git -C head rev-list --count "$REQUIRED_BATCH4_PARENT..HEAD")" -eq 1
-          test "$(git -C head rev-list --count "$REQUIRED_BATCH3_PARENT..HEAD")" -eq 2
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH4_CORRECTION_PARENT..HEAD")" -eq 1
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH4_PARENT..HEAD")" -eq 2
+          test "$(git -C head rev-list --count "$REQUIRED_BATCH3_PARENT..HEAD")" -eq 3
           version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
           test "$version" -ge 160000 -a "$version" -lt 170000
-          printf 'base=%s\nbatch3_parent=%s\nbatch4_parent=%s\nhead=%s\nnode=%s\npostgres=%s\n' \
-            "$(git -C base rev-parse HEAD)" "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT" \
+          printf 'base=%s\nbatch3_parent=%s\nbatch4_parent=%s\nbatch4_correction_parent=%s\nhead=%s\nnode=%s\npostgres=%s\n' \
+            "$(git -C base rev-parse HEAD)" "$REQUIRED_BATCH3_PARENT" "$REQUIRED_BATCH4_PARENT" "$REQUIRED_BATCH4_CORRECTION_PARENT" \
             "$(git -C head rev-parse HEAD)" "$(node --version)" "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" \
             | tee evidence/environment.txt
 
@@ -112,6 +116,7 @@ jobs:
           EXEC007_BASE_SHA: ${{ env.REQUIRED_BASE_SHA }}
           EXEC007_BATCH3_PARENT: ${{ env.REQUIRED_BATCH3_PARENT }}
           EXEC007_BATCH4_PARENT: ${{ env.REQUIRED_BATCH4_PARENT }}
+          EXEC007_BATCH4_CORRECTION_PARENT: ${{ env.REQUIRED_BATCH4_CORRECTION_PARENT }}
         run: |
           npx prisma validate
           npx prisma generate
@@ -171,9 +176,10 @@ jobs:
         shell: bash
         run: |
           git -C head archive --format=zip --output=../evidence/exec-007-candidate-source.zip HEAD
+          git -C head diff --binary "$REQUIRED_BATCH4_CORRECTION_PARENT...HEAD" > evidence/exec-007-batch4-correction.patch
           git -C head diff --binary "$REQUIRED_BATCH4_PARENT...HEAD" > evidence/exec-007-batch4.patch
           git -C head diff --binary "$REQUIRED_BASE_SHA...HEAD" > evidence/exec-007-final.patch
-          sha256sum evidence/exec-007-candidate-source.zip evidence/exec-007-batch4.patch evidence/exec-007-final.patch evidence/postgres-evidence.json evidence/baseline-differential.json > evidence/sha256sums.txt
+          sha256sum evidence/exec-007-candidate-source.zip evidence/exec-007-batch4-correction.patch evidence/exec-007-batch4.patch evidence/exec-007-final.patch evidence/postgres-evidence.json evidence/baseline-differential.json > evidence/sha256sums.txt
 
       - name: Upload final evidence
         if: always()

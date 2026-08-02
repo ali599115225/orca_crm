@@ -1,17 +1,32 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPricingPolicy } from "@/lib/offer-management/pricing-contracts";
 import { buildPricingSnapshot } from "@/lib/offer-management/pricing-snapshot";
 
-const policy = {
+const policy: ResolvedPricingPolicy = {
   id: "p",
   tenantId: "t",
-  sourceType: "SALE_UNIT_PRICE_BOOK" as const,
+  sourceType: "SALE_UNIT_PRICE_BOOK",
   sourceRecordId: "s",
   sourceVersion: "1",
-  offerKind: "SALE" as const,
+  scopeType: "UNIT",
+  scopeId: "unit-a",
+  offerKind: "SALE",
   standardValidityDays: 15,
-  normalMaxValidityDays: 30 as const,
+  normalMaxValidityDays: 30,
   effectiveFrom: new Date("2026-01-01T00:00:00Z"),
   effectiveTo: null,
+  resolutionTrace: {
+    selectedScopeType: "UNIT",
+    selectedScopeId: "unit-a",
+    selectedPolicyId: "p",
+    evaluatedLevels: [
+      {
+        scopeType: "UNIT",
+        scopeId: "unit-a",
+        eligiblePolicyIds: ["p"],
+      },
+    ],
+  },
 };
 
 describe("EXEC-007 Decimal contract", () => {
