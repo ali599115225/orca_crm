@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
   "documentId": "ORCA-EXEC-002-OVERRIDE-REGISTER-001",
-  "date": "2026-07-25",
-  "status": "ACTIVE / REVIEW_REQUIRED",
+  "date": "2026-08-05",
+  "status": "ACTIVE / SECURITY ADVISORY REMEDIATION REVIEW",
   "policy": "Every package.json override must be exact, owned, justified, review-triggered and removable when the upstream dependency graph is safe.",
   "overrides": [
     {
       "package": "brace-expansion",
       "value": "5.0.8",
       "owner": "Security Engineering",
-      "reason": "Pins the verified safe version for the Production dependency advisory closed through PR #93.",
+      "reason": "Pins 5.0.8, the current published patched release with bounded expansion length; revalidated after ORCA CI #734 advisory drift.",
       "introducedBy": "PR #93",
-      "reviewTrigger": "Review on every @sentry/nextjs or lockfile dependency update and before the final Release Candidate.",
+      "reviewTrigger": "Review on every minimatch or lockfile dependency update, on any new brace-expansion advisory, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
     },
     {
       "package": "fast-uri",
-      "value": "4.1.1",
+      "value": "3.1.4",
       "owner": "Security Engineering",
-      "reason": "Pins the safe version for the security advisory remediated through PR #76.",
-      "introducedBy": "PR #76",
-      "reviewTrigger": "Review on every dependency-tree update affecting fast-uri and before the final Release Candidate.",
+      "reason": "Pins the latest safe 3.x release compatible with ajv ^3.0.1 after fast-uri 4.1.1 became affected by GHSA-7p8r-x3mc-p8w7.",
+      "introducedBy": "Security advisory remediation after ORCA CI #734",
+      "reviewTrigger": "Review when ajv supports a verified safe 4.x fast-uri line, on every dependency-tree update affecting fast-uri, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after all reachable dependency paths are verified safe without the override."
     },
     {
@@ -36,8 +36,8 @@
       "package": "postcss",
       "value": "$postcss",
       "owner": "Release Engineering",
-      "reason": "Forces transitive PostCSS consumers to use the repository-owned direct dependency version.",
-      "introducedBy": "Historical baseline",
+      "reason": "Forces all transitive PostCSS consumers to the repository-owned direct dependency, updated to the security-fixed 8.5.23 release after ORCA CI #734.",
+      "introducedBy": "Historical baseline; security version refreshed after ORCA CI #734",
       "reviewTrigger": "Review on every Tailwind/PostCSS upgrade and before the final Release Candidate.",
       "expiryPolicy": "Remove when all supported consumers converge on an approved compatible PostCSS version without override enforcement."
     },
