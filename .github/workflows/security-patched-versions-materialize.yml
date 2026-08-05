@@ -1,0 +1,122 @@
+name: Materialize patched advisory versions
+
+on:
+  push:
+    branches:
+      - work/orca-security-advisory-remediation-20260805
+    paths:
+      - .github/workflows/security-patched-versions-materialize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/orca-security-advisory-remediation-20260805
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Resolve exact npm metadata and materialize three-file candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm view brace-expansion@5.0.9 dist.tarball dist.integrity --json > /tmp/brace.json
+          npm view fast-uri@3.1.5 dist.tarball dist.integrity --json > /tmp/fast.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const registerPath = 'docs/governance/ORCA_DEPENDENCY_OVERRIDE_REGISTER.json';
+          const register = JSON.parse(fs.readFileSync(registerPath, 'utf8'));
+          const braceDist = JSON.parse(fs.readFileSync('/tmp/brace.json', 'utf8'));
+          const fastDist = JSON.parse(fs.readFileSync('/tmp/fast.json', 'utf8'));
+
+          if (!braceDist.tarball?.endsWith('/brace-expansion-5.0.9.tgz') || !braceDist.integrity) throw new Error('brace-expansion 5.0.9 metadata unavailable');
+          if (!fastDist.tarball?.endsWith('/fast-uri-3.1.5.tgz') || !fastDist.integrity) throw new Error('fast-uri 3.1.5 metadata unavailable');
+          if (lock.packages?.['node_modules/minimatch']?.dependencies?.['brace-expansion'] !== '^5.0.5') throw new Error('unexpected minimatch contract');
+          if (lock.packages?.['node_modules/ajv']?.dependencies?.['fast-uri'] !== '^3.0.1') throw new Error('unexpected ajv contract');
+
+          manifest.overrides['brace-expansion'] = '5.0.9';
+          manifest.overrides['fast-uri'] = '3.1.5';
+          manifest.devDependencies.postcss = '^8.5.23';
+
+          lock.packages[''].devDependencies.postcss = '^8.5.23';
+          lock.packages['node_modules/brace-expansion'] = {
+            version: '5.0.9',
+            resolved: braceDist.tarball,
+            integrity: braceDist.integrity,
+            license: 'MIT',
+            dependencies: { 'balanced-match': '^4.0.2' },
+            engines: { node: '20 || >=22' }
+          };
+          lock.packages['node_modules/fast-uri'] = {
+            version: '3.1.5',
+            resolved: fastDist.tarball,
+            integrity: fastDist.integrity,
+            funding: [
+              { type: 'github', url: 'https://github.com/sponsors/fastify' },
+              { type: 'opencollective', url: 'https://opencollective.com/fastify' }
+            ],
+            license: 'BSD-3-Clause'
+          };
+          const postcss = lock.packages['node_modules/postcss'];
+          if (postcss?.version !== '8.5.23') throw new Error('postcss 8.5.23 candidate moved');
+
+          register.date = '2026-08-05';
+          register.status = 'ACTIVE / SECURITY ADVISORY REMEDIATION CANDIDATE';
+          const brace = register.overrides.find((item) => item.package === 'brace-expansion');
+          const fast = register.overrides.find((item) => item.package === 'fast-uri');
+          const post = register.overrides.find((item) => item.package === 'postcss');
+          if (!brace || !fast || !post) throw new Error('override register entries missing');
+          brace.value = '5.0.9';
+          brace.reason = 'Pins patched 5.0.9 for GHSA-rgw5-rvv9-x895 after the incomplete 5.0.8 mitigation was superseded.';
+          brace.introducedBy = 'PR #93; refreshed by security advisory remediation after ORCA CI #735';
+          fast.value = '3.1.5';
+          fast.reason = 'Pins patched 3.1.5 for GHSA-7p8r-x3mc-p8w7 while retaining compatibility with ajv fast-uri ^3.0.1.';
+          fast.introducedBy = 'Security advisory remediation after ORCA CI #735';
+          post.reason = 'Forces all transitive PostCSS consumers to the repository-owned security-fixed 8.5.23 direct dependency after ORCA CI #734.';
+
+          fs.writeFileSync('package.json', JSON.stringify(manifest, null, 4) + '\n');
+          fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 4) + '\n');
+          fs.writeFileSync(registerPath, JSON.stringify(register, null, 2) + '\n');
+          NODE
+
+      - name: Verify install, dependency tree and Production audit before commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm ls --all
+          npm audit --omit=dev --audit-level=moderate
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const m = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const l = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          if (m.overrides['brace-expansion'] !== '5.0.9') throw new Error('brace override mismatch');
+          if (m.overrides['fast-uri'] !== '3.1.5') throw new Error('fast override mismatch');
+          if (m.devDependencies.postcss !== '^8.5.23') throw new Error('postcss manifest mismatch');
+          if (l.packages['node_modules/brace-expansion'].version !== '5.0.9') throw new Error('brace lock mismatch');
+          if (l.packages['node_modules/fast-uri'].version !== '3.1.5') throw new Error('fast lock mismatch');
+          if (l.packages['node_modules/postcss'].version !== '8.5.23') throw new Error('postcss lock mismatch');
+          NODE
+
+      - name: Commit verified candidate and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/security-patched-versions-materialize.yml
+          git add package.json package-lock.json docs/governance/ORCA_DEPENDENCY_OVERRIDE_REGISTER.json
+          git diff --cached --check
+          test "$(git diff --cached --name-only | sort | tr '\n' ' ')" = "docs/governance/ORCA_DEPENDENCY_OVERRIDE_REGISTER.json package-lock.json package.json "
+          git commit -m "fix(security): apply published advisory patches"
+          git push origin HEAD:work/orca-security-advisory-remediation-20260805
