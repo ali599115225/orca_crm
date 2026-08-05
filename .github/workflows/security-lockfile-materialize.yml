@@ -1,0 +1,94 @@
+name: Materialize security lockfile
+
+on:
+  push:
+    branches:
+      - work/orca-security-advisory-remediation-20260805
+    paths:
+      - .github/workflows/security-lockfile-materialize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/orca-security-advisory-remediation-20260805
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Materialize exact audited lockfile nodes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+
+          if (manifest.overrides['brace-expansion'] !== '5.0.8') throw new Error('brace-expansion pin moved');
+          if (manifest.overrides['fast-uri'] !== '3.1.4') throw new Error('fast-uri pin mismatch');
+          if (manifest.devDependencies.postcss !== '^8.5.23') throw new Error('postcss manifest mismatch');
+          if (lock.lockfileVersion !== 3 || !lock.packages?.['']) throw new Error('unexpected lockfile shape');
+
+          lock.packages[''].devDependencies.postcss = '^8.5.23';
+          lock.packages['node_modules/fast-uri'] = {
+            version: '3.1.4',
+            resolved: 'https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.4.tgz',
+            integrity: 'sha512-8JnbkQ4juDyvYs4mgFGQqg4yCYtFDtUtmp2QIQq11ZZe5CFQ5wcqm1rqDgAh/QdMySuBnPzMUiJUNZG5N/AiQw==',
+            funding: [
+              { type: 'github', url: 'https://github.com/sponsors/fastify' },
+              { type: 'opencollective', url: 'https://opencollective.com/fastify' }
+            ],
+            license: 'BSD-3-Clause'
+          };
+          lock.packages['node_modules/postcss'] = {
+            version: '8.5.23',
+            resolved: 'https://registry.npmjs.org/postcss/-/postcss-8.5.23.tgz',
+            integrity: 'sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==',
+            funding: [
+              { type: 'opencollective', url: 'https://opencollective.com/postcss/' },
+              { type: 'tidelift', url: 'https://tidelift.com/funding/github/npm/postcss' },
+              { type: 'github', url: 'https://github.com/sponsors/ai' }
+            ],
+            license: 'MIT',
+            dependencies: {
+              nanoid: '^3.3.16',
+              picocolors: '^1.1.1',
+              'source-map-js': '^1.2.1'
+            },
+            engines: { node: '^10 || ^12 || >=14' }
+          };
+
+          const fast = lock.packages['node_modules/fast-uri'];
+          const postcss = lock.packages['node_modules/postcss'];
+          const brace = lock.packages['node_modules/brace-expansion'];
+          const minimatch = lock.packages['node_modules/minimatch'];
+          const ajv = lock.packages['node_modules/ajv'];
+          if (fast.version !== '3.1.4') throw new Error('fast-uri materialization failed');
+          if (postcss.version !== '8.5.23') throw new Error('postcss materialization failed');
+          if (brace.version !== '5.0.8') throw new Error('brace-expansion changed');
+          if (minimatch.version !== '10.2.5' || minimatch.dependencies['brace-expansion'] !== '^5.0.5') throw new Error('minimatch changed');
+          if (ajv.version !== '8.20.0' || ajv.dependencies['fast-uri'] !== '^3.0.1') throw new Error('ajv compatibility changed');
+
+          fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 4) + '\n');
+          JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          NODE
+
+      - name: Commit exact final three-file state and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/security-lockfile-materialize.yml
+          git add package-lock.json
+          git diff --cached --check
+          git commit -m "chore(security): refresh lockfile for safe advisories"
+          git push origin HEAD:work/orca-security-advisory-remediation-20260805
