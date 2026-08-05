@@ -153,6 +153,7 @@ export const ORGANIZATION_ROLE_PERMISSIONS = {
     "finance.records.read",
     "contracts.records.read",
     "export.execute",
+    "security.customer_event_raw_ip.read",
   ],
   SYSTEM_ADMINISTRATOR: [
     "organization.read",
@@ -372,7 +373,20 @@ export function evaluateOrganizationAuthority(
     return denied("ROLE_PERMISSION_DENIED");
   }
 
-  const scopedAssignment = permissionAssignments.find((assignment) =>
+  const scopeEligibleAssignments =
+    input.permission === "security.customer_event_raw_ip.read"
+      ? permissionAssignments.filter(
+          (assignment) =>
+            assignment.securityRole === "COMPLIANCE_AUDIT" &&
+            (assignment.scopeType === "COMPANY" || assignment.scopeType === "BRANCH"),
+        )
+      : permissionAssignments;
+
+  if (scopeEligibleAssignments.length === 0) {
+    return denied("ROLE_SCOPE_DENIED");
+  }
+
+  const scopedAssignment = scopeEligibleAssignments.find((assignment) =>
     assignmentMatchesResource(assignment, input),
   );
 

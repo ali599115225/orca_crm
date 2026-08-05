@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { evaluateOrganizationAuthority } from "@/lib/organization/authority";
 import {
+  evaluateOrganizationAuthority,
+  ORGANIZATION_ROLE_PERMISSIONS,
+  roleHasOrganizationPermission,
+} from "@/lib/organization/authority";
+import {
+  ORGANIZATION_PERMISSION_KEYS,
+  ORGANIZATION_SECURITY_ROLES,
   type EnabledBranchService,
   type OrganizationScopeAssignment,
 } from "@/lib/organization/contracts";
@@ -313,4 +319,82 @@ describe("EXEC-004 organization authority", () => {
       }),
     ).toMatchObject({ allowed: false, code: "ROLE_PERMISSION_DENIED" });
   });
+});
+
+
+describe("EXEC-007 Batch 3 dedicated raw-IP authority", () => {
+  const permission = "security.customer_event_raw_ip.read" as const;
+  const compliance = (scopeType: OrganizationScopeAssignment["scopeType"], overrides: Partial<OrganizationScopeAssignment> = {}) =>
+    assignment({
+      id: `compliance-${scopeType.toLowerCase()}`,
+      securityRole: "COMPLIANCE_AUDIT",
+      scopeType,
+      branchId: scopeType === "COMPANY" ? null : "branch-1",
+      departmentId: scopeType === "DEPARTMENT" ? "department-1" : null,
+      teamId: scopeType === "TEAM" ? "team-1" : null,
+      assignedResourceType: scopeType === "ASSIGNED_RESOURCE" ? "SECURITY_EVENT" : null,
+      assignedResourceId: scopeType === "ASSIGNED_RESOURCE" ? "event-1" : null,
+      ...overrides,
+    });
+
+  it("T-B3-AUTH-001 dedicated raw-IP permission is registered exactly once", () => {
+    expect(ORGANIZATION_PERMISSION_KEYS.filter((item) => item === permission)).toHaveLength(1);
+  });
+
+  it("T-B3-AUTH-002 COMPLIANCE_AUDIT receives dedicated raw-IP permission", () => {
+    expect(roleHasOrganizationPermission("COMPLIANCE_AUDIT", permission)).toBe(true);
+    expect(ORGANIZATION_ROLE_PERMISSIONS.COMPLIANCE_AUDIT.filter((item) => item === permission)).toHaveLength(1);
+  });
+
+  it("T-B3-AUTH-003 PLATFORM_OWNER does not receive dedicated raw-IP permission", () => {
+    expect(roleHasOrganizationPermission("PLATFORM_OWNER", permission)).toBe(false);
+  });
+
+  it("T-B3-AUTH-004 GENERAL_MANAGER does not receive dedicated raw-IP permission", () => {
+    expect(roleHasOrganizationPermission("GENERAL_MANAGER", permission)).toBe(false);
+  });
+
+  it("T-B3-AUTH-005 SYSTEM_ADMINISTRATOR does not receive dedicated raw-IP permission", () => {
+    expect(roleHasOrganizationPermission("SYSTEM_ADMINISTRATOR", permission)).toBe(false);
+  });
+
+  it("T-B3-AUTH-006 every non-COMPLIANCE_AUDIT role is denied", () => {
+    for (const role of ORGANIZATION_SECURITY_ROLES) {
+      expect(roleHasOrganizationPermission(role, permission)).toBe(role === "COMPLIANCE_AUDIT");
+    }
+  });
+
+  it("T-B3-AUTH-007 active COMPLIANCE_AUDIT COMPANY assignment is eligible", () => {
+    expect(decide({ permission, assignments: [compliance("COMPANY")] })).toEqual({
+      allowed: true,
+      code: "ALLOW",
+      assignmentId: "compliance-company",
+    });
+  });
+
+  it("T-B3-AUTH-008 exact active COMPLIANCE_AUDIT BRANCH assignment is eligible", () => {
+    expect(decide({ permission, assignments: [compliance("BRANCH")] })).toEqual({
+      allowed: true,
+      code: "ALLOW",
+      assignmentId: "compliance-branch",
+    });
+  });
+
+  for (const scopeType of ["DEPARTMENT", "TEAM", "ASSIGNED_RESOURCE"] as const) {
+    const id = scopeType === "DEPARTMENT" ? "T-B3-AUTH-009" : scopeType === "TEAM" ? "T-B3-AUTH-010" : "T-B3-AUTH-011";
+    it(`${id} COMPLIANCE_AUDIT ${scopeType} assignment is rejected`, () => {
+      expect(decide({
+        permission,
+        assignments: [compliance(scopeType)],
+        resource: {
+          tenantId: "tenant-1",
+          branchId: "branch-1",
+          departmentId: "department-1",
+          teamId: "team-1",
+          resourceType: "SECURITY_EVENT",
+          resourceId: "event-1",
+        },
+      })).toMatchObject({ allowed: false, code: "ROLE_SCOPE_DENIED" });
+    });
+  }
 });
