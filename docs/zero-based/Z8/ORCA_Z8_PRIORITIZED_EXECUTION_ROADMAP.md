@@ -1,10 +1,10 @@
 # ORCA Z8 — Prioritized Execution Roadmap
 
 - **Document ID:** ORCA-Z8-ROADMAP-001
-- **Version:** 1.5
-- **Date:** 2026-07-26
-- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-006 CLOSED / NO PACKAGE IN EXECUTION`
-- **Current central baseline after EXEC-006 implementation:** `6d0f25d771ff8685d3569d5fd90aa6f5f765c9c4`
+- **Version:** 1.6
+- **Date:** 2026-08-05
+- **Status:** `ACTIVE / EXEC-001 THROUGH EXEC-007 CLOSED / NO PACKAGE IN EXECUTION`
+- **Current central baseline after EXEC-007 merge:** `69195439519da17c2e306dd0491a63f0194d846e`
 
 ## 1. Sequencing rule
 
@@ -29,12 +29,16 @@ EXEC-003 owns its sealed shared-security evidence and contract registries. Later
 | 4 | EXEC-004 | `CLOSED` via PR #128 — company structure, branches/departments/teams/personas and scoped authority approved and implemented | `SKIP_BY_DEFAULT`; exact-head CI and Build proved the non-visual Runtime contract |
 | 5 | EXEC-005 | `CLOSED` via PR #132 — Party identity, Lead/Opportunity lifecycle, duplicate review, merge/reversal, consent and retention foundation | `SKIP_BY_DEFAULT`; exact-head CI, Build and disposable migration validation proved the non-visual contract |
 | 6 | EXEC-006 | `CLOSED` via PR #135 — authoritative Unit availability, exclusive Hold/Reservation, atomic conversion/expiry, exact persisted scope and conflict-safe Tour scheduling | `SKIP_BY_DEFAULT`; exact-head ORCA CI, Build and disposable PostgreSQL race/scope validation proved the non-visual contract |
-| 7 | EXEC-007 | `OWNER_DECISION_PENDING / NOT STARTED` — offer approval/pricing limits and acceptance semantics | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
-| 8 | EXEC-008 | `OWNER_DECISION_PENDING` — templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
+| 7 | EXEC-007 | `CLOSED` via PR #138 — immutable offer versions, exact-version approval/acceptance, pricing policy, portal challenge/session, cutover and PostgreSQL evidence | implementation proven by exact-head ORCA CI #732, Final Validation #116 and independent review; closure reconciliation is documentation-only and `NOT_REQUIRED` for Vercel |
+| 8 | EXEC-008 | `OWNER_DECISION_PENDING / NOT STARTED` — templates/signatories, financial precision/correction, refund and evidence authority | `REQUIRED_AT_PACKAGE_END` only when operational Preview evidence is necessary |
 
-EXEC-004 now provides the approved organization and authority foundation. It does not automatically wire every existing business record to a branch or execute the prepared additive migration. Any later package that consumes branch scope must freeze its exact resource mapping, migration/data authorization and denial evidence independently.
+EXEC-004 provides the approved organization and authority foundation. It does not automatically wire every existing business record to a branch or execute any prepared additive migration. Any later package that consumes branch scope must freeze its exact resource mapping, migration/data authorization and denial evidence independently.
 
-EXEC-006 is closed. It does not authorize EXEC-007, execute prepared migrations against Production/customer data, or claim legacy UI/API paths are migrated. EXEC-007 remains owner-decision gated and not started.
+EXEC-006 is closed and supplies the commitment/reservation boundary consumed by EXEC-007.
+
+EXEC-007 is closed, independently reviewed and merged. Its closure does not authorize EXEC-008, execute prepared migrations against Production/customer data, reconnect Vercel, or claim that contract/finance records have already moved to the EXEC-008 target model.
+
+EXEC-008 remains owner-decision gated and not started. It requires separate closure of `OWN-A06`, `OWN-A07`, and `Z2R-006`, then an exact Scope Freeze, Final Allowlist, Test Ledger and independent review before implementation authority can be considered.
 
 ## 4. Wave 2 — operational truth and protected data
 
@@ -63,9 +67,11 @@ EXEC-001 CLOSED
 → EXEC-004 CLOSED
 → EXEC-005 CLOSED
 → EXEC-006 CLOSED
-→ OWNER DECISION GATE
-→ EXEC-007 when separately authorized
-→ EXEC-008
+→ EXEC-007 CLOSED
+→ EXEC-008 OWNER DECISION GATE
+→ EXEC-008 SCOPE FREEZE
+→ EXEC-008 INDEPENDENT FREEZE REVIEW
+→ SEPARATE EXEC-008 IMPLEMENTATION AUTHORITY
 → EXEC-009 + EXEC-010
 → EXEC-011 per stabilized surface
 → EXEC-012 where approved
@@ -86,6 +92,7 @@ Parallelism is permitted only where package registries show no shared mutable fi
 - One final Preview is required only for the definitive Release Candidate after all intended repair packages are complete.
 - Automatic non-required Preview attempts are non-blocking; no retry-only Push is allowed.
 - Hobby quota limitation is recorded as `VERCEL_VALIDATION = DEFERRED_TO_FINAL_EXECUTABLE_HEAD`.
+- The repository Git connection remains disconnected and automatic Git deployments remain disabled unless separately authorized.
 - Production deployment always requires separate explicit owner authorization.
 
 ## 8. Priority policy
@@ -95,19 +102,20 @@ Parallelism is permitted only where package registries show no shared mutable fi
 - A package that exceeds its allowlist or change budget pauses and returns for amendment.
 - No package proceeds from non-production verification to `main` or Production automatically.
 - A prepared migration is not an executed migration. Migration, backfill and customer-data operations require separate authorization and recovery evidence.
+- A historical registry or roadmap state that conflicts with a completed GitHub merge must be reconciled before authorizing the next package.
 
 ## 9. Roadmap result
 
 ```text
 TOTAL PACKAGES: 14
-CLOSED: 6
+CLOSED: 7
 READY FOR CONTROLLED EXECUTION: 0
-OWNER/REFERENCE CONDITIONAL: 5
+OWNER/REFERENCE CONDITIONAL: 4
 DEFERRED/BLOCKED: 3
 IN EXECUTION: 0
 AUTOMATIC EXECUTION: NONE
 NEXT AUTOMATIC PACKAGE: NONE
-NEXT ELIGIBLE PACKAGE: EXEC-007 AFTER OWNER DECISION AND SCOPE FREEZE
+NEXT ELIGIBLE PACKAGE: EXEC-008 AFTER OWNER DECISIONS AND SCOPE FREEZE
 ```
 
 ## 10. EXEC-004 closure reconciliation — 2026-07-26
@@ -163,7 +171,30 @@ NEXT ELIGIBLE PACKAGE: EXEC-007 AFTER OWNER DECISION AND SCOPE FREEZE
 - Vercel: `SKIP_BY_DEFAULT`; automatic Hobby rate-limit failure was non-blocking and no retry-only Push or Preview was used.
 - Backfill and customer-data action: `NOT PERFORMED`.
 - `main`, Production, providers, secrets, accounts and subscriptions: `UNTOUCHED`.
-- EXEC-007 remains `OWNER_DECISION_PENDING / NOT STARTED`; closure grants no automatic authorization.
+- EXEC-007 was `OWNER_DECISION_PENDING / NOT STARTED` at this historical closure point; that historical fact is superseded by the later EXEC-007 closure below.
+
+## 13. EXEC-007 closure reconciliation — 2026-08-05
+
+- Central base before implementation: `f159d865c6980cb8b1dbaa2bfff8fc50ac9d0a26`.
+- Batch 3 parent: `4f5276cc3eee6e037e1d0d9206e96244681746a5`.
+- Independently closed Batch 3 head / Batch 4 parent: `3c06fb2014b9aeb92c5ab0fb6017316df0ca338e`.
+- Batch 4 implementation: `eba1ee9e99bd00eafb74b336f42646857591e20f`.
+- Final reviewed implementation head: `d40cbacc40626ce19fc33949d97400eeaf06cbbe`.
+- Implementation PR: `#138`.
+- Merge Commit to the zero-based central branch: `69195439519da17c2e306dd0491a63f0194d846e`.
+- Final implementation inventory: `59` exact paths.
+- ORCA CI: `#732 / SUCCESS`.
+- EXEC-007 Final Validation: `#116 / SUCCESS`.
+- Exact governed Vitest: `240/240 PASS`.
+- PostgreSQL 16 databases A/B: `152/152 PASS` each.
+- Baseline differential: `PASS_NO_NEW_FAILURES`.
+- Independent final review: `PASS — EXEC007-IFR-007 AND EXEC007-IFR-008 INDEPENDENTLY CLOSED`.
+- Final validation Artifact ID: `8838666765`.
+- Artifact SHA-256: `3de235aeac0248eb29c05ac41e92497c465af3695d1ad8efcab246bb584d41d0`.
+- Production/customer-data migration execution: `NOT PERFORMED`.
+- Backfill and customer-data action: `NOT PERFORMED`.
+- Provider, credential, `main`, Production and Vercel actions: `NONE`.
+- EXEC-008: `OWNER_DECISION_PENDING / NOT STARTED`.
 
 ## Historical Z8 post-capacity closure — 2026-07-26
 
