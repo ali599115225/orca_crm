@@ -1,0 +1,104 @@
+name: Security audit fix probe
+
+on:
+  push:
+    branches:
+      - work/orca-security-advisory-remediation-20260805
+    paths:
+      - .github/workflows/security-audit-fix-probe.yml
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/orca-security-advisory-remediation-20260805
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Compute npm's exact remediation without publishing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          cp package.json /tmp/package.before.json
+          cp package-lock.json /tmp/package-lock.before.json
+          set +e
+          npm audit fix --package-lock-only --audit-level=moderate > /tmp/audit-fix.log 2>&1
+          fix_status=$?
+          npm audit --omit=dev --json > /tmp/audit-after.json 2>/tmp/audit-after.err
+          audit_status=$?
+          set -e
+          git diff -- package.json package-lock.json > /tmp/audit-fix.diff
+          FIX_STATUS="$fix_status" AUDIT_STATUS="$audit_status" node <<'NODE'
+          const fs = require('node:fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const audit = (() => { try { return JSON.parse(fs.readFileSync('/tmp/audit-after.json', 'utf8')); } catch { return {}; } })();
+          const p = lock.packages || {};
+          const versions = {
+            braceExpansion: p['node_modules/brace-expansion']?.version ?? null,
+            minimatch: p['node_modules/minimatch']?.version ?? null,
+            fastUri: p['node_modules/fast-uri']?.version ?? null,
+            ajv: p['node_modules/ajv']?.version ?? null,
+            postcss: p['node_modules/postcss']?.version ?? null,
+            overrideBraceExpansion: manifest.overrides?.['brace-expansion'] ?? null,
+            overrideFastUri: manifest.overrides?.['fast-uri'] ?? null,
+            manifestPostcss: manifest.devDependencies?.postcss ?? null,
+          };
+          const metadata = audit.metadata?.vulnerabilities ?? {};
+          const diff = fs.readFileSync('/tmp/audit-fix.diff', 'utf8');
+          const log = fs.readFileSync('/tmp/audit-fix.log', 'utf8').slice(-12000);
+          const body = [
+            '## npm audit fix probe — read-only result',
+            '',
+            `- audit-fix exit: ${process.env.FIX_STATUS}`,
+            `- post-fix audit exit: ${process.env.AUDIT_STATUS}`,
+            `- vulnerabilities: ${JSON.stringify(metadata)}`,
+            '',
+            '### Resolved versions proposed by npm',
+            '',
+            '```json',
+            JSON.stringify(versions, null, 2),
+            '```',
+            '',
+            '### Proposed manifest/lock diff',
+            '',
+            '```diff',
+            diff.slice(0, 45000),
+            '```',
+            '',
+            '### npm audit fix output (tail)',
+            '',
+            '```text',
+            log,
+            '```',
+            '',
+            'No proposed package change from this probe was committed.',
+          ].join('\n');
+          fs.writeFileSync('/tmp/probe-comment.md', body + '\n');
+          NODE
+          gh pr comment 148 --repo ali599115225/orca_crm --body-file /tmp/probe-comment.md
+          git checkout -- package.json package-lock.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Remove probe from branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/security-audit-fix-probe.yml
+          git commit -m "chore(security): remove audit fix probe"
+          git push origin HEAD:work/orca-security-advisory-remediation-20260805
