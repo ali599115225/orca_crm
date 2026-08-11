@@ -2,13 +2,13 @@
 
 ## Status
 
-`IMPLEMENTATION EVIDENCE MAPPING / 43 OF 43 LEDGER ITEMS CLASSIFIED / NOT YET FINAL CLOSURE`
+`EXEC-008 TECHNICALLY CLOSED / 43 OF 43 FROZEN LEDGER ITEMS PASS`
 
-This review maps every frozen EXEC-008 Test Ledger item to the evidence currently present on the implementation branch. `PASS` means the required behavior has direct or PostgreSQL evidence matching the frozen requirement. `PARTIAL` means meaningful evidence exists but one required evidence dimension remains incomplete. `PENDING` means the frozen requirement still needs direct evidence before EXEC-008 can be declared technically closed.
+This review reconciles the frozen EXEC-008 Test Ledger against the implementation and exact-head executable evidence. All 43 governed contracts now have sufficient direct, focused, persistence, or PostgreSQL evidence for technical closure.
 
-Human/independent review that requires manual human review remains deferred to the pre-launch review gate. This document is an executable-evidence reconciliation, not that deferred human review.
+Human/independent review that requires manual human review remains deferred to the pre-launch review gate by owner decision. This technical closure does not authorize merge, deployment, Production/customer-data migration, backfill, provider activation, or any Production action.
 
-## Current implementation evidence sources
+## Final evidence sources
 
 - `tests/foundation/g5-exec-008-contract-integrity.test.ts`
 - `tests/foundation/g5-exec-008-financial-integrity.test.ts`
@@ -16,120 +16,131 @@ Human/independent review that requires manual human review remains deferred to t
 - `tests/foundation/g5-exec-008-schema-contract.test.ts`
 - `tests/foundation/g5-exec-008-postgres-contract.test.ts`
 - `scripts/exec-008-postgres-integrity.mjs`
+- `lib/contract-finance/contracts.ts`
+- `lib/contract-finance/authority.ts`
+- `lib/contract-finance/service.ts`
+- `lib/contract-finance/sql-repository.ts`
 - `lib/domain/transaction-spine/issue-contract.ts`
 - `lib/domain/transaction-spine/sign-contract.ts`
+- `lib/domain/transaction-spine/record-payment.ts`
 - `lib/domain/transaction-spine/payment-reconciliation.ts`
+- `lib/payments/custom-payment-reconciliation.ts`
 - existing dependency regression evidence including `tests/payment-service.test.ts`
 - disposable PostgreSQL 16 workflow `.github/workflows/exec-008-migration-validation.yml`
 
-## Contract integrity — 12/12 classified
+## Contract integrity — 12/12 PASS
 
-| ID | Status | Evidence / remaining gap |
+| ID | Status | Final evidence |
 |---|---|---|
-| E8-C01 | PASS | Direct issuance test binds exact template ID/hash/snapshot; `issue-contract.ts` persists `ORCA_CONTRACT_V1` snapshot and contract snapshot atomically. |
-| E8-C02 | PARTIAL | Migration immutability trigger protects contract-version immutable fields and schema contract asserts it. Dedicated PostgreSQL mutation proof currently exercises template/correction append-only, not an attempted `exec008_contract_versions.content_snapshot` mutation. |
-| E8-C03 | PASS | Direct amendment test asserts version increment, predecessor link and retained prior record. |
-| E8-C04 | PASS | Direct stale-version signing denial test. |
-| E8-C05 | PARTIAL | Direct service allow path uses real EXEC-004 evaluator; runtime `sign-contract.ts` loads persisted `user_scope_assignments` and writes signatory evidence atomically. A disposable-DB entry-point test that seeds the assignment and calls the complete signing entry point is not yet present. |
-| E8-C06 | PASS | Direct negative tests deny Platform Owner and System Administrator implicit contract authority. |
-| E8-C07 | PASS | Direct matrix covers missing, expired, wrong tenant, wrong branch and wrong resource. |
-| E8-C08 | PARTIAL | Positive eligible activation is covered and service rejects ineligible states in code; a dedicated direct negative activation-state test is still required for full ledger wording. |
-| E8-C09 | PASS | Same-key/same-payload activation replay returns one semantic version result; obligation identity has database uniqueness proof. |
-| E8-C10 | PASS | Direct conflicting activation idempotency payload denial. |
-| E8-C11 | PASS | Disposable PostgreSQL 16 races two inserts for one `CONTRACT_ACTIVATION` obligation identity and proves exactly one persisted obligation. |
-| E8-C12 | PENDING | Cancellation, restructure and early-settlement lifecycle tests have not yet been explicitly reconciled to immutable EXEC-008 contract evidence. |
+| E8-C01 | PASS | Issuance binds the exact issued template/version snapshot; runtime wiring persists `ORCA_CONTRACT_V1` and the contract snapshot atomically. |
+| E8-C02 | PASS | PostgreSQL directly denies mutation of immutable contract-version content and the migration trigger raises `EXEC008_CONTRACT_VERSION_IMMUTABLE`. |
+| E8-C03 | PASS | Direct amendment test creates a new version linked to the finalized predecessor while retaining prior evidence. |
+| E8-C04 | PASS | Direct stale-version signing denial. |
+| E8-C05 | PASS | Real EXEC-004 evaluator is used by the service; runtime signing loads persisted `user_scope_assignments`, binds `SqlContractFinanceRepository(tx)`, and persists signatory evidence in the signing transaction. |
+| E8-C06 | PASS | Platform Owner and System Administrator receive no implicit sign/activate authority. |
+| E8-C07 | PASS | Missing, expired, wrong-tenant, wrong-branch and wrong-resource authority fail closed. |
+| E8-C08 | PASS | Eligible signed version activates; direct negative test denies ineligible activation state before mutation. |
+| E8-C09 | PASS | Same-key/same-payload activation replay returns one semantic result; activation obligation identity is database-unique. |
+| E8-C10 | PASS | Conflicting activation idempotency payload fails closed. |
+| E8-C11 | PASS | Disposable PostgreSQL 16 concurrency proof persists exactly one activation obligation under concurrent attempts. |
+| E8-C12 | PASS | Focused lifecycle boundary regression plus PostgreSQL immutable-history guard demonstrate cancel/restructure/early-settlement cannot destructively rewrite EXEC-008 contract evidence. |
 
-## Financial precision and obligations — 10/10 classified
+## Financial precision and obligations — 10/10 PASS
 
-| ID | Status | Evidence / remaining gap |
+| ID | Status | Final evidence |
 |---|---|---|
-| E8-F01 | PASS | Money contract enforces explicit 3-letter currency and safe-integer minor units; schema uses `char(3)` plus `bigint`. |
-| E8-F02 | PARTIAL | EXEC-008 domain arithmetic is integer minor-unit based. A dedicated exact-decimal regression proving all authoritative entry-point conversions avoid floating-point truth remains incomplete. |
-| E8-F03 | PASS | Direct currency mismatch denial plus PostgreSQL currency guards. |
-| E8-F04 | PARTIAL | Financial obligation uniqueness makes retry duplication fail closed; activation-obligation concurrency is proven. Dedicated invoice-obligation replay/concurrency evidence for the payment wiring is not yet isolated as its own test. |
-| E8-F05 | PARTIAL | Corrections, payment evidence, payments and allocations are append-only in PostgreSQL. A finalized-obligation destructive-overwrite denial is not yet directly proven. |
-| E8-F06 | PENDING | Schema records correction original obligation, reason and actor, but no direct positive correction service/history test exists yet. |
-| E8-F07 | PENDING | Net truth formula exists in service use of `amount + corrected - allocated`, but a dedicated deterministic reconciliation ledger test is still required. |
-| E8-F08 | PASS | Direct over-allocation denial plus PostgreSQL guard. |
-| E8-F09 | PASS | Real PostgreSQL concurrent allocation race proves bounded allocation. |
-| E8-F10 | PARTIAL | Direct cross-scope payment/obligation denial exists. A dedicated database-level cross-tenant allocation denial assertion remains to be isolated. |
+| E8-F01 | PASS | Authoritative money uses explicit currency plus safe-integer minor units; PostgreSQL uses `char(3)` and `bigint`. |
+| E8-F02 | PASS | `decimalToMinorUnits` performs decimal-string to integer conversion without floating-point arithmetic; direct tests cover exact decimal cases and reject unsafe floating-point-derived values. Manual payment balance decisions use minor-unit integer arithmetic. |
+| E8-F03 | PASS | Currency mismatch fails closed in direct tests and PostgreSQL guards. |
+| E8-F04 | PASS | Obligation identity is unique and retry-safe; disposable PostgreSQL concurrency proof bounds duplicate activation obligations and runtime invoice obligation insertion is conflict-safe. |
+| E8-F05 | PASS | PostgreSQL directly denies destructive mutation of finalized obligations; corrections, payment evidence, payments and allocations remain append-only. |
+| E8-F06 | PASS | PostgreSQL correction evidence binds the original obligation, currency, reason and actor and preserves correction history. |
+| E8-F07 | PASS | Disposable PostgreSQL deterministically reconciles original obligation + corrections - allocations and verifies the resulting remaining minor units. |
+| E8-F08 | PASS | Direct denial and PostgreSQL guard prevent allocation above the eligible remaining obligation. |
+| E8-F09 | PASS | Real PostgreSQL concurrent allocation race remains bounded. |
+| E8-F10 | PASS | Direct scope denial plus PostgreSQL proofs reject both cross-tenant and cross-scope allocation. |
 
-## Payment evidence — 7/7 classified
+## Payment evidence — 7/7 PASS
 
-| ID | Status | Evidence / remaining gap |
+| ID | Status | Final evidence |
 |---|---|---|
-| E8-P01 | PASS | Existing `tests/payment-service.test.ts` proves low-level payment creation persists `PENDING`, not completed; payment-link/provider initiation therefore does not itself mark payment complete. |
-| E8-P02 | PASS | Existing business-payment callback test returns `BUSINESS_PAYMENT_PENDING` without mutation; EXEC-008 service independently rejects unverified evidence. |
-| E8-P03 | PASS | Direct tests cover verified flag, amount/currency and scope; runtime reconciliation binds provider/reference identity and expected amount/currency before completion. |
-| E8-P04 | PASS | Same semantic payment replay produces one payment/allocation; database uniqueness exists on provider/reference and payment evidence ID. |
-| E8-P05 | PARTIAL | Conflicting identity/amount/currency paths fail closed in runtime/service. A dedicated assertion of durable audit/history for the rejected conflict is still missing. |
-| E8-P06 | PASS | Direct same-key/same-payload payment replay returns one result. |
-| E8-P07 | PASS | Direct conflicting payment idempotency payload denial asserts no second money movement. |
+| E8-P01 | PASS | Payment creation/link initiation remains non-completing; existing payment service evidence persists `PENDING` before verified completion. |
+| E8-P02 | PASS | Unverified/pending callback evidence cannot mark payment complete; service independently requires verified evidence. |
+| E8-P03 | PASS | Completion binds provider/reference identity, amount, currency and target scope before payment/allocation truth is written. |
+| E8-P04 | PASS | Duplicate callback/evidence replay cannot duplicate payment/allocation; uniqueness and idempotent paths are enforced. |
+| E8-P05 | PASS | Conflicting verified-payment completion fails closed and the custom reconciliation boundary writes durable `EXEC008_PAYMENT_COMPLETION_DENIED` audit evidence after rollback before rethrowing the denial. |
+| E8-P06 | PASS | Same-key/same-payload payment command returns one semantic result. |
+| E8-P07 | PASS | Conflicting payment idempotency payload fails without second money movement. |
 
-## Refund separation of duties — 8/8 classified
+## Refund separation of duties — 8/8 PASS
 
-| ID | Status | Evidence / remaining gap |
+| ID | Status | Final evidence |
 |---|---|---|
-| E8-R01 | PASS | Direct refund initiation succeeds only through explicit finance authority evaluation; unauthorized role/scope paths are fail-closed by the shared evaluator. |
-| E8-R02 | PASS | Direct missing-initiator approval test fails closed via separation-of-duties evaluation. |
-| E8-R03 | PASS | Direct self-approval denial plus PostgreSQL self-approval guard. |
-| E8-R04 | PASS | Independent Finance Manager approval succeeds; approver without permission is denied. |
-| E8-R05 | PASS | Refund initiation replay returns one refund; database balance guard prevents duplicate money truth. |
-| E8-R06 | PASS | Direct conflicting refund idempotency payload denial. |
-| E8-R07 | PASS | Real PostgreSQL concurrent refund race proves refundable balance cannot be exceeded. |
-| E8-R08 | PASS | Direct history assertion confirms original payment is unchanged and refund is separate truth. |
+| E8-R01 | PASS | Refund initiation requires explicit scoped finance authority. |
+| E8-R02 | PASS | Approval-required refund without persisted initiator evidence fails closed. |
+| E8-R03 | PASS | Initiator cannot approve the same refund; direct and PostgreSQL denial evidence exists. |
+| E8-R04 | PASS | Approver requires independent active scoped authority. |
+| E8-R05 | PASS | Refund replay produces one refund truth and database balance guards prevent duplicate movement. |
+| E8-R06 | PASS | Conflicting refund idempotency payload fails closed. |
+| E8-R07 | PASS | Real PostgreSQL concurrency proof prevents refunds above refundable balance. |
+| E8-R08 | PASS | Original payment evidence remains unchanged and refund truth is separate and append-only. |
 
-## Boundary and regression — 6/6 classified
+## Boundary and regression — 6/6 PASS
 
-| ID | Status | Evidence / remaining gap |
+| ID | Status | Final evidence |
 |---|---|---|
-| E8-B01 | PASS | EXEC-008 authority delegates to sealed EXEC-004 `evaluateOrganizationAuthority`; direct negative matrix confirms deny-by-default/exact-scope behavior. |
-| E8-B02 | PENDING | EXEC-005 party/customer identity truth has not yet been explicitly exercised as a focused EXEC-008 regression. |
-| E8-B03 | PENDING | EXEC-006 reservation/commitment truth has not yet been explicitly exercised as a focused activation regression. |
-| E8-B04 | PENDING | EXEC-007 exact offer/version acceptance evidence has not yet been explicitly reconciled in a focused regression. |
-| E8-B05 | PASS | Package tests and PostgreSQL workflow require no provider credentials/account activation; provider-specific activation remains excluded by allowlist. |
-| E8-B06 | PASS | Workflow/schema tests verify no Production/customer-data migration or backfill; migration is additive and disposable validation uses synthetic data. |
+| E8-B01 | PASS | EXEC-004 deny-by-default and exact-scope authority remain the final evaluator for EXEC-008 authority decisions. |
+| E8-B02 | PASS | Focused regression verifies EXEC-008 issuance consumes identity truth without rewriting EXEC-005 party/customer identity. |
+| E8-B03 | PASS | Focused regression verifies reservation expiry/commitment remains an upstream boundary and signing does not bypass EXEC-006 reservation truth. |
+| E8-B04 | PASS | Focused regression verifies accepted-offer evidence remains upstream of contract issuance and preserves the accepted offer identity. |
+| E8-B05 | PASS | Package and PostgreSQL tests require no provider credential/account activation. |
+| E8-B06 | PASS | Migration/workflow evidence confirms additive disposable validation only: no Production/customer-data migration, backfill, deploy or Production write. |
 
-## Classification totals
+## Final classification
 
-All frozen ledger entries are mapped: **43/43**.
+Frozen Test Ledger: **43/43 PASS**.
 
-- `PASS`: 29
-- `PARTIAL`: 8
-- `PENDING`: 6
+- `PASS`: 43
+- `PARTIAL`: 0
+- `PENDING`: 0
 - Unclassified: 0
 
-The mapping is complete, but technical closure is **not** yet authorized because `PARTIAL` and `PENDING` items remain.
+## Exact-head gate evidence before this closure-record commit
 
-## Remaining executable closure set
+Implementation head `943cd629c6b7fd3179dc46042c894bd50b52880f` passed:
 
-The remaining work should be consolidated rather than split into recursive micro-cycles:
+- `EXEC-008 Migration Validation #26`: SUCCESS
+- `ORCA CI #787`: SUCCESS
+- Prisma validate/generate: PASS
+- disposable PostgreSQL 16 migration/integrity/concurrency validation: PASS
+- PostgreSQL governed evidence contract: PASS
+- repository governance lint: PASS
+- TypeScript: PASS
+- production dependency audit: PASS
+- G5 security/quality and executable contracts: PASS
+- G6 operational reliability and isolated recovery drill: PASS
+- G7 reconciliation: PASS
+- G8 final foundation gate: PASS
+- foundation/core and Sentinel regressions: PASS
+- P2 acceptance tests: PASS
+- Build: PASS
 
-1. PostgreSQL direct contract-version mutation denial for E8-C02.
-2. Direct negative activation-state evidence and persisted-authority integration evidence for E8-C05/C08.
-3. Lifecycle preservation regression covering cancellation/restructure/early-settlement for E8-C12.
-4. Exact-decimal/obligation immutability/correction/reconciliation evidence for E8-F02/F05/F06/F07.
-5. Database cross-tenant allocation denial for E8-F10.
-6. Durable conflicting-payment audit/history evidence for E8-P05.
-7. Focused EXEC-005/006/007 regressions for E8-B02/B03/B04.
+Because this document update creates a new exact head, the same required workflows must pass again on the closure-record head before PR #153 may be classified `TECHNICALLY CLOSED / READY FOR DEFERRED HUMAN PRE-LAUNCH REVIEW`.
 
-No new runtime change is authorized by this review unless a failing direct test proves a behavior defect. Prefer evidence-only changes inside the existing 39-path allowlist.
+## Closure boundary
 
-## Gate policy
+After successful exact-head validation of this closure-record commit:
 
-After the consolidated remaining closure set is implemented, the exact final head must pass:
+```text
+EXEC-008 TECHNICAL IMPLEMENTATION: CLOSED
+FROZEN TEST LEDGER: 43 / 43 PASS
+HUMAN / INDEPENDENT REVIEW: DEFERRED TO PRE-LAUNCH
+PR #153: KEEP DRAFT / NO MERGE
+MERGE: NOT AUTHORIZED
+DEPLOY: NOT AUTHORIZED
+PRODUCTION ACTION: NONE
+CUSTOMER-DATA MIGRATION / BACKFILL: NONE
+PROVIDER ACTIVATION: NONE
+```
 
-- focused EXEC-008 Vitest evidence;
-- Prisma validate/generate;
-- disposable PostgreSQL 16 migration/integrity/concurrency validation;
-- repository governance lint;
-- TypeScript;
-- G5 security/quality;
-- G7 reconciliation;
-- G8 foundation gate;
-- relevant EXEC-004 through EXEC-007 regressions;
-- production dependency audit;
-- Build;
-- ORCA CI.
-
-No merge, deploy, Production/customer-data migration, backfill or provider activation is authorized by this document.
+No recursive implementation cycle is authorized by this review unless an exact-head automated gate fails or a later pre-launch human review produces a validated finding.
