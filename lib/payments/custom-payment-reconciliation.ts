@@ -133,28 +133,53 @@ export async function reconcileCustomPayment(input: {
   ).toUpperCase();
 
   if (verified.paid) {
-    const completed =
-      await completePaymentTransaction({
+    try {
+      const completed =
+        await completePaymentTransaction({
+          transactionId: payment.id,
+          tenantId: payment.tenantId,
+          amountMinorUnits:
+            verified.amountMinorUnits,
+          currency: verified.currency,
+          providerStatus: status,
+          rawPayload: verified.rawPayload,
+          actorType: "PROVIDER",
+          correlationId:
+            `custom-payment:${input.source.toLowerCase()}:` +
+            `${payment.id}:${payment.providerReference}`,
+        });
+
+      return {
+        status: completed.idempotent
+          ? "already_completed"
+          : "completed",
         transactionId: payment.id,
-        tenantId: payment.tenantId,
-        amountMinorUnits:
-          verified.amountMinorUnits,
-        currency: verified.currency,
-        providerStatus: status,
-        rawPayload: verified.rawPayload,
-        actorType: "PROVIDER",
-        correlationId:
-          `custom-payment:${input.source.toLowerCase()}:` +
-          `${payment.id}:${payment.providerReference}`,
+        idempotent: completed.idempotent,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      await prisma.auditLog.create({
+        data: {
+          tenantId: payment.tenantId,
+          userId: null,
+          action: "EXEC008_PAYMENT_COMPLETION_DENIED",
+          tableName: "payment_transactions",
+          recordId: payment.id,
+          details: JSON.stringify({
+            transactionId: payment.id,
+            provider: payment.provider,
+            providerReference: payment.providerReference,
+            source: input.source,
+            providerStatus: status,
+            error: errorMessage,
+          }),
+        },
       });
 
-    return {
-      status: completed.idempotent
-        ? "already_completed"
-        : "completed",
-      transactionId: payment.id,
-      idempotent: completed.idempotent,
-    };
+      throw error;
+    }
   }
 
   if (FINAL_FAILURES.has(status)) {
