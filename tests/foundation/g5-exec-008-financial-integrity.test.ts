@@ -217,6 +217,46 @@ describe("EXEC-008 — financial integrity", () => {
     expect(repository.allocations).toHaveLength(0);
   });
 
+  it("fails closed when payment evidence or obligation scope differs from the command scope", async () => {
+    const repository = new FinancialFixtureRepository();
+    const service = new ContractFinanceService(repository);
+    const paymentActor = actor(initiatorId, "ACCOUNTANT_COLLECTOR");
+
+    repository.evidence = {
+      ...repository.evidence,
+      scope: { ...scope, resourceId: "invoice-other" },
+    };
+    await expect(
+      service.recordVerifiedPayment({
+        actor: paymentActor,
+        evidenceId,
+        obligationId,
+        amount: { currency: "SAR", minorUnits: 4_000 },
+        scope,
+        idempotencyKey: "evidence-scope-mismatch",
+      }),
+    ).rejects.toThrow(/payment evidence scope mismatch/i);
+
+    repository.evidence = { ...repository.evidence, scope };
+    repository.obligation = {
+      ...repository.obligation,
+      scope: { ...scope, resourceId: "invoice-other" },
+    };
+    await expect(
+      service.recordVerifiedPayment({
+        actor: paymentActor,
+        evidenceId,
+        obligationId,
+        amount: { currency: "SAR", minorUnits: 4_000 },
+        scope,
+        idempotencyKey: "obligation-scope-mismatch",
+      }),
+    ).rejects.toThrow(/financial obligation scope mismatch/i);
+
+    expect(repository.payments.size).toBe(0);
+    expect(repository.allocations).toHaveLength(0);
+  });
+
   it("rejects conflicting payment idempotency payload without money movement", async () => {
     const repository = new FinancialFixtureRepository();
     const service = new ContractFinanceService(repository);
@@ -277,6 +317,58 @@ describe("EXEC-008 — financial integrity", () => {
     expect(approved.value.approvedByUserId).toBe(approverId);
     expect(repository.payments.get(payment.value.id)).toEqual(payment.value);
     expect(repository.refunds.size).toBe(1);
+  });
+
+  it("fails closed for refund scope mismatch, missing initiator evidence, and non-approver authority", async () => {
+    const repository = new FinancialFixtureRepository();
+    const service = new ContractFinanceService(repository);
+    const payment = await recordPayment(repository, "payment-refund-denials");
+
+    await expect(
+      service.initiateRefund({
+        actor: actor(initiatorId, "ACCOUNTANT_COLLECTOR"),
+        paymentId: payment.value.id,
+        amount: { currency: "SAR", minorUnits: 500 },
+        reason: "wrong scope",
+        scope: { ...scope, resourceId: "invoice-other" },
+        idempotencyKey: "refund-wrong-scope",
+      }),
+    ).rejects.toThrow(/refund payment scope mismatch/i);
+
+    const initiated = await service.initiateRefund({
+      actor: actor(initiatorId, "ACCOUNTANT_COLLECTOR"),
+      paymentId: payment.value.id,
+      amount: { currency: "SAR", minorUnits: 500 },
+      reason: "approval required",
+      scope,
+      idempotencyKey: "refund-missing-initiator",
+    });
+
+    repository.refunds.set(initiated.value.id, {
+      ...initiated.value,
+      initiatedByUserId: "",
+    });
+    await expect(
+      service.approveRefund({
+        actor: actor(approverId, "FINANCE_MANAGER"),
+        refundId: initiated.value.id,
+        scope,
+        idempotencyKey: "refund-approve-missing-initiator",
+      }),
+    ).rejects.toThrow(/SEPARATION_OF_DUTIES_DENIED/i);
+
+    repository.refunds.set(initiated.value.id, initiated.value);
+    const unauthorizedApprover = actor(approverId, "ACCOUNTANT_COLLECTOR");
+    await expect(
+      service.approveRefund({
+        actor: unauthorizedApprover,
+        refundId: initiated.value.id,
+        scope,
+        idempotencyKey: "refund-approve-role-denied",
+      }),
+    ).rejects.toThrow(/ROLE_PERMISSION_DENIED/i);
+
+    expect(repository.refunds.get(initiated.value.id)?.state).toBe("REQUESTED");
   });
 
   it("replays refund initiation and denies conflicting reuse of the same key", async () => {
