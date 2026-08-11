@@ -19,6 +19,7 @@ import type {
 } from "@/lib/contract-finance/repository";
 
 type SqlRow = Record<string, unknown>;
+type SqlClient = Pick<typeof prisma, "$queryRaw" | "$executeRaw">;
 
 const text = (value: unknown) => String(value);
 const nullableText = (value: unknown) => (value == null ? null : String(value));
@@ -83,7 +84,7 @@ function refundFromRow(row: SqlRow): RefundRequest {
 }
 
 class SqlTransaction implements ContractFinanceTransaction {
-  constructor(private readonly tx: Prisma.TransactionClient) {}
+  constructor(private readonly tx: SqlClient) {}
 
   async findIdempotency(tenantId: string, operation: string, keyHash: string) {
     const rows = await this.tx.$queryRaw<SqlRow[]>(Prisma.sql`
@@ -246,7 +247,7 @@ class SqlTransaction implements ContractFinanceTransaction {
       FROM exec008_payment_allocations
       WHERE tenant_id = ${tenantId}::uuid AND obligation_id = ${obligationId}::uuid
     `);
-    return Number(rows[0]?.total ?? 0n);
+    return Number(rows[0]?.total ?? BigInt(0));
   }
 
   async findRefund(tenantId: string, refundId: string) {
@@ -280,7 +281,7 @@ class SqlTransaction implements ContractFinanceTransaction {
       FROM exec008_refunds
       WHERE tenant_id = ${tenantId}::uuid AND payment_id = ${paymentId}::uuid AND state IN ('REQUESTED','APPROVED','EXECUTED')
     `);
-    return Number(rows[0]?.total ?? 0n);
+    return Number(rows[0]?.total ?? BigInt(0));
   }
 }
 
