@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -21,6 +22,147 @@ import {
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function evidencePayloadHash(value: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(value ?? null))
+    .digest("hex");
+}
+
+async function recordExec008PaymentTruthInTx(
+  tx: any,
+  input: {
+    tenantId: string;
+    invoiceId: string;
+    invoiceTotalMinorUnits: number;
+    paymentId: string;
+    provider: string;
+    providerReference: string;
+    amountMinorUnits: number;
+    currency: string;
+    rawPayload?: unknown;
+  },
+) {
+  const currency = input.currency.toUpperCase();
+  const provider = input.provider.trim() || "UNKNOWN";
+  const providerReference = input.providerReference.trim();
+  if (!providerReference) {
+    throw new Error("Verified payment provider reference is required.");
+  }
+
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_financial_obligations (
+      tenant_id, source_type, source_id, currency, amount_minor, finalized,
+      resource_type, resource_id
+    ) VALUES (
+      ${input.tenantId}::uuid, 'INVOICE', ${input.invoiceId}, ${currency},
+      ${input.invoiceTotalMinorUnits}, true, 'INVOICE', ${input.invoiceId}
+    )
+    ON CONFLICT (tenant_id, source_type, source_id) DO NOTHING
+  `);
+
+  const obligations = await tx.$queryRaw<
+    Array<{ id: string; currency: string; amount_minor: bigint }>
+  >(Prisma.sql`
+    SELECT id, currency, amount_minor
+    FROM exec008_financial_obligations
+    WHERE tenant_id = ${input.tenantId}::uuid
+      AND source_type = 'INVOICE'
+      AND source_id = ${input.invoiceId}
+    FOR UPDATE
+  `);
+  const obligation = obligations[0];
+  if (!obligation) throw new Error("EXEC-008 invoice obligation is missing.");
+  if (
+    obligation.currency !== currency ||
+    Number(obligation.amount_minor) !== input.invoiceTotalMinorUnits
+  ) {
+    throw new Error("EXEC-008 invoice obligation conflicts with persisted invoice truth.");
+  }
+
+  const payloadHash = evidencePayloadHash(input.rawPayload);
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_payment_evidence (
+      tenant_id, provider, provider_reference, currency, amount_minor,
+      resource_type, resource_id, verified, verified_at, payload_hash
+    ) VALUES (
+      ${input.tenantId}::uuid, ${provider}, ${providerReference}, ${currency},
+      ${input.amountMinorUnits}, 'INVOICE', ${input.invoiceId}, true, now(), ${payloadHash}
+    )
+    ON CONFLICT (tenant_id, provider, provider_reference) DO NOTHING
+  `);
+
+  const evidenceRows = await tx.$queryRaw<
+    Array<{
+      id: string;
+      currency: string;
+      amount_minor: bigint;
+      resource_type: string;
+      resource_id: string;
+      verified: boolean;
+      verified_at: Date | null;
+    }>
+  >(Prisma.sql`
+    SELECT id, currency, amount_minor, resource_type, resource_id, verified, verified_at
+    FROM exec008_payment_evidence
+    WHERE tenant_id = ${input.tenantId}::uuid
+      AND provider = ${provider}
+      AND provider_reference = ${providerReference}
+    LIMIT 1
+  `);
+  const evidence = evidenceRows[0];
+  if (
+    !evidence ||
+    !evidence.verified ||
+    !evidence.verified_at ||
+    evidence.currency !== currency ||
+    Number(evidence.amount_minor) !== input.amountMinorUnits ||
+    evidence.resource_type !== "INVOICE" ||
+    evidence.resource_id !== input.invoiceId
+  ) {
+    throw new Error("EXEC-008 verified payment evidence conflicts with payment truth.");
+  }
+
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_payments (
+      id, tenant_id, evidence_id, currency, amount_minor,
+      resource_type, resource_id, completed_at
+    ) VALUES (
+      ${input.paymentId}::uuid, ${input.tenantId}::uuid, ${evidence.id}::uuid,
+      ${currency}, ${input.amountMinorUnits}, 'INVOICE', ${input.invoiceId}, now()
+    )
+    ON CONFLICT (tenant_id, evidence_id) DO NOTHING
+  `);
+
+  const execPayments = await tx.$queryRaw<
+    Array<{ id: string; currency: string; amount_minor: bigint; resource_id: string }>
+  >(Prisma.sql`
+    SELECT id, currency, amount_minor, resource_id
+    FROM exec008_payments
+    WHERE tenant_id = ${input.tenantId}::uuid
+      AND evidence_id = ${evidence.id}::uuid
+    LIMIT 1
+  `);
+  const execPayment = execPayments[0];
+  if (
+    !execPayment ||
+    execPayment.id !== input.paymentId ||
+    execPayment.currency !== currency ||
+    Number(execPayment.amount_minor) !== input.amountMinorUnits ||
+    execPayment.resource_id !== input.invoiceId
+  ) {
+    throw new Error("EXEC-008 payment identity conflicts with reconciled payment truth.");
+  }
+
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_payment_allocations (
+      tenant_id, payment_id, obligation_id, currency, amount_minor
+    ) VALUES (
+      ${input.tenantId}::uuid, ${execPayment.id}::uuid, ${obligation.id}::uuid,
+      ${currency}, ${input.amountMinorUnits}
+    )
+  `);
 }
 
 export async function completePaymentTransaction(input: {
@@ -53,6 +195,12 @@ export async function completePaymentTransaction(input: {
   }
 
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw(Prisma.sql`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${`${input.tenantId}:${input.transactionId}`}, 8)
+      )
+    `);
+
     const payment = await tx.paymentTransaction.findFirst({
       where: { id: input.transactionId, tenantId: input.tenantId },
       include: {
@@ -135,6 +283,18 @@ export async function completePaymentTransaction(input: {
         throw new Error("Payment exceeds the installment remaining balance.");
       }
     }
+
+    await recordExec008PaymentTruthInTx(tx, {
+      tenantId: input.tenantId,
+      invoiceId,
+      invoiceTotalMinorUnits: Math.round(invoiceTotal * 100),
+      paymentId: payment.id,
+      provider: payment.provider || "UNKNOWN",
+      providerReference: payment.providerReference || payment.id,
+      amountMinorUnits: Math.round(input.amountMinorUnits),
+      currency: input.currency,
+      rawPayload: input.rawPayload,
+    });
 
     const updatedPayment = await tx.paymentTransaction.update({
       where: { id: payment.id },
