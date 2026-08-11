@@ -1,9 +1,15 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
 import { ErrorCode } from "@/lib/errors";
 import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
 import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
+import {
+  ORGANIZATION_PERMISSION_KEYS,
+  type OrganizationPermissionKey,
+} from "@/lib/organization/contracts";
+import { WorkflowCommunicationService } from "@/lib/workflow-communication/service";
+import { SqlWorkflowCommunicationRepository } from "@/lib/workflow-communication/sql-repository";
 
 export async function GET(request: NextRequest) {
   return runWithExec003CookiePermission(
@@ -39,7 +45,15 @@ export async function POST(request: NextRequest) {
     async (session) => {
       try {
         const body = await request.json();
-        const { name, triggerEvent, actionsJson, isActive } = body;
+        const {
+          name,
+          triggerEvent,
+          actionsJson,
+          isActive,
+          approvalRequired = false,
+          approvalPermission = null,
+          scope = {},
+        } = body;
 
         if (!name || !triggerEvent || !actionsJson) {
           return NextResponse.json(
@@ -48,23 +62,83 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const workflow = await prisma.automationWorkflow.create({
-          data: {
-            tenantId: session.tenantId,
-            name,
+        let normalizedApprovalPermission: OrganizationPermissionKey | null = null;
+        if (approvalRequired) {
+          if (
+            typeof approvalPermission !== "string" ||
+            !ORGANIZATION_PERMISSION_KEYS.includes(
+              approvalPermission as OrganizationPermissionKey,
+            )
+          ) {
+            return NextResponse.json(
+              { error: "صلاحية الاعتماد المحددة غير صالحة." },
+              { status: 400 },
+            );
+          }
+          normalizedApprovalPermission = approvalPermission as OrganizationPermissionKey;
+        }
+
+        let actions: unknown = actionsJson;
+        if (typeof actionsJson === "string") {
+          try {
+            actions = JSON.parse(actionsJson);
+          } catch {
+            return NextResponse.json(
+              { error: "صيغة إجراءات سير العمل غير صالحة." },
+              { status: 400 },
+            );
+          }
+        }
+
+        const result = await rawPrisma.$transaction(async (tx) => {
+          const workflow = await tx.automationWorkflow.create({
+            data: {
+              tenantId: session.tenantId,
+              name,
+              triggerEvent,
+              actionsJson: JSON.stringify(actions),
+              isActive: isActive !== undefined ? Boolean(isActive) : true,
+              createdBy: session.userId,
+              updatedBy: session.userId,
+            },
+          });
+
+          const service = new WorkflowCommunicationService(
+            new SqlWorkflowCommunicationRepository(tx),
+          );
+          const version = await service.publishWorkflowVersion({
+            actor: {
+              tenantId: session.tenantId,
+              userId: session.userId,
+              assignments: [],
+            },
+            workflowId: workflow.id,
             triggerEvent,
-            actionsJson:
-              typeof actionsJson === "string"
-                ? actionsJson
-                : JSON.stringify(actionsJson),
-            isActive: isActive !== undefined ? isActive : true,
-            createdBy: session.userId,
-            updatedBy: session.userId,
-          },
+            actions,
+            approvalRequired: Boolean(approvalRequired),
+            approvalPermission: normalizedApprovalPermission,
+            resource: {
+              tenantId: session.tenantId,
+              branchId:
+                typeof scope.branchId === "string" ? scope.branchId : null,
+              departmentId:
+                typeof scope.departmentId === "string" ? scope.departmentId : null,
+              teamId:
+                typeof scope.teamId === "string" ? scope.teamId : null,
+              resourceType:
+                typeof scope.resourceType === "string"
+                  ? scope.resourceType
+                  : "AUTOMATION_WORKFLOW",
+              resourceId:
+                typeof scope.resourceId === "string" ? scope.resourceId : workflow.id,
+            },
+          });
+
+          return { workflow, version };
         });
 
         return NextResponse.json(
-          { success: true, data: workflow },
+          { success: true, data: result.workflow, version: result.version },
           { status: 201 },
         );
       } catch (error: any) {
