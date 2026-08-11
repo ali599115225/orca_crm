@@ -5,6 +5,7 @@ import type { OrganizationPermissionKey, OrganizationResourceScope } from "@/lib
 import type {
   CommunicationChannel,
   CommunicationEvent,
+  CommunicationPurpose,
   CommunicationThread,
   ConsentEvidence,
   ConsentState,
@@ -229,7 +230,7 @@ class SqlTx implements WorkflowCommunicationTransaction {
        ${value.providerIdentity}, ${value.providerIdentityHash}, ${value.direction}, ${value.purpose}, ${value.contentHash}, ${value.occurredAt})`;
   }
 
-  async latestConsent(tenantId: string, threadId: string, purpose: any) {
+  async latestConsent(tenantId: string, threadId: string, purpose: CommunicationPurpose) {
     const rows = await this.db.$queryRaw<any[]>`
       SELECT * FROM exec009_communication_consents
       WHERE tenant_id = ${tenantId}::uuid AND thread_id = ${threadId}::uuid AND purpose = ${purpose}
@@ -247,7 +248,10 @@ class SqlTx implements WorkflowCommunicationTransaction {
 }
 
 export class SqlWorkflowCommunicationRepository implements WorkflowCommunicationRepository {
+  constructor(private readonly externalClient?: Prisma.TransactionClient) {}
+
   async transaction<T>(work: (tx: WorkflowCommunicationTransaction) => Promise<T>): Promise<T> {
+    if (this.externalClient) return work(new SqlTx(this.externalClient));
     return rawPrisma.$transaction(async (tx) => work(new SqlTx(tx)));
   }
 }
