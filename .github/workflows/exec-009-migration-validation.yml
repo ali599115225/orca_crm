@@ -1,0 +1,93 @@
+name: EXEC-009 Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/exec-009-migration-validation.yml"
+      - "docs/zero-based/Z8/ORCA_Z8_EXEC_009_*.md"
+      - "lib/workflow-communication/**"
+      - "app/api/v1/automation/workflows/route.ts"
+      - "app/api/whatsapp/webhook/route.ts"
+      - "lib/whatsapp/send-service.ts"
+      - "prisma/migrations/20260811050000_exec_009_workflow_communication_truth/migration.sql"
+      - "tests/foundation/g5-exec-009-*.test.ts"
+      - "scripts/exec-009-postgres-integrity.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exec-009-migration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: PostgreSQL 16 disposable workflow/communication integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_exec009
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_exec009"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec009?sslmode=disable
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec009?sslmode=disable
+      PGPASSWORD: postgres
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify schema and client
+        run: |
+          npx prisma validate
+          npx prisma generate
+
+      - name: Build disposable baseline schema
+        run: |
+          mkdir -p artifacts
+          npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output artifacts/exec009-baseline.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f artifacts/exec009-baseline.sql
+
+      - name: Apply single EXEC-009 migration
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/20260811050000_exec_009_workflow_communication_truth/migration.sql
+
+      - name: Execute PostgreSQL integrity and concurrency probe
+        env:
+          EXEC009_POSTGRES_EVIDENCE_PATH: artifacts/exec009-postgres-evidence.json
+        run: node scripts/exec-009-postgres-integrity.mjs
+
+      - name: Static and focused EXEC-009 gates
+        env:
+          EXEC009_POSTGRES_EVIDENCE: artifacts/exec009-postgres-evidence.json
+        run: |
+          npm run lint
+          npm run typecheck
+          npx vitest run tests/foundation/g5-exec-009-workflow-communication.test.ts tests/foundation/g5-exec-009-schema-contract.test.ts tests/foundation/g5-exec-009-postgres-contract.test.ts
+          npx vitest run tests/foundation/g5-exec-004-organization-authority.test.ts tests/foundation/g5-exec-005-customer-identity-lifecycle.test.ts tests/foundation/g5-exec-006-schema-contract.test.ts tests/foundation/g5-exec-007-schema-contract.test.ts
+          npm run security:audit
+          npm run build
+
+      - name: Upload EXEC-009 database evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exec-009-migration-validation-evidence
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
