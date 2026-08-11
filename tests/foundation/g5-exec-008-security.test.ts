@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { requireContractFinanceAuthority } from "@/lib/contract-finance/authority";
-import { assertMoney, assertPositiveMoney } from "@/lib/contract-finance/contracts";
+import {
+  assertMoney,
+  assertPositiveMoney,
+  decimalToMinorUnits,
+} from "@/lib/contract-finance/contracts";
 import type { ContractFinanceActorContext, ScopedResource } from "@/lib/contract-finance/contracts";
 
 const tenantId = "11111111-1111-4111-8111-111111111111";
@@ -171,5 +177,35 @@ describe("EXEC-008 — security contracts", () => {
     expect(() => assertMoney({ currency: "SA", minorUnits: 100 })).toThrow();
     expect(() => assertMoney({ currency: "SAR", minorUnits: 10.5 })).toThrow();
     expect(() => assertPositiveMoney({ currency: "SAR", minorUnits: 0 })).toThrow();
+  });
+
+  it("converts authoritative decimal values to minor units without floating-point arithmetic", () => {
+    expect(decimalToMinorUnits("0.10")).toBe(10);
+    expect(decimalToMinorUnits("0.20")).toBe(20);
+    expect(decimalToMinorUnits("0.30")).toBe(30);
+    expect(decimalToMinorUnits("1250.07")).toBe(125007);
+    expect(decimalToMinorUnits(1250.07)).toBe(125007);
+    expect(() => decimalToMinorUnits("0.001")).toThrow(/two decimal places/i);
+    expect(() => decimalToMinorUnits(0.1 + 0.2)).toThrow(/two decimal places/i);
+
+    const recordPayment = readFileSync(
+      join(process.cwd(), "lib/domain/transaction-spine/record-payment.ts"),
+      "utf8",
+    );
+    expect(recordPayment).toContain("decimalToMinorUnits(amount)");
+    expect(recordPayment).toContain("targetTotalMinor");
+    expect(recordPayment).toContain("completedMinor");
+    expect(recordPayment).not.toContain("remaining + 0.01");
+  });
+
+  it("keeps conflicting verified-payment completion denial durably auditable", () => {
+    const reconciliation = readFileSync(
+      join(process.cwd(), "lib/payments/custom-payment-reconciliation.ts"),
+      "utf8",
+    );
+    expect(reconciliation).toContain("EXEC008_PAYMENT_COMPLETION_DENIED");
+    expect(reconciliation).toContain("await prisma.auditLog.create");
+    expect(reconciliation).toContain("providerReference: payment.providerReference");
+    expect(reconciliation).toMatch(/catch \(error\)[\s\S]*auditLog\.create[\s\S]*throw error/);
   });
 });
