@@ -44,11 +44,11 @@ describe("G4 — Page and operational contract registry", () => {
     expect(inventory.summary.apisWithoutDetectedMethods).toBe(0);
     expect(inventory.summary.normalizedReExportedApiMethods).toBe(1);
 
-    expect(registry.summary.totalContracts).toBe(359);
+    expect(registry.summary.totalContracts).toBe(360);
     expect(registry.summary.byKind).toEqual({
       API: 129,
       ERROR_STATE: 4,
-      LAYOUT: 4,
+      LAYOUT: 5,
       LOADING_STATE: 3,
       MODAL_OR_OVERLAY: 6,
       PAGE: 43,
@@ -58,7 +58,7 @@ describe("G4 — Page and operational contract registry", () => {
     expect(registry.summary.duplicateContractIds).toBe(0);
     expect(registry.summary.invalidPermissionKeys).toBe(0);
     expect(registry.summary.malformedContracts).toBe(0);
-    expect(registry.contracts).toHaveLength(359);
+    expect(registry.contracts).toHaveLength(360);
     expect(registry.contracts.every((contract: { coverageStatus: string }) => contract.coverageStatus === "RECORDED")).toBe(true);
   });
 
