@@ -280,3 +280,87 @@ END $$;
 CREATE TRIGGER "exec008_guard_refund_approval_trg"
 BEFORE UPDATE ON "exec008_refunds"
 FOR EACH ROW EXECUTE FUNCTION exec008_guard_refund_approval();
+
+-- Final hardening: finalized obligations are immutable; changes must be append-only corrections.
+CREATE OR REPLACE FUNCTION exec008_guard_finalized_obligation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF OLD."finalized" THEN
+    RAISE EXCEPTION 'EXEC008_FINALIZED_OBLIGATION_IMMUTABLE';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER "exec008_guard_finalized_obligation_trg"
+BEFORE UPDATE OR DELETE ON "exec008_financial_obligations"
+FOR EACH ROW EXECUTE FUNCTION exec008_guard_finalized_obligation();
+
+-- Corrections must refer to the same tenant/currency as the immutable original obligation.
+CREATE OR REPLACE FUNCTION exec008_guard_correction()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  obligation_currency text;
+BEGIN
+  SELECT "currency"
+    INTO obligation_currency
+    FROM "exec008_financial_obligations"
+   WHERE "tenant_id" = NEW."tenant_id"
+     AND "id" = NEW."obligation_id";
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC008_OBLIGATION_NOT_FOUND'; END IF;
+  IF obligation_currency <> NEW."currency" THEN RAISE EXCEPTION 'EXEC008_CURRENCY_MISMATCH'; END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER "exec008_guard_correction_trg"
+BEFORE INSERT ON "exec008_financial_corrections"
+FOR EACH ROW EXECUTE FUNCTION exec008_guard_correction();
+
+-- Reconciliation is derived from immutable original + append-only corrections + allocations.
+CREATE OR REPLACE FUNCTION exec008_guard_allocation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  obligation_currency text;
+  obligation_base bigint;
+  correction_total bigint;
+  obligation_net bigint;
+  obligation_resource_type text;
+  obligation_resource_id text;
+  payment_currency text;
+  payment_resource_type text;
+  payment_resource_id text;
+  already_allocated bigint;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW."tenant_id"::text || ':' || NEW."obligation_id"::text, 0));
+
+  SELECT "currency", "amount_minor", "resource_type", "resource_id"
+    INTO obligation_currency, obligation_base, obligation_resource_type, obligation_resource_id
+    FROM "exec008_financial_obligations"
+   WHERE "tenant_id" = NEW."tenant_id" AND "id" = NEW."obligation_id"
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC008_OBLIGATION_NOT_FOUND'; END IF;
+
+  SELECT "currency", "resource_type", "resource_id"
+    INTO payment_currency, payment_resource_type, payment_resource_id
+    FROM "exec008_payments"
+   WHERE "tenant_id" = NEW."tenant_id" AND "id" = NEW."payment_id";
+  IF NOT FOUND THEN RAISE EXCEPTION 'EXEC008_PAYMENT_NOT_FOUND'; END IF;
+
+  IF obligation_currency <> NEW."currency" OR payment_currency <> NEW."currency" THEN
+    RAISE EXCEPTION 'EXEC008_CURRENCY_MISMATCH';
+  END IF;
+  IF obligation_resource_type <> payment_resource_type OR obligation_resource_id <> payment_resource_id THEN
+    RAISE EXCEPTION 'EXEC008_SCOPE_MISMATCH';
+  END IF;
+
+  SELECT COALESCE(sum("amount_minor"),0)
+    INTO correction_total
+    FROM "exec008_financial_corrections"
+   WHERE "tenant_id" = NEW."tenant_id" AND "obligation_id" = NEW."obligation_id";
+  obligation_net := obligation_base + correction_total;
+
+  SELECT COALESCE(sum("amount_minor"),0) INTO already_allocated
+    FROM "exec008_payment_allocations"
+   WHERE "tenant_id" = NEW."tenant_id" AND "obligation_id" = NEW."obligation_id";
+  IF already_allocated + NEW."amount_minor" > obligation_net THEN
+    RAISE EXCEPTION 'EXEC008_OVER_ALLOCATION';
+  END IF;
+  RETURN NEW;
+END $$;
