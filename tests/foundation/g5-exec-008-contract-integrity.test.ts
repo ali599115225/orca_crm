@@ -267,4 +267,46 @@ describe("EXEC-008 — contract integrity", () => {
     expect(replay.value.id).toBe(first.value.id);
     expect(repository.versions.size).toBe(1);
   });
+
+  it("rejects conflicting activation idempotency payload without creating a second semantic result", async () => {
+    const repository = new ContractFixtureRepository();
+    const service = new ContractFinanceService(repository);
+    const version: ContractVersion = {
+      id: "99999999-9999-4999-8999-999999999999",
+      tenantId,
+      contractId,
+      version: 1,
+      previousVersionId: null,
+      templateVersionId: templateId,
+      templateContentHash: "template-hash-v7",
+      contentHash: "activation-conflict-hash",
+      contentSnapshot: "activation-conflict",
+      state: "SIGNED",
+      scope,
+      issuedAt: actor.now ?? null,
+      signedAt: actor.now ?? null,
+      acceptedAt: null,
+      activatedAt: null,
+    };
+    repository.versions.set(version.id, version);
+
+    await service.activateContractVersion({
+      actor,
+      contractVersionId: version.id,
+      scope,
+      idempotencyKey: "activate-conflict",
+    });
+
+    await expect(
+      service.activateContractVersion({
+        actor,
+        contractVersionId: version.id,
+        scope: { ...scope, resourceId: "different-contract" },
+        idempotencyKey: "activate-conflict",
+      }),
+    ).rejects.toThrow(/conflicting payload/i);
+
+    expect(repository.versions.size).toBe(1);
+    expect(repository.versions.get(version.id)?.state).toBe("ACTIVATED");
+  });
 });
