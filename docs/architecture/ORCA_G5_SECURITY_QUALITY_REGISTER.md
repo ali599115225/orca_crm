@@ -64,7 +64,7 @@ The priority rows reconcile exactly: `0 + 0 + 0 + 16 + 16 + 2 = 34`.
 
 | Dependency / control | Classification | Current handling |
 |---|---|---|
-| Static low-severity findings | `ACCEPTED_LOW_STATIC` | Retained under the production-audit threshold and CI gate. |
+| Runtime source findings | `RUNTIME_FINDINGS_CLEAR` | EXEC-011 removed the static `dangerouslySetInnerHTML` use from `app/login/LoginClient.tsx`; the current G5 runtime scan reports zero findings. |
 | `brace-expansion` | Reviewed override | Registered with ownership and removal trigger. |
 | `postcss` | Reviewed override | Covered by deterministic install and production audit. |
 
