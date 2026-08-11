@@ -218,7 +218,7 @@ export default function LoginClient({
       dir="ltr"
       className="orca-login-root relative min-h-[100svh] overflow-x-hidden bg-[var(--orca-ui-bg)] font-sans text-[var(--orca-ui-text-primary)]"
     >
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style>{`
         .orca-login-root {
           --login-shell: #ffffff;
           --login-card: rgba(255, 255, 255, .94);
@@ -523,7 +523,7 @@ export default function LoginClient({
             min-height: 0;
           }
         }
-      `}} />
+      `}</style>
 
       <div className="orca-login-shell" aria-hidden="true" />
       <div className="orca-login-visual" aria-hidden="true">
