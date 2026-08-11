@@ -19,7 +19,7 @@ import type {
 } from "@/lib/contract-finance/repository";
 
 type SqlRow = Record<string, unknown>;
-type SqlClient = Pick<typeof prisma, "$queryRaw" | "$executeRaw">;
+export type SqlClient = Pick<typeof prisma, "$queryRaw" | "$executeRaw">;
 
 const text = (value: unknown) => String(value);
 const nullableText = (value: unknown) => (value == null ? null : String(value));
@@ -286,7 +286,13 @@ class SqlTransaction implements ContractFinanceTransaction {
 }
 
 export class SqlContractFinanceRepository implements ContractFinanceRepository {
+  constructor(private readonly existingTransaction?: SqlClient) {}
+
   async transaction<T>(work: (transaction: ContractFinanceTransaction) => Promise<T>): Promise<T> {
+    if (this.existingTransaction) {
+      return work(new SqlTransaction(this.existingTransaction));
+    }
+
     return prisma.$transaction(async (tx) => work(new SqlTransaction(tx)), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
