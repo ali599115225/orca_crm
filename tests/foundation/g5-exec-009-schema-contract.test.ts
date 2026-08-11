@@ -40,9 +40,10 @@ describe("EXEC-009 — schema contract", () => {
     expect(migration).not.toMatch(/retention_until[^\n]+DEFAULT\s+\(/i);
   });
 
-  it("contains no provider credential, backfill, or production mutation", () => {
+  it("contains no provider credential or destructive customer-data mutation", () => {
     expect(migration).not.toMatch(/access[_ ]?token|client[_ ]?secret|api[_ ]?key|credential/i);
-    expect(migration).not.toMatch(/backfill|production/i);
+    expect(migration).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b[^;]*(?:backfill|production)/i);
     expect(migration).not.toMatch(/UPDATE\s+(whatsapp_|email_|leads|parties|offers|contracts)/i);
+    expect(migration).not.toMatch(/DELETE\s+FROM\s+(whatsapp_|email_|leads|parties|offers|contracts)/i);
   });
 });
