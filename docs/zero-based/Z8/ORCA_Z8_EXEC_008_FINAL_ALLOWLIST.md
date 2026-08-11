@@ -2,9 +2,9 @@
 
 ## Status
 
-`FINAL ALLOWLIST FROZEN / NO IMPLEMENTATION AUTHORITY`
+`FINAL ALLOWLIST AMENDED / IMPLEMENTATION AUTHORITY REMAINS GRANTED`
 
-This allowlist defines the only repository paths that may be modified by a future EXEC-008 implementation branch after separate owner authorization. Presence on this list is permission to consider a path inside the package, not authority to modify it now.
+This allowlist defines the only repository paths that may be modified by EXEC-008 implementation. Presence on this list is permission to consider a path inside the package; actual modification remains limited to what is necessary to enforce the frozen EXEC-008 invariants.
 
 ## Governance artifacts
 
@@ -35,34 +35,45 @@ This allowlist defines the only repository paths that may be modified by a futur
 19. `lib/domain/transaction-spine/types.ts`
 20. `lib/domain/transaction-spine/record-payment.ts`
 21. `lib/domain/transaction-spine/early-settlement.ts`
-22. `lib/payments/custom-payment-reconciliation.ts`
-23. `lib/accounting/posting-engine.ts`
+22. `lib/domain/transaction-spine/issue-contract.ts`
+23. `lib/domain/transaction-spine/payment-reconciliation.ts`
+24. `lib/payments/custom-payment-reconciliation.ts`
+25. `lib/accounting/posting-engine.ts`
 
 ## New bounded EXEC-008 domain module
 
-24. `lib/contract-finance/contracts.ts`
-25. `lib/contract-finance/authority.ts`
-26. `lib/contract-finance/repository.ts`
-27. `lib/contract-finance/service.ts`
-28. `lib/contract-finance/sql-repository.ts`
+26. `lib/contract-finance/contracts.ts`
+27. `lib/contract-finance/authority.ts`
+28. `lib/contract-finance/repository.ts`
+29. `lib/contract-finance/service.ts`
+30. `lib/contract-finance/sql-repository.ts`
 
 ## Schema and disposable validation
 
-29. `prisma/schema.prisma`
-30. `prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql`
-31. `scripts/exec-008-postgres-integrity.mjs`
+31. `prisma/schema.prisma`
+32. `prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql`
+33. `scripts/exec-008-postgres-integrity.mjs`
 
 ## Direct evidence
 
-32. `tests/foundation/g5-exec-008-contract-integrity.test.ts`
-33. `tests/foundation/g5-exec-008-financial-integrity.test.ts`
-34. `tests/foundation/g5-exec-008-security.test.ts`
-35. `tests/foundation/g5-exec-008-schema-contract.test.ts`
-36. `tests/foundation/g5-exec-008-postgres-contract.test.ts`
+34. `tests/foundation/g5-exec-008-contract-integrity.test.ts`
+35. `tests/foundation/g5-exec-008-financial-integrity.test.ts`
+36. `tests/foundation/g5-exec-008-security.test.ts`
+37. `tests/foundation/g5-exec-008-schema-contract.test.ts`
+38. `tests/foundation/g5-exec-008-postgres-contract.test.ts`
+
+## Scope amendment — 2026-08-11
+
+Owner approved a narrow amendment from 36 to 38 paths after implementation evidence proved that atomic wiring cannot be completed safely without touching the actual transaction sources of truth:
+
+- `lib/domain/transaction-spine/issue-contract.ts` is the transaction boundary that creates the authoritative contract.
+- `lib/domain/transaction-spine/payment-reconciliation.ts` is the transaction boundary that marks verified payments complete and updates invoice/receipt/accounting truth.
+
+The amendment adds these two paths only. The frozen 43-case Test Ledger is unchanged. No second migration, provider surface, UI path, package dependency file, or general CI workflow is admitted by this amendment.
 
 ## Allowlist rules
 
-- Exactly these 36 paths are admitted to the package boundary.
+- Exactly these 38 paths are admitted to the package boundary.
 - Existing files are modified only when direct wiring or compatibility correction is necessary to enforce a frozen EXEC-008 invariant.
 - New files must use the exact paths above; alternate names or adjacent helpers are not implicitly allowed.
 - A second migration, workflow, script or test file is not implicitly allowed. If implementation proves an additional path is required, execution stops and this allowlist must be amended through a governance-only change before that path is touched.
