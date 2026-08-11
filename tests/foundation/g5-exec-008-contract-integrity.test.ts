@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type {
   ContractFinanceActorContext,
@@ -39,6 +41,34 @@ const actor: ContractFinanceActorContext = {
   now: new Date("2026-08-11T00:00:00.000Z"),
 };
 
+function source(relativePath: string): string {
+  return readFileSync(join(process.cwd(), relativePath), "utf8");
+}
+
+function contractVersion(
+  id: string,
+  state: ContractVersion["state"],
+  version = 1,
+): ContractVersion {
+  return {
+    id,
+    tenantId,
+    contractId,
+    version,
+    previousVersionId: null,
+    templateVersionId: templateId,
+    templateContentHash: "template-hash-v7",
+    contentHash: `hash-${version}`,
+    contentSnapshot: `terms-${version}`,
+    state,
+    scope,
+    issuedAt: actor.now ?? null,
+    signedAt: state === "SIGNED" || state === "ACTIVATED" ? actor.now ?? null : null,
+    acceptedAt: null,
+    activatedAt: state === "ACTIVATED" ? actor.now ?? null : null,
+  };
+}
+
 class ContractFixtureRepository implements ContractFinanceRepository {
   readonly idempotency = new Map<string, IdempotencyRecord>();
   readonly versions = new Map<string, ContractVersion>();
@@ -53,9 +83,11 @@ class ContractFixtureRepository implements ContractFinanceRepository {
   };
 
   private current(): ContractVersion | null {
-    return [...this.versions.values()]
-      .filter((entry) => entry.contractId === contractId)
-      .sort((a, b) => b.version - a.version)[0] ?? null;
+    return (
+      [...this.versions.values()]
+        .filter((entry) => entry.contractId === contractId)
+        .sort((a, b) => b.version - a.version)[0] ?? null
+    );
   }
 
   async transaction<T>(work: (tx: ContractFinanceTransaction) => Promise<T>): Promise<T> {
@@ -77,17 +109,25 @@ class ContractFixtureRepository implements ContractFinanceRepository {
       async findCurrentContractVersion(t: string, id: string) {
         return t === tenantId && id === contractId ? self.current() : null;
       },
-      async insertContractVersion(version: ContractVersion) {
-        self.versions.set(version.id, version);
+      async insertContractVersion(value: ContractVersion) {
+        self.versions.set(value.id, value);
       },
-      async markContractVersionSigned(input: { tenantId: string; contractVersionId: string; signedAt: Date }) {
+      async markContractVersionSigned(input: {
+        tenantId: string;
+        contractVersionId: string;
+        signedAt: Date;
+      }) {
         const value = self.versions.get(input.contractVersionId);
         if (!value || value.tenantId !== input.tenantId) throw new Error("missing");
         const next = { ...value, state: "SIGNED" as const, signedAt: input.signedAt };
         self.versions.set(next.id, next);
         return next;
       },
-      async markContractVersionActivated(input: { tenantId: string; contractVersionId: string; activatedAt: Date }) {
+      async markContractVersionActivated(input: {
+        tenantId: string;
+        contractVersionId: string;
+        activatedAt: Date;
+      }) {
         const value = self.versions.get(input.contractVersionId);
         if (!value || value.tenantId !== input.tenantId) throw new Error("missing");
         const next = { ...value, state: "ACTIVATED" as const, activatedAt: input.activatedAt };
@@ -183,31 +223,10 @@ describe("EXEC-008 — contract integrity", () => {
   it("denies signing a stale version and signs only the exact current issued version", async () => {
     const repository = new ContractFixtureRepository();
     const service = new ContractFinanceService(repository);
-
-    const stale: ContractVersion = {
-      id: "66666666-6666-4666-8666-666666666666",
-      tenantId,
-      contractId,
-      version: 1,
-      previousVersionId: null,
-      templateVersionId: templateId,
-      templateContentHash: "template-hash-v7",
-      contentHash: "hash-1",
-      contentSnapshot: "old",
-      state: "ISSUED",
-      scope,
-      issuedAt: actor.now ?? null,
-      signedAt: null,
-      acceptedAt: null,
-      activatedAt: null,
-    };
+    const stale = contractVersion("66666666-6666-4666-8666-666666666666", "ISSUED", 1);
     const current: ContractVersion = {
-      ...stale,
-      id: "77777777-7777-4777-8777-777777777777",
-      version: 2,
+      ...contractVersion("77777777-7777-4777-8777-777777777777", "ISSUED", 2),
       previousVersionId: stale.id,
-      contentHash: "hash-2",
-      contentSnapshot: "current",
     };
     repository.versions.set(stale.id, stale);
     repository.versions.set(current.id, current);
@@ -234,23 +253,7 @@ describe("EXEC-008 — contract integrity", () => {
   it("activates one eligible current version and replays the same activation result", async () => {
     const repository = new ContractFixtureRepository();
     const service = new ContractFinanceService(repository);
-    const version: ContractVersion = {
-      id: "88888888-8888-4888-8888-888888888888",
-      tenantId,
-      contractId,
-      version: 1,
-      previousVersionId: null,
-      templateVersionId: templateId,
-      templateContentHash: "template-hash-v7",
-      contentHash: "signed-hash",
-      contentSnapshot: "signed",
-      state: "SIGNED",
-      scope,
-      issuedAt: actor.now ?? null,
-      signedAt: actor.now ?? null,
-      acceptedAt: null,
-      activatedAt: null,
-    };
+    const version = contractVersion("88888888-8888-4888-8888-888888888888", "SIGNED");
     repository.versions.set(version.id, version);
     const command = {
       actor,
@@ -268,26 +271,28 @@ describe("EXEC-008 — contract integrity", () => {
     expect(repository.versions.size).toBe(1);
   });
 
+  it("rejects ineligible activation state before any activation mutation", async () => {
+    const repository = new ContractFixtureRepository();
+    const service = new ContractFinanceService(repository);
+    const version = contractVersion("89898989-8989-4898-8989-898989898989", "ISSUED");
+    repository.versions.set(version.id, version);
+
+    await expect(
+      service.activateContractVersion({
+        actor,
+        contractVersionId: version.id,
+        scope,
+        idempotencyKey: "activate-ineligible",
+      }),
+    ).rejects.toThrow(/not eligible for activation/i);
+    expect(repository.versions.get(version.id)?.state).toBe("ISSUED");
+    expect(repository.idempotency.size).toBe(0);
+  });
+
   it("rejects conflicting activation idempotency payload without creating a second semantic result", async () => {
     const repository = new ContractFixtureRepository();
     const service = new ContractFinanceService(repository);
-    const version: ContractVersion = {
-      id: "99999999-9999-4999-8999-999999999999",
-      tenantId,
-      contractId,
-      version: 1,
-      previousVersionId: null,
-      templateVersionId: templateId,
-      templateContentHash: "template-hash-v7",
-      contentHash: "activation-conflict-hash",
-      contentSnapshot: "activation-conflict",
-      state: "SIGNED",
-      scope,
-      issuedAt: actor.now ?? null,
-      signedAt: actor.now ?? null,
-      acceptedAt: null,
-      activatedAt: null,
-    };
+    const version = contractVersion("99999999-9999-4999-8999-999999999999", "SIGNED");
     repository.versions.set(version.id, version);
 
     await service.activateContractVersion({
@@ -308,5 +313,54 @@ describe("EXEC-008 — contract integrity", () => {
 
     expect(repository.versions.size).toBe(1);
     expect(repository.versions.get(version.id)?.state).toBe("ACTIVATED");
+  });
+
+  it("binds the runtime signing entry point to persisted EXEC-004 assignments and the EXEC-008 service", () => {
+    const signSource = source("lib/domain/transaction-spine/sign-contract.ts");
+
+    expect(signSource).toContain("user_scope_assignments");
+    expect(signSource).toContain("SqlContractFinanceRepository");
+    expect(signSource).toContain("ContractFinanceService");
+    expect(signSource).toContain("signContractVersion");
+    expect(signSource).toContain("activateContractVersion");
+    expect(signSource).toContain("SqlContractFinanceRepository(tx)");
+    expect(signSource).not.toMatch(/securityRole:\s*["'](?:PLATFORM_OWNER|SYSTEM_ADMINISTRATOR)["']/);
+  });
+
+  it("preserves immutable EXEC-008 evidence across cancel, restructure, and early-settlement boundaries", () => {
+    const migration = source(
+      "prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql",
+    );
+    const cancelRoute = source("app/api/v1/contracts/[id]/cancel/route.ts");
+    const restructureRoute = source("app/api/v1/contracts/[id]/restructure/route.ts");
+    const settlementRoute = source("app/api/v1/contracts/[id]/early-settlement/route.ts");
+    const settlement = source("lib/domain/transaction-spine/early-settlement.ts");
+
+    expect(migration).toContain("exec008_contract_version_immutable_fields");
+    expect(migration).toContain("EXEC008_CONTRACT_VERSION_IMMUTABLE");
+    for (const lifecycleSource of [cancelRoute, restructureRoute, settlementRoute, settlement]) {
+      expect(lifecycleSource).not.toMatch(/UPDATE\s+exec008_contract_versions|DELETE\s+FROM\s+exec008_contract_versions/i);
+    }
+  });
+
+  it("keeps EXEC-005 identity, EXEC-006 reservation, and EXEC-007 accepted-offer truth upstream", () => {
+    const issueSource = source("lib/domain/transaction-spine/issue-contract.ts");
+    const signSource = source("lib/domain/transaction-spine/sign-contract.ts");
+    const acceptOfferSource = source("lib/domain/transaction-spine/accept-offer.ts");
+
+    expect(issueSource).toContain("buyerPhoneHash");
+    expect(issueSource).toContain("hashPhone");
+    expect(issueSource).not.toContain("tx.contact.update");
+    expect(issueSource).not.toContain("prisma.contact.update");
+
+    expect(issueSource).toContain("reservationExpiresAt");
+    expect(signSource).toContain("Contract reservation has expired.");
+
+    const acceptedEvent = acceptOfferSource.indexOf('eventType: "offer.accepted"');
+    const issuedEvent = acceptOfferSource.indexOf('eventType: "contract.issued"');
+    expect(acceptedEvent).toBeGreaterThanOrEqual(0);
+    expect(issuedEvent).toBeGreaterThan(acceptedEvent);
+    expect(acceptOfferSource).toContain("offerId: offer.id");
+    expect(acceptOfferSource).toContain("status: OFFER_STATUS.ACCEPTED");
   });
 });
