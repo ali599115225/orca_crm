@@ -101,6 +101,7 @@ export type CommunicationEvent = Readonly<{
   id: string;
   tenantId: string;
   threadId: string;
+  channel: CommunicationChannel;
   providerIdentity: string;
   providerIdentityHash: string;
   direction: "INBOUND" | "OUTBOUND";
@@ -128,12 +129,14 @@ export interface WorkflowCommunicationTransaction {
   findLatestWorkflowVersion(tenantId: string, workflowId: string): Promise<WorkflowDefinitionVersion | null>;
   insertWorkflowVersion(value: WorkflowDefinitionVersion): Promise<void>;
   findWorkflowVersion(tenantId: string, versionId: string): Promise<WorkflowDefinitionVersion | null>;
+  findRun(tenantId: string, runId: string): Promise<WorkflowRun | null>;
   findRunByKey(tenantId: string, keyHash: string): Promise<WorkflowRun | null>;
   insertRun(value: WorkflowRun): Promise<void>;
   updateRun(value: WorkflowRun): Promise<void>;
   insertAttempt(value: WorkflowAttempt): Promise<void>;
   insertEscalation(value: WorkflowEscalation): Promise<void>;
   findThread(tenantId: string, channel: CommunicationChannel, identityHash: string): Promise<CommunicationThread | null>;
+  findThreadById(tenantId: string, threadId: string): Promise<CommunicationThread | null>;
   insertThread(value: CommunicationThread): Promise<void>;
   updateThread(value: CommunicationThread): Promise<void>;
   findCommunicationEventByProviderHash(tenantId: string, channel: CommunicationChannel, providerIdentityHash: string): Promise<CommunicationEvent | null>;
