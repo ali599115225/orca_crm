@@ -1,7 +1,8 @@
-# ORCA Z8 — EXEC-010 Frozen-Test Candidate Ledger (Draft)
+# ORCA Z8 — EXEC-010 Frozen Test Ledger
 
-- Status: `PRE-FREEZE DRAFT / OWNER DECISIONS PENDING`
+- Status: `FROZEN / OWNER-APPROVED SCOPE`
 - Package: `EXEC-010`
+- Owner decisions: `D10-01 through D10-08 APPROVED`
 
 ## A. Document boundary — 12
 
@@ -80,6 +81,6 @@
 
 ## Count
 
-Candidate ledger: **50 behavioral contracts**.
+Frozen ledger: **50 behavioral contracts**.
 
-PASS requires direct behavior or disposable PostgreSQL evidence appropriate to the requirement. Structural assertions may supplement but not substitute behavioral evidence. Scope Freeze cannot occur until D10-01 through D10-08 are owner-approved.
+PASS requires direct behavior or disposable PostgreSQL evidence appropriate to the requirement. Structural assertions may supplement but not substitute behavioral evidence.
