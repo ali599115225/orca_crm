@@ -46,6 +46,8 @@ const ids = {
   refundA: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   refundB: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   correction: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  activationObligationA: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  activationObligationB: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
 };
 
 const postgresVersionNum = Number(psql("SHOW server_version_num"));
@@ -94,6 +96,39 @@ UPDATE exec008_financial_corrections SET reason='mutated' WHERE id='${ids.correc
 `);
 if (correctionMutation.ok || !/EXEC008_APPEND_ONLY/.test(correctionMutation.stderr)) {
   throw new Error("Correction append-only guard did not deny mutation.");
+}
+
+const activationObligationSql = (id) => `
+BEGIN;
+INSERT INTO exec008_financial_obligations
+  (id, tenant_id, source_type, source_id, currency, amount_minor, corrected_minor, finalized, resource_type, resource_id)
+VALUES
+  ('${id}', '${ids.tenant}', 'CONTRACT_ACTIVATION', 'contract-ci-1', 'SAR', 250000, 0, true, 'CONTRACT', 'contract-ci-1');
+SELECT pg_sleep(0.25);
+COMMIT;
+`;
+const activationObligationRace = await Promise.all([
+  psqlAttempt(activationObligationSql(ids.activationObligationA)),
+  psqlAttempt(activationObligationSql(ids.activationObligationB)),
+]);
+const activationObligationSuccesses = activationObligationRace.filter((result) => result.ok).length;
+const activationObligationFailures = activationObligationRace.filter((result) => !result.ok);
+if (
+  activationObligationSuccesses !== 1 ||
+  activationObligationFailures.length !== 1 ||
+  !/duplicate key|unique constraint/i.test(activationObligationFailures[0].stderr)
+) {
+  throw new Error(`Activation obligation race guard failed: ${JSON.stringify(activationObligationRace)}`);
+}
+const activationObligationCount = Number(psql(`
+SELECT count(*)
+FROM exec008_financial_obligations
+WHERE tenant_id='${ids.tenant}'
+  AND source_type='CONTRACT_ACTIVATION'
+  AND source_id='contract-ci-1'
+`));
+if (activationObligationCount !== 1) {
+  throw new Error(`Expected one activation obligation, got ${activationObligationCount}`);
 }
 
 const allocationSql = (id) => `
@@ -164,6 +199,8 @@ const evidence = {
   tests: {
     templateImmutable: true,
     correctionAppendOnly: true,
+    activationObligationConcurrencyBounded: true,
+    activationObligationCount,
     allocationConcurrencyBounded: true,
     allocatedMinor,
     refundConcurrencyBounded: true,
