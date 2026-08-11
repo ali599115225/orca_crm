@@ -31,7 +31,7 @@ function evidencePayloadHash(value: unknown): string {
 }
 
 async function recordExec008PaymentTruthInTx(
-  tx: any,
+  tx: Pick<typeof prisma, "$queryRaw" | "$executeRaw">,
   input: {
     tenantId: string;
     invoiceId: string;
