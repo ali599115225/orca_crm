@@ -410,7 +410,7 @@ describe("EXEC-009 — communication identity and consent truth", () => {
 });
 
 describe("EXEC-009 — sealed boundary regressions", () => {
-  it("consumes EXEC-004 authority and keeps provider activation outside the package", () => {
+  it("consumes EXEC-004 authority, preserves EXEC-003 workflow mutation boundary, and keeps provider activation outside the package", () => {
     const serviceSource = readFileSync(join(process.cwd(), "lib/workflow-communication/service.ts"), "utf8");
     const sendSource = readFileSync(join(process.cwd(), "lib/whatsapp/send-service.ts"), "utf8");
     const webhookSource = readFileSync(join(process.cwd(), "app/api/whatsapp/webhook/route.ts"), "utf8");
@@ -421,8 +421,9 @@ describe("EXEC-009 — sealed boundary regressions", () => {
     expect(sendSource).toContain('status: "pending"');
     expect(webhookSource).toContain("metaMessageId");
     expect(webhookSource).toContain("dedupeKey");
-    expect(workflowRoute).toContain("rawPrisma.$transaction");
-    expect(workflowRoute).toContain("publishWorkflowVersion");
+    expect(workflowRoute).toContain("runWithExec003CookiePermission");
+    expect(workflowRoute).toContain("automationWorkflow.create");
+    expect(workflowRoute).not.toContain("WorkflowCommunicationService");
   });
 
   it("does not overwrite upstream EXEC-005/006/007/008 truth", () => {
