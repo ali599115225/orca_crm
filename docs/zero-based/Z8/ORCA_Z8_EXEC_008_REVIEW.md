@@ -94,9 +94,9 @@ Human/independent review that requires manual human review remains deferred to t
 
 All frozen ledger entries are mapped: **43/43**.
 
-- `PASS`: 31
-- `PARTIAL`: 7
-- `PENDING`: 5
+- `PASS`: 29
+- `PARTIAL`: 8
+- `PENDING`: 6
 - Unclassified: 0
 
 The mapping is complete, but technical closure is **not** yet authorized because `PARTIAL` and `PENDING` items remain.
