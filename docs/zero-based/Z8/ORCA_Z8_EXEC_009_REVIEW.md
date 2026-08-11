@@ -1,19 +1,36 @@
-# ORCA Z8 — EXEC-009 Implementation Evidence Review
+# ORCA Z8 — EXEC-009 Technical Closure Review
 
 ## Status
 
-`IMPLEMENTATION IN PROGRESS / 50 OF 50 FROZEN LEDGER ITEMS MAPPED / FINAL GATES PENDING`
+`EXEC-009 TECHNICALLY CLOSED / 50 OF 50 FROZEN LEDGER ITEMS PASS`
 
-Human/independent review that requires manual human review is intentionally deferred to the pre-launch review gate. This document reconciles executable evidence only.
+Human/independent review that requires manual human review remains intentionally deferred to the pre-launch review gate. This document reconciles executable evidence only. This closure status is valid only when the commit containing this document passes both ORCA CI and EXEC-009 Migration Validation on the same exact HEAD.
+
+## Pre-closure validated implementation head
+
+`68d74a9945b3f677a7d3e34028709fc460bead4d`
+
+Validated on that exact implementation head:
+
+- ORCA CI #793 — SUCCESS
+- EXEC-009 Migration Validation #5 — SUCCESS
+- PostgreSQL 16 disposable integrity/concurrency probe — PASS
+- repository governance lint — PASS
+- TypeScript — PASS
+- production dependency audit — PASS
+- G6 isolated recovery drill — PASS
+- sealed EXEC-003 workflow mutation/evidence boundary — PASS
+
+The final documentation-only closure commit must repeat the two package gates on its own exact HEAD before this record is treated as effective.
 
 ## Evidence sources
 
 - `lib/workflow-communication/contracts.ts`
 - `lib/workflow-communication/service.ts`
 - `lib/workflow-communication/sql-repository.ts`
-- `app/api/v1/automation/workflows/route.ts`
-- `app/api/whatsapp/webhook/route.ts`
-- `lib/whatsapp/send-service.ts`
+- sealed `app/api/v1/automation/workflows/route.ts` boundary retained unchanged from the central execution base
+- existing `app/api/whatsapp/webhook/route.ts` provider evidence
+- existing `lib/whatsapp/send-service.ts` provider evidence
 - `prisma/migrations/20260811050000_exec_009_workflow_communication_truth/migration.sql`
 - `tests/foundation/g5-exec-009-workflow-communication.test.ts`
 - `tests/foundation/g5-exec-009-schema-contract.test.ts`
@@ -23,99 +40,97 @@ Human/independent review that requires manual human review is intentionally defe
 
 ## Frozen-ledger reconciliation
 
-### Workflow definition and run truth — 13 mapped
+### Workflow definition and run truth — 13 PASS
 
 | ID | Status | Evidence |
 |---|---|---|
-| E9-W01 | PASS-CANDIDATE | `publishWorkflowVersion` creates immutable version 1; PostgreSQL immutability trigger. |
-| E9-W02 | PASS-CANDIDATE | changed definition creates version N+1 while prior row remains immutable. |
-| E9-W03 | PASS-CANDIDATE | run persists exact `workflow_version_id`. |
-| E9-W04 | PASS-CANDIDATE | direct test edits workflow after run creation and verifies pinned version remains unchanged. |
-| E9-W05 | PASS-CANDIDATE | same idempotency key/payload replays one run. |
-| E9-W06 | PASS-CANDIDATE | conflicting idempotency payload denied. |
-| E9-W07 | PASS-CANDIDATE | unique tenant/idempotency hash + concurrency proof bounds duplicate trigger truth. |
-| E9-W08 | PASS-CANDIDATE | service and PostgreSQL reject timeout-to-success. |
-| E9-W09 | PASS-CANDIDATE | bounded retry budget and retry scheduling direct test. |
-| E9-W10 | PASS-CANDIDATE | non-retriable failure becomes terminal FAILED without blind retry. |
-| E9-W11 | PASS-CANDIDATE | exhausted retriable failure becomes DEAD_LETTER. |
-| E9-W12 | PASS-CANDIDATE | append-only attempt evidence + retained terminal error/state. |
-| E9-W13 | PASS-CANDIDATE | PostgreSQL concurrent idempotency-key race allows one persisted semantic run. |
+| E9-W01 | PASS | `publishWorkflowVersion` creates immutable version 1; PostgreSQL immutability trigger protects persisted version truth. |
+| E9-W02 | PASS | changed definition creates version N+1 while prior version remains preserved. |
+| E9-W03 | PASS | run persists exact `workflow_version_id`. |
+| E9-W04 | PASS | direct test changes definition after run creation and verifies pinned version remains unchanged. |
+| E9-W05 | PASS | same idempotency key/payload replays one run. |
+| E9-W06 | PASS | conflicting idempotency payload fails closed. |
+| E9-W07 | PASS | unique tenant/idempotency hash plus PostgreSQL race proof bounds duplicate run truth. |
+| E9-W08 | PASS | service and PostgreSQL reject timeout-to-success. |
+| E9-W09 | PASS | bounded retry budget and retry scheduling are directly tested. |
+| E9-W10 | PASS | non-retriable failure becomes terminal FAILED without blind retry. |
+| E9-W11 | PASS | exhausted retriable failure becomes DEAD_LETTER. |
+| E9-W12 | PASS | append-only attempt evidence retains failure reason and terminal state. |
+| E9-W13 | PASS | PostgreSQL concurrent idempotency-key race permits one persisted semantic run. |
 
-### Approval and escalation — 10 mapped
-
-| ID | Status | Evidence |
-|---|---|---|
-| E9-A01 | PASS-CANDIDATE | governed version stores explicit approval permission/resource; approval invokes EXEC-004 evaluator. |
-| E9-A02 | PASS-CANDIDATE | empty/self initiator cannot approve; DB requires requested actor identity. |
-| E9-A03 | PASS-CANDIDATE | service self-approval denial + DB check. |
-| E9-A04 | PASS-CANDIDATE | tenant-scoped lookup makes wrong-tenant approver unable to resolve run. |
-| E9-A05 | PASS-CANDIDATE | wrong branch, expired and missing assignments fail via EXEC-004. |
-| E9-A06 | PASS-CANDIDATE | independent exact-scope GENERAL_MANAGER approval succeeds for `discount.approve`. |
-| E9-A07 | PASS-CANDIDATE | same approved actor replay returns persisted approval state. |
-| E9-A08 | PASS-CANDIDATE | another/non-matching approval after state transition fails closed. |
-| E9-A09 | PASS-CANDIDATE | DEAD_LETTER creates separate escalation record. |
-| E9-A10 | PASS-CANDIDATE | failed/dead-letter run remains terminal and cannot be rewritten to success. |
-
-### Communication identity and thread truth — 10 mapped
+### Approval and escalation — 10 PASS
 
 | ID | Status | Evidence |
 |---|---|---|
-| E9-C01 | PASS-CANDIDATE | tenant+channel+provider identity hash required; existing webhook also carries Meta message identity. |
-| E9-C02 | PASS-CANDIDATE | exact provider identity replay returns one event; DB uniqueness and concurrency proof. |
-| E9-C03 | PASS-CANDIDATE | same provider identity with conflicting content/thread is denied. |
-| E9-C04 | PASS-CANDIDATE | newly observed sender thread is `UNKNOWN`, `partyId=null`; no customer identity is asserted by EXEC-009. |
-| E9-C05 | PASS-CANDIDATE | multiple candidate party identities produce `AMBIGUOUS`, `partyId=null`. |
-| E9-C06 | PASS-CANDIDATE | exactly one candidate produces attributable tenant-scoped verified party binding. |
-| E9-C07 | PASS-CANDIDATE | thread ID/identity hash exist independently from optional party identity. |
-| E9-C08 | PASS-CANDIDATE | cross-tenant event/thread linkage rejected by DB trigger. |
-| E9-C09 | PASS-CANDIDATE | channel, direction, purpose and provider identity are explicit event fields. |
-| E9-C10 | PASS-CANDIDATE | existing WhatsApp send persists provider-accepted send as `pending`, not delivered/success evidence. |
+| E9-A01 | PASS | governed version stores explicit approval permission/resource; approval invokes EXEC-004 evaluator. |
+| E9-A02 | PASS | missing/self initiator evidence fails closed. |
+| E9-A03 | PASS | service self-approval denial plus PostgreSQL no-self-approval constraint. |
+| E9-A04 | PASS | tenant-scoped lookup makes wrong-tenant approver unable to resolve run. |
+| E9-A05 | PASS | wrong scope, expired/missing assignment and disabled required service fail via EXEC-004. |
+| E9-A06 | PASS | independent exact-scope authorized approver succeeds with required service enabled. |
+| E9-A07 | PASS | same approved actor replay returns persisted approval state. |
+| E9-A08 | PASS | conflicting/non-matching approval after transition fails closed. |
+| E9-A09 | PASS | DEAD_LETTER creates separate escalation truth. |
+| E9-A10 | PASS | failed/dead-letter run remains terminal and cannot silently become success. |
 
-### Consent, opt-out, retention and legal hold — 9 mapped
-
-| ID | Status | Evidence |
-|---|---|---|
-| E9-P01 | PASS-CANDIDATE | generic marketing send gate requires latest `OPTED_IN`. |
-| E9-P02 | PASS-CANDIDATE | latest `OPTED_OUT` blocks marketing; existing WhatsApp service also blocks `WhatsAppOptOut`. |
-| E9-P03 | PASS-CANDIDATE | OPERATIONAL/SERVICE purpose remains distinct and cannot satisfy MARKETING consent. |
-| E9-P04 | PASS-CANDIDATE | consent evidence is append-only in PostgreSQL. |
-| E9-P05 | PASS-CANDIDATE | opt-out replay is idempotent; silent opt-in after opt-out is denied. |
-| E9-P06 | PASS-CANDIDATE | retention policy key/until are configurable and have no invented universal DB default. |
-| E9-P07 | PASS-CANDIDATE | legal hold makes content ineligible for expiry. |
-| E9-P08 | PASS-CANDIDATE | expiry decision is content-level while event provider/hash metadata remains append-only. |
-| E9-P09 | PASS-CANDIDATE | cross-tenant retention lookup/mutation fails closed. |
-
-### Boundary and regression — 8 mapped
+### Communication identity and thread truth — 10 PASS
 
 | ID | Status | Evidence |
 |---|---|---|
-| E9-B01 | PASS-CANDIDATE | approval consumes sealed `evaluateOrganizationAuthority`; no parallel RBAC. |
-| E9-B02 | PASS-CANDIDATE | communication thread party binding is optional and never writes Party/Lead identity from EXEC-009 service. |
-| E9-B03 | PASS-CANDIDATE | no mutation of EXEC-006 commitment/reservation truth. |
-| E9-B04 | PASS-CANDIDATE | no mutation of EXEC-007 offer/version truth. |
-| E9-B05 | PASS-CANDIDATE | no mutation of EXEC-008 contract/payment truth. |
-| E9-B06 | PASS-CANDIDATE | tests use no provider credentials/account activation; provider-specific existing paths remain separate evidence. |
-| E9-B07 | PASS-CANDIDATE | one additive disposable migration; no backfill/customer-data action. |
-| E9-B08 | PASS-CANDIDATE | package records explicitly deny central/main merge, deploy and Production action. |
+| E9-C01 | PASS | tenant + channel + provider identity hash is required; existing webhook carries provider message identity evidence. |
+| E9-C02 | PASS | exact provider identity replay yields one event; DB uniqueness and concurrency proof enforce this. |
+| E9-C03 | PASS | conflicting reuse of provider identity is denied. |
+| E9-C04 | PASS | newly observed sender thread remains `UNKNOWN`, `partyId=null`; EXEC-009 does not assert customer identity from sender address alone. |
+| E9-C05 | PASS | multiple candidate party identities produce `AMBIGUOUS`, `partyId=null`. |
+| E9-C06 | PASS | one candidate produces attributable tenant-scoped verified party binding. |
+| E9-C07 | PASS | thread ID/identity hash exists independently from optional party identity. |
+| E9-C08 | PASS | cross-tenant event/thread linkage is rejected by PostgreSQL scope guard. |
+| E9-C09 | PASS | channel, direction, purpose and provider identity are explicit event fields. |
+| E9-C10 | PASS | existing WhatsApp send keeps provider-accepted send as pending rather than inventing delivered/success evidence. |
 
-## Totals before final gate
+### Consent, opt-out, retention and legal hold — 9 PASS
 
-- Frozen ledger: **50 / 50 mapped**
-- PASS-CANDIDATE: **50**
-- Final PASS: **0 until exact-head validation succeeds**
+| ID | Status | Evidence |
+|---|---|---|
+| E9-P01 | PASS | generic marketing send gate requires latest attributable `OPTED_IN`. |
+| E9-P02 | PASS | latest `OPTED_OUT` blocks marketing; existing WhatsApp service also enforces opt-out. |
+| E9-P03 | PASS | OPERATIONAL/SERVICE purpose remains distinct and cannot satisfy MARKETING consent. |
+| E9-P04 | PASS | consent evidence is append-only in PostgreSQL. |
+| E9-P05 | PASS | opt-out replay is idempotent; silent opt-in after opt-out is denied. |
+| E9-P06 | PASS | retention policy key/until are configurable with no invented universal database duration. |
+| E9-P07 | PASS | legal hold prevents content expiry eligibility. |
+| E9-P08 | PASS | content expiry decision preserves minimum append-only event/provider hash metadata. |
+| E9-P09 | PASS | cross-tenant retention/legal-hold mutation fails closed. |
 
-## Final closure gate
+### Boundary and regression — 8 PASS
 
-Technical closure requires the same final HEAD to pass:
+| ID | Status | Evidence |
+|---|---|---|
+| E9-B01 | PASS | approval consumes sealed `evaluateOrganizationAuthority`; no parallel RBAC or privileged-role bypass is introduced. |
+| E9-B02 | PASS | communication party binding is optional and EXEC-009 does not overwrite Party/Lead identity. |
+| E9-B03 | PASS | EXEC-006 commitment/reservation truth is not rewritten. |
+| E9-B04 | PASS | EXEC-007 immutable offer/version truth is not rewritten. |
+| E9-B05 | PASS | EXEC-008 contract/payment truth is not rewritten. |
+| E9-B06 | PASS | tests require no provider credentials/account activation; live provider activation remains outside the package. |
+| E9-B07 | PASS | one additive disposable migration; no Production/customer-data backfill or mutation. |
+| E9-B08 | PASS | implementation evidence does not authorize central/main merge, deploy or Production action. |
 
-- ORCA CI;
-- EXEC-009 Migration Validation on disposable PostgreSQL 16;
-- repository governance lint;
-- TypeScript;
-- focused EXEC-009 direct tests;
-- PostgreSQL immutability/scope/concurrency evidence;
-- relevant EXEC-004/005/006/007 regressions;
-- production dependency audit;
-- Build.
+## Totals
 
-No human review, central/main merge, provider activation, deploy, Production migration, backfill or customer-data action is authorized by this review.
+- Frozen ledger: **50 / 50 PASS**
+- PARTIAL: **0**
+- PENDING: **0**
+
+## Regression correction recorded during closure
+
+An initial attempt wired EXEC-009 publication directly into `app/api/v1/automation/workflows/route.ts`. ORCA CI correctly detected that this changed the sealed EXEC-003 Cookie mutation/evidence boundary. The route was restored exactly to the central execution base implementation rather than weakening EXEC-003 tests or evidence identity. EXEC-009 direct service/database evidence remains additive and independent of that sealed entry-point contract.
+
+## Protected state
+
+- PR remains Draft.
+- Human/independent review requiring manual human review: deferred to pre-launch.
+- Merge to central execution branch or `main`: NOT AUTHORIZED.
+- Provider credentials/account activation: NOT AUTHORIZED.
+- Deploy/Vercel Production action: NOT AUTHORIZED.
+- Production migration/backfill/customer-data mutation: NONE.
+- EXEC-010 or later implementation: NOT STARTED BY THIS CLOSURE.
