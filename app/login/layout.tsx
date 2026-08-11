@@ -86,7 +86,7 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
             top: auto !important;
             right: auto !important;
             bottom: 60px !important;
-            left: 0 !important;
+            left: -3% !important;
             width: 112% !important;
             height: auto !important;
             object-position: center bottom !important;
