@@ -221,7 +221,7 @@ export function decimalToMinorUnits(
   const negative = raw.startsWith("-");
   const unsigned = negative ? raw.slice(1) : raw;
   const [whole, fraction = ""] = unsigned.split(".");
-  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  const minor = BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0"));
   const signed = negative ? -minor : minor;
   if (
     signed > BigInt(Number.MAX_SAFE_INTEGER) ||
