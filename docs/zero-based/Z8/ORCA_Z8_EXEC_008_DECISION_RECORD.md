@@ -4,11 +4,11 @@
 - **Date:** `2026-08-11`
 - **Package:** `EXEC-008 — Contract and financial integrity spine`
 - **Base central SHA:** `38f69a10359641fc94f902a372f7f6f21bfc3424`
-- **Status:** `OWNER DECISION GATE CLOSED / NO IMPLEMENTATION AUTHORITY`
+- **Status:** `OWNER DECISION GATE CLOSED / IMPLEMENTATION AUTHORITY GRANTED`
 
 ## Context
 
-EXEC-008 is the next eligible package after EXEC-001 through EXEC-007 were closed and reconciled. The package remains non-executable until an exact scope freeze, final allowlist and test ledger are completed against the current central baseline.
+EXEC-008 is the next eligible package after EXEC-001 through EXEC-007 were closed and reconciled. The package required an exact scope freeze, final allowlist and test ledger against the current central baseline before implementation.
 
 The governing package targets `GAP-Z7-009`, `GAP-Z7-010` and `GAP-Z7-030` and requires closure of the contract/signatory and financial precision/correction owner decisions before implementation can be considered.
 
@@ -40,11 +40,25 @@ Provider activation, credentials and Production payment processing remain separa
 
 Replaying the same governed command with the same idempotency key and equivalent payload must not create duplicate contracts, obligations, payments, allocations, refunds or corrections. Reuse of the same key with a conflicting payload must fail deterministically.
 
+## Owner clarification — initial governed contract template
+
+On `2026-08-11`, the owner explicitly approved the initial governed template identity:
+
+- **Template key:** `ORCA_CONTRACT_V1`
+- **Template version:** `1`
+- **Authority:** owner-approved EXEC-008 implementation input
+- **Meaning:** a fixed system snapshot of the current contract shape and issuance semantics produced by the Transaction Spine; it is not a newly authored legal instrument or provider/regulatory certification.
+- **Immutability:** once persisted for a tenant, the exact version-1 template content/hash is immutable.
+- **Evolution:** any future contract-template change must create a new explicit template version and must not mutate `ORCA_CONTRACT_V1` version `1` in place.
+- **Issuance binding:** contracts issued by the governed `issueContract` path must bind to the exact persisted `ORCA_CONTRACT_V1` version `1` identity and immutable content hash.
+
+This clarification does not authorize introducing legal clauses that are not already represented by the current Transaction Spine contract truth.
+
 ## Decision-key closure mapping
 
 For EXEC-008 governance, the owner approvals above close the package decision intent as follows:
 
-- `OWN-A06` — exact template/version and explicit signatory/activation authority.
+- `OWN-A06` — exact template/version and explicit signatory/activation authority, including the owner-approved `ORCA_CONTRACT_V1` version `1` identity.
 - `OWN-A07` — finance/refund/payment-evidence authority and separation of duties.
 - `Z2R-006` — exact money precision, append-only correction/reversal, reconciliation and idempotent financial commands.
 
@@ -68,23 +82,14 @@ This mapping is package-governance scope only. It does not claim regulatory cert
 
 This decision record does **not** authorize:
 
-- Runtime implementation;
-- Prisma/schema modification;
-- migration creation or execution;
 - backfill or customer-data action;
 - provider account or credential activation;
 - payment-provider transaction execution;
 - Vercel or Production deployment;
+- Production migration execution;
 - `main` merge;
 - EXEC-009 or later package implementation.
 
-## Required next gate
+## Current implementation boundary
 
-Before any implementation branch or code modification is authorized, EXEC-008 must complete:
-
-1. exact current-source inventory;
-2. semantic scope freeze;
-3. final implementation allowlist;
-4. direct Test Ledger covering positive, denial, replay, concurrency, reversal/refund and reconciliation cases;
-5. exact-base conflict check against the central branch;
-6. separate implementation authority.
+EXEC-008 implementation authority is active only inside the approved Final Allowlist and Test Ledger. Any newly required path outside that allowlist still requires a separate governed scope amendment before modification.
