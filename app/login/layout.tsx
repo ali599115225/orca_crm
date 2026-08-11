@@ -59,6 +59,15 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
           .orca-login-card > div {
             max-width: 420px !important;
           }
+
+          /* Give the tablet scene more visual weight without changing the card. */
+          .orca-login-scene {
+            width: 112% !important;
+            height: auto !important;
+            left: -6% !important;
+            right: auto !important;
+            bottom: 60px !important;
+          }
         }
 
         /* Mobile: lighter card footprint while retaining touch targets. */
