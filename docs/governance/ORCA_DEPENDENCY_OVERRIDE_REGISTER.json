@@ -7,20 +7,20 @@
   "overrides": [
     {
       "package": "brace-expansion",
-      "value": "5.0.8",
+      "value": "5.0.9",
       "owner": "Security Engineering",
-      "reason": "Pins 5.0.8, the current published patched release with bounded expansion length; revalidated after ORCA CI #734 advisory drift.",
+      "reason": "Pins 5.0.9, the patched release required to close GHSA-rgw5-rvv9-x895 after ORCA CI advisory drift.",
       "introducedBy": "PR #93",
       "reviewTrigger": "Review on every minimatch or lockfile dependency update, on any new brace-expansion advisory, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
     },
     {
       "package": "fast-uri",
-      "value": "3.1.4",
+      "value": "3.1.5",
       "owner": "Security Engineering",
-      "reason": "Pins the latest safe 3.x release compatible with ajv ^3.0.1 after fast-uri 4.1.1 became affected by GHSA-7p8r-x3mc-p8w7.",
+      "reason": "Pins the patched 3.x release required to close GHSA-7p8r-x3mc-p8w7 while preserving the existing compatible dependency line.",
       "introducedBy": "Security advisory remediation after ORCA CI #734",
-      "reviewTrigger": "Review when ajv supports a verified safe 4.x fast-uri line, on every dependency-tree update affecting fast-uri, and before the final Release Candidate.",
+      "reviewTrigger": "Review on every dependency-tree update affecting fast-uri, on any new fast-uri advisory, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after all reachable dependency paths are verified safe without the override."
     },
     {
@@ -58,6 +58,15 @@
       "introducedBy": "PR #79",
       "reviewTrigger": "Review on every dependency-tree update affecting valibot and before the final Release Candidate.",
       "expiryPolicy": "Remove only after the dependency graph and Production audit remain safe without the override."
+    },
+    {
+      "package": "nanoid",
+      "value": "3.3.17",
+      "owner": "Security Engineering",
+      "reason": "Pins the patched 3.x release required to close GHSA-2v37-7h3g-55p8 after the resumed PR #148 Production audit exposed the advisory.",
+      "introducedBy": "PR #148 security advisory remediation",
+      "reviewTrigger": "Review on every PostCSS or lockfile dependency update, on any new nanoid advisory, and before the final Release Candidate.",
+      "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
     }
   ]
 }
