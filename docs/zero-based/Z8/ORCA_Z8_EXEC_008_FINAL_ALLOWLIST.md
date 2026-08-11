@@ -37,43 +37,48 @@ This allowlist defines the only repository paths that may be modified by EXEC-00
 21. `lib/domain/transaction-spine/early-settlement.ts`
 22. `lib/domain/transaction-spine/issue-contract.ts`
 23. `lib/domain/transaction-spine/payment-reconciliation.ts`
-24. `lib/payments/custom-payment-reconciliation.ts`
-25. `lib/accounting/posting-engine.ts`
+24. `lib/domain/transaction-spine/sign-contract.ts`
+25. `lib/payments/custom-payment-reconciliation.ts`
+26. `lib/accounting/posting-engine.ts`
 
 ## New bounded EXEC-008 domain module
 
-26. `lib/contract-finance/contracts.ts`
-27. `lib/contract-finance/authority.ts`
-28. `lib/contract-finance/repository.ts`
-29. `lib/contract-finance/service.ts`
-30. `lib/contract-finance/sql-repository.ts`
+27. `lib/contract-finance/contracts.ts`
+28. `lib/contract-finance/authority.ts`
+29. `lib/contract-finance/repository.ts`
+30. `lib/contract-finance/service.ts`
+31. `lib/contract-finance/sql-repository.ts`
 
 ## Schema and disposable validation
 
-31. `prisma/schema.prisma`
-32. `prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql`
-33. `scripts/exec-008-postgres-integrity.mjs`
+32. `prisma/schema.prisma`
+33. `prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql`
+34. `scripts/exec-008-postgres-integrity.mjs`
 
 ## Direct evidence
 
-34. `tests/foundation/g5-exec-008-contract-integrity.test.ts`
-35. `tests/foundation/g5-exec-008-financial-integrity.test.ts`
-36. `tests/foundation/g5-exec-008-security.test.ts`
-37. `tests/foundation/g5-exec-008-schema-contract.test.ts`
-38. `tests/foundation/g5-exec-008-postgres-contract.test.ts`
+35. `tests/foundation/g5-exec-008-contract-integrity.test.ts`
+36. `tests/foundation/g5-exec-008-financial-integrity.test.ts`
+37. `tests/foundation/g5-exec-008-security.test.ts`
+38. `tests/foundation/g5-exec-008-schema-contract.test.ts`
+39. `tests/foundation/g5-exec-008-postgres-contract.test.ts`
 
-## Scope amendment — 2026-08-11
+## Scope amendments — 2026-08-11
 
-Owner approved a narrow amendment from 36 to 38 paths after implementation evidence proved that atomic wiring cannot be completed safely without touching the actual transaction sources of truth:
+Owner approved a first narrow amendment from 36 to 38 paths after implementation evidence proved that atomic wiring cannot be completed safely without touching the actual transaction sources of truth:
 
 - `lib/domain/transaction-spine/issue-contract.ts` is the transaction boundary that creates the authoritative contract.
 - `lib/domain/transaction-spine/payment-reconciliation.ts` is the transaction boundary that marks verified payments complete and updates invoice/receipt/accounting truth.
 
-The amendment adds these two paths only. The frozen 43-case Test Ledger is unchanged. No second migration, provider surface, UI path, package dependency file, or general CI workflow is admitted by this amendment.
+Owner then approved a second narrow amendment from 38 to 39 paths:
+
+- `lib/domain/transaction-spine/sign-contract.ts` is the actual atomic transaction boundary that signs contracts and activates the sale financials; EXEC-008 signatory authority, stale-version denial and activation truth must be enforced there rather than after the transaction.
+
+These amendments add only the three named transaction-source paths. The frozen 43-case Test Ledger is unchanged. No second migration, provider surface, UI path, package dependency file, or general CI workflow is admitted by either amendment.
 
 ## Allowlist rules
 
-- Exactly these 38 paths are admitted to the package boundary.
+- Exactly these 39 paths are admitted to the package boundary.
 - Existing files are modified only when direct wiring or compatibility correction is necessary to enforce a frozen EXEC-008 invariant.
 - New files must use the exact paths above; alternate names or adjacent helpers are not implicitly allowed.
 - A second migration, workflow, script or test file is not implicitly allowed. If implementation proves an additional path is required, execution stops and this allowlist must be amended through a governance-only change before that path is touched.
