@@ -1,0 +1,94 @@
+name: EXEC-008 Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/exec-008-migration-validation.yml"
+      - "lib/contract-finance/**"
+      - "prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql"
+      - "scripts/exec-008-postgres-integrity.mjs"
+      - "tests/foundation/g5-exec-008-*.test.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exec-008-migration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: PostgreSQL 16 disposable integrity validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_exec008_validation
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_exec008_validation"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec008_validation?sslmode=disable
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_exec008_validation?sslmode=disable
+      EXEC008_POSTGRES_EVIDENCE_PATH: evidence/exec008-postgres-evidence.json
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify schema and client
+        run: |
+          npx prisma validate
+          npx prisma generate
+
+      - name: Build disposable baseline schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output evidence/base-schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f evidence/base-schema.sql
+
+      - name: Apply EXEC-008 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/20260811030000_exec_008_contract_financial_integrity/migration.sql
+
+      - name: Execute PostgreSQL integrity and concurrency probe
+        run: node scripts/exec-008-postgres-integrity.mjs
+
+      - name: Verify governed PostgreSQL evidence contract
+        env:
+          EXEC008_POSTGRES_EVIDENCE: evidence/exec008-postgres-evidence.json
+        run: npx vitest run tests/foundation/g5-exec-008-postgres-contract.test.ts
+
+      - name: Static and focused EXEC-008 gates
+        run: |
+          npm run lint
+          npm run typecheck
+          npx vitest run tests/foundation/g5-exec-008-*.test.ts
+
+      - name: Upload EXEC-008 database evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exec-008-postgres-integrity-evidence
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 14
