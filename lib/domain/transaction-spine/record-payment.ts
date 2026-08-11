@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
+import { decimalToMinorUnits } from "@/lib/contract-finance/contracts";
 import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
 import { completePaymentTransaction } from "./payment-reconciliation";
@@ -28,7 +29,8 @@ export async function recordPayment(input: RecordPaymentInput) {
   if (!invoiceId && !installmentId) {
     throw new Error("Payment must reference an invoice or installment.");
   }
-  if (!Number.isFinite(amount) || amount <= 0) {
+  const amountMinorUnits = decimalToMinorUnits(amount);
+  if (amountMinorUnits <= 0) {
     throw new Error("Payment amount must be positive.");
   }
   if (!idempotencyKey?.trim()) throw new Error("Idempotency key is required.");
@@ -85,11 +87,14 @@ export async function recordPayment(input: RecordPaymentInput) {
     },
     _sum: { netAmount: true },
   });
-  const targetTotal = installment
-    ? Number(installment.amountSar)
-    : Number(invoice.totalAmount);
-  const remaining = targetTotal - Number(completed._sum.netAmount || 0);
-  if (amount > remaining + 0.01) {
+  const targetTotalMinor = decimalToMinorUnits(
+    installment ? installment.amountSar : invoice.totalAmount,
+  );
+  const completedMinor = decimalToMinorUnits(
+    completed._sum.netAmount?.toString() ?? "0",
+  );
+  const remainingMinor = targetTotalMinor - completedMinor;
+  if (amountMinorUnits > remainingMinor) {
     throw new Error("Payment amount exceeds the remaining balance.");
   }
 
@@ -109,7 +114,7 @@ export async function recordPayment(input: RecordPaymentInput) {
         provider: "MANUAL",
         planCode: planCode || null,
         idempotencyKey: keyHash,
-        expectedAmountMinor: Math.round(amount * 100),
+        expectedAmountMinor: amountMinorUnits,
         expectedCurrency: "SAR",
         paidAt: null,
       },
@@ -127,7 +132,7 @@ export async function recordPayment(input: RecordPaymentInput) {
   const completedPayment = await completePaymentTransaction({
     transactionId: payment.id,
     tenantId,
-    amountMinorUnits: Math.round(amount * 100),
+    amountMinorUnits,
     currency: "SAR",
     providerStatus: "MANUAL_CONFIRMED",
     rawPayload: metadata,
