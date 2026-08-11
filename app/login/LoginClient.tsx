@@ -11,6 +11,11 @@ interface LoginClientProps {
   host?: string;
 }
 
+type LoginErrorMessage = {
+  ar: string;
+  en: string;
+};
+
 function GlobeIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
@@ -125,10 +130,11 @@ export default function LoginClient({
         ? 'التبديل إلى الوضع الداكن'
         : 'Switch to dark mode';
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoginErrorMessage | null>(null);
   const [loading, setLoading] = useState(false);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const localizedError = error ? (isArabic ? error.ar : error.en) : null;
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
@@ -165,11 +171,10 @@ export default function LoginClient({
       const result = await loginAction(formData);
 
       if (!result) {
-        setError(
-          isArabic
-            ? 'لم يتم تلقي استجابة من الخادم. حدّث الصفحة وحاول مرة أخرى.'
-            : 'No response was received from the server. Refresh the page and try again.',
-        );
+        setError({
+          ar: 'لم يتم تلقي استجابة من الخادم. حدّث الصفحة وحاول مرة أخرى.',
+          en: 'No response was received from the server. Refresh the page and try again.',
+        });
         return;
       }
 
@@ -184,30 +189,25 @@ export default function LoginClient({
 
       if (result.retryAfterSeconds) {
         setRetryAfter(result.retryAfterSeconds);
-        setError(
-          isArabic
-            ? `محاولات دخول كثيرة. حاول مجددًا بعد ${result.retryAfterSeconds} ثانية.`
-            : `Too many login attempts. Try again in ${result.retryAfterSeconds} seconds.`,
-        );
+        setError({
+          ar: `محاولات دخول كثيرة. حاول مجددًا بعد ${result.retryAfterSeconds} ثانية.`,
+          en: `Too many login attempts. Try again in ${result.retryAfterSeconds} seconds.`,
+        });
       } else {
-        const localizedError = isArabic
-          ? result.error
-          : result.errorEn || result.error;
-        setError(
-          localizedError ||
-            (isArabic
-              ? 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.'
-              : 'Unable to sign in. Check your email and password.'),
-        );
+        setError({
+          ar:
+            result.error ||
+            'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.',
+          en:
+            result.errorEn ||
+            'Unable to sign in. Check your email and password.',
+        });
       }
-    } catch (loginError) {
-      const message =
-        loginError instanceof Error
-          ? loginError.message
-          : isArabic
-            ? 'حدث خطأ غير متوقع أثناء تسجيل الدخول.'
-            : 'An unexpected error occurred while signing in.';
-      setError(message);
+    } catch {
+      setError({
+        ar: 'حدث خطأ غير متوقع أثناء تسجيل الدخول.',
+        en: 'An unexpected error occurred while signing in.',
+      });
     } finally {
       setLoading(false);
     }
@@ -587,13 +587,13 @@ export default function LoginClient({
                 </h1>
 
                 <div className="orca-login-feedback mt-2" aria-live="polite" aria-atomic="true">
-                  {error ? (
+                  {localizedError ? (
                     <div
                       id="login-error"
                       role="alert"
                       className="orca-login-alert rounded-[14px] border border-red-300/30 bg-red-950/40 px-4 text-center text-[13px] font-semibold leading-[1.45] text-red-100"
                     >
-                      {error}
+                      {localizedError}
                     </div>
                   ) : null}
                 </div>
@@ -615,7 +615,7 @@ export default function LoginClient({
                           autoComplete="username"
                           required
                           dir="ltr"
-                          aria-describedby={error ? 'login-error' : undefined}
+                          aria-describedby={localizedError ? 'login-error' : undefined}
                           placeholder={isArabic ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
                           className={`orca-field w-full rounded-[14px] border text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition-colors placeholder:text-[var(--orca-ui-text-muted)] ${
                             isArabic ? 'pr-[58px] pl-5 text-left' : 'pl-[58px] pr-5 text-left'
@@ -639,7 +639,7 @@ export default function LoginClient({
                           autoComplete="current-password"
                           required
                           dir="ltr"
-                          aria-describedby={error ? 'login-error' : undefined}
+                          aria-describedby={localizedError ? 'login-error' : undefined}
                           placeholder={isArabic ? 'أدخل كلمة المرور' : 'Enter your password'}
                           className={`orca-field w-full rounded-[14px] border text-[15px] text-[var(--orca-ui-text-primary)] outline-none transition-colors placeholder:text-[var(--orca-ui-text-muted)] ${
                             isArabic ? 'pr-[58px] pl-[58px] text-right' : 'pl-[58px] pr-[58px] text-left'
