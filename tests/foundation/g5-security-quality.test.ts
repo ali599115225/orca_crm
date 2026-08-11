@@ -87,7 +87,7 @@ describe("G5 — Security and quality gate", () => {
     const inventory = rebuildInventory();
 
     expect(inventory.schemaVersion).toBe(2);
-    expect(inventory.summary.g4Contracts).toBe(359);
+    expect(inventory.summary.g4Contracts).toBe(360);
     expect(inventory.summary.unprovenContracts).toBe(34);
     expect(inventory.unprovenContracts).toHaveLength(34);
     expect(inventory.summary.unprovenByPriority).toEqual({
