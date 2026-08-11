@@ -56,6 +56,92 @@ describe("EXEC-008 — security contracts", () => {
     ).toThrow(/TENANT_SCOPE_MISMATCH/);
   });
 
+  it("fails closed for missing, expired, wrong-branch, and wrong-resource assignments", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const baseUserId = "44444444-4444-4444-8444-444444444444";
+
+    const missing: ContractFinanceActorContext = {
+      tenantId,
+      userId: baseUserId,
+      assignments: [],
+      now,
+    };
+    expect(() =>
+      requireContractFinanceAuthority({
+        actor: missing,
+        operation: "CONTRACT_SIGN",
+        resource,
+      }),
+    ).toThrow(/NO_ACTIVE_ASSIGNMENT/);
+
+    const expired: ContractFinanceActorContext = {
+      ...missing,
+      assignments: [
+        {
+          id: "66666666-6666-4666-8666-666666666666",
+          tenantId,
+          userId: baseUserId,
+          securityRole: "GENERAL_MANAGER",
+          scopeType: "COMPANY",
+          active: true,
+          endsAt: new Date("2026-08-11T11:59:59.000Z"),
+        },
+      ],
+    };
+    expect(() =>
+      requireContractFinanceAuthority({
+        actor: expired,
+        operation: "CONTRACT_SIGN",
+        resource,
+      }),
+    ).toThrow(/NO_ACTIVE_ASSIGNMENT/);
+
+    const wrongBranch: ContractFinanceActorContext = {
+      ...missing,
+      assignments: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          tenantId,
+          userId: baseUserId,
+          securityRole: "GENERAL_MANAGER",
+          scopeType: "BRANCH",
+          branchId: "88888888-8888-4888-8888-888888888888",
+          active: true,
+        },
+      ],
+    };
+    expect(() =>
+      requireContractFinanceAuthority({
+        actor: wrongBranch,
+        operation: "CONTRACT_SIGN",
+        resource,
+      }),
+    ).toThrow(/RESOURCE_SCOPE_DENIED|ROLE_SCOPE_DENIED/);
+
+    const wrongResource: ContractFinanceActorContext = {
+      ...missing,
+      assignments: [
+        {
+          id: "99999999-9999-4999-8999-999999999999",
+          tenantId,
+          userId: baseUserId,
+          securityRole: "GENERAL_MANAGER",
+          scopeType: "ASSIGNED_RESOURCE",
+          assignedResourceType: "contract",
+          assignedResourceId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          active: true,
+        },
+      ],
+    };
+    expect(() =>
+      requireContractFinanceAuthority({
+        actor: wrongResource,
+        operation: "CONTRACT_SIGN",
+        resource: { ...resource, branchId: null },
+      }),
+    ).toThrow(/RESOURCE_SCOPE_DENIED|ROLE_SCOPE_DENIED/);
+  });
+
   it("requires an independent refund approver", () => {
     const manager = actor("FINANCE_MANAGER");
     expect(() =>
