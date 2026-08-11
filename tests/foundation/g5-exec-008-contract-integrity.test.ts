@@ -118,7 +118,7 @@ describe("EXEC-008 — contract integrity", () => {
     expect(first.replayed).toBe(false);
     expect(replay.replayed).toBe(true);
     expect(replay.value.id).toBe(first.value.id);
-    expect(repository.versions).toHaveLength(1);
+    expect(repository.versions.size).toBe(1);
     expect(first.value).toMatchObject({
       contractId,
       version: 1,
@@ -144,7 +144,7 @@ describe("EXEC-008 — contract integrity", () => {
     await expect(
       service.issueContractVersion({ ...base, contentSnapshot: "terms-B" }),
     ).rejects.toThrow(/conflicting payload/i);
-    expect(repository.versions).toHaveLength(1);
+    expect(repository.versions.size).toBe(1);
   });
 
   it("creates a linked amendment version after the prior version is finalized", async () => {
@@ -177,7 +177,7 @@ describe("EXEC-008 — contract integrity", () => {
     expect(second.value.version).toBe(2);
     expect(second.value.previousVersionId).toBe(first.value.id);
     expect(second.value.contentSnapshot).toBe("terms-v2");
-    expect(repository.versions).toHaveLength(2);
+    expect(repository.versions.size).toBe(2);
   });
 
   it("denies signing a stale version and signs only the exact current issued version", async () => {
@@ -265,6 +265,6 @@ describe("EXEC-008 — contract integrity", () => {
     expect(first.value.state).toBe("ACTIVATED");
     expect(replay.replayed).toBe(true);
     expect(replay.value.id).toBe(first.value.id);
-    expect(repository.versions).toHaveLength(1);
+    expect(repository.versions.size).toBe(1);
   });
 });
