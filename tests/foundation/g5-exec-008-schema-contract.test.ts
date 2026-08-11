@@ -10,6 +10,11 @@ const migration = readFileSync(
   "utf8",
 );
 
+const executableSql = migration
+  .split("\n")
+  .filter((line) => !line.trimStart().startsWith("--"))
+  .join("\n");
+
 describe("EXEC-008 — schema integrity contracts", () => {
   it("creates the bounded immutable and append-only truth tables", () => {
     for (const table of [
@@ -29,8 +34,12 @@ describe("EXEC-008 — schema integrity contracts", () => {
   });
 
   it("enforces idempotency uniqueness and provider evidence uniqueness", () => {
-    expect(migration).toMatch(/UNIQUE\s*\([^)]*tenant_id[^)]*operation[^)]*key_hash[^)]*\)/i);
-    expect(migration).toMatch(/UNIQUE\s*\([^)]*tenant_id[^)]*provider[^)]*provider_reference[^)]*\)/i);
+    expect(migration).toMatch(
+      /PRIMARY KEY\s*\(\s*"tenant_id"\s*,\s*"operation"\s*,\s*"key_hash"\s*\)/i,
+    );
+    expect(migration).toMatch(
+      /UNIQUE\s*\(\s*"tenant_id"\s*,\s*"provider"\s*,\s*"provider_reference"\s*\)/i,
+    );
   });
 
   it("contains database guards for immutable contract history and append-only finance history", () => {
@@ -51,7 +60,7 @@ describe("EXEC-008 — schema integrity contracts", () => {
   });
 
   it("does not contain production or backfill execution", () => {
-    expect(migration).not.toMatch(/DATABASE_URL|DIRECT_URL|production/i);
-    expect(migration).not.toMatch(/backfill/i);
+    expect(executableSql).not.toMatch(/DATABASE_URL|DIRECT_URL|\bproduction\b/i);
+    expect(executableSql).not.toMatch(/\bbackfill\b/i);
   });
 });
