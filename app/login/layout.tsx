@@ -40,8 +40,8 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
           font-size: 12.5px;
         }
 
-        /* Tablet: preserve the scene, but keep it visually outside the form card. */
-        @media (min-width: 640px) and (max-width: 1023px) {
+        /* Tablet contract: 640–1279px, including portrait and landscape devices. */
+        @media (min-width: 640px) and (max-width: 1279px) {
           .orca-login-card {
             width: min(100%, 500px) !important;
             max-width: 500px !important;
@@ -59,14 +59,74 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
           .orca-login-card > div {
             max-width: 420px !important;
           }
+        }
 
-          /* Give the tablet scene more visual weight without changing the card. */
+        /* Tablet portrait: centered card with a stronger scene anchored below it. */
+        @media (min-width: 640px) and (max-width: 1279px) and (orientation: portrait) {
+          .orca-header-controls,
+          .orca-brand {
+            transform: none !important;
+          }
+
+          .orca-login-stage {
+            padding-inline: 40px !important;
+          }
+
+          .orca-login-stage > div {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 0 !important;
+          }
+
+          .orca-login-card {
+            justify-self: center !important;
+            transform: none !important;
+          }
+
           .orca-login-scene {
-            width: 112% !important;
-            height: auto !important;
-            left: -6% !important;
+            top: auto !important;
             right: auto !important;
             bottom: 60px !important;
+            left: -6% !important;
+            width: 112% !important;
+            height: auto !important;
+            object-position: center bottom !important;
+          }
+        }
+
+        /* Tablet landscape: preserve a split composition without falling into Desktop styling. */
+        @media (min-width: 640px) and (max-width: 1279px) and (orientation: landscape) {
+          .orca-header-controls,
+          .orca-brand {
+            transform: none !important;
+          }
+
+          .orca-login-stage {
+            padding-inline: 40px !important;
+            padding-top: 14px !important;
+            padding-bottom: 14px !important;
+          }
+
+          .orca-login-stage > div {
+            grid-template-columns: minmax(360px, 480px) minmax(0, 1fr) !important;
+            gap: clamp(32px, 5vw, 64px) !important;
+          }
+
+          .orca-login-card {
+            width: min(100%, 480px) !important;
+            max-width: 480px !important;
+            justify-self: start !important;
+            transform: translateY(-8px) !important;
+            padding: 24px 28px !important;
+          }
+
+          .orca-login-scene {
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: auto !important;
+            width: auto !important;
+            height: 100% !important;
+            object-position: right bottom !important;
           }
         }
 
