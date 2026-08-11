@@ -210,6 +210,28 @@ export type ApproveRefundCommand = Readonly<{
   idempotencyKey: string;
 }>;
 
+export function decimalToMinorUnits(
+  value: string | number | { toString(): string },
+): number {
+  const raw = String(value).trim();
+  if (!/^-?\d+(?:\.\d{1,2})?$/.test(raw)) {
+    throw new Error("Money value must have at most two decimal places.");
+  }
+
+  const negative = raw.startsWith("-");
+  const unsigned = negative ? raw.slice(1) : raw;
+  const [whole, fraction = ""] = unsigned.split(".");
+  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  const signed = negative ? -minor : minor;
+  if (
+    signed > BigInt(Number.MAX_SAFE_INTEGER) ||
+    signed < BigInt(Number.MIN_SAFE_INTEGER)
+  ) {
+    throw new Error("Money minor units exceed the safe integer range.");
+  }
+  return Number(signed);
+}
+
 export function assertMoney(value: Money): Money {
   const currency = value.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) {
