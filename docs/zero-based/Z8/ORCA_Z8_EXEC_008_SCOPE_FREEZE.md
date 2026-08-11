@@ -39,22 +39,24 @@ The current repository already contains contract and finance surfaces that EXEC-
 - `lib/domain/transaction-spine/early-settlement.ts`
 - `lib/domain/transaction-spine/issue-contract.ts`
 - `lib/domain/transaction-spine/payment-reconciliation.ts`
+- `lib/domain/transaction-spine/sign-contract.ts`
 - `lib/payments/custom-payment-reconciliation.ts`
 - `lib/accounting/posting-engine.ts`
 - `prisma/schema.prisma`
 
 Historical reports and provider-specific integrations are evidence inputs only and are not implementation authority.
 
-## Narrow scope amendment — 2026-08-11
+## Narrow scope amendments — 2026-08-11
 
 Implementation and PostgreSQL evidence proved that correct atomic wiring cannot be completed solely through the previously admitted route/action surfaces. The authoritative mutation boundaries are:
 
 - `lib/domain/transaction-spine/issue-contract.ts` for contract creation inside the existing serializable transaction;
-- `lib/domain/transaction-spine/payment-reconciliation.ts` for verified payment completion, invoice/receipt mutation and accounting posting inside the existing payment transaction.
+- `lib/domain/transaction-spine/payment-reconciliation.ts` for verified payment completion, invoice/receipt mutation and accounting posting inside the existing payment transaction;
+- `lib/domain/transaction-spine/sign-contract.ts` for contract signing and sale-financial activation inside the existing serializable signing transaction.
 
-The owner approved adding exactly those two paths to the package boundary. The Final Allowlist therefore changes from 36 to 38 admitted paths. The 43 frozen Test Ledger contracts remain unchanged. No additional migration, provider route, UI path, package dependency file, backfill, or Production action is authorized by this amendment.
+The owner first approved adding the contract-creation and payment-reconciliation boundaries, moving the Final Allowlist from 36 to 38 paths. The owner then approved adding `sign-contract.ts`, moving the Final Allowlist from 38 to 39 admitted paths. The 43 frozen Test Ledger contracts remain unchanged. No additional migration, provider route, UI path, package dependency file, backfill, or Production action is authorized by these amendments.
 
-Atomicity requirement: EXEC-008 authoritative records must be created or reconciled at the same transaction boundary as the existing contract/payment truth where practical. A post-commit shadow write that can diverge from the legacy transaction is not an acceptable wiring strategy.
+Atomicity requirement: EXEC-008 authoritative records must be created or reconciled at the same transaction boundary as the existing contract/payment/signing truth where practical. A post-commit shadow write that can diverge from the legacy transaction is not an acceptable wiring strategy.
 
 ## Target source of truth
 
@@ -148,6 +150,6 @@ Amendment produces a new immutable version linked to its predecessor. Cancellati
 5. Scope/allowlist mechanical validation passes.
 6. A separate explicit owner instruction grants EXEC-008 implementation authority.
 
-Those gates were satisfied and owner implementation authority was granted before implementation began. The narrow two-path amendment above does not widen the frozen behavior ledger and does not revoke that authority; it only admits the proven atomic transaction boundaries required to implement it correctly.
+Those gates were satisfied and owner implementation authority was granted before implementation began. The narrow atomic-boundary amendments above do not widen the frozen behavior ledger and do not revoke that authority; they only admit the proven transaction boundaries required to implement the frozen invariants correctly.
 
 Human independent review is deferred to the mandatory pre-launch gate by owner decision; this does not relax exact-head CI, direct tests, disposable PostgreSQL validation, audit, TypeScript, Build or security gates.
