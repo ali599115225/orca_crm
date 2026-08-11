@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -15,10 +16,170 @@ import {
 } from "./constants";
 import type { IssueContractInput } from "./types";
 
+const ORCA_CONTRACT_V1_TEMPLATE_KEY = "ORCA_CONTRACT_V1";
+const ORCA_CONTRACT_V1_TEMPLATE_VERSION = 1;
+const ORCA_CONTRACT_V1_TEMPLATE_SNAPSHOT = JSON.stringify({
+  templateKey: ORCA_CONTRACT_V1_TEMPLATE_KEY,
+  version: ORCA_CONTRACT_V1_TEMPLATE_VERSION,
+  source: "TRANSACTION_SPINE",
+  issuanceStatus: CONTRACT_STATUS.PENDING_SIGNATURE,
+  spineVersion: 2,
+  legacyFinancial: false,
+  fields: [
+    "contractId",
+    "tenantId",
+    "unitId",
+    "leadId",
+    "offerId",
+    "buyerName",
+    "buyerPhoneHash",
+    "totalVolumeSar",
+    "acceptedAt",
+    "reservationExpiresAt",
+    "status",
+    "spineVersion",
+    "legacyFinancial",
+  ],
+});
+const ORCA_CONTRACT_V1_TEMPLATE_HASH = createHash("sha256")
+  .update(ORCA_CONTRACT_V1_TEMPLATE_SNAPSHOT)
+  .digest("hex");
+
+type Exec008SqlClient = {
+  $executeRaw(query: Prisma.Sql): Promise<number>;
+  $queryRaw<T = unknown>(query: Prisma.Sql): Promise<T>;
+};
+
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
   return result;
+}
+
+function hashSnapshot(snapshot: string): string {
+  return createHash("sha256").update(snapshot).digest("hex");
+}
+
+async function bindIssuedContractToExec008TemplateInTx(
+  tx: Exec008SqlClient,
+  contract: {
+    id: string;
+    tenantId: string;
+    unitId: string;
+    leadId: string | null;
+    offerId: string | null;
+    buyerName: string;
+    buyerPhoneHash: string | null;
+    totalVolumeSar: unknown;
+    acceptedAt: Date;
+    reservationExpiresAt: Date;
+    status: string;
+    spineVersion: number;
+    legacyFinancial: boolean;
+  },
+) {
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_contract_template_versions (
+      tenant_id, template_key, version, content_hash, content_snapshot, issued_at
+    ) VALUES (
+      ${contract.tenantId}::uuid,
+      ${ORCA_CONTRACT_V1_TEMPLATE_KEY},
+      ${ORCA_CONTRACT_V1_TEMPLATE_VERSION},
+      ${ORCA_CONTRACT_V1_TEMPLATE_HASH},
+      ${ORCA_CONTRACT_V1_TEMPLATE_SNAPSHOT},
+      now()
+    )
+    ON CONFLICT (tenant_id, template_key, version) DO NOTHING
+  `);
+
+  const templateRows = await tx.$queryRaw<
+    Array<{ id: string; content_hash: string; content_snapshot: string }>
+  >(Prisma.sql`
+    SELECT id, content_hash, content_snapshot
+    FROM exec008_contract_template_versions
+    WHERE tenant_id = ${contract.tenantId}::uuid
+      AND template_key = ${ORCA_CONTRACT_V1_TEMPLATE_KEY}
+      AND version = ${ORCA_CONTRACT_V1_TEMPLATE_VERSION}
+    LIMIT 1
+  `);
+  const template = templateRows[0];
+  if (
+    !template ||
+    template.content_hash !== ORCA_CONTRACT_V1_TEMPLATE_HASH ||
+    template.content_snapshot !== ORCA_CONTRACT_V1_TEMPLATE_SNAPSHOT
+  ) {
+    throw new Error("ORCA_CONTRACT_V1 conflicts with persisted template truth.");
+  }
+
+  const contentSnapshot = JSON.stringify({
+    contractId: contract.id,
+    tenantId: contract.tenantId,
+    unitId: contract.unitId,
+    leadId: contract.leadId,
+    offerId: contract.offerId,
+    buyerName: contract.buyerName,
+    buyerPhoneHash: contract.buyerPhoneHash,
+    totalVolumeSar: Number(contract.totalVolumeSar),
+    acceptedAt: contract.acceptedAt.toISOString(),
+    reservationExpiresAt: contract.reservationExpiresAt.toISOString(),
+    status: contract.status,
+    spineVersion: contract.spineVersion,
+    legacyFinancial: contract.legacyFinancial,
+  });
+  const contentHash = hashSnapshot(contentSnapshot);
+
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO exec008_contract_versions (
+      tenant_id, contract_id, version, previous_version_id, template_version_id,
+      template_content_hash, content_hash, content_snapshot, state,
+      resource_type, resource_id, issued_at
+    ) VALUES (
+      ${contract.tenantId}::uuid,
+      ${contract.id}::uuid,
+      1,
+      NULL,
+      ${template.id}::uuid,
+      ${ORCA_CONTRACT_V1_TEMPLATE_HASH},
+      ${contentHash},
+      ${contentSnapshot},
+      'ISSUED',
+      'CONTRACT',
+      ${contract.id},
+      now()
+    )
+    ON CONFLICT (tenant_id, contract_id, version) DO NOTHING
+  `);
+
+  const versionRows = await tx.$queryRaw<
+    Array<{
+      template_version_id: string;
+      template_content_hash: string;
+      content_hash: string;
+      content_snapshot: string;
+      resource_type: string;
+      resource_id: string;
+    }>
+  >(Prisma.sql`
+    SELECT template_version_id, template_content_hash, content_hash,
+           content_snapshot, resource_type, resource_id
+    FROM exec008_contract_versions
+    WHERE tenant_id = ${contract.tenantId}::uuid
+      AND contract_id = ${contract.id}::uuid
+      AND version = 1
+    LIMIT 1
+  `);
+  const version = versionRows[0];
+  if (
+    !version ||
+    version.template_version_id !== template.id ||
+    version.template_content_hash !== ORCA_CONTRACT_V1_TEMPLATE_HASH ||
+    version.content_hash !== contentHash ||
+    version.content_snapshot !== contentSnapshot ||
+    version.resource_type !== "CONTRACT" ||
+    version.resource_id !== contract.id
+  ) {
+    throw new Error("EXEC-008 issued contract version conflicts with Transaction Spine truth.");
+  }
 }
 
 export async function _createContractInTx(
@@ -184,6 +345,8 @@ export async function issueContract(input: IssueContractInput) {
       buyerPhone,
       totalVolumeSar: Number(amount),
     });
+
+    await bindIssuedContractToExec008TemplateInTx(tx, contract);
 
     const deal = await resolveDealInTx(tx, {
       tenantId,
