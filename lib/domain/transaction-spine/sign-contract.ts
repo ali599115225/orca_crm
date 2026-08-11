@@ -11,6 +11,14 @@ import {
   postInvoiceEntry,
   seedChartOfAccounts,
 } from "@/lib/accounting";
+import { ContractFinanceService } from "@/lib/contract-finance/service";
+import { requireContractFinanceAuthority } from "@/lib/contract-finance/authority";
+import { SqlContractFinanceRepository } from "@/lib/contract-finance/sql-repository";
+import type {
+  EnabledBranchService,
+  OrganizationScopeAssignment,
+} from "@/lib/organization/contracts";
+import { loadOrganizationAuthorityContext } from "@/lib/organization/sql-repository";
 import { assertTenantOwnership } from "./validate-tenant";
 import {
   CONTRACT_STATUS,
@@ -25,6 +33,52 @@ import {
   parsePaymentSchedule,
 } from "./payment-plan";
 import type { SignContractInput } from "./types";
+
+type Exec008AuthoritySqlClient = {
+  $queryRaw<T = unknown>(query: Prisma.Sql): Promise<T>;
+};
+
+async function loadExec008AuthorityContextInTx(
+  tx: Exec008AuthoritySqlClient,
+  tenantId: string,
+  userId: string,
+): Promise<{
+  assignments: OrganizationScopeAssignment[];
+  enabledBranchServices: EnabledBranchService[];
+}> {
+  const [assignments, enabledBranchServices] = await Promise.all([
+    tx.$queryRaw<OrganizationScopeAssignment[]>(Prisma.sql`
+      SELECT
+        "id",
+        "tenant_id" AS "tenantId",
+        "user_id" AS "userId",
+        "security_role" AS "securityRole",
+        "scope_type" AS "scopeType",
+        "branch_id" AS "branchId",
+        "department_id" AS "departmentId",
+        "team_id" AS "teamId",
+        "assigned_resource_type" AS "assignedResourceType",
+        "assigned_resource_id" AS "assignedResourceId",
+        "is_active" AS "active",
+        "starts_at" AS "startsAt",
+        "ends_at" AS "endsAt"
+      FROM "user_scope_assignments"
+      WHERE "tenant_id" = ${tenantId}::uuid
+        AND "user_id" = ${userId}::uuid
+        AND "is_active" = TRUE
+    `),
+    tx.$queryRaw<EnabledBranchService[]>(Prisma.sql`
+      SELECT
+        "branch_id" AS "branchId",
+        "service_line" AS "serviceLine",
+        "enabled"
+      FROM "branch_services"
+      WHERE "tenant_id" = ${tenantId}::uuid
+    `),
+  ]);
+
+  return { assignments, enabledBranchServices };
+}
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -278,6 +332,35 @@ export async function signContract(input: SignContractInput) {
     throw new Error("Legacy contract is read-only and cannot be signed through the Phase 1 cutover flow.");
   }
 
+  const resourceScope = {
+    tenantId,
+    resourceType: "CONTRACT",
+    resourceId: contractId,
+  } as const;
+  const preflightAuthority = await loadOrganizationAuthorityContext(tenantId, userId);
+  requireContractFinanceAuthority({
+    actor: {
+      tenantId,
+      userId,
+      assignments: preflightAuthority.assignments,
+      enabledBranchServices: preflightAuthority.enabledBranchServices,
+      now: new Date(),
+    },
+    operation: "CONTRACT_SIGN",
+    resource: resourceScope,
+  });
+  requireContractFinanceAuthority({
+    actor: {
+      tenantId,
+      userId,
+      assignments: preflightAuthority.assignments,
+      enabledBranchServices: preflightAuthority.enabledBranchServices,
+      now: new Date(),
+    },
+    operation: "CONTRACT_ACTIVATE",
+    resource: resourceScope,
+  });
+
   await seedChartOfAccounts(tenantId);
   const [receivable, revenue, vatPayable] = await Promise.all([
     findAccountByCode(tenantId, "1.1.3"),
@@ -316,6 +399,43 @@ export async function signContract(input: SignContractInput) {
         throw new Error("Contract reservation has expired.");
       }
 
+      const authorityNow = new Date();
+      const authorityContext = await loadExec008AuthorityContextInTx(
+        tx,
+        tenantId,
+        userId,
+      );
+      const versionRows = await tx.$queryRaw<Array<{ id: string; version: number }>>(Prisma.sql`
+        SELECT id, version
+        FROM exec008_contract_versions
+        WHERE tenant_id = ${tenantId}::uuid
+          AND contract_id = ${contract.id}::uuid
+        ORDER BY version DESC
+        LIMIT 1
+        FOR UPDATE
+      `);
+      const exec008Version = versionRows[0];
+      if (!exec008Version) {
+        throw new Error("EXEC-008 issued contract version is required before signing.");
+      }
+
+      const exec008Actor = {
+        tenantId,
+        userId,
+        assignments: authorityContext.assignments,
+        enabledBranchServices: authorityContext.enabledBranchServices,
+        now: authorityNow,
+      } as const;
+      const exec008Repository = new SqlContractFinanceRepository(tx);
+      const exec008Service = new ContractFinanceService(exec008Repository);
+
+      const exec008Signed = await exec008Service.signContractVersion({
+        actor: exec008Actor,
+        contractVersionId: exec008Version.id,
+        scope: resourceScope,
+        idempotencyKey: `transaction-spine:sign:${contract.id}:v${exec008Version.version}`,
+      });
+
       const paymentPlan =
         contract.paymentPlan ||
         (await ensureDefaultPaymentPlanInTx(tx, contract));
@@ -343,6 +463,16 @@ export async function signContract(input: SignContractInput) {
               version: { increment: 1 },
             },
           });
+
+      const exec008Activated = await exec008Service.activateContractVersion({
+        actor: {
+          ...exec008Actor,
+          now: new Date(),
+        },
+        contractVersionId: exec008Signed.value.id,
+        scope: resourceScope,
+        idempotencyKey: `transaction-spine:activate:${contract.id}:v${exec008Version.version}`,
+      });
 
       await tx.unit.update({
         where: { id: contract.unitId },
@@ -396,6 +526,8 @@ export async function signContract(input: SignContractInput) {
           payload: {
             invoiceId: financials.invoice.id,
             paymentPlanId: paymentPlan.id,
+            exec008ContractVersionId: exec008Activated.value.id,
+            exec008ContractVersionState: exec008Activated.value.state,
           },
           projection: {
             opportunityId: contract.offer?.opportunity?.id || null,
@@ -436,6 +568,8 @@ export async function signContract(input: SignContractInput) {
             installmentsLinked: financials.installmentsLinked,
             journalEntryCreated: financials.journalEntryCreated,
             paymentPlanActivated: financials.paymentPlanActivated,
+            exec008ContractVersionId: exec008Activated.value.id,
+            exec008ContractVersionState: exec008Activated.value.state,
           },
           projection: {
             opportunityId: contract.offer?.opportunity?.id || null,
@@ -460,6 +594,8 @@ export async function signContract(input: SignContractInput) {
               invoiceId: financials.invoice.id,
               paymentPlanId: paymentPlan.id,
               installmentCount: financials.installments.length,
+              exec008ContractVersionId: exec008Activated.value.id,
+              exec008ContractVersionState: exec008Activated.value.state,
             }),
           },
         });
@@ -472,6 +608,7 @@ export async function signContract(input: SignContractInput) {
               eventDataJson: JSON.stringify({
                 contractId: contract.id,
                 invoiceId: financials.invoice.id,
+                exec008ContractVersionId: exec008Activated.value.id,
               }),
               createdBy: userId,
             },
@@ -484,7 +621,8 @@ export async function signContract(input: SignContractInput) {
         paymentPlan,
         invoice: financials.invoice,
         installments: financials.installments,
-        idempotent: alreadySigned,
+        idempotent:
+          alreadySigned || exec008Signed.replayed || exec008Activated.replayed,
       };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
