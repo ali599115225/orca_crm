@@ -18,6 +18,9 @@ describe("EXEC-008 — PostgreSQL evidence contract", () => {
     expect(workflow).not.toMatch(/production|customer[-_ ]data|backfill/i);
 
     expect(script).toContain("CONTRACT_ACTIVATION");
+    expect(script).toContain("EXEC008_CONTRACT_VERSION_IMMUTABLE");
+    expect(script).toContain("EXEC008_FINALIZED_OBLIGATION_IMMUTABLE");
+    expect(script).toContain("EXEC008_SCOPE_MISMATCH");
     expect(script).toContain("EXEC008_OVER_ALLOCATION");
     expect(script).toContain("EXEC008_REFUND_EXCEEDS_PAYMENT");
     expect(script).toContain("EXEC008_SELF_APPROVAL_DENIED");
@@ -41,7 +44,14 @@ describe("EXEC-008 — PostgreSQL evidence contract", () => {
     expect(evidence.postgresMajor).toBe(16);
     expect(evidence.tests).toMatchObject({
       templateImmutable: true,
+      contractVersionImmutable: true,
+      finalizedObligationImmutable: true,
       correctionAppendOnly: true,
+      correctionHistoryPreserved: true,
+      deterministicReconciliation: true,
+      reconciledRemainingMinor: 2900,
+      crossTenantAllocationDenied: true,
+      crossScopeAllocationDenied: true,
       activationObligationConcurrencyBounded: true,
       activationObligationCount: 1,
       allocationConcurrencyBounded: true,
