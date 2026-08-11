@@ -46,7 +46,14 @@ export default function LoginLayout({ children }: { children: ReactNode }) {
             width: min(100%, 500px) !important;
             max-width: 500px !important;
             padding: 26px 28px !important;
-            background: var(--login-shell) !important;
+            background: #ffffff !important;
+            background-image: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+          }
+
+          .dark .orca-login-card {
+            background: #07182d !important;
           }
 
           .orca-login-card > div {
