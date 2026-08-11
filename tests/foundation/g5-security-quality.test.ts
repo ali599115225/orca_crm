@@ -122,13 +122,7 @@ describe("G5 — Security and quality gate", () => {
     );
 
     expect(blocking).toEqual([]);
-    expect(inventory.runtimeRiskFindings).toEqual([
-      expect.objectContaining({
-        id: "STATIC_DANGEROUS_HTML",
-        severity: "LOW",
-        path: "app/login/LoginClient.tsx",
-      }),
-    ]);
+    expect(inventory.runtimeRiskFindings).toEqual([]);
     expect(
       inventory.runtimeRiskFindings.some(
         (finding) => finding.id === "INSECURE_RANDOM_SECURITY_CONTEXT",
@@ -209,7 +203,7 @@ describe("G5 — Security and quality gate", () => {
       "Contracts without a direct current test reference: **34**",
     );
     expect(register).toContain("EXEC-003 v2 direct evidence: **25 contracts**");
-    expect(register).toContain("ACCEPTED_LOW_STATIC");
+    expect(register).toContain("RUNTIME_FINDINGS_CLEAR");
     expect(register).toContain("brace-expansion");
     expect(register).toContain("postcss");
   });
