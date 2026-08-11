@@ -144,3 +144,26 @@ export interface WorkflowCommunicationTransaction {
   latestConsent(tenantId: string, threadId: string, purpose: CommunicationPurpose): Promise<ConsentEvidence | null>;
   insertConsent(value: ConsentEvidence): Promise<void>;
 }
+
+export function resolveThreadPartyIdentity(
+  thread: CommunicationThread,
+  candidatePartyIds: readonly string[],
+): CommunicationThread {
+  const unique = [...new Set(candidatePartyIds.filter(Boolean))];
+  if (unique.length === 0) {
+    return { ...thread, identityState: "UNKNOWN", partyId: null };
+  }
+  if (unique.length > 1) {
+    return { ...thread, identityState: "AMBIGUOUS", partyId: null };
+  }
+  return { ...thread, identityState: "VERIFIED", partyId: unique[0] ?? null };
+}
+
+export function canExpireCommunicationContent(
+  thread: CommunicationThread,
+  now = new Date(),
+): boolean {
+  if (thread.legalHold) return false;
+  if (!thread.retentionPolicyKey || !thread.retentionUntil) return false;
+  return thread.retentionUntil <= now;
+}
