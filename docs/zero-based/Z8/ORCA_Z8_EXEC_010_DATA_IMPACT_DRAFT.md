@@ -1,16 +1,17 @@
-# ORCA Z8 — EXEC-010 Data / Privacy / Threat Impact (Draft)
+# ORCA Z8 — EXEC-010 Data / Privacy / Threat Impact
 
-- Status: `PRE-FREEZE DRAFT / OWNER DECISIONS PENDING`
+- Status: `APPROVED / SCOPE-FREEZE INPUT`
 - Package: `EXEC-010`
+- Owner decisions: `D10-01 through D10-08 APPROVED`
 
 ## Governed data classes
 
-1. Document content and metadata: filename/display name, media type, size, hashes, source, actor, subject/scope and lifecycle state.
+1. Document content identity and metadata: display name, server-detected media type, size, content hash, source, actor, subject/scope and lifecycle state.
 2. Privacy-purpose and rights evidence: purpose key, request type, actor/subject mapping, decision, timestamps and retention/legal-hold interaction.
 3. Reporting truth: metric key/version, source lineage, window/timezone, definition hash and materialized result identity where applicable.
 4. Export evidence: actor, tenant/scope, purpose, selected fields/data class, filter/query digest, format, row/result count and timestamp.
 
-## Threats to close before technical acceptance
+## Threats closed by the frozen implementation
 
 - spoofed extension/MIME and malicious active content;
 - filename/path traversal and metadata injection;
@@ -23,19 +24,19 @@
 - report values without source/version lineage;
 - excessive export, over-broad fields or unauthorized data classes;
 - export replay/conflict without attributable audit;
-- secret/credential leakage into documents/reports/exports;
+- secret/credential leakage into governed exports;
 - provider/storage/scanner activation being smuggled into this package.
 
 ## Data strategy constraints
 
-- additive integrity/evidence model only unless a direct defect proves a narrower correction is required;
-- no customer-data backfill;
-- no Production migration;
+- additive integrity/evidence model only;
+- no customer-data backfill or Production migration;
 - no provider credentials or external scanning/storage calls in tests;
-- tenant and exact resource scope must be preserved in every persisted object;
-- mutable user-facing metadata must not overwrite immutable evidence identity;
-- retention and legal hold must remain configurable, not hard-coded to an invented legal duration;
-- KPI lineage must version definitions rather than rewriting historical truth.
+- tenant and exact resource scope preserved in every persisted governed object;
+- mutable display metadata cannot overwrite immutable evidence identity;
+- retention/legal hold configurable, never hard-coded to an invented legal duration;
+- KPI lineage versions definitions rather than rewriting historical truth;
+- financial metric materialization uses integer minor-unit semantics.
 
 ## Pre-launch deferred items
 
