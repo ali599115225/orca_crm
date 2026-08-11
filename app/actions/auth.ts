@@ -267,21 +267,32 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get('x-forwarded-host');
+  const host = (forwardedHost || requestHeaders.get('host') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, '');
+  const customDomain =
+    host === 'orca.az-ez.pro' || host.endsWith('.orca.az-ez.pro');
   const cookieStore = await cookies();
 
-  cookieStore.delete('session_token');
   cookieStore.delete({ name: 'session_token', path: '/' });
-  cookieStore.delete({
-    name: 'session_token',
-    domain: 'orca.az-ez.pro',
-    path: '/',
-  });
-  cookieStore.delete({
-    name: 'session_token',
-    domain: '.orca.az-ez.pro',
-    path: '/',
-  });
-  cookieStore.delete('device_tenant_subdomain');
+  cookieStore.delete({ name: 'device_tenant_subdomain', path: '/' });
+
+  if (customDomain) {
+    cookieStore.delete({
+      name: 'session_token',
+      domain: 'orca.az-ez.pro',
+      path: '/',
+    });
+    cookieStore.delete({
+      name: 'device_tenant_subdomain',
+      domain: 'orca.az-ez.pro',
+      path: '/',
+    });
+  }
 
   return { success: true };
 }
