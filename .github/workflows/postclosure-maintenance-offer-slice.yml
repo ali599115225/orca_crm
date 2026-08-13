@@ -29,74 +29,108 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          p = Path('lib/domain/transaction-spine/accept-offer.ts')
-          text = p.read_text(encoding='utf-8')
-          old = '''        if (offer.status !== OFFER_STATUS.ACCEPTED) {
-          await tx.offer.update({
-            where: { id: offer.id },
-            data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },
-          });
-        }
-
-        return {
-          offer,
-          contract: offer.contract,
-          paymentPlan,
-          idempotent: true,
-        };'''
-          new = '''        let returnedOffer = offer;
-        if (offer.status !== OFFER_STATUS.ACCEPTED) {
-          const updatedOffer = await tx.offer.update({
-            where: { id: offer.id },
-            data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },
-          });
-          returnedOffer = { ...offer, ...updatedOffer };
-        }
-
-        await tx.offer.updateMany({
-          where: {
-            tenantId,
-            unitId: offer.unitId,
-            id: { not: offer.id },
-            status: {
-              in: [
-                OFFER_STATUS.PENDING,
-                OFFER_STATUS.SENT,
-                OFFER_STATUS.NEGOTIATION,
-              ],
-            },
-          },
-          data: {
-            status: OFFER_STATUS.CANCELLED,
-            updatedBy: userId,
-            auditLog: `Superseded by accepted offer ${offer.id}`,
-          },
-        });
-
-        return {
-          offer: returnedOffer,
-          contract: offer.contract,
-          paymentPlan,
-          idempotent: true,
-        };'''
+          p = Path("lib/domain/transaction-spine/accept-offer.ts")
+          text = p.read_text(encoding="utf-8")
+          old = "\n".join([
+              "        if (offer.status !== OFFER_STATUS.ACCEPTED) {",
+              "          await tx.offer.update({",
+              "            where: { id: offer.id },",
+              "            data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },",
+              "          });",
+              "        }",
+              "",
+              "        return {",
+              "          offer,",
+              "          contract: offer.contract,",
+              "          paymentPlan,",
+              "          idempotent: true,",
+              "        };",
+          ])
+          new = "\n".join([
+              "        let returnedOffer = offer;",
+              "        if (offer.status !== OFFER_STATUS.ACCEPTED) {",
+              "          const updatedOffer = await tx.offer.update({",
+              "            where: { id: offer.id },",
+              "            data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },",
+              "          });",
+              "          returnedOffer = { ...offer, ...updatedOffer };",
+              "        }",
+              "",
+              "        await tx.offer.updateMany({",
+              "          where: {",
+              "            tenantId,",
+              "            unitId: offer.unitId,",
+              "            id: { not: offer.id },",
+              "            status: {",
+              "              in: [",
+              "                OFFER_STATUS.PENDING,",
+              "                OFFER_STATUS.SENT,",
+              "                OFFER_STATUS.NEGOTIATION,",
+              "              ],",
+              "            },",
+              "          },",
+              "          data: {",
+              "            status: OFFER_STATUS.CANCELLED,",
+              "            updatedBy: userId,",
+              "            auditLog: `Superseded by accepted offer ${offer.id}` ,",
+              "          },",
+              "        });",
+              "",
+              "        return {",
+              "          offer: returnedOffer,",
+              "          contract: offer.contract,",
+              "          paymentPlan,",
+              "          idempotent: true,",
+              "        };",
+          ])
           if text.count(old) != 1:
-              raise SystemExit('accept-offer existing-contract source shape mismatch')
-          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+              raise SystemExit("accept-offer existing-contract source shape mismatch")
+          p.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-          t = Path('tests/offer-unit-integrity.test.ts')
-          test_text = t.read_text(encoding='utf-8')
-          fixture_old = '''        update: vi.fn(),
-      },
-      lead: {'''
-          fixture_new = '''        update: vi.fn(),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-      lead: {'''
+          t = Path("tests/offer-unit-integrity.test.ts")
+          test_text = t.read_text(encoding="utf-8")
+          fixture_old = "\n".join([
+              "        update: vi.fn(),",
+              "      },",
+              "      lead: {",
+          ])
+          fixture_new = "\n".join([
+              "        update: vi.fn(),",
+              "        updateMany: vi.fn().mockResolvedValue({ count: 0 }),",
+              "      },",
+              "      lead: {",
+          ])
           if test_text.count(fixture_old) != 1:
-              raise SystemExit('offer test fixture source shape mismatch')
-          t.write_text(test_text.replace(fixture_old, fixture_new, 1), encoding='utf-8')
+              raise SystemExit("offer test fixture source shape mismatch")
+          t.write_text(test_text.replace(fixture_old, fixture_new, 1), encoding="utf-8")
 
-          Path('tests/postclosure-maintenance-offer-existing-contract.test.ts').write_text('''import fs from "node:fs";\nimport path from "node:path";\nimport { describe, expect, it } from "vitest";\n\ndescribe("post-closure existing-contract offer remediation", () => {\n  it("cancels competing offers and returns the accepted offer state before the existing-contract return", () => {\n    const source = fs.readFileSync(\n      path.join(process.cwd(), "lib/domain/transaction-spine/accept-offer.ts"),\n      "utf8",\n    );\n    const start = source.indexOf("if (offer.contract) {");\n    const end = source.indexOf("const unit = await tx.unit.findFirst", start);\n    const block = source.slice(start, end);\n\n    expect(start).toBeGreaterThanOrEqual(0);\n    expect(end).toBeGreaterThan(start);\n    expect(block).toContain("const updatedOffer = await tx.offer.update");\n    expect(block).toContain("returnedOffer = { ...offer, ...updatedOffer }");\n    expect(block).toContain("await tx.offer.updateMany");\n    expect(block).toContain("OFFER_STATUS.PENDING");\n    expect(block).toContain("OFFER_STATUS.SENT");\n    expect(block).toContain("OFFER_STATUS.NEGOTIATION");\n    expect(block).toContain("status: OFFER_STATUS.CANCELLED");\n    expect(block).toContain("offer: returnedOffer");\n    expect(block.indexOf("await tx.offer.updateMany")).toBeLessThan(\n      block.indexOf("return {"),\n    );\n  });\n});\n''', encoding='utf-8')
+          regression = "\n".join([
+              'import fs from "node:fs";',
+              'import path from "node:path";',
+              'import { describe, expect, it } from "vitest";',
+              '',
+              'describe("post-closure existing-contract offer remediation", () => {',
+              '  it("cancels competing offers and returns accepted state before returning", () => {',
+              '    const source = fs.readFileSync(path.join(process.cwd(), "lib/domain/transaction-spine/accept-offer.ts"), "utf8");',
+              '    const start = source.indexOf("if (offer.contract) {");',
+              '    const end = source.indexOf("const unit = await tx.unit.findFirst", start);',
+              '    const block = source.slice(start, end);',
+              '    expect(start).toBeGreaterThanOrEqual(0);',
+              '    expect(end).toBeGreaterThan(start);',
+              '    expect(block).toContain("const updatedOffer = await tx.offer.update");',
+              '    expect(block).toContain("returnedOffer = { ...offer, ...updatedOffer }");',
+              '    expect(block).toContain("await tx.offer.updateMany");',
+              '    expect(block).toContain("OFFER_STATUS.PENDING");',
+              '    expect(block).toContain("OFFER_STATUS.SENT");',
+              '    expect(block).toContain("OFFER_STATUS.NEGOTIATION");',
+              '    expect(block).toContain("status: OFFER_STATUS.CANCELLED");',
+              '    expect(block).toContain("offer: returnedOffer");',
+              '    expect(block.indexOf("await tx.offer.updateMany")).toBeLessThan(block.indexOf("return {"));',
+              '  });',
+              '});',
+              '',
+          ])
+          Path("tests/postclosure-maintenance-offer-existing-contract.test.ts").write_text(regression, encoding="utf-8")
           PY
       - run: npm ci
       - name: Focused offer tests
@@ -117,7 +151,7 @@ jobs:
         shell: bash
         run: |
           rm -f .github/workflows/postclosure-maintenance-offer-slice.yml
-          git add lib/domain/transaction-spine/accept-offer.ts tests/offer-unit-integrity.test.ts tests/postclosure-maintenance-offer-existing-contract.test.ts .github/workflows/postclosure-maintenance-offer-slice.yml
+          git add -A
           git config user.name "ORCA Maintenance Verification"
           git config user.email "actions@users.noreply.github.com"
           git commit -m "fix(maintenance): reconcile existing-contract offer acceptance"
