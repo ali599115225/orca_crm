@@ -333,3 +333,25 @@ NO push without approval
 NO deploy without approval
 NO production action without approval
 NO branch deletion without approval
+
+## 27. Owner amendment — Post-Closure Maintenance Remediation
+OWNER AMENDMENT APPROVED: authorize a post-closure maintenance remediation lane for confirmed product defects and security findings only, without creating STEP 15 and without changing the locked 10 E2E / 20 FC scope. Start from the current final authoritative reference on a new isolated maintenance branch. Authorize BUILD, EDIT, COMMIT, PUSH and PR verification only. No MERGE, DEPLOY, PRODUCTION ACTION, PROVIDER ACTIVATION, PRISMA SCHEMA CHANGE, MIGRATION or BACKFILL without separate owner authorization.
+
+Governing effect:
+- This is a maintenance lane, NOT a new STEP.
+- STEP 0-14 remain CLOSED. NO STEP 15.
+- Exactly 10 E2E and 20 Functional Contracts remain locked.
+- Maintenance scope is limited to independently confirmed product defects and security findings.
+- Maintenance starts from the current final authoritative reference on a new isolated branch.
+- Allowed actions in this lane: BUILD / EDIT / COMMIT / PUSH / PR VERIFICATION.
+- Explicitly not authorized by this amendment: MERGE / DEPLOY / PRODUCTION ACTION / PROVIDER ACTIVATION / PRISMA SCHEMA CHANGE / MIGRATION / BACKFILL.
+- No reset / clean / stash / force push / history rewrite / blind cherry-pick / branch-wide merge.
+- Existing post-closure experimental/remediation branches are evidence only and are not authoritative write lines.
+- A clean maintenance branch must be created from the final authoritative reference; only verified fixes may be re-applied narrowly.
+- Any Prisma schema change or migration remains STOP -> MIGRATION_APPROVAL_REQUIRED.
+- Any merge, deploy, production action, provider activation, schema change, migration, or backfill requires separate explicit owner authorization.
+
+Bootstrap exception after workflow closure:
+- When ORCA execution status is CLOSED and postClosureMaintenance.authorized = true, the maintenance lane may operate without reopening a STEP.
+- CURRENT STEP remains CLOSED/null; it must not be changed to 15 or any hidden phase.
+- Sessions must report POST-CLOSURE MAINTENANCE = AUTHORIZED and work only within the maintenance scope above.
