@@ -162,6 +162,26 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           });
         }
 
+        await tx.offer.updateMany({
+          where: {
+            tenantId,
+            unitId: offer.unitId,
+            id: { not: offer.id },
+            status: {
+              in: [
+                OFFER_STATUS.PENDING,
+                OFFER_STATUS.SENT,
+                OFFER_STATUS.NEGOTIATION,
+              ],
+            },
+          },
+          data: {
+            status: OFFER_STATUS.CANCELLED,
+            updatedBy: userId,
+            auditLog: `Superseded by accepted offer ${offer.id}`,
+          },
+        });
+
         return {
           offer,
           contract: offer.contract,

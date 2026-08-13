@@ -181,13 +181,15 @@ async function updateTicketStatusAction(
           });
           if (!notification.success) {
             notificationError = notification.error;
-            await writeAuditLog({
-              tenantId: session.tenantId,
-              userId: session.userId,
-              action: "TICKET_NOTIFICATION_FAILED",
-              tableName: "tickets",
-              recordId: ticket.id,
-              details: JSON.stringify({ code: notificationError.slice(0, 200) }),
+            await prisma.auditLog.create({
+              data: {
+                tenantId: session.tenantId,
+                userId: session.userId,
+                action: "TICKET_NOTIFICATION_FAILED",
+                tableName: "tickets",
+                recordId: ticket.id,
+                details: JSON.stringify({ code: notificationError.slice(0, 200) }),
+              },
             });
           }
         }

@@ -47,6 +47,7 @@ describe("sendAdminEmailAlert", () => {
     const result = await sendAdminEmailAlert("Subject", "<p>Alert</p>");
 
     expect(result.success).toBe(false);
+    expect(result.code).toBe("EMAIL_PROVIDER_NOT_CONFIGURED");
     expect(prismaMocks.findFirst).not.toHaveBeenCalled();
     expect(prismaMocks.send).not.toHaveBeenCalled();
   });

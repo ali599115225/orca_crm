@@ -228,6 +228,7 @@ describe("Tasks operational and property-identity closure", () => {
     expect(completeApi).toContain('tableName: "tasks"');
     expect(completeApi).toContain("session.userId === task.assignedTo");
     expect(completeApi).toContain('task.status !== "PENDING" && task.status !== "OVERDUE"');
+    expect(completeApi).toContain('assignedTo: { not: session.userId }');
   });
 
   it("completes and verifies tasks instead of toggling them", () => {

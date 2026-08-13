@@ -63,6 +63,7 @@ export async function PATCH(
             id: task.id,
             tenantId: session.tenantId,
             status: { in: ["PENDING", "OVERDUE"] },
+            assignedTo: { not: session.userId },
           },
           data: {
             status: "COMPLETED",

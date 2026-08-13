@@ -528,6 +528,7 @@ describe("Offer Unit Integrity", () => {
       offer: {
         findFirst: vi.fn().mockResolvedValue(acceptedOffer),
         update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
       lead: {
         findFirst: vi.fn().mockResolvedValue({

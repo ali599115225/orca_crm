@@ -137,16 +137,13 @@ async function findExistingPayment(
     return { state: 'failed' as const, transactionId: transaction.id };
   }
 
-  if (
-    transaction.status !== 'COMPLETED' ||
-    !transaction.providerTransactionId
-  ) {
+  if (transaction.status !== 'COMPLETED') {
     return { state: 'pending' as const };
   }
 
   const receipt = await prisma.receipt.findFirst({
     where: {
-      id: transaction.providerTransactionId,
+      paymentTransactionId: transaction.id,
       tenantId,
       invoiceId,
     },
@@ -315,9 +312,11 @@ export async function POST(
         _sum: { netAmount: true },
       });
       const paidBefore = Number(completedPayments._sum.netAmount || 0);
-      const invoiceAmount =
-        Math.round((invoiceTotal - paidBefore) * 100) / 100;
-      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      const invoiceTotalMinor = Math.round(invoiceTotal * 100);
+      const paidBeforeMinor = Math.round(paidBefore * 100);
+      const remainingMinor = invoiceTotalMinor - paidBeforeMinor;
+      const invoiceAmount = remainingMinor / 100;
+      if (!Number.isFinite(remainingMinor) || remainingMinor <= 0) {
         throw new PaymentRouteError(
           ErrorCode.CONFLICT,
           409,
@@ -348,7 +347,7 @@ export async function POST(
         provider: MANUAL_PROVIDER,
         providerReference,
         idempotencyKey: providerReference,
-        expectedAmountMinor: Math.round(invoiceAmount * 100),
+        expectedAmountMinor: remainingMinor,
         expectedCurrency: 'SAR',
         failureReason: null,
         lastError: null,
@@ -387,7 +386,12 @@ export async function POST(
         });
       }
 
-      return { invoiceAmount, paymentTransaction, unpaidInstallments };
+      return {
+        invoiceAmount,
+        amountMinorUnits: remainingMinor,
+        paymentTransaction,
+        unpaidInstallments,
+      };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     let completed;
@@ -395,7 +399,7 @@ export async function POST(
       completed = await completePaymentTransaction({
         transactionId: created.paymentTransaction.id,
         tenantId,
-        amountMinorUnits: Math.round(created.invoiceAmount * 100),
+        amountMinorUnits: created.amountMinorUnits,
         currency: 'SAR',
         providerStatus: 'MANUAL_CONFIRMED',
         actorId: session.userId,

@@ -184,6 +184,14 @@ describe("helpdesk ticket creation", () => {
     expect(result.success).toBe(true);
     expect(String((result as { notificationError?: string }).notificationError)).toContain("وجهة العميل");
     expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "TICKET_NOTIFICATION_FAILED",
+          recordId: "ticket-1",
+        }),
+      }),
+    );
   });
 
   it("returns notification warning without rolling back a durable close", async () => {
@@ -195,6 +203,14 @@ describe("helpdesk ticket creation", () => {
     expect(result.success).toBe(true);
     expect(String((result as { notificationError?: string }).notificationError)).toContain(
       "EMAIL_PROVIDER_NOT_CONFIGURED",
+    );
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "TICKET_NOTIFICATION_FAILED",
+          recordId: "ticket-1",
+        }),
+      }),
     );
   });
 });

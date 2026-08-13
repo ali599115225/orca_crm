@@ -227,7 +227,9 @@ describe("Support Center operational and property-identity closure", () => {
     expect(destination).toContain("sendEmail");
     expect(destination).toContain("sendSMSNotification");
     expect(destination).toContain("sendWhatsAppNotification");
-    expect(destination).toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).not.toContain("Promise.race");
+    expect(destination).not.toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).toContain("textBody: input.message");
     expect(destination).toContain("EMAIL_PROVIDER_NOT_CONFIGURED");
     expect(destination).toContain("SMS_NOT_CONFIGURED");
     expect(destination).toContain("وجهة العميل غير موجودة.");

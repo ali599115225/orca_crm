@@ -10,4 +10,4 @@ CHECK (
     "base_url" IS NOT NULL
     AND "base_url" ~ '^https://(restpilot|restapi)\.paylink\.sa/?$'
   )
-);
+) NOT VALID;
