@@ -26,7 +26,7 @@ describe("custom payment provider integration", () => {
   });
 
   it("validates HTTPS and required fields again on the server", () => {
-    const trust = source("lib/revenue-integrity/trust-gates.ts");
+    const trust = source("lib/revenue-integrity/trust-gates-core.ts");
     expect(trust).toContain("validateCustomPaymentCredentials");
     expect(trust).toContain("CUSTOM_PAYMENT_HTTPS_LINK_REQUIRED");
     expect(trust).toContain("CUSTOM_PAYMENT_API_FIELDS_REQUIRED");
