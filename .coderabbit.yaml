@@ -1,0 +1,5 @@
+reviews:
+  auto_review:
+    enabled: true
+    base_branches:
+      - "^work/orca-unified-reference-20260813$"
