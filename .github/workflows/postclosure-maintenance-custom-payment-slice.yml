@@ -1,0 +1,99 @@
+name: ORCA Post-Closure Custom Payment Security Verification
+
+on:
+  push:
+    branches:
+      - work/orca-postclosure-maintenance-20260813
+    paths:
+      - .github/workflows/postclosure-maintenance-custom-payment-slice.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/orca-postclosure-maintenance-20260813
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply reviewed custom-payment transport hardening
+        shell: bash
+        run: |
+          git fetch --no-tags origin work/orca-postclosure-r1c-20260813
+          git show FETCH_HEAD:lib/payments/providers/custom-payment.ts > lib/payments/providers/custom-payment.ts
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("lib/payments/providers/custom-payment.ts")
+          text = p.read_text(encoding="utf-8")
+          needle = "\n".join([
+              "        response.on(\"end\", () => {",
+              "          const status = response.statusCode || 0;",
+          ])
+          replacement = "\n".join([
+              "        response.once(\"error\", reject);",
+              "        response.once(\"close\", () => {",
+              "          if (!response.readableEnded) {",
+              "            reject(new Error(\"CUSTOM_PAYMENT_RESPONSE_ABORTED\"));",
+              "          }",
+              "        });",
+              "        response.on(\"end\", () => {",
+              "          const status = response.statusCode || 0;",
+          ])
+          if text.count(needle) != 1:
+              raise SystemExit("custom-payment response source shape mismatch")
+          p.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+
+          regression = "\n".join([
+              'import fs from "node:fs";',
+              'import path from "node:path";',
+              'import { describe, expect, it } from "vitest";',
+              '',
+              'describe("post-closure custom payment transport hardening", () => {',
+              '  it("validates the connected socket address and rejects truncated responses", () => {',
+              '    const source = fs.readFileSync(path.join(process.cwd(), "lib/payments/providers/custom-payment.ts"), "utf8");',
+              '    expect(source).toContain("lookup: safeSocketLookup");',
+              '    expect(source).toContain("assertPublicAddress(address)");',
+              '    expect(source).toContain("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");',
+              '    expect(source).toContain("response.once(\\\"error\\\", reject)");',
+              '    expect(source).toContain("response.once(\\\"close\\\"");',
+              '    expect(source).toContain("!response.readableEnded");',
+              '    expect(source).toContain("CUSTOM_PAYMENT_RESPONSE_ABORTED");',
+              '    expect(source).toContain("CUSTOM_PAYMENT_RESPONSE_TOO_LARGE");',
+              '    expect(source).not.toContain("response.on(\\\"aborted\\\"");',
+              '  });',
+              '});',
+              '',
+          ])
+          Path("tests/postclosure-maintenance-custom-payment-transport.test.ts").write_text(regression, encoding="utf-8")
+          PY
+      - run: npm ci
+      - name: Focused payment security tests
+        run: npx vitest run tests/payment-providers.test.ts tests/postclosure-maintenance-custom-payment-transport.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Scope guard
+        shell: bash
+        run: |
+          git diff --name-only 769b0a3de7ff09e00e2baf3c438886a6b616ab1d...HEAD | tee /tmp/diff.txt
+          if grep -Eq '^(prisma/schema\.prisma|prisma/migrations/)' /tmp/diff.txt; then
+            echo 'Forbidden Prisma schema/migration change detected'
+            exit 1
+          fi
+      - name: Commit verified custom-payment slice and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/postclosure-maintenance-custom-payment-slice.yml
+          git add -A
+          git config user.name "ORCA Maintenance Verification"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "fix(maintenance): harden custom payment transport"
+          git push origin HEAD:work/orca-postclosure-maintenance-20260813
