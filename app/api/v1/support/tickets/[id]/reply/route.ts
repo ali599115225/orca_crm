@@ -7,8 +7,7 @@ import {
 import { ErrorCode } from "@/lib/errors";
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
-import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
+import { notifyTicketDestination } from "@/lib/support/ticket-destination";
 
 const HELPDESK_WRITE_ROLES = [
   "ADMIN",
@@ -166,103 +165,15 @@ export async function POST(
           );
         }
 
-        const created = await prisma.auditLog.findFirst({
-          where: {
-            tenantId: session.tenantId,
-            tableName: "tickets",
-            recordId: id,
-            action: "TICKET_CREATED",
-          },
-          orderBy: { createdAt: "asc" },
-          select: { details: true },
+        const delivery = await notifyTicketDestination({
+          tenantId: session.tenantId,
+          ticketId: id,
+          subject: `Ticket reply: ${ticket.title}`,
+          message,
         });
-        let destination: { email?: string; phone?: string; channel?: string } = {};
-        try {
-          destination = JSON.parse(created?.details || "{}");
-        } catch {
-          destination = {};
-        }
-        const channel = String(destination.channel || "").toUpperCase();
-        const email = String(destination.email || "").trim();
-        const phone = String(destination.phone || "").trim();
-        if (channel === "EMAIL") {
-          if (!email) {
-            return NextResponse.json(
-              { success: false, error: "وجهة العميل غير موجودة." },
-              { status: 409 },
-            );
-          }
-          const sent = await sendEmail({
-            tenantId: session.tenantId,
-            to: email,
-            subject: `Ticket reply: ${ticket.title}`,
-            htmlBody: message,
-          });
-          if (!sent.success) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: sent.code || sent.error || "EMAIL_PROVIDER_NOT_CONFIGURED",
-              },
-              { status: 409 },
-            );
-          }
-        } else if (channel === "SMS") {
-          if (!phone) {
-            return NextResponse.json(
-              { success: false, error: "وجهة العميل غير موجودة." },
-              { status: 409 },
-            );
-          }
-          const sent = await sendSMSNotification(phone, message, {
-            tenantId: session.tenantId,
-            ticketId: id,
-          });
-          if (!sent.success) {
-            return NextResponse.json(
-              { success: false, error: sent.error || "SMS_NOT_CONFIGURED" },
-              { status: 409 },
-            );
-          }
-        } else if (channel === "WHATSAPP") {
-          if (!phone) {
-            return NextResponse.json(
-              { success: false, error: "وجهة العميل غير موجودة." },
-              { status: 409 },
-            );
-          }
-          try {
-            const sent = await sendWhatsAppNotification(
-              session.tenantId,
-              phone,
-              "support_ticket_update",
-              [message],
-            );
-            if (!sent.success) {
-              return NextResponse.json(
-                {
-                  success: false,
-                  error:
-                    sent.errorCode || sent.error || "WHATSAPP_NOT_CONFIGURED",
-                },
-                { status: 409 },
-              );
-            }
-          } catch (error) {
-            const code =
-              error && typeof error === "object" && "code" in error
-                ? String((error as { code?: string }).code)
-                : error instanceof Error
-                  ? error.message
-                  : "WHATSAPP_NOT_CONFIGURED";
-            return NextResponse.json(
-              { success: false, error: code || "WHATSAPP_NOT_CONFIGURED" },
-              { status: 409 },
-            );
-          }
-        } else {
+        if (!delivery.success) {
           return NextResponse.json(
-            { success: false, error: "وجهة العميل غير موجودة." },
+            { success: false, error: delivery.error },
             { status: 409 },
           );
         }
