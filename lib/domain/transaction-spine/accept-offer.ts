@@ -155,15 +155,37 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           offer.contract.paymentPlan ||
           (await ensureDefaultPaymentPlanInTx(tx, offer.contract));
 
+        let returnedOffer = offer;
         if (offer.status !== OFFER_STATUS.ACCEPTED) {
-          await tx.offer.update({
+          const updatedOffer = await tx.offer.update({
             where: { id: offer.id },
             data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },
           });
+          returnedOffer = { ...offer, ...updatedOffer };
         }
 
+        await tx.offer.updateMany({
+          where: {
+            tenantId,
+            unitId: offer.unitId,
+            id: { not: offer.id },
+            status: {
+              in: [
+                OFFER_STATUS.PENDING,
+                OFFER_STATUS.SENT,
+                OFFER_STATUS.NEGOTIATION,
+              ],
+            },
+          },
+          data: {
+            status: OFFER_STATUS.CANCELLED,
+            updatedBy: userId,
+            auditLog: `Superseded by accepted offer ${offer.id}` ,
+          },
+        });
+
         return {
-          offer,
+          offer: returnedOffer,
           contract: offer.contract,
           paymentPlan,
           idempotent: true,
