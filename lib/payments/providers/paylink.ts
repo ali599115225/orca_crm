@@ -82,7 +82,7 @@ export const paylinkProvider: PaymentProviderAdapter = {
     const secret = getPaylinkSecret();
     if (!secret) throw new Error("PAYLINK_SECRET_KEY not configured");
 
-    const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice/${providerReference}`, {
+    const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice/${encodeURIComponent(providerReference)}`, {
       headers: { Authorization: `Bearer ${secret}` },
       signal: AbortSignal.timeout(15_000),
     });
