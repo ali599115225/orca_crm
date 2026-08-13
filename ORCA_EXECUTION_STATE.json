@@ -81,11 +81,12 @@
       6,
       7,
       8,
-      9
+      9,
+      10
     ],
-    "currentStep": 10,
-    "currentStepName": "REVERIFY_EXACTLY_10_E2E_20_FC",
-    "nextStep": 11,
+    "currentStep": 11,
+    "currentStepName": "RUNTIME_PAGE_VERIFICATION",
+    "nextStep": 12,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -198,6 +199,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 10,
       "closedAt": "2026-08-13T09:26:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "10": {
+      "stepName": "REVERIFY_EXACTLY_10_E2E_20_FC",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 11,
+      "closedAt": "2026-08-13T09:37:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
