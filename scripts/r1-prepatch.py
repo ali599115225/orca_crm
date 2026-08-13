@@ -51,3 +51,11 @@ updated, count = pattern.subn(replacement, text, count=1)
 if count != 1:
     raise SystemExit(f"task prepatch expected one match, found {count}")
 path.write_text(updated, encoding="utf-8")
+
+audit_path = Path("lib/audit.ts")
+audit = audit_path.read_text(encoding="utf-8")
+old = '''  | "TICKET_CREATED"\n  | "TICKET_CLOSED"\n  | "TICKET_REOPENED"\n  | "TICKET_REPLIED"'''
+new = '''  | "TICKET_CREATED"\n  | "TICKET_CLOSED"\n  | "TICKET_REOPENED"\n  | "TICKET_REPLIED"\n  | "TICKET_NOTIFICATION_FAILED"'''
+if old not in audit:
+    raise SystemExit("helpdesk AuditAction shape changed")
+audit_path.write_text(audit.replace(old, new, 1), encoding="utf-8")
