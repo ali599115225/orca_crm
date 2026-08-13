@@ -68,15 +68,16 @@
       "INTENTIONALLY_DISABLED": 1,
       "BLOCKED": 0
     },
-    "classificationStatus": "RAW_AUDIT_REQUIRES_BUSINESS_MODEL_RECLASSIFICATION"
+    "classificationStatus": "BUSINESS_MODEL_RECLASSIFICATION_COMPLETE"
   },
   "execution": {
     "completedSteps": [
-      0
+      0,
+      1
     ],
-    "currentStep": 1,
-    "currentStepName": "BUSINESS_MODEL_RECLASSIFICATION",
-    "nextStep": 2,
+    "currentStep": 2,
+    "currentStepName": "BRANCH_RECONCILIATION_AUDIT_READ_ONLY",
+    "nextStep": 3,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -90,6 +91,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 1,
       "closedAt": "2026-08-13T03:29:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "1": {
+      "stepName": "BUSINESS_MODEL_RECLASSIFICATION",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 2,
+      "closedAt": "2026-08-13T03:40:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
