@@ -246,16 +246,22 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         },
       });
 
-      const competingPendingOffers = await tx.offer.findMany({
+      const competingOffers = await tx.offer.findMany({
         where: {
           tenantId,
           unitId: offer.unitId,
           id: { not: offer.id },
-          status: OFFER_STATUS.PENDING,
+          status: {
+            in: [
+              OFFER_STATUS.PENDING,
+              OFFER_STATUS.SENT,
+              OFFER_STATUS.NEGOTIATION,
+            ],
+          },
         },
         select: { id: true, auditLog: true },
       });
-      for (const competingOffer of competingPendingOffers) {
+      for (const competingOffer of competingOffers) {
         await tx.offer.update({
           where: { id: competingOffer.id },
           data: {
