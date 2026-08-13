@@ -1,0 +1,46 @@
+name: ORCA Post-Closure Maintenance Audit Probe
+
+on:
+  push:
+    branches:
+      - work/orca-postclosure-maintenance-20260813
+    paths:
+      - .github/workflows/postclosure-maintenance-audit-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Production audit
+        run: npm audit --omit=dev --json > /tmp/audit.json || true
+      - name: Dry-run remediation
+        run: npm audit fix --omit=dev --package-lock-only --dry-run --json > /tmp/audit-fix.json || true
+      - name: Print bounded evidence
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          for (const file of ['/tmp/audit.json','/tmp/audit-fix.json']) {
+            const data = JSON.parse(fs.readFileSync(file,'utf8'));
+            console.log('FILE=' + file);
+            console.log(JSON.stringify({
+              auditReportVersion: data.auditReportVersion,
+              vulnerabilities: data.vulnerabilities,
+              metadata: data.metadata,
+              added: data.added,
+              removed: data.removed,
+              changed: data.changed
+            }, null, 2));
+          }
+          NODE
