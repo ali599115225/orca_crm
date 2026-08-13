@@ -6,6 +6,7 @@ on:
       - work/orca-postclosure-r1c-20260813
     paths:
       - scripts/r1c-second-pass.py
+      - scripts/r1c-verification-fixtures.py
       - .github/workflows/r1c-second-pass.yml
 
 permissions:
@@ -29,6 +30,9 @@ jobs:
       - name: Apply exact reviewed replacements
         run: python3 scripts/r1c-second-pass.py
 
+      - name: Align focused verification fixtures
+        run: python3 scripts/r1c-verification-fixtures.py
+
       - name: Install
         run: npm ci
 
@@ -47,7 +51,7 @@ jobs:
       - name: Commit verified product changes and remove temporary builder
         shell: bash
         run: |
-          rm -f scripts/r1c-second-pass.py .github/workflows/r1c-second-pass.yml
+          rm -f scripts/r1c-second-pass.py scripts/r1c-verification-fixtures.py .github/workflows/r1c-second-pass.yml
           git add -A
           git config user.name "ORCA R1C Verification"
           git config user.email "actions@users.noreply.github.com"
