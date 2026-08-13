@@ -178,23 +178,39 @@ describe("helpdesk ticket creation", () => {
     );
   });
 
-  it("close fails closed when destination is missing", async () => {
+  it("keeps a durable close successful when a legacy ticket has no destination", async () => {
     prismaMock.auditLog.findFirst.mockResolvedValue({ details: "{}" });
     const result = await closeTicketAction("ticket-1");
-    expect(result.success).toBe(false);
-    expect(String((result as { error?: string }).error)).toContain("وجهة العميل");
+    expect(result.success).toBe(true);
+    expect(String((result as { notificationError?: string }).notificationError)).toContain("وجهة العميل");
     expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "TICKET_NOTIFICATION_FAILED",
+          recordId: "ticket-1",
+        }),
+      }),
+    );
   });
 
-  it("returns channel config error instead of silent success", async () => {
+  it("returns notification warning without rolling back a durable close", async () => {
     mockSendEmail.mockResolvedValue({
       success: false,
       code: "EMAIL_PROVIDER_NOT_CONFIGURED",
     });
     const result = await closeTicketAction("ticket-1");
-    expect(result.success).toBe(false);
-    expect(String((result as { error?: string }).error)).toContain(
+    expect(result.success).toBe(true);
+    expect(String((result as { notificationError?: string }).notificationError)).toContain(
       "EMAIL_PROVIDER_NOT_CONFIGURED",
+    );
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "TICKET_NOTIFICATION_FAILED",
+          recordId: "ticket-1",
+        }),
+      }),
     );
   });
 });
