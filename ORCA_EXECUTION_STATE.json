@@ -1,0 +1,130 @@
+{
+  "protocol": "ORCA-WORKFLOW-LOCK",
+  "version": "1.0",
+  "status": "LOCKED",
+  "governingRunbook": "ORCA_GOVERNING_RUNBOOK.md",
+  "governingRunbookSha256": "54F18D2869A1621474C5C7A3D4628F8A976FFAFD3972F7D893FD0B803122586A",
+  "bootstrapPhrase": "ORCA LOCK",
+  "ownerAmendmentPhrase": "OWNER AMENDMENT APPROVED",
+  "repository": "ali599115225/orca_crm",
+  "pinnedSourceBranch": "work/orca-exec-011-visual-closure-20260811",
+  "pinnedBaselineSha": "2b9c0505c99c7074de1d213c720022cff4626727",
+  "operatingModel": {
+    "providerRole": "TECHNICAL_WEB_DEVELOPER_SOFTWARE_PROVIDER",
+    "providerActivityContext": [
+      "WEB_DEVELOPMENT",
+      "GRAPHIC_DESIGN"
+    ],
+    "customerType": "EXISTING_REAL_ESTATE_COMPANY_WITH_BRANCHES",
+    "productModel": "DEDICATED_SINGLE_CUSTOMER_REAL_ESTATE_OPERATIONS_PLATFORM",
+    "commercialRelationship": "SEPARATE_AGREEMENT_AND_SALE",
+    "publicMultiCompanySaas": false,
+    "subscriptionBilling": false,
+    "publicTenantRegistration": false
+  },
+  "legacySaasPolicy": {
+    "codeRetention": "KEEP",
+    "databaseLegacy": "KEEP",
+    "historicalMigrations": "KEEP",
+    "runtime": "DISABLED",
+    "publicRegistration": "DISABLED",
+    "subscriptionBilling": "DISABLED",
+    "billingCron": "DISABLED",
+    "packagePlanLogic": "DISABLED",
+    "upgradeDowngrade": "DISABLED",
+    "renewal": "DISABLED",
+    "saasPaymentFlow": "DISABLED",
+    "saasUiEntrypoints": "DISABLED",
+    "delete": "NO",
+    "cleanupMigration": "NO",
+    "tenantIdMeaning": "TECHNICAL_DATA_SCOPE_PARTITION"
+  },
+  "scope": {
+    "e2eCount": 10,
+    "functionalContractCount": 20,
+    "firstStep": 0,
+    "lastStep": 14,
+    "allowNewStep": false,
+    "allowE2E11": false,
+    "allowFC021": false,
+    "scopeExpansionAllowed": false
+  },
+  "krossAuditBaseline": {
+    "head": "2b9c0505c99c7074de1d213c720022cff4626727",
+    "mode": "READ_ONLY",
+    "filesChanged": 0,
+    "branchChanges": 0,
+    "rawE2E": {
+      "PASS": 1,
+      "PARTIAL": 9,
+      "MISSING": 0,
+      "BLOCKED": 0
+    },
+    "rawFunctionalContracts": {
+      "PASS": 3,
+      "PARTIAL": 14,
+      "MISSING": 0,
+      "NOT_CONFIGURED": 2,
+      "INTENTIONALLY_DISABLED": 1,
+      "BLOCKED": 0
+    },
+    "classificationStatus": "RAW_AUDIT_REQUIRES_BUSINESS_MODEL_RECLASSIFICATION"
+  },
+  "execution": {
+    "completedSteps": [
+      0
+    ],
+    "currentStep": 1,
+    "currentStepName": "BUSINESS_MODEL_RECLASSIFICATION",
+    "nextStep": 2,
+    "automaticAdvance": false,
+    "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
+  },
+  "approvals": {
+    "buildAuthorized": false,
+    "unifiedBranchCreationAuthorized": false,
+    "migrationAuthorized": false,
+    "backfillAuthorized": false,
+    "commitAuthorized": false,
+    "pushAuthorized": false,
+    "deployAuthorized": false,
+    "productionActionAuthorized": false,
+    "providerActivationAuthorized": false,
+    "oldBranchDeletionAuthorized": false
+  },
+  "branchPolicy": {
+    "fullMergeAllowed": false,
+    "blindCherryPickAllowed": false,
+    "resetAllowed": false,
+    "cleanAllowed": false,
+    "stashAllowed": false,
+    "oldBranchesPolicy": "FROZEN_READ_ONLY_UNTIL_RECONCILED",
+    "plannedUnifiedBranch": "work/orca-unified-reference-20260813"
+  },
+  "newFindingPolicy": {
+    "currentStepFinding": "HANDLE_WITHIN_CURRENT_STEP_ONLY",
+    "futureExistingStepFinding": "RECORD_FOR_EXISTING_FUTURE_STEP_ONLY",
+    "customerConfiguration": "CLIENT_CONFIGURATION_REQUIRED_NO_PRODUCT_FIX",
+    "legacyDisabledSaas": "LEGACY_DISABLED_KEEP_NO_ACTION",
+    "outsideScope": "OUT_OF_SCOPE_NO_ACTION",
+    "governanceConflict": "STOP_OWNER_DECISION_REQUIRED",
+    "insufficientEvidence": "STOP_MISSING_EVIDENCE",
+    "mayCreateNewStep": false
+  },
+  "regulatorySnapshot": {
+    "jurisdiction": "SAUDI_ARABIA",
+    "verifiedDate": "2026-08-13",
+    "reverifyAtStep": 12,
+    "authorities": [
+      "SDAIA",
+      "NCA",
+      "CST",
+      "REGA",
+      "EJAR",
+      "ZATCA",
+      "MINISTRY_OF_COMMERCE",
+      "SAIP",
+      "BUREAU_OF_EXPERTS"
+    ]
+  }
+}
