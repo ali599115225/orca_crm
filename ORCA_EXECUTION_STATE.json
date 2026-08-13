@@ -3,8 +3,8 @@
   "version": "1.0",
   "status": "LOCKED",
   "governingRunbook": "ORCA_GOVERNING_RUNBOOK.md",
-  "governingRunbookSha256": "54F18D2869A1621474C5C7A3D4628F8A976FFAFD3972F7D893FD0B803122586A",
-  "bootstrapPhrase": "ORCA LOCK",
+  "governingRunbookSha256": "C1B4184AB27577CB58434987EA78F3FF54E558261083200CEE16FEF7DE306FD7",
+  "bootstrapPhrase": "ORCA LOCK — ali599115225/orca_crm — governance/orca-workflow-lock",
   "ownerAmendmentPhrase": "OWNER AMENDMENT APPROVED",
   "repository": "ali599115225/orca_crm",
   "pinnedSourceBranch": "work/orca-exec-011-visual-closure-20260811",
@@ -126,5 +126,6 @@
       "SAIP",
       "BUREAU_OF_EXPERTS"
     ]
-  }
+  },
+  "governanceRef": "governance/orca-workflow-lock"
 }
