@@ -1,0 +1,38 @@
+name: ORCA Post-Closure Task Slice Verification
+
+on:
+  push:
+    branches:
+      - work/orca-postclosure-maintenance-20260813
+    paths:
+      - app/api/v1/tasks/[id]/complete/route.ts
+      - tests/tasks-operational-closure.test.ts
+      - .github/workflows/postclosure-maintenance-task-slice.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Focused task contract
+        run: npx vitest run tests/tasks-operational-closure.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Scope guard
+        shell: bash
+        run: |
+          git diff --name-only 769b0a3de7ff09e00e2baf3c438886a6b616ab1d...HEAD | tee /tmp/diff.txt
+          if grep -Eq '^(prisma/schema\.prisma|prisma/migrations/)' /tmp/diff.txt; then
+            echo 'Forbidden Prisma schema/migration change detected'
+            exit 1
+          fi
