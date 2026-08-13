@@ -37,15 +37,19 @@ function idempotencyHash(
     .digest("hex");
 }
 
+const PAYLINK_ALLOWED_HOSTS = new Set(["restpilot.paylink.sa", "restapi.paylink.sa"]);
+function safePaylinkBaseUrl(value: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || !PAYLINK_ALLOWED_HOSTS.has(url.hostname.toLowerCase()) || url.username || url.password || url.port || (url.pathname && url.pathname !== "/") || url.search || url.hash) throw new Error("PAYLINK_BASE_URL_NOT_ALLOWED");
+  return url.origin;
+}
+
 function createHubPaylinkProvider(input: {
   baseUrl: string | null;
   apiId: string;
   secretKey: string;
 }): PaymentProviderAdapter {
-  const baseUrl = (input.baseUrl || "https://restpilot.paylink.sa").replace(
-    /\/+$/,
-    "",
-  );
+  const baseUrl = safePaylinkBaseUrl(String(input.baseUrl || ""));
 
   async function authenticate(): Promise<string> {
     if (!input.apiId || !input.secretKey) {
@@ -89,7 +93,7 @@ function createHubPaylinkProvider(input: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: payment.amountMinorUnits,
+          amount: payment.amountMinorUnits / 100,
           currency: payment.currency,
           orderNumber: payment.planCode,
           clientName: "عميل",
@@ -97,7 +101,7 @@ function createHubPaylinkProvider(input: {
           products: [
             {
               title: payment.description,
-              price: payment.amountMinorUnits,
+              price: payment.amountMinorUnits / 100,
               qty: 1,
             },
           ],
@@ -109,13 +113,18 @@ function createHubPaylinkProvider(input: {
         throw new Error(`PAYLINK_CREATE_FAILED:${response.status}`);
       }
       const invoice = (await response.json()) as Record<string, unknown>;
+      const providerReference = String(
+        invoice.transactionNo || invoice.transaction_no || invoice.id || "",
+      ).trim();
+      const redirectUrl = String(
+        invoice.url || invoice.payment_url || invoice.checkoutUrl || "",
+      ).trim();
+      if (!providerReference || !redirectUrl) {
+        throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+      }
       return {
-        providerReference: String(
-          invoice.transactionNo || invoice.transaction_no || invoice.id || "",
-        ),
-        redirectUrl: String(
-          invoice.url || invoice.payment_url || invoice.checkoutUrl || "",
-        ),
+        providerReference,
+        redirectUrl,
         providerStatus: String(invoice.orderStatus || "initiated"),
         rawPayload: invoice,
       };
@@ -141,7 +150,7 @@ function createHubPaylinkProvider(input: {
         providerReference: String(
           invoice.transactionNo || invoice.id || providerReference,
         ),
-        amountMinorUnits: Number(invoice.amount || 0),
+        amountMinorUnits: Math.round(Number(invoice.amount || 0) * 100),
         currency: "SAR",
         providerStatus: status || "unknown",
         rawPayload: invoice,
