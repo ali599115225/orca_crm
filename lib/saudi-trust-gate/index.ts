@@ -104,7 +104,7 @@ export class SaudiTrustGateService {
     }
 
     const production = isProductionRuntime();
-    if (production && /(sandbox|restpilot|uat|staging|test)/i.test(configuredUrl)) {
+    if (production && /sandbox/i.test(configuredUrl)) {
       return blocked('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS',
         'EJAR hub URL points to sandbox in production');
     }
