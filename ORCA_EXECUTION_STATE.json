@@ -3,7 +3,7 @@
   "version": "1.0",
   "status": "CLOSED",
   "governingRunbook": "ORCA_GOVERNING_RUNBOOK.md",
-  "governingRunbookSha256": "C1B4184AB27577CB58434987EA78F3FF54E558261083200CEE16FEF7DE306FD7",
+  "governingRunbookSha256": "60FE82C3452B95B5734190CB7118B866CCAB9E782B85E4C73D2EEFD3C42A6D08",
   "bootstrapPhrase": "ORCA LOCK — ali599115225/orca_crm — governance/orca-workflow-lock",
   "ownerAmendmentPhrase": "OWNER AMENDMENT APPROVED",
   "repository": "ali599115225/orca_crm",
