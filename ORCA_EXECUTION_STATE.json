@@ -161,5 +161,8 @@
     "status": "RECHECK_COMPLETE_NO_PRODUCT_BLOCKER",
     "authorities": ["SDAIA","NCA","CST","REGA","EJAR","ZATCA","MINISTRY_OF_COMMERCE","SAIP","BUREAU_OF_EXPERTS"]
   },
+  "postClosureMaintenance": {
+    "authorized": true
+  },
   "governanceRef": "governance/orca-workflow-lock"
 }
