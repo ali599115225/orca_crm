@@ -10,6 +10,7 @@
  */
 import { rawPrisma } from '@/lib/prisma';
 import { isProductionRuntime } from '@/lib/api-auth-guard';
+import { requirePublicProviderUrl } from '@/lib/payments/providers/custom-payment';
 import { decryptProviderCredentials } from '@/lib/revenue-integrity/trust-gates';
 import type {
   GateInput,
@@ -101,6 +102,15 @@ export class SaudiTrustGateService {
 
     if (!configuredUrl || !credentialValid(accessToken)) {
       return blocked('MISSING_CREDENTIALS', 'No mock allowed');
+    }
+
+    try {
+      await requirePublicProviderUrl(configuredUrl);
+    } catch {
+      return blocked(
+        'MISSING_CREDENTIALS',
+        'EJAR provider URL must be public HTTPS',
+      );
     }
 
     const production = isProductionRuntime();
