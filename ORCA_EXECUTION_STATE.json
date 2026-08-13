@@ -80,11 +80,12 @@
       5,
       6,
       7,
-      8
+      8,
+      9
     ],
-    "currentStep": 9,
-    "currentStepName": "FULL_TECHNICAL_VERIFICATION",
-    "nextStep": 10,
+    "currentStep": 10,
+    "currentStepName": "REVERIFY_EXACTLY_10_E2E_20_FC",
+    "nextStep": 11,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -186,6 +187,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 9,
       "closedAt": "2026-08-13T07:06:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "9": {
+      "stepName": "FULL_TECHNICAL_VERIFICATION",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 10,
+      "closedAt": "2026-08-13T09:26:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
