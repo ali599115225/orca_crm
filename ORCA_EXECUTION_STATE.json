@@ -79,11 +79,12 @@
       4,
       5,
       6,
-      7
+      7,
+      8
     ],
-    "currentStep": 8,
-    "currentStepName": "DIRECT_CLOSURE_OF_REMAINING_APPROVED_GAPS",
-    "nextStep": 9,
+    "currentStep": 9,
+    "currentStepName": "FULL_TECHNICAL_VERIFICATION",
+    "nextStep": 10,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -174,6 +175,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 8,
       "closedAt": "2026-08-13T05:35:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "8": {
+      "stepName": "DIRECT_CLOSURE_OF_REMAINING_APPROVED_GAPS",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 9,
+      "closedAt": "2026-08-13T07:06:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
