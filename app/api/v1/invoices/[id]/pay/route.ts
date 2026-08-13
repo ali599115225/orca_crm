@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { ensureDealCorrelationId } from '@/lib/domain/deal-passport';
+import { completePaymentTransaction } from '@/lib/domain/transaction-spine';
 import {
-  appendDealEventInTx,
-  ensureDealCorrelationId,
-  resolveDealInTx,
-} from '@/lib/domain/deal-passport';
+  INSTALLMENT_STATUS,
+  PAYMENT_PLAN_STATUS,
+} from '@/lib/domain/transaction-spine/constants';
 import {
   findAccountByCode,
-  postPaymentEntry,
   seedChartOfAccounts,
 } from '@/lib/accounting';
 import {
@@ -272,7 +272,7 @@ export async function POST(
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findFirst({
         where: { id, tenantId },
       });
@@ -302,10 +302,22 @@ export async function POST(
         );
       }
 
+      const unpaidInstallments = await tx.installment.findMany({
+        where: {
+          tenantId,
+          invoiceId: id,
+          paymentStatus: {
+            notIn: [INSTALLMENT_STATUS.PAID, INSTALLMENT_STATUS.CANCELLED],
+          },
+        },
+      });
+
       const paymentTransaction = await tx.paymentTransaction.create({
         data: {
           tenantId,
           invoiceId: id,
+          installmentId:
+            unpaidInstallments.length === 1 ? unpaidInstallments[0].id : null,
           amount: invoiceAmount,
           netAmount: invoiceAmount,
           currency: 'SAR',
@@ -319,118 +331,77 @@ export async function POST(
         },
       });
 
-      const receipt = await tx.receipt.create({
-        data: {
-          tenantId,
-          invoiceId: id,
-          paymentTransactionId: paymentTransaction.id,
-          amount: invoiceAmount,
-          paymentMethod: method,
-          status: 'COMPLETED',
-          receivedDate: new Date(),
-        },
-      });
-
-      const invoiceUpdate = await tx.invoice.updateMany({
-        where: {
-          id,
-          tenantId,
-          status: { not: 'paid' },
-        },
-        data: {
-          status: 'paid',
-          paidAt: new Date(),
-          paymentMethod: method,
-          paymentRef: receipt.id,
-        },
-      });
-
-      if (invoiceUpdate.count !== 1) {
-        throw new PaymentRouteError(
-          ErrorCode.CONFLICT,
-          409,
-          'invoice payment state changed concurrently'
-        );
-      }
-
-      await postPaymentEntry(
-        tenantId,
-        receipt.id,
-        invoiceAmount,
-        cashAccount.id,
-        receivableAccount.id,
-        tx
-      );
-
-      await tx.auditLog.create({
-        data: {
-          tenantId,
-          userId: session.userId,
-          action: 'RECORD_PAYMENT',
-          tableName: 'invoices',
-          recordId: id,
-          details: `Manual payment recorded for invoice ${id}; amount=${invoiceAmount}; method=${method}; receipt=${receipt.id}`,
-        },
-      });
-
-      await tx.paymentTransaction.update({
-        where: { id: paymentTransaction.id },
-        data: {
-          status: 'COMPLETED',
-          gatewayStatus: 'COMPLETED',
-          providerTransactionId: receipt.id,
-          processedAt: new Date(),
-        },
-      });
-
-      if (invoice.contractId) {
-        const deal = await resolveDealInTx(tx, {
-          tenantId,
-          contractId: invoice.contractId,
-          actorId: session.userId,
-          correlationId,
-        });
-        if (deal.passport) {
-          await appendDealEventInTx(tx, {
-            tenantId,
-            dealId: deal.passport.id,
-            eventType: 'payment.completed',
-            idempotencyKey: `payment.completed:${paymentTransaction.id}`,
-            correlationId,
-            causationId: deal.passport.lastEventId || null,
-            actorId: session.userId,
-            entityType: 'payment',
-            entityId: paymentTransaction.id,
-            beforeState: {
-              status: 'PENDING',
-              invoiceStatus: String(invoice.status),
-            },
-            afterState: {
-              status: 'COMPLETED',
-              invoiceStatus: 'paid',
-            },
-            payload: {
-              invoiceId: invoice.id,
-              receiptId: receipt.id,
-              method,
-            },
-            projection: {
-              contractId: invoice.contractId,
-              status: 'PAYMENT_COMPLETED',
-            },
-          });
-        }
-      }
-
-      return { receipt, invoiceAmount };
+      return { invoiceAmount, paymentTransaction, unpaidInstallments };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
+    const completed = await completePaymentTransaction({
+      transactionId: created.paymentTransaction.id,
+      tenantId,
+      amountMinorUnits: Math.round(created.invoiceAmount * 100),
+      currency: 'SAR',
+      providerStatus: 'MANUAL_CONFIRMED',
+      actorId: session.userId,
+      actorUserId: session.userId,
+      correlationId,
+    });
+
+    if (created.unpaidInstallments.length > 1) {
+      const paidInvoice = await prisma.invoice.findFirst({
+        where: { id, tenantId },
+        select: { status: true },
+      });
+      if (String(paidInvoice?.status || '').toLowerCase() === 'paid') {
+        await prisma.installment.updateMany({
+          where: {
+            tenantId,
+            invoiceId: id,
+            paymentStatus: {
+              notIn: [INSTALLMENT_STATUS.PAID, INSTALLMENT_STATUS.CANCELLED],
+            },
+          },
+          data: { paymentStatus: INSTALLMENT_STATUS.PAID },
+        });
+
+        const planIds = [
+          ...new Set(
+            created.unpaidInstallments
+              .map((item) => item.paymentPlanId)
+              .filter((planId): planId is string => Boolean(planId)),
+          ),
+        ];
+        for (const paymentPlanId of planIds) {
+          const remaining = await prisma.installment.count({
+            where: {
+              paymentPlanId,
+              paymentStatus: { not: INSTALLMENT_STATUS.PAID },
+            },
+          });
+          if (remaining === 0) {
+            await prisma.paymentPlan.updateMany({
+              where: { id: paymentPlanId, tenantId },
+              data: {
+                status: PAYMENT_PLAN_STATUS.COMPLETED,
+                completedAt: new Date(),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    const receipt =
+      completed.receipt ||
+      completed.payment.receipt || {
+        id: created.paymentTransaction.id,
+        receivedDate: new Date(),
+      };
+
     return successResponse(
-      result.receipt,
+      receipt,
       id,
-      result.invoiceAmount,
+      created.invoiceAmount,
       method,
-      false
+      Boolean(completed.idempotent)
     );
   } catch (error: unknown) {
     if (error instanceof PaymentRouteError) {

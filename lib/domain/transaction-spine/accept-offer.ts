@@ -120,16 +120,14 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
       });
 
       if (!offer) throw new Error("Offer not found.");
-      if (
-        offer.status !== OFFER_STATUS.PENDING &&
-        offer.status !== OFFER_STATUS.ACCEPTED
-      ) {
+      const acceptEligible =
+        offer.status === OFFER_STATUS.PENDING ||
+        offer.status === OFFER_STATUS.SENT ||
+        offer.status === OFFER_STATUS.NEGOTIATION;
+      if (!acceptEligible && offer.status !== OFFER_STATUS.ACCEPTED) {
         throw new Error("Offer is not available for acceptance.");
       }
-      if (
-        offer.status === OFFER_STATUS.PENDING &&
-        offer.validUntil < new Date()
-      ) {
+      if (acceptEligible && offer.validUntil < new Date()) {
         await tx.offer.update({
           where: { id: offer.id },
           data: { status: OFFER_STATUS.EXPIRED, updatedBy: userId },

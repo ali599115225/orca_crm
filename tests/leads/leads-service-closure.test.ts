@@ -465,6 +465,26 @@ describe("createManagedLeadAction — authorization, dedup, assignment", () => {
     const result = await createManagedLeadAction(createForm());
 
     expect(result.success).toBe(true);
+    expect(mockSendSMS).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({
+        tenantId: TENANT_ID,
+        leadId: LEAD_ID,
+      }),
+    );
+  });
+
+  it("does not throw out of createLeadCore when SMS is not configured", async () => {
+    setupAuth("SALES_EMPLOYEE");
+    mockLeadFindFirst.mockResolvedValue(null);
+    setupCreateTransaction();
+    mockSendSMS.mockResolvedValue({ success: false, error: "SMS_NOT_CONFIGURED" });
+
+    const { createManagedLeadAction } = await import("@/app/actions/leads");
+    const result = await createManagedLeadAction(createForm());
+
+    expect(result.success).toBe(true);
     expect(mockSendSMS).toHaveBeenCalled();
   });
 });

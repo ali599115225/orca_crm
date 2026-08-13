@@ -594,9 +594,10 @@ export default function TasksView() {
     setSelectedId((current) => current || tasks[0]?.id || null);
   }
 
-  async function toggleTaskById(taskId: string) {
+  async function completeTaskById(taskId: string) {
     const task = tasks.find((item) => item.id === taskId);
     if (!task || busyTaskId) return;
+    if (task.status === "COMPLETED") return;
 
     setBusyTaskId(taskId);
 
@@ -1046,24 +1047,19 @@ export default function TasksView() {
 
                   <button
                     type="button"
-                    onClick={() => void toggleTaskById(selectedTask.id)}
-                    disabled={busyTaskId === selectedTask.id}
-                    className={
+                    onClick={() => void completeTaskById(selectedTask.id)}
+                    disabled={
+                      busyTaskId === selectedTask.id ||
                       selectedTask.status === "COMPLETED"
-                        ? "nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                        : "nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
                     }
+                    className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busyTaskId === selectedTask.id ? (
                       <Loader2 size={15} className="animate-spin" />
                     ) : (
                       <CheckCircle2 size={15} />
                     )}
-                    <span className="hidden sm:inline">
-                      {selectedTask.status === "COMPLETED"
-                        ? t.reopen
-                        : t.complete}
-                    </span>
+                    <span className="hidden sm:inline">{t.complete}</span>
                   </button>
                 </div>
               </header>

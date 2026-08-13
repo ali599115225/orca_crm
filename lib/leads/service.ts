@@ -181,7 +181,11 @@ export async function createLeadCore(params: {
     const welcome = tenantName
       ? `مرحباً بك أ. ${lead.firstName}، سعدنا باهتمامك بمشاريع ${tenantName}. سيتواصل معك مستشارك العقاري قريباً.`
       : `مرحباً بك أ. ${lead.firstName}، سعدنا باهتمامك بمشاريعنا. سيتواصل معك مستشارك العقاري قريباً.`;
-    await sendSMSNotification(lead.phone, welcome);
+    await sendSMSNotification(lead.phone, welcome, {
+      tenantId: tenant.id,
+      leadId: lead.id,
+      userId: actor?.userId || null,
+    });
   } catch (error) {
     console.error("[Leads Service] welcome SMS failed:", error);
   }

@@ -69,7 +69,7 @@ export async function updateTourStatus(input: UpdateTourStatusInput) {
       });
 
       let taskId: string | null = null;
-      if (status === "COMPLETED") {
+      if (status === "COMPLETED" || status === "NO_SHOW") {
         const task = await tx.task.create({
           data: {
             tenantId,
@@ -82,7 +82,9 @@ export async function updateTourStatus(input: UpdateTourStatusInput) {
           },
         });
         taskId = task.id;
+      }
 
+      if (status === "COMPLETED") {
         await tx.lead.updateMany({
           where: { id: tour.leadId, tenantId },
           data: { status: "VISITED", updatedBy: userId },

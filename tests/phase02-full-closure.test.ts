@@ -45,20 +45,11 @@ describe("Phase 02 full closure architecture", () => {
     expect(reconciliation).toContain(
       "Prisma.TransactionIsolationLevel.Serializable",
     );
-    const paymentCreateStart = manualRoute.indexOf(
-      "const paymentTransaction = await tx.paymentTransaction.create",
-    );
-    const receiptCreateStart = manualRoute.indexOf(
-      "const receipt = await tx.receipt.create",
-    );
-    expect(paymentCreateStart).toBeGreaterThanOrEqual(0);
-    expect(receiptCreateStart).toBeGreaterThan(paymentCreateStart);
-    expect(
-      manualRoute.slice(paymentCreateStart, receiptCreateStart),
-    ).not.toContain("paymentTransactionId:");
-    expect(manualRoute.slice(receiptCreateStart)).toContain(
-      "paymentTransactionId: paymentTransaction.id",
-    );
+    expect(manualRoute).toContain("completePaymentTransaction");
+    expect(manualRoute).toContain("installmentId:");
+    expect(manualRoute).toContain("INSTALLMENT_STATUS.PAID");
+    expect(manualRoute).toContain("PAYMENT_PLAN_STATUS.COMPLETED");
+    expect(manualRoute).not.toContain("const receipt = await tx.receipt.create");
     expect(manualRoute).toContain("Prisma.TransactionIsolationLevel.Serializable");
     expect(paylinkRoute).toContain("paymentTransactionId: payment.id");
     expect(paylinkRoute).toContain("Prisma.TransactionIsolationLevel.Serializable");

@@ -33,7 +33,7 @@ describe("Generic SMTP tenant provider", () => {
 
   it("keeps SMTP credentials encrypted and server-only", () => {
     expect(emailLib).toContain('import "server-only"');
-    expect(emailLib).toContain("decryptText");
+    expect(emailLib).toContain("decryptProviderCredentials");
     expect(emailLib).toContain("encryptedCredentials");
     expect(integrations).toContain('key: "password"');
     expect(integrations).toContain("secret: true");

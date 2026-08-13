@@ -3,10 +3,49 @@
  * ORCA CRM — Saudi Trust Gates + Authorization + Audit: Full Closure
  * End-to-end behavioural proof (no DB, no network, no production secrets).
  */
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const {
+  mockTenantFindUnique,
+  mockContractFindFirst,
+  mockConnectionFindFirst,
+  mockAuditLogFindFirst,
+  mockDeviceFindFirst,
+  mockDecryptProviderCredentials,
+  mockIsProductionRuntime,
+} = vi.hoisted(() => ({
+  mockTenantFindUnique: vi.fn(),
+  mockContractFindFirst: vi.fn(),
+  mockConnectionFindFirst: vi.fn(),
+  mockAuditLogFindFirst: vi.fn(),
+  mockDeviceFindFirst: vi.fn(),
+  mockDecryptProviderCredentials: vi.fn(),
+  mockIsProductionRuntime: vi.fn(),
+}));
+
+vi.mock('server-only', () => ({}));
+vi.mock('@/lib/prisma', () => ({
+  rawPrisma: {
+    tenant: { findUnique: (...args: unknown[]) => mockTenantFindUnique(...args) },
+    contract: { findFirst: (...args: unknown[]) => mockContractFindFirst(...args) },
+    revenueProviderConnection: {
+      findFirst: (...args: unknown[]) => mockConnectionFindFirst(...args),
+    },
+    auditLog: { findFirst: (...args: unknown[]) => mockAuditLogFindFirst(...args) },
+    zatcaDevice: { findFirst: (...args: unknown[]) => mockDeviceFindFirst(...args) },
+  },
+  prisma: {},
+}));
+vi.mock('@/lib/revenue-integrity/trust-gates', () => ({
+  decryptProviderCredentials: (...args: unknown[]) =>
+    mockDecryptProviderCredentials(...args),
+}));
+vi.mock('@/lib/api-auth-guard', () => ({
+  isProductionRuntime: () => mockIsProductionRuntime(),
+}));
 
 function source(rel: string): string {
   return fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
@@ -302,11 +341,11 @@ describe('Compliance Field Validators', () => {
 // SOURCE CODE STRUCTURAL GUARANTEES
 describe('Gate Source — Fail-Closed Architecture', () => {
   it('outer try-catch returns blocked() not READY',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('catch (err: any)'); const catchStart=src.lastIndexOf('} catch (err: any)'); const catchEnd=src.indexOf('}', catchStart + 20) + 1; const catchBlock=src.slice(catchStart, catchEnd); expect(catchBlock).not.toContain("status: 'READY'"); expect(catchBlock).toContain("blocked("); });
-  it('Ejar gate blocks in dev when credentials missing',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('PRODUCTION_RUNTIME_MISSING_FOUNDATION'); expect(src).toContain('No mock allowed'); });
+  it('Ejar gate blocks in dev when credentials missing',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('MISSING_CREDENTIALS'); expect(src).toContain('No mock allowed'); });
   it('Ejar gate blocks sandbox URL in production',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS'); expect(src).toContain('/sandbox/i.test'); });
   it('ZATCA gate checks all three compliance fields',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('MISSING_VAT_NUMBER'); expect(src).toContain('MISSING_COMMERCIAL_REGISTRY'); expect(src).toContain('MISSING_NATIONAL_ADDRESS'); });
   it('ZATCA gate checks compliance disclaimer',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('COMPLIANCE_DISCLAIMER_SIGNED'); expect(src).toContain('DISCLAIMER_NOT_SIGNED'); });
-  it('ZATCA gate validates credentials via decryptCompat',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('decryptCompat'); expect(src).toContain('CREDENTIALS_INTEGRITY_FAILED'); });
+  it('ZATCA gate validates credentials via decryptProviderCredentials',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('decryptProviderCredentials'); expect(src).toContain('revenueProviderConnection'); expect(src).toContain('CREDENTIALS_INTEGRITY_FAILED'); });
   it('ZATCA gate handles device expiry',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain('DEVICE_EXPIRED'); expect(src).toContain('expiresAt'); });
   it('ZATCA_CREATE_DEVICE skips device check',()=>{ const src=source('lib/saudi-trust-gate/index.ts'); expect(src).toContain("operation !== 'ZATCA_CREATE_DEVICE'"); });
 });
@@ -361,4 +400,110 @@ describe('Schema — GovernmentOutbox Structural Guarantees', () => {
   it('government_outbox indexed for retry scheduling',()=>{ expect(source('prisma/schema.prisma')).toContain('idx_gov_outbox_retry'); });
   it('AuditLog model has tenantId and action',()=>{ const schema=source('prisma/schema.prisma'); expect(schema).toContain('model AuditLog {'); const block=schema.slice(schema.indexOf('model AuditLog {')); expect(block).toContain('tenantId'); expect(block).toContain('action'); });
   it('ZatcaDevice model has status and expiresAt',()=>{ const schema=source('prisma/schema.prisma'); expect(schema).toContain('model ZatcaDevice {'); const block=schema.slice(schema.indexOf('model ZatcaDevice {')); expect(block).toContain('status'); expect(block).toContain('expiresAt'); });
+});
+
+describe('SaudiTrustGateService — CONNECTED hub credentials', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsProductionRuntime.mockReturnValue(false);
+    mockTenantFindUnique.mockResolvedValue({
+      isActive: true,
+      vatNumber: VALID_VAT,
+      commercialRegistry: VALID_CR,
+      nationalAddress: VALID_ADDR,
+    });
+    mockContractFindFirst.mockResolvedValue({ id: CONTRACT_A, status: 'ACTIVE' });
+    mockAuditLogFindFirst.mockResolvedValue({ id: 'disclaimer-1' });
+    mockDeviceFindFirst.mockResolvedValue({
+      id: 'device-1',
+      expiresAt: new Date(Date.now() + 86400000),
+    });
+  });
+
+  it('CONNECTED hub ZATCA GCM credentials make evaluate READY', async () => {
+    mockConnectionFindFirst.mockResolvedValue({
+      encryptedCredentials: 'v1.hub.zatca',
+    });
+    mockDecryptProviderCredentials.mockReturnValue({
+      binarySecurityToken: 'zatca-token-value',
+      secret: 'zatca-secret-value',
+    });
+
+    const { SaudiTrustGateService } = await import('@/lib/saudi-trust-gate');
+    const result = await SaudiTrustGateService.evaluate({
+      provider: 'ZATCA',
+      operation: 'ZATCA_SUBMIT_INVOICE',
+      tenantId: TENANT_A,
+      invoiceId: INVOICE_A,
+      operationType: 'REPORT',
+    });
+
+    expect(result.status).toBe('READY');
+  });
+
+  it('CONNECTED hub EJAR GCM credentials make evaluate READY', async () => {
+    mockConnectionFindFirst.mockResolvedValue({
+      encryptedCredentials: 'v1.hub.ejar',
+      baseUrl: 'https://ejar.sa/api/v1',
+    });
+    mockDecryptProviderCredentials.mockReturnValue({
+      accessToken: 'ejar-access-token',
+    });
+
+    const { SaudiTrustGateService } = await import('@/lib/saudi-trust-gate');
+    const result = await SaudiTrustGateService.evaluate({
+      provider: 'EJAR',
+      operation: 'EJAR_REGISTER_CONTRACT',
+      tenantId: TENANT_A,
+      contractId: CONTRACT_A,
+    });
+
+    expect(result.status).toBe('READY');
+  });
+
+  it('absent hub connection remains BLOCKED/MISSING_CREDENTIALS', async () => {
+    mockConnectionFindFirst.mockResolvedValue(null);
+
+    const { SaudiTrustGateService } = await import('@/lib/saudi-trust-gate');
+    const zatca = await SaudiTrustGateService.evaluate({
+      provider: 'ZATCA',
+      operation: 'ZATCA_SUBMIT_INVOICE',
+      tenantId: TENANT_A,
+      invoiceId: INVOICE_A,
+      operationType: 'REPORT',
+    });
+    const ejar = await SaudiTrustGateService.evaluate({
+      provider: 'EJAR',
+      operation: 'EJAR_REGISTER_CONTRACT',
+      tenantId: TENANT_A,
+      contractId: CONTRACT_A,
+    });
+
+    expect(zatca.status).toBe('BLOCKED');
+    expect((zatca as any).reason).toBe('MISSING_CREDENTIALS');
+    expect(ejar.status).toBe('BLOCKED');
+    expect((ejar as any).reason).toBe('MISSING_CREDENTIALS');
+  });
+
+  it('sandbox EJAR URL in production remains blocked', async () => {
+    mockIsProductionRuntime.mockReturnValue(true);
+    mockConnectionFindFirst.mockResolvedValue({
+      encryptedCredentials: 'v1.hub.ejar',
+      baseUrl: 'https://sandbox.ejar.sa/api/v1',
+    });
+    mockDecryptProviderCredentials.mockReturnValue({
+      accessToken: 'ejar-access-token',
+    });
+
+    const { SaudiTrustGateService } = await import('@/lib/saudi-trust-gate');
+    const result = await SaudiTrustGateService.evaluate({
+      provider: 'EJAR',
+      operation: 'EJAR_REGISTER_CONTRACT',
+      tenantId: TENANT_A,
+      contractId: CONTRACT_A,
+    });
+
+    expect(result.status).toBe('BLOCKED');
+    expect((result as any).reason).toBe('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS');
+  });
 });

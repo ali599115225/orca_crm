@@ -262,6 +262,11 @@ export default function HelpdeskView({
   const [editorOpen, setEditorOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newChannel, setNewChannel] = useState<"EMAIL" | "SMS" | "WHATSAPP">(
+    "EMAIL",
+  );
   const [saving, setSaving] = useState(false);
 
   const [busyTicketId, setBusyTicketId] = useState("");
@@ -474,6 +479,9 @@ export default function HelpdeskView({
   function beginCreate() {
     setNewTitle("");
     setNewDescription("");
+    setNewEmail("");
+    setNewPhone("");
+    setNewChannel("EMAIL");
     setEditorOpen(true);
   }
 
@@ -485,6 +493,9 @@ export default function HelpdeskView({
       const formData = new FormData();
       formData.append("title", newTitle.trim());
       formData.append("description", newDescription.trim());
+      formData.append("email", newEmail.trim());
+      formData.append("phone", newPhone.trim());
+      formData.append("channel", newChannel);
 
       const result = await createTicketAction(formData);
 
@@ -497,6 +508,9 @@ export default function HelpdeskView({
       setEditorOpen(false);
       setNewTitle("");
       setNewDescription("");
+      setNewEmail("");
+      setNewPhone("");
+      setNewChannel("EMAIL");
       await loadTickets(result.ticket.id);
     } finally {
       setSaving(false);
@@ -1125,6 +1139,39 @@ export default function HelpdeskView({
                         maxLength={5000}
                         required
                         className="orca-form-textarea min-h-[120px] max-h-[220px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                      />
+                    </Field>
+
+                    <Field label="Channel">
+                      <select
+                        value={newChannel}
+                        onChange={(event) =>
+                          setNewChannel(
+                            event.target.value as "EMAIL" | "SMS" | "WHATSAPP",
+                          )
+                        }
+                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                      >
+                        <option value="EMAIL">EMAIL</option>
+                        <option value="SMS">SMS</option>
+                        <option value="WHATSAPP">WHATSAPP</option>
+                      </select>
+                    </Field>
+
+                    <Field label="Email">
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(event) => setNewEmail(event.target.value)}
+                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                      />
+                    </Field>
+
+                    <Field label="Phone">
+                      <input
+                        value={newPhone}
+                        onChange={(event) => setNewPhone(event.target.value)}
+                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
                       />
                     </Field>
 

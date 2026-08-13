@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
-import { getDetailedProjectsAction, getProjectUnitsAction } from '@/app/actions/projects';
+import { getDetailedProjectsAction, getProjectUnitsAction, createProjectAction } from '@/app/actions/projects';
 import { displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 
@@ -485,6 +485,9 @@ export default function ProjectsView() {
   const [projectPage, setProjectPage] = useState(1);
   const [unitPage, setUnitPage] = useState(1);
   const [bookingUnit, setBookingUnit] = useState<UnitItem | null>(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const loadProjects = useCallback(async () => {
     try {
@@ -504,6 +507,24 @@ export default function ProjectsView() {
   useEffect(() => {
     void loadProjects();
   }, [loadProjects]);
+
+  async function submitCreateProject(formData: FormData) {
+    setIsCreatingProject(true);
+    setCreateError('');
+    try {
+      const result = await createProjectAction(formData);
+      if (!result?.success) {
+        setCreateError(result?.error || labels.createProject);
+        return;
+      }
+      setShowCreateProject(false);
+      await loadProjects();
+    } catch {
+      setCreateError(labels.createProject);
+    } finally {
+      setIsCreatingProject(false);
+    }
+  }
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -928,6 +949,10 @@ export default function ProjectsView() {
           {hasPermission('CREATE_PROJECT') && (
             <button
               type="button"
+              onClick={() => {
+                setCreateError('');
+                setShowCreateProject(true);
+              }}
               className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
             >
               <Plus size={16} aria-hidden="true" />
@@ -936,6 +961,67 @@ export default function ProjectsView() {
           )}
         </div>
       </header>
+
+      {showCreateProject && (
+        <form
+          className="orca-workspace-panel rounded-2xl border border-[var(--nc-border)] p-4"
+          action={(formData) => {
+            void submitCreateProject(formData);
+          }}
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
+              {labels.projectName}
+              <input
+                name="name"
+                required
+                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
+              />
+            </label>
+            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
+              {labels.location}
+              <input
+                name="city"
+                required
+                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
+              />
+            </label>
+            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
+              {labels.status}
+              <select
+                name="status"
+                required
+                defaultValue="PLANNING"
+                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
+              >
+                <option value="PLANNING">PLANNING</option>
+                <option value="UNDER_CONSTRUCTION">UNDER_CONSTRUCTION</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="SOLD_OUT">SOLD_OUT</option>
+              </select>
+            </label>
+          </div>
+          {createError ? (
+            <p className="mt-3 text-xs font-bold text-rose-400">{createError}</p>
+          ) : null}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="submit"
+              disabled={isCreatingProject}
+              className="nc-btn-primary rounded-xl px-4 py-2 text-xs font-black disabled:opacity-50"
+            >
+              {labels.createProject}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateProject(false)}
+              className="nc-btn nc-btn-ghost rounded-xl px-4 py-2 text-xs font-bold"
+            >
+              {labels.refresh}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="orca-workspace-metrics">
         {listKpis.map((item) => {

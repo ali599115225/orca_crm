@@ -32,6 +32,7 @@ const prismaMocks = vi.hoisted(() => ({
   invoiceFindMany: vi.fn(),
   invoiceFindFirst: vi.fn(),
   contractFindMany: vi.fn(),
+  rentalLeaseFindMany: vi.fn(),
   workflowCreate: vi.fn(),
 }));
 const domainMocks = vi.hoisted(() => ({ cancelDraftContract: vi.fn() }));
@@ -73,6 +74,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: prismaMocks.invoiceFindFirst,
     },
     contract: { findMany: prismaMocks.contractFindMany },
+    rentalLease: { findMany: prismaMocks.rentalLeaseFindMany },
     automationWorkflow: { create: prismaMocks.workflowCreate },
   },
 }));
@@ -186,7 +188,7 @@ describe("EXEC-003 inactive-user entry-point coverage matrix", () => {
     const result = await getRentalContractsAction();
 
     expect(result.success).toBe(false);
-    expect(prismaMocks.contractFindMany).not.toHaveBeenCalled();
+    expect(prismaMocks.rentalLeaseFindMany).not.toHaveBeenCalled();
   });
 
   it("INACTIVE_USER_ENTRY_POINT Cookie-only mutation C14-O02 denies before downstream", async () => {

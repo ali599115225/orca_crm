@@ -561,6 +561,209 @@ describe("Offer Unit Integrity", () => {
     expect(result.paymentPlan).toMatchObject({ id: "plan-1" });
   });
 
+  function buildAcceptTx(offerStatus: string, validUntil: Date) {
+    const offer = {
+      id: "offer-1",
+      tenantId: "tenant-1",
+      status: offerStatus,
+      validUntil,
+      unitId: "unit-1",
+      linkedOpportunityId: "opp-1",
+      opportunity: { id: "opp-1", leadId: "lead-1" },
+      contract: null,
+      price: 500000,
+      auditLog: "",
+    };
+    const lead = {
+      id: "lead-1",
+      tenantId: "tenant-1",
+      firstName: "Sara",
+      lastName: "Ali",
+      phone: "0500000000",
+    };
+    const contract = {
+      id: "contract-1",
+      tenantId: "tenant-1",
+      leadId: "lead-1",
+      offerId: "offer-1",
+      unitId: "unit-1",
+      totalVolumeSar: 500000,
+      vatType: "STANDARD",
+      status: "PENDING_SIGNATURE",
+      spineVersion: 2,
+      legacyFinancial: false,
+    };
+    const paymentPlan = {
+      id: "plan-1",
+      tenantId: "tenant-1",
+      contractId: "contract-1",
+      status: "DRAFT",
+    };
+    const events: any[] = [];
+    let paymentPlanCreated = false;
+    const dealPassport: any = {
+      id: "deal-1",
+      tenantId: "tenant-1",
+      opportunityId: "opp-1",
+      contractId: null,
+      currentOfferId: "offer-1",
+      status: "OFFERED",
+      version: 2,
+      lastSequence: 2,
+      lastEventId: null,
+    };
+    return {
+      offer,
+      contract,
+      paymentPlan,
+      tx: {
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "mock-sync-event-id" }]),
+        offer: {
+          findFirst: vi.fn().mockResolvedValue(offer),
+          update: vi.fn().mockResolvedValue({ ...offer, status: "ACCEPTED" }),
+          updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        lead: {
+          findFirst: vi.fn().mockResolvedValue(lead),
+          update: vi.fn().mockResolvedValue({}),
+          updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        unit: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "unit-1",
+            tenantId: "tenant-1",
+            status: "Available",
+            contract: null,
+          }),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        contract: {
+          create: vi.fn().mockResolvedValue(contract),
+        },
+        paymentPlan: {
+          findFirst: vi.fn().mockImplementation(async () =>
+            paymentPlanCreated ? paymentPlan : null,
+          ),
+          findUnique: vi.fn().mockResolvedValue(paymentPlan),
+          create: vi.fn().mockImplementation(async () => {
+            paymentPlanCreated = true;
+            return paymentPlan;
+          }),
+        },
+        opportunity: {
+          update: vi.fn().mockResolvedValue({ id: "opp-1", status: "COMMITTED" }),
+        },
+        invoice: { count: vi.fn().mockResolvedValue(0) },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
+        telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+        dealPassport: {
+          findMany: vi.fn().mockResolvedValue([dealPassport]),
+          create: vi.fn(),
+          findUnique: vi.fn().mockImplementation(async ({ where }) =>
+            where.id === dealPassport.id ? { ...dealPassport } : null,
+          ),
+          update: vi.fn().mockImplementation(async ({ data }) => {
+            if (data.lastSequence?.increment) {
+              dealPassport.lastSequence += data.lastSequence.increment;
+            }
+            if (data.version?.increment) {
+              dealPassport.version += data.version.increment;
+            }
+            const plain = { ...data };
+            delete plain.lastSequence;
+            delete plain.version;
+            Object.assign(dealPassport, plain);
+            return { ...dealPassport };
+          }),
+        },
+        dealEvent: {
+          findFirst: vi.fn().mockImplementation(async ({ where }) => {
+            if (where.id) {
+              return (
+                events.find(
+                  (event) =>
+                    event.id === where.id &&
+                    event.tenantId === where.tenantId &&
+                    event.dealId === where.dealId,
+                ) || null
+              );
+            }
+            return (
+              events.find(
+                (event) =>
+                  event.tenantId === where.tenantId &&
+                  event.idempotencyKey === where.idempotencyKey,
+              ) || null
+            );
+          }),
+          create: vi.fn().mockImplementation(async ({ data }) => {
+            const event = { id: `event-${data.sequence}`, ...data };
+            events.push(event);
+            return event;
+          }),
+        },
+      },
+    };
+  }
+
+  it.each(["SENT", "NEGOTIATION"] as const)(
+    "accepts a %s offer and creates a reserved draft contract",
+    async (status) => {
+      mockOfferFindFirst.mockResolvedValue({
+        id: "offer-1",
+        tenantId: "tenant-1",
+      });
+      const { tx, contract, paymentPlan } = buildAcceptTx(status, future());
+      mockTransaction.mockImplementation(async (callback) => callback(tx));
+
+      const result = await acceptOfferAndCreateContract({
+        tenantId: "tenant-1",
+        userId: "user-1",
+        offerId: "offer-1",
+      });
+
+      expect(tx.contract.create).toHaveBeenCalledTimes(1);
+      expect(result.contract).toMatchObject({ id: contract.id });
+      expect(result.paymentPlan).toMatchObject({ id: paymentPlan.id });
+      expect(result.idempotent).toBe(false);
+    },
+  );
+
+  it.each(["SENT", "NEGOTIATION"] as const)(
+    "expires and rejects an expired %s offer",
+    async (status) => {
+      mockOfferFindFirst.mockResolvedValue({
+        id: "offer-1",
+        tenantId: "tenant-1",
+      });
+      const { tx } = buildAcceptTx(status, new Date(Date.now() - 86_400_000));
+      mockTransaction.mockImplementation(async (callback) => callback(tx));
+
+      await expect(
+        acceptOfferAndCreateContract({
+          tenantId: "tenant-1",
+          userId: "user-1",
+          offerId: "offer-1",
+        }),
+      ).rejects.toThrow("Offer has expired.");
+
+      expect(tx.offer.update).toHaveBeenCalledWith({
+        where: { id: "offer-1" },
+        data: { status: "EXPIRED", updatedBy: "user-1" },
+      });
+      expect(tx.contract.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps PATCH from accepting an offer via ACCEPTED status", () => {
+    const route = fs.readFileSync(
+      path.join(process.cwd(), "app/api/v1/offers/[id]/route.ts"),
+      "utf8",
+    );
+    expect(route).not.toContain('"ACCEPTED",');
+    expect(route).toContain("قبول العرض يتم عبر إجراء التحويل إلى عقد");
+  });
+
   it("keeps the list page standalone and the offer/tour flows on the official detail route", () => {
     const root = process.cwd();
     const page = fs.readFileSync(

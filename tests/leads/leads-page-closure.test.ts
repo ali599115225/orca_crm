@@ -117,6 +117,14 @@ describe("Lead detail page architecture", () => {
     expect(client).toContain("archiveLeadAction");
     expect(client).toContain("restoreLeadAction");
     expect(client.toLowerCase()).not.toContain("deletelead");
+    expect(client).toContain("LeadContactsPanel");
+  });
+
+  it("lead contacts panel loads and creates contacts by leadId", () => {
+    const panel = read("components/leads/panels/LeadContactsPanel.tsx");
+    expect(panel).toContain("/api/v1/contacts?leadId=");
+    expect(panel).toContain('fetch("/api/v1/contacts"');
+    expect(panel).toContain("leadId, name, phone");
   });
 
   it("engagement tabs link tours through offerId and never parse auditLog", () => {
@@ -137,7 +145,12 @@ describe("Lead detail page architecture", () => {
   it("detail client uses the central listbox select for status and assignment", () => {
     const client = read("features/leads/components/LeadDetailClient.tsx");
     expect(client).toContain("SettingsSelect");
-    expect(client).not.toMatch(/<select\b/i);
+    expect(client).toContain("LeadContactsPanel");
+    const statusAssignment = client.slice(
+      0,
+      client.indexOf("lead-history-period"),
+    );
+    expect(statusAssignment).not.toMatch(/<select\b/i);
   });
 
   it("official detail route owns tours, opportunities, offers, activity, and history", () => {

@@ -302,7 +302,7 @@ export async function issueContractActionDirect(data: {
             buyerName: contract.buyerName,
             buyerPhone: contract.buyerPhone,
             totalVolumeSar: Number(contract.totalVolumeSar),
-            signedAt: contract.signedAt.toISOString(),
+            signedAt: contract.signedAt?.toISOString() ?? null,
           },
         };
       },

@@ -493,6 +493,38 @@ export default function SalesContractWorkspace({
     restructureMode,
   ]);
 
+  async function signPendingContract() {
+    if (!contract || contract.status !== "PENDING_SIGNATURE") return;
+    setBusy("sign");
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/v1/contracts/${contract.id}/sign`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.error ||
+            L("تعذر تأكيد توقيع العقد.", "Failed to confirm contract signature."),
+        );
+      }
+      setNotice(L("تم تأكيد توقيع العقد.", "Contract signature confirmed."));
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : L("حدث خطأ غير متوقع.", "Unexpected error."),
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function payInstallment(item: Installment) {
     setBusy(`pay:${item.id}`);
     setError("");
@@ -837,6 +869,17 @@ export default function SalesContractWorkspace({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {contract.status === "PENDING_SIGNATURE" && !contract.legacyFinancial && (
+            <button
+              type="button"
+              onClick={() => void signPendingContract()}
+              disabled={busy !== ""}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 py-2 text-xs font-black text-slate-950 disabled:opacity-40"
+            >
+              <CheckCircle2 size={15} />
+              {L("تأكيد التوقيع", "Confirm signature")}
+            </button>
+          )}
           {nextInstallment && !contract.legacyFinancial && (
             <button
               type="button"

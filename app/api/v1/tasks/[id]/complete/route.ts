@@ -25,6 +25,7 @@ export async function PATCH(
             tenantId: true,
             leadId: true,
             status: true,
+            assignedTo: true,
             auditLog: true,
           },
         });
@@ -33,6 +34,27 @@ export async function PATCH(
           return NextResponse.json(
             { success: false, error: "المهمة غير موجودة." },
             { status: 404 },
+          );
+        }
+
+        if (task.status === "COMPLETED") {
+          return NextResponse.json(
+            { success: false, error: "لا يمكن إعادة فتح مهمة مكتملة." },
+            { status: 409 },
+          );
+        }
+
+        if (task.status !== "PENDING" && task.status !== "OVERDUE") {
+          return NextResponse.json(
+            { success: false, error: "لا يمكن إكمال هذه المهمة." },
+            { status: 409 },
+          );
+        }
+
+        if (session.userId === task.assignedTo) {
+          return NextResponse.json(
+            { success: false, error: "لا يمكن للمسند إليه إغلاق مهمته بنفسه." },
+            { status: 403 },
           );
         }
 

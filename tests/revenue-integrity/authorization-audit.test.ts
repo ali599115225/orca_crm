@@ -344,6 +344,30 @@ describe("Contract Actions Authorization", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("13b. issueContractActionDirect: signedAt null returns success without throw", async () => {
+    setupAdminAuth();
+    const { issueContract } = await import("@/lib/domain/transaction-spine");
+    vi.mocked(issueContract).mockResolvedValue({
+      id: "contract-1",
+      buyerName: "Buyer",
+      buyerPhone: "0500000000",
+      totalVolumeSar: 500_000,
+      signedAt: null,
+    } as never);
+
+    const { issueContractActionDirect } = await import("@/app/actions/contract");
+    await expect(
+      issueContractActionDirect({
+        clientId: "cl-1",
+        propertyId: "pr-1",
+        amount: 500_000,
+      }),
+    ).resolves.toMatchObject({
+      success: true,
+      contract: { signedAt: null },
+    });
+  });
 });
 
 // ─── 4. Commission Payment Auth ───────────────────────────────────────────────

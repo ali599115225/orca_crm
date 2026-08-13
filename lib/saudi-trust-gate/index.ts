@@ -9,8 +9,8 @@
  * the operation to proceed.
  */
 import { rawPrisma } from '@/lib/prisma';
-import { decryptCompat } from '@/lib/crypto-gcm';
 import { isProductionRuntime } from '@/lib/api-auth-guard';
+import { decryptProviderCredentials } from '@/lib/revenue-integrity/trust-gates';
 import type {
   GateInput,
   GateResult,
@@ -79,27 +79,37 @@ export class SaudiTrustGateService {
       return blocked('TENANT_INACTIVE');
     }
 
-    // ── 2. Ejar Credentials (from ENV — global for this deployment) ──────────
-    const configuredUrl = (process.env.EJAR_API_URL ?? '').trim();
-    const configuredKey = (process.env.EJAR_API_KEY ?? '').trim();
-    const production = isProductionRuntime();
+    // ── 2. Ejar credentials from CONNECTED hub — no mock allowed ─────────────
+    const connection = await rawPrisma.revenueProviderConnection.findFirst({
+      where: { tenantId, provider: 'EJAR', status: 'CONNECTED' },
+      orderBy: { updatedAt: 'desc' },
+      select: { encryptedCredentials: true, baseUrl: true },
+    });
 
-    if (production) {
-      // Production must have a real, non-sandbox URL and a real key
-      if (!configuredUrl || /sandbox/i.test(configuredUrl)) {
-        return blocked('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS',
-          'EJAR_API_URL is missing or points to sandbox in production');
+    if (!connection?.encryptedCredentials) {
+      return blocked('MISSING_CREDENTIALS', 'No mock allowed');
+    }
+
+    let accessToken = '';
+    let configuredUrl = String(connection.baseUrl ?? '').trim();
+    try {
+      const credentials = decryptProviderCredentials(connection.encryptedCredentials);
+      accessToken = String(credentials.accessToken ?? '').trim();
+      if (!configuredUrl) {
+        configuredUrl = String(credentials.healthUrl ?? credentials.baseUrl ?? '').trim();
       }
-      if (!configuredKey) {
-        return blocked('MISSING_CREDENTIALS', 'EJAR_API_KEY is not set in production');
-      }
-    } else {
-      // Non-production: if credentials are missing, block with MISSING_FOUNDATION
-      // — no mock success is ever permitted
-      if (!configuredUrl || !configuredKey) {
-        return blocked('PRODUCTION_RUNTIME_MISSING_FOUNDATION',
-          'EJAR credentials are not configured. Set EJAR_API_URL and EJAR_API_KEY in .env.local. No mock allowed.');
-      }
+    } catch {
+      return blocked('MISSING_CREDENTIALS', 'No mock allowed');
+    }
+
+    if (!credentialValid(accessToken)) {
+      return blocked('MISSING_CREDENTIALS', 'No mock allowed');
+    }
+
+    const production = isProductionRuntime();
+    if (production && /sandbox/i.test(configuredUrl)) {
+      return blocked('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS',
+        'EJAR hub URL points to sandbox in production');
     }
 
     // ── 3. FK: contractId belongs to this tenant ─────────────────────────────
@@ -132,7 +142,6 @@ export class SaudiTrustGateService {
         vatNumber: true,
         commercialRegistry: true,
         nationalAddress: true,
-        encryptedZatcaCredentials: true,
       },
     });
 
@@ -156,12 +165,25 @@ export class SaudiTrustGateService {
     });
     if (!signedLog) return blocked('DISCLAIMER_NOT_SIGNED');
 
-    // ── 3. Credentials integrity ─────────────────────────────────────────────
-    if (!tenant.encryptedZatcaCredentials) {
+    // ── 3. Credentials integrity from CONNECTED hub ──────────────────────────
+    const connection = await rawPrisma.revenueProviderConnection.findFirst({
+      where: { tenantId, provider: 'ZATCA', status: 'CONNECTED' },
+      orderBy: { updatedAt: 'desc' },
+      select: { encryptedCredentials: true },
+    });
+
+    if (!connection?.encryptedCredentials) {
       return blocked('MISSING_CREDENTIALS');
     }
-    const decrypted = decryptCompat(tenant.encryptedZatcaCredentials);
-    if (!credentialValid(decrypted)) {
+
+    try {
+      const credentials = decryptProviderCredentials(connection.encryptedCredentials);
+      const binarySecurityToken = String(credentials.binarySecurityToken ?? '').trim();
+      const secret = String(credentials.secret ?? '').trim();
+      if (!credentialValid(binarySecurityToken) || !credentialValid(secret)) {
+        return blocked('CREDENTIALS_INTEGRITY_FAILED');
+      }
+    } catch {
       return blocked('CREDENTIALS_INTEGRITY_FAILED');
     }
 

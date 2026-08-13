@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 function source(relativePath: string) {
-  return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8").replace(/\r\n/g, "\n");
 }
 
 describe("Tasks operational and property-identity closure", () => {
@@ -49,7 +49,9 @@ describe("Tasks operational and property-identity closure", () => {
     expect(actions).toContain("prisma.task.findFirst");
     expect(actions).toContain("id: normalizedTaskId");
     expect(actions).toContain("tenantId");
-    expect(actions).toContain(
+    expect(actions).toContain('task.status !== "PENDING" && task.status !== "OVERDUE"');
+    expect(actions).toContain("session.userId === task.assignedTo");
+    expect(actions).not.toContain(
       'task.status === "COMPLETED" ? "PENDING" : "COMPLETED"',
     );
     expect(actions).not.toContain(
@@ -225,5 +227,22 @@ describe("Tasks operational and property-identity closure", () => {
     );
     expect(completeApi).toContain('action: "TASK_COMPLETED"');
     expect(completeApi).toContain('tableName: "tasks"');
+    expect(completeApi).toContain("session.userId === task.assignedTo");
+    expect(completeApi).toContain('task.status !== "PENDING" && task.status !== "OVERDUE"');
+  });
+
+  it("completes and verifies tasks instead of toggling them", () => {
+    expect(view).toContain("completeTaskById");
+    expect(view).not.toContain("toggleTaskById");
+    expect(actions).toContain("لا يمكن للمسند إليه إغلاق مهمته بنفسه");
+    expect(actions).toContain("لا يمكن إعادة فتح مهمة مكتملة");
+    expect(completeApi).toContain("لا يمكن للمسند إليه إغلاق مهمته بنفسه");
+    expect(completeApi).toContain("لا يمكن إعادة فتح مهمة مكتملة");
+  });
+
+  it("calls the existing maintenance API from the operations page", () => {
+    const page = source("app/operations/maintenance/page.tsx");
+    expect(page).toContain('fetch("/api/v1/maintenance"');
+    expect(page).toContain('method: "POST"');
   });
 });

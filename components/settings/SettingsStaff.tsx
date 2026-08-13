@@ -227,9 +227,11 @@ export default function SettingsStaff({
                 value={newEmployeeRole}
                 onChange={setNewEmployeeRole}
                 options={[
-                  { value: "SALES_EMPLOYEE", label: isArabic ? "مستشار عقاري" : "Sales Employee" },
-                  { value: "SALES_MANAGER", label: isArabic ? "مدير مبيعات" : "Sales Manager" },
-                  { value: "ADMIN", label: isArabic ? "مدير عام" : "Admin" },
+                  { value: "SALES_EMPLOYEE", label: ROLE_TRANSLATIONS[lang].SALES_EMPLOYEE },
+                  { value: "SALES_MANAGER", label: ROLE_TRANSLATIONS[lang].SALES_MANAGER },
+                  { value: "ADMIN", label: ROLE_TRANSLATIONS[lang].ADMIN },
+                  { value: "MARKETING", label: ROLE_TRANSLATIONS[lang].MARKETING },
+                  { value: "READ_ONLY", label: ROLE_TRANSLATIONS[lang].READ_ONLY },
                 ]}
               />
             </div>

@@ -39,4 +39,20 @@ describe("sales contract workspace presentation truth", () => {
     expect(workspace).toContain('DRAFT: ["مسودة", "Draft"]');
     expect(workspace).toContain('ACTIVE: ["نشطة", "Active"]');
   });
+
+  it("returns issued contracts with a nullable signedAt and signs pending contracts", () => {
+    const action = source("app/actions/contract.ts");
+    const workspace = source(
+      "components/sales/SalesContractWorkspace.tsx",
+    );
+
+    expect(action).toContain(
+      "signedAt: contract.signedAt?.toISOString() ?? null",
+    );
+    expect(workspace).toContain('contract.status !== "PENDING_SIGNATURE"');
+    expect(workspace).toContain(
+      "`/api/v1/contracts/${contract.id}/sign`",
+    );
+    expect(workspace).toContain("confirm: true");
+  });
 });

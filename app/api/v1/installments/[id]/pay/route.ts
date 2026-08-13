@@ -6,6 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { runWithDatabaseSession } from "@/lib/api-auth-guard";
 import { createNgeniusProvider } from "@/lib/payments/providers/ngenius";
 import { createCustomPaymentProvider } from "@/lib/payments/providers/custom-payment";
+import type {
+  PaymentCreateInput,
+  PaymentProviderAdapter,
+  PaymentProviderResult,
+  PaymentVerificationResult,
+} from "@/lib/payments/types";
 import { getDefaultPaymentProviderRuntime } from "@/lib/revenue-integrity/trust-gates";
 import {
   CONTRACT_STATUS,
@@ -29,6 +35,119 @@ function idempotencyHash(
       `${tenantId}:${provider}:${installmentId}:${amountMinor}`,
     )
     .digest("hex");
+}
+
+function createHubPaylinkProvider(input: {
+  baseUrl: string | null;
+  apiId: string;
+  secretKey: string;
+}): PaymentProviderAdapter {
+  const baseUrl = (input.baseUrl || "https://restpilot.paylink.sa").replace(
+    /\/+$/,
+    "",
+  );
+
+  async function authenticate(): Promise<string> {
+    if (!input.apiId || !input.secretKey) {
+      throw new Error("PAYLINK_API_ID_AND_SECRET_REQUIRED");
+    }
+    const response = await fetch(`${baseUrl}/api/auth`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        apiId: input.apiId,
+        secretKey: input.secretKey,
+        persistToken: false,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+      throw new Error(`PAYLINK_AUTH_FAILED:${response.status}`);
+    }
+    const payload = (await response.json()) as Record<string, unknown>;
+    const token = String(
+      payload.id_token || payload.token || payload.access_token || "",
+    );
+    if (!token) throw new Error("PAYLINK_TOKEN_NOT_RETURNED");
+    return token;
+  }
+
+  return {
+    code: "PAYLINK",
+    async createPayment(
+      payment: PaymentCreateInput,
+    ): Promise<PaymentProviderResult> {
+      const token = await authenticate();
+      const response = await fetch(`${baseUrl}/api/addInvoice`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: payment.amountMinorUnits,
+          currency: payment.currency,
+          orderNumber: payment.planCode,
+          clientName: "عميل",
+          callBackUrl: payment.callbackUrl,
+          products: [
+            {
+              title: payment.description,
+              price: payment.amountMinorUnits,
+              qty: 1,
+            },
+          ],
+          note: payment.description,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        throw new Error(`PAYLINK_CREATE_FAILED:${response.status}`);
+      }
+      const invoice = (await response.json()) as Record<string, unknown>;
+      return {
+        providerReference: String(
+          invoice.transactionNo || invoice.transaction_no || invoice.id || "",
+        ),
+        redirectUrl: String(
+          invoice.url || invoice.payment_url || invoice.checkoutUrl || "",
+        ),
+        providerStatus: String(invoice.orderStatus || "initiated"),
+        rawPayload: invoice,
+      };
+    },
+    async verifyPayment(
+      providerReference: string,
+    ): Promise<PaymentVerificationResult> {
+      const token = await authenticate();
+      const response = await fetch(
+        `${baseUrl}/api/getInvoice/${encodeURIComponent(providerReference)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`PAYLINK_VERIFY_FAILED:${response.status}`);
+      }
+      const invoice = (await response.json()) as Record<string, unknown>;
+      const status = String(invoice.orderStatus || invoice.status || "");
+      return {
+        paid: status.toUpperCase() === "PAID",
+        providerReference: String(
+          invoice.transactionNo || invoice.id || providerReference,
+        ),
+        amountMinorUnits: Number(invoice.amount || 0),
+        currency: "SAR",
+        providerStatus: status || "unknown",
+        rawPayload: invoice,
+      };
+    },
+  };
 }
 
 export async function POST(
@@ -71,7 +190,8 @@ export async function POST(
         const providerCode = runtime.provider;
         if (
           providerCode !== "NGENIUS" &&
-          providerCode !== "CUSTOM_PAYMENT"
+          providerCode !== "CUSTOM_PAYMENT" &&
+          providerCode !== "PAYLINK"
         ) {
           return NextResponse.json(
             {
@@ -93,6 +213,12 @@ export async function POST(
                 ),
                 baseUrl: runtime.baseUrl,
               })
+            : providerCode === "PAYLINK"
+              ? createHubPaylinkProvider({
+                  baseUrl: runtime.baseUrl,
+                  apiId: String(runtime.credentials.apiId || ""),
+                  secretKey: String(runtime.credentials.secretKey || ""),
+                })
             : createCustomPaymentProvider({
                 baseUrl: runtime.baseUrl,
                 credentials: runtime.credentials,

@@ -354,6 +354,7 @@ export async function toggleTaskStatusAction(
           select: {
             id: true,
             status: true,
+            assignedTo: true,
           },
         });
 
@@ -361,8 +362,19 @@ export async function toggleTaskStatusAction(
           throw new TaskInputError("المهمة غير موجودة أو لا تتبع منشأتك.");
         }
 
-        const newStatus =
-          task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
+        if (task.status === "COMPLETED") {
+          throw new TaskInputError("لا يمكن إعادة فتح مهمة مكتملة.");
+        }
+
+        if (task.status !== "PENDING" && task.status !== "OVERDUE") {
+          throw new TaskInputError("لا يمكن إكمال هذه المهمة.");
+        }
+
+        if (session.userId === task.assignedTo) {
+          throw new TaskInputError("لا يمكن للمسند إليه إغلاق مهمته بنفسه.");
+        }
+
+        const newStatus = "COMPLETED";
 
         await prisma.task.update({
           where: {
@@ -523,7 +535,7 @@ export async function updateTaskAction(formData: FormData) {
 
         const task = await prisma.task.update({
           where: {
-            id: existing.id,
+            id: taskId,
             tenantId,
           },
           data: {

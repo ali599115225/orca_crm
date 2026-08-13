@@ -40,7 +40,7 @@ describe("Tenant-scoped email provider architecture", () => {
   });
 
   it("decrypts tenant credentials without exposing them to the client", () => {
-    expect(emailLib).toContain("decryptText");
+    expect(emailLib).toContain("decryptProviderCredentials");
     expect(emailLib).toContain("encryptedCredentials");
     expect(emailLib).toContain("parseProviderSecret");
     expect(emailLib).toContain("credentials.apiKey");

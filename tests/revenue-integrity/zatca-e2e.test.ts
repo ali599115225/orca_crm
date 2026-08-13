@@ -63,6 +63,10 @@ vi.mock('@/lib/crypto-gcm', () => ({
   }),
 }));
 
+vi.mock('@/lib/revenue-integrity/trust-gates', () => ({
+  decryptProviderCredentials: (...a: any[]) => mockDecryptProviderCredentials(...a),
+}));
+
 // ── Prisma mock ───────────────────────────────────────────────────────────────
 
 const mockInvoiceFindFirst = vi.fn();
@@ -74,6 +78,8 @@ const mockDeviceCreate = vi.fn();
 const mockDeviceUpdate = vi.fn();
 const mockZatcaQueueCreate = vi.fn();
 const mockTenantFindUnique = vi.fn();
+const mockConnectionFindFirst = vi.fn();
+const mockDecryptProviderCredentials = vi.fn();
 const mockAuditLogCreate = vi.fn();
 const mockAuditLogFindFirst = vi.fn();
 const mockQueryRaw = vi.fn();
@@ -111,6 +117,9 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: (...a: any[]) => mockAuditLogFindFirst(...a),
     },
     contract: { findFirst: vi.fn().mockResolvedValue({ id: 'c1', status: 'ACTIVE' }) },
+    revenueProviderConnection: {
+      findFirst: (...a: any[]) => mockConnectionFindFirst(...a),
+    },
   },
 }));
 
@@ -257,6 +266,17 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) };
 }
 
+beforeEach(() => {
+  mockConnectionFindFirst.mockResolvedValue({
+    encryptedCredentials: 'v1.hub.zatca',
+    status: 'CONNECTED',
+  });
+  mockDecryptProviderCredentials.mockReturnValue({
+    binarySecurityToken: 'zatca-token-value',
+    secret: 'zatca-secret-value',
+  });
+});
+
 // Helper: setup full happy path for submit
 function setupHappyPathSubmit() {
   mockRequireAuth.mockResolvedValue(SESSION);
@@ -265,6 +285,14 @@ function setupHappyPathSubmit() {
 
   mockTenantFindUnique.mockResolvedValue(VALID_TENANT);
   mockAuditLogFindFirst.mockResolvedValue({ id: 'log-1' });
+  mockConnectionFindFirst.mockResolvedValue({
+    encryptedCredentials: 'v1.hub.zatca',
+    status: 'CONNECTED',
+  });
+  mockDecryptProviderCredentials.mockReturnValue({
+    binarySecurityToken: 'zatca-token-value',
+    secret: 'zatca-secret-value',
+  });
   mockInvoiceFindFirst.mockResolvedValue(VALID_INVOICE);
   mockDeviceFindFirst.mockResolvedValue(VALID_DEVICE);
   mockInvoiceFindMany.mockResolvedValue([]);
@@ -342,7 +370,8 @@ describe('ZATCA Submit Invoice — Gate Checks', () => {
   });
 
   it('5. Missing encrypted credentials → Gate BLOCKED → 403, no state change', async () => {
-    mockTenantFindUnique.mockResolvedValue({ ...VALID_TENANT, encryptedZatcaCredentials: null });
+    mockTenantFindUnique.mockResolvedValue(VALID_TENANT);
+    mockConnectionFindFirst.mockResolvedValue(null);
     mockAuditLogFindFirst.mockResolvedValue({ id: 'log-1' });
     const res = await submitPOST(makeRequest(`/api/v1/zatca/submit/${INVOICE_ID}`), makeParams(INVOICE_ID));
     const body = await res.json();
@@ -619,7 +648,8 @@ describe('ZATCA CSID Issuance — Gate', () => {
       .mockResolvedValueOnce({ ...VALID_DEVICE, csr: 'CSR-PEM' }) // FK check
       .mockResolvedValueOnce(VALID_DEVICE); // Gate active-device check
 
-    mockTenantFindUnique.mockResolvedValue({ ...VALID_TENANT, encryptedZatcaCredentials: null });
+    mockTenantFindUnique.mockResolvedValue(VALID_TENANT);
+    mockConnectionFindFirst.mockResolvedValue(null);
     mockAuditLogFindFirst.mockResolvedValue({ id: 'log-1' });
 
     const res = await csidPOST(makeRequest('/api/v1/zatca/csid', { deviceId: DEVICE_ID, otp: '123456' }));

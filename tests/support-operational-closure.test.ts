@@ -1,10 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+const mockAuditLogCreate = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    auditLog: { create: (...args: unknown[]) => mockAuditLogCreate(...args) },
+  },
+}));
 
 function source(relativePath: string) {
-  return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8").replace(/\r\n/g, "\n");
 }
 
 describe("Support Center operational and property-identity closure", () => {
@@ -202,5 +211,63 @@ describe("Support Center operational and property-identity closure", () => {
     expect(view).not.toContain("{reply.id}</");
     expect(view).not.toContain("UUID");
     expect(view).toContain("ticketNumber(ticket)");
+  });
+
+  it("collects customer destination on ticket create", () => {
+    expect(view).toContain('formData.append("email", newEmail.trim())');
+    expect(view).toContain('formData.append("phone", newPhone.trim())');
+    expect(view).toContain('formData.append("channel", newChannel)');
+    expect(actions).toContain("email, phone, channel");
+  });
+
+  it("sends close and reply through existing channels and fails closed", () => {
+    expect(actions).toContain("notifyTicketDestination");
+    expect(actions).toContain("sendEmail");
+    expect(actions).toContain("sendSMSNotification");
+    expect(replyApi).toContain("sendEmail");
+    expect(replyApi).toContain("EMAIL_PROVIDER_NOT_CONFIGURED");
+    expect(replyApi).toContain("SMS_NOT_CONFIGURED");
+    expect(replyApi).toContain("وجهة العميل غير موجودة.");
+  });
+});
+
+describe("outbound SMS audit persist", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.SMS_API_KEY;
+    mockAuditLogCreate.mockResolvedValue({ id: "sms-audit-1" });
+  });
+
+  it("writes SMS_NOT_CONFIGURED to lead audit history without throwing", async () => {
+    const { sendSMSNotification } = await import("@/lib/notifications");
+    const result = await sendSMSNotification("0500000000", "welcome", {
+      tenantId: "tenant-1",
+      leadId: "lead-1",
+      userId: "user-1",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "SMS_NOT_CONFIGURED",
+    });
+    expect(mockAuditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: "tenant-1",
+        userId: "user-1",
+        action: "SMS_OUTBOUND_ATTEMPT",
+        tableName: "leads",
+        recordId: "lead-1",
+      }),
+    });
+    const details = JSON.parse(
+      mockAuditLogCreate.mock.calls[0][0].data.details,
+    );
+    expect(details).toEqual({
+      destinationPresent: true,
+      result: "SMS_NOT_CONFIGURED",
+    });
+    expect(JSON.stringify(mockAuditLogCreate.mock.calls[0][0])).not.toContain(
+      "0500000000",
+    );
   });
 });

@@ -6,6 +6,12 @@ function read(path: string) {
 }
 
 describe("properties inventory operational closure", () => {
+  it("wires Create Project to createProjectAction and reloads projects", () => {
+    const view = read("components/views/ProjectsView.tsx");
+    expect(view).toContain("createProjectAction");
+    expect(view).toContain("await createProjectAction(formData)");
+    expect(view).toContain("await loadProjects()");
+  });
   it("removes the disabled AuthContext permission boundary", () => {
     const page = read("app/operations/properties/page.tsx");
     expect(page).toContain("assertServerActionRole");
@@ -31,6 +37,18 @@ describe("properties inventory operational closure", () => {
     expect(route).toContain("virtualTour");
     expect(route).toContain("marketingReady");
     expect(route).toContain("_count");
+    expect(route).toContain("transactionReady");
+    expect(route).toContain("newlyCreated");
+    expect(route).toContain("options?.newlyCreated ? false : readiness.ready");
+  });
+
+  it("does not count a unit that fails listingReadiness as transaction-ready", () => {
+    const route = read("app/api/properties/route.ts");
+    expect(route).toContain(
+      "rows.filter((row) => row.transactionReady).length",
+    );
+    expect(route).not.toContain("transactionReady: rows.length");
+    expect(route).toContain("ready: score >= 75");
   });
 
   it("keeps all inventory reads and writes tenant scoped", () => {

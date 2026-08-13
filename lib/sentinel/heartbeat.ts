@@ -1,7 +1,7 @@
 import { Prisma, SentinelHeartbeatStatus, SentinelIncidentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { writeSentinelAudit } from "./audit";
-import { createIncident, resolveIncident } from "./incident";
+import { createIncident, acknowledgeIncident, resolveIncident } from "./incident";
 import {
   getHeartbeatServiceConfig,
   HEARTBEAT_SERVICES,
@@ -203,10 +203,29 @@ async function readIncidentStatus(id: string): Promise<IncidentStatus | null> {
 }
 
 async function resolveHeartbeatIncidentIdempotently(id: string): Promise<boolean> {
-  const result = await resolveIncident(id);
-  if (result.success) return true;
   const status = await readIncidentStatus(id);
-  return status === "RESOLVED" || status === "FALSE_POSITIVE";
+  if (status === "RESOLVED" || status === "FALSE_POSITIVE") return true;
+
+  if (status === "OPEN") {
+    const acknowledged = await acknowledgeIncident(id);
+    if (!acknowledged.success) {
+      const afterAck = await readIncidentStatus(id);
+      return afterAck === "RESOLVED" || afterAck === "FALSE_POSITIVE";
+    }
+    const resolved = await resolveIncident(id);
+    if (resolved.success) return true;
+    const afterResolve = await readIncidentStatus(id);
+    return afterResolve === "RESOLVED" || afterResolve === "FALSE_POSITIVE";
+  }
+
+  if (status === "ACKNOWLEDGED" || status === "IN_PROGRESS") {
+    const resolved = await resolveIncident(id);
+    if (resolved.success) return true;
+    const afterResolve = await readIncidentStatus(id);
+    return afterResolve === "RESOLVED" || afterResolve === "FALSE_POSITIVE";
+  }
+
+  return false;
 }
 
 async function retryActiveIncidentResolution(serviceId: string): Promise<void> {

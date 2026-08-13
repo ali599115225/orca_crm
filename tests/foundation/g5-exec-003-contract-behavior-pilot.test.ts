@@ -38,6 +38,7 @@ const prismaMocks = vi.hoisted(() => ({
   invoiceFindMany: vi.fn(),
   contractFindFirst: vi.fn(),
   contractFindMany: vi.fn(),
+  rentalLeaseFindMany: vi.fn(),
 }));
 
 const domainMocks = vi.hoisted(() => ({
@@ -82,6 +83,9 @@ vi.mock("@/lib/prisma", () => ({
     contract: {
       findFirst: prismaMocks.contractFindFirst,
       findMany: prismaMocks.contractFindMany,
+    },
+    rentalLease: {
+      findMany: prismaMocks.rentalLeaseFindMany,
     },
   },
 }));
@@ -156,6 +160,7 @@ beforeEach(() => {
 
   prismaMocks.invoiceFindMany.mockResolvedValue([]);
   prismaMocks.contractFindMany.mockResolvedValue([]);
+  prismaMocks.rentalLeaseFindMany.mockResolvedValue([]);
   domainMocks.cancelDraftContract.mockResolvedValue({ id: "contract-1" });
   accountingMocks.getSupplierBalances.mockResolvedValue([]);
 });
@@ -392,7 +397,7 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
       const result = await getRentalContractsAction();
 
       expect(result.success).toBe(false);
-      expect(prismaMocks.contractFindMany).not.toHaveBeenCalled();
+      expect(prismaMocks.rentalLeaseFindMany).not.toHaveBeenCalled();
     });
 
     it("DIRECT_BEHAVIORAL C25 has no Platform Owner bypass when the database denies", async () => {
@@ -405,7 +410,7 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
       const result = await getRentalContractsAction();
 
       expect(result.success).toBe(false);
-      expect(prismaMocks.contractFindMany).not.toHaveBeenCalled();
+      expect(prismaMocks.rentalLeaseFindMany).not.toHaveBeenCalled();
       expect(tenantMocks.setTenantContext).not.toHaveBeenCalled();
     });
 
@@ -417,15 +422,9 @@ describe("EXEC-003 contract-level behavioral pilot", () => {
         SESSION.userId,
         SESSION.tenantId,
       );
-      expect(prismaMocks.contractFindMany).toHaveBeenCalledWith(
+      expect(prismaMocks.rentalLeaseFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            unit: {
-              project: {
-                tenantId: SESSION.tenantId,
-              },
-            },
-          },
+          where: { tenantId: SESSION.tenantId },
         }),
       );
     });

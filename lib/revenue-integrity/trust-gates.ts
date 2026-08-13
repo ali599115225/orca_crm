@@ -310,6 +310,27 @@ async function testProvider(provider: RevenueProvider, baseUrl: string | null, c
     return { authenticated: true, outletId };
   }
 
+  if (provider === "MOYASAR") {
+    const publishableKey = providerValue(credentials, "publishableKey");
+    const secretKey = providerValue(credentials, "secretKey");
+    if (!publishableKey || !secretKey) throw new Error("MOYASAR_PUBLISHABLE_AND_SECRET_REQUIRED");
+    return { configured: true };
+  }
+
+  if (provider === "HYPERPAY") {
+    const entityId = providerValue(credentials, "entityId");
+    const bearerToken = providerValue(credentials, "bearerToken");
+    if (!entityId || !bearerToken) throw new Error("HYPERPAY_ENTITY_AND_TOKEN_REQUIRED");
+    return { configured: true };
+  }
+
+  if (provider === "PAYTABS") {
+    const profileId = providerValue(credentials, "profileId");
+    const serverKey = providerValue(credentials, "serverKey");
+    if (!profileId || !serverKey) throw new Error("PAYTABS_PROFILE_AND_SERVER_KEY_REQUIRED");
+    return { configured: true };
+  }
+
   if (provider === "ZATCA") {
     const healthUrl = baseUrl || providerValue(credentials, "healthUrl");
     const binarySecurityToken = providerValue(credentials, "binarySecurityToken");
@@ -355,7 +376,7 @@ export async function getDefaultPaymentProviderRuntime(
         tenantId,
         isDefault: true,
         status: "CONNECTED",
-        provider: { in: ["NGENIUS", "CUSTOM_PAYMENT"] },
+        provider: { in: ["NGENIUS", "CUSTOM_PAYMENT", "PAYLINK"] },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -386,6 +407,14 @@ export async function getDefaultPaymentProviderRuntime(
     throw new Error(
       "NGENIUS_API_KEY_AND_OUTLET_REQUIRED",
     );
+  }
+
+  if (
+    provider === "PAYLINK" &&
+    (!providerValue(credentials, "apiId") ||
+      !providerValue(credentials, "secretKey"))
+  ) {
+    throw new Error("PAYLINK_API_ID_AND_SECRET_REQUIRED");
   }
 
   return {

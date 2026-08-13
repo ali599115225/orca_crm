@@ -49,8 +49,9 @@ function listingReadiness(unit: any) {
   return { score, ready: score >= 75, checks };
 }
 
-function formatUnit(unit: any) {
+function formatUnit(unit: any, options?: { newlyCreated?: boolean }) {
   const readiness = listingReadiness(unit);
+  const transactionReady = options?.newlyCreated ? false : readiness.ready;
   return {
     id: unit.id,
     sku: unit.unitNumber,
@@ -87,7 +88,11 @@ function formatUnit(unit: any) {
     tourCount: unit._count?.tours || 0,
     offerCount: unit._count?.offers || 0,
     opportunityCount: unit._count?.opportunities || 0,
-    readiness,
+    readiness: {
+      ...readiness,
+      ready: transactionReady,
+    },
+    transactionReady,
     createdAt: unit.createdAt.toISOString(),
     updatedAt: unit.updatedAt.toISOString(),
   };
@@ -170,7 +175,8 @@ export async function GET(request: NextRequest) {
         soldOrLeased: rows.filter((row) =>
           ["Sold", "Leased"].includes(row.status),
         ).length,
-        marketingReady: rows.filter((row) => row.readiness.ready).length,
+        marketingReady: rows.filter((row) => row.transactionReady).length,
+        transactionReady: rows.filter((row) => row.transactionReady).length,
         virtualTours: rows.filter((row) => Boolean(row.tourUrl)).length,
         inventoryValue: rows
           .filter((row) => row.status === "Available")
@@ -317,7 +323,7 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json(
-          { success: true, data: formatUnit(unit) },
+          { success: true, data: formatUnit(unit, { newlyCreated: true }) },
           { status: 201 },
         );
       } catch (error: unknown) {

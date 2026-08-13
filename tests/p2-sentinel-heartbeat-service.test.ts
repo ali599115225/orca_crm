@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   incidentFindFirst: vi.fn(),
   incidentFindUnique: vi.fn(),
   createIncident: vi.fn(),
+  acknowledgeIncident: vi.fn(),
   resolveIncident: vi.fn(),
   writeSentinelAudit: vi.fn(),
 }));
@@ -41,6 +42,7 @@ vi.mock("@/lib/sentinel/audit", () => ({
 
 vi.mock("@/lib/sentinel/incident", () => ({
   createIncident: (...args: unknown[]) => mocks.createIncident(...args),
+  acknowledgeIncident: (...args: unknown[]) => mocks.acknowledgeIncident(...args),
   resolveIncident: (...args: unknown[]) => mocks.resolveIncident(...args),
 }));
 
@@ -107,6 +109,7 @@ describe("P2-B2c Batch 1A — Sentinel Heartbeat service", () => {
       incident: activeIncident(),
     });
     mocks.resolveIncident.mockResolvedValue({ success: true, incident: activeIncident({ status: "RESOLVED" }) });
+    mocks.acknowledgeIncident.mockResolvedValue({ success: true, incident: activeIncident({ status: "ACKNOWLEDGED" }) });
     mocks.incidentFindUnique.mockResolvedValue(activeIncident({ status: "RESOLVED" }));
   });
 
@@ -401,9 +404,11 @@ describe("P2-B2c Batch 1A — Sentinel Heartbeat service", () => {
     );
     mocks.incidentFindFirst.mockResolvedValue(null);
     mocks.createIncident.mockResolvedValue({ success: true, incident: activeIncident() });
+    mocks.incidentFindUnique.mockResolvedValue(activeIncident({ status: "OPEN" }));
 
     await reconcileStaleHeartbeats({ services: SERVICES });
 
+    expect(mocks.acknowledgeIncident).toHaveBeenCalledWith("inc-heartbeat");
     expect(mocks.resolveIncident).toHaveBeenCalledWith("inc-heartbeat");
   });
 

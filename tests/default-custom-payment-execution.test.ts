@@ -17,6 +17,23 @@ describe("default payment provider execution", () => {
     expect(trust).toContain("tenantId,");
     expect(trust).toContain("isDefault: true");
     expect(trust).toContain('status: "CONNECTED"');
+    expect(trust).toContain(
+      'provider: { in: ["NGENIUS", "CUSTOM_PAYMENT", "PAYLINK"] }',
+    );
+  });
+
+  it("accepts hub payment brands without UNSUPPORTED_PROVIDER", () => {
+    const contracts = source("lib/revenue-integrity/contracts.ts");
+    const trust = source("lib/revenue-integrity/trust-gates.ts");
+    expect(contracts).toContain('"MOYASAR"');
+    expect(contracts).toContain('"HYPERPAY"');
+    expect(contracts).toContain('"PAYTABS"');
+    expect(trust).toContain('provider === "MOYASAR"');
+    expect(trust).toContain('provider === "HYPERPAY"');
+    expect(trust).toContain('provider === "PAYTABS"');
+    expect(trust).toContain('credentials, "publishableKey"');
+    expect(trust).toContain('credentials, "entityId"');
+    expect(trust).toContain('credentials, "profileId"');
   });
 
   it("uses a provider-neutral installment route", () => {
@@ -32,6 +49,11 @@ describe("default payment provider execution", () => {
     expect(route).toContain(
       "idempotencyHash",
     );
+    expect(route).toContain('providerCode !== "PAYLINK"');
+    expect(route).toContain("createHubPaylinkProvider");
+    expect(route).toContain("runtime.credentials.secretKey");
+    expect(route).not.toContain("PAYLINK_SECRET_KEY");
+    expect(route).toContain("DEFAULT_PAYMENT_PROVIDER_NOT_CONFIGURED");
   });
 
   it("executes custom API calls with tenant-safe credentials", () => {

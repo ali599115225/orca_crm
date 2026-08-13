@@ -12,6 +12,10 @@ import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsH
 import AdvertisingPlatformIntegrations from "@/components/settings/AdvertisingPlatformIntegrations";
 import SettingsAIProviders from "@/components/settings/SettingsAIProviders";
 import { SmartCard } from "@/components/ui/SmartCard";
+import {
+  createOrganizationBranchAction,
+  listOrganizationBranchesAction,
+} from "@/app/actions/organization";
 
 interface User {
   id: string;
@@ -61,6 +65,32 @@ export default function SettingsView({
     const requested = resolveSection(searchParams.get("tab"));
     return requested === "billing" ? "organization" : requested;
   });
+  const [branches, setBranches] = useState<
+    Array<{ id: string; code: string; name: string; active: boolean }>
+  >([]);
+  const [branchCode, setBranchCode] = useState("");
+  const [branchName, setBranchName] = useState("");
+  const [branchError, setBranchError] = useState("");
+
+  async function loadBranches() {
+    const result = await listOrganizationBranchesAction();
+    if (result.success) setBranches(result.branches);
+  }
+
+  async function submitBranch() {
+    setBranchError("");
+    const result = await createOrganizationBranchAction({
+      code: branchCode,
+      name: branchName,
+    });
+    if (!result.success) {
+      setBranchError(result.error);
+      return;
+    }
+    setBranchCode("");
+    setBranchName("");
+    await loadBranches();
+  }
 
   useEffect(() => {
     const resolved = resolveSection(searchParams.get("tab"));
@@ -69,6 +99,10 @@ export default function SettingsView({
     );
     headerRef.current?.scrollIntoView({ block: "start" });
   }, [searchParams]);
+
+  useEffect(() => {
+    void loadBranches();
+  }, []);
 
   const staffUsers = useMemo(
     () =>
@@ -147,8 +181,48 @@ export default function SettingsView({
                 <dt>{isArabic ? "النطاق الفرعي" : "Subdomain"}</dt>
                 <dd className="font-en">{tenant.subdomain}</dd>
               </div>
-
             </dl>
+
+            <div className="mt-6 space-y-3">
+              <h3 className="text-sm font-bold text-[var(--nc-foreground)]">
+                {isArabic ? "الفروع" : "Branches"}
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {branches.map((branch) => (
+                  <li key={branch.id}>
+                    {branch.code} · {branch.name}
+                  </li>
+                ))}
+              </ul>
+              <form
+                className="flex flex-wrap gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitBranch();
+                }}
+              >
+                <input
+                  value={branchCode}
+                  onChange={(event) => setBranchCode(event.target.value)}
+                  placeholder={isArabic ? "رمز الفرع" : "Branch code"}
+                  className="h-11 rounded-xl border px-3 text-sm"
+                  required
+                />
+                <input
+                  value={branchName}
+                  onChange={(event) => setBranchName(event.target.value)}
+                  placeholder={isArabic ? "اسم الفرع" : "Branch name"}
+                  className="h-11 rounded-xl border px-3 text-sm"
+                  required
+                />
+                <button type="submit" className="nc-btn-primary h-11 rounded-xl px-4 text-xs font-black">
+                  {isArabic ? "إنشاء فرع" : "Create branch"}
+                </button>
+              </form>
+              {branchError ? (
+                <p className="text-xs text-rose-400">{branchError}</p>
+              ) : null}
+            </div>
           </SmartCard>
         )}
 

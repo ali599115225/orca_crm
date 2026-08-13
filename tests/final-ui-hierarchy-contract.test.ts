@@ -54,4 +54,25 @@ describe("final UI hierarchy contract", () => {
     expect(css).toContain(".orca-settings-card");
     expect(css).toContain("min-height: 44px !important");
   });
+
+  it("includes all five Role enum values in create-role options", () => {
+    const staff = source("components/settings/SettingsStaff.tsx");
+    expect(staff).toContain('{ value: "SALES_EMPLOYEE"');
+    expect(staff).toContain('{ value: "SALES_MANAGER"');
+    expect(staff).toContain('{ value: "ADMIN"');
+    expect(staff).toContain('{ value: "MARKETING"');
+    expect(staff).toContain('{ value: "READ_ONLY"');
+    expect(staff).toContain("ROLE_TRANSLATIONS[lang].MARKETING");
+    expect(staff).toContain("ROLE_TRANSLATIONS[lang].READ_ONLY");
+  });
+
+  it("wires organization branch list and create actions", () => {
+    const view = source("components/views/SettingsView.tsx");
+    const action = source("app/actions/organization.ts");
+    expect(view).toContain("listOrganizationBranchesAction");
+    expect(view).toContain("createOrganizationBranchAction");
+    expect(action).toContain("createOrganizationBranch(");
+    expect(action).toContain("loadOrganizationAuthorityContext");
+    expect(action).toContain("organizationSqlRepository");
+  });
 });

@@ -16,6 +16,7 @@ import {
   MarketingProviderError,
 } from "@/lib/marketing/campaign-contract";
 import { executeCampaignCommand } from "@/lib/marketing/campaign-orchestrator";
+import { registerProductionMarketingAdapters } from "@/lib/marketing/provider-adapter";
 
 const CAMPAIGN_ROLES = [
   "ADMIN",
@@ -421,6 +422,8 @@ export async function executeMarketingCampaignCommandAction(input: {
         input.provider,
       );
     }
+
+    registerProductionMarketingAdapters();
 
     const snapshot = await executeCampaignCommand(
       {

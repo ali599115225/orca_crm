@@ -249,7 +249,7 @@ export async function acknowledgeIncident(id: string): Promise<IncidentResult> {
 }
 
 export async function startIncidentWork(id: string): Promise<IncidentResult> {
-  const result = await transitionTo(id, "IN_PROGRESS", { workStartedAt: new Date() });
+  const result = await transitionTo(id, "IN_PROGRESS", {});
   if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_IN_PROGRESS", id);
   return result;
 }
@@ -263,7 +263,6 @@ export async function resolveIncident(id: string): Promise<IncidentResult> {
 export async function markIncidentFalsePositive(id: string): Promise<IncidentResult> {
   const closedAt = new Date();
   const result = await transitionTo(id, "FALSE_POSITIVE", {
-    falsePositiveAt: closedAt,
     resolvedAt: closedAt,
   });
   if (result.success) await writeIncidentAudit("SENTINEL_INCIDENT_CLOSED", id, { reason: "Marked false positive" });

@@ -219,4 +219,39 @@ describe("Domain Service Unification", () => {
     expect(tx.lead.updateMany).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({ followUpCreated: true, taskId: "task-1" });
   });
+
+  it("creates a follow-up task for NO_SHOW without marking the lead VISITED", async () => {
+    const tour = {
+      id: "tour-1",
+      tenantId: "tenant-1",
+      leadId: "lead-1",
+      assignedTo: "user-1",
+      opportunityId: null,
+      offerId: null,
+      status: "SCHEDULED",
+      updatedAt: new Date(),
+      auditLog: "",
+    };
+    const tx = {
+      tour: {
+        findFirst: vi.fn().mockResolvedValue(tour),
+        update: vi.fn().mockResolvedValue({ ...tour, status: "NO_SHOW" }),
+      },
+      task: { create: vi.fn().mockResolvedValue({ id: "task-noshow" }) },
+      lead: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      telemetryEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    mockTransaction.mockImplementation(async (callback) => callback(tx));
+
+    const result = await updateTourStatus({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      tourId: "tour-1",
+      status: "NO_SHOW",
+    });
+
+    expect(tx.task.create).toHaveBeenCalledTimes(1);
+    expect(tx.lead.updateMany).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ followUpCreated: true, taskId: "task-noshow" });
+  });
 });

@@ -5,6 +5,31 @@ import { prisma } from "@/lib/prisma";
 import { getTenantAndUser } from "@/lib/api-helpers";
 import { ErrorCode } from "@/lib/errors";
 
+const CLOSED_LEAD_STATUSES = ["CONTRACT_SIGNED", "WON"] as const;
+
+function countFor(
+  rows: Array<{ status: string; _count: { _all: number } }>,
+  statuses: readonly string[],
+) {
+  return rows
+    .filter((row) => statuses.includes(String(row.status)))
+    .reduce((sum, row) => sum + row._count._all, 0);
+}
+
+function averageCloseDays(
+  rows: Array<{ createdAt: Date; closedAt: Date | null }>,
+) {
+  const timed = rows.filter((row) => row.closedAt instanceof Date);
+  if (timed.length === 0) return null;
+
+  const totalDays = timed.reduce((sum, row) => {
+    const ms = row.closedAt!.getTime() - row.createdAt.getTime();
+    return sum + ms / (1000 * 60 * 60 * 24);
+  }, 0);
+
+  return Number((totalDays / timed.length).toFixed(2));
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { tenantId } = await getTenantAndUser(request);
@@ -12,35 +37,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "معرف المنشأة مفقود." }, { status: 400 });
     }
 
-    const [totalLeads, closedLeads, wonOpportunities] = await Promise.all([
-      prisma.lead.count({ where: { tenantId } }),
-      prisma.lead.count({ where: { tenantId, status: "CONTRACT_SIGNED" } }),
-      prisma.opportunity.count({ where: { tenantId, status: "CLOSED_WON" } }),
+    const [statusRows, closedOpportunities] = await Promise.all([
+      prisma.lead.groupBy({
+        by: ["status"],
+        where: { tenantId },
+        _count: { _all: true },
+      }),
+      prisma.opportunity.findMany({
+        where: { tenantId, status: "CLOSED_WON" },
+        select: { createdAt: true, closeDate: true },
+      }),
     ]);
 
-    // Calculate Conversion Ratio
-    const conversionRatio = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
-    
-    // Static CAC & Time to Close projections based on metrics
-    const baseCacSar = 1200; // SAR
-    const avgTimeToCloseDays = 18; // Days
+    const totalLeads = statusRows.reduce((sum, row) => sum + row._count._all, 0);
+    const closedLeadCount = countFor(statusRows, CLOSED_LEAD_STATUSES);
+    const wonOpportunities = closedOpportunities.length;
+    const conversionRatio =
+      totalLeads > 0 ? Math.round((closedLeadCount / totalLeads) * 100) : 0;
+
+    // Lead has no close-timing column; only persisted opportunity closeDate is used.
+    const avgTimeToCloseDays = averageCloseDays(
+      closedOpportunities.map((opportunity) => ({
+        createdAt: opportunity.createdAt,
+        closedAt: opportunity.closeDate,
+      })),
+    );
 
     return NextResponse.json({
       success: true,
       data: {
         totalLeads,
-        closedLeads,
+        closedLeads: closedLeadCount,
         wonOpportunities,
         conversionRatio,
-        cacSar: baseCacSar,
+        cacSar: null,
         avgTimeToCloseDays,
         funnel: {
-          new: totalLeads,
-          contacted: Math.round(totalLeads * 0.7),
-          qualified: Math.round(totalLeads * 0.5),
-          tourScheduled: Math.round(totalLeads * 0.3),
-          offerSent: Math.round(totalLeads * 0.2),
-          closed: closedLeads,
+          new: countFor(statusRows, ["NEW"]),
+          contacted: countFor(statusRows, ["CONTACTED"]),
+          qualified: countFor(statusRows, ["QUALIFIED"]),
+          tourScheduled: countFor(statusRows, ["VISIT_SCHEDULED"]),
+          offerSent: countFor(statusRows, ["OFFER_MADE"]),
+          closed: closedLeadCount,
         },
       },
     });

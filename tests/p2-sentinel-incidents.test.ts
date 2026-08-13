@@ -503,4 +503,34 @@ describe("P2 — Sentinel Incident Foundation", () => {
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/Cannot transition/);
   });
+
+  it("direct resolveIncident on OPEN is still rejected", async () => {
+    mocks.sentinelIncidentFindUnique.mockResolvedValue(makeIncident({ status: "OPEN" }));
+
+    const result = await resolveIncident("inc-001");
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Cannot transition from OPEN to RESOLVED/);
+    expect(mocks.sentinelIncidentUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("startIncidentWork and false-positive payloads use only schema fields", async () => {
+    mocks.sentinelIncidentFindUnique
+      .mockResolvedValueOnce(makeIncident({ status: "ACKNOWLEDGED" }))
+      .mockResolvedValueOnce(makeIncident({ status: "IN_PROGRESS" }))
+      .mockResolvedValueOnce(makeIncident({ status: "OPEN" }))
+      .mockResolvedValueOnce(makeIncident({ status: "FALSE_POSITIVE" }));
+    mocks.sentinelIncidentUpdateMany.mockResolvedValue({ count: 1 });
+
+    await startIncidentWork("inc-001");
+    await markIncidentFalsePositive("inc-002");
+
+    const workData = mocks.sentinelIncidentUpdateMany.mock.calls[0][0].data;
+    expect(workData).toEqual({ status: "IN_PROGRESS" });
+    expect(workData).not.toHaveProperty("workStartedAt");
+
+    const falsePositiveData = mocks.sentinelIncidentUpdateMany.mock.calls[1][0].data;
+    expect(falsePositiveData.status).toBe("FALSE_POSITIVE");
+    expect(falsePositiveData.resolvedAt).toBeInstanceOf(Date);
+    expect(falsePositiveData).not.toHaveProperty("falsePositiveAt");
+  });
 });

@@ -52,6 +52,7 @@ import type { DisplayLocale } from "@/lib/display";
 import { formatDisplayDate, formatDisplayDateTime } from "@/lib/display/dateTime";
 import { formatNumber } from "@/components/leads/helpers";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import LeadContactsPanel from "@/components/leads/panels/LeadContactsPanel";
 import {
   activityTypeLabel,
   leadHistoryActionLabel,
@@ -1249,6 +1250,10 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
           <div className="p-4">
             {activeTab === "overview" && (
               <div className="space-y-4">
+                <LeadContactsPanel
+                  leadId={lead.id}
+                  labels={{ noContacts: isArabic ? "لا توجد جهات اتصال" : "No contacts" }}
+                />
                 {/* Row 1: Tasks | Activity | Customer Info  (RTL: rightmost first) */}
                 <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-[4fr_5fr_3fr]">
                   {/* Upcoming Tasks */}

@@ -89,6 +89,14 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn().mockResolvedValue({ id: "tenant-main", subscriptionPlan: "gold" }),
       update: mockTenantUpdate,
     },
+    auditLog: {
+      findFirst: vi.fn().mockResolvedValue({
+        details: JSON.stringify({
+          channel: "EMAIL",
+          email: "customer@example.com",
+        }),
+      }),
+    },
     payrollCommission: { findMany: vi.fn().mockResolvedValue([]) },
     journalEntry: { findMany: vi.fn().mockResolvedValue([]) },
     installment: {
@@ -125,7 +133,13 @@ vi.mock("@/lib/plan-guard", () => ({
   normalizePlan: vi.fn().mockReturnValue("gold"),
 }));
 
-vi.mock("@/lib/notifications", () => ({ sendWhatsAppNotification: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/notifications", () => ({
+  sendWhatsAppNotification: vi.fn().mockResolvedValue({ success: true }),
+  sendSMSNotification: vi.fn().mockResolvedValue({ success: true }),
+}));
+vi.mock("@/lib/email", () => ({
+  sendEmail: vi.fn().mockResolvedValue({ success: true }),
+}));
 vi.mock("@/lib/privacy-mask", () => ({ hashEmail: vi.fn().mockReturnValue("hash"), hashPhone: vi.fn().mockReturnValue("hash") }));
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("hashed") }, hash: vi.fn().mockResolvedValue("hashed") }));
 vi.mock("@/lib/accounting", () => ({

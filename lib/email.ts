@@ -8,7 +8,7 @@ import tls from "node:tls";
 
 import { Resend } from "resend";
 
-import { decryptText } from "@/lib/crypto";
+import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { prisma } from "@/lib/prisma";
 
 export const EMAIL_PROVIDER_NOT_CONFIGURED = "EMAIL_PROVIDER_NOT_CONFIGURED";
@@ -209,10 +209,7 @@ function parsePort(value: unknown): number | null {
 
 function parseEncryptedCredentials(value: string): JsonRecord | null {
   try {
-    const decrypted = decryptText(value);
-    if (!decrypted) return null;
-
-    const parsed: unknown = JSON.parse(decrypted);
+    const parsed = decryptProviderCredentials(value) as unknown;
     if (!isRecord(parsed)) return null;
 
     const nested = parsed.credentials;
@@ -358,10 +355,44 @@ export async function sendAdminEmailAlert(
   subject: string,
   htmlContent: string,
 ) {
-  console.info("[ORCA_ADMIN_ALERT]", {
-    subject,
-    htmlContent,
-  });
+  try {
+    const recipients = (process.env.SUPER_ADMIN_EMAILS || "")
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+    if (recipients.length === 0) {
+      return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
+    }
+
+    const connection = await prisma.revenueProviderConnection.findFirst({
+      where: {
+        status: "CONNECTED",
+        provider: { in: ["SMTP", "RESEND"] },
+      },
+      select: { tenantId: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (!connection) {
+      return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
+    }
+
+    let delivered = false;
+    for (const to of recipients) {
+      const result = await sendEmail({
+        tenantId: connection.tenantId,
+        to,
+        subject,
+        htmlBody: htmlContent,
+      });
+      if (result.success) delivered = true;
+    }
+
+    return delivered
+      ? { success: true as const }
+      : { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
+  } catch {
+    return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
+  }
 }
 
 export interface SendEmailOptions {
