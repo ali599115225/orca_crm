@@ -1,0 +1,60 @@
+name: ORCA Post-Closure Admin Email Isolation Verification
+
+on:
+  push:
+    branches:
+      - work/orca-postclosure-maintenance-20260813
+    paths:
+      - .github/workflows/postclosure-maintenance-admin-email-slice.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply reviewed admin-email isolation fix
+        shell: bash
+        run: |
+          git fetch --no-tags https://github.com/${GITHUB_REPOSITORY}.git work/orca-postclosure-r1c-20260813
+          git show FETCH_HEAD:lib/email.ts > lib/email.ts
+          git show FETCH_HEAD:tests/email-admin-alert.test.ts > tests/email-admin-alert.test.ts
+      - run: npm ci
+      - name: Focused admin-email test
+        run: npx vitest run tests/email-admin-alert.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Scope guard
+        shell: bash
+        run: |
+          git diff --name-only 769b0a3de7ff09e00e2baf3c438886a6b616ab1d...HEAD | tee /tmp/diff.txt
+          git diff --name-only | tee -a /tmp/diff.txt
+          if grep -Eq '^(prisma/schema\.prisma|prisma/migrations/)' /tmp/diff.txt; then
+            echo 'Forbidden Prisma schema/migration change detected'
+            exit 1
+          fi
+      - name: Commit verified admin-email slice and remove temporary workflow
+        shell: bash
+        env:
+          GH_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f .github/workflows/postclosure-maintenance-admin-email-slice.yml
+          git add -A
+          git config user.name "ORCA Maintenance Verification"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "fix(maintenance): isolate platform admin email"
+          git remote set-url origin "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:work/orca-postclosure-maintenance-20260813
