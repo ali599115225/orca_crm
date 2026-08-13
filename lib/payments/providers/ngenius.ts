@@ -1,10 +1,16 @@
 import "server-only";
+import { requirePublicProviderUrl } from "./custom-payment";
 import type {
   PaymentCreateInput,
   PaymentProviderAdapter,
   PaymentProviderResult,
   PaymentVerificationResult,
 } from "../types";
+
+const NGENIUS_ALLOWED_HOSTS = [
+  "api-gateway.sandbox.ngenius-payments.com",
+  "api-gateway.ngenius-payments.com",
+] as const;
 
 export type NgeniusProviderConfig = {
   apiKey?: string;
@@ -18,17 +24,26 @@ export function createNgeniusProvider(
   const apiKey = () => config.apiKey || process.env.NGENIUS_API_KEY || "";
   const outletRef = () =>
     config.outletRef || process.env.NGENIUS_OUTLET_REF || "";
-  const baseUrl = () =>
-    config.baseUrl ||
-    process.env.NGENIUS_API_URL ||
-    "https://api-gateway.sandbox.ngenius-payments.com";
+
+  async function providerBaseUrl(): Promise<string> {
+    const configured =
+      config.baseUrl ||
+      process.env.NGENIUS_API_URL ||
+      "https://api-gateway.sandbox.ngenius-payments.com";
+    const safe = await requirePublicProviderUrl(
+      configured,
+      NGENIUS_ALLOWED_HOSTS,
+    );
+    return safe.toString().replace(/\/+$/, "");
+  }
 
   async function getAccessToken(): Promise<string> {
     const key = apiKey();
     if (!key) throw new Error("NGENIUS_API_KEY not configured");
+    const baseUrl = await providerBaseUrl();
 
     const response = await fetch(
-      `${baseUrl()}/identity/auth/access-token`,
+      `${baseUrl}/identity/auth/access-token`,
       {
         method: "POST",
         headers: {
@@ -67,6 +82,7 @@ export function createNgeniusProvider(
       const outlet = outletRef();
       if (!outlet) throw new Error("NGENIUS_OUTLET_REF not configured");
 
+      const baseUrl = await providerBaseUrl();
       const token = await getAccessToken();
       const currencyCode = (input.currency || "SAR").toUpperCase();
 
@@ -88,7 +104,7 @@ export function createNgeniusProvider(
       };
 
       const response = await fetch(
-        `${baseUrl()}/payment/v1/outlets/${encodeURIComponent(outlet)}/orders`,
+        `${baseUrl}/payment/v1/outlets/${encodeURIComponent(outlet)}/orders`,
         {
           method: "POST",
           headers: authHeaders(token),
@@ -131,9 +147,10 @@ export function createNgeniusProvider(
       const outlet = outletRef();
       if (!outlet) throw new Error("NGENIUS_OUTLET_REF not configured");
 
+      const baseUrl = await providerBaseUrl();
       const token = await getAccessToken();
       const response = await fetch(
-        `${baseUrl()}/payment/v1/outlets/${encodeURIComponent(outlet)}/orders/${encodeURIComponent(providerReference)}`,
+        `${baseUrl}/payment/v1/outlets/${encodeURIComponent(outlet)}/orders/${encodeURIComponent(providerReference)}`,
         {
           headers: authHeaders(token),
           redirect: "error",
