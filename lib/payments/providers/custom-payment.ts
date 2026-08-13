@@ -85,6 +85,32 @@ async function requirePublicHttpsUrl(input: string): Promise<URL> {
   return url;
 }
 
+export async function requirePublicProviderUrl(
+  input: string,
+  allowedHosts?: readonly string[],
+): Promise<URL> {
+  let url: URL;
+  try {
+    url = await requirePublicHttpsUrl(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED") {
+      throw new Error("PROVIDER_PRIVATE_HOST_BLOCKED");
+    }
+    throw new Error("PROVIDER_PUBLIC_HTTPS_URL_REQUIRED");
+  }
+
+  if (allowedHosts?.length) {
+    const hostname = url.hostname.toLowerCase();
+    const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()));
+    if (!allowed.has(hostname)) {
+      throw new Error("PROVIDER_HOST_NOT_ALLOWED");
+    }
+  }
+
+  return url;
+}
+
 function getPath(payload: unknown, path: string): unknown {
   return path
     .split(".")
@@ -254,10 +280,7 @@ export function createCustomPaymentProvider(
         ) || "",
       );
       const redirectValue = String(
-        getPath(
-          payload,
-          value(credentials, "responseRedirectUrlPath"),
-        ) || "",
+        getPath(payload, value(credentials, "responseRedirectUrlPath")) || "",
       );
       const status = String(
         getPath(payload, value(credentials, "responseStatusPath")) ||
@@ -333,16 +356,10 @@ export function createCustomPaymentProvider(
             ) || "",
           ) || providerReference,
         amountMinorUnits: Number(
-          getPath(
-            payload,
-            value(credentials, "responseAmountPath"),
-          ) || 0,
+          getPath(payload, value(credentials, "responseAmountPath")) || 0,
         ),
         currency: String(
-          getPath(
-            payload,
-            value(credentials, "responseCurrencyPath"),
-          ) || "SAR",
+          getPath(payload, value(credentials, "responseCurrencyPath")) || "SAR",
         ).toUpperCase(),
         providerStatus: status,
         rawPayload: payload,
