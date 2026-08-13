@@ -80,6 +80,19 @@
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
+  "stepClosures": {
+    "0": {
+      "stepName": "KNOWLEDGE_BUSINESS_MODEL_LOCK",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 1,
+      "closedAt": "2026-08-13T03:29:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    }
+  },
   "approvals": {
     "buildAuthorized": false,
     "unifiedBranchCreationAuthorized": false,
