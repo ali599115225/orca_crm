@@ -297,12 +297,31 @@ export async function POST(
         );
       }
 
-      const invoiceAmount = Number(invoice.totalAmount);
-      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      const invoiceTotal = Number(invoice.totalAmount);
+      if (!Number.isFinite(invoiceTotal) || invoiceTotal <= 0) {
         throw new PaymentRouteError(
           ErrorCode.VALIDATION_ERROR,
           400,
           'invoice amount is invalid'
+        );
+      }
+
+      const completedPayments = await tx.paymentTransaction.aggregate({
+        where: {
+          tenantId,
+          invoiceId: id,
+          status: 'COMPLETED',
+        },
+        _sum: { netAmount: true },
+      });
+      const paidBefore = Number(completedPayments._sum.netAmount || 0);
+      const invoiceAmount =
+        Math.round((invoiceTotal - paidBefore) * 100) / 100;
+      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+        throw new PaymentRouteError(
+          ErrorCode.CONFLICT,
+          409,
+          'invoice has no remaining balance'
         );
       }
 
