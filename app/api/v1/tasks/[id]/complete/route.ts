@@ -63,7 +63,7 @@ export async function PATCH(
             id: task.id,
             tenantId: session.tenantId,
             status: { in: ["PENDING", "OVERDUE"] },
-            assignedTo: { not: session.userId },
+            assignedTo: task.assignedTo,
           },
           data: {
             status: "COMPLETED",
@@ -75,7 +75,7 @@ export async function PATCH(
 
         if (claimed.count !== 1) {
           return NextResponse.json(
-            { success: false, error: "تم إكمال المهمة بواسطة طلب آخر." },
+            { success: false, error: "تم إكمال المهمة أو إعادة إسنادها بواسطة طلب آخر." },
             { status: 409 },
           );
         }
@@ -116,4 +116,3 @@ export async function PATCH(
     },
   );
 }
-
