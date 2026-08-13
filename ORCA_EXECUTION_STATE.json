@@ -74,11 +74,12 @@
     "completedSteps": [
       0,
       1,
-      2
+      2,
+      3
     ],
-    "currentStep": 3,
-    "currentStepName": "FINAL_UNIFICATION_LEDGER",
-    "nextStep": 4,
+    "currentStep": 4,
+    "currentStepName": "CREATE_UNIFIED_BRANCH",
+    "nextStep": 5,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -114,6 +115,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 3,
       "closedAt": "2026-08-13T05:15:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "3": {
+      "stepName": "FINAL_UNIFICATION_LEDGER",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 4,
+      "closedAt": "2026-08-13T05:22:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
