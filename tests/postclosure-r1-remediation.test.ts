@@ -15,11 +15,14 @@ describe("post-closure R1 remediation contracts", () => {
     expect(legacy).toContain("PAYLINK_CREATE_RESPONSE_INVALID");
   });
 
-  it("recovers failed manual-payment idempotency records instead of pinning them pending", () => {
+  it("recovers failed manual-payment idempotency records and charges only the remaining balance", () => {
     const route = source("app/api/v1/invoices/[id]/pay/route.ts");
     expect(route).toContain("state: 'failed' as const");
     expect(route).toContain("manual payment retry is already in progress");
     expect(route).toContain("payment receipt was not created");
+    expect(route).toContain("tx.paymentTransaction.aggregate");
+    expect(route).toContain("invoiceTotal - paidBefore");
+    expect(route).toContain("invoice has no remaining balance");
   });
 
   it("keeps platform admin email fail-closed without tenant credential borrowing", () => {
@@ -56,6 +59,7 @@ describe("post-closure R1 remediation contracts", () => {
     expect(ejar).toContain("connection.baseUrl");
     expect(ejar).not.toContain("credentials.healthUrl");
     expect(ejar).not.toContain("credentials.baseUrl");
+    expect(ejar).toContain("/sandbox/i");
   });
 
   it("uses an atomic task completion transition", () => {
@@ -80,8 +84,16 @@ describe("post-closure R1 remediation contracts", () => {
 
   it("keeps helpdesk close durable when outbound notification fails", () => {
     const helpdesk = source("app/actions/helpdesk.ts");
+    const destination = source("lib/support/ticket-destination.ts");
+    const reply = source("app/api/v1/support/tickets/[id]/reply/route.ts");
     expect(helpdesk).toContain("TICKET_NOTIFICATION_FAILED");
     expect(helpdesk).toContain("notificationError");
     expect(helpdesk).toContain("قناة التواصل غير صالحة");
+    expect(helpdesk).toContain("notifyTicketDestination");
+    expect(reply).toContain("notifyTicketDestination");
+    expect(destination).toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).toContain("sendEmail");
+    expect(destination).toContain("sendSMSNotification");
+    expect(destination).toContain("sendWhatsAppNotification");
   });
 });
