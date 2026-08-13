@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { runWithDatabaseSession } from "@/lib/api-auth-guard";
 import { createNgeniusProvider } from "@/lib/payments/providers/ngenius";
 import { createCustomPaymentProvider } from "@/lib/payments/providers/custom-payment";
+import { PAYLINK_ALLOWED_HOSTS, safePaylinkBaseUrl } from "@/lib/payments/providers/paylink";
 import type {
   PaymentCreateInput,
   PaymentProviderAdapter,
@@ -35,13 +36,6 @@ function idempotencyHash(
       `${tenantId}:${provider}:${installmentId}:${amountMinor}`,
     )
     .digest("hex");
-}
-
-const PAYLINK_ALLOWED_HOSTS = new Set(["restpilot.paylink.sa", "restapi.paylink.sa"]);
-function safePaylinkBaseUrl(value: string): string {
-  const url = new URL(value);
-  if (url.protocol !== "https:" || !PAYLINK_ALLOWED_HOSTS.has(url.hostname.toLowerCase()) || url.username || url.password || url.port || (url.pathname && url.pathname !== "/") || url.search || url.hash) throw new Error("PAYLINK_BASE_URL_NOT_ALLOWED");
-  return url.origin;
 }
 
 function createHubPaylinkProvider(input: {

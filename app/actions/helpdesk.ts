@@ -181,16 +181,20 @@ async function updateTicketStatusAction(
           });
           if (!notification.success) {
             notificationError = notification.error;
-            await prisma.auditLog.create({
-              data: {
-                tenantId: session.tenantId,
-                userId: session.userId,
-                action: "TICKET_NOTIFICATION_FAILED",
-                tableName: "tickets",
-                recordId: ticket.id,
-                details: JSON.stringify({ code: notificationError.slice(0, 200) }),
-              },
-            });
+            try {
+              await prisma.auditLog.create({
+                data: {
+                  tenantId: session.tenantId,
+                  userId: session.userId,
+                  action: "TICKET_NOTIFICATION_FAILED",
+                  tableName: "tickets",
+                  recordId: ticket.id,
+                  details: JSON.stringify({ code: notificationError.slice(0, 200) }),
+                },
+              });
+            } catch (auditError) {
+              console.error("[Helpdesk] Failed to record notification failure audit:", auditError);
+            }
           }
         }
 

@@ -164,7 +164,7 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           returnedOffer = { ...offer, ...updatedOffer };
         }
 
-        await tx.offer.updateMany({
+        const competingOffers = await tx.offer.findMany({
           where: {
             tenantId,
             unitId: offer.unitId,
@@ -177,12 +177,18 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
               ],
             },
           },
-          data: {
-            status: OFFER_STATUS.CANCELLED,
-            updatedBy: userId,
-            auditLog: `Superseded by accepted offer ${offer.id}` ,
-          },
+          select: { id: true, auditLog: true },
         });
+        for (const competingOffer of competingOffers) {
+          await tx.offer.update({
+            where: { id: competingOffer.id },
+            data: {
+              status: OFFER_STATUS.CANCELLED,
+              updatedBy: userId,
+              auditLog: `${competingOffer.auditLog || ""}\nSuperseded by accepted offer ${offer.id}`.trim(),
+            },
+          });
+        }
 
         return {
           offer: returnedOffer,
@@ -240,19 +246,25 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         },
       });
 
-      await tx.offer.updateMany({
+      const competingPendingOffers = await tx.offer.findMany({
         where: {
           tenantId,
           unitId: offer.unitId,
           id: { not: offer.id },
           status: OFFER_STATUS.PENDING,
         },
-        data: {
-          status: OFFER_STATUS.CANCELLED,
-          updatedBy: userId,
-          auditLog: `Superseded by accepted offer ${offer.id}`,
-        },
+        select: { id: true, auditLog: true },
       });
+      for (const competingOffer of competingPendingOffers) {
+        await tx.offer.update({
+          where: { id: competingOffer.id },
+          data: {
+            status: OFFER_STATUS.CANCELLED,
+            updatedBy: userId,
+            auditLog: `${competingOffer.auditLog || ""}\nSuperseded by accepted offer ${offer.id}`.trim(),
+          },
+        });
+      }
 
       await tx.opportunity.update({
         where: { id: opportunity.id },

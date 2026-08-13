@@ -470,7 +470,9 @@ export async function POST(
       }
     }
 
-    const receipt = completed.receipt || completed.payment.receipt;
+    const receipt =
+      ('receipt' in completed && completed.receipt) ||
+      ('payment' in completed && completed.payment.receipt);
     if (!receipt) {
       throw new PaymentRouteError(
         ErrorCode.INTERNAL_ERROR,

@@ -59,7 +59,17 @@ function isPrivateAddress(address: string): boolean {
 }
 
 function assertPublicAddress(address: string): void {
-  if (!isIP(address) || isPrivateAddress(address)) {
+  let normalizedAddress = address;
+
+  // Normalize IPv4-mapped IPv6 addresses to IPv4 before checking
+  if (isIP(address) === 6) {
+    const ipv4Mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+    if (ipv4Mapped) {
+      normalizedAddress = ipv4Mapped[1];
+    }
+  }
+
+  if (!isIP(normalizedAddress) || isPrivateAddress(normalizedAddress)) {
     throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
   }
 }

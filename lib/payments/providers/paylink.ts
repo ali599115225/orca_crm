@@ -12,8 +12,8 @@ function getPaylinkSecret(): string {
   return process.env.PAYLINK_SECRET_KEY || "";
 }
 
-const PAYLINK_ALLOWED_HOSTS = new Set(["restpilot.paylink.sa", "restapi.paylink.sa"]);
-function safePaylinkBaseUrl(value: string): string {
+export const PAYLINK_ALLOWED_HOSTS = new Set(["restpilot.paylink.sa", "restapi.paylink.sa"]);
+export function safePaylinkBaseUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "https:" || !PAYLINK_ALLOWED_HOSTS.has(url.hostname.toLowerCase()) || url.username || url.password || url.port || (url.pathname && url.pathname !== "/") || url.search || url.hash) throw new Error("PAYLINK_BASE_URL_NOT_ALLOWED");
   return url.origin;
@@ -55,6 +55,7 @@ export const paylinkProvider: PaymentProviderAdapter = {
         "Idempotency-Key": generateIdempotencyKey(),
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!res.ok) {
@@ -83,6 +84,7 @@ export const paylinkProvider: PaymentProviderAdapter = {
 
     const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice/${providerReference}`, {
       headers: { Authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {

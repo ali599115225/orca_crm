@@ -172,16 +172,20 @@ export async function POST(
           message,
         });
         if (!delivery.success) {
-          await prisma.auditLog.create({
-            data: {
-              tenantId: session.tenantId,
-              userId: session.userId,
-              action: "TICKET_NOTIFICATION_FAILED",
-              tableName: "tickets",
-              recordId: id,
-              details: JSON.stringify({ code: delivery.error.slice(0, 200) }),
-            },
-          });
+          try {
+            await prisma.auditLog.create({
+              data: {
+                tenantId: session.tenantId,
+                userId: session.userId,
+                action: "TICKET_NOTIFICATION_FAILED",
+                tableName: "tickets",
+                recordId: id,
+                details: JSON.stringify({ code: delivery.error.slice(0, 200) }),
+              },
+            });
+          } catch (auditError) {
+            console.error("[Helpdesk] Failed to record notification failure audit:", auditError);
+          }
           return NextResponse.json(
             { success: false, error: delivery.error },
             { status: 409 },
