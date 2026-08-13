@@ -274,19 +274,23 @@ NEXT AUTHORIZED STEP = <n+1 or CLOSED>
 Otherwise STOP.
 
 ## 23. Bootstrap rule
-Bootstrap phrase: ORCA LOCK
+Bootstrap phrase: ORCA LOCK — ali599115225/orca_crm — governance/orca-workflow-lock
 
 Every new assistant/agent session must:
-1. Read ORCA_GOVERNING_RUNBOOK.md
-2. Read ORCA_EXECUTION_STATE.json
-3. Verify the runbook SHA-256 stored in state
-4. Identify CURRENT STEP
-5. Work only on CURRENT STEP
-6. Prefer these files over conversational memory
-7. STOP if missing or hash mismatch
+1. Resolve repository exactly as ali599115225/orca_crm
+2. Resolve governance ref exactly as governance/orca-workflow-lock
+3. Read ORCA_GOVERNING_RUNBOOK.md from that governance ref
+4. Read ORCA_EXECUTION_STATE.json from that governance ref
+5. Verify the runbook SHA-256 stored in state
+6. Identify CURRENT STEP
+7. Work only on CURRENT STEP
+8. Prefer these files over conversational memory or stale project-pass context
+9. STOP if repository/ref/files are unavailable or hash mismatch
 
 Required successful bootstrap:
 ORCA WORKFLOW BOOTSTRAP
+REPOSITORY = ali599115225/orca_crm
+GOVERNANCE REF = governance/orca-workflow-lock
 RUNBOOK = FOUND
 STATE = FOUND
 RUNBOOK HASH = PASS
