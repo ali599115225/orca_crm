@@ -73,11 +73,12 @@
   "execution": {
     "completedSteps": [
       0,
-      1
+      1,
+      2
     ],
-    "currentStep": 2,
-    "currentStepName": "BRANCH_RECONCILIATION_AUDIT_READ_ONLY",
-    "nextStep": 3,
+    "currentStep": 3,
+    "currentStepName": "FINAL_UNIFICATION_LEDGER",
+    "nextStep": 4,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -102,6 +103,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 2,
       "closedAt": "2026-08-13T03:40:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "2": {
+      "stepName": "BRANCH_RECONCILIATION_AUDIT_READ_ONLY",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 3,
+      "closedAt": "2026-08-13T05:15:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
