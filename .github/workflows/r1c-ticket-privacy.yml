@@ -1,0 +1,118 @@
+name: R1C Ticket Destination Privacy
+
+on:
+  push:
+    branches:
+      - work/orca-postclosure-r1c-20260813
+    paths:
+      - .github/workflows/r1c-ticket-privacy.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/orca-postclosure-r1c-20260813
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply additive ticket destination migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def swap(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if text.count(old) != 1:
+                  raise SystemExit(f"{path}: unexpected source shape")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          swap(
+              "prisma/schema.prisma",
+              '  status      String   @default("OPEN")\n  aiResponse  String?  @map("ai_response") @db.Text\n  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz',
+              '  status         String   @default("OPEN")\n  aiResponse     String?  @map("ai_response") @db.Text\n  contactEmail   String?  @map("contact_email") @db.VarChar(160)\n  contactPhone   String?  @map("contact_phone") @db.VarChar(32)\n  contactChannel String?  @map("contact_channel") @db.VarChar(16)\n  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz',
+          )
+
+          migration = Path("prisma/migrations/20260813175500_ticket_destination_privacy")
+          migration.mkdir(parents=True, exist_ok=True)
+          (migration / "migration.sql").write_text(
+              'ALTER TABLE "tickets"\n  ADD COLUMN "contact_email" VARCHAR(160),\n  ADD COLUMN "contact_phone" VARCHAR(32),\n  ADD COLUMN "contact_channel" VARCHAR(16);\n',
+              encoding="utf-8",
+          )
+
+          swap(
+              "app/actions/helpdesk.ts",
+              '            status: "OPEN",\n            aiResponse: null,\n          },',
+              '            status: "OPEN",\n            aiResponse: null,\n            contactEmail: channel === "EMAIL" ? email : null,\n            contactPhone:\n              channel === "SMS" || channel === "WHATSAPP" ? phone : null,\n            contactChannel: channel || null,\n          },',
+          )
+          swap(
+              "app/actions/helpdesk.ts",
+              '          details: JSON.stringify({ title, email, phone, channel }),',
+              '          details: JSON.stringify({ channelConfigured: Boolean(channel) }),',
+          )
+
+          swap(
+              "lib/support/ticket-destination.ts",
+              '  const created = await prisma.auditLog.findFirst({\n    where: {\n      tenantId,\n      tableName: "tickets",\n      recordId: ticketId,\n      action: "TICKET_CREATED",\n    },\n    orderBy: { createdAt: "asc" },\n    select: { details: true },\n  });\n\n  try {\n    return JSON.parse(created?.details || "{}") as TicketDestination;\n  } catch {\n    return {};\n  }',
+              '  const ticket = await prisma.ticket.findFirst({\n    where: { id: ticketId, tenantId },\n    select: { contactEmail: true, contactPhone: true, contactChannel: true },\n  });\n\n  if (ticket?.contactChannel) {\n    return {\n      email: ticket.contactEmail || undefined,\n      phone: ticket.contactPhone || undefined,\n      channel: ticket.contactChannel,\n    };\n  }\n\n  // Legacy compatibility only for tickets created before destination columns existed.\n  const created = await prisma.auditLog.findFirst({\n    where: {\n      tenantId,\n      tableName: "tickets",\n      recordId: ticketId,\n      action: "TICKET_CREATED",\n    },\n    orderBy: { createdAt: "asc" },\n    select: { details: true },\n  });\n\n  try {\n    return JSON.parse(created?.details || "{}") as TicketDestination;\n  } catch {\n    return {};\n  }',
+          )
+
+          swap(
+              "tests/dedicated-helpdesk.test.ts",
+              '  mockSession.mockResolvedValue(SESSION);\n  prismaMock.ticket.create.mockResolvedValue({',
+              '  mockSession.mockResolvedValue(SESSION);\n  prismaMock.ticket.findFirst.mockResolvedValue(null);\n  prismaMock.ticket.create.mockResolvedValue({',
+          )
+          swap(
+              "tests/dedicated-helpdesk.test.ts",
+              '  it("persists customer destination on TICKET_CREATED", async () => {',
+              '  it("stores new customer destination on the ticket without PII in audit details", async () => {',
+          )
+          swap(
+              "tests/dedicated-helpdesk.test.ts",
+              '    expect(mockWriteAuditLog).toHaveBeenCalledWith(\n      expect.objectContaining({\n        action: "TICKET_CREATED",\n        details: JSON.stringify({\n          title: "استفسار",\n          email: "customer@example.com",\n          phone: "0500000000",\n          channel: "EMAIL",\n        }),\n      }),\n    );',
+              '    expect(prismaMock.ticket.create).toHaveBeenCalledWith({\n      data: expect.objectContaining({\n        contactEmail: "customer@example.com",\n        contactPhone: null,\n        contactChannel: "EMAIL",\n      }),\n    });\n    expect(mockWriteAuditLog).toHaveBeenCalledWith(\n      expect.objectContaining({\n        action: "TICKET_CREATED",\n        details: JSON.stringify({ channelConfigured: true }),\n      }),\n    );',
+          )
+          swap(
+              "tests/dedicated-helpdesk.test.ts",
+              '  it("close invokes channel send when destination exists", async () => {',
+              '  it("prefers the ticket destination over legacy audit details", async () => {\n    prismaMock.ticket.findFirst.mockResolvedValue({\n      contactEmail: "direct@example.com",\n      contactPhone: null,\n      contactChannel: "EMAIL",\n    });\n    const result = await closeTicketAction("ticket-1");\n    expect(result.success).toBe(true);\n    expect(mockSendEmail).toHaveBeenCalledWith(\n      expect.objectContaining({ tenantId: "tenant-1", to: "direct@example.com" }),\n    );\n    expect(prismaMock.auditLog.findFirst).not.toHaveBeenCalled();\n  });\n\n  it("close invokes channel send when destination exists", async () => {',
+          )
+
+          print("R1C_TICKET_PRIVACY_APPLIED")
+          PY
+
+      - name: Install and generate Prisma client
+        run: npm ci
+
+      - name: Focused helpdesk and R1 tests
+        run: npx vitest run tests/dedicated-helpdesk.test.ts tests/support-operational-closure.test.ts tests/postclosure-r1-remediation.test.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Diff integrity
+        run: git diff --check
+
+      - name: Commit verified ticket privacy changes and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/r1c-ticket-privacy.yml
+          git add -A
+          git config user.name "ORCA R1C Verification"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "fix(r1): store ticket destinations outside audit history"
+          git push origin HEAD:work/orca-postclosure-r1c-20260813
