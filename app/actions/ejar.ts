@@ -14,7 +14,8 @@
 "use server";
 
 import { assertServerActionRole, isProductionRuntime } from "@/lib/api-auth-guard";
-import { prisma } from "@/lib/prisma";
+import { prisma, rawPrisma } from "@/lib/prisma";
+import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { getActiveTenant } from "@/lib/tenant";
 import { getSession } from "@/lib/session";
 import { sendAdminEmailAlert } from "@/lib/email";
@@ -258,13 +259,36 @@ export async function submitContractToEjarAction(
     });
 
     // ── External call (OUTSIDE any DB transaction) ────────────────────────────
-    const configuredUrl = (process.env.EJAR_API_URL ?? "").trim();
-    const configuredKey = (process.env.EJAR_API_KEY ?? "").trim();
+    // Runtime authority: Hub CONNECTED EJAR connection only. No ENV fallback.
+    const connection = await rawPrisma.revenueProviderConnection.findFirst({
+      where: { tenantId, provider: "EJAR", status: "CONNECTED" },
+      orderBy: { updatedAt: "desc" },
+      select: { encryptedCredentials: true, baseUrl: true },
+    });
 
-    // This point is only reached when Gate passed, which already verified credentials.
-    // Double-check: never call a sandbox URL with financial intent.
-    if (!configuredUrl || !configuredKey) {
-      // Gate should have caught this — fail-closed defensively
+    if (!connection?.encryptedCredentials) {
+      await markRetrying(outboxId, "EJAR credentials missing at call time", 0);
+      return {
+        success: false,
+        error: "بيانات اعتماد إيجار غير مكتملة. لا يمكن إتمام العملية.",
+      };
+    }
+
+    let accessToken = "";
+    try {
+      const credentials = decryptProviderCredentials(connection.encryptedCredentials);
+      accessToken = String(credentials.accessToken ?? "").trim();
+    } catch {
+      await markRetrying(outboxId, "EJAR credentials missing at call time", 0);
+      return {
+        success: false,
+        error: "بيانات اعتماد إيجار غير مكتملة. لا يمكن إتمام العملية.",
+      };
+    }
+
+    const configuredUrl = String(connection.baseUrl ?? "").trim();
+
+    if (!configuredUrl || !accessToken) {
       await markRetrying(outboxId, "EJAR credentials missing at call time", 0);
       return {
         success: false,
@@ -281,7 +305,7 @@ export async function submitContractToEjarAction(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${configuredKey}`,
+          Authorization: `Bearer ${accessToken}`,
           "X-Agency-Id": tenant.subdomain,
         },
         body: payloadJson,

@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
-      const rows = units.map(formatUnit);
+      const rows = units.map((unit) => formatUnit(unit));
       const stats = {
         total: rows.length,
         available: rows.filter((row) => row.status === "Available").length,

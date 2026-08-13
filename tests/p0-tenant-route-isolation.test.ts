@@ -125,6 +125,8 @@ describe("P0 production route tenant isolation", () => {
     mocks.taskFindFirst.mockResolvedValue({
       id: "task-a",
       tenantId: "tenant-a",
+      status: "PENDING",
+      assignedTo: "user-b",
       auditLog: "",
     });
     mocks.taskUpdate.mockResolvedValue({

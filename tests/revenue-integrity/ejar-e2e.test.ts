@@ -19,8 +19,10 @@
  *   14. Ejar action: API error → RETRYING, no commission created
  *   15. Ejar action: happy path → commission created after real ejarContractId
  *   16. Ejar action: idempotent second call → cached response, no second commission
- *   17. Ejar action: Sandbox URL in production → BLOCKED
- *   18. Ejar action: no EJAR_API_KEY in production → BLOCKED
+ *   17. Ejar action: Sandbox URL from Hub connection.baseUrl in production → BLOCKED
+ *   18. Ejar action: missing Hub EJAR credentials → BLOCKED
+ *   18b. Ejar action Hub-only fail-closed: connection missing / encryptedCredentials missing /
+ *       decrypt failure / empty baseUrl / empty accessToken — no provider success
  *   19. getPayrollCommissionsAction: requires authentication
  *   20. markCommissionPaidAction: FK validates tenant ownership
  */
@@ -67,6 +69,8 @@ const mockPayrollFindFirst = vi.fn();
 const mockPayrollUpdate = vi.fn();
 const mockCommissionPaymentCreate = vi.fn();
 const mockZatcaDeviceFindFirst = vi.fn();
+const mockConnectionFindFirst = vi.fn();
+const mockDecryptProviderCredentials = vi.fn();
 
 vi.mock("@/lib/prisma", () => {
   const txMock: any = {
@@ -118,9 +122,16 @@ vi.mock("@/lib/prisma", () => {
       },
       contract: { findFirst: (...args: any[]) => mockContractFindFirst(...args) },
       zatcaDevice: { findFirst: (...args: any[]) => mockZatcaDeviceFindFirst(...args) },
+      revenueProviderConnection: {
+        findFirst: (...args: any[]) => mockConnectionFindFirst(...args),
+      },
     },
   };
 });
+
+vi.mock("@/lib/revenue-integrity/trust-gates", () => ({
+  decryptProviderCredentials: (...args: any[]) => mockDecryptProviderCredentials(...args),
+}));
 
 // ── api-auth-guard mock ────────────────────────────────────────────────────────
 const mockAssertServerActionRole = vi.fn();
@@ -173,10 +184,45 @@ const BASE_DATA = {
   salesRepUserId: USER_ID,
 };
 
+const HUB_EJAR_BASE_URL = "https://api.ejar.sa/v1";
+const HUB_EJAR_ACCESS_TOKEN = "real-ejar-access-token-12345";
+const HUB_EJAR_ENCRYPTED = "v1.hub.ejar.encrypted";
+
+function setupHubEjarConnection(overrides?: {
+  connection?: Record<string, unknown> | null;
+  credentials?: Record<string, unknown>;
+  decryptThrows?: boolean;
+}) {
+  mockConnectionFindFirst.mockReset();
+  mockDecryptProviderCredentials.mockReset();
+
+  if (overrides && "connection" in overrides) {
+    mockConnectionFindFirst.mockResolvedValue(overrides.connection);
+  } else {
+    mockConnectionFindFirst.mockResolvedValue({
+      provider: "EJAR",
+      status: "CONNECTED",
+      baseUrl: HUB_EJAR_BASE_URL,
+      encryptedCredentials: HUB_EJAR_ENCRYPTED,
+      ...overrides?.connection,
+    });
+  }
+
+  if (overrides?.decryptThrows) {
+    mockDecryptProviderCredentials.mockImplementation(() => {
+      throw new Error("INVALID_ENCRYPTED_CREDENTIALS");
+    });
+    return;
+  }
+
+  mockDecryptProviderCredentials.mockReturnValue({
+    accessToken: HUB_EJAR_ACCESS_TOKEN,
+    ...overrides?.credentials,
+  });
+}
+
 function setupHappyPath() {
   vi.stubEnv("ENCRYPTION_KEY", "test-encryption-key-32chars-abcdef");
-  vi.stubEnv("EJAR_API_URL", "https://api.ejar.sa/v1");
-  vi.stubEnv("EJAR_API_KEY", "real-ejar-api-key-12345");
   vi.stubEnv("NODE_ENV", "development");
 
   mockIsProductionRuntime.mockReturnValue(false);
@@ -187,6 +233,7 @@ function setupHappyPath() {
   mockContractFindFirst.mockResolvedValue({ id: CONTRACT_ID, status: "ACTIVE" });
   mockUserFindFirst.mockResolvedValue({ id: USER_ID, name: "Ali", email: "ali@test.com" });
   mockAuditLogCreate.mockResolvedValue({});
+  setupHubEjarConnection();
   // Outbox: NEW slot
   mockQueryRaw.mockResolvedValue([{ id: OUTBOX_ID }]);
   mockExecuteRaw.mockResolvedValue(1);
@@ -500,6 +547,23 @@ describe("submitContractToEjarAction: input / gate / provider scenarios", () => 
     // Commission created exactly once with real ID
     expect(mockPayrollCreate).toHaveBeenCalledTimes(1);
     expect(mockPayrollCreate.mock.calls[0][0].data.contractId).toBe("EJAR-REAL-111");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${HUB_EJAR_BASE_URL}/contracts/register`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Bearer ${HUB_EJAR_ACCESS_TOKEN}`,
+        }),
+      }),
+    );
+    expect(mockConnectionFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: TENANT_ID,
+          provider: "EJAR",
+          status: "CONNECTED",
+        }),
+      }),
+    );
   });
 
   it("provider returns no contractId → treated as failure, no commission", async () => {
@@ -527,43 +591,149 @@ describe("Sandbox / production credential guards", () => {
     mockAuditLogCreate.mockResolvedValue({});
   });
 
-  it("Production + sandbox URL → Gate BLOCKED, no commission, no outbox", async () => {
-    vi.stubEnv("EJAR_API_URL", "https://api.ejar.sa/sandbox/v1");
-    vi.stubEnv("EJAR_API_KEY", "some-key");
+  it("Production + sandbox URL from Hub connection.baseUrl → Gate BLOCKED, no commission, no outbox", async () => {
+    setupHubEjarConnection({
+      connection: {
+        provider: "EJAR",
+        status: "CONNECTED",
+        baseUrl: "https://api.ejar.sa/sandbox/v1",
+        encryptedCredentials: HUB_EJAR_ENCRYPTED,
+      },
+    });
     vi.stubEnv("NODE_ENV", "production");
     mockIsProductionRuntime.mockReturnValue(true);
     mockTenantFindUnique.mockResolvedValue({ isActive: true });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ contractId: "SHOULD-NOT-EXIST", contractNumber: "NO" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     const res = await submitContractToEjarAction(BASE_DATA);
     expect(res.success).toBe(false);
     expect(res.error).toContain("بوابة");
     expect(mockPayrollCreate).not.toHaveBeenCalled();
     expect(mockQueryRaw).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("Production + no EJAR_API_KEY → Gate BLOCKED", async () => {
-    vi.stubEnv("EJAR_API_URL", "https://api.ejar.sa/v1");
-    vi.stubEnv("EJAR_API_KEY", "");
+  it("Production + empty Hub accessToken → Gate BLOCKED", async () => {
+    setupHubEjarConnection({ credentials: { accessToken: "" } });
     vi.stubEnv("NODE_ENV", "production");
     mockIsProductionRuntime.mockReturnValue(true);
     mockTenantFindUnique.mockResolvedValue({ isActive: true });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ contractId: "SHOULD-NOT-EXIST", contractNumber: "NO" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     const res = await submitContractToEjarAction(BASE_DATA);
     expect(res.success).toBe(false);
     expect(res.error).toContain("بوابة");
     expect(mockPayrollCreate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("Non-production + no credentials → Gate BLOCKED (no mock allowed)", async () => {
-    vi.stubEnv("EJAR_API_URL", "");
-    vi.stubEnv("EJAR_API_KEY", "");
+  it("Non-production + no CONNECTED Hub connection → Gate BLOCKED (no mock allowed)", async () => {
+    setupHubEjarConnection({ connection: null });
     vi.stubEnv("NODE_ENV", "development");
     mockIsProductionRuntime.mockReturnValue(false);
     mockTenantFindUnique.mockResolvedValue({ isActive: true });
 
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ contractId: "SHOULD-NOT-EXIST", contractNumber: "NO" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
     const res = await submitContractToEjarAction(BASE_DATA);
     expect(res.success).toBe(false);
     expect(res.error).toContain("بوابة");
+    expect(mockPayrollCreate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Hub-only fail-closed (no ENV fallback, no provider success) ─────────────
+
+describe("submitContractToEjarAction: Hub-only fail-closed", () => {
+  beforeEach(() => {
+    setupHappyPath();
+  });
+
+  function stubProviderSuccess() {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ contractId: "SHOULD-NOT-EXIST", contractNumber: "NO" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("CONNECTED EJAR connection missing → fail-closed, no provider fetch, no commission", async () => {
+    setupHubEjarConnection({ connection: null });
+    const fetchMock = stubProviderSuccess();
+
+    const res = await submitContractToEjarAction(BASE_DATA);
+    expect(res.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockPayrollCreate).not.toHaveBeenCalled();
+  });
+
+  it("encryptedCredentials missing → fail-closed, no provider fetch, no commission", async () => {
+    setupHubEjarConnection({
+      connection: {
+        provider: "EJAR",
+        status: "CONNECTED",
+        baseUrl: HUB_EJAR_BASE_URL,
+        encryptedCredentials: null,
+      },
+    });
+    const fetchMock = stubProviderSuccess();
+
+    const res = await submitContractToEjarAction(BASE_DATA);
+    expect(res.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockPayrollCreate).not.toHaveBeenCalled();
+  });
+
+  it("decryptProviderCredentials failure → fail-closed, no provider fetch, no commission", async () => {
+    setupHubEjarConnection({ decryptThrows: true });
+    const fetchMock = stubProviderSuccess();
+
+    const res = await submitContractToEjarAction(BASE_DATA);
+    expect(res.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockPayrollCreate).not.toHaveBeenCalled();
+  });
+
+  it("empty Hub connection.baseUrl → fail-closed, no provider fetch, no commission", async () => {
+    setupHubEjarConnection({
+      connection: {
+        provider: "EJAR",
+        status: "CONNECTED",
+        baseUrl: "",
+        encryptedCredentials: HUB_EJAR_ENCRYPTED,
+      },
+    });
+    const fetchMock = stubProviderSuccess();
+
+    const res = await submitContractToEjarAction(BASE_DATA);
+    expect(res.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockPayrollCreate).not.toHaveBeenCalled();
+  });
+
+  it("empty Hub accessToken → fail-closed, no provider fetch, no commission", async () => {
+    setupHubEjarConnection({ credentials: { accessToken: "" } });
+    const fetchMock = stubProviderSuccess();
+
+    const res = await submitContractToEjarAction(BASE_DATA);
+    expect(res.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(mockPayrollCreate).not.toHaveBeenCalled();
   });
 });
