@@ -77,11 +77,12 @@
       2,
       3,
       4,
-      5
+      5,
+      6
     ],
-    "currentStep": 6,
-    "currentStepName": "SELECTIVE_EXEC_009_ABSORPTION",
-    "nextStep": 7,
+    "currentStep": 7,
+    "currentStepName": "SELECTIVE_EXEC_010_ABSORPTION",
+    "nextStep": 8,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -150,6 +151,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 6,
       "closedAt": "2026-08-13T05:32:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "6": {
+      "stepName": "SELECTIVE_EXEC_009_ABSORPTION",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 7,
+      "closedAt": "2026-08-13T05:34:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
