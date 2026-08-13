@@ -33,7 +33,11 @@ describe("post-closure R1 remediation contracts", () => {
     expect(route).toContain("manual payment retry is already in progress");
     expect(route).toContain("payment receipt was not created");
     expect(route).toContain("tx.paymentTransaction.aggregate");
-    expect(route).toContain("invoiceTotal - paidBefore");
+    expect(route).toContain("invoiceTotalMinor");
+    expect(route).toContain("paidBeforeMinor");
+    expect(route).toContain("remainingMinor");
+    expect(route).toContain("amountMinorUnits: created.amountMinorUnits");
+    expect(route).toContain("paymentTransactionId: transaction.id");
     expect(route).toContain("invoice has no remaining balance");
   });
 
@@ -78,6 +82,7 @@ describe("post-closure R1 remediation contracts", () => {
     const task = source("app/api/v1/tasks/[id]/complete/route.ts");
     expect(task).toContain("prisma.task.updateMany");
     expect(task).toContain('status: { in: ["PENDING", "OVERDUE"] }');
+    expect(task).toContain('assignedTo: { not: session.userId }');
     expect(task).toContain("claimed.count !== 1");
   });
 
@@ -103,7 +108,9 @@ describe("post-closure R1 remediation contracts", () => {
     expect(helpdesk).toContain("قناة التواصل غير صالحة");
     expect(helpdesk).toContain("notifyTicketDestination");
     expect(reply).toContain("notifyTicketDestination");
-    expect(destination).toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).not.toContain("Promise.race");
+    expect(destination).not.toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).toContain("textBody: input.message");
     expect(destination).toContain("sendEmail");
     expect(destination).toContain("sendSMSNotification");
     expect(destination).toContain("sendWhatsAppNotification");
