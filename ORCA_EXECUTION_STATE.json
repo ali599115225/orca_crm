@@ -75,11 +75,12 @@
       0,
       1,
       2,
-      3
+      3,
+      4
     ],
-    "currentStep": 4,
-    "currentStepName": "CREATE_UNIFIED_BRANCH",
-    "nextStep": 5,
+    "currentStep": 5,
+    "currentStepName": "SELECTIVE_EXEC_008_ABSORPTION",
+    "nextStep": 6,
     "automaticAdvance": false,
     "currentAuthority": "PLAN_READ_ONLY_UNTIL_STEP_CLOSURE_AND_OWNER_AUTHORIZATION"
   },
@@ -126,6 +127,17 @@
       "status": "CLOSED",
       "nextAuthorizedStep": 4,
       "closedAt": "2026-08-13T05:22:00+03:00",
+      "closureAuthority": "OWNER_COMMAND"
+    },
+    "4": {
+      "stepName": "CREATE_UNIFIED_BRANCH",
+      "requiredOutput": "COMPLETE",
+      "unknown": 0,
+      "scopeExpansion": 0,
+      "unauthorizedChanges": 0,
+      "status": "CLOSED",
+      "nextAuthorizedStep": 5,
+      "closedAt": "2026-08-13T05:28:00+03:00",
       "closureAuthority": "OWNER_COMMAND"
     }
   },
