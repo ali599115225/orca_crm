@@ -7,8 +7,6 @@ import {
 } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
-const SUPPORT_NOTIFICATION_TIMEOUT_MS = 15_000;
-
 type TicketDestination = {
   email?: string;
   phone?: string;
@@ -18,23 +16,6 @@ type TicketDestination = {
 export type TicketNotificationResult =
   | { success: true }
   | { success: false; error: string };
-
-async function withTimeout<T>(operation: Promise<T>, errorCode: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      operation,
-      new Promise<T>((_resolve, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(errorCode)),
-          SUPPORT_NOTIFICATION_TIMEOUT_MS,
-        );
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 export async function loadTicketDestination(
   tenantId: string,
@@ -72,15 +53,12 @@ export async function notifyTicketDestination(input: {
 
     if (channel === "EMAIL") {
       if (!email) return { success: false, error: "وجهة العميل غير موجودة." };
-      const result = await withTimeout(
-        sendEmail({
-          tenantId: input.tenantId,
-          to: email,
-          subject: input.subject,
-          htmlBody: input.message,
-        }),
-        "EMAIL_DELIVERY_TIMEOUT",
-      );
+      const result = await sendEmail({
+        tenantId: input.tenantId,
+        to: email,
+        subject: input.subject,
+        textBody: input.message,
+      });
       return result.success
         ? { success: true }
         : { success: false, error: result.code || result.error || "EMAIL_PROVIDER_NOT_CONFIGURED" };
@@ -88,13 +66,10 @@ export async function notifyTicketDestination(input: {
 
     if (channel === "SMS") {
       if (!phone) return { success: false, error: "وجهة العميل غير موجودة." };
-      const result = await withTimeout(
-        sendSMSNotification(phone, input.message, {
-          tenantId: input.tenantId,
-          ticketId: input.ticketId,
-        }),
-        "SMS_DELIVERY_TIMEOUT",
-      );
+      const result = await sendSMSNotification(phone, input.message, {
+        tenantId: input.tenantId,
+        ticketId: input.ticketId,
+      });
       return result.success
         ? { success: true }
         : { success: false, error: result.error || "SMS_NOT_CONFIGURED" };
@@ -102,14 +77,11 @@ export async function notifyTicketDestination(input: {
 
     if (channel === "WHATSAPP") {
       if (!phone) return { success: false, error: "وجهة العميل غير موجودة." };
-      const result = await withTimeout(
-        sendWhatsAppNotification(
-          input.tenantId,
-          phone,
-          "support_ticket_update",
-          [input.message],
-        ),
-        "WHATSAPP_DELIVERY_TIMEOUT",
+      const result = await sendWhatsAppNotification(
+        input.tenantId,
+        phone,
+        "support_ticket_update",
+        [input.message],
       );
       return result.success
         ? { success: true }
