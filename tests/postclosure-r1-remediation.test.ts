@@ -15,6 +15,18 @@ describe("post-closure R1 remediation contracts", () => {
     expect(legacy).toContain("PAYLINK_CREATE_RESPONSE_INVALID");
   });
 
+  it("constrains stored Paylink base URLs to official HTTPS origins", () => {
+    const migration = source(
+      "prisma/migrations/20260813174500_paylink_provider_url_guard/migration.sql",
+    );
+    expect(migration).toContain('UPPER("provider") <> \'PAYLINK\'');
+    expect(migration).toContain('"base_url" IS NOT NULL');
+    expect(migration).toContain("restpilot|restapi");
+    expect(migration).toContain("paylink\\.sa");
+    expect(migration).not.toContain("http://");
+    expect(migration).not.toContain("localhost");
+  });
+
   it("recovers failed manual-payment idempotency records and charges only the remaining balance", () => {
     const route = source("app/api/v1/invoices/[id]/pay/route.ts");
     expect(route).toContain("state: 'failed' as const");
