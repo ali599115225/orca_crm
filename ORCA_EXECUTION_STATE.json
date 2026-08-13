@@ -9,12 +9,18 @@
   "repository": "ali599115225/orca_crm",
   "pinnedSourceBranch": "work/orca-exec-011-visual-closure-20260811",
   "pinnedBaselineSha": "2b9c0505c99c7074de1d213c720022cff4626727",
+  "finalAuthoritativeReference": {
+    "branch": "work/orca-unified-reference-20260813",
+    "sha": "769b0a3de7ff09e00e2baf3c438886a6b616ab1d",
+    "orcaCiRun": 31673473533,
+    "orcaCiConclusion": "SUCCESS",
+    "runtimePageVerification": "10_OF_10_PASS",
+    "runtimeDependencyVulnerabilities": 0,
+    "regulatoryProductBlockers": 0
+  },
   "operatingModel": {
     "providerRole": "TECHNICAL_WEB_DEVELOPER_SOFTWARE_PROVIDER",
-    "providerActivityContext": [
-      "WEB_DEVELOPMENT",
-      "GRAPHIC_DESIGN"
-    ],
+    "providerActivityContext": ["WEB_DEVELOPMENT", "GRAPHIC_DESIGN"],
     "customerType": "EXISTING_REAL_ESTATE_COMPANY_WITH_BRANCHES",
     "productModel": "DEDICATED_SINGLE_CUSTOMER_REAL_ESTATE_OPERATIONS_PLATFORM",
     "commercialRelationship": "SEPARATE_AGREEMENT_AND_SALE",
@@ -54,176 +60,32 @@
     "mode": "READ_ONLY",
     "filesChanged": 0,
     "branchChanges": 0,
-    "rawE2E": {
-      "PASS": 1,
-      "PARTIAL": 9,
-      "MISSING": 0,
-      "BLOCKED": 0
-    },
-    "rawFunctionalContracts": {
-      "PASS": 3,
-      "PARTIAL": 14,
-      "MISSING": 0,
-      "NOT_CONFIGURED": 2,
-      "INTENTIONALLY_DISABLED": 1,
-      "BLOCKED": 0
-    },
+    "rawE2E": {"PASS": 1, "PARTIAL": 9, "MISSING": 0, "BLOCKED": 0},
+    "rawFunctionalContracts": {"PASS": 3, "PARTIAL": 14, "MISSING": 0, "NOT_CONFIGURED": 2, "INTENTIONALLY_DISABLED": 1, "BLOCKED": 0},
     "classificationStatus": "BUSINESS_MODEL_RECLASSIFICATION_COMPLETE"
   },
   "execution": {
-    "completedSteps": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11
-    ],
-    "currentStep": 12,
-    "currentStepName": "FINAL_AUTHORITATIVE_REFERENCE_GATE_REGULATORY_RECHECK",
-    "nextStep": 13,
+    "completedSteps": [0,1,2,3,4,5,6,7,8,9,10,11,12],
+    "currentStep": 13,
+    "currentStepName": "FREEZE_ARCHIVE_OLD_BRANCHES",
+    "nextStep": 14,
     "automaticAdvance": false,
     "currentAuthority": "OWNER_COMMAND_FULL_EXECUTION_THROUGH_FINAL_CLEANUP"
   },
   "stepClosures": {
-    "0": {
-      "stepName": "KNOWLEDGE_BUSINESS_MODEL_LOCK",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 1,
-      "closedAt": "2026-08-13T03:29:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "1": {
-      "stepName": "BUSINESS_MODEL_RECLASSIFICATION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 2,
-      "closedAt": "2026-08-13T03:40:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "2": {
-      "stepName": "BRANCH_RECONCILIATION_AUDIT_READ_ONLY",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 3,
-      "closedAt": "2026-08-13T05:15:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "3": {
-      "stepName": "FINAL_UNIFICATION_LEDGER",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 4,
-      "closedAt": "2026-08-13T05:22:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "4": {
-      "stepName": "CREATE_UNIFIED_BRANCH",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 5,
-      "closedAt": "2026-08-13T05:28:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "5": {
-      "stepName": "SELECTIVE_EXEC_008_ABSORPTION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 6,
-      "closedAt": "2026-08-13T05:32:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "6": {
-      "stepName": "SELECTIVE_EXEC_009_ABSORPTION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 7,
-      "closedAt": "2026-08-13T05:34:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "7": {
-      "stepName": "SELECTIVE_EXEC_010_ABSORPTION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 8,
-      "closedAt": "2026-08-13T05:35:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "8": {
-      "stepName": "DIRECT_CLOSURE_OF_REMAINING_APPROVED_GAPS",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 9,
-      "closedAt": "2026-08-13T07:06:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "9": {
-      "stepName": "FULL_TECHNICAL_VERIFICATION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 10,
-      "closedAt": "2026-08-13T09:26:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "10": {
-      "stepName": "REVERIFY_EXACTLY_10_E2E_20_FC",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 11,
-      "closedAt": "2026-08-13T09:37:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    },
-    "11": {
-      "stepName": "RUNTIME_PAGE_VERIFICATION",
-      "requiredOutput": "COMPLETE",
-      "unknown": 0,
-      "scopeExpansion": 0,
-      "unauthorizedChanges": 0,
-      "status": "CLOSED",
-      "nextAuthorizedStep": 12,
-      "closedAt": "2026-08-13T09:55:00+03:00",
-      "closureAuthority": "OWNER_COMMAND"
-    }
+    "0": {"stepName":"KNOWLEDGE_BUSINESS_MODEL_LOCK","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":1,"closedAt":"2026-08-13T03:29:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "1": {"stepName":"BUSINESS_MODEL_RECLASSIFICATION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":2,"closedAt":"2026-08-13T03:40:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "2": {"stepName":"BRANCH_RECONCILIATION_AUDIT_READ_ONLY","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":3,"closedAt":"2026-08-13T05:15:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "3": {"stepName":"FINAL_UNIFICATION_LEDGER","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":4,"closedAt":"2026-08-13T05:22:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "4": {"stepName":"CREATE_UNIFIED_BRANCH","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":5,"closedAt":"2026-08-13T05:28:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "5": {"stepName":"SELECTIVE_EXEC_008_ABSORPTION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":6,"closedAt":"2026-08-13T05:32:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "6": {"stepName":"SELECTIVE_EXEC_009_ABSORPTION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":7,"closedAt":"2026-08-13T05:34:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "7": {"stepName":"SELECTIVE_EXEC_010_ABSORPTION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":8,"closedAt":"2026-08-13T05:35:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "8": {"stepName":"DIRECT_CLOSURE_OF_REMAINING_APPROVED_GAPS","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":9,"closedAt":"2026-08-13T07:06:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "9": {"stepName":"FULL_TECHNICAL_VERIFICATION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":10,"closedAt":"2026-08-13T09:26:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "10": {"stepName":"REVERIFY_EXACTLY_10_E2E_20_FC","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":11,"closedAt":"2026-08-13T09:37:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "11": {"stepName":"RUNTIME_PAGE_VERIFICATION","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":12,"closedAt":"2026-08-13T09:55:00+03:00","closureAuthority":"OWNER_COMMAND"},
+    "12": {"stepName":"FINAL_AUTHORITATIVE_REFERENCE_GATE_REGULATORY_RECHECK","requiredOutput":"COMPLETE","unknown":0,"scopeExpansion":0,"unauthorizedChanges":0,"status":"CLOSED","nextAuthorizedStep":13,"closedAt":"2026-08-13T10:01:00+03:00","closureAuthority":"OWNER_COMMAND"}
   },
   "approvals": {
     "buildAuthorized": true,
@@ -260,17 +122,8 @@
     "jurisdiction": "SAUDI_ARABIA",
     "verifiedDate": "2026-08-13",
     "reverifyAtStep": 12,
-    "authorities": [
-      "SDAIA",
-      "NCA",
-      "CST",
-      "REGA",
-      "EJAR",
-      "ZATCA",
-      "MINISTRY_OF_COMMERCE",
-      "SAIP",
-      "BUREAU_OF_EXPERTS"
-    ]
+    "status": "RECHECK_COMPLETE_NO_PRODUCT_BLOCKER",
+    "authorities": ["SDAIA","NCA","CST","REGA","EJAR","ZATCA","MINISTRY_OF_COMMERCE","SAIP","BUREAU_OF_EXPERTS"]
   },
   "governanceRef": "governance/orca-workflow-lock"
 }
