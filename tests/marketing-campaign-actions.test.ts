@@ -62,9 +62,11 @@ describe("marketing campaign server actions", () => {
     expect(source).toContain("SYNC");
   });
 
-  it("makes getMarketingProviderAdapter(META) resolve after production registration", () => {
+  it("keeps marketing commands fail-closed until a real production connector is registered", () => {
     clearMarketingProviderRegistry();
     registerProductionMarketingAdapters();
-    expect(getMarketingProviderAdapter("META").provider).toBe("META");
+    expect(() => getMarketingProviderAdapter("META")).toThrow(
+      "MARKETING_PROVIDER_NOT_REGISTERED",
+    );
   });
 });

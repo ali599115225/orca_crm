@@ -355,44 +355,21 @@ export async function sendAdminEmailAlert(
   subject: string,
   htmlContent: string,
 ) {
-  try {
-    const recipients = (process.env.SUPER_ADMIN_EMAILS || "")
-      .split(",")
-      .map((email) => email.trim())
-      .filter(Boolean);
-    if (recipients.length === 0) {
-      return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
-    }
+  const recipients = (process.env.SUPER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
 
-    const connection = await prisma.revenueProviderConnection.findFirst({
-      where: {
-        status: "CONNECTED",
-        provider: { in: ["SMTP", "RESEND"] },
-      },
-      select: { tenantId: true },
-      orderBy: { updatedAt: "desc" },
-    });
-    if (!connection) {
-      return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
-    }
-
-    let delivered = false;
-    for (const to of recipients) {
-      const result = await sendEmail({
-        tenantId: connection.tenantId,
-        to,
-        subject,
-        htmlBody: htmlContent,
-      });
-      if (result.success) delivered = true;
-    }
-
-    return delivered
-      ? { success: true as const }
-      : { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
-  } catch {
+  if (recipients.length === 0) {
     return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
   }
+
+  console.warn("[Email] Platform admin alert blocked: platform email provider is not configured.", {
+    recipientCount: recipients.length,
+    subjectLength: subject.length,
+    htmlLength: htmlContent.length,
+  });
+  return { success: false as const, code: EMAIL_PROVIDER_NOT_CONFIGURED };
 }
 
 export interface SendEmailOptions {

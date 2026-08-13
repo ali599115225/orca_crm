@@ -91,23 +91,20 @@ export class SaudiTrustGateService {
     }
 
     let accessToken = '';
-    let configuredUrl = String(connection.baseUrl ?? '').trim();
+    const configuredUrl = String(connection.baseUrl ?? '').trim();
     try {
       const credentials = decryptProviderCredentials(connection.encryptedCredentials);
       accessToken = String(credentials.accessToken ?? '').trim();
-      if (!configuredUrl) {
-        configuredUrl = String(credentials.healthUrl ?? credentials.baseUrl ?? '').trim();
-      }
     } catch {
       return blocked('MISSING_CREDENTIALS', 'No mock allowed');
     }
 
-    if (!credentialValid(accessToken)) {
+    if (!configuredUrl || !credentialValid(accessToken)) {
       return blocked('MISSING_CREDENTIALS', 'No mock allowed');
     }
 
     const production = isProductionRuntime();
-    if (production && /sandbox/i.test(configuredUrl)) {
+    if (production && /(sandbox|restpilot|uat|staging|test)/i.test(configuredUrl)) {
       return blocked('SANDBOX_BLOCKED_NO_PRODUCTION_CREDENTIALS',
         'EJAR hub URL points to sandbox in production');
     }

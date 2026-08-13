@@ -58,15 +58,37 @@ export async function PATCH(
           );
         }
 
-        const updatedTask = await prisma.task.update({
-          where: { id: task.id, tenantId: session.tenantId },
+        const claimed = await prisma.task.updateMany({
+          where: {
+            id: task.id,
+            tenantId: session.tenantId,
+            status: { in: ["PENDING", "OVERDUE"] },
+          },
           data: {
             status: "COMPLETED",
             updatedBy: session.userId,
             auditLog:
-              `${task.auditLog || ""}\nTask completed at ${new Date().toISOString()}`.trim(),
+              `${task.auditLog || ""}
+Task completed at ${new Date().toISOString()}`.trim(),
           },
         });
+
+        if (claimed.count !== 1) {
+          return NextResponse.json(
+            { success: false, error: "تم إكمال المهمة بواسطة طلب آخر." },
+            { status: 409 },
+          );
+        }
+
+        const updatedTask = await prisma.task.findFirst({
+          where: { id: task.id, tenantId: session.tenantId },
+        });
+        if (!updatedTask) {
+          return NextResponse.json(
+            { success: false, error: "المهمة غير موجودة." },
+            { status: 404 },
+          );
+        }
 
         await writeAuditLog({
           tenantId: session.tenantId,

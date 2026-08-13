@@ -182,6 +182,15 @@ export async function createTicketAction(formData: FormData) {
     if (title.length < 3 || description.length < 5) {
       throw new Error("عنوان التذكرة وتفاصيلها مطلوبة.");
     }
+    if (channel && !["EMAIL", "SMS", "WHATSAPP"].includes(channel)) {
+      throw new Error("قناة التواصل غير صالحة.");
+    }
+    if (channel === "EMAIL" && !email) {
+      throw new Error("البريد الإلكتروني مطلوب لقناة البريد.");
+    }
+    if ((channel === "SMS" || channel === "WHATSAPP") && !phone) {
+      throw new Error("رقم الجوال مطلوب لقناة التواصل المحددة.");
+    }
 
     return await runWithTenantContext(
       { tenantId: session.tenantId, userId: session.userId },
@@ -251,19 +260,34 @@ async function updateTicketStatusAction(
           recordId: ticket.id,
         });
 
+        let notificationError: string | null = null;
         if (status === "CLOSED") {
-          await notifyTicketDestination({
-            tenantId: session.tenantId,
-            ticketId: ticket.id,
-            subject: `Ticket closed: ${ticket.title}`,
-            message: ticket.title,
-          });
+          try {
+            await notifyTicketDestination({
+              tenantId: session.tenantId,
+              ticketId: ticket.id,
+              subject: `Ticket closed: ${ticket.title}`,
+              message: ticket.title,
+            });
+          } catch (error) {
+            notificationError =
+              error instanceof Error ? error.message : "HELPDESK_NOTIFICATION_FAILED";
+            await writeAuditLog({
+              tenantId: session.tenantId,
+              userId: session.userId,
+              action: "TICKET_NOTIFICATION_FAILED",
+              tableName: "tickets",
+              recordId: ticket.id,
+              details: JSON.stringify({ code: notificationError.slice(0, 200) }),
+            });
+          }
         }
 
         revalidatePath("/operations/helpdesk");
         return {
           success: true as const,
           ticket: serializeTicket(ticket),
+          notificationError,
         };
       },
     );

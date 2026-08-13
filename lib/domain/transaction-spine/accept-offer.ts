@@ -223,7 +223,13 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           tenantId,
           unitId: offer.unitId,
           id: { not: offer.id },
-          status: OFFER_STATUS.PENDING,
+          status: {
+            in: [
+              OFFER_STATUS.PENDING,
+              OFFER_STATUS.SENT,
+              OFFER_STATUS.NEGOTIATION,
+            ],
+          },
         },
         data: {
           status: OFFER_STATUS.CANCELLED,

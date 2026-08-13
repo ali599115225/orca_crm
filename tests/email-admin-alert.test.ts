@@ -41,23 +41,14 @@ describe("sendAdminEmailAlert", () => {
     prismaMocks.send.mockResolvedValue({ data: { id: "msg-1" }, error: null });
   });
 
-  it("calls sendEmail when SUPER_ADMIN_EMAILS and a CONNECTED provider exist", async () => {
+  it("fails closed instead of borrowing a tenant provider for platform admin alerts", async () => {
     vi.stubEnv("SUPER_ADMIN_EMAILS", "owner@example.com");
-    prismaMocks.findFirst.mockResolvedValue({ tenantId: "tenant-1" });
-    prismaMocks.findMany.mockResolvedValue([
-      {
-        tenantId: "tenant-1",
-        provider: "RESEND",
-        status: "CONNECTED",
-        encryptedCredentials: "v1.iv.tag.body",
-        isDefault: true,
-      },
-    ]);
 
     const result = await sendAdminEmailAlert("Subject", "<p>Alert</p>");
 
-    expect(result.success).toBe(true);
-    expect(prismaMocks.send).toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(prismaMocks.findFirst).not.toHaveBeenCalled();
+    expect(prismaMocks.send).not.toHaveBeenCalled();
   });
 
   it("fails closed without throw or success when SUPER_ADMIN_EMAILS is absent", async () => {

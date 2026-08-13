@@ -97,7 +97,7 @@ describe('Paylink adapter', () => {
     });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toMatchObject({
-      amount: 299_00,
+      amount: 299,
       currency: 'SAR',
       description: 'ORCA pro plan',
     });
@@ -108,7 +108,7 @@ describe('Paylink adapter', () => {
     vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ transactionNo: 'paylink-ref-1', orderStatus: 'PAID', amount: 299_00 }),
+      json: async () => ({ transactionNo: 'paylink-ref-1', orderStatus: 'PAID', amount: 299 }),
     }));
 
     await expect(paylinkProvider.verifyPayment('paylink-ref-1')).resolves.toMatchObject({
