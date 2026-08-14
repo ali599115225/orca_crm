@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { publicHttpsJsonRequest } from "@/lib/net/public-https";
 import { rawPrisma } from "@/lib/prisma";
 import { appendRevenueEvent } from "./events";
 import { REVENUE_PROVIDERS, type ProviderCredentials, type RevenueProvider } from "./contracts";
@@ -349,11 +350,16 @@ async function testProvider(provider: RevenueProvider, baseUrl: string | null, c
     const healthUrl = String(baseUrl || "").trim();
     const accessToken = providerValue(credentials, "accessToken");
     if (!healthUrl || !accessToken) throw new Error("EJAR_HEALTH_URL_AND_TOKEN_REQUIRED");
-    const response = await fetch(healthUrl, {
+    const response = await publicHttpsJsonRequest({
+      url: healthUrl,
+      method: "GET",
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
-    return expectOk(response, provider);
+    if (!response.ok) {
+      throw new Error(`EJAR_HTTP_${response.status}`);
+    }
+    return response.payload;
   }
 
   const healthUrl = baseUrl || providerValue(credentials, "healthUrl");
