@@ -203,7 +203,7 @@ export async function transitionFinanceCaseInternalStatus(
       }
 
       let providerApprovalEvidenceEventId: string | null = null;
-      if (nextStatus === "PROVIDER_APPROVED") {
+      if (nextStatus === "PROVIDER_APPROVED" || nextStatus === "READY_FOR_TRANSACTION") {
         if (
           financeCase.authorityStatus !== "APPROVED" ||
           !financeCase.authorityProvider ||
