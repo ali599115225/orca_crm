@@ -26,6 +26,19 @@ export type FinanceInternalStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+const FINANCE_INTERNAL_STATUSES = new Set<FinanceInternalStatus>([
+  "DRAFT",
+  "ASSESSMENT",
+  "READY_FOR_SUBMISSION",
+  "AWAITING_PROVIDER",
+  "OFFERS_RECEIVED",
+  "OFFER_SELECTED",
+  "PROVIDER_APPROVED",
+  "READY_FOR_TRANSACTION",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
 const NEXT_STATUS: Record<Exclude<FinanceInternalStatus, "COMPLETED" | "CANCELLED">, readonly FinanceInternalStatus[]> = {
   DRAFT: ["ASSESSMENT", "CANCELLED"],
   ASSESSMENT: ["READY_FOR_SUBMISSION", "CANCELLED"],
@@ -36,6 +49,10 @@ const NEXT_STATUS: Record<Exclude<FinanceInternalStatus, "COMPLETED" | "CANCELLE
   PROVIDER_APPROVED: ["READY_FOR_TRANSACTION", "CANCELLED"],
   READY_FOR_TRANSACTION: ["COMPLETED", "CANCELLED"],
 };
+
+export function isFinanceInternalStatus(value: string): value is FinanceInternalStatus {
+  return FINANCE_INTERNAL_STATUSES.has(value as FinanceInternalStatus);
+}
 
 export function isFinanceInternalTransitionAllowed(
   from: FinanceInternalStatus,
@@ -62,7 +79,7 @@ export type CreateFinanceCaseInput = {
   monthlyCommitments?: Prisma.Decimal | number | string | null;
   advisoryDsrLimit?: Prisma.Decimal | number | string | null;
   metadata?: Prisma.InputJsonValue;
-  createdBy?: string | null;
+  createdBy: string;
 };
 
 export type RecordFinanceAuthorityInput = {
@@ -72,7 +89,7 @@ export type RecordFinanceAuthorityInput = {
   provider: string;
   providerReference: string;
   evidenceJson: Prisma.InputJsonValue;
-  actorId?: string | null;
+  actorId: string;
 };
 
 function txLegacyLookup(tx: Prisma.TransactionClient): W1LegacyReferenceLookup {
@@ -97,7 +114,8 @@ export async function createFinanceCase(input: CreateFinanceCaseInput) {
     !input.tenantId ||
     !input.caseNumber.trim() ||
     !input.purpose.trim() ||
-    !input.propertySource.trim()
+    !input.propertySource.trim() ||
+    !input.createdBy
   ) {
     throw new W1FinanceLifecycleError("W1_FINANCE_CASE_REQUIRED_FIELDS_MISSING");
   }
@@ -136,8 +154,8 @@ export async function createFinanceCase(input: CreateFinanceCaseInput) {
           monthlyCommitments: input.monthlyCommitments ?? null,
           advisoryDsrLimit: input.advisoryDsrLimit ?? null,
           metadata: input.metadata ?? {},
-          createdBy: input.createdBy ?? null,
-          updatedBy: input.createdBy ?? null,
+          createdBy: input.createdBy,
+          updatedBy: input.createdBy,
         },
       });
 
@@ -147,7 +165,7 @@ export async function createFinanceCase(input: CreateFinanceCaseInput) {
           financeCaseId: financeCase.id,
           eventType: "finance_case.created",
           internalStatus: "DRAFT",
-          actorId: input.createdBy ?? null,
+          actorId: input.createdBy,
         },
       });
 
@@ -161,9 +179,9 @@ export async function transitionFinanceCaseInternalStatus(
   tenantId: string,
   financeCaseId: string,
   nextStatus: FinanceInternalStatus,
-  actorId?: string | null,
+  actorId: string,
 ) {
-  if (!tenantId || !financeCaseId) {
+  if (!tenantId || !financeCaseId || !actorId) {
     throw new W1FinanceLifecycleError("W1_FINANCE_TRANSITION_IDENTITY_REQUIRED");
   }
 
@@ -176,15 +194,18 @@ export async function transitionFinanceCaseInternalStatus(
       if (!financeCase) {
         throw new W1FinanceLifecycleError("W1_FINANCE_CASE_NOT_FOUND_FOR_TENANT");
       }
+      if (!isFinanceInternalStatus(financeCase.internalStatus)) {
+        throw new W1FinanceLifecycleError("W1_FINANCE_INTERNAL_STATE_UNKNOWN");
+      }
 
-      const currentStatus = financeCase.internalStatus as FinanceInternalStatus;
+      const currentStatus = financeCase.internalStatus;
       if (!isFinanceInternalTransitionAllowed(currentStatus, nextStatus)) {
         throw new W1FinanceLifecycleError("W1_FINANCE_INTERNAL_TRANSITION_INVALID");
       }
 
       const updated = await tx.financeCase.update({
         where: { id: financeCase.id },
-        data: { internalStatus: nextStatus, updatedBy: actorId ?? null },
+        data: { internalStatus: nextStatus, updatedBy: actorId },
       });
 
       await tx.financeCaseEvent.create({
@@ -193,7 +214,7 @@ export async function transitionFinanceCaseInternalStatus(
           financeCaseId: financeCase.id,
           eventType: "finance_case.internal_status_changed",
           internalStatus: nextStatus,
-          actorId: actorId ?? null,
+          actorId,
           evidenceJson: { from: currentStatus, to: nextStatus },
         },
       });
@@ -211,6 +232,7 @@ export async function recordFinanceAuthorityEvidence(input: RecordFinanceAuthori
     !input.authorityStatus.trim() ||
     !input.provider.trim() ||
     !input.providerReference.trim() ||
+    !input.actorId ||
     input.evidenceJson === null
   ) {
     throw new W1FinanceLifecycleError("W1_FINANCE_AUTHORITY_EVIDENCE_REQUIRED");
@@ -225,6 +247,9 @@ export async function recordFinanceAuthorityEvidence(input: RecordFinanceAuthori
       if (!financeCase) {
         throw new W1FinanceLifecycleError("W1_FINANCE_CASE_NOT_FOUND_FOR_TENANT");
       }
+      if (!isFinanceInternalStatus(financeCase.internalStatus)) {
+        throw new W1FinanceLifecycleError("W1_FINANCE_INTERNAL_STATE_UNKNOWN");
+      }
 
       const updated = await tx.financeCase.update({
         where: { id: financeCase.id },
@@ -232,7 +257,7 @@ export async function recordFinanceAuthorityEvidence(input: RecordFinanceAuthori
           authorityStatus: input.authorityStatus.trim(),
           authorityProvider: input.provider.trim(),
           authorityReference: input.providerReference.trim(),
-          updatedBy: input.actorId ?? null,
+          updatedBy: input.actorId,
         },
       });
 
@@ -244,7 +269,7 @@ export async function recordFinanceAuthorityEvidence(input: RecordFinanceAuthori
           internalStatus: financeCase.internalStatus,
           authorityStatus: input.authorityStatus.trim(),
           provider: input.provider.trim(),
-          actorId: input.actorId ?? null,
+          actorId: input.actorId,
           evidenceJson: {
             providerReference: input.providerReference.trim(),
             evidence: input.evidenceJson,
