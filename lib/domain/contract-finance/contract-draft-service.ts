@@ -20,14 +20,14 @@ export type CreateContractDraftInput = {
   contentJson: Prisma.InputJsonValue;
   dataBindingsJson: Prisma.InputJsonValue;
   clauseOverridesJson?: Prisma.InputJsonValue;
-  createdBy?: string | null;
+  createdBy: string;
 };
 
 export type RequestContractApprovalInput = {
   tenantId: string;
   draftId: string;
   riskTier: string;
-  requestedBy?: string | null;
+  requestedBy: string;
   reason?: string | null;
   evidenceJson?: Prisma.InputJsonValue;
 };
@@ -42,7 +42,13 @@ export type DecideContractApprovalInput = {
 };
 
 export async function createContractDraft(input: CreateContractDraftInput) {
-  if (!input.tenantId || !input.templateId || !input.templateVersionId || !input.title.trim()) {
+  if (
+    !input.tenantId ||
+    !input.templateId ||
+    !input.templateVersionId ||
+    !input.title.trim() ||
+    !input.createdBy
+  ) {
     throw new W1ContractLifecycleError("W1_CONTRACT_DRAFT_REQUIRED_FIELDS_MISSING");
   }
 
@@ -106,8 +112,8 @@ export async function createContractDraft(input: CreateContractDraftInput) {
           contentJson: input.contentJson,
           dataBindingsJson: input.dataBindingsJson,
           clauseOverridesJson: input.clauseOverridesJson ?? [],
-          createdBy: input.createdBy ?? null,
-          updatedBy: input.createdBy ?? null,
+          createdBy: input.createdBy,
+          updatedBy: input.createdBy,
         },
       });
     },
@@ -116,7 +122,7 @@ export async function createContractDraft(input: CreateContractDraftInput) {
 }
 
 export async function requestContractApproval(input: RequestContractApprovalInput) {
-  if (!input.tenantId || !input.draftId || !input.riskTier.trim()) {
+  if (!input.tenantId || !input.draftId || !input.riskTier.trim() || !input.requestedBy) {
     throw new W1ContractLifecycleError("W1_APPROVAL_REQUEST_REQUIRED_FIELDS_MISSING");
   }
 
@@ -139,7 +145,7 @@ export async function requestContractApproval(input: RequestContractApprovalInpu
           draftId: draft.id,
           riskTier: input.riskTier.trim(),
           status: "PENDING",
-          requestedBy: input.requestedBy ?? null,
+          requestedBy: input.requestedBy,
           reason: input.reason ?? null,
           evidenceJson: input.evidenceJson,
         },
@@ -148,7 +154,7 @@ export async function requestContractApproval(input: RequestContractApprovalInpu
       if (draft.status === "DRAFT") {
         await tx.contractDraft.update({
           where: { id: draft.id },
-          data: { status: "APPROVAL_PENDING", updatedBy: input.requestedBy ?? null },
+          data: { status: "APPROVAL_PENDING", updatedBy: input.requestedBy },
         });
       }
 
