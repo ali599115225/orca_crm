@@ -26,8 +26,18 @@ function isPrivateIpv4(address: string): boolean {
 }
 
 function normalizeMappedAddress(address: string): string {
-  const mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  return mapped?.[1] || address;
+  const normalized = address.toLowerCase();
+  const dotted = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (dotted?.[1]) return dotted[1];
+
+  const hex = normalized.match(
+    /^(?:::ffff:|0:0:0:0:0:ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i,
+  );
+  if (!hex) return address;
+
+  const high = Number.parseInt(hex[1], 16);
+  const low = Number.parseInt(hex[2], 16);
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
 }
 
 function isPrivateAddress(address: string): boolean {
