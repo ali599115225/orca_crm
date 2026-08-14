@@ -1,8 +1,8 @@
 import "server-only";
-import { lookup as dnsLookup } from "node:dns";
-import { lookup } from "node:dns/promises";
-import https from "node:https";
-import { isIP } from "node:net";
+import {
+  publicHttpsJsonRequest,
+  requirePublicProviderUrl as requireSharedPublicProviderUrl,
+} from "@/lib/net/public-https";
 import type {
   PaymentCreateInput,
   PaymentProviderAdapter,
@@ -27,143 +27,23 @@ function value(credentials: Credentials, key: string): string {
   return String(credentials[key] ?? "").trim();
 }
 
-function isPrivateIpv4(address: string): boolean {
-  const parts = address.split(".").map(Number);
-  if (parts.length !== 4 || parts.some(Number.isNaN)) return true;
-  const [a, b] = parts;
-  return (
-    a === 10 ||
-    a === 127 ||
-    a === 0 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    a >= 224
-  );
-}
-
-function isPrivateAddress(address: string): boolean {
-  if (isIP(address) === 4) return isPrivateIpv4(address);
-  const normalized = address.toLowerCase();
-  return (
-    normalized === "::1" ||
-    normalized === "::" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    /^fe[89ab]/.test(normalized) ||
-    normalized.startsWith("::ffff:127.") ||
-    normalized.startsWith("::ffff:10.") ||
-    normalized.startsWith("::ffff:192.168.")
-  );
-}
-
-function assertPublicAddress(address: string): void {
-  let normalizedAddress = address;
-
-  // Normalize IPv4-mapped IPv6 addresses to IPv4 before checking
-  if (isIP(address) === 6) {
-    const ipv4Mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-    if (ipv4Mapped) {
-      normalizedAddress = ipv4Mapped[1];
-    }
-  }
-
-  if (!isIP(normalizedAddress) || isPrivateAddress(normalizedAddress)) {
-    throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
-  }
-}
-
 async function requirePublicHttpsUrl(input: string): Promise<URL> {
-  const url = new URL(input);
-  if (url.protocol !== "https:" || url.username || url.password) {
-    throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
-  }
-
-  const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".local")
-  ) {
-    throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
-  }
-
-  if (isIP(hostname)) {
-    assertPublicAddress(hostname);
-  } else {
-    const addresses = await lookup(hostname, {
-      all: true,
-      verbatim: true,
-    });
-    if (addresses.length === 0) {
+  try {
+    return await requireSharedPublicProviderUrl(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
       throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
     }
-    for (const entry of addresses) {
-      assertPublicAddress(entry.address);
-    }
+    throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
   }
-
-  return url;
 }
 
 export async function requirePublicProviderUrl(
   input: string,
   allowedHosts?: readonly string[],
 ): Promise<URL> {
-  let url: URL;
-  try {
-    url = await requirePublicHttpsUrl(input);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED") {
-      throw new Error("PROVIDER_PRIVATE_HOST_BLOCKED");
-    }
-    throw new Error("PROVIDER_PUBLIC_HTTPS_URL_REQUIRED");
-  }
-
-  if (allowedHosts?.length) {
-    const hostname = url.hostname.toLowerCase();
-    const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()));
-    if (!allowed.has(hostname)) {
-      throw new Error("PROVIDER_HOST_NOT_ALLOWED");
-    }
-  }
-
-  return url;
-}
-
-function safeSocketLookup(
-  hostname: string,
-  options: unknown,
-  callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void,
-) {
-  const requested = (options || {}) as { family?: number; hints?: number };
-  dnsLookup(
-    hostname,
-    {
-      family: requested.family,
-      hints: requested.hints,
-      all: false,
-      verbatim: true,
-    },
-    (error, address, family) => {
-      if (error) {
-        callback(error, "", 0);
-        return;
-      }
-      try {
-        assertPublicAddress(address);
-        callback(null, address, family);
-      } catch {
-        const blocked = new Error(
-          "CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED",
-        ) as NodeJS.ErrnoException;
-        blocked.code = "CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED";
-        callback(blocked, "", 0);
-      }
-    },
-  );
+  return requireSharedPublicProviderUrl(input, allowedHosts);
 }
 
 async function safeJsonRequest(input: {
@@ -173,63 +53,47 @@ async function safeJsonRequest(input: {
   body?: string;
   timeoutMs: number;
 }): Promise<SafeJsonResponse> {
-  return await new Promise<SafeJsonResponse>((resolve, reject) => {
-    const request = https.request(
-      input.url,
-      {
-        method: input.method,
-        headers: input.headers,
-        lookup: safeSocketLookup,
-        rejectUnauthorized: true,
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-        let size = 0;
-        response.on("data", (chunk: Buffer | string) => {
-          const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          size += buffer.length;
-          if (size > 1_000_000) {
-            request.destroy(new Error("CUSTOM_PAYMENT_RESPONSE_TOO_LARGE"));
-            return;
-          }
-          chunks.push(buffer);
-        });
-        response.once("error", reject);
-        response.once("close", () => {
-          if (!response.readableEnded) {
-            reject(new Error("CUSTOM_PAYMENT_RESPONSE_ABORTED"));
-          }
-        });
-        response.on("end", () => {
-          const status = response.statusCode || 0;
-          const text = Buffer.concat(chunks).toString("utf8");
-          let payload: any;
-          try {
-            payload = JSON.parse(text);
-          } catch {
-            reject(
-              new Error(
-                `CUSTOM_PAYMENT_NON_JSON_RESPONSE:${status}:${text.slice(0, 300)}`,
-              ),
-            );
-            return;
-          }
-          resolve({
-            ok: status >= 200 && status < 300,
-            status,
-            payload,
-          });
-        });
-      },
-    );
-
-    request.setTimeout(input.timeoutMs, () => {
-      request.destroy(new Error("CUSTOM_PAYMENT_TIMEOUT"));
+  try {
+    const response = await publicHttpsJsonRequest({
+      url: input.url,
+      method: input.method,
+      headers: input.headers,
+      body: input.body,
+      timeoutMs: input.timeoutMs,
+      maxResponseBytes: 1_000_000,
     });
-    request.once("error", reject);
-    if (input.body) request.write(input.body);
-    request.end();
-  });
+    return {
+      ok: response.ok,
+      status: response.status,
+      payload: response.payload,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "PROVIDER_REQUEST_TIMEOUT") {
+      throw new Error("CUSTOM_PAYMENT_TIMEOUT");
+    }
+    if (message === "PROVIDER_RESPONSE_TOO_LARGE") {
+      throw new Error("CUSTOM_PAYMENT_RESPONSE_TOO_LARGE");
+    }
+    if (message === "PROVIDER_RESPONSE_ABORTED") {
+      throw new Error("CUSTOM_PAYMENT_RESPONSE_ABORTED");
+    }
+    if (message.startsWith("PROVIDER_NON_JSON_RESPONSE:")) {
+      throw new Error(
+        message.replace(
+          "PROVIDER_NON_JSON_RESPONSE:",
+          "CUSTOM_PAYMENT_NON_JSON_RESPONSE:",
+        ),
+      );
+    }
+    if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
+      throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
+    }
+    if (message === "PROVIDER_PUBLIC_HTTPS_URL_REQUIRED") {
+      throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
+    }
+    throw error;
+  }
 }
 
 function getPath(payload: unknown, path: string): unknown {
