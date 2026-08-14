@@ -19,7 +19,7 @@ const W1_MODELS = [
   "ContractDraft",
   "ContractSnapshot",
   "ContractApproval",
-  "ContractAmment",
+  "ContractAmendment",
   "FinanceCase",
   "FinanceProviderOffer",
   "FinanceCaseEvent",
