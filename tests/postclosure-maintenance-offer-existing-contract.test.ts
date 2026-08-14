@@ -93,10 +93,21 @@ function makeCompetitors() {
   ];
 }
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 function createAcceptanceHarness(withContract: boolean) {
   const offer = makeOffer(withContract);
   const competitors = makeCompetitors();
   const operationLog: string[] = [];
+  const cancellationGates = new Map(
+    competitors.map((competitor) => [competitor.id, deferred()]),
+  );
 
   const tx = {
     offer: {
@@ -114,6 +125,9 @@ function createAcceptanceHarness(withContract: boolean) {
         }
         const competitor = competitors.find((item) => item.id === where.id);
         if (!competitor) throw new Error(`unexpected offer update: ${where.id}`);
+        const gate = cancellationGates.get(competitor.id);
+        if (!gate) throw new Error(`missing cancellation gate: ${competitor.id}`);
+        await gate.promise;
         Object.assign(competitor, data);
         operationLog.push(`cancel:${competitor.id}`);
         return { ...competitor };
@@ -140,7 +154,7 @@ function createAcceptanceHarness(withContract: boolean) {
     },
   };
 
-  return { offer, competitors, operationLog, tx };
+  return { offer, competitors, operationLog, cancellationGates, tx };
 }
 
 function expectCompetitorsSuperseded(
@@ -171,6 +185,48 @@ function expectCompetitorsSuperseded(
   }
 }
 
+async function completeCancellationsBeforeResult(
+  harness: ReturnType<typeof createAcceptanceHarness>,
+  resultPromise: ReturnType<typeof acceptOfferAndCreateContract>,
+) {
+  let settled = false;
+  void resultPromise.finally(() => {
+    settled = true;
+  });
+
+  await vi.waitFor(() => {
+    expect(harness.tx.offer.update).toHaveBeenCalledTimes(2);
+  });
+  expect(settled).toBe(false);
+  expect(harness.operationLog).toEqual(["accept:offer-accepted"]);
+
+  harness.cancellationGates.get("competitor-pending")!.resolve();
+  await vi.waitFor(() => {
+    expect(harness.tx.offer.update).toHaveBeenCalledTimes(3);
+  });
+  expect(settled).toBe(false);
+  expect(harness.operationLog).toEqual([
+    "accept:offer-accepted",
+    "cancel:competitor-pending",
+  ]);
+
+  harness.cancellationGates.get("competitor-sent")!.resolve();
+  await vi.waitFor(() => {
+    expect(harness.tx.offer.update).toHaveBeenCalledTimes(4);
+  });
+  expect(settled).toBe(false);
+  expect(harness.operationLog).toEqual([
+    "accept:offer-accepted",
+    "cancel:competitor-pending",
+    "cancel:competitor-sent",
+  ]);
+
+  harness.cancellationGates.get("competitor-negotiation")!.resolve();
+  const result = await resultPromise;
+  expect(settled).toBe(true);
+  return result;
+}
+
 describe("post-closure offer acceptance remediation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -185,11 +241,12 @@ describe("post-closure offer acceptance remediation", () => {
     const harness = createAcceptanceHarness(true);
     mockTransaction.mockImplementation(async (callback) => callback(harness.tx));
 
-    const result = await acceptOfferAndCreateContract({
+    const resultPromise = acceptOfferAndCreateContract({
       tenantId: "tenant-1",
       userId: "user-1",
       offerId: "offer-accepted",
     });
+    const result = await completeCancellationsBeforeResult(harness, resultPromise);
 
     expect(result.idempotent).toBe(true);
     expect(result.offer.status).toBe("ACCEPTED");
@@ -208,11 +265,12 @@ describe("post-closure offer acceptance remediation", () => {
     const harness = createAcceptanceHarness(false);
     mockTransaction.mockImplementation(async (callback) => callback(harness.tx));
 
-    const result = await acceptOfferAndCreateContract({
+    const resultPromise = acceptOfferAndCreateContract({
       tenantId: "tenant-1",
       userId: "user-1",
       offerId: "offer-accepted",
     });
+    const result = await completeCancellationsBeforeResult(harness, resultPromise);
 
     expect(result.idempotent).toBe(false);
     expect(result.offer.status).toBe("ACCEPTED");
