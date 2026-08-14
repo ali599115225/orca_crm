@@ -1,7 +1,7 @@
 import "server-only";
 import {
   publicHttpsJsonRequest,
-  requirePublicProviderUrl as requireSharedPublicProviderUrl,
+  requirePublicProviderUrl,
 } from "@/lib/net/public-https";
 import type {
   PaymentCreateInput,
@@ -20,16 +20,19 @@ type CustomPaymentConfig = {
 type SafeJsonResponse = {
   ok: boolean;
   status: number;
-  payload: any;
+  payload: unknown;
 };
 
 function value(credentials: Credentials, key: string): string {
   return String(credentials[key] ?? "").trim();
 }
 
+// Delegates to the shared public HTTPS provider boundary (DNS-rebinding safe
+// address checks) while preserving this provider's CUSTOM_PAYMENT_* error
+// codes for existing callers.
 async function requirePublicHttpsUrl(input: string): Promise<URL> {
   try {
-    return await requireSharedPublicProviderUrl(input);
+    return await requirePublicProviderUrl(input);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
@@ -39,13 +42,14 @@ async function requirePublicHttpsUrl(input: string): Promise<URL> {
   }
 }
 
-export async function requirePublicProviderUrl(
-  input: string,
-  allowedHosts?: readonly string[],
-): Promise<URL> {
-  return requireSharedPublicProviderUrl(input, allowedHosts);
-}
+// Preserve the requirePublicProviderUrl contract currently imported by
+// N-Genius and the Ejar/Saudi trust gate by delegating directly to the
+// shared helper.
+export { requirePublicProviderUrl };
 
+// Delegates to the shared public HTTPS transport (socket-time DNS
+// revalidation, TLS, response-size limit, absolute wall-clock timeout)
+// while preserving this provider's CUSTOM_PAYMENT_* error codes.
 async function safeJsonRequest(input: {
   url: URL;
   method: "GET" | "POST";
@@ -54,43 +58,37 @@ async function safeJsonRequest(input: {
   timeoutMs: number;
 }): Promise<SafeJsonResponse> {
   try {
-    const response = await publicHttpsJsonRequest({
+    return await publicHttpsJsonRequest({
       url: input.url,
       method: input.method,
       headers: input.headers,
       body: input.body,
       timeoutMs: input.timeoutMs,
-      maxResponseBytes: 1_000_000,
     });
-    return {
-      ok: response.ok,
-      status: response.status,
-      payload: response.payload,
-    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "PROVIDER_REQUEST_TIMEOUT") {
-      throw new Error("CUSTOM_PAYMENT_TIMEOUT");
-    }
+    const message = error instanceof Error ? error.message : String(error);
     if (message === "PROVIDER_RESPONSE_TOO_LARGE") {
       throw new Error("CUSTOM_PAYMENT_RESPONSE_TOO_LARGE");
     }
     if (message === "PROVIDER_RESPONSE_ABORTED") {
       throw new Error("CUSTOM_PAYMENT_RESPONSE_ABORTED");
     }
+    if (message === "PROVIDER_REQUEST_TIMEOUT") {
+      throw new Error("CUSTOM_PAYMENT_TIMEOUT");
+    }
     if (message.startsWith("PROVIDER_NON_JSON_RESPONSE:")) {
       throw new Error(
-        message.replace(
-          "PROVIDER_NON_JSON_RESPONSE:",
-          "CUSTOM_PAYMENT_NON_JSON_RESPONSE:",
-        ),
+        `CUSTOM_PAYMENT_NON_JSON_RESPONSE:${message.slice(
+          "PROVIDER_NON_JSON_RESPONSE:".length,
+        )}`,
       );
     }
-    if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
+    if (
+      message === "PROVIDER_PRIVATE_HOST_BLOCKED" ||
+      message === "PROVIDER_PUBLIC_HTTPS_URL_REQUIRED" ||
+      message === "PROVIDER_HOST_NOT_ALLOWED"
+    ) {
       throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
-    }
-    if (message === "PROVIDER_PUBLIC_HTTPS_URL_REQUIRED") {
-      throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
     }
     throw error;
   }
