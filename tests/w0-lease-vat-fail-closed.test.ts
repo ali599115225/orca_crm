@@ -50,12 +50,27 @@ function request(body: unknown) {
   });
 }
 
+function mockExistingLease() {
+  mocks.leaseFindFirst.mockResolvedValue({
+    id: "lease-1",
+    tenantId: "tenant-1",
+    tenant: {
+      id: "tenant-1",
+      companyName: "ORCA Customer",
+      vatNumber: "310000000000003",
+      invoicePrefix: "INV",
+    },
+  });
+}
+
 describe("W0 lease invoice VAT classification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("fails closed when vatType is omitted instead of defaulting to STANDARD", async () => {
+  it("fails closed when vatType is omitted after the tenant-scoped lease lookup", async () => {
+    mockExistingLease();
+
     const response = await POST(
       request({ subtotal: 1000, dueDate: "2026-09-01" }),
       { params: Promise.resolve({ id: "lease-1" }) },
@@ -63,10 +78,17 @@ describe("W0 lease invoice VAT classification", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ success: false });
-    expect(mocks.leaseFindFirst).not.toHaveBeenCalled();
+    expect(mocks.leaseFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "lease-1", tenantId: "tenant-1" },
+      }),
+    );
+    expect(mocks.invoiceCreate).not.toHaveBeenCalled();
   });
 
   it("rejects an unsupported VAT classification before persistence", async () => {
+    mockExistingLease();
+
     const response = await POST(
       request({ subtotal: 1000, vatType: "UNKNOWN", dueDate: "2026-09-01" }),
       { params: Promise.resolve({ id: "lease-1" }) },
@@ -77,20 +99,12 @@ describe("W0 lease invoice VAT classification", () => {
       success: false,
       error: "Invalid VAT type",
     });
-    expect(mocks.leaseFindFirst).not.toHaveBeenCalled();
+    expect(mocks.leaseFindFirst).toHaveBeenCalled();
+    expect(mocks.invoiceCreate).not.toHaveBeenCalled();
   });
 
   it("preserves an explicit EXEMPT classification", async () => {
-    mocks.leaseFindFirst.mockResolvedValue({
-      id: "lease-1",
-      tenantId: "tenant-1",
-      tenant: {
-        id: "tenant-1",
-        companyName: "ORCA Customer",
-        vatNumber: "310000000000003",
-        invoicePrefix: "INV",
-      },
-    });
+    mockExistingLease();
     mocks.tenantUpdate.mockResolvedValue({
       id: "tenant-1",
       companyName: "ORCA Customer",
