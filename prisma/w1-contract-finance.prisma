@@ -1,0 +1,255 @@
+// ORCA W1A — Contract Studio + Finance Case persistence foundation.
+// Additive multi-file Prisma domain. No production migration is applied by this file.
+// Legacy Contract / Lead / Unit references remain scalar IDs in W1A so the frozen
+// legacy schema is not rewritten. Cross-W1A relations are tenant-bound.
+
+model ContractTemplate {
+  id           String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String                    @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  contractType String                    @map("contract_type")
+  status       String                    @default("DRAFT")
+  description  String?                   @db.Text
+  createdBy    String?                   @map("created_by") @db.Uuid
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  versions     ContractTemplateVersion[]
+  drafts       ContractDraft[]
+
+  @@unique([tenantId, id], map: "uq_contract_templates_tenant_id")
+  @@unique([tenantId, code], map: "uq_contract_templates_tenant_code")
+  @@index([tenantId, status], map: "idx_contract_templates_tenant_status")
+  @@index([tenantId, contractType], map: "idx_contract_templates_tenant_type")
+  @@map("contract_templates")
+}
+
+model ContractTemplateVersion {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String             @map("tenant_id") @db.Uuid
+  templateId         String             @map("template_id") @db.Uuid
+  template           ContractTemplate   @relation(fields: [tenantId, templateId], references: [tenantId, id], onDelete: Cascade)
+  version            Int
+  status             String             @default("DRAFT")
+  structureJson      Json               @map("structure_json")
+  variableSchemaJson Json               @default("{}") @map("variable_schema_json")
+  notes              String?            @db.Text
+  createdBy          String?            @map("created_by") @db.Uuid
+  publishedAt        DateTime?          @map("published_at") @db.Timestamptz
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  drafts             ContractDraft[]
+  snapshots          ContractSnapshot[]
+
+  @@unique([tenantId, id], map: "uq_contract_template_versions_tenant_id")
+  @@unique([templateId, version], map: "uq_contract_template_versions_template_version")
+  @@index([tenantId, templateId, status], map: "idx_contract_template_versions_tenant_template_status")
+  @@map("contract_template_versions")
+}
+
+model ContractClauseDefinition {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  version   Int      @default(1)
+  title     String
+  body      String   @db.Text
+  riskTier  String   @map("risk_tier")
+  editMode  String   @map("edit_mode")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_contract_clause_definitions_tenant_id")
+  @@unique([tenantId, code, version], map: "uq_contract_clause_definitions_tenant_code_version")
+  @@index([tenantId, riskTier, isActive], map: "idx_contract_clause_definitions_tenant_risk_active")
+  @@map("contract_clause_definitions")
+}
+
+model ContractDraft {
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String                  @map("tenant_id") @db.Uuid
+  templateId          String                  @map("template_id") @db.Uuid
+  template            ContractTemplate        @relation(fields: [tenantId, templateId], references: [tenantId, id], onDelete: Restrict)
+  templateVersionId   String                  @map("template_version_id") @db.Uuid
+  templateVersion     ContractTemplateVersion @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
+  contractId          String?                 @map("contract_id") @db.Uuid
+  financeCaseId       String?                 @map("finance_case_id") @db.Uuid
+  financeCase         FinanceCase?            @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: SetNull)
+  title               String
+  status              String                  @default("DRAFT")
+  contentJson         Json                    @map("content_json")
+  dataBindingsJson    Json                    @map("data_bindings_json")
+  clauseOverridesJson Json                    @default("[]") @map("clause_overrides_json")
+  createdBy           String?                 @map("created_by") @db.Uuid
+  updatedBy           String?                 @map("updated_by") @db.Uuid
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  approvals           ContractApproval[]
+  snapshots           ContractSnapshot[]
+
+  @@unique([tenantId, id], map: "uq_contract_drafts_tenant_id")
+  @@index([tenantId, status], map: "idx_contract_drafts_tenant_status")
+  @@index([tenantId, contractId], map: "idx_contract_drafts_tenant_contract")
+  @@index([tenantId, financeCaseId], map: "idx_contract_drafts_tenant_finance_case")
+  @@map("contract_drafts")
+}
+
+model ContractSnapshot {
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String                  @map("tenant_id") @db.Uuid
+  draftId             String                  @map("draft_id") @db.Uuid
+  draft               ContractDraft           @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Restrict)
+  contractId          String?                 @map("contract_id") @db.Uuid
+  templateVersionId   String                  @map("template_version_id") @db.Uuid
+  templateVersion     ContractTemplateVersion @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
+  snapshotType        String                  @default("ISSUED") @map("snapshot_type")
+  renderedContent     String                  @map("rendered_content") @db.Text
+  structuredFacts     Json                    @map("structured_facts")
+  clauseSnapshot      Json                    @map("clause_snapshot")
+  paymentPlanSnapshot Json?                   @map("payment_plan_snapshot")
+  approvalSnapshot    Json                    @map("approval_snapshot")
+  digest              String                  @db.VarChar(64)
+  createdBy           String?                 @map("created_by") @db.Uuid
+  issuedAt            DateTime                @default(now()) @map("issued_at") @db.Timestamptz
+  signedAt            DateTime?               @map("signed_at") @db.Timestamptz
+  sourceAmendments    ContractAmendment[]     @relation("AmendmentSourceSnapshot")
+  resultingAmendment  ContractAmendment?      @relation("AmendmentResultSnapshot")
+
+  @@unique([tenantId, id], map: "uq_contract_snapshots_tenant_id")
+  @@index([tenantId, contractId, issuedAt], map: "idx_contract_snapshots_tenant_contract_issued")
+  @@index([tenantId, digest], map: "idx_contract_snapshots_tenant_digest")
+  @@index([tenantId, draftId], map: "idx_contract_snapshots_tenant_draft")
+  @@map("contract_snapshots")
+}
+
+model ContractApproval {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  draftId     String        @map("draft_id") @db.Uuid
+  draft       ContractDraft @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Cascade)
+  riskTier    String        @map("risk_tier")
+  status      String        @default("PENDING")
+  requestedBy String?       @map("requested_by") @db.Uuid
+  decidedBy   String?       @map("decided_by") @db.Uuid
+  reason      String?       @db.Text
+  evidenceJson Json?        @map("evidence_json")
+  requestedAt DateTime      @default(now()) @map("requested_at") @db.Timestamptz
+  decidedAt   DateTime?     @map("decided_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_contract_approvals_tenant_id")
+  @@index([tenantId, draftId, status], map: "idx_contract_approvals_tenant_draft_status")
+  @@map("contract_approvals")
+}
+
+model ContractAmendment {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  contractId          String            @map("contract_id") @db.Uuid
+  sourceSnapshotId    String            @map("source_snapshot_id") @db.Uuid
+  sourceSnapshot      ContractSnapshot  @relation("AmendmentSourceSnapshot", fields: [tenantId, sourceSnapshotId], references: [tenantId, id], onDelete: Restrict)
+  resultingSnapshotId String?           @map("resulting_snapshot_id") @db.Uuid
+  resultingSnapshot   ContractSnapshot? @relation("AmendmentResultSnapshot", fields: [tenantId, resultingSnapshotId], references: [tenantId, id], onDelete: SetNull)
+  title               String
+  reason              String?           @db.Text
+  status              String            @default("DRAFT")
+  changesJson         Json              @map("changes_json")
+  createdBy           String?           @map("created_by") @db.Uuid
+  approvedBy          String?           @map("approved_by") @db.Uuid
+  approvedAt          DateTime?         @map("approved_at") @db.Timestamptz
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_contract_amendments_tenant_id")
+  @@unique([tenantId, resultingSnapshotId], map: "uq_contract_amendments_tenant_resulting_snapshot")
+  @@index([tenantId, contractId, status], map: "idx_contract_amendments_tenant_contract_status")
+  @@index([tenantId, sourceSnapshotId], map: "idx_contract_amendments_tenant_source_snapshot")
+  @@map("contract_amendments")
+}
+
+model FinanceCase {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String                 @map("tenant_id") @db.Uuid
+  caseNumber         String                 @map("case_number")
+  leadId             String?                @map("lead_id") @db.Uuid
+  unitId             String?                @map("unit_id") @db.Uuid
+  contractId         String?                @map("contract_id") @db.Uuid
+  purpose            String
+  propertySource     String                 @map("property_source")
+  internalStatus     String                 @default("DRAFT") @map("internal_status")
+  authorityStatus    String?                @map("authority_status")
+  authorityProvider  String?                @map("authority_provider")
+  authorityReference String?                @map("authority_reference")
+  requestedAmount    Decimal?               @map("requested_amount") @db.Decimal(12, 2)
+  propertyValue      Decimal?               @map("property_value") @db.Decimal(12, 2)
+  downPayment        Decimal?               @map("down_payment") @db.Decimal(12, 2)
+  termMonths         Int?                   @map("term_months")
+  annualRate         Decimal?               @map("annual_rate") @db.Decimal(7, 4)
+  monthlyIncome      Decimal?               @map("monthly_income") @db.Decimal(12, 2)
+  monthlyCommitments Decimal?               @map("monthly_commitments") @db.Decimal(12, 2)
+  advisoryDsrLimit   Decimal?               @map("advisory_dsr_limit") @db.Decimal(5, 2)
+  metadata           Json                   @default("{}")
+  createdBy          String?                @map("created_by") @db.Uuid
+  updatedBy          String?                @map("updated_by") @db.Uuid
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  providerOffers     FinanceProviderOffer[]
+  events             FinanceCaseEvent[]
+  contractDrafts     ContractDraft[]
+
+  @@unique([tenantId, id], map: "uq_finance_cases_tenant_id")
+  @@unique([tenantId, caseNumber], map: "uq_finance_cases_tenant_case_number")
+  @@index([tenantId, internalStatus], map: "idx_finance_cases_tenant_internal_status")
+  @@index([tenantId, purpose], map: "idx_finance_cases_tenant_purpose")
+  @@index([tenantId, leadId], map: "idx_finance_cases_tenant_lead")
+  @@index([tenantId, unitId], map: "idx_finance_cases_tenant_unit")
+  @@index([tenantId, contractId], map: "idx_finance_cases_tenant_contract")
+  @@map("finance_cases")
+}
+
+model FinanceProviderOffer {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  financeCaseId     String      @map("finance_case_id") @db.Uuid
+  financeCase       FinanceCase @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: Cascade)
+  provider          String
+  productName       String?     @map("product_name")
+  recordStatus      String      @default("RECEIVED") @map("record_status")
+  authorityStatus   String?     @map("authority_status")
+  providerReference String?     @map("provider_reference")
+  amount            Decimal?    @db.Decimal(12, 2)
+  downPayment       Decimal?    @map("down_payment") @db.Decimal(12, 2)
+  monthlyPayment    Decimal?    @map("monthly_payment") @db.Decimal(12, 2)
+  fees              Decimal?    @db.Decimal(12, 2)
+  termMonths        Int?        @map("term_months")
+  annualRate        Decimal?    @map("annual_rate") @db.Decimal(7, 4)
+  expiresAt         DateTime?   @map("expires_at") @db.Timestamptz
+  evidenceJson      Json?       @map("evidence_json")
+  receivedAt        DateTime    @default(now()) @map("received_at") @db.Timestamptz
+  selectedAt        DateTime?   @map("selected_at") @db.Timestamptz
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_finance_provider_offers_tenant_id")
+  @@index([tenantId, financeCaseId, recordStatus], map: "idx_finance_provider_offers_case_status")
+  @@index([tenantId, provider, authorityStatus], map: "idx_finance_provider_offers_provider_authority")
+  @@map("finance_provider_offers")
+}
+
+model FinanceCaseEvent {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  financeCaseId   String      @map("finance_case_id") @db.Uuid
+  financeCase     FinanceCase @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: Cascade)
+  eventType       String      @map("event_type")
+  internalStatus  String?     @map("internal_status")
+  authorityStatus String?     @map("authority_status")
+  provider        String?
+  actorId         String?     @map("actor_id") @db.Uuid
+  evidenceJson    Json?       @map("evidence_json")
+  occurredAt      DateTime    @default(now()) @map("occurred_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_finance_case_events_tenant_id")
+  @@index([tenantId, financeCaseId, occurredAt], map: "idx_finance_case_events_case_time")
+  @@map("finance_case_events")
+}
