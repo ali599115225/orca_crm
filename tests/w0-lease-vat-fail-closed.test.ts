@@ -68,6 +68,21 @@ describe("W0 lease invoice VAT classification", () => {
     vi.clearAllMocks();
   });
 
+  it("rejects an invalid calendar due date before database work", async () => {
+    const response = await POST(
+      request({ subtotal: 1000, vatType: "EXEMPT", dueDate: "2026-02-31" }),
+      { params: Promise.resolve({ id: "lease-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: "Invalid due date",
+    });
+    expect(mocks.leaseFindFirst).not.toHaveBeenCalled();
+    expect(mocks.invoiceCreate).not.toHaveBeenCalled();
+  });
+
   it("fails closed when vatType is omitted after the tenant-scoped lease lookup", async () => {
     mockExistingLease();
 
