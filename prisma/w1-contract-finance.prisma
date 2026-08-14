@@ -75,7 +75,7 @@ model ContractDraft {
   templateVersion     ContractTemplateVersion @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
   contractId          String?                 @map("contract_id") @db.Uuid
   financeCaseId       String?                 @map("finance_case_id") @db.Uuid
-  financeCase         FinanceCase?            @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: SetNull)
+  financeCase         FinanceCase?            @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: Restrict)
   title               String
   status              String                  @default("DRAFT")
   contentJson         Json                    @map("content_json")
@@ -124,18 +124,18 @@ model ContractSnapshot {
 }
 
 model ContractApproval {
-  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String        @map("tenant_id") @db.Uuid
-  draftId     String        @map("draft_id") @db.Uuid
-  draft       ContractDraft @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Cascade)
-  riskTier    String        @map("risk_tier")
-  status      String        @default("PENDING")
-  requestedBy String?       @map("requested_by") @db.Uuid
-  decidedBy   String?       @map("decided_by") @db.Uuid
-  reason      String?       @db.Text
-  evidenceJson Json?        @map("evidence_json")
-  requestedAt DateTime      @default(now()) @map("requested_at") @db.Timestamptz
-  decidedAt   DateTime?     @map("decided_at") @db.Timestamptz
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  draftId      String        @map("draft_id") @db.Uuid
+  draft        ContractDraft @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Cascade)
+  riskTier     String        @map("risk_tier")
+  status       String        @default("PENDING")
+  requestedBy  String?       @map("requested_by") @db.Uuid
+  decidedBy    String?       @map("decided_by") @db.Uuid
+  reason       String?       @db.Text
+  evidenceJson Json?         @map("evidence_json")
+  requestedAt  DateTime      @default(now()) @map("requested_at") @db.Timestamptz
+  decidedAt    DateTime?     @map("decided_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_contract_approvals_tenant_id")
   @@index([tenantId, draftId, status], map: "idx_contract_approvals_tenant_draft_status")
@@ -149,7 +149,7 @@ model ContractAmendment {
   sourceSnapshotId    String            @map("source_snapshot_id") @db.Uuid
   sourceSnapshot      ContractSnapshot  @relation("AmendmentSourceSnapshot", fields: [tenantId, sourceSnapshotId], references: [tenantId, id], onDelete: Restrict)
   resultingSnapshotId String?           @map("resulting_snapshot_id") @db.Uuid
-  resultingSnapshot   ContractSnapshot? @relation("AmendmentResultSnapshot", fields: [tenantId, resultingSnapshotId], references: [tenantId, id], onDelete: SetNull)
+  resultingSnapshot   ContractSnapshot? @relation("AmendmentResultSnapshot", fields: [tenantId, resultingSnapshotId], references: [tenantId, id], onDelete: Restrict)
   title               String
   reason              String?           @db.Text
   status              String            @default("DRAFT")
