@@ -111,6 +111,23 @@ describe("W1C ContractDraft / Approval + FinanceCase lifecycle", () => {
     expect(transitionSource).toContain("actorId");
   });
 
+  it("requires persisted provider approval evidence before entering PROVIDER_APPROVED", () => {
+    const transitionStart = FINANCE_SOURCE.indexOf("export async function transitionFinanceCaseInternalStatus");
+    const authorityStart = FINANCE_SOURCE.indexOf("export async function recordFinanceAuthorityEvidence");
+    const transitionSource = FINANCE_SOURCE.slice(transitionStart, authorityStart);
+
+    expect(transitionSource).toContain('nextStatus === "PROVIDER_APPROVED"');
+    expect(transitionSource).toContain('financeCase.authorityStatus !== "APPROVED"');
+    expect(transitionSource).toContain("!financeCase.authorityProvider");
+    expect(transitionSource).toContain("!financeCase.authorityReference");
+    expect(transitionSource).toContain("tx.financeCaseEvent.findFirst");
+    expect(transitionSource).toContain('eventType: "finance_case.authority_evidence_recorded"');
+    expect(transitionSource).toContain('authorityStatus: "APPROVED"');
+    expect(transitionSource).toContain("provider: financeCase.authorityProvider");
+    expect(transitionSource).toContain("W1_FINANCE_PROVIDER_APPROVAL_EVIDENCE_REQUIRED");
+    expect(transitionSource).toContain("providerApprovalEvidenceEventId");
+  });
+
   it("keeps external authority evidence separate from internal status and requires evidence", () => {
     const authorityStart = FINANCE_SOURCE.indexOf("export async function recordFinanceAuthorityEvidence");
     const authoritySource = FINANCE_SOURCE.slice(authorityStart);
