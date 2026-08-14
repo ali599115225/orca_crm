@@ -23,6 +23,7 @@ describe("post-closure public HTTPS provider boundary", () => {
     "https://[2001:db8::1]/provider",
     "https://[::ffff:127.0.0.1]/provider",
     "https://[::ffff:7f00:1]/provider",
+    "https://[0:0:0:0:0:ffff:127.0.0.1]/provider",
   ])("rejects a non-public or unsafe provider URL: %s", async (url) => {
     await expect(requirePublicProviderUrl(url)).rejects.toThrow();
   });
