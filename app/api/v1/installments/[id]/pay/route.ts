@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { runWithDatabaseSession } from "@/lib/api-auth-guard";
 import { createNgeniusProvider } from "@/lib/payments/providers/ngenius";
 import { createCustomPaymentProvider } from "@/lib/payments/providers/custom-payment";
-import { PAYLINK_ALLOWED_HOSTS, safePaylinkBaseUrl } from "@/lib/payments/providers/paylink";
+import { mapPaylinkVerification, safePaylinkBaseUrl } from "@/lib/payments/providers/paylink";
 import type {
   PaymentCreateInput,
   PaymentProviderAdapter,
@@ -60,6 +60,7 @@ function createHubPaylinkProvider(input: {
         secretKey: input.secretKey,
         persistToken: false,
       }),
+      redirect: "error",
       signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) {
@@ -78,6 +79,9 @@ function createHubPaylinkProvider(input: {
     async createPayment(
       payment: PaymentCreateInput,
     ): Promise<PaymentProviderResult> {
+      if (payment.currency.toUpperCase() !== "SAR") {
+        throw new Error("PAYLINK_CURRENCY_NOT_SUPPORTED");
+      }
       const token = await authenticate();
       const response = await fetch(`${baseUrl}/api/addInvoice`, {
         method: "POST",
@@ -88,7 +92,7 @@ function createHubPaylinkProvider(input: {
         },
         body: JSON.stringify({
           amount: payment.amountMinorUnits / 100,
-          currency: payment.currency,
+          currency: "SAR",
           orderNumber: payment.planCode,
           clientName: "عميل",
           callBackUrl: payment.callbackUrl,
@@ -101,6 +105,7 @@ function createHubPaylinkProvider(input: {
           ],
           note: payment.description,
         }),
+        redirect: "error",
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) {
@@ -114,6 +119,19 @@ function createHubPaylinkProvider(input: {
         invoice.url || invoice.payment_url || invoice.checkoutUrl || "",
       ).trim();
       if (!providerReference || !redirectUrl) {
+        throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+      }
+      let parsedRedirect: URL;
+      try {
+        parsedRedirect = new URL(redirectUrl);
+      } catch {
+        throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+      }
+      if (
+        parsedRedirect.protocol !== "https:" ||
+        parsedRedirect.username ||
+        parsedRedirect.password
+      ) {
         throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
       }
       return {
@@ -131,24 +149,14 @@ function createHubPaylinkProvider(input: {
         `${baseUrl}/api/getInvoice/${encodeURIComponent(providerReference)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          redirect: "error",
           signal: AbortSignal.timeout(15_000),
         },
       );
       if (!response.ok) {
         throw new Error(`PAYLINK_VERIFY_FAILED:${response.status}`);
       }
-      const invoice = (await response.json()) as Record<string, unknown>;
-      const status = String(invoice.orderStatus || invoice.status || "");
-      return {
-        paid: status.toUpperCase() === "PAID",
-        providerReference: String(
-          invoice.transactionNo || invoice.id || providerReference,
-        ),
-        amountMinorUnits: Math.round(Number(invoice.amount || 0) * 100),
-        currency: "SAR",
-        providerStatus: status || "unknown",
-        rawPayload: invoice,
-      };
+      return mapPaylinkVerification(await response.json(), providerReference);
     },
   };
 }
