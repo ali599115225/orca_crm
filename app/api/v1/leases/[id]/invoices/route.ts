@@ -31,6 +31,17 @@ export async function POST(
         const normalizedVatType =
           typeof vatType === "string" ? vatType.trim().toUpperCase() : "";
 
+        const lease = await prisma.rentalLease.findFirst({
+          where: { id: leaseId, tenantId: session.tenantId },
+          include: { tenant: true },
+        });
+        if (!lease) {
+          return NextResponse.json(
+            { success: false, error: "Lease not found" },
+            { status: 404 },
+          );
+        }
+
         if (!dueDate || !normalizedVatType) {
           return NextResponse.json(
             {
@@ -49,17 +60,6 @@ export async function POST(
           return NextResponse.json(
             { success: false, error: vatValidationError },
             { status: 400 },
-          );
-        }
-
-        const lease = await prisma.rentalLease.findFirst({
-          where: { id: leaseId, tenantId: session.tenantId },
-          include: { tenant: true },
-        });
-        if (!lease) {
-          return NextResponse.json(
-            { success: false, error: "Lease not found" },
-            { status: 404 },
           );
         }
 
