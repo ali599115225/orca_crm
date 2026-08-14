@@ -113,13 +113,17 @@ describe("W1B contract / finance service integrity gate", () => {
       join(process.cwd(), "lib", "domain", "contract-finance", "contract-snapshot-service.ts"),
       "utf8",
     );
+    const issueStart = source.indexOf("export async function issueApprovedContractSnapshot");
+    const readStart = source.indexOf("export async function readContractSnapshot");
+    const issueSource = source.slice(issueStart, readStart);
 
-    expect(source).toContain('draft.status !== "APPROVED"');
-    expect(source).toContain('approval.status !== "APPROVED"');
-    expect(source).toContain("approvals: {");
-    expect(source).toContain("const approvalSnapshot");
-    expect(source).toContain('snapshotType: "ISSUED"');
-    expect(source).not.toMatch(/input\.approvalSnapshot/);
+    expect(source).toContain('"snapshotType" | "approvalSnapshot" | "signedAt"');
+    expect(issueSource).toContain('draft.status !== "APPROVED"');
+    expect(issueSource).toContain('approval.status !== "APPROVED"');
+    expect(issueSource).toContain("approvals: {");
+    expect(issueSource).toContain("const approvalSnapshot");
+    expect(issueSource).toContain('snapshotType: "ISSUED"');
+    expect(issueSource).not.toMatch(/input\.approvalSnapshot/);
   });
 
   it("issues the approved snapshot atomically at SERIALIZABLE isolation", () => {
