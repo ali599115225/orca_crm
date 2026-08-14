@@ -1,7 +1,8 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateVat } from "@/lib/vat/engine";
+import { calculateVat, validateVatInput } from "@/lib/vat/engine";
+import type { VatType } from "@/lib/vat/types";
 import {
   buildQrPayload,
   encodeQrCode,
@@ -11,6 +12,28 @@ import {
 import { ErrorCode } from "@/lib/errors";
 import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
 import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
+
+function parseDueDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
 
 export async function POST(
   request: NextRequest,
@@ -26,10 +49,14 @@ export async function POST(
       try {
         const body = await request.json();
         const { subtotal, vatType, dueDate } = body;
+        const subtotalNum = Number(subtotal);
+        const normalizedVatType =
+          typeof vatType === "string" ? vatType.trim().toUpperCase() : "";
+        const parsedDueDate = parseDueDate(dueDate);
 
-        if (!subtotal || !dueDate) {
+        if (!parsedDueDate) {
           return NextResponse.json(
-            { success: false, error: "subtotal and dueDate are required" },
+            { success: false, error: "Invalid due date" },
             { status: 400 },
           );
         }
@@ -45,11 +72,31 @@ export async function POST(
           );
         }
 
+        if (!normalizedVatType) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "subtotal, vatType and dueDate are required",
+            },
+            { status: 400 },
+          );
+        }
+
+        const vatValidationError = validateVatInput(
+          subtotalNum,
+          normalizedVatType,
+        );
+        if (vatValidationError) {
+          return NextResponse.json(
+            { success: false, error: vatValidationError },
+            { status: 400 },
+          );
+        }
+
         const tenant = lease.tenant;
-        const subtotalNum = parseFloat(subtotal);
         const vatBreakdown = calculateVat(
           subtotalNum,
-          (vatType || "STANDARD") as any,
+          normalizedVatType as VatType,
         );
 
         const qrPayload = buildQrPayload({
@@ -74,7 +121,7 @@ export async function POST(
               leaseId,
               invoiceNumber,
               invoicePrefix: tenant.invoicePrefix || "INV",
-              dueDate: new Date(dueDate),
+              dueDate: parsedDueDate,
               subtotal: vatBreakdown.subtotal,
               vatRate: vatBreakdown.vatRate,
               vatAmount: vatBreakdown.vatAmount,
