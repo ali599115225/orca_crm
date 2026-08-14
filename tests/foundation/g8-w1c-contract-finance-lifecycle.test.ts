@@ -77,6 +77,23 @@ describe("W1C ContractDraft / Approval + FinanceCase lifecycle", () => {
     expect(CONTRACT_SOURCE).toContain('status: "APPROVED"');
   });
 
+  it("preserves approval request evidence together with decision evidence", () => {
+    const decideStart = CONTRACT_SOURCE.indexOf("export async function decideContractApproval");
+    const finalizeStart = CONTRACT_SOURCE.indexOf("export async function finalizeContractDraftApproval");
+    const decideSource = CONTRACT_SOURCE.slice(decideStart, finalizeStart);
+
+    expect(decideSource).toContain("reason: true");
+    expect(decideSource).toContain("evidenceJson: true");
+    expect(decideSource).toContain("requestedBy: true");
+    expect(decideSource).toContain("requestedAt: true");
+    expect(decideSource).toContain("const preservedApprovalEvidence");
+    expect(decideSource).toContain("request: {");
+    expect(decideSource).toContain("decision: {");
+    expect(decideSource).toContain("evidence: approval.evidenceJson ?? {}");
+    expect(decideSource).toContain("evidence: input.evidenceJson ?? {}");
+    expect(decideSource).toContain("evidenceJson: preservedApprovalEvidence");
+  });
+
   it("does not expose a content-edit path after approval request", () => {
     const requestStart = CONTRACT_SOURCE.indexOf("export async function requestContractApproval");
     const requestAndDecision = CONTRACT_SOURCE.slice(requestStart);
@@ -111,12 +128,13 @@ describe("W1C ContractDraft / Approval + FinanceCase lifecycle", () => {
     expect(transitionSource).toContain("actorId");
   });
 
-  it("requires persisted provider approval evidence before entering PROVIDER_APPROVED", () => {
+  it("requires persisted provider approval evidence before entering or leaving PROVIDER_APPROVED", () => {
     const transitionStart = FINANCE_SOURCE.indexOf("export async function transitionFinanceCaseInternalStatus");
     const authorityStart = FINANCE_SOURCE.indexOf("export async function recordFinanceAuthorityEvidence");
     const transitionSource = FINANCE_SOURCE.slice(transitionStart, authorityStart);
 
     expect(transitionSource).toContain('nextStatus === "PROVIDER_APPROVED"');
+    expect(transitionSource).toContain('nextStatus === "READY_FOR_TRANSACTION"');
     expect(transitionSource).toContain('financeCase.authorityStatus !== "APPROVED"');
     expect(transitionSource).toContain("!financeCase.authorityProvider");
     expect(transitionSource).toContain("!financeCase.authorityReference");
