@@ -189,6 +189,25 @@ export default function SettingsCompliance({
     }
   }
 
+  function ejarApplicationStatusLabel(status: string | undefined) {
+    switch (status) {
+      case "DRAFT":
+        return L("مسودة", "Draft");
+      case "SUBMITTED":
+        return L("مُقدَّم", "Submitted");
+      case "UNDER_REVIEW":
+        return L("قيد المراجعة", "Under review");
+      case "APPROVED":
+        return L("معتمد", "Approved");
+      case "REJECTED":
+        return L("مرفوض", "Rejected");
+      case "CANCELLED":
+        return L("ملغى", "Cancelled");
+      default:
+        return L("لا يوجد طلب موثق", "No documented application");
+    }
+  }
+
   function providerLastSuccess(provider: "ZATCA" | "EJAR") {
     const value = providerStates.find((item) => item.provider === provider)?.lastSuccessAt;
     if (!value) return L("لا يوجد اختبار ناجح موثق", "No verified successful test");
@@ -670,7 +689,7 @@ export default function SettingsCompliance({
                           {L("حالة طلب المزوّد", "Provider application status")}
                         </p>
                         <span className="text-sm font-bold text-[var(--nc-foreground)]">
-                          {ejarApplication?.status || L("لا يوجد طلب موثق", "No documented application")}
+                          {ejarApplicationStatusLabel(ejarApplication?.status)}
                         </span>
                       </div>
                       <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
