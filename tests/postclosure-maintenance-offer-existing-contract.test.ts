@@ -1,51 +1,229 @@
-import fs from "node:fs";
-import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const source = fs.readFileSync(
-  path.join(process.cwd(), "lib/domain/transaction-spine/accept-offer.ts"),
-  "utf8",
-);
+const {
+  mockTransaction,
+  mockAssertTenantOwnership,
+  mockCreateContractInTx,
+  mockEnsureDefaultPaymentPlanInTx,
+  mockEnsureDealCorrelationId,
+  mockResolveDealInTx,
+  mockAppendDealEventInTx,
+} = vi.hoisted(() => ({
+  mockTransaction: vi.fn(),
+  mockAssertTenantOwnership: vi.fn(),
+  mockCreateContractInTx: vi.fn(),
+  mockEnsureDefaultPaymentPlanInTx: vi.fn(),
+  mockEnsureDealCorrelationId: vi.fn(() => "correlation-1"),
+  mockResolveDealInTx: vi.fn(),
+  mockAppendDealEventInTx: vi.fn(),
+}));
 
-const activeStatuses = [
-  "OFFER_STATUS.PENDING",
-  "OFFER_STATUS.SENT",
-  "OFFER_STATUS.NEGOTIATION",
-];
+vi.mock("@/lib/prisma", () => ({
+  prisma: { $transaction: mockTransaction },
+}));
 
-function expectActiveCompetitorsCancelled(block: string) {
-  expect(block).toContain("const competingOffers = await tx.offer.findMany");
-  for (const status of activeStatuses) expect(block).toContain(status);
-  expect(block).toContain("for (const competingOffer of competingOffers)");
-  expect(block).toContain("status: OFFER_STATUS.CANCELLED");
-  expect(block).toContain("competingOffer.auditLog || \"\"");
-  expect(block).toContain("Superseded by accepted offer");
+vi.mock("@/lib/domain/transaction-spine/validate-tenant", () => ({
+  assertTenantOwnership: mockAssertTenantOwnership,
+}));
+
+vi.mock("@/lib/domain/transaction-spine/issue-contract", () => ({
+  _createContractInTx: mockCreateContractInTx,
+}));
+
+vi.mock("@/lib/domain/transaction-spine/payment-plan", () => ({
+  ensureDefaultPaymentPlanInTx: mockEnsureDefaultPaymentPlanInTx,
+}));
+
+vi.mock("@/lib/domain/deal-passport", () => ({
+  ensureDealCorrelationId: mockEnsureDealCorrelationId,
+  resolveDealInTx: mockResolveDealInTx,
+  appendDealEventInTx: mockAppendDealEventInTx,
+}));
+
+import { acceptOfferAndCreateContract } from "@/lib/domain/transaction-spine/accept-offer";
+
+const future = () => new Date(Date.now() + 86_400_000);
+
+const paymentPlan = {
+  id: "plan-1",
+  tenantId: "tenant-1",
+  contractId: "contract-1",
+  status: "DRAFT",
+};
+
+const contract = {
+  id: "contract-1",
+  tenantId: "tenant-1",
+  unitId: "unit-1",
+  leadId: "lead-1",
+  offerId: "offer-accepted",
+  status: "PENDING_SIGNATURE",
+  spineVersion: 2,
+  legacyFinancial: false,
+  paymentPlan,
+};
+
+const lead = {
+  id: "lead-1",
+  tenantId: "tenant-1",
+  firstName: "Sara",
+  lastName: "Ali",
+  phone: "0500000000",
+};
+
+function makeOffer(withContract: boolean) {
+  return {
+    id: "offer-accepted",
+    tenantId: "tenant-1",
+    status: "PENDING",
+    validUntil: future(),
+    unitId: "unit-1",
+    price: 500000,
+    auditLog: "accepted-offer-history",
+    opportunity: { id: "opp-1", leadId: "lead-1" },
+    contract: withContract ? contract : null,
+  };
+}
+
+function makeCompetitors() {
+  return [
+    { id: "competitor-pending", status: "PENDING", auditLog: "pending-history" },
+    { id: "competitor-sent", status: "SENT", auditLog: "sent-history" },
+    { id: "competitor-negotiation", status: "NEGOTIATION", auditLog: "negotiation-history" },
+  ];
+}
+
+function createAcceptanceHarness(withContract: boolean) {
+  const offer = makeOffer(withContract);
+  const competitors = makeCompetitors();
+  const operationLog: string[] = [];
+
+  const tx = {
+    offer: {
+      findFirst: vi.fn().mockResolvedValue(offer),
+      findMany: vi.fn().mockImplementation(async () =>
+        competitors
+          .filter((item) => ["PENDING", "SENT", "NEGOTIATION"].includes(item.status))
+          .map(({ id, auditLog }) => ({ id, auditLog })),
+      ),
+      update: vi.fn().mockImplementation(async ({ where, data }) => {
+        if (where.id === offer.id) {
+          Object.assign(offer, data);
+          operationLog.push(`accept:${offer.id}`);
+          return { ...offer };
+        }
+        const competitor = competitors.find((item) => item.id === where.id);
+        if (!competitor) throw new Error(`unexpected offer update: ${where.id}`);
+        Object.assign(competitor, data);
+        operationLog.push(`cancel:${competitor.id}`);
+        return { ...competitor };
+      }),
+    },
+    lead: {
+      findFirst: vi.fn().mockResolvedValue(lead),
+    },
+    unit: {
+      findFirst: vi.fn().mockResolvedValue({
+        id: "unit-1",
+        tenantId: "tenant-1",
+        contract: null,
+      }),
+    },
+    paymentPlan: {
+      findFirst: vi.fn().mockResolvedValue(paymentPlan),
+    },
+    opportunity: {
+      update: vi.fn().mockResolvedValue({ id: "opp-1", status: "COMMITTED" }),
+    },
+    auditLog: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+  };
+
+  return { offer, competitors, operationLog, tx };
+}
+
+function expectCompetitorsSuperseded(
+  competitors: ReturnType<typeof makeCompetitors>,
+) {
+  expect(competitors).toEqual([
+    expect.objectContaining({
+      id: "competitor-pending",
+      status: "CANCELLED",
+      auditLog: expect.stringContaining("pending-history"),
+    }),
+    expect.objectContaining({
+      id: "competitor-sent",
+      status: "CANCELLED",
+      auditLog: expect.stringContaining("sent-history"),
+    }),
+    expect.objectContaining({
+      id: "competitor-negotiation",
+      status: "CANCELLED",
+      auditLog: expect.stringContaining("negotiation-history"),
+    }),
+  ]);
+
+  for (const competitor of competitors) {
+    expect(competitor.auditLog).toContain(
+      "Superseded by accepted offer offer-accepted",
+    );
+  }
 }
 
 describe("post-closure offer acceptance remediation", () => {
-  it("cancels every active competing offer and returns accepted state in the existing-contract path", () => {
-    const start = source.indexOf("if (offer.contract) {");
-    const end = source.indexOf("const unit = await tx.unit.findFirst", start);
-    const block = source.slice(start, end);
-
-    expect(start).toBeGreaterThanOrEqual(0);
-    expect(end).toBeGreaterThan(start);
-    expect(block).toContain("const updatedOffer = await tx.offer.update");
-    expect(block).toContain("returnedOffer = { ...offer, ...updatedOffer }");
-    expectActiveCompetitorsCancelled(block);
-    expect(block).toContain("offer: returnedOffer");
-    expect(block.indexOf("const competingOffers = await tx.offer.findMany")).toBeLessThan(
-      block.indexOf("return {"),
-    );
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAssertTenantOwnership.mockResolvedValue(undefined);
+    mockResolveDealInTx.mockResolvedValue({ created: false, passport: null });
+    mockAppendDealEventInTx.mockResolvedValue({ event: null });
+    mockCreateContractInTx.mockResolvedValue(contract);
+    mockEnsureDefaultPaymentPlanInTx.mockResolvedValue(paymentPlan);
   });
 
-  it("cancels PENDING, SENT, and NEGOTIATION competitors after creating a new contract", () => {
-    const start = source.indexOf("const acceptedOffer = await tx.offer.update");
-    const end = source.indexOf("await tx.opportunity.update", start);
-    const block = source.slice(start, end);
+  it("cancels every acceptance-eligible competitor before returning an existing contract", async () => {
+    const harness = createAcceptanceHarness(true);
+    mockTransaction.mockImplementation(async (callback) => callback(harness.tx));
 
-    expect(start).toBeGreaterThanOrEqual(0);
-    expect(end).toBeGreaterThan(start);
-    expectActiveCompetitorsCancelled(block);
+    const result = await acceptOfferAndCreateContract({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      offerId: "offer-accepted",
+    });
+
+    expect(result.idempotent).toBe(true);
+    expect(result.offer.status).toBe("ACCEPTED");
+    expect(result.contract.id).toBe("contract-1");
+    expectCompetitorsSuperseded(harness.competitors);
+    expect(harness.operationLog).toEqual([
+      "accept:offer-accepted",
+      "cancel:competitor-pending",
+      "cancel:competitor-sent",
+      "cancel:competitor-negotiation",
+    ]);
+    expect(mockCreateContractInTx).not.toHaveBeenCalled();
+  });
+
+  it("cancels every acceptance-eligible competitor before returning a newly created contract", async () => {
+    const harness = createAcceptanceHarness(false);
+    mockTransaction.mockImplementation(async (callback) => callback(harness.tx));
+
+    const result = await acceptOfferAndCreateContract({
+      tenantId: "tenant-1",
+      userId: "user-1",
+      offerId: "offer-accepted",
+    });
+
+    expect(result.idempotent).toBe(false);
+    expect(result.offer.status).toBe("ACCEPTED");
+    expect(result.contract.id).toBe("contract-1");
+    expectCompetitorsSuperseded(harness.competitors);
+    expect(harness.operationLog).toEqual([
+      "accept:offer-accepted",
+      "cancel:competitor-pending",
+      "cancel:competitor-sent",
+      "cancel:competitor-negotiation",
+    ]);
+    expect(mockCreateContractInTx).toHaveBeenCalledTimes(1);
   });
 });
