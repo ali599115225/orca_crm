@@ -12,7 +12,7 @@ export class W1SnapshotIntegrityError extends Error {
   }
 }
 
-export type ContractSnapshotIssueInput = {
+export type ContractSnapshotDigestInput = {
   tenantId: string;
   draftId: string;
   templateVersionId: string;
@@ -23,8 +23,14 @@ export type ContractSnapshotIssueInput = {
   clauseSnapshot: Prisma.InputJsonValue;
   paymentPlanSnapshot?: Prisma.InputJsonValue;
   approvalSnapshot: Prisma.InputJsonValue;
-  createdBy?: string | null;
   signedAt?: Date | null;
+};
+
+export type ContractSnapshotIssueInput = Omit<
+  ContractSnapshotDigestInput,
+  "snapshotType" | "approvalSnapshot" | "signedAt"
+> & {
+  createdBy?: string | null;
 };
 
 function canonicalize(value: unknown): unknown {
@@ -59,7 +65,7 @@ function canonicalize(value: unknown): unknown {
   throw new W1SnapshotIntegrityError("W1_SNAPSHOT_UNSUPPORTED_DIGEST_VALUE");
 }
 
-export function computeContractSnapshotDigest(input: ContractSnapshotIssueInput): string {
+export function computeContractSnapshotDigest(input: ContractSnapshotDigestInput): string {
   const digestPayload = canonicalize({
     tenantId: input.tenantId,
     draftId: input.draftId,
@@ -77,7 +83,7 @@ export function computeContractSnapshotDigest(input: ContractSnapshotIssueInput)
   return createHash("sha256").update(JSON.stringify(digestPayload), "utf8").digest("hex");
 }
 
-export async function issueContractSnapshot(input: ContractSnapshotIssueInput) {
+export async function issueApprovedContractSnapshot(input: ContractSnapshotIssueInput) {
   if (!input.tenantId || !input.draftId || !input.templateVersionId) {
     throw new W1SnapshotIntegrityError("W1_SNAPSHOT_REQUIRED_IDENTITY_MISSING");
   }
@@ -89,13 +95,34 @@ export async function issueContractSnapshot(input: ContractSnapshotIssueInput) {
     where: { id: input.draftId, tenantId: input.tenantId },
     select: {
       id: true,
+      status: true,
       templateVersionId: true,
       contractId: true,
+      approvals: {
+        orderBy: { requestedAt: "asc" },
+        select: {
+          id: true,
+          riskTier: true,
+          status: true,
+          requestedBy: true,
+          decidedBy: true,
+          reason: true,
+          evidenceJson: true,
+          requestedAt: true,
+          decidedAt: true,
+        },
+      },
     },
   });
 
   if (!draft) {
     throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_FOUND_FOR_TENANT");
+  }
+  if (draft.status !== "APPROVED") {
+    throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_APPROVED");
+  }
+  if (draft.approvals.some((approval) => approval.status !== "APPROVED")) {
+    throw new W1SnapshotIntegrityError("W1_SNAPSHOT_APPROVAL_PENDING_OR_REJECTED");
   }
   if (draft.templateVersionId !== input.templateVersionId) {
     throw new W1SnapshotIntegrityError("W1_SNAPSHOT_TEMPLATE_VERSION_MISMATCH");
@@ -112,9 +139,24 @@ export async function issueContractSnapshot(input: ContractSnapshotIssueInput) {
     });
   }
 
+  const approvalSnapshot: Prisma.InputJsonValue = draft.approvals.map((approval) => ({
+    id: approval.id,
+    riskTier: approval.riskTier,
+    status: approval.status,
+    requestedBy: approval.requestedBy,
+    decidedBy: approval.decidedBy,
+    reason: approval.reason,
+    evidenceJson: approval.evidenceJson,
+    requestedAt: approval.requestedAt.toISOString(),
+    decidedAt: approval.decidedAt?.toISOString() ?? null,
+  })) as Prisma.InputJsonValue;
+
   const digest = computeContractSnapshotDigest({
     ...input,
     contractId: effectiveContractId,
+    snapshotType: "ISSUED",
+    approvalSnapshot,
+    signedAt: null,
   });
 
   return await prisma.contractSnapshot.create({
@@ -123,15 +165,15 @@ export async function issueContractSnapshot(input: ContractSnapshotIssueInput) {
       draftId: draft.id,
       contractId: effectiveContractId,
       templateVersionId: input.templateVersionId,
-      snapshotType: input.snapshotType ?? "ISSUED",
+      snapshotType: "ISSUED",
       renderedContent: input.renderedContent,
       structuredFacts: input.structuredFacts,
       clauseSnapshot: input.clauseSnapshot,
       paymentPlanSnapshot: input.paymentPlanSnapshot,
-      approvalSnapshot: input.approvalSnapshot,
+      approvalSnapshot,
       digest,
       createdBy: input.createdBy ?? null,
-      signedAt: input.signedAt ?? null,
+      signedAt: null,
     },
   });
 }
