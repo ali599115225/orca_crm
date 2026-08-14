@@ -8,10 +8,11 @@ This package follows the merged W1A persistence foundation and does not create S
 
 ## Objective
 
-Close the two residual integrity gates before any Contract Studio / Finance Case public write surface is introduced:
+Close the residual integrity gates before any Contract Studio / Finance Case public write surface is introduced:
 
 1. tenant-safe validation of legacy scalar `leadId`, `unitId`, and `contractId` references;
-2. a canonical append-oriented ContractSnapshot service boundary with no update/delete capability.
+2. a canonical append-oriented ContractSnapshot issuance/read boundary with no update/delete capability;
+3. fail-closed issuance so `ISSUED` cannot be created from an unapproved draft or caller-fabricated approval evidence.
 
 ## Invariants
 
@@ -21,7 +22,11 @@ Close the two residual integrity gates before any Contract Studio / Finance Case
 - When both `contractId` and `unitId` are supplied, the Contract must point to that same Unit.
 - When both `contractId` and `leadId` are supplied and the Contract already has a Lead, they must match.
 - ContractSnapshot issuance uses a deterministic SHA-256 digest over canonical snapshot content.
-- The W1B snapshot service exposes create/read operations only. It must expose no update/delete path.
+- `ISSUED` creation requires `ContractDraft.status = APPROVED`.
+- Every persisted approval attached to the draft at issue time must be `APPROVED`; pending/rejected approval records fail closed.
+- Approval evidence embedded in the snapshot is derived from persisted ContractApproval records, not accepted from caller input.
+- W1B does not create `EXECUTED` / signed snapshots; signature execution remains a later governed boundary.
+- The W1B snapshot service exposes issue/read operations only. It must expose no update/delete path.
 - No route, server action, UI, provider adapter, deployment, production migration, backfill, or provider activation is in W1B.
 - Existing W1A migration remains unapplied to production under this package.
 
@@ -39,6 +44,9 @@ Close the two residual integrity gates before any Contract Studio / Finance Case
 - Guard uses tenant-aware Prisma only; raw Prisma access is forbidden.
 - Snapshot digest is deterministic across object key order.
 - Snapshot service verifies draft/template/legacy Contract consistency before insert.
+- Snapshot issue path rejects a non-APPROVED draft.
+- Snapshot issue path rejects any persisted approval whose status is not APPROVED.
+- Approval snapshot is created from database approval records and cannot be supplied by the caller.
 - Snapshot service contains no ContractSnapshot update/delete capability.
 - G8 focused tests pass.
 - Prisma validate/generate, typecheck, full ORCA CI through Build pass on exact head.
