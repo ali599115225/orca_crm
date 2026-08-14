@@ -177,6 +177,10 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
           id: true,
           status: true,
           draftId: true,
+          reason: true,
+          evidenceJson: true,
+          requestedBy: true,
+          requestedAt: true,
           draft: { select: { status: true } },
         },
       });
@@ -187,6 +191,21 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
         throw new W1ContractLifecycleError("W1_APPROVAL_DECISION_INVALID_STATE");
       }
 
+      const preservedApprovalEvidence: Prisma.InputJsonValue = {
+        request: {
+          requestedBy: approval.requestedBy ?? "",
+          requestedAt: approval.requestedAt.toISOString(),
+          reason: approval.reason ?? "",
+          evidence: approval.evidenceJson ?? {},
+        },
+        decision: {
+          decidedBy: input.decidedBy,
+          decision: input.decision,
+          reason: input.reason ?? "",
+          evidence: input.evidenceJson ?? {},
+        },
+      };
+
       const decided = await tx.contractApproval.update({
         where: { id: approval.id },
         data: {
@@ -194,7 +213,7 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
           decidedBy: input.decidedBy,
           decidedAt: new Date(),
           reason: input.reason ?? null,
-          evidenceJson: input.evidenceJson,
+          evidenceJson: preservedApprovalEvidence,
         },
       });
 
