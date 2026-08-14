@@ -3,7 +3,7 @@
   "package": "EXEC-003 v2",
   "state": "CLOSED / INDEPENDENT FINAL REVIEW PASS / MERGED TO CENTRAL",
   "validatedImplementationHead": "d17acb09354a54aee7946b6de8e67a2a9b55fbd5",
-  "evidenceDigest": "650cb745407e894d19076950dea39e651381855af009a619aec9f77e22cc5c38",
+  "evidenceDigest": "c174454a7127e0d90135842c6e516669d4bf6ddf5614cba7b993a8984156eddc",
   "digestAlgorithm": "sha256-path-length-content-v5-exec003-registry-projection",
   "derivedEvidenceFiles": [
     "app/actions/aiActions.ts",
