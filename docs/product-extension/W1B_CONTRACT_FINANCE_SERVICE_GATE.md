@@ -25,6 +25,7 @@ Close the residual integrity gates before any Contract Studio / Finance Case pub
 - `ISSUED` creation requires `ContractDraft.status = APPROVED`.
 - Every persisted approval attached to the draft at issue time must be `APPROVED`; pending/rejected approval records fail closed.
 - Approval evidence embedded in the snapshot is derived from persisted ContractApproval records, not accepted from caller input.
+- Draft/approval/legacy Contract validation and ContractSnapshot creation execute in one `SERIALIZABLE` database transaction.
 - W1B does not create `EXECUTED` / signed snapshots; signature execution remains a later governed boundary.
 - The W1B snapshot service exposes issue/read operations only. It must expose no update/delete path.
 - No route, server action, UI, provider adapter, deployment, production migration, backfill, or provider activation is in W1B.
@@ -47,6 +48,7 @@ Close the residual integrity gates before any Contract Studio / Finance Case pub
 - Snapshot issue path rejects a non-APPROVED draft.
 - Snapshot issue path rejects any persisted approval whose status is not APPROVED.
 - Approval snapshot is created from database approval records and cannot be supplied by the caller.
+- Snapshot issue path runs the approval read and immutable insert atomically at `SERIALIZABLE` isolation.
 - Snapshot service contains no ContractSnapshot update/delete capability.
 - G8 focused tests pass.
 - Prisma validate/generate, typecheck, full ORCA CI through Build pass on exact head.
