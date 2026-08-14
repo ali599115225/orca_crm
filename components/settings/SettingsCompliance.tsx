@@ -2,10 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { getRevenueTrustStateAction } from "@/app/actions/revenue-integrity";
 import { SmartCard } from "@/components/ui/SmartCard";
 import SettingsButton from "@/components/settings/SettingsButton";
 
 type DrawerKind = "digital-identity" | "shared-credentials" | "disclaimer" | "zatca" | "ejar" | null;
+
+type ProviderTrustState = {
+  provider: string;
+  status: string;
+  lastTestedAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+};
+
+type ProviderApplicationState = {
+  provider: string;
+  status: string;
+};
 
 export default function SettingsCompliance({
   lang,
@@ -20,6 +34,10 @@ export default function SettingsCompliance({
   const [signatureError, setSignatureError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [drawer, setDrawer] = useState<DrawerKind>(null);
+  const [providerStates, setProviderStates] = useState<ProviderTrustState[]>([]);
+  const [providerApplications, setProviderApplications] = useState<ProviderApplicationState[]>([]);
+  const [trustLoading, setTrustLoading] = useState(true);
+  const [trustError, setTrustError] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const credentialsFormRef = useRef<HTMLFormElement>(null);
@@ -111,19 +129,91 @@ export default function SettingsCompliance({
     };
   }, [drawer]);
 
-  const zatcaConnected = true;
-  const ejarPending = true;
+  useEffect(() => {
+    let active = true;
+
+    void getRevenueTrustStateAction()
+      .then((result) => {
+        if (!active) return;
+        if (!result.success) {
+          setTrustError(true);
+          return;
+        }
+
+        const data = result.data as {
+          providers?: ProviderTrustState[];
+          applications?: ProviderApplicationState[];
+        };
+        setProviderStates(Array.isArray(data.providers) ? data.providers : []);
+        setProviderApplications(Array.isArray(data.applications) ? data.applications : []);
+      })
+      .catch(() => {
+        if (active) setTrustError(true);
+      })
+      .finally(() => {
+        if (active) setTrustLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function providerStatus(provider: "ZATCA" | "EJAR") {
+    if (trustLoading) {
+      return { ok: false, text: L("جار التحقق...", "Checking...") };
+    }
+
+    const state = providerStates.find((item) => item.provider === provider);
+    if (!state) {
+      return {
+        ok: false,
+        text: trustError
+          ? L("تعذر التحقق", "Unable to verify")
+          : L("غير مهيأ", "Not configured"),
+      };
+    }
+
+    switch (state.status) {
+      case "CONNECTED":
+        return { ok: true, text: L("متصل", "Connected") };
+      case "PENDING":
+        return { ok: false, text: L("بانتظار الاختبار", "Pending test") };
+      case "ERROR":
+        return { ok: false, text: L("خطأ في الاتصال", "Connection error") };
+      case "DISCONNECTED":
+        return { ok: false, text: L("غير متصل", "Disconnected") };
+      case "NOT_CONFIGURED":
+      default:
+        return { ok: false, text: L("غير مهيأ", "Not configured") };
+    }
+  }
+
+  function providerLastSuccess(provider: "ZATCA" | "EJAR") {
+    const value = providerStates.find((item) => item.provider === provider)?.lastSuccessAt;
+    if (!value) return L("لا يوجد اختبار ناجح موثق", "No verified successful test");
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return L("غير متاح", "Unavailable");
+    return new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  }
+
+  const zatcaStatus = providerStatus("ZATCA");
+  const ejarStatus = providerStatus("EJAR");
+  const ejarApplication = providerApplications.find((item) => item.provider === "EJAR");
 
   const summaryItems = [
     {
       label: L("ZATCA", "ZATCA"),
-      ok: zatcaConnected,
-      text: zatcaConnected ? L("متصل", "Connected") : L("غير متصل", "Disconnected"),
+      ok: zatcaStatus.ok,
+      text: zatcaStatus.text,
     },
     {
       label: L("Ejar", "Ejar"),
-      ok: !ejarPending,
-      text: ejarPending ? L("قيد المراجعة", "Pending review") : L("متصل", "Connected"),
+      ok: ejarStatus.ok,
+      text: ejarStatus.text,
     },
     {
       label: L("الإقرار الرقمي", "Digital disclaimer"),
@@ -249,8 +339,14 @@ export default function SettingsCompliance({
                 {L("هيئة الزكاة والضريبة والجمارك (FATOORA).", "Zakat, Tax and Customs Authority (FATOORA).")}
               </p>
             </div>
-            <span className="ms-auto shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
-              {L("متصل", "Connected")}
+            <span
+              className={`ms-auto shrink-0 rounded-full border px-2 py-0.5 text-xs font-black ${
+                zatcaStatus.ok
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {zatcaStatus.text}
             </span>
           </div>
           <div className="mt-auto flex gap-2 border-t border-[var(--nc-border)] pt-4">
@@ -271,8 +367,14 @@ export default function SettingsCompliance({
                 {L("الشبكة الإيجارية (وزارة الإسكان).", "Rental Services Network.")}
               </p>
             </div>
-            <span className="ms-auto shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-black text-amber-700 dark:text-amber-300">
-              {L("قيد المراجعة", "Pending review")}
+            <span
+              className={`ms-auto shrink-0 rounded-full border px-2 py-0.5 text-xs font-black ${
+                ejarStatus.ok
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {ejarStatus.text}
             </span>
           </div>
           <div className="mt-auto flex gap-2 border-t border-[var(--nc-border)] pt-4">
@@ -526,23 +628,17 @@ export default function SettingsCompliance({
                           {L("حالة الارتباط الفني", "Technical Connection Status")}
                         </p>
                         <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                          <span className="text-sm font-bold text-[var(--nc-foreground)]">{L("متصل", "Connected")}</span>
+                          <div className={`h-2.5 w-2.5 rounded-full ${zatcaStatus.ok ? "bg-emerald-500" : "bg-amber-500"}`} />
+                          <span className="text-sm font-bold text-[var(--nc-foreground)]">{zatcaStatus.text}</span>
                         </div>
                       </div>
                       <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
                         <p className="mb-1 text-xs font-bold text-[var(--nc-foreground-muted)]">
-                          {L("صلاحية شهادة CSID", "CSID Certificate Validity")}
+                          {L("آخر اختبار ناجح موثق", "Last verified successful test")}
                         </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                            {L("صالحة", "Valid")}
-                          </span>
-                          <span className="flex items-center gap-1 font-mono text-xs text-[var(--nc-foreground-muted)]">
-                            {L("تاريخ الانتهاء:", "Expires:")}
-                            <span dir="ltr">2027-12-31</span>
-                          </span>
-                        </div>
+                        <span className="text-sm font-bold text-[var(--nc-foreground)]">
+                          {providerLastSuccess("ZATCA")}
+                        </span>
                       </div>
                     </SmartCard>
                   </div>
@@ -563,18 +659,26 @@ export default function SettingsCompliance({
                           {L("حالة الارتباط الفني", "Technical Connection Status")}
                         </p>
                         <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-amber-500" />
+                          <div className={`h-2.5 w-2.5 rounded-full ${ejarStatus.ok ? "bg-emerald-500" : "bg-amber-500"}`} />
                           <span className="text-sm font-bold text-[var(--nc-foreground)]">
-                            {L("قيد المراجعة", "Pending Review")}
+                            {ejarStatus.text}
                           </span>
                         </div>
                       </div>
                       <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
                         <p className="mb-1 text-xs font-bold text-[var(--nc-foreground-muted)]">
-                          {L("حالة توثيق الوساطة", "Brokerage Authentication")}
+                          {L("حالة طلب المزوّد", "Provider application status")}
                         </p>
-                        <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                          {L("بانتظار الاعتماد", "Awaiting Approval")}
+                        <span className="text-sm font-bold text-[var(--nc-foreground)]">
+                          {ejarApplication?.status || L("لا يوجد طلب موثق", "No documented application")}
+                        </span>
+                      </div>
+                      <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
+                        <p className="mb-1 text-xs font-bold text-[var(--nc-foreground-muted)]">
+                          {L("آخر اختبار ناجح موثق", "Last verified successful test")}
+                        </p>
+                        <span className="text-sm font-bold text-[var(--nc-foreground)]">
+                          {providerLastSuccess("EJAR")}
                         </span>
                       </div>
                     </SmartCard>
