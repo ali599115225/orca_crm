@@ -14,6 +14,7 @@
 "use server";
 
 import { assertServerActionRole, isProductionRuntime } from "@/lib/api-auth-guard";
+import { publicHttpsJsonRequest } from "@/lib/net/public-https";
 import { prisma, rawPrisma } from "@/lib/prisma";
 import { decryptProviderCredentials } from "@/lib/revenue-integrity/trust-gates";
 import { getActiveTenant } from "@/lib/tenant";
@@ -301,7 +302,12 @@ export async function submitContractToEjarAction(
     let apiRetryCount = 0;
 
     try {
-      const response = await fetch(`${configuredUrl}/contracts/register`, {
+      const endpoint = new URL(configuredUrl);
+      endpoint.pathname = `${endpoint.pathname.replace(/\/+$/, "")}/contracts/register`;
+      endpoint.search = "";
+      endpoint.hash = "";
+      const response = await publicHttpsJsonRequest({
+        url: endpoint,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -309,18 +315,24 @@ export async function submitContractToEjarAction(
           "X-Agency-Id": tenant.subdomain,
         },
         body: payloadJson,
+        timeoutMs: 15_000,
       });
 
+      const ejarResponse =
+        response.payload &&
+        typeof response.payload === "object" &&
+        !Array.isArray(response.payload)
+          ? (response.payload as Record<string, unknown>)
+          : {};
+
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
         throw new Error(
-          `Ejar API Error ${response.status}: ${(errorBody as any).message || response.statusText}`
+          `Ejar API Error ${response.status}: ${String(ejarResponse.message || "provider request failed")}`
         );
       }
 
-      const ejarResponse = await response.json();
-      ejarContractId = ejarResponse.contractId;
-      contractNumber = ejarResponse.contractNumber ?? `CR-${Date.now()}`;
+      ejarContractId = String(ejarResponse.contractId || "").trim();
+      contractNumber = String(ejarResponse.contractNumber || "").trim() || `CR-${Date.now()}`;
 
       if (!ejarContractId) {
         throw new Error("Ejar API returned no contractId — response invalid");

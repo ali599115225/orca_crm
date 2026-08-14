@@ -97,18 +97,40 @@ describe('Paylink adapter', () => {
     });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toMatchObject({
-      amount: 299_00,
+      amount: 299,
       currency: 'SAR',
       description: 'ORCA pro plan',
     });
     expect(body).not.toHaveProperty('subscriptionPlan');
   });
 
+  it('rejects non-SAR creation requests', async () => {
+    vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
+    vi.stubGlobal('fetch', vi.fn());
+
+    await expect(
+      paylinkProvider.createPayment({ ...createInput, currency: 'USD' }),
+    ).rejects.toThrow('PAYLINK_CURRENCY_NOT_SUPPORTED');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-HTTPS redirect URLs returned by Paylink', async () => {
+    vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ transactionNo: 'paylink-ref-1', payment_url: 'javascript:alert(1)' }),
+    }));
+
+    await expect(paylinkProvider.createPayment(createInput)).rejects.toThrow(
+      'PAYLINK_CREATE_RESPONSE_INVALID',
+    );
+  });
+
   it('verifies a paid mock invoice in the unified contract', async () => {
     vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ transactionNo: 'paylink-ref-1', orderStatus: 'PAID', amount: 299_00 }),
+      json: async () => ({ transactionNo: 'paylink-ref-1', orderStatus: 'PAID', amount: 299 }),
     }));
 
     await expect(paylinkProvider.verifyPayment('paylink-ref-1')).resolves.toMatchObject({
@@ -118,6 +140,37 @@ describe('Paylink adapter', () => {
       currency: 'SAR',
       providerStatus: 'PAID',
     });
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['zero', 0],
+    ['malformed', 'not-a-number'],
+  ])('rejects a PAID verification with %s amount', async (_label, amount) => {
+    vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ transactionNo: 'paylink-ref-1', orderStatus: 'PAID', amount }),
+    }));
+
+    await expect(paylinkProvider.verifyPayment('paylink-ref-1')).rejects.toThrow(
+      'PAYLINK_VERIFY_RESPONSE_INVALID',
+    );
+  });
+
+  it('encodes the provider reference as one URL path segment', async () => {
+    vi.stubEnv('PAYLINK_SECRET_KEY', 'paylink-secret');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ transactionNo: 'ref', orderStatus: 'PENDING', amount: 299 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await paylinkProvider.verifyPayment('ref/with?reserved#chars');
+
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/api/v1/invoice/ref%2Fwith%3Freserved%23chars',
+    );
   });
 
   it('fails closed when Paylink settings are missing', async () => {

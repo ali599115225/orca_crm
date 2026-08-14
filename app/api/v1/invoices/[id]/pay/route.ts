@@ -133,16 +133,17 @@ async function findExistingPayment(
     return null;
   }
 
-  if (
-    transaction.status !== 'COMPLETED' ||
-    !transaction.providerTransactionId
-  ) {
+  if (transaction.status === 'FAILED') {
+    return { state: 'failed' as const, transactionId: transaction.id };
+  }
+
+  if (transaction.status !== 'COMPLETED') {
     return { state: 'pending' as const };
   }
 
   const receipt = await prisma.receipt.findFirst({
     where: {
-      id: transaction.providerTransactionId,
+      paymentTransactionId: transaction.id,
       tenantId,
       invoiceId,
     },
@@ -293,12 +294,33 @@ export async function POST(
         );
       }
 
-      const invoiceAmount = Number(invoice.totalAmount);
-      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      const invoiceTotal = Number(invoice.totalAmount);
+      if (!Number.isFinite(invoiceTotal) || invoiceTotal <= 0) {
         throw new PaymentRouteError(
           ErrorCode.VALIDATION_ERROR,
           400,
           'invoice amount is invalid'
+        );
+      }
+
+      const completedPayments = await tx.paymentTransaction.aggregate({
+        where: {
+          tenantId,
+          invoiceId: id,
+          status: 'COMPLETED',
+        },
+        _sum: { netAmount: true },
+      });
+      const paidBefore = Number(completedPayments._sum.netAmount || 0);
+      const invoiceTotalMinor = Math.round(invoiceTotal * 100);
+      const paidBeforeMinor = Math.round(paidBefore * 100);
+      const remainingMinor = invoiceTotalMinor - paidBeforeMinor;
+      const invoiceAmount = remainingMinor / 100;
+      if (!Number.isFinite(remainingMinor) || remainingMinor <= 0) {
+        throw new PaymentRouteError(
+          ErrorCode.CONFLICT,
+          409,
+          'invoice has no remaining balance'
         );
       }
 
@@ -312,38 +334,94 @@ export async function POST(
         },
       });
 
-      const paymentTransaction = await tx.paymentTransaction.create({
-        data: {
-          tenantId,
-          invoiceId: id,
-          installmentId:
-            unpaidInstallments.length === 1 ? unpaidInstallments[0].id : null,
-          amount: invoiceAmount,
-          netAmount: invoiceAmount,
-          currency: 'SAR',
-          method,
-          status: 'PENDING',
-          provider: MANUAL_PROVIDER,
-          providerReference,
-          idempotencyKey: providerReference,
-          expectedAmountMinor: Math.round(invoiceAmount * 100),
-          expectedCurrency: 'SAR',
-        },
-      });
+      const transactionData = {
+        tenantId,
+        invoiceId: id,
+        installmentId:
+          unpaidInstallments.length === 1 ? unpaidInstallments[0].id : null,
+        amount: invoiceAmount,
+        netAmount: invoiceAmount,
+        currency: 'SAR',
+        method,
+        status: 'PENDING',
+        provider: MANUAL_PROVIDER,
+        providerReference,
+        idempotencyKey: providerReference,
+        expectedAmountMinor: remainingMinor,
+        expectedCurrency: 'SAR',
+        failureReason: null,
+        lastError: null,
+      };
 
-      return { invoiceAmount, paymentTransaction, unpaidInstallments };
+      let paymentTransaction;
+      if (existing?.state === 'failed') {
+        const claimed = await tx.paymentTransaction.updateMany({
+          where: {
+            id: existing.transactionId,
+            tenantId,
+            status: 'FAILED',
+          },
+          data: transactionData,
+        });
+        if (claimed.count !== 1) {
+          throw new PaymentRouteError(
+            ErrorCode.CONFLICT,
+            409,
+            'manual payment retry is already in progress'
+          );
+        }
+        paymentTransaction = await tx.paymentTransaction.findUnique({
+          where: { id: existing.transactionId },
+        });
+        if (!paymentTransaction) {
+          throw new PaymentRouteError(
+            ErrorCode.INTERNAL_ERROR,
+            500,
+            'manual payment retry transaction not found'
+          );
+        }
+      } else {
+        paymentTransaction = await tx.paymentTransaction.create({
+          data: transactionData,
+        });
+      }
+
+      return {
+        invoiceAmount,
+        amountMinorUnits: remainingMinor,
+        paymentTransaction,
+        unpaidInstallments,
+      };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    const completed = await completePaymentTransaction({
-      transactionId: created.paymentTransaction.id,
-      tenantId,
-      amountMinorUnits: Math.round(created.invoiceAmount * 100),
-      currency: 'SAR',
-      providerStatus: 'MANUAL_CONFIRMED',
-      actorId: session.userId,
-      actorUserId: session.userId,
-      correlationId,
-    });
+    let completed;
+    try {
+      completed = await completePaymentTransaction({
+        transactionId: created.paymentTransaction.id,
+        tenantId,
+        amountMinorUnits: created.amountMinorUnits,
+        currency: 'SAR',
+        providerStatus: 'MANUAL_CONFIRMED',
+        actorId: session.userId,
+        actorUserId: session.userId,
+        correlationId,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      await prisma.paymentTransaction.updateMany({
+        where: {
+          id: created.paymentTransaction.id,
+          tenantId,
+          status: { not: 'COMPLETED' },
+        },
+        data: {
+          status: 'FAILED',
+          failureReason: reason.slice(0, 2000),
+          lastError: reason.slice(0, 2000),
+        },
+      });
+      throw error;
+    }
 
     if (created.unpaidInstallments.length > 1) {
       const paidInvoice = await prisma.invoice.findFirst({
@@ -373,7 +451,10 @@ export async function POST(
           const remaining = await prisma.installment.count({
             where: {
               paymentPlanId,
-              paymentStatus: { not: INSTALLMENT_STATUS.PAID },
+              tenantId,
+              paymentStatus: {
+                notIn: [INSTALLMENT_STATUS.PAID, INSTALLMENT_STATUS.CANCELLED],
+              },
             },
           });
           if (remaining === 0) {
@@ -390,11 +471,15 @@ export async function POST(
     }
 
     const receipt =
-      completed.receipt ||
-      completed.payment.receipt || {
-        id: created.paymentTransaction.id,
-        receivedDate: new Date(),
-      };
+      ('receipt' in completed && completed.receipt) ||
+      ('payment' in completed && completed.payment.receipt);
+    if (!receipt) {
+      throw new PaymentRouteError(
+        ErrorCode.INTERNAL_ERROR,
+        500,
+        'payment receipt was not created'
+      );
+    }
 
     return successResponse(
       receipt,

@@ -88,10 +88,7 @@ function formatUnit(unit: any, options?: { newlyCreated?: boolean }) {
     tourCount: unit._count?.tours || 0,
     offerCount: unit._count?.offers || 0,
     opportunityCount: unit._count?.opportunities || 0,
-    readiness: {
-      ...readiness,
-      ready: transactionReady,
-    },
+    readiness,
     transactionReady,
     createdAt: unit.createdAt.toISOString(),
     updatedAt: unit.updatedAt.toISOString(),
@@ -175,7 +172,7 @@ export async function GET(request: NextRequest) {
         soldOrLeased: rows.filter((row) =>
           ["Sold", "Leased"].includes(row.status),
         ).length,
-        marketingReady: rows.filter((row) => row.transactionReady).length,
+        marketingReady: rows.filter((row) => row.readiness.ready).length,
         transactionReady: rows.filter((row) => row.transactionReady).length,
         virtualTours: rows.filter((row) => Boolean(row.tourUrl)).length,
         inventoryValue: rows

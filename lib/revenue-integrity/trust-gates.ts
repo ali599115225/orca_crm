@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { publicHttpsJsonRequest } from "@/lib/net/public-https";
 import { rawPrisma } from "@/lib/prisma";
 import { appendRevenueEvent } from "./events";
 import { REVENUE_PROVIDERS, type ProviderCredentials, type RevenueProvider } from "./contracts";
@@ -314,21 +315,21 @@ async function testProvider(provider: RevenueProvider, baseUrl: string | null, c
     const publishableKey = providerValue(credentials, "publishableKey");
     const secretKey = providerValue(credentials, "secretKey");
     if (!publishableKey || !secretKey) throw new Error("MOYASAR_PUBLISHABLE_AND_SECRET_REQUIRED");
-    return { configured: true };
+    throw new Error("MOYASAR_LIVE_VERIFICATION_NOT_IMPLEMENTED");
   }
 
   if (provider === "HYPERPAY") {
     const entityId = providerValue(credentials, "entityId");
     const bearerToken = providerValue(credentials, "bearerToken");
     if (!entityId || !bearerToken) throw new Error("HYPERPAY_ENTITY_AND_TOKEN_REQUIRED");
-    return { configured: true };
+    throw new Error("HYPERPAY_LIVE_VERIFICATION_NOT_IMPLEMENTED");
   }
 
   if (provider === "PAYTABS") {
     const profileId = providerValue(credentials, "profileId");
     const serverKey = providerValue(credentials, "serverKey");
     if (!profileId || !serverKey) throw new Error("PAYTABS_PROFILE_AND_SERVER_KEY_REQUIRED");
-    return { configured: true };
+    throw new Error("PAYTABS_LIVE_VERIFICATION_NOT_IMPLEMENTED");
   }
 
   if (provider === "ZATCA") {
@@ -346,14 +347,19 @@ async function testProvider(provider: RevenueProvider, baseUrl: string | null, c
   }
 
   if (provider === "EJAR") {
-    const healthUrl = baseUrl || providerValue(credentials, "healthUrl");
+    const healthUrl = String(baseUrl || "").trim();
     const accessToken = providerValue(credentials, "accessToken");
     if (!healthUrl || !accessToken) throw new Error("EJAR_HEALTH_URL_AND_TOKEN_REQUIRED");
-    const response = await fetch(healthUrl, {
+    const response = await publicHttpsJsonRequest({
+      url: healthUrl,
+      method: "GET",
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
-    return expectOk(response, provider);
+    if (!response.ok) {
+      throw new Error(`EJAR_HTTP_${response.status}`);
+    }
+    return response.payload;
   }
 
   const healthUrl = baseUrl || providerValue(credentials, "healthUrl");

@@ -155,15 +155,43 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
           offer.contract.paymentPlan ||
           (await ensureDefaultPaymentPlanInTx(tx, offer.contract));
 
+        let returnedOffer = offer;
         if (offer.status !== OFFER_STATUS.ACCEPTED) {
-          await tx.offer.update({
+          const updatedOffer = await tx.offer.update({
             where: { id: offer.id },
             data: { status: OFFER_STATUS.ACCEPTED, updatedBy: userId },
+          });
+          returnedOffer = { ...offer, ...updatedOffer };
+        }
+
+        const competingOffers = await tx.offer.findMany({
+          where: {
+            tenantId,
+            unitId: offer.unitId,
+            id: { not: offer.id },
+            status: {
+              in: [
+                OFFER_STATUS.PENDING,
+                OFFER_STATUS.SENT,
+                OFFER_STATUS.NEGOTIATION,
+              ],
+            },
+          },
+          select: { id: true, auditLog: true },
+        });
+        for (const competingOffer of competingOffers) {
+          await tx.offer.update({
+            where: { id: competingOffer.id },
+            data: {
+              status: OFFER_STATUS.CANCELLED,
+              updatedBy: userId,
+              auditLog: `${competingOffer.auditLog || ""}\nSuperseded by accepted offer ${offer.id}`.trim(),
+            },
           });
         }
 
         return {
-          offer,
+          offer: returnedOffer,
           contract: offer.contract,
           paymentPlan,
           idempotent: true,
@@ -218,19 +246,31 @@ export async function acceptOfferAndCreateContract(input: AcceptOfferInput) {
         },
       });
 
-      await tx.offer.updateMany({
+      const competingOffers = await tx.offer.findMany({
         where: {
           tenantId,
           unitId: offer.unitId,
           id: { not: offer.id },
-          status: OFFER_STATUS.PENDING,
+          status: {
+            in: [
+              OFFER_STATUS.PENDING,
+              OFFER_STATUS.SENT,
+              OFFER_STATUS.NEGOTIATION,
+            ],
+          },
         },
-        data: {
-          status: OFFER_STATUS.CANCELLED,
-          updatedBy: userId,
-          auditLog: `Superseded by accepted offer ${offer.id}`,
-        },
+        select: { id: true, auditLog: true },
       });
+      for (const competingOffer of competingOffers) {
+        await tx.offer.update({
+          where: { id: competingOffer.id },
+          data: {
+            status: OFFER_STATUS.CANCELLED,
+            updatedBy: userId,
+            auditLog: `${competingOffer.auditLog || ""}\nSuperseded by accepted offer ${offer.id}`.trim(),
+          },
+        });
+      }
 
       await tx.opportunity.update({
         where: { id: opportunity.id },

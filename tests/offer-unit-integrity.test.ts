@@ -366,6 +366,7 @@ describe("Offer Unit Integrity", () => {
         findFirst: vi.fn().mockResolvedValue(offer),
         update: vi.fn().mockResolvedValue({ ...offer, status: "ACCEPTED" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       lead: {
         findFirst: vi.fn().mockResolvedValue(lead),
@@ -528,6 +529,8 @@ describe("Offer Unit Integrity", () => {
       offer: {
         findFirst: vi.fn().mockResolvedValue(acceptedOffer),
         update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       lead: {
         findFirst: vi.fn().mockResolvedValue({
@@ -622,6 +625,7 @@ describe("Offer Unit Integrity", () => {
           findFirst: vi.fn().mockResolvedValue(offer),
           update: vi.fn().mockResolvedValue({ ...offer, status: "ACCEPTED" }),
           updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          findMany: vi.fn().mockResolvedValue([]),
         },
         lead: {
           findFirst: vi.fn().mockResolvedValue(lead),

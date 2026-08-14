@@ -110,6 +110,7 @@ export type AuditAction =
   | "TICKET_CLOSED"
   | "TICKET_REOPENED"
   | "TICKET_REPLIED"
+  | "TICKET_NOTIFICATION_FAILED"
   // ─── Settings ─────────────────────────────────────────────────────────────
   | "SETTINGS_UPDATED"
   | "WHATSAPP_CONNECTION_TOGGLED";

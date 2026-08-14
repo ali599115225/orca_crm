@@ -222,13 +222,13 @@ describe("Tasks operational and property-identity closure", () => {
     expect(completeApi).toContain(
       "where: { id, tenantId: session.tenantId }",
     );
-    expect(completeApi).toContain(
-      "where: { id: task.id, tenantId: session.tenantId }",
-    );
+    expect(completeApi).toContain("prisma.task.updateMany");
+    expect(completeApi).toContain('status: { in: ["PENDING", "OVERDUE"] }');
     expect(completeApi).toContain('action: "TASK_COMPLETED"');
     expect(completeApi).toContain('tableName: "tasks"');
     expect(completeApi).toContain("session.userId === task.assignedTo");
     expect(completeApi).toContain('task.status !== "PENDING" && task.status !== "OVERDUE"');
+    expect(completeApi).toContain('assignedTo: { not: session.userId }');
   });
 
   it("completes and verifies tasks instead of toggling them", () => {

@@ -1,6 +1,8 @@
 import "server-only";
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import {
+  publicHttpsJsonRequest,
+  requirePublicProviderUrl as requireSharedPublicProviderUrl,
+} from "@/lib/net/public-https";
 import type {
   PaymentCreateInput,
   PaymentProviderAdapter,
@@ -15,74 +17,83 @@ type CustomPaymentConfig = {
   credentials: Credentials;
 };
 
+type SafeJsonResponse = {
+  ok: boolean;
+  status: number;
+  payload: any;
+};
+
 function value(credentials: Credentials, key: string): string {
   return String(credentials[key] ?? "").trim();
 }
 
-function isPrivateIpv4(address: string): boolean {
-  const parts = address.split(".").map(Number);
-  if (parts.length !== 4 || parts.some(Number.isNaN)) return true;
-  const [a, b] = parts;
-  return (
-    a === 10 ||
-    a === 127 ||
-    a === 0 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    a >= 224
-  );
-}
-
-function isPrivateAddress(address: string): boolean {
-  if (isIP(address) === 4) return isPrivateIpv4(address);
-  const normalized = address.toLowerCase();
-  return (
-    normalized === "::1" ||
-    normalized === "::" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    /^fe[89ab]/.test(normalized) ||
-    normalized.startsWith("::ffff:127.") ||
-    normalized.startsWith("::ffff:10.") ||
-    normalized.startsWith("::ffff:192.168.")
-  );
-}
-
 async function requirePublicHttpsUrl(input: string): Promise<URL> {
-  const url = new URL(input);
-  if (url.protocol !== "https:" || url.username || url.password) {
+  try {
+    return await requireSharedPublicProviderUrl(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
+      throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
+    }
     throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
   }
+}
 
-  const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".local")
-  ) {
-    throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
-  }
+export async function requirePublicProviderUrl(
+  input: string,
+  allowedHosts?: readonly string[],
+): Promise<URL> {
+  return requireSharedPublicProviderUrl(input, allowedHosts);
+}
 
-  if (isIP(hostname)) {
-    if (isPrivateAddress(hostname)) {
-      throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
-    }
-  } else {
-    const addresses = await lookup(hostname, {
-      all: true,
-      verbatim: true,
+async function safeJsonRequest(input: {
+  url: URL;
+  method: "GET" | "POST";
+  headers: Record<string, string>;
+  body?: string;
+  timeoutMs: number;
+}): Promise<SafeJsonResponse> {
+  try {
+    const response = await publicHttpsJsonRequest({
+      url: input.url,
+      method: input.method,
+      headers: input.headers,
+      body: input.body,
+      timeoutMs: input.timeoutMs,
+      maxResponseBytes: 1_000_000,
     });
-    if (
-      addresses.length === 0 ||
-      addresses.some((entry) => isPrivateAddress(entry.address))
-    ) {
+    return {
+      ok: response.ok,
+      status: response.status,
+      payload: response.payload,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "PROVIDER_REQUEST_TIMEOUT") {
+      throw new Error("CUSTOM_PAYMENT_TIMEOUT");
+    }
+    if (message === "PROVIDER_RESPONSE_TOO_LARGE") {
+      throw new Error("CUSTOM_PAYMENT_RESPONSE_TOO_LARGE");
+    }
+    if (message === "PROVIDER_RESPONSE_ABORTED") {
+      throw new Error("CUSTOM_PAYMENT_RESPONSE_ABORTED");
+    }
+    if (message.startsWith("PROVIDER_NON_JSON_RESPONSE:")) {
+      throw new Error(
+        message.replace(
+          "PROVIDER_NON_JSON_RESPONSE:",
+          "CUSTOM_PAYMENT_NON_JSON_RESPONSE:",
+        ),
+      );
+    }
+    if (message === "PROVIDER_PRIVATE_HOST_BLOCKED") {
       throw new Error("CUSTOM_PAYMENT_PRIVATE_HOST_BLOCKED");
     }
+    if (message === "PROVIDER_PUBLIC_HTTPS_URL_REQUIRED") {
+      throw new Error("CUSTOM_PAYMENT_PUBLIC_HTTPS_URL_REQUIRED");
+    }
+    throw error;
   }
-
-  return url;
 }
 
 function getPath(payload: unknown, path: string): unknown {
@@ -125,17 +136,6 @@ function renderTemplateValue(
     /\{\{([A-Za-z0-9_]+)\}\}/g,
     (_, key: string) => String(variables[key] ?? ""),
   );
-}
-
-async function jsonResponse(response: Response): Promise<any> {
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(
-      `CUSTOM_PAYMENT_NON_JSON_RESPONSE:${response.status}:${text.slice(0, 300)}`,
-    );
-  }
 }
 
 function authHeaders(credentials: Credentials): Record<string, string> {
@@ -227,7 +227,8 @@ export function createCustomPaymentProvider(
         metadata,
       });
 
-      const response = await fetch(endpoint, {
+      const response = await safeJsonRequest({
+        url: endpoint,
         method: "POST",
         headers: {
           ...authHeaders(credentials),
@@ -236,11 +237,10 @@ export function createCustomPaymentProvider(
             : {}),
         },
         body: JSON.stringify(body),
-        redirect: "error",
-        signal: AbortSignal.timeout(20_000),
+        timeoutMs: 20_000,
       });
 
-      const payload = await jsonResponse(response);
+      const payload = response.payload;
       if (!response.ok) {
         throw new Error(
           `CUSTOM_PAYMENT_CREATE_FAILED:${response.status}:${JSON.stringify(payload).slice(0, 800)}`,
@@ -254,10 +254,7 @@ export function createCustomPaymentProvider(
         ) || "",
       );
       const redirectValue = String(
-        getPath(
-          payload,
-          value(credentials, "responseRedirectUrlPath"),
-        ) || "",
+        getPath(payload, value(credentials, "responseRedirectUrlPath")) || "",
       );
       const status = String(
         getPath(payload, value(credentials, "responseStatusPath")) ||
@@ -268,8 +265,7 @@ export function createCustomPaymentProvider(
         throw new Error("CUSTOM_PAYMENT_RESPONSE_MAPPING_FAILED");
       }
 
-      const redirectUrl =
-        await requirePublicHttpsUrl(redirectValue);
+      const redirectUrl = await requirePublicHttpsUrl(redirectValue);
 
       return {
         providerReference: reference,
@@ -300,14 +296,14 @@ export function createCustomPaymentProvider(
         new URL(verifyPath, baseUrl).toString(),
       );
 
-      const response = await fetch(endpoint, {
+      const response = await safeJsonRequest({
+        url: endpoint,
         method: "GET",
         headers: authHeaders(credentials),
-        redirect: "error",
-        signal: AbortSignal.timeout(15_000),
+        timeoutMs: 15_000,
       });
 
-      const payload = await jsonResponse(response);
+      const payload = response.payload;
       if (!response.ok) {
         throw new Error(
           `CUSTOM_PAYMENT_VERIFY_FAILED:${response.status}:${JSON.stringify(payload).slice(0, 800)}`,
@@ -333,16 +329,10 @@ export function createCustomPaymentProvider(
             ) || "",
           ) || providerReference,
         amountMinorUnits: Number(
-          getPath(
-            payload,
-            value(credentials, "responseAmountPath"),
-          ) || 0,
+          getPath(payload, value(credentials, "responseAmountPath")) || 0,
         ),
         currency: String(
-          getPath(
-            payload,
-            value(credentials, "responseCurrencyPath"),
-          ) || "SAR",
+          getPath(payload, value(credentials, "responseCurrencyPath")) || "SAR",
         ).toUpperCase(),
         providerStatus: status,
         rawPayload: payload,

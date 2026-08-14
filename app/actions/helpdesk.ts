@@ -4,10 +4,9 @@ import { revalidatePath } from "next/cache";
 
 import { assertServerActionRole, TENANT_ROLES } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
-import { sendEmail } from "@/lib/email";
-import { sendSMSNotification, sendWhatsAppNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { notifyTicketDestination } from "@/lib/support/ticket-destination";
 import { runWithTenantContext } from "@/lib/tenant-context";
 
 const HELPDESK_WRITE_ROLES = [
@@ -48,94 +47,6 @@ async function requireHelpdeskSession(allowedRoles: readonly string[]) {
   if (!session) throw new Error("UNAUTHORIZED");
 
   return await assertServerActionRole(session, allowedRoles);
-}
-
-async function loadTicketDestination(tenantId: string, ticketId: string) {
-  const created = await prisma.auditLog.findFirst({
-    where: {
-      tenantId,
-      tableName: "tickets",
-      recordId: ticketId,
-      action: "TICKET_CREATED",
-    },
-    orderBy: { createdAt: "asc" },
-    select: { details: true },
-  });
-  try {
-    return JSON.parse(created?.details || "{}") as {
-      email?: string;
-      phone?: string;
-      channel?: string;
-    };
-  } catch {
-    return {};
-  }
-}
-
-async function notifyTicketDestination(input: {
-  tenantId: string;
-  ticketId: string;
-  subject: string;
-  message: string;
-}) {
-  const destination = await loadTicketDestination(input.tenantId, input.ticketId);
-  const channel = String(destination.channel || "").toUpperCase();
-  const email = String(destination.email || "").trim();
-  const phone = String(destination.phone || "").trim();
-
-  if (channel === "EMAIL") {
-    if (!email) throw new Error("وجهة العميل غير موجودة.");
-    const result = await sendEmail({
-      tenantId: input.tenantId,
-      to: email,
-      subject: input.subject,
-      htmlBody: input.message,
-    });
-    if (!result.success) {
-      throw new Error(result.code || result.error || "EMAIL_PROVIDER_NOT_CONFIGURED");
-    }
-    return;
-  }
-
-  if (channel === "SMS") {
-    if (!phone) throw new Error("وجهة العميل غير موجودة.");
-    const result = await sendSMSNotification(phone, input.message, {
-      tenantId: input.tenantId,
-      ticketId: input.ticketId,
-    });
-    if (!result.success) {
-      throw new Error(result.error || "SMS_NOT_CONFIGURED");
-    }
-    return;
-  }
-
-  if (channel === "WHATSAPP") {
-    if (!phone) throw new Error("وجهة العميل غير موجودة.");
-    try {
-      const result = await sendWhatsAppNotification(
-        input.tenantId,
-        phone,
-        "support_ticket_update",
-        [input.message],
-      );
-      if (!result.success) {
-        throw new Error(
-          result.errorCode || result.error || "WHATSAPP_NOT_CONFIGURED",
-        );
-      }
-    } catch (error) {
-      const code =
-        error && typeof error === "object" && "code" in error
-          ? String((error as { code?: string }).code)
-          : error instanceof Error
-            ? error.message
-            : "WHATSAPP_NOT_CONFIGURED";
-      throw new Error(code || "WHATSAPP_NOT_CONFIGURED");
-    }
-    return;
-  }
-
-  throw new Error("وجهة العميل غير موجودة.");
 }
 
 export async function getTicketsAction() {
@@ -181,6 +92,15 @@ export async function createTicketAction(formData: FormData) {
 
     if (title.length < 3 || description.length < 5) {
       throw new Error("عنوان التذكرة وتفاصيلها مطلوبة.");
+    }
+    if (channel && !["EMAIL", "SMS", "WHATSAPP"].includes(channel)) {
+      throw new Error("قناة التواصل غير صالحة.");
+    }
+    if (channel === "EMAIL" && !email) {
+      throw new Error("البريد الإلكتروني مطلوب لقناة البريد.");
+    }
+    if ((channel === "SMS" || channel === "WHATSAPP") && !phone) {
+      throw new Error("رقم الجوال مطلوب لقناة التواصل المحددة.");
     }
 
     return await runWithTenantContext(
@@ -251,19 +171,38 @@ async function updateTicketStatusAction(
           recordId: ticket.id,
         });
 
+        let notificationError: string | null = null;
         if (status === "CLOSED") {
-          await notifyTicketDestination({
+          const notification = await notifyTicketDestination({
             tenantId: session.tenantId,
             ticketId: ticket.id,
             subject: `Ticket closed: ${ticket.title}`,
             message: ticket.title,
           });
+          if (!notification.success) {
+            notificationError = notification.error;
+            try {
+              await prisma.auditLog.create({
+                data: {
+                  tenantId: session.tenantId,
+                  userId: session.userId,
+                  action: "TICKET_NOTIFICATION_FAILED",
+                  tableName: "tickets",
+                  recordId: ticket.id,
+                  details: JSON.stringify({ code: notificationError.slice(0, 200) }),
+                },
+              });
+            } catch (auditError) {
+              console.error("[Helpdesk] Failed to record notification failure audit:", auditError);
+            }
+          }
         }
 
         revalidatePath("/operations/helpdesk");
         return {
           success: true as const,
           ticket: serializeTicket(ticket),
+          notificationError,
         };
       },
     );

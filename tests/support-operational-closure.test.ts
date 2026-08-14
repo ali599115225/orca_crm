@@ -26,6 +26,7 @@ describe("Support Center operational and property-identity closure", () => {
     "app/api/v1/support/tickets/[id]/reply/route.ts",
   );
   const audit = source("lib/audit.ts");
+  const destination = source("lib/support/ticket-destination.ts");
   const properties = source(
     "components/real-estate/properties/PropertiesWorkspace.tsx",
   );
@@ -220,14 +221,18 @@ describe("Support Center operational and property-identity closure", () => {
     expect(actions).toContain("email, phone, channel");
   });
 
-  it("sends close and reply through existing channels and fails closed", () => {
+  it("sends close and reply through one bounded shared destination dispatcher", () => {
     expect(actions).toContain("notifyTicketDestination");
-    expect(actions).toContain("sendEmail");
-    expect(actions).toContain("sendSMSNotification");
-    expect(replyApi).toContain("sendEmail");
-    expect(replyApi).toContain("EMAIL_PROVIDER_NOT_CONFIGURED");
-    expect(replyApi).toContain("SMS_NOT_CONFIGURED");
-    expect(replyApi).toContain("وجهة العميل غير موجودة.");
+    expect(replyApi).toContain("notifyTicketDestination");
+    expect(destination).toContain("sendEmail");
+    expect(destination).toContain("sendSMSNotification");
+    expect(destination).toContain("sendWhatsAppNotification");
+    expect(destination).not.toContain("Promise.race");
+    expect(destination).not.toContain("SUPPORT_NOTIFICATION_TIMEOUT_MS");
+    expect(destination).toContain("textBody: input.message");
+    expect(destination).toContain("EMAIL_PROVIDER_NOT_CONFIGURED");
+    expect(destination).toContain("SMS_NOT_CONFIGURED");
+    expect(destination).toContain("وجهة العميل غير موجودة.");
   });
 });
 

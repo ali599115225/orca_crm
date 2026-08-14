@@ -52,6 +52,15 @@ export async function sendSMSNotification(
   const destinationPresent = Boolean(String(to || "").trim());
 
   try {
+    if (!destinationPresent) {
+      await persistOutboundSmsAttempt({
+        ...context,
+        destinationPresent,
+        result: "SMS_DESTINATION_MISSING",
+      });
+      return { success: false, error: "SMS_DESTINATION_MISSING" };
+    }
+
     if (!SMS_API_KEY) {
       console.info("[SMS_DISABLED]", {
         recipientConfigured: destinationPresent,
@@ -85,6 +94,7 @@ export async function sendSMSNotification(
           numbers: to.replace("+", ""),
           msg: message,
         }),
+        signal: AbortSignal.timeout(15_000),
       },
     );
 

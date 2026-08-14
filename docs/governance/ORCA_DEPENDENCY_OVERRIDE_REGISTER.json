@@ -61,10 +61,10 @@
     },
     {
       "package": "nanoid",
-      "value": "3.3.17",
+      "value": "3.3.18",
       "owner": "Security Engineering",
-      "reason": "Pins the patched 3.x release required to close GHSA-2v37-7h3g-55p8 after the resumed PR #148 Production audit exposed the advisory.",
-      "introducedBy": "PR #148 security advisory remediation",
+      "reason": "Pins the patched 3.x release required to close GHSA-2v37-7h3g-55p8 after the advisory was updated to require nanoid 3.3.18.",
+      "introducedBy": "PR #148 security advisory remediation; patched release refreshed in PR #166",
       "reviewTrigger": "Review on every PostCSS or lockfile dependency update, on any new nanoid advisory, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
     }
