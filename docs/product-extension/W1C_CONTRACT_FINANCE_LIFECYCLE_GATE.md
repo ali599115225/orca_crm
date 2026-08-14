@@ -11,11 +11,11 @@ W1C follows the verified W1B merge. It does not create STEP 15 or reopen STEP 0â
 Introduce internal lifecycle services only, before any public API/UI write surface:
 
 1. create ContractDraft only from a tenant-owned published ContractTemplate + published ContractTemplateVersion;
-2. request/decide/finalize ContractApproval with fail-closed state transitions;
+2. request/decide/finalize ContractApproval with fail-closed state transitions and preserved request/decision evidence;
 3. create FinanceCase with tenant-safe legacy references;
 4. transition FinanceCase internal workflow through a closed state machine while appending FinanceCaseEvent;
 5. record external/provider authority state only with explicit provider reference + evidence, without silently changing internal workflow state;
-6. forbid the internal `PROVIDER_APPROVED` state unless persisted provider approval evidence exists and the current authority state is explicitly `APPROVED`.
+6. forbid provider-approved transaction progress unless persisted matching provider approval evidence exists and remains current.
 
 ## Contract lifecycle invariants
 
@@ -24,6 +24,7 @@ Introduce internal lifecycle services only, before any public API/UI write surfa
 - Optional Contract / FinanceCase links are tenant-scoped and mutually consistent.
 - New drafts start `DRAFT`.
 - ContractApproval starts `PENDING` and may be decided once as `APPROVED` or `REJECTED`.
+- Approval decision preserves the original request actor/time/reason/evidence together with the decision actor/reason/evidence in the approval evidence record; request evidence is not overwritten and lost.
 - Final draft approval requires at least one ContractApproval and every persisted approval to be `APPROVED`.
 - Draft approval changes status only; immutable `ISSUED` evidence remains owned by the verified W1B snapshot service.
 - W1C exposes no content-edit function after approval request. A later governed editing slice must explicitly stale/reset approvals when material content changes.
@@ -36,8 +37,9 @@ Introduce internal lifecycle services only, before any public API/UI write surfa
 - Only allowlisted transitions are accepted.
 - Provider/authority state may be recorded only with non-empty provider, provider reference, status, and evidence.
 - Recording provider/authority state does not alter `internalStatus`.
-- Entering internal state `PROVIDER_APPROVED` additionally requires current `authorityStatus = APPROVED`, non-empty authority provider/reference, and a persisted `finance_case.authority_evidence_recorded` event carrying approval evidence for that provider.
-- The transition event to `PROVIDER_APPROVED` retains the supporting authority-evidence event id for traceability.
+- Entering internal state `PROVIDER_APPROVED` requires current `authorityStatus = APPROVED`, non-empty authority provider/reference, and a persisted `finance_case.authority_evidence_recorded` event carrying approval evidence for that provider.
+- Moving from `PROVIDER_APPROVED` to `READY_FOR_TRANSACTION` revalidates the same current provider approval state and persisted approval evidence; a later rejection/expiry/authority change blocks transaction readiness.
+- Provider-approved transition events retain the supporting authority-evidence event id for traceability.
 - W1C does not submit to any bank/provider and does not claim ORCA approval is provider approval.
 - PaymentPlan remains company receivables only and is not touched by FinanceCase services.
 
@@ -68,10 +70,12 @@ Introduce internal lifecycle services only, before any public API/UI write surfa
 
 - tenant-safe template, draft, approval, finance-case, and legacy reference predicates are explicit;
 - invalid ContractDraft/Approval transitions fail closed;
+- approval request evidence remains preserved alongside decision evidence;
 - FinanceCase invalid/reverse/terminal transitions fail closed;
 - FinanceCase transition + event append is atomic at SERIALIZABLE isolation;
 - authority recording requires evidence and does not mutate internalStatus;
 - `PROVIDER_APPROVED` cannot be entered without persisted matching APPROVED authority evidence;
+- `READY_FOR_TRANSACTION` cannot be entered if that provider approval is no longer current and evidenced;
 - W1C services contain no PaymentPlan/Installment/Invoice write operations;
 - G8 focused tests pass;
 - Prisma validate/generate, repository lint/typecheck, full ORCA CI through Build pass on exact head;
