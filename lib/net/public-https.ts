@@ -36,7 +36,9 @@ function isNonPublicIpv4(address: string): boolean {
 
 function normalizeMappedAddress(address: string): string {
   const normalized = address.toLowerCase();
-  const dotted = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  const dotted = normalized.match(
+    /^(?:::ffff:|0:0:0:0:0:ffff:)(\d+\.\d+\.\d+\.\d+)$/i,
+  );
   if (dotted?.[1]) return dotted[1];
 
   const hex = normalized.match(
