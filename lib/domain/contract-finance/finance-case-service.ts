@@ -182,7 +182,13 @@ export async function transitionFinanceCaseInternalStatus(
     async (tx) => {
       const financeCase = await tx.financeCase.findFirst({
         where: { id: financeCaseId, tenantId },
-        select: { id: true, internalStatus: true },
+        select: {
+          id: true,
+          internalStatus: true,
+          authorityStatus: true,
+          authorityProvider: true,
+          authorityReference: true,
+        },
       });
       if (!financeCase) {
         throw new W1FinanceLifecycleError("W1_FINANCE_CASE_NOT_FOUND_FOR_TENANT");
@@ -194,6 +200,34 @@ export async function transitionFinanceCaseInternalStatus(
       const currentStatus = financeCase.internalStatus;
       if (!isFinanceInternalTransitionAllowed(currentStatus, nextStatus)) {
         throw new W1FinanceLifecycleError("W1_FINANCE_INTERNAL_TRANSITION_INVALID");
+      }
+
+      let providerApprovalEvidenceEventId: string | null = null;
+      if (nextStatus === "PROVIDER_APPROVED") {
+        if (
+          financeCase.authorityStatus !== "APPROVED" ||
+          !financeCase.authorityProvider ||
+          !financeCase.authorityReference
+        ) {
+          throw new W1FinanceLifecycleError("W1_FINANCE_PROVIDER_APPROVAL_EVIDENCE_REQUIRED");
+        }
+
+        const providerApprovalEvidence = await tx.financeCaseEvent.findFirst({
+          where: {
+            tenantId,
+            financeCaseId: financeCase.id,
+            eventType: "finance_case.authority_evidence_recorded",
+            authorityStatus: "APPROVED",
+            provider: financeCase.authorityProvider,
+          },
+          orderBy: { occurredAt: "desc" },
+          select: { id: true, evidenceJson: true },
+        });
+
+        if (!providerApprovalEvidence?.evidenceJson) {
+          throw new W1FinanceLifecycleError("W1_FINANCE_PROVIDER_APPROVAL_EVIDENCE_REQUIRED");
+        }
+        providerApprovalEvidenceEventId = providerApprovalEvidence.id;
       }
 
       const updated = await tx.financeCase.update({
@@ -208,7 +242,11 @@ export async function transitionFinanceCaseInternalStatus(
           eventType: "finance_case.internal_status_changed",
           internalStatus: nextStatus,
           actorId,
-          evidenceJson: { from: currentStatus, to: nextStatus },
+          evidenceJson: {
+            from: currentStatus,
+            to: nextStatus,
+            providerApprovalEvidenceEventId,
+          },
         },
       });
 
