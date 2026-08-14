@@ -8,7 +8,7 @@ import {
 } from "@/lib/domain/contract-finance/legacy-reference-guard";
 import {
   computeContractSnapshotDigest,
-  type ContractSnapshotIssueInput,
+  type ContractSnapshotDigestInput,
 } from "@/lib/domain/contract-finance/contract-snapshot-service";
 
 function makeLookup(overrides: Partial<W1LegacyReferenceLookup> = {}): W1LegacyReferenceLookup {
@@ -26,7 +26,9 @@ function makeLookup(overrides: Partial<W1LegacyReferenceLookup> = {}): W1LegacyR
   };
 }
 
-function snapshotInput(structuredFacts: ContractSnapshotIssueInput["structuredFacts"]): ContractSnapshotIssueInput {
+function snapshotInput(
+  structuredFacts: ContractSnapshotDigestInput["structuredFacts"],
+): ContractSnapshotDigestInput {
   return {
     tenantId: "tenant-1",
     draftId: "draft-1",
@@ -105,6 +107,20 @@ describe("W1B contract / finance service integrity gate", () => {
     const left = computeContractSnapshotDigest(snapshotInput({ salePrice: 800000 }));
     const right = computeContractSnapshotDigest(snapshotInput({ salePrice: 810000 }));
     expect(right).not.toBe(left);
+  });
+
+  it("issues only an approved draft and derives approval evidence from database records", () => {
+    const source = readFileSync(
+      join(process.cwd(), "lib", "domain", "contract-finance", "contract-snapshot-service.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain('draft.status !== "APPROVED"');
+    expect(source).toContain('approval.status !== "APPROVED"');
+    expect(source).toContain("approvals: {");
+    expect(source).toContain("const approvalSnapshot");
+    expect(source).toContain('snapshotType: "ISSUED"');
+    expect(source).not.toMatch(/input\.approvalSnapshot/);
   });
 
   it("keeps the snapshot service append-oriented with no update/delete capability", () => {
