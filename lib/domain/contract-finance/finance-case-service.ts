@@ -2,10 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  assertW1LegacyReferenceIntegrity,
-  type W1LegacyReferenceLookup,
-} from "./legacy-reference-guard";
+import { assertW1LegacyReferenceIntegrity } from "./legacy-reference-guard";
 
 export class W1FinanceLifecycleError extends Error {
   constructor(public readonly code: string) {
@@ -92,23 +89,6 @@ export type RecordFinanceAuthorityInput = {
   actorId: string;
 };
 
-function txLegacyLookup(tx: Prisma.TransactionClient): W1LegacyReferenceLookup {
-  return {
-    async findLead(tenantId, id) {
-      return await tx.lead.findFirst({ where: { id, tenantId }, select: { id: true } });
-    },
-    async findUnit(tenantId, id) {
-      return await tx.unit.findFirst({ where: { id, tenantId }, select: { id: true } });
-    },
-    async findContract(tenantId, id) {
-      return await tx.contract.findFirst({
-        where: { id, tenantId },
-        select: { id: true, unitId: true, leadId: true },
-      });
-    },
-  };
-}
-
 export async function createFinanceCase(input: CreateFinanceCaseInput) {
   if (
     !input.tenantId ||
@@ -129,7 +109,20 @@ export async function createFinanceCase(input: CreateFinanceCaseInput) {
           unitId: input.unitId,
           contractId: input.contractId,
         },
-        txLegacyLookup(tx),
+        {
+          async findLead(tenantId, id) {
+            return await tx.lead.findFirst({ where: { id, tenantId }, select: { id: true } });
+          },
+          async findUnit(tenantId, id) {
+            return await tx.unit.findFirst({ where: { id, tenantId }, select: { id: true } });
+          },
+          async findContract(tenantId, id) {
+            return await tx.contract.findFirst({
+              where: { id, tenantId },
+              select: { id: true, unitId: true, leadId: true },
+            });
+          },
+        },
       );
 
       const financeCase = await tx.financeCase.create({
