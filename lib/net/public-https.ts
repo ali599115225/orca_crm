@@ -9,27 +9,24 @@ type PublicHttpsJsonResponse = {
   payload: unknown;
 };
 
-function isNonPublicIpv4(address: string): boolean {
+function isPrivateIpv4(address: string): boolean {
   const parts = address.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return true;
-  }
-
+  if (parts.length !== 4 || parts.some(Number.isNaN)) return true;
   const [a, b, c] = parts;
   return (
     a === 0 ||
     a === 10 ||
     a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 0 && c === 0) ||
-    (a === 192 && b === 0 && c === 2) ||
-    (a === 192 && b === 88 && c === 99) ||
     (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113) ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 192 && b === 0 && c === 0) || // IETF protocol assignments
+    (a === 192 && b === 0 && c === 2) || // TEST-NET-1 (documentation)
+    (a === 192 && b === 88 && c === 99) || // deprecated 6to4 relay anycast
+    (a === 198 && (b === 18 || b === 19)) || // benchmark testing
+    (a === 198 && b === 51 && c === 100) || // TEST-NET-2 (documentation)
+    (a === 203 && b === 0 && c === 113) || // TEST-NET-3 (documentation)
     a >= 224
   );
 }
@@ -49,32 +46,23 @@ function normalizeMappedAddress(address: string): string {
   return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
 }
 
-function isNonPublicIpv6(address: string): boolean {
-  const normalized = address.toLowerCase();
+function isPrivateAddress(address: string): boolean {
+  const candidate = normalizeMappedAddress(address);
+  if (isIP(candidate) === 4) return isPrivateIpv4(candidate);
+  const normalized = candidate.toLowerCase();
   return (
     normalized === "::1" ||
     normalized === "::" ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||
-    /^fe[89ab]/.test(normalized) ||
-    normalized.startsWith("ff") ||
-    normalized.startsWith("100:") ||
-    normalized.startsWith("64:ff9b:") ||
-    normalized.startsWith("2001:db8:") ||
-    normalized.startsWith("2002:")
+    normalized.startsWith("ff") || // multicast ff00::/8
+    /^fe[89ab]/.test(normalized)
   );
-}
-
-function isNonPublicAddress(address: string): boolean {
-  const candidate = normalizeMappedAddress(address);
-  if (isIP(candidate) === 4) return isNonPublicIpv4(candidate);
-  if (isIP(candidate) === 6) return isNonPublicIpv6(candidate);
-  return true;
 }
 
 function assertPublicAddress(address: string): void {
   const candidate = normalizeMappedAddress(address);
-  if (!isIP(candidate) || isNonPublicAddress(candidate)) {
+  if (!isIP(candidate) || isPrivateAddress(candidate)) {
     throw new Error("PROVIDER_PRIVATE_HOST_BLOCKED");
   }
 }
@@ -174,7 +162,6 @@ export async function publicHttpsJsonRequest(input: {
 
   return await new Promise<PublicHttpsJsonResponse>((resolve, reject) => {
     let settled = false;
-    let request: ReturnType<typeof https.request>;
     const settle = <T>(fn: (value: T) => void, value: T) => {
       if (settled) return;
       settled = true;
@@ -182,10 +169,10 @@ export async function publicHttpsJsonRequest(input: {
       fn(value);
     };
     const deadline = setTimeout(() => {
-      request?.destroy(new Error("PROVIDER_REQUEST_TIMEOUT"));
+      request.destroy(new Error("PROVIDER_REQUEST_TIMEOUT"));
     }, timeoutMs);
 
-    request = https.request(
+    const request = https.request(
       url,
       {
         method: input.method,
