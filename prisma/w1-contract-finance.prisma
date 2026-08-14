@@ -232,6 +232,7 @@ model FinanceProviderOffer {
   updatedAt         DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_finance_provider_offers_tenant_id")
+  @@unique([tenantId, financeCaseId, provider, providerReference], map: "uq_finance_provider_offers_case_provider_reference")
   @@index([tenantId, financeCaseId, recordStatus], map: "idx_finance_provider_offers_case_status")
   @@index([tenantId, provider, authorityStatus], map: "idx_finance_provider_offers_provider_authority")
   @@map("finance_provider_offers")
