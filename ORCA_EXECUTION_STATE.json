@@ -11,7 +11,8 @@
   "pinnedBaselineSha": "2b9c0505c99c7074de1d213c720022cff4626727",
   "finalAuthoritativeReference": {
     "branch": "work/orca-unified-reference-20260813",
-    "sha": "769b0a3de7ff09e00e2baf3c438886a6b616ab1d",
+    "sha": "2b66015f76d999dc343533dffe7b1d7005478394",
+    "baselineGateSha": "769b0a3de7ff09e00e2baf3c438886a6b616ab1d",
     "orcaCiRun": 31673473533,
     "orcaCiConclusion": "SUCCESS",
     "runtimePageVerification": "10_OF_10_PASS",
@@ -162,7 +163,33 @@
     "authorities": ["SDAIA","NCA","CST","REGA","EJAR","ZATCA","MINISTRY_OF_COMMERCE","SAIP","BUREAU_OF_EXPERTS"]
   },
   "postClosureMaintenance": {
-    "authorized": true
+    "authorized": true,
+    "latest": {
+      "pr": 166,
+      "status": "MERGED_CLOSED",
+      "headSha": "a9b9a02adf9f9a69e07d49415a6f28c918af8d3b",
+      "mergeCommitSha": "2b66015f76d999dc343533dffe7b1d7005478394",
+      "mergedAt": "2026-08-14T04:43:29Z",
+      "orcaCiRun": 31765205138,
+      "orcaCiConclusion": "SUCCESS",
+      "ciVerifiedHeadSha": "a9b9a02adf9f9a69e07d49415a6f28c918af8d3b",
+      "focusedSuite": {
+        "files": "12/12",
+        "tests": "163/163",
+        "result": "PASS"
+      },
+      "typecheck": "PASS",
+      "codeRabbit": "PASS_NO_ACTIONABLE_COMMENTS",
+      "unresolvedReviewThreads": 0,
+      "prismaSchemaChanged": false,
+      "migrationsChanged": false,
+      "deploy": false,
+      "productionAction": false,
+      "providerActivation": false,
+      "blocked": [
+        "TICKET_DESTINATION_PII_MIGRATION_REQUIRES_MIGRATION_AUTHORIZATION"
+      ]
+    }
   },
   "governanceRef": "governance/orca-workflow-lock"
 }
