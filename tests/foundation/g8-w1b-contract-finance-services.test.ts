@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertW1LegacyReferenceIntegrity,
-  W1ReferenceIntegrityError,
   type W1LegacyReferenceLookup,
 } from "@/lib/domain/contract-finance/legacy-reference-guard";
 import {
@@ -68,7 +67,7 @@ describe("W1B contract / finance service integrity gate", () => {
           },
         }),
       ),
-    ).rejects.toMatchObject<W1ReferenceIntegrityError>({
+    ).rejects.toMatchObject({
       code: "W1_LEAD_NOT_FOUND_FOR_TENANT",
     });
   });
@@ -79,7 +78,7 @@ describe("W1B contract / finance service integrity gate", () => {
         { tenantId: "tenant-1", unitId: "unit-2", contractId: "contract-1" },
         makeLookup(),
       ),
-    ).rejects.toMatchObject<W1ReferenceIntegrityError>({
+    ).rejects.toMatchObject({
       code: "W1_CONTRACT_UNIT_MISMATCH",
     });
   });
@@ -90,7 +89,7 @@ describe("W1B contract / finance service integrity gate", () => {
         { tenantId: "tenant-1", leadId: "lead-2", contractId: "contract-1" },
         makeLookup(),
       ),
-    ).rejects.toMatchObject<W1ReferenceIntegrityError>({
+    ).rejects.toMatchObject({
       code: "W1_CONTRACT_LEAD_MISMATCH",
     });
   });
