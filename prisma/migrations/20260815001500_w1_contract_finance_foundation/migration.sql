@@ -2,7 +2,6 @@
 -- Additive only. No production migration/backfill/provider action is performed here.
 -- Legacy Contract / Lead / Unit references are scalar UUIDs in W1A; no existing
 -- table, column, constraint, or row is altered by this migration.
--- Every W1A business table is database-bound to tenants with ON DELETE CASCADE.
 
 CREATE TABLE "contract_templates" (
   "id" UUID NOT NULL DEFAULT gen_random_uuid(),
@@ -17,8 +16,7 @@ CREATE TABLE "contract_templates" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "contract_templates_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_templates_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "uq_contract_templates_tenant_code" UNIQUE ("tenant_id", "code"),
-  CONSTRAINT "fk_contract_templates_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "uq_contract_templates_tenant_code" UNIQUE ("tenant_id", "code")
 );
 CREATE INDEX "idx_contract_templates_tenant_status" ON "contract_templates" ("tenant_id", "status");
 CREATE INDEX "idx_contract_templates_tenant_type" ON "contract_templates" ("tenant_id", "contract_type");
@@ -38,8 +36,7 @@ CREATE TABLE "contract_clause_definitions" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "contract_clause_definitions_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_clause_definitions_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "uq_contract_clause_definitions_tenant_code_version" UNIQUE ("tenant_id", "code", "version"),
-  CONSTRAINT "fk_contract_clause_definitions_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "uq_contract_clause_definitions_tenant_code_version" UNIQUE ("tenant_id", "code", "version")
 );
 CREATE INDEX "idx_contract_clause_definitions_tenant_risk_active" ON "contract_clause_definitions" ("tenant_id", "risk_tier", "is_active");
 
@@ -71,8 +68,7 @@ CREATE TABLE "finance_cases" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "finance_cases_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_finance_cases_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "uq_finance_cases_tenant_case_number" UNIQUE ("tenant_id", "case_number"),
-  CONSTRAINT "fk_finance_cases_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "uq_finance_cases_tenant_case_number" UNIQUE ("tenant_id", "case_number")
 );
 CREATE INDEX "idx_finance_cases_tenant_internal_status" ON "finance_cases" ("tenant_id", "internal_status");
 CREATE INDEX "idx_finance_cases_tenant_purpose" ON "finance_cases" ("tenant_id", "purpose");
@@ -95,7 +91,6 @@ CREATE TABLE "contract_template_versions" (
   CONSTRAINT "contract_template_versions_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_template_versions_tenant_id" UNIQUE ("tenant_id", "id"),
   CONSTRAINT "uq_contract_template_versions_template_version" UNIQUE ("template_id", "version"),
-  CONSTRAINT "fk_contract_template_versions_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_template_versions_template" FOREIGN KEY ("tenant_id", "template_id") REFERENCES "contract_templates"("tenant_id", "id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX "idx_contract_template_versions_tenant_template_status" ON "contract_template_versions" ("tenant_id", "template_id", "status");
@@ -118,7 +113,6 @@ CREATE TABLE "contract_drafts" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "contract_drafts_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_drafts_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "fk_contract_drafts_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_drafts_template" FOREIGN KEY ("tenant_id", "template_id") REFERENCES "contract_templates"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_drafts_template_version" FOREIGN KEY ("tenant_id", "template_version_id") REFERENCES "contract_template_versions"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_drafts_finance_case" FOREIGN KEY ("tenant_id", "finance_case_id") REFERENCES "finance_cases"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -145,7 +139,6 @@ CREATE TABLE "contract_snapshots" (
   "signed_at" TIMESTAMPTZ,
   CONSTRAINT "contract_snapshots_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_snapshots_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "fk_contract_snapshots_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_snapshots_draft" FOREIGN KEY ("tenant_id", "draft_id") REFERENCES "contract_drafts"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_snapshots_template_version" FOREIGN KEY ("tenant_id", "template_version_id") REFERENCES "contract_template_versions"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -167,7 +160,6 @@ CREATE TABLE "contract_approvals" (
   "decided_at" TIMESTAMPTZ,
   CONSTRAINT "contract_approvals_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_approvals_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "fk_contract_approvals_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_approvals_draft" FOREIGN KEY ("tenant_id", "draft_id") REFERENCES "contract_drafts"("tenant_id", "id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX "idx_contract_approvals_tenant_draft_status" ON "contract_approvals" ("tenant_id", "draft_id", "status");
@@ -190,7 +182,6 @@ CREATE TABLE "contract_amendments" (
   CONSTRAINT "contract_amendments_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_contract_amendments_tenant_id" UNIQUE ("tenant_id", "id"),
   CONSTRAINT "uq_contract_amendments_tenant_resulting_snapshot" UNIQUE ("tenant_id", "resulting_snapshot_id"),
-  CONSTRAINT "fk_contract_amendments_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_amendments_source_snapshot" FOREIGN KEY ("tenant_id", "source_snapshot_id") REFERENCES "contract_snapshots"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "fk_contract_amendments_resulting_snapshot" FOREIGN KEY ("tenant_id", "resulting_snapshot_id") REFERENCES "contract_snapshots"("tenant_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -220,7 +211,6 @@ CREATE TABLE "finance_provider_offers" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "finance_provider_offers_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_finance_provider_offers_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "fk_finance_provider_offers_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_finance_provider_offers_case" FOREIGN KEY ("tenant_id", "finance_case_id") REFERENCES "finance_cases"("tenant_id", "id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX "idx_finance_provider_offers_case_status" ON "finance_provider_offers" ("tenant_id", "finance_case_id", "record_status");
@@ -239,7 +229,6 @@ CREATE TABLE "finance_case_events" (
   "occurred_at" TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   CONSTRAINT "finance_case_events_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "uq_finance_case_events_tenant_id" UNIQUE ("tenant_id", "id"),
-  CONSTRAINT "fk_finance_case_events_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "fk_finance_case_events_case" FOREIGN KEY ("tenant_id", "finance_case_id") REFERENCES "finance_cases"("tenant_id", "id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX "idx_finance_case_events_case_time" ON "finance_case_events" ("tenant_id", "finance_case_id", "occurred_at");
