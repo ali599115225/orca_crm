@@ -27,17 +27,73 @@ function generateIdempotencyKey(): string {
   return `orca-${randomUUID()}`;
 }
 
+function responseObject(value: unknown, errorCode: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(errorCode);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requireHttpsRedirect(value: unknown): string {
+  const redirectUrl = String(value || "").trim();
+  if (!redirectUrl) throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+  try {
+    const parsed = new URL(redirectUrl);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
+      throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+    }
+  } catch {
+    throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
+  }
+  return redirectUrl;
+}
+
+export function mapPaylinkVerification(
+  value: unknown,
+  fallbackProviderReference: string,
+): PaymentVerificationResult {
+  const invoice = responseObject(value, "PAYLINK_VERIFY_RESPONSE_INVALID");
+  const status = String(invoice.orderStatus || invoice.status || "");
+  const paid = status.toUpperCase() === "PAID";
+  const rawAmount = invoice.amount;
+  const amountSar = Number(rawAmount);
+
+  if (
+    rawAmount == null ||
+    rawAmount === "" ||
+    !Number.isFinite(amountSar) ||
+    amountSar < 0 ||
+    (paid && amountSar <= 0)
+  ) {
+    throw new Error("PAYLINK_VERIFY_RESPONSE_INVALID");
+  }
+
+  return {
+    paid,
+    providerReference: String(
+      invoice.transactionNo || invoice.id || fallbackProviderReference,
+    ),
+    amountMinorUnits: Math.round(amountSar * 100),
+    currency: "SAR",
+    providerStatus: status || "unknown",
+    rawPayload: invoice,
+  };
+}
+
 export const paylinkProvider: PaymentProviderAdapter = {
   code: "PAYLINK",
 
   async createPayment(input: PaymentCreateInput): Promise<PaymentProviderResult> {
     const secret = getPaylinkSecret();
     if (!secret) throw new Error("PAYLINK_SECRET_KEY not configured");
+    if (input.currency.toUpperCase() !== "SAR") {
+      throw new Error("PAYLINK_CURRENCY_NOT_SUPPORTED");
+    }
 
     const amountSar = input.amountMinorUnits / 100;
     const body = {
       amount: amountSar,
-      currency: input.currency,
+      currency: "SAR",
       description: input.description,
       callback_url: input.callbackUrl,
       metadata: {
@@ -55,6 +111,7 @@ export const paylinkProvider: PaymentProviderAdapter = {
         "Idempotency-Key": generateIdempotencyKey(),
       },
       body: JSON.stringify(body),
+      redirect: "error",
       signal: AbortSignal.timeout(20_000),
     });
 
@@ -63,10 +120,10 @@ export const paylinkProvider: PaymentProviderAdapter = {
       throw new Error(`Paylink create invoice failed: ${text}`);
     }
 
-    const invoice = await res.json();
+    const invoice = responseObject(await res.json(), "PAYLINK_CREATE_RESPONSE_INVALID");
     const providerReference = String(invoice.transactionNo || invoice.id || "").trim();
-    const redirectUrl = String(invoice.url || invoice.payment_url || "").trim();
-    if (!providerReference || !redirectUrl) {
+    const redirectUrl = requireHttpsRedirect(invoice.url || invoice.payment_url);
+    if (!providerReference) {
       throw new Error("PAYLINK_CREATE_RESPONSE_INVALID");
     }
 
@@ -84,6 +141,7 @@ export const paylinkProvider: PaymentProviderAdapter = {
 
     const res = await fetch(`${getPaylinkBaseUrl()}/api/v1/invoice/${encodeURIComponent(providerReference)}`, {
       headers: { Authorization: `Bearer ${secret}` },
+      redirect: "error",
       signal: AbortSignal.timeout(15_000),
     });
 
@@ -91,15 +149,6 @@ export const paylinkProvider: PaymentProviderAdapter = {
       throw new Error(`Paylink verify failed: ${res.status}`);
     }
 
-    const invoice = await res.json();
-    const paid = invoice.orderStatus === "PAID" || invoice.status === "paid";
-    return {
-      paid,
-      providerReference: invoice.transactionNo || invoice.id || providerReference,
-      amountMinorUnits: Math.round(Number(invoice.amount || 0) * 100),
-      currency: "SAR",
-      providerStatus: invoice.orderStatus || invoice.status || "unknown",
-      rawPayload: invoice,
-    };
+    return mapPaylinkVerification(await res.json(), providerReference);
   },
 };
