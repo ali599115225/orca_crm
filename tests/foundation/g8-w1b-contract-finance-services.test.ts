@@ -123,13 +123,25 @@ describe("W1B contract / finance service integrity gate", () => {
     expect(source).not.toMatch(/input\.approvalSnapshot/);
   });
 
+  it("issues the approved snapshot atomically at SERIALIZABLE isolation", () => {
+    const source = readFileSync(
+      join(process.cwd(), "lib", "domain", "contract-finance", "contract-snapshot-service.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("prisma.$transaction(");
+    expect(source).toContain("Prisma.TransactionIsolationLevel.Serializable");
+    expect(source).toContain("tx.contractDraft.findFirst");
+    expect(source).toContain("tx.contractSnapshot.create");
+  });
+
   it("keeps the snapshot service append-oriented with no update/delete capability", () => {
     const source = readFileSync(
       join(process.cwd(), "lib", "domain", "contract-finance", "contract-snapshot-service.ts"),
       "utf8",
     );
 
-    expect(source).toContain("prisma.contractSnapshot.create");
+    expect(source).toContain("tx.contractSnapshot.create");
     expect(source).toContain("prisma.contractSnapshot.findFirst");
     expect(source).not.toMatch(/contractSnapshot\.(?:update|updateMany|delete|deleteMany|upsert)\s*\(/);
     expect(source).not.toMatch(/export\s+(?:async\s+)?function\s+(?:update|delete|mutate)ContractSnapshot/i);
