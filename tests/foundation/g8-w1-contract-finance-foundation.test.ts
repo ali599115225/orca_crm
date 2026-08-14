@@ -119,6 +119,13 @@ describe("W1A Contract Studio + Finance Case foundation", () => {
     expect(createTables).toHaveLength(10);
     expect(new Set(createTables)).toEqual(new Set(W1_TABLES));
 
+    const tenantForeignKeys = [
+      ...MIGRATION.matchAll(
+        /FOREIGN KEY \("tenant_id"\) REFERENCES "tenants"\("id"\) ON DELETE CASCADE ON UPDATE CASCADE/g,
+      ),
+    ];
+    expect(tenantForeignKeys).toHaveLength(10);
+
     expect(MIGRATION).not.toMatch(/^\s*UPDATE\s+/gim);
     expect(MIGRATION).not.toMatch(/^\s*DELETE\s+FROM\s+/gim);
     expect(MIGRATION).not.toMatch(/^\s*INSERT\s+INTO\s+/gim);
