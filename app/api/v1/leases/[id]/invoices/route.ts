@@ -13,6 +13,28 @@ import { ErrorCode } from "@/lib/errors";
 import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
 import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
 
+function parseDueDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -30,6 +52,14 @@ export async function POST(
         const subtotalNum = Number(subtotal);
         const normalizedVatType =
           typeof vatType === "string" ? vatType.trim().toUpperCase() : "";
+        const parsedDueDate = parseDueDate(dueDate);
+
+        if (!parsedDueDate) {
+          return NextResponse.json(
+            { success: false, error: "Invalid due date" },
+            { status: 400 },
+          );
+        }
 
         const lease = await prisma.rentalLease.findFirst({
           where: { id: leaseId, tenantId: session.tenantId },
@@ -42,7 +72,7 @@ export async function POST(
           );
         }
 
-        if (!dueDate || !normalizedVatType) {
+        if (!normalizedVatType) {
           return NextResponse.json(
             {
               success: false,
@@ -91,7 +121,7 @@ export async function POST(
               leaseId,
               invoiceNumber,
               invoicePrefix: tenant.invoicePrefix || "INV",
-              dueDate: new Date(dueDate),
+              dueDate: parsedDueDate,
               subtotal: vatBreakdown.subtotal,
               vatRate: vatBreakdown.vatRate,
               vatAmount: vatBreakdown.vatAmount,
