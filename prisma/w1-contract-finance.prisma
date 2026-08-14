@@ -117,6 +117,7 @@ model ContractSnapshot {
   resultingAmendment  ContractAmendment?      @relation("AmendmentResultSnapshot")
 
   @@unique([tenantId, id], map: "uq_contract_snapshots_tenant_id")
+  @@unique([tenantId, draftId, snapshotType], map: "uq_contract_snapshots_tenant_draft_type")
   @@index([tenantId, contractId, issuedAt], map: "idx_contract_snapshots_tenant_contract_issued")
   @@index([tenantId, digest], map: "idx_contract_snapshots_tenant_digest")
   @@index([tenantId, draftId], map: "idx_contract_snapshots_tenant_draft")
