@@ -1,7 +1,8 @@
 import { httpErrorResponse } from "@/lib/http-error-response";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateVat } from "@/lib/vat/engine";
+import { calculateVat, validateVatInput } from "@/lib/vat/engine";
+import type { VatType } from "@/lib/vat/types";
 import {
   buildQrPayload,
   encodeQrCode,
@@ -26,10 +27,27 @@ export async function POST(
       try {
         const body = await request.json();
         const { subtotal, vatType, dueDate } = body;
+        const subtotalNum = Number(subtotal);
+        const normalizedVatType =
+          typeof vatType === "string" ? vatType.trim().toUpperCase() : "";
 
-        if (!subtotal || !dueDate) {
+        if (!dueDate || !normalizedVatType) {
           return NextResponse.json(
-            { success: false, error: "subtotal and dueDate are required" },
+            {
+              success: false,
+              error: "subtotal, vatType and dueDate are required",
+            },
+            { status: 400 },
+          );
+        }
+
+        const vatValidationError = validateVatInput(
+          subtotalNum,
+          normalizedVatType,
+        );
+        if (vatValidationError) {
+          return NextResponse.json(
+            { success: false, error: vatValidationError },
             { status: 400 },
           );
         }
@@ -46,10 +64,9 @@ export async function POST(
         }
 
         const tenant = lease.tenant;
-        const subtotalNum = parseFloat(subtotal);
         const vatBreakdown = calculateVat(
           subtotalNum,
-          (vatType || "STANDARD") as any,
+          normalizedVatType as VatType,
         );
 
         const qrPayload = buildQrPayload({
