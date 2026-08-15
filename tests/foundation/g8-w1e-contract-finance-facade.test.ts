@@ -120,14 +120,14 @@ describe("W1E contract / finance permission + application facade", () => {
     }
   });
 
-  it("removes tenant and actor identity from all W1E write payload types", () => {
+  it("removes tenant, actor, and snapshot contract binding from W1E write payload types", () => {
     expect(FACADE_SOURCE).toContain('CreateFinanceCaseInput,\n  "tenantId" | "createdBy"');
     expect(FACADE_SOURCE).toContain('RecordFinanceAuthorityInput,\n  "tenantId" | "financeCaseId" | "actorId"');
     expect(FACADE_SOURCE).toContain('RecordProviderOfferInput,\n  "tenantId" | "financeCaseId" | "actorId"');
     expect(FACADE_SOURCE).toContain('CreateContractDraftInput,\n  "tenantId" | "createdBy"');
     expect(FACADE_SOURCE).toContain('RequestContractApprovalInput,\n  "tenantId" | "draftId" | "requestedBy"');
     expect(FACADE_SOURCE).toContain('DecideContractApprovalInput,\n  "tenantId" | "approvalId" | "decidedBy"');
-    expect(FACADE_SOURCE).toContain('ContractSnapshotIssueInput,\n  "tenantId" | "createdBy"');
+    expect(FACADE_SOURCE).toContain('ContractSnapshotIssueInput,\n  "tenantId" | "createdBy" | "contractId"');
 
     expect(FACADE_SOURCE).toContain("tenantId: actor.tenantId");
     expect(FACADE_SOURCE).toContain("createdBy: actor.userId");
