@@ -143,9 +143,15 @@ describe("W1F isolated migration readiness", () => {
       "node head/scripts/w1f-migration-readiness-summary.mjs targeted-drift",
     );
 
-    expect(SUMMARY_SCRIPT).toContain('["prisma", "migrate", "deploy"]');
-    expect(SUMMARY_SCRIPT).toContain('["prisma", "migrate", "status"]');
-    expect(SUMMARY_SCRIPT).toContain('"resolve",\n        "--applied"');
+    expect(SUMMARY_SCRIPT).toMatch(
+      /\[\s*"prisma",\s*"migrate",\s*"deploy"\s*\]/,
+    );
+    expect(SUMMARY_SCRIPT).toMatch(
+      /\[\s*"prisma",\s*"migrate",\s*"status"\s*\]/,
+    );
+    expect(SUMMARY_SCRIPT).toMatch(
+      /"migrate",\s*"resolve",\s*"--applied",\s*HISTORICAL_NON_TRANSACTIONAL_MIGRATION/,
+    );
     expect(SUMMARY_SCRIPT).toContain('"--from-config-datasource"');
     expect(SUMMARY_SCRIPT).toContain('"--exit-code"');
 
