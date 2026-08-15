@@ -8,7 +8,7 @@ import {
   W1gRequestError,
 } from "./api-boundary";
 
-const W1H_FORBIDDEN_CONTRACT_CALLER_FIELDS = new Set([
+const W1H_FORBIDDEN_CONTRACT_SYSTEM_FIELDS = new Set([
   "tenantId",
   "role",
   "requestedBy",
@@ -17,6 +17,10 @@ const W1H_FORBIDDEN_CONTRACT_CALLER_FIELDS = new Set([
   "createdBy",
   "contractId",
   "approvalSnapshot",
+  "snapshotType",
+  "signedAt",
+  "draftId",
+  "approvalId",
 ]);
 
 export function isW1hContractCommandsEnabled(): boolean {
@@ -31,10 +35,10 @@ export async function beginW1hContractCommandRequest(request: NextRequest) {
   return await beginW1gRequest(request);
 }
 
-export function rejectW1hContractCallerIdentityFields(
+export function rejectW1hContractCallerSystemFields(
   body: Record<string, unknown>,
 ): void {
-  for (const field of W1H_FORBIDDEN_CONTRACT_CALLER_FIELDS) {
+  for (const field of W1H_FORBIDDEN_CONTRACT_SYSTEM_FIELDS) {
     if (field in body) {
       throw new W1gRequestError("W1G_INVALID_INPUT");
     }
