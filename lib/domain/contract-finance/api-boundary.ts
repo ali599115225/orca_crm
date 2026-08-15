@@ -143,10 +143,10 @@ export function optionalW1gPositiveInteger(
   const value = body[key];
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (!Number.isSafeInteger(value) || Number(value) <= 0) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) {
     throw new W1gRequestError("W1G_INVALID_INPUT");
   }
-  return value as number;
+  return value;
 }
 
 export function requiredW1gJson(
