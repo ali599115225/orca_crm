@@ -33,7 +33,7 @@ For one tenant-owned approved `ContractDraft`, the assembler reads:
 8. the linked `FinanceCase`, when present;
 9. the currently selected `FinanceProviderOffer`, when present.
 
-The assembler does not infer a missing Contract from FinanceCase linkage and does not fabricate provider authority state.
+The assembler does not infer a missing Contract from FinanceCase linkage and does not fabricate provider authority state. Because the frozen legacy `Contract -> Unit` and `Contract -> PaymentPlan` relations are ID-linked rather than tenant-composite W1 relations, W1I additionally verifies the nested `Unit.tenantId` and `PaymentPlan.tenantId` against the assembler tenant before those facts may enter a canonical snapshot payload.
 
 ## Determinism rules
 
@@ -67,6 +67,8 @@ Assembly fails when:
 - any approval is not `APPROVED`;
 - the linked Contract is missing for the tenant;
 - Contract and FinanceCase contract linkage conflict;
+- the linked legacy Unit belongs to another tenant;
+- the linked legacy PaymentPlan belongs to another tenant;
 - more than one selected provider offer exists for the FinanceCase.
 
 ## Allowed paths
@@ -94,7 +96,7 @@ W1I closes only when:
 1. the implementation remains within the three-file allowlist;
 2. G8 proves caller input cannot provide rendered content or canonical snapshot payloads;
 3. G8 proves the persisted source fields exist on the frozen W1 schemas;
-4. G8 proves approved-draft, approval, tenant, linkage, selected-provider, deterministic decimal/date, and read-only invariants;
+4. G8 proves approved-draft, approval, tenant, legacy nested-tenant linkage, selected-provider, deterministic decimal/date, and read-only invariants;
 5. the focused W1I test passes;
 6. typecheck passes;
 7. full ORCA CI through Build passes on one exact head;
