@@ -123,12 +123,22 @@ describe("W1G guarded Contract / Finance API foundation", () => {
     expect(writes).not.toContain('requiredW1gString(body, "role")');
   });
 
-  it("rejects malformed JSON/scalars and bounds list requests through W1E read models", () => {
+  it("rejects malformed JSON, top-level null JSON fields, and invalid scalars", () => {
     expect(BOUNDARY).toContain("W1G_INVALID_JSON");
     expect(BOUNDARY).toContain("W1G_INVALID_INPUT");
+    expect(BOUNDARY).toContain("value === undefined || value === null");
+    const optionalJsonStart = BOUNDARY.indexOf("export function optionalW1gJson");
+    const limitStart = BOUNDARY.indexOf("export function optionalW1gListLimit");
+    expect(optionalJsonStart).toBeGreaterThanOrEqual(0);
+    expect(limitStart).toBeGreaterThan(optionalJsonStart);
+    expect(BOUNDARY.slice(optionalJsonStart, limitStart)).toContain("if (value === null)");
     expect(BOUNDARY).toContain("Number.isFinite(value)");
     expect(BOUNDARY).toContain("Number.isInteger(value)");
     expect(BOUNDARY).toContain("Number.isSafeInteger(value)");
+    expect(GATE).toContain("Top-level `null` is rejected for W1G JSON document fields");
+  });
+
+  it("bounds list requests through W1E read models", () => {
     expect(FINANCE_COLLECTION).toContain("optionalW1gListLimit(request)");
     expect(DRAFT_COLLECTION).toContain("optionalW1gListLimit(request)");
     expect(GATE).toContain("Query list limits are bounded by the existing W1E read model service");
