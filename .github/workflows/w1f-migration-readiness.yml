@@ -1,0 +1,223 @@
+name: W1F Migration Readiness
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/w1f-migration-readiness.yml"
+      - "docs/product-extension/W1F_MIGRATION_READINESS_GATE.md"
+      - "scripts/w1f-migration-readiness-summary.mjs"
+      - "tests/foundation/g8-w1f-migration-readiness.test.ts"
+      - "prisma/migrations/20260815001500_w1_contract_finance_foundation/migration.sql"
+      - "prisma/migrations/20260815004500_w1d_snapshot_offer_integrity/migration.sql"
+      - "prisma/w1-contract-finance.prisma"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: w1f-migration-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PRE_W1A_SHA: 50266d2122c966d0fa48f0d1b789e6ed5916b68c
+  W1A_MIGRATION: prisma/migrations/20260815001500_w1_contract_finance_foundation/migration.sql
+  W1D_MIGRATION: prisma/migrations/20260815004500_w1d_snapshot_offer_integrity/migration.sql
+  POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_admin?sslmode=disable
+  NODE_ENV: test
+
+jobs:
+  isolated-migration-rehearsal:
+    name: PostgreSQL 16 isolated replay + W1 upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orca_w1f_admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orca_w1f_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v7
+        with:
+          path: head
+          fetch-depth: 0
+
+      - name: Checkout exact pre-W1A reference
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.PRE_W1A_SHA }}
+          path: prew1a
+          fetch-depth: 1
+
+      - name: Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: head/package-lock.json
+
+      - name: Verify exact refs and PostgreSQL 16
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C prew1a rev-parse HEAD)" = "$PRE_W1A_SHA"
+          candidate="$(git -C head rev-parse HEAD)"
+          postgres_version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
+          test "$postgres_version" -ge 160000 -a "$postgres_version" -lt 170000
+          printf 'pre_w1a_sha=%s\nhead_sha=%s\nnode=%s\npostgres=%s\n' \
+            "$PRE_W1A_SHA" "$candidate" "$(node --version)" \
+            "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" \
+            | tee evidence/environment.txt
+
+      - name: Install candidate dependencies
+        run: npm --prefix head ci
+
+      - name: Validate frozen W1 migration artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const w1a = fs.readFileSync('head/prisma/migrations/20260815001500_w1_contract_finance_foundation/migration.sql', 'utf8');
+          const w1d = fs.readFileSync('head/prisma/migrations/20260815004500_w1d_snapshot_offer_integrity/migration.sql', 'utf8');
+          const stripComments = value => value.replace(/--.*$/gm, '');
+          const forbidden = /\b(?:ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE)\b/i;
+          if (forbidden.test(stripComments(w1a))) throw new Error('W1F_W1A_NOT_ADDITIVE');
+          if (forbidden.test(stripComments(w1d))) throw new Error('W1F_W1D_NOT_ADDITIVE');
+          const tableCount = (stripComments(w1a).match(/\bCREATE\s+TABLE\b/gi) || []).length;
+          const uniqueIndexCount = (stripComments(w1d).match(/\bCREATE\s+UNIQUE\s+INDEX\b/gi) || []).length;
+          if (tableCount !== 10) throw new Error(`W1F_W1A_TABLE_COUNT:${tableCount}`);
+          if (uniqueIndexCount !== 2) throw new Error(`W1F_W1D_UNIQUE_INDEX_COUNT:${uniqueIndexCount}`);
+          fs.writeFileSync('evidence/static-artifacts.json', JSON.stringify({tableCount, uniqueIndexCount, verdict:'PASS'}, null, 2) + '\n');
+          NODE
+
+      - name: Create isolated rehearsal databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          createdb -h 127.0.0.1 -U postgres orca_w1f_replay
+          createdb -h 127.0.0.1 -U postgres orca_w1f_upgrade
+
+      - name: Full migration-history replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPLAY_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_replay?sslmode=disable'
+          (
+            cd head
+            DATABASE_URL="$REPLAY_URL" DIRECT_URL="$REPLAY_URL" npx prisma migrate deploy \
+              | tee ../evidence/full-replay-deploy.txt
+            DATABASE_URL="$REPLAY_URL" DIRECT_URL="$REPLAY_URL" npx prisma migrate status \
+              | tee ../evidence/full-replay-status.txt
+            set +e
+            DATABASE_URL="$REPLAY_URL" DIRECT_URL="$REPLAY_URL" \
+              npx prisma migrate diff --exit-code --from-config-datasource --to-schema prisma \
+              > ../evidence/full-replay-drift.txt 2>&1
+            drift_code=$?
+            set -e
+            printf '%s\n' "$drift_code" > ../evidence/full-replay-drift-exit-code.txt
+            if [ "$drift_code" -ne 0 ]; then
+              cat ../evidence/full-replay-drift.txt
+              exit "$drift_code"
+            fi
+          )
+
+      - name: Materialize exact pre-W1A supported schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPGRADE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_upgrade?sslmode=disable'
+          (
+            cd head
+            npx prisma migrate diff \
+              --from-empty \
+              --to-schema ../prew1a/prisma/schema.prisma \
+              --script \
+              --output ../evidence/pre-w1a-schema.sql
+          )
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-w1a-schema.sql \
+            > evidence/pre-w1a-apply.txt
+          DATABASE_URL="$UPGRADE_URL" \
+            W1F_OUTPUT=evidence/legacy-before.json \
+            node head/scripts/w1f-migration-readiness-summary.mjs capture-legacy \
+            > evidence/legacy-before-summary.txt
+
+      - name: Apply W1A and W1D to isolated upgrade database
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPGRADE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_upgrade?sslmode=disable'
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "head/$W1A_MIGRATION" \
+            > evidence/w1a-upgrade-apply.txt
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "head/$W1D_MIGRATION" \
+            > evidence/w1d-upgrade-apply.txt
+          (
+            cd head
+            set +e
+            DATABASE_URL="$UPGRADE_URL" DIRECT_URL="$UPGRADE_URL" \
+              npx prisma migrate diff --exit-code --from-config-datasource --to-schema prisma \
+              > ../evidence/targeted-upgrade-drift.txt 2>&1
+            drift_code=$?
+            set -e
+            printf '%s\n' "$drift_code" > ../evidence/targeted-upgrade-drift-exit-code.txt
+            if [ "$drift_code" -ne 0 ]; then
+              cat ../evidence/targeted-upgrade-drift.txt
+              exit "$drift_code"
+            fi
+          )
+
+      - name: Verify migration evidence and legacy preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          W1F_REPLAY_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_replay?sslmode=disable' \
+          W1F_UPGRADE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_upgrade?sslmode=disable' \
+          W1F_LEGACY_BEFORE_PATH=evidence/legacy-before.json \
+          W1F_OUTPUT=evidence/w1f-summary.json \
+          W1F_PRE_W1A_SHA="$PRE_W1A_SHA" \
+          W1F_HEAD_SHA="$(git -C head rev-parse HEAD)" \
+            node head/scripts/w1f-migration-readiness-summary.mjs summarize \
+            | tee evidence/w1f-summary-line.txt
+
+      - name: W1F executable contract test
+        working-directory: head
+        run: |
+          npx vitest run tests/foundation/g8-w1f-migration-readiness.test.ts \
+            --reporter=json --outputFile=../evidence/w1f-g8-test-results.json
+
+      - name: Cleanup isolated databases
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for db in orca_w1f_replay orca_w1f_upgrade; do
+            psql "$POSTGRES_ADMIN_URL" -v ON_ERROR_STOP=1 \
+              -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$db' AND pid <> pg_backend_pid()" \
+              >/dev/null || true
+            dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
+          done
+          printf '%s\n' '{"verdict":"PASS","isolatedDatabasesRemaining":0}' \
+            > evidence/cleanup.json
+
+      - name: Upload W1F migration readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w1f-migration-readiness-evidence
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 14
