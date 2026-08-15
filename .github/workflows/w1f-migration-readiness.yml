@@ -159,6 +159,8 @@ jobs:
         run: |
           set -euo pipefail
           UPGRADE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_upgrade?sslmode=disable'
+          DATABASE_URL="$UPGRADE_URL" \
+          DIRECT_URL="$UPGRADE_URL" \
           W1F_HEAD_DIR=head \
           W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma \
           W1F_OUTPUT=evidence/pre-w1a-schema.sql \
