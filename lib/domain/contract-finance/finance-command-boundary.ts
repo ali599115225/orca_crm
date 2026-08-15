@@ -23,6 +23,37 @@ const W1H_FINANCE_STATUSES = new Set<FinanceInternalStatus>([
   "CANCELLED",
 ]);
 
+const W1H_ISO_DATETIME_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})$/;
+
+function isStrictIsoDateTime(value: string): boolean {
+  const match = W1H_ISO_DATETIME_PATTERN.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = match[6] === undefined ? 0 : Number(match[6]);
+  const timezone = match[8];
+
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) {
+    return false;
+  }
+
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (day < 1 || day > daysInMonth) return false;
+
+  if (timezone !== "Z") {
+    const offsetHour = Number(timezone.slice(1, 3));
+    const offsetMinute = Number(timezone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) return false;
+  }
+
+  return Number.isFinite(Date.parse(value));
+}
+
 export function isW1hFinanceCommandsEnabled(): boolean {
   return process.env.ORCA_FINANCE_CASE_COMMANDS_ENABLED === "true";
 }
@@ -66,13 +97,9 @@ export function optionalW1hIsoDate(
   const value = body[key];
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (typeof value !== "string" || !value.trim()) {
+  if (typeof value !== "string" || !isStrictIsoDateTime(value.trim())) {
     throw new W1gRequestError("W1G_INVALID_INPUT");
   }
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new W1gRequestError("W1G_INVALID_INPUT");
-  }
-  return parsed;
+  return new Date(value.trim());
 }
