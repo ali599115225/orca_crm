@@ -104,7 +104,9 @@ function runCommand(command, args, { cwd, env, outputPath, allowFailure = false 
 
   if (result.error) throw result.error;
 
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+  const output = `${stdout}${stderr}`;
   if (outputPath) writeText(outputPath, output);
 
   const status = result.status ?? 1;
@@ -114,7 +116,7 @@ function runCommand(command, args, { cwd, env, outputPath, allowFailure = false 
     );
   }
 
-  return { status, output };
+  return { status, output, stdout, stderr };
 }
 
 function prismaEnv(databaseUrl) {
@@ -139,10 +141,11 @@ function classifyFullReplayDrift(result) {
     throw new Error(`W1F_UNEXPECTED_REPLAY_DRIFT_EXIT:${result.status}`);
   }
 
-  const w1Touches = [...W1_TABLES, ...W1_UNIQUE_INDEXES].filter((name) =>
-    result.output.includes(`\`${name}\``) ||
-    result.output.includes(`"${name}"`) ||
-    result.output.includes(name),
+  const w1Touches = [...W1_TABLES, ...W1_UNIQUE_INDEXES].filter(
+    (name) =>
+      result.output.includes(`\`${name}\``) ||
+      result.output.includes(`"${name}"`) ||
+      result.output.includes(name),
   );
 
   if (w1Touches.length > 0) {
@@ -171,15 +174,10 @@ async function withClient(url, operation) {
 async function legacyFingerprint(url, { excludeW1 = false } = {}) {
   return await withClient(url, async (client) => {
     const tableParams = excludeW1 ? W1_TABLES : [];
-    const tablePredicate = excludeW1
-      ? `AND tablename <> ALL($1::text[])`
-      : "";
-    const columnPredicate = excludeW1
-      ? `AND table_name <> ALL($1::text[])`
-      : "";
-    const constraintPredicate = excludeW1
-      ? `AND rel.relname <> ALL($1::text[])`
-      : "";
+    const tablePredicate = excludeW1 ? `AND tablename <> ALL($1::text[])` : "";
+    const columnPredicate = excludeW1 ? `AND table_name <> ALL($1::text[])` : "";
+    const constraintPredicate = excludeW1 ? `AND rel.relname <> ALL($1::text[])` : "";
+    const params = tableParams.length ? [tableParams] : [];
 
     const tables = await client.query(
       `SELECT tablename
@@ -188,7 +186,7 @@ async function legacyFingerprint(url, { excludeW1 = false } = {}) {
           AND tablename <> '_prisma_migrations'
           ${tablePredicate}
         ORDER BY tablename`,
-      tableParams.length ? [tableParams] : [],
+      params,
     );
 
     const columns = await client.query(
@@ -204,7 +202,7 @@ async function legacyFingerprint(url, { excludeW1 = false } = {}) {
           AND table_name <> '_prisma_migrations'
           ${columnPredicate}
         ORDER BY table_name, ordinal_position`,
-      tableParams.length ? [tableParams] : [],
+      params,
     );
 
     const constraints = await client.query(
@@ -219,7 +217,7 @@ async function legacyFingerprint(url, { excludeW1 = false } = {}) {
           AND rel.relname <> '_prisma_migrations'
           ${constraintPredicate}
         ORDER BY rel.relname, con.conname`,
-      tableParams.length ? [tableParams] : [],
+      params,
     );
 
     return {
@@ -352,7 +350,7 @@ async function materializePreW1a() {
     throw new Error("W1F_PRE_W1A_SCHEMA_MISSING");
   }
 
-  runCommand(
+  const result = runCommand(
     "npx",
     [
       "prisma",
@@ -362,11 +360,15 @@ async function materializePreW1a() {
       "--to-schema",
       preW1aSchema,
       "--script",
-      "--output",
-      output,
     ],
     { cwd: headDir },
   );
+
+  if (!result.stdout.trim() || !/\bCREATE\s+TABLE\b/i.test(result.stdout)) {
+    throw new Error("W1F_PRE_W1A_SQL_OUTPUT_MISSING");
+  }
+
+  writeText(output, result.stdout);
 }
 
 async function targetedDrift() {
