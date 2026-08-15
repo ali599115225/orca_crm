@@ -129,9 +129,19 @@ describe("W1F isolated migration readiness", () => {
     expect(GATE).toContain("any full-replay drift mentioning a W1 table or W1 unique index is a hard failure");
   });
 
-  it("applies W1A, W1D, and alignment in the targeted rehearsal and requires zero drift", () => {
+  it("materializes pre-W1A with the isolated upgrade datasource, then requires targeted zero drift", () => {
+    const materializeStart = WORKFLOW.indexOf("name: Materialize exact pre-W1A supported schema");
     const applyStart = WORKFLOW.indexOf("name: Apply W1A, W1D, and W1 schema alignment to isolated upgrade database");
-    expect(applyStart).toBeGreaterThanOrEqual(0);
+    expect(materializeStart).toBeGreaterThanOrEqual(0);
+    expect(applyStart).toBeGreaterThan(materializeStart);
+
+    const materialize = WORKFLOW.slice(materializeStart, applyStart);
+    expect(materialize).toContain("DATABASE_URL=\"$UPGRADE_URL\"");
+    expect(materialize).toContain("DIRECT_URL=\"$UPGRADE_URL\"");
+    expect(materialize).toContain("W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma");
+    expect(SUMMARY_SCRIPT).toContain("W1F_PRE_W1A_SQL_OUTPUT_MISSING");
+    expect(SUMMARY_SCRIPT).toContain("writeText(output, result.stdout)");
+
     const apply = WORKFLOW.slice(applyStart);
     expect(apply).toContain('head/$W1A_MIGRATION');
     expect(apply).toContain('head/$W1D_MIGRATION');
