@@ -129,7 +129,7 @@ describe("W1F isolated migration readiness", () => {
     expect(GATE).toContain("any full-replay drift mentioning a W1 table or W1 unique index is a hard failure");
   });
 
-  it("materializes pre-W1A with the isolated upgrade datasource, then requires targeted zero drift", () => {
+  it("materializes pre-W1A with a bounded retry only for the confirmed Prisma schema-engine flake", () => {
     const materializeStart = WORKFLOW.indexOf("name: Materialize exact pre-W1A supported schema");
     const applyStart = WORKFLOW.indexOf("name: Apply W1A, W1D, and W1 schema alignment to isolated upgrade database");
     expect(materializeStart).toBeGreaterThanOrEqual(0);
@@ -139,9 +139,18 @@ describe("W1F isolated migration readiness", () => {
     expect(materialize).toContain("DATABASE_URL=\"$UPGRADE_URL\"");
     expect(materialize).toContain("DIRECT_URL=\"$UPGRADE_URL\"");
     expect(materialize).toContain("W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma");
+    expect(materialize).toContain('attempt=1');
+    expect(materialize).toContain('while [ "$attempt" -le 5 ]');
+    expect(materialize).toContain("grep -Fq 'Error in Schema engine'");
+    expect(materialize).toContain('if [ "$attempt" -eq 5 ]');
+    expect(materialize).toContain("pre-w1a-materialize-retry-summary.json");
     expect(SUMMARY_SCRIPT).toContain("W1F_PRE_W1A_SQL_OUTPUT_MISSING");
     expect(SUMMARY_SCRIPT).toContain("writeText(output, result.stdout)");
+  });
 
+  it("applies W1A, W1D, and alignment in the targeted rehearsal and requires zero drift", () => {
+    const applyStart = WORKFLOW.indexOf("name: Apply W1A, W1D, and W1 schema alignment to isolated upgrade database");
+    expect(applyStart).toBeGreaterThanOrEqual(0);
     const apply = WORKFLOW.slice(applyStart);
     expect(apply).toContain('head/$W1A_MIGRATION');
     expect(apply).toContain('head/$W1D_MIGRATION');
