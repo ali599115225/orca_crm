@@ -38,7 +38,7 @@ The Contract Studio command flag is checked before delegating to the W1G base re
 - Approval decision, final approval, and snapshot issue inherit the existing Contract Approver mapping (`ADMIN` only).
 - No Legal/Finance role is invented in this slice.
 - No super-admin/platform-owner bypass is introduced.
-- `tenantId`, caller role, `requestedBy`, `decidedBy`, `approvedBy`, `createdBy`, `contractId`, or `approvalSnapshot` may be supplied by request payloads.
+- `tenantId`, caller role, `requestedBy`, `decidedBy`, `approvedBy`, `createdBy`, `contractId`, `approvalSnapshot`, `snapshotType`, `signedAt`, path-owned `draftId`, or path-owned `approvalId` may not be supplied by request payloads.
 
 ## Command routes
 
@@ -61,9 +61,9 @@ No route imports Prisma or the ContractDraft / ContractSnapshot write services d
 - Draft and approval path IDs must be UUID-shaped before W1E.
 - Approval request requires a non-empty `riskTier`; optional reason/evidence remain business evidence only.
 - Approval decision accepts only `APPROVED` or `REJECTED`; optional reason/evidence remain business evidence only.
-- Finalization accepts no business payload; W1D verifies persisted approvals and draft state.
+- Finalization rejects every non-empty request body; W1D verifies persisted approvals and draft state.
 - Snapshot issue requires the draft path ID, a UUID-shaped `templateVersionId`, non-empty `renderedContent`, and non-null top-level `structuredFacts` and `clauseSnapshot`; `paymentPlanSnapshot` is optional.
-- Snapshot request payload cannot choose `contractId` or `approvalSnapshot`. W1E removes `contractId` from the caller input contract, and W1D derives the effective contract linkage and approval snapshot from persisted tenant-scoped records.
+- Snapshot request payload cannot choose `contractId`, `approvalSnapshot`, `snapshotType`, or `signedAt`. W1E removes `contractId` from the caller input contract, and W1D derives the effective contract linkage, approval snapshot, fixed `ISSUED` type, and unsigned issuance state from persisted tenant-scoped records.
 
 ## Approval / snapshot semantics
 
@@ -118,4 +118,4 @@ Durable historical architecture markdown counts are not rewritten in this slice.
 
 ## Closure
 
-W1H-Contract closes only when the PR remains within the nine-file allowlist; G4/G5/G8 direct evidence covers all four new command routes; triple fail-closed gating, W1E-only routing, caller-identity exclusion, approval-state delegation, and snapshot provenance constraints are proven; generated inventory has zero missing auth evidence and zero unproven P0/P1 surfaces; full ORCA CI through Build passes on one exact head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
+W1H-Contract closes only when the PR remains within the nine-file allowlist; G4/G5/G8 direct evidence covers all four new command routes; triple fail-closed gating, W1E-only routing, caller-system-field exclusion, empty-body finalization, approval-state delegation, and snapshot provenance constraints are proven; generated inventory has zero missing auth evidence and zero unproven P0/P1 surfaces; full ORCA CI through Build passes on one exact head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
