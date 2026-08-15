@@ -35,6 +35,15 @@ export async function beginW1hContractCommandRequest(request: NextRequest) {
   return await beginW1gRequest(request);
 }
 
+export async function assertW1hEmptyCommandBody(
+  request: NextRequest,
+): Promise<void> {
+  const raw = await request.text();
+  if (raw.trim().length > 0) {
+    throw new W1gRequestError("W1G_INVALID_INPUT");
+  }
+}
+
 export function rejectW1hContractCallerSystemFields(
   body: Record<string, unknown>,
 ): void {
