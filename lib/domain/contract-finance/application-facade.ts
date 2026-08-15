@@ -88,7 +88,7 @@ export type W1eDecideContractApprovalInput = Omit<
 
 export type W1eIssueContractSnapshotInput = Omit<
   ContractSnapshotIssueInput,
-  "tenantId" | "createdBy"
+  "tenantId" | "createdBy" | "contractId"
 >;
 
 export async function w1eListFinanceCases(
