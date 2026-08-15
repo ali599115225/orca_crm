@@ -87,7 +87,7 @@ describe("G5 — Security and quality gate", () => {
     const inventory = rebuildInventory();
 
     expect(inventory.schemaVersion).toBe(2);
-    expect(inventory.summary.g4Contracts).toBe(371);
+    expect(inventory.summary.g4Contracts).toBe(375);
     expect(inventory.summary.unprovenContracts).toBe(33);
     expect(inventory.unprovenContracts).toHaveLength(33);
     expect(inventory.summary.unprovenByPriority).toEqual({
@@ -133,11 +133,11 @@ describe("G5 — Security and quality gate", () => {
   it("records a security boundary for all APIs", () => {
     const inventory = rebuildInventory();
 
-    expect(inventory.summary.apiRoutes).toBe(137);
+    expect(inventory.summary.apiRoutes).toBe(141);
     expect(
       inventory.summary.apiAuthEvidenceByStatus.AUTH_EVIDENCE_NOT_DETECTED ?? 0,
     ).toBe(0);
-    expect(inventory.apiAuthEvidence).toHaveLength(137);
+    expect(inventory.apiAuthEvidence).toHaveLength(141);
     expect(
       inventory.apiAuthEvidence.every(
         (api) => api.status !== "AUTH_EVIDENCE_NOT_DETECTED",
