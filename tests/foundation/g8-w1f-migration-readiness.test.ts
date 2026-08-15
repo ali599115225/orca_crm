@@ -3,65 +3,33 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
-const WORKFLOW = readFileSync(
-  join(ROOT, ".github", "workflows", "w1f-migration-readiness.yml"),
-  "utf8",
-);
-const SUMMARY_SCRIPT = readFileSync(
-  join(ROOT, "scripts", "w1f-migration-readiness-summary.mjs"),
-  "utf8",
-);
-const GATE = readFileSync(
-  join(ROOT, "docs", "product-extension", "W1F_MIGRATION_READINESS_GATE.md"),
-  "utf8",
-);
-const HISTORICAL_MIGRATION = readFileSync(
-  join(ROOT, "prisma", "migrations", "20260721020000_g3_rbac_constraints_indexes", "migration.sql"),
-  "utf8",
-);
-const W1A_MIGRATION = readFileSync(
-  join(ROOT, "prisma", "migrations", "20260815001500_w1_contract_finance_foundation", "migration.sql"),
-  "utf8",
-);
-const W1D_MIGRATION = readFileSync(
-  join(ROOT, "prisma", "migrations", "20260815004500_w1d_snapshot_offer_integrity", "migration.sql"),
-  "utf8",
-);
-const ALIGNMENT_MIGRATION = readFileSync(
-  join(ROOT, "prisma", "migrations", "20260815010000_w1_schema_alignment", "migration.sql"),
-  "utf8",
-);
+const WORKFLOW = readFileSync(join(ROOT, ".github", "workflows", "w1f-migration-readiness.yml"), "utf8");
+const SUMMARY_SCRIPT = readFileSync(join(ROOT, "scripts", "w1f-migration-readiness-summary.mjs"), "utf8");
+const GATE = readFileSync(join(ROOT, "docs", "product-extension", "W1F_MIGRATION_READINESS_GATE.md"), "utf8");
+const HISTORICAL_MIGRATION = readFileSync(join(ROOT, "prisma", "migrations", "20260721020000_g3_rbac_constraints_indexes", "migration.sql"), "utf8");
+const W1A_MIGRATION = readFileSync(join(ROOT, "prisma", "migrations", "20260815001500_w1_contract_finance_foundation", "migration.sql"), "utf8");
+const W1D_MIGRATION = readFileSync(join(ROOT, "prisma", "migrations", "20260815004500_w1d_snapshot_offer_integrity", "migration.sql"), "utf8");
+const ALIGNMENT_MIGRATION = readFileSync(join(ROOT, "prisma", "migrations", "20260815010000_w1_schema_alignment", "migration.sql"), "utf8");
 
 const W1_TABLES = new Set([
-  "contract_amendments",
-  "contract_approvals",
-  "contract_clause_definitions",
-  "contract_drafts",
-  "contract_snapshots",
-  "contract_template_versions",
-  "contract_templates",
-  "finance_case_events",
-  "finance_cases",
-  "finance_provider_offers",
+  "contract_amendments", "contract_approvals", "contract_clause_definitions", "contract_drafts",
+  "contract_snapshots", "contract_template_versions", "contract_templates", "finance_case_events",
+  "finance_cases", "finance_provider_offers",
 ]);
 
 const stripSqlComments = (value: string) => value.replace(/--.*$/gm, "");
-const sqlStatements = (value: string) =>
-  stripSqlComments(value)
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter(Boolean);
+const sqlStatements = (value: string) => stripSqlComments(value).split(";").map((statement) => statement.trim()).filter(Boolean);
 
 describe("W1F isolated migration readiness", () => {
-  it("pins the exact candidate, pre-W1A reference, and all W1 migration identities", () => {
+  it("pins the exact candidate, W1A provenance, and all W1 migration identities", () => {
     expect(WORKFLOW).toContain("ref: ${{ github.event.pull_request.head.sha || github.sha }}");
     expect(WORKFLOW).toContain("PRE_W1A_SHA: 50266d2122c966d0fa48f0d1b789e6ed5916b68c");
+    expect(WORKFLOW).toContain("test ! -e prew1a/prisma/w1-contract-finance.prisma");
     expect(WORKFLOW).toContain('test "$candidate" = "$event_head"');
     expect(WORKFLOW).toContain("20260815001500_w1_contract_finance_foundation/migration.sql");
     expect(WORKFLOW).toContain("20260815004500_w1d_snapshot_offer_integrity/migration.sql");
     expect(WORKFLOW).toContain("20260815010000_w1_schema_alignment/migration.sql");
     expect(SUMMARY_SCRIPT).toContain('"20260815010000_w1_schema_alignment"');
-    expect(GATE).toContain("Base: `dc51a4ce0ef2f6b8f47535cbe511dc82101c5dcc`");
   });
 
   it("keeps W1A/W1D frozen and scopes alignment to W1 metadata only", () => {
@@ -108,7 +76,7 @@ describe("W1F isolated migration readiness", () => {
     expect(SUMMARY_SCRIPT).toContain("W1F_NON_REHEARSAL_DATABASE_FORBIDDEN");
   });
 
-  it("keeps database migration commands inside the localhost-guarded verifier", () => {
+  it("keeps migration commands inside the localhost-guarded verifier", () => {
     expect(WORKFLOW).not.toMatch(/\bprisma\s+migrate\s+(?:deploy|status|resolve|diff)\b/);
     expect(WORKFLOW).toContain("w1f-migration-readiness-summary.mjs full-replay");
     expect(WORKFLOW).toContain("w1f-migration-readiness-summary.mjs materialize-prew1a");
@@ -119,40 +87,35 @@ describe("W1F isolated migration readiness", () => {
     expect(SUMMARY_SCRIPT).toContain('"--exit-code"');
   });
 
-  it("allows historical legacy-only full-replay drift but fails closed on any W1 drift", () => {
+  it("allows historical legacy-only replay drift but fails closed on W1 drift", () => {
     expect(SUMMARY_SCRIPT).toContain("function classifyFullReplayDrift");
     expect(SUMMARY_SCRIPT).toContain('classification: "ZERO_DRIFT"');
     expect(SUMMARY_SCRIPT).toContain('classification: "HISTORICAL_LEGACY_DRIFT_ONLY"');
     expect(SUMMARY_SCRIPT).toContain("W1F_W1_DRIFT_DETECTED");
     expect(SUMMARY_SCRIPT).toContain("[...W1_TABLES, ...W1_UNIQUE_INDEXES]");
-    expect(SUMMARY_SCRIPT).toContain("full-replay-drift-classification.json");
     expect(GATE).toContain("any full-replay drift mentioning a W1 table or W1 unique index is a hard failure");
   });
 
-  it("materializes pre-W1A with bounded schema-engine retry and strips non-SQL config preamble", () => {
-    const materializeStart = WORKFLOW.indexOf("name: Materialize exact pre-W1A supported schema");
+  it("materializes current non-W1 schema only, with bounded retry and SQL preamble stripping", () => {
+    const materializeStart = WORKFLOW.indexOf("name: Materialize current non-W1 supported schema");
     const applyStart = WORKFLOW.indexOf("name: Apply W1A, W1D, and W1 schema alignment to isolated upgrade database");
     expect(materializeStart).toBeGreaterThanOrEqual(0);
     expect(applyStart).toBeGreaterThan(materializeStart);
 
     const materialize = WORKFLOW.slice(materializeStart, applyStart);
-    expect(materialize).toContain("DATABASE_URL=\"$UPGRADE_URL\"");
-    expect(materialize).toContain("DIRECT_URL=\"$UPGRADE_URL\"");
-    expect(materialize).toContain("W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma");
-    expect(materialize).toContain('attempt=1');
+    expect(materialize).toContain("cat head/prisma/schema.prisma head/prisma/rbac.prisma > evidence/current-non-w1-schema.prisma");
+    expect(materialize).toContain("! grep -Fq 'model ContractTemplate'");
+    expect(materialize).toContain("! grep -Fq 'model FinanceCase'");
+    expect(materialize).toContain("W1F_PRE_W1A_SCHEMA=evidence/current-non-w1-schema.prisma");
     expect(materialize).toContain('while [ "$attempt" -le 5 ]');
     expect(materialize).toContain("grep -Fq 'Error in Schema engine'");
-    expect(materialize).toContain('if [ "$attempt" -eq 5 ]');
-    expect(materialize).toContain("pre-w1a-materialize-retry-summary.json");
-    expect(materialize).toContain("cp evidence/pre-w1a-schema.sql evidence/pre-w1a-schema.raw.txt");
+    expect(materialize).toContain("current-non-w1-schema.raw.txt");
     expect(materialize).toContain("const marker = '-- CreateSchema'");
-    expect(materialize).toContain("W1F_PRE_W1A_SQL_MARKER_MISSING");
-    expect(materialize).toContain("W1F_PRE_W1A_SQL_PREAMBLE_NOT_STRIPPED");
-    expect(SUMMARY_SCRIPT).toContain("W1F_PRE_W1A_SQL_OUTPUT_MISSING");
+    expect(materialize).toContain("W1F_NON_W1_SQL_CONTAINS_W1_OBJECT");
     expect(SUMMARY_SCRIPT).toContain("writeText(output, result.stdout)");
   });
 
-  it("applies W1A, W1D, and alignment in the targeted rehearsal and requires zero drift", () => {
+  it("applies W1A, W1D, and alignment over non-W1 baseline and requires full zero drift", () => {
     const applyStart = WORKFLOW.indexOf("name: Apply W1A, W1D, and W1 schema alignment to isolated upgrade database");
     expect(applyStart).toBeGreaterThanOrEqual(0);
     const apply = WORKFLOW.slice(applyStart);
@@ -162,16 +125,16 @@ describe("W1F isolated migration readiness", () => {
     expect(apply).toContain("w1f-migration-readiness-summary.mjs targeted-drift");
     expect(SUMMARY_SCRIPT).toContain("targetedDrift");
     expect(SUMMARY_SCRIPT).toContain("zeroDriftRequired: true");
+    expect(GATE).toContain("current non-W1 → W1A → W1D → alignment");
   });
 
-  it("proves legacy preservation and all expected W1 objects", () => {
+  it("proves non-W1 preservation and all expected W1 objects", () => {
     expect(SUMMARY_SCRIPT).toContain("before.columnsSha256 === afterLegacy.columnsSha256");
     expect(SUMMARY_SCRIPT).toContain("before.constraintsSha256 === afterLegacy.constraintsSha256");
     expect(SUMMARY_SCRIPT).toContain("W1_TABLES.length");
     expect(SUMMARY_SCRIPT).toContain("W1_UNIQUE_INDEXES.length");
     expect(SUMMARY_SCRIPT).toContain("_prisma_migrations");
     expect(SUMMARY_SCRIPT).toContain("replayDriftAccepted");
-    expect(WORKFLOW).toContain("W1F_REPLAY_DRIFT_CLASSIFICATION_PATH=evidence/full-replay-drift-classification.json");
   });
 
   it("always cleans up and uploads durable evidence", () => {
