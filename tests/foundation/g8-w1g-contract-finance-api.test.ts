@@ -35,7 +35,22 @@ const ROUTES = [
   DRAFT_DETAIL,
 ];
 
+const G4_API_ROUTE_EVIDENCE = [
+  "/api/v1/contract-finance/finance-cases",
+  "/api/v1/contract-finance/finance-cases/[id]",
+  "/api/v1/contract-finance/contract-drafts",
+  "/api/v1/contract-finance/contract-drafts/[id]",
+] as const;
+
 describe("W1G guarded Contract / Finance API foundation", () => {
+  it("registers direct G4 evidence for every new API contract", () => {
+    expect(G4_API_ROUTE_EVIDENCE).toHaveLength(4);
+    for (const route of G4_API_ROUTE_EVIDENCE) {
+      expect(route).toMatch(/^\/api\/v1\/contract-finance\//);
+      expect(GATE).toContain(route.replace("/[id]", "/:id"));
+    }
+  });
+
   it("requires two exact server-only activation flags and defaults closed", () => {
     expect(BOUNDARY).toContain('process.env.ORCA_CONTRACT_FINANCE_API_ENABLED === "true"');
     expect(BOUNDARY).toContain('process.env.ORCA_CONTRACT_FINANCE_SCHEMA_READY === "true"');
