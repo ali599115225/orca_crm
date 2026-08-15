@@ -10,6 +10,9 @@ import {
 } from "@/lib/api-auth-guard";
 import { W1eAuthorizationError } from "@/lib/auth/w1e-contract-finance-permissions";
 
+const W1G_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class W1gRequestError extends Error {
   constructor(
     public readonly code: "W1G_INVALID_JSON" | "W1G_INVALID_INPUT",
@@ -83,7 +86,31 @@ export function optionalW1gString(
   return trimmed || null;
 }
 
-export function optionalW1gDecimalInput(
+export function requiredW1gUuidValue(value: string): string {
+  const trimmed = value.trim();
+  if (!W1G_UUID_PATTERN.test(trimmed)) {
+    throw new W1gRequestError("W1G_INVALID_INPUT");
+  }
+  return trimmed;
+}
+
+export function requiredW1gUuid(
+  body: Record<string, unknown>,
+  key: string,
+): string {
+  return requiredW1gUuidValue(requiredW1gString(body, key));
+}
+
+export function optionalW1gUuid(
+  body: Record<string, unknown>,
+  key: string,
+): string | null | undefined {
+  const value = optionalW1gString(body, key);
+  if (value === undefined || value === null) return value;
+  return requiredW1gUuidValue(value);
+}
+
+export function optionalW1gNonNegativeDecimalInput(
   body: Record<string, unknown>,
   key: string,
 ): string | number | null | undefined {
@@ -92,7 +119,7 @@ export function optionalW1gDecimalInput(
   if (value === null) return null;
 
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
+    if (!Number.isFinite(value) || value < 0) {
       throw new W1gRequestError("W1G_INVALID_INPUT");
     }
     return value;
@@ -100,7 +127,7 @@ export function optionalW1gDecimalInput(
 
   if (typeof value === "string") {
     const trimmed = value.trim();
-    if (!trimmed || !/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    if (!/^\d+(?:\.\d+)?$/.test(trimmed) || !Number.isFinite(Number(trimmed))) {
       throw new W1gRequestError("W1G_INVALID_INPUT");
     }
     return trimmed;
@@ -109,17 +136,17 @@ export function optionalW1gDecimalInput(
   throw new W1gRequestError("W1G_INVALID_INPUT");
 }
 
-export function optionalW1gInteger(
+export function optionalW1gPositiveInteger(
   body: Record<string, unknown>,
   key: string,
 ): number | null | undefined {
   const value = body[key];
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (typeof value !== "number" || !Number.isInteger(value)) {
+  if (!Number.isSafeInteger(value) || Number(value) <= 0) {
     throw new W1gRequestError("W1G_INVALID_INPUT");
   }
-  return value;
+  return value as number;
 }
 
 export function requiredW1gJson(
@@ -194,6 +221,13 @@ export function w1gApiErrorResponse(error: unknown): NextResponse {
     typeof (error as { code?: unknown }).code === "string"
       ? (error as { code: string }).code
       : null;
+
+  if (code === "P2002") {
+    return NextResponse.json(
+      { error: "CONFLICT" },
+      { status: 409, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   if (code?.startsWith("W1")) {
     const status = publicDomainStatus(code);
