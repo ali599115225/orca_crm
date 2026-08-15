@@ -132,6 +132,15 @@ describe("W1H guarded FinanceCase command endpoints", () => {
     expect(OFFER_RECORD).toContain('requiredW1gJson(body, "evidenceJson")');
   });
 
+  it("requires a strict timezone-bearing ISO-8601 provider-offer expiry", () => {
+    expect(COMMAND_BOUNDARY).toContain("W1H_ISO_DATETIME_PATTERN");
+    expect(COMMAND_BOUNDARY).toContain("isStrictIsoDateTime");
+    expect(COMMAND_BOUNDARY).toContain("Date.UTC(year, month, 0)");
+    expect(COMMAND_BOUNDARY).toContain('timezone !== "Z"');
+    expect(COMMAND_BOUNDARY).toContain("Number.isFinite(Date.parse(value))");
+    expect(GATE).toContain("optional valid ISO datetime expiry");
+  });
+
   it("does not claim universal idempotency or add provider network calls", () => {
     const combined = [COMMAND_BOUNDARY, ...ROUTES].join("\n");
     expect(combined).not.toContain("fetch(");
