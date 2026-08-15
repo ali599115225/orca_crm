@@ -90,99 +90,137 @@ export async function issueApprovedContractSnapshot(input: ContractSnapshotIssue
     throw new W1SnapshotIntegrityError("W1_SNAPSHOT_RENDERED_CONTENT_REQUIRED");
   }
 
-  return await prisma.$transaction(
-    async (tx) => {
-      const draft = await tx.contractDraft.findFirst({
-        where: { id: input.draftId, tenantId: input.tenantId },
-        select: {
-          id: true,
-          status: true,
-          templateVersionId: true,
-          contractId: true,
-          approvals: {
-            orderBy: { requestedAt: "asc" },
-            select: {
-              id: true,
-              riskTier: true,
-              status: true,
-              requestedBy: true,
-              decidedBy: true,
-              reason: true,
-              evidenceJson: true,
-              requestedAt: true,
-              decidedAt: true,
+  let attemptedDigest: string | null = null;
+
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const draft = await tx.contractDraft.findFirst({
+          where: { id: input.draftId, tenantId: input.tenantId },
+          select: {
+            id: true,
+            status: true,
+            templateVersionId: true,
+            contractId: true,
+            approvals: {
+              orderBy: { requestedAt: "asc" },
+              select: {
+                id: true,
+                riskTier: true,
+                status: true,
+                requestedBy: true,
+                decidedBy: true,
+                reason: true,
+                evidenceJson: true,
+                requestedAt: true,
+                decidedAt: true,
+              },
             },
           },
-        },
-      });
-
-      if (!draft) {
-        throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_FOUND_FOR_TENANT");
-      }
-      if (draft.status !== "APPROVED") {
-        throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_APPROVED");
-      }
-      if (draft.approvals.some((approval) => approval.status !== "APPROVED")) {
-        throw new W1SnapshotIntegrityError("W1_SNAPSHOT_APPROVAL_PENDING_OR_REJECTED");
-      }
-      if (draft.templateVersionId !== input.templateVersionId) {
-        throw new W1SnapshotIntegrityError("W1_SNAPSHOT_TEMPLATE_VERSION_MISMATCH");
-      }
-      if (input.contractId && draft.contractId && input.contractId !== draft.contractId) {
-        throw new W1SnapshotIntegrityError("W1_SNAPSHOT_CONTRACT_MISMATCH");
-      }
-
-      const effectiveContractId = input.contractId ?? draft.contractId ?? null;
-      if (effectiveContractId) {
-        const contract = await tx.contract.findFirst({
-          where: { id: effectiveContractId, tenantId: input.tenantId },
-          select: { id: true },
         });
-        if (!contract) {
-          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT");
+
+        if (!draft) {
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_FOUND_FOR_TENANT");
         }
-      }
+        if (draft.status !== "APPROVED") {
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_DRAFT_NOT_APPROVED");
+        }
+        if (draft.approvals.some((approval) => approval.status !== "APPROVED")) {
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_APPROVAL_PENDING_OR_REJECTED");
+        }
+        if (draft.templateVersionId !== input.templateVersionId) {
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_TEMPLATE_VERSION_MISMATCH");
+        }
+        if (input.contractId && draft.contractId && input.contractId !== draft.contractId) {
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_CONTRACT_MISMATCH");
+        }
 
-      const approvalSnapshot: Prisma.InputJsonValue = draft.approvals.map((approval) => ({
-        id: approval.id,
-        riskTier: approval.riskTier,
-        status: approval.status,
-        requestedBy: approval.requestedBy,
-        decidedBy: approval.decidedBy,
-        reason: approval.reason,
-        evidenceJson: approval.evidenceJson,
-        requestedAt: approval.requestedAt.toISOString(),
-        decidedAt: approval.decidedAt?.toISOString() ?? null,
-      })) as Prisma.InputJsonValue;
+        const effectiveContractId = input.contractId ?? draft.contractId ?? null;
+        if (effectiveContractId) {
+          const contract = await tx.contract.findFirst({
+            where: { id: effectiveContractId, tenantId: input.tenantId },
+            select: { id: true },
+          });
+          if (!contract) {
+            throw new W1SnapshotIntegrityError("W1_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT");
+          }
+        }
 
-      const digest = computeContractSnapshotDigest({
-        ...input,
-        contractId: effectiveContractId,
-        snapshotType: "ISSUED",
-        approvalSnapshot,
-        signedAt: null,
-      });
+        const approvalSnapshot: Prisma.InputJsonValue = draft.approvals.map((approval) => ({
+          id: approval.id,
+          riskTier: approval.riskTier,
+          status: approval.status,
+          requestedBy: approval.requestedBy,
+          decidedBy: approval.decidedBy,
+          reason: approval.reason,
+          evidenceJson: approval.evidenceJson,
+          requestedAt: approval.requestedAt.toISOString(),
+          decidedAt: approval.decidedAt?.toISOString() ?? null,
+        })) as Prisma.InputJsonValue;
 
-      return await tx.contractSnapshot.create({
-        data: {
-          tenantId: input.tenantId,
-          draftId: draft.id,
+        const digest = computeContractSnapshotDigest({
+          ...input,
           contractId: effectiveContractId,
-          templateVersionId: input.templateVersionId,
           snapshotType: "ISSUED",
-          renderedContent: input.renderedContent,
-          structuredFacts: input.structuredFacts,
-          clauseSnapshot: input.clauseSnapshot,
-          paymentPlanSnapshot: input.paymentPlanSnapshot,
           approvalSnapshot,
-          digest,
-          createdBy: input.createdBy ?? null,
           signedAt: null,
+        });
+        attemptedDigest = digest;
+
+        const existing = await tx.contractSnapshot.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            draftId: draft.id,
+            snapshotType: "ISSUED",
+          },
+        });
+
+        if (existing) {
+          if (existing.digest === digest) return existing;
+          throw new W1SnapshotIntegrityError("W1_SNAPSHOT_ALREADY_ISSUED_DIFFERENT_DIGEST");
+        }
+
+        return await tx.contractSnapshot.create({
+          data: {
+            tenantId: input.tenantId,
+            draftId: draft.id,
+            contractId: effectiveContractId,
+            templateVersionId: input.templateVersionId,
+            snapshotType: "ISSUED",
+            renderedContent: input.renderedContent,
+            structuredFacts: input.structuredFacts,
+            clauseSnapshot: input.clauseSnapshot,
+            paymentPlanSnapshot: input.paymentPlanSnapshot,
+            approvalSnapshot,
+            digest,
+            createdBy: input.createdBy ?? null,
+            signedAt: null,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (error instanceof W1SnapshotIntegrityError) throw error;
+
+    if (
+      attemptedDigest &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.contractSnapshot.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          draftId: input.draftId,
+          snapshotType: "ISSUED",
         },
       });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-  );
+      if (existing?.digest === attemptedDigest) return existing;
+      throw new W1SnapshotIntegrityError("W1_SNAPSHOT_ALREADY_ISSUED_DIFFERENT_DIGEST");
+    }
+
+    throw error;
+  }
 }
 
 export async function readContractSnapshot(tenantId: string, snapshotId: string) {

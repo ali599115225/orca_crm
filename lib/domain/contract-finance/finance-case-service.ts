@@ -202,7 +202,36 @@ export async function transitionFinanceCaseInternalStatus(
         throw new W1FinanceLifecycleError("W1_FINANCE_INTERNAL_TRANSITION_INVALID");
       }
 
+      if (nextStatus === "OFFERS_RECEIVED") {
+        const receivedOffer = await tx.financeProviderOffer.findFirst({
+          where: {
+            tenantId,
+            financeCaseId: financeCase.id,
+            recordStatus: { in: ["RECEIVED", "SELECTED"] },
+          },
+          select: { id: true },
+        });
+        if (!receivedOffer) {
+          throw new W1FinanceLifecycleError("W1_FINANCE_OFFERS_RECEIVED_REQUIRES_OFFER");
+        }
+      }
+
+      if (nextStatus === "OFFER_SELECTED") {
+        const selectedOffer = await tx.financeProviderOffer.findFirst({
+          where: {
+            tenantId,
+            financeCaseId: financeCase.id,
+            recordStatus: "SELECTED",
+          },
+          select: { id: true },
+        });
+        if (!selectedOffer) {
+          throw new W1FinanceLifecycleError("W1_FINANCE_OFFER_SELECTED_REQUIRES_SELECTED_OFFER");
+        }
+      }
+
       let providerApprovalEvidenceEventId: string | null = null;
+      let selectedProviderOfferId: string | null = null;
       if (nextStatus === "PROVIDER_APPROVED" || nextStatus === "READY_FOR_TRANSACTION") {
         if (
           financeCase.authorityStatus !== "APPROVED" ||
@@ -212,6 +241,24 @@ export async function transitionFinanceCaseInternalStatus(
           throw new W1FinanceLifecycleError("W1_FINANCE_PROVIDER_APPROVAL_EVIDENCE_REQUIRED");
         }
 
+        const selectedOffer = await tx.financeProviderOffer.findFirst({
+          where: {
+            tenantId,
+            financeCaseId: financeCase.id,
+            recordStatus: "SELECTED",
+          },
+          select: { id: true, provider: true, providerReference: true },
+        });
+        if (
+          !selectedOffer ||
+          selectedOffer.provider !== financeCase.authorityProvider ||
+          !selectedOffer.providerReference ||
+          selectedOffer.providerReference !== financeCase.authorityReference
+        ) {
+          throw new W1FinanceLifecycleError("W1_FINANCE_SELECTED_OFFER_PROVIDER_MISMATCH");
+        }
+        selectedProviderOfferId = selectedOffer.id;
+
         const providerApprovalEvidence = await tx.financeCaseEvent.findFirst({
           where: {
             tenantId,
@@ -219,6 +266,10 @@ export async function transitionFinanceCaseInternalStatus(
             eventType: "finance_case.authority_evidence_recorded",
             authorityStatus: "APPROVED",
             provider: financeCase.authorityProvider,
+            evidenceJson: {
+              path: ["providerReference"],
+              equals: financeCase.authorityReference,
+            },
           },
           orderBy: { occurredAt: "desc" },
           select: { id: true, evidenceJson: true },
@@ -246,6 +297,7 @@ export async function transitionFinanceCaseInternalStatus(
             from: currentStatus,
             to: nextStatus,
             providerApprovalEvidenceEventId,
+            selectedProviderOfferId,
           },
         },
       });
@@ -264,7 +316,8 @@ export async function recordFinanceAuthorityEvidence(input: RecordFinanceAuthori
     !input.provider.trim() ||
     !input.providerReference.trim() ||
     !input.actorId ||
-    input.evidenceJson === null
+    input.evidenceJson === null ||
+    input.evidenceJson === undefined
   ) {
     throw new W1FinanceLifecycleError("W1_FINANCE_AUTHORITY_EVIDENCE_REQUIRED");
   }

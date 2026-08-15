@@ -117,6 +117,7 @@ model ContractSnapshot {
   resultingAmendment  ContractAmendment?      @relation("AmendmentResultSnapshot")
 
   @@unique([tenantId, id], map: "uq_contract_snapshots_tenant_id")
+  @@unique([tenantId, draftId, snapshotType], map: "uq_contract_snapshots_tenant_draft_type")
   @@index([tenantId, contractId, issuedAt], map: "idx_contract_snapshots_tenant_contract_issued")
   @@index([tenantId, digest], map: "idx_contract_snapshots_tenant_digest")
   @@index([tenantId, draftId], map: "idx_contract_snapshots_tenant_draft")
@@ -231,6 +232,7 @@ model FinanceProviderOffer {
   updatedAt         DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([tenantId, id], map: "uq_finance_provider_offers_tenant_id")
+  @@unique([tenantId, financeCaseId, provider, providerReference], map: "uq_finance_provider_offers_case_provider_reference")
   @@index([tenantId, financeCaseId, recordStatus], map: "idx_finance_provider_offers_case_status")
   @@index([tenantId, provider, authorityStatus], map: "idx_finance_provider_offers_provider_authority")
   @@map("finance_provider_offers")
