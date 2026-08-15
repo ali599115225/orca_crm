@@ -126,10 +126,11 @@ export function requiredW1gJson(
   body: Record<string, unknown>,
   key: string,
 ): Prisma.InputJsonValue {
-  if (!(key in body) || body[key] === undefined) {
+  const value = body[key];
+  if (!(key in body) || value === undefined || value === null) {
     throw new W1gRequestError("W1G_INVALID_INPUT");
   }
-  return body[key] as Prisma.InputJsonValue;
+  return value as Prisma.InputJsonValue;
 }
 
 export function optionalW1gJson(
@@ -137,7 +138,11 @@ export function optionalW1gJson(
   key: string,
 ): Prisma.InputJsonValue | undefined {
   if (!(key in body) || body[key] === undefined) return undefined;
-  return body[key] as Prisma.InputJsonValue;
+  const value = body[key];
+  if (value === null) {
+    throw new W1gRequestError("W1G_INVALID_INPUT");
+  }
+  return value as Prisma.InputJsonValue;
 }
 
 export function optionalW1gListLimit(request: NextRequest): number | undefined {
