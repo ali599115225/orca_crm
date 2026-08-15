@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -13,10 +13,6 @@ const COMMAND_BOUNDARY = readFileSync(
 );
 const PERMISSIONS = readFileSync(
   join(ROOT, "lib", "auth", "w1e-contract-finance-permissions.ts"),
-  "utf8",
-);
-const FACADE = readFileSync(
-  join(ROOT, "lib", "domain", "contract-finance", "application-facade.ts"),
   "utf8",
 );
 const CONTRACT_SERVICE = readFileSync(
@@ -39,22 +35,29 @@ const FINALIZE_APPROVAL = readFileSync(
   join(ROOT, "app", "api", "v1", "contract-finance", "contract-drafts", "[id]", "finalize-approval", "route.ts"),
   "utf8",
 );
-const ISSUE_SNAPSHOT = readFileSync(
-  join(ROOT, "app", "api", "v1", "contract-finance", "contract-drafts", "[id]", "snapshots", "issue", "route.ts"),
-  "utf8",
+const SNAPSHOT_ROUTE_PATH = join(
+  ROOT,
+  "app",
+  "api",
+  "v1",
+  "contract-finance",
+  "contract-drafts",
+  "[id]",
+  "snapshots",
+  "issue",
+  "route.ts",
 );
 
-const ROUTES = [REQUEST_APPROVAL, DECIDE_APPROVAL, FINALIZE_APPROVAL, ISSUE_SNAPSHOT];
+const ROUTES = [REQUEST_APPROVAL, DECIDE_APPROVAL, FINALIZE_APPROVAL];
 const G4_API_ROUTE_EVIDENCE = [
   "/api/v1/contract-finance/contract-drafts/[id]/approvals",
   "/api/v1/contract-finance/contract-approvals/[approvalId]/decision",
   "/api/v1/contract-finance/contract-drafts/[id]/finalize-approval",
-  "/api/v1/contract-finance/contract-drafts/[id]/snapshots/issue",
 ] as const;
 
-describe("W1H guarded Contract Studio command endpoints", () => {
-  it("registers direct G4 evidence for all four Contract Studio command routes", () => {
-    expect(G4_API_ROUTE_EVIDENCE).toHaveLength(4);
+describe("W1H guarded Contract Studio approval commands", () => {
+  it("registers direct G4 evidence for all three approval routes", () => {
+    expect(G4_API_ROUTE_EVIDENCE).toHaveLength(3);
     for (const route of G4_API_ROUTE_EVIDENCE) {
       const gateRoute = route
         .replace("/[id]", "/:id")
@@ -74,14 +77,14 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     expect(GATE).toContain("ORCA_CONTRACT_STUDIO_COMMANDS_ENABLED=true");
   });
 
-  it("routes only to the four frozen W1E Contract Studio command operations", () => {
+  it("routes only to the three frozen W1E Contract approval operations", () => {
     expect(REQUEST_APPROVAL).toContain("w1eRequestContractApproval");
     expect(DECIDE_APPROVAL).toContain("w1eDecideContractApproval");
     expect(FINALIZE_APPROVAL).toContain("w1eFinalizeContractDraftApproval");
-    expect(ISSUE_SNAPSHOT).toContain("w1eIssueApprovedContractSnapshot");
 
     const combined = ROUTES.join("\n");
     for (const excluded of [
+      "w1eIssueApprovedContractSnapshot",
       "w1eTransitionFinanceCase",
       "w1eRecordFinanceAuthorityEvidence",
       "w1eRecordProviderOffer",
@@ -112,7 +115,6 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     for (const key of [
       '"contract-studio.approval-decide"',
       '"contract-studio.approval-finalize"',
-      '"contract-studio.snapshot-issue"',
     ]) {
       const start = PERMISSIONS.indexOf(`${key}: {`);
       expect(start).toBeGreaterThanOrEqual(0);
@@ -140,7 +142,6 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     }
     expect(REQUEST_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
     expect(DECIDE_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
-    expect(ISSUE_SNAPSHOT).toContain("rejectW1hContractCallerSystemFields(body)");
     expect(GATE).toContain("may not be supplied by request payloads");
   });
 
@@ -176,28 +177,17 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     expect(GATE).toContain("W1D remains authoritative for allowed draft state");
   });
 
-  it("issues snapshots only from path-bound draft identity and caller-safe business facts", () => {
-    expect(ISSUE_SNAPSHOT).toContain("draftId: requiredW1gUuidValue(id)");
-    expect(ISSUE_SNAPSHOT).toContain('requiredW1gUuid(body, "templateVersionId")');
-    expect(ISSUE_SNAPSHOT).toContain('requiredW1gString(body, "renderedContent")');
-    expect(ISSUE_SNAPSHOT).toContain('requiredW1gJson(body, "structuredFacts")');
-    expect(ISSUE_SNAPSHOT).toContain('requiredW1gJson(body, "clauseSnapshot")');
-    expect(ISSUE_SNAPSHOT).toContain('optionalW1gJson(body, "paymentPlanSnapshot")');
-    expect(ISSUE_SNAPSHOT).not.toContain("contractId:");
-    expect(ISSUE_SNAPSHOT).not.toContain("approvalSnapshot:");
-    expect(FACADE).toMatch(/W1eIssueContractSnapshotInput = Omit<[\s\S]*?"tenantId" \| "createdBy" \| "contractId"/);
-  });
-
-  it("preserves database-derived approval evidence and deterministic immutable snapshot replay", () => {
-    expect(SNAPSHOT_SERVICE).toContain('draft.status !== "APPROVED"');
-    expect(SNAPSHOT_SERVICE).toContain('approval.status !== "APPROVED"');
-    expect(SNAPSHOT_SERVICE).toContain("const approvalSnapshot:");
+  it("keeps snapshot issuance internal until a canonical compiler exists", () => {
+    expect(existsSync(SNAPSHOT_ROUTE_PATH)).toBe(false);
+    expect(SNAPSHOT_SERVICE).toContain("issueApprovedContractSnapshot");
     expect(SNAPSHOT_SERVICE).toContain("computeContractSnapshotDigest");
-    expect(SNAPSHOT_SERVICE).toContain('snapshotType: "ISSUED"');
-    expect(SNAPSHOT_SERVICE).toContain("if (existing.digest === digest) return existing");
-    expect(SNAPSHOT_SERVICE).toContain("W1_SNAPSHOT_ALREADY_ISSUED_DIFFERENT_DIGEST");
-    expect(ISSUE_SNAPSHOT).not.toContain("status: 201");
-    expect(GATE).toContain("Snapshot issue is replay-safe only when the deterministic digest matches");
+    expect(SNAPSHOT_SERVICE).toContain("input.renderedContent");
+    expect(SNAPSHOT_SERVICE).toContain("input.structuredFacts");
+    expect(SNAPSHOT_SERVICE).toContain("input.clauseSnapshot");
+    expect(SNAPSHOT_SERVICE).toContain("input.paymentPlanSnapshot");
+    expect(GATE).toContain("does not expose it as a network command");
+    expect(GATE).toContain("deterministic server-side compiler/assembler");
+    expect(GATE).toContain("must not be able to choose rendered legal content or canonical financial facts");
   });
 
   it("does not add signature, provider network, deploy, or Transaction Spine financial writes", () => {
